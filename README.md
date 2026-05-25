@@ -1,6 +1,30 @@
-# Welcome to your Expo app 👋
+# DeskMate
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A cozy study companion app built with Expo and React Native.
+
+## How to Run
+
+**Prerequisites:** Node.js 18+, and either the [Expo Go](https://expo.dev/go) app on a physical device or an iOS/Android simulator.
+
+1. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+2. Start the development server:
+
+   ```bash
+   npx expo start
+   ```
+
+3. Open the app:
+   - Press `i` for the iOS simulator
+   - Press `a` for the Android emulator
+   - Press `w` for web
+   - Scan the QR code with Expo Go on your phone
+
+The app uses file-based routing under [`src/app/`](src/app/). Edit screens there to customize DeskMate.
 
 ## Get started
 
