@@ -109,11 +109,11 @@ export default function AddExamScreen() {
   return (
     <ThemedView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="default" themeColor="textSecondary" style={styles.hint}>
-          Track an upcoming exam with a countdown.
-          {isPlus && ' Plus: unlimited exams + advanced planning fields.'}
-        </ThemedText>
+        <SafeAreaView style={styles.safeArea}>
+          <ThemedText type="default" themeColor="textSecondary" style={styles.hint}>
+            Track an upcoming exam with a countdown.
+            {isPlus && ' Plus: unlimited exams + advanced planning fields.'}
+          </ThemedText>
 
         <ThemedView style={styles.field}>
           <ThemedText type="smallBold">Exam name *</ThemedText>
@@ -261,12 +261,12 @@ export default function AddExamScreen() {
           </Pressable>
         </ThemedView>
 
-        <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
-          {isPlus
-            ? `${examCountdowns.length} exam${examCountdowns.length !== 1 ? 's' : ''} tracked ✨ Plus — unlimited`
-            : `${examCountdowns.length}/3 exam countdowns used`}
-        </ThemedText>
-      </SafeAreaView>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
+            {isPlus
+              ? `${examCountdowns.length} exam${examCountdowns.length !== 1 ? 's' : ''} tracked ✨ Plus — unlimited`
+              : `${examCountdowns.length}/3 exam countdowns used`}
+          </ThemedText>
+        </SafeAreaView>
       </ScrollView>
     </ThemedView>
   );

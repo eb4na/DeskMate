@@ -6,6 +6,7 @@ import { PlusGateCard } from '@/components/plus-gate';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
+import { useAuth } from '@/context/auth-context';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 
 function daysUntil(dateISO: string): number {
@@ -38,6 +39,7 @@ function daysSince(dateISO: string): number {
 }
 
 export default function ProgressScreen() {
+  const { user, signOut } = useAuth();
   const {
     sessionsCompleted,
     totalMinutes,
@@ -101,6 +103,26 @@ export default function ProgressScreen() {
   const mondayISO = getMondayISO();
   const daysThisWeek = new Set(sessionHistory.filter((r) => r.dateISO >= mondayISO).map((r) => r.dateISO)).size;
 
+  const handleSignOut = () => {
+    Alert.alert('Sign out?', 'You can sign back in anytime with the same account.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await signOut();
+          } catch (error) {
+            Alert.alert(
+              'Sign-out failed',
+              error instanceof Error ? error.message : 'Please try again.',
+            );
+          }
+        },
+      },
+    ]);
+  };
+
   return (
     <ThemedView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -108,6 +130,22 @@ export default function ProgressScreen() {
           <ThemedText type="subtitle" style={styles.title}>
             Progress
           </ThemedText>
+
+          <ThemedView type="backgroundElement" style={styles.accountCard}>
+            <ThemedView style={styles.accountInfo}>
+              <ThemedText type="smallBold">Account</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {user?.email ?? 'Signed in'}
+              </ThemedText>
+            </ThemedView>
+            <Pressable
+              style={({ pressed }) => [styles.signOutBtn, pressed && styles.pressed]}
+              onPress={handleSignOut}>
+              <ThemedText type="smallBold" style={styles.signOutText}>
+                Sign out
+              </ThemedText>
+            </Pressable>
+          </ThemedView>
 
           {/* ── This week summary ────────────────────────────────────────── */}
           <Pressable
@@ -485,6 +523,22 @@ const styles = StyleSheet.create({
     gap: Spacing.four,
   },
   title: { fontSize: 28, lineHeight: 34 },
+  accountCard: {
+    borderRadius: 14,
+    padding: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  accountInfo: { flex: 1, gap: 2 },
+  signOutBtn: {
+    borderRadius: 10,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 6,
+    borderWidth: 1.5,
+    borderColor: '#7C6F5A',
+  },
+  signOutText: { color: '#7C6F5A' },
   streakCard: {
     borderRadius: 20,
     padding: Spacing.four,
