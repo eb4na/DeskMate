@@ -13,10 +13,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useAuth } from '@/context/auth-context';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 
 export default function LoginScreen() {
+  const { continueAsGuest } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -121,6 +123,14 @@ export default function LoginScreen() {
                 </ThemedText>
               </Pressable>
 
+              <Pressable
+                style={({ pressed }) => [styles.guestButton, pressed && styles.pressed]}
+                onPress={continueAsGuest}>
+                <ThemedText type="smallBold" style={styles.guestButtonText}>
+                  Continue as Guest
+                </ThemedText>
+              </Pressable>
+
               <ThemedView style={styles.supportLinks}>
                 <Pressable onPress={() => router.push('/forgot-password')}>
                   <ThemedText type="smallBold" style={styles.linkText}>
@@ -178,6 +188,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: { color: '#FFF' },
+  guestButton: {
+    borderRadius: 16,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#7C6F5A',
+  },
+  guestButtonText: { color: '#7C6F5A' },
   supportLinks: {
     marginTop: Spacing.one,
     flexDirection: 'row',

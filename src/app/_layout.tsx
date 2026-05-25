@@ -9,7 +9,7 @@ import { AuthProvider, useAuth } from '@/context/auth-context';
 import { Spacing } from '@/constants/theme';
 
 function RootNavigator() {
-  const { initialized, session } = useAuth();
+  const { initialized, isGuest, session } = useAuth();
 
   if (!initialized) {
     return (
@@ -26,11 +26,11 @@ function RootNavigator() {
     <Stack>
       <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
 
-      <Stack.Protected guard={!session}>
+      <Stack.Protected guard={!session && !isGuest}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       </Stack.Protected>
 
-      <Stack.Protected guard={!!session}>
+      <Stack.Protected guard={!!session || isGuest}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         {/* Session flow */}
         <Stack.Screen name="session-picker" options={{ presentation: 'modal', title: 'Session length' }} />

@@ -7,6 +7,8 @@ type AuthContextType = {
   initialized: boolean;
   session: Session | null;
   user: User | null;
+  isGuest: boolean;
+  continueAsGuest: () => void;
   signOut: () => Promise<void>;
 };
 
@@ -15,6 +17,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [initialized, setInitialized] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -22,6 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
       setSession(data.session ?? null);
+      if (data.session) setIsGuest(false);
       setInitialized(true);
     });
 
@@ -29,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
+      if (nextSession) setIsGuest(false);
       setInitialized(true);
     });
 
@@ -43,12 +48,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       initialized,
       session,
       user: session?.user ?? null,
+      isGuest,
+      continueAsGuest: () => {
+        setIsGuest(true);
+        setInitialized(true);
+      },
       signOut: async () => {
+        if (isGuest) {
+          setIsGuest(false);
+          return;
+        }
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
       },
     }),
-    [initialized, session],
+    [initialized, isGuest, session],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
