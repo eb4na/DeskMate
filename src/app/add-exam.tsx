@@ -3,18 +3,19 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, TextInput, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DateWheelPicker, getTodayISO } from '@/components/date-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { type AdvancedExamFields } from '@/context/app-context';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 
-function isValidFutureDate(dateStr: string): boolean {
+function isValidDateISO(dateStr: string): boolean {
   const parts = dateStr.split('-');
   if (parts.length !== 3) return false;
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return false;
-  return d > new Date();
+  return true;
 }
 
 const CONFIDENCE_LABELS: Record<number, string> = {
@@ -29,7 +30,7 @@ export default function AddExamScreen() {
   const { examCountdowns, addExam, isPlus, updateAdvancedExam } = useApp();
   const [name, setName] = useState('');
   const [subject, setSubject] = useState('');
-  const [date, setDate] = useState('');
+  const [date, setDate] = useState(getTodayISO());
   const [reminderEnabled, setReminderEnabled] = useState(false);
   // Plus advanced fields
   const [topics, setTopics] = useState('');
@@ -49,8 +50,8 @@ export default function AddExamScreen() {
       Alert.alert('Missing name', 'Please enter an exam name.');
       return;
     }
-    if (!isValidFutureDate(trimmedDate)) {
-      Alert.alert('Invalid date', 'Please enter a valid future date in YYYY-MM-DD format.');
+    if (!isValidDateISO(trimmedDate)) {
+      Alert.alert('Invalid date', 'Please choose a valid exam date.');
       return;
     }
     if (!canAdd) {
@@ -142,19 +143,7 @@ export default function AddExamScreen() {
 
         <ThemedView style={styles.field}>
           <ThemedText type="smallBold">Exam date *</ThemedText>
-          <TextInput
-            style={inputStyle}
-            value={date}
-            onChangeText={setDate}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={colors.textSecondary}
-            keyboardType="numbers-and-punctuation"
-            returnKeyType="done"
-            onSubmitEditing={handleSave}
-          />
-          <ThemedText type="small" themeColor="textSecondary">
-            Example: 2026-12-15
-          </ThemedText>
+          <DateWheelPicker value={date} onChange={setDate} minimumDateISO={getTodayISO()} />
         </ThemedView>
 
         {/* Reminder toggle */}

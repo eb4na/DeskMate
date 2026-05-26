@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, TextInput, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DateWheelPicker, getTodayISO } from '@/components/date-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
@@ -33,10 +34,12 @@ export default function AddTaskScreen() {
 
   const editing = !!taskId;
   const existingTask = editing ? tasks.find((t) => t.id === taskId) : undefined;
+  const todayISO = getTodayISO();
 
   const [title, setTitle] = useState(existingTask?.title ?? '');
   const [subjectId, setSubjectId] = useState<string | null>(existingTask?.subjectId ?? null);
-  const [dueDate, setDueDate] = useState(existingTask?.dueDate ?? '');
+  const [dueDateEnabled, setDueDateEnabled] = useState(existingTask?.dueDate != null || !editing);
+  const [dueDate, setDueDate] = useState(existingTask?.dueDate ?? todayISO);
   const [estimatedMinutes, setEstimatedMinutes] = useState(
     existingTask?.estimatedMinutes ? String(existingTask.estimatedMinutes) : '',
   );
@@ -61,7 +64,7 @@ export default function AddTaskScreen() {
       ? parseInt(estimatedMinutes.trim(), 10)
       : null;
 
-    const dueDateValue = dueDate.trim() || null;
+    const dueDateValue = dueDateEnabled ? dueDate.trim() || todayISO : null;
 
     if (editing) {
       updateTask(taskId!, { title: title.trim(), subjectId, dueDate: dueDateValue, estimatedMinutes: estimatedNum, priority, status });
@@ -189,14 +192,35 @@ export default function AddTaskScreen() {
             <ThemedText type="smallBold" style={styles.label}>
               Due date (optional)
             </ThemedText>
-            <TextInput
-              style={inputStyle}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={isDark ? '#666' : '#AAA'}
-              value={dueDate}
-              onChangeText={setDueDate}
-              keyboardType="numbers-and-punctuation"
-            />
+            <ThemedView style={styles.chipRow}>
+              <Pressable
+                onPress={() => setDueDateEnabled(true)}
+                style={({ pressed }) => [pressed && styles.pressed]}>
+                <ThemedView
+                  type={dueDateEnabled ? 'backgroundSelected' : 'backgroundElement'}
+                  style={styles.chip}>
+                  <ThemedText type="small">Pick date</ThemedText>
+                </ThemedView>
+              </Pressable>
+              <Pressable
+                onPress={() => setDueDateEnabled(false)}
+                style={({ pressed }) => [pressed && styles.pressed]}>
+                <ThemedView
+                  type={!dueDateEnabled ? 'backgroundSelected' : 'backgroundElement'}
+                  style={styles.chip}>
+                  <ThemedText type="small">No due date</ThemedText>
+                </ThemedView>
+              </Pressable>
+            </ThemedView>
+            {dueDateEnabled ? (
+              <DateWheelPicker value={dueDate} onChange={setDueDate} />
+            ) : (
+              <ThemedView type="backgroundElement" style={styles.dateHintCard}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  No due date selected.
+                </ThemedText>
+              </ThemedView>
+            )}
           </ThemedView>
 
           {/* Estimated time */}
@@ -259,6 +283,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: 8,
     borderRadius: 12,
+  },
+  dateHintCard: {
+    borderRadius: 12,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
   },
   chipEmoji: { fontSize: 14, lineHeight: 18 },
   subjectDot: { width: 10, height: 10, borderRadius: 5 },

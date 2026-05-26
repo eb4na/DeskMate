@@ -61,6 +61,15 @@ export type SessionRecord = {
   subjectName: string | null;
 };
 
+export type ActiveSession = {
+  id: string;
+  durationMinutes: number;
+  subjectName: string | null;
+  taskId: string | null;
+  taskTitle: string | null;
+  startedAt: string;
+};
+
 // ─── Wave 4 types ─────────────────────────────────────────────────────────────
 
 export type TimerPreset = {
@@ -263,6 +272,7 @@ type AppContextType = {
   subjectTimeMap: Record<string, number>;
   skipSubjectCount: number;
   sessionHistory: SessionRecord[];
+  activeSession: ActiveSession | null;
 
   // Wave 4 state
   isPlus: boolean;
@@ -302,6 +312,13 @@ type AppContextType = {
 
   // Wave 2 subject-time + session-history
   addSubjectTime: (subjectName: string | null, minutes: number) => void;
+  startActiveSession: (session: {
+    durationMinutes: number;
+    subjectName: string | null;
+    taskId: string | null;
+    taskTitle: string | null;
+  }) => void;
+  clearActiveSession: () => void;
 
   // Wave 2 skip nudge
   incrementSkipSubjectCount: () => void;
@@ -335,6 +352,7 @@ const AppContext = createContext<AppContextType | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const { initialized: authInitialized, session } = useAuth();
   const [s, setS] = useState<PersistedState>(DEFAULTS);
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [loadedScopeKey, setLoadedScopeKey] = useState<string | null>(null);
   const appStateScope = useMemo(() => getAppStateScope(session), [session]);
@@ -345,6 +363,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let mounted = true;
     setLoaded(false);
     setLoadedScopeKey(null);
+    setActiveSession(null);
 
     loadScopedAppState<Partial<PersistedState>>(appStateScope)
       .then((saved) => {
@@ -595,6 +614,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const startActiveSession = ({
+    durationMinutes,
+    subjectName,
+    taskId,
+    taskTitle,
+  }: {
+    durationMinutes: number;
+    subjectName: string | null;
+    taskId: string | null;
+    taskTitle: string | null;
+  }) => {
+    setActiveSession({
+      id: uid(),
+      durationMinutes,
+      subjectName,
+      taskId,
+      taskTitle,
+      startedAt: new Date().toISOString(),
+    });
+  };
+
+  const clearActiveSession = () => {
+    setActiveSession(null);
+  };
+
   // ─── Wave 2 skip nudge ────────────────────────────────────────────────────
 
   const incrementSkipSubjectCount = () =>
@@ -770,6 +814,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         subjectTimeMap: s.subjectTimeMap,
         skipSubjectCount: s.skipSubjectCount,
         sessionHistory: s.sessionHistory,
+        activeSession,
         addCoins,
         recordSession,
         addMoodEntry,
@@ -788,6 +833,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         completeTask,
         postponeTask,
         addSubjectTime,
+        startActiveSession,
+        clearActiveSession,
         incrementSkipSubjectCount,
         resetSkipSubjectCount,
         purchaseShopItem,

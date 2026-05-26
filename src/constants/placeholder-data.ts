@@ -1,5 +1,3 @@
-export const TODAY_GOAL = 'Complete 2 study sessions today';
-
 export const SESSION_LENGTHS = [
   { minutes: 10, label: 'Quick Focus' },
   { minutes: 25, label: 'Pomodoro' },
@@ -19,8 +17,6 @@ export const COIN_REWARDS: Record<number, number> = {
 export const DAILY_EARN_CAP = 120;
 
 export const BREAK_LENGTHS = [5, 10, 15] as const;
-
-export const DAILY_SESSIONS_GOAL = 2;
 
 // Auto-assign colors for new subjects (Wave 2)
 export const SUBJECT_COLORS = [

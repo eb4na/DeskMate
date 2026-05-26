@@ -82,7 +82,13 @@ export default function SessionCompleteScreen() {
     setTaskAnswered(true);
   };
 
-  const goHome = () => router.replace('/');
+  const goHome = () => {
+    if (router.canDismiss()) {
+      router.dismissAll();
+      return;
+    }
+    router.replace('/');
+  };
   const startBreak = (breakMins: number) =>
     router.replace({
       pathname: '/break-game',

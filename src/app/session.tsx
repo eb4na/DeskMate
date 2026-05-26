@@ -30,6 +30,14 @@ export default function SessionScreen() {
   const hasCompleted = useRef(false);
   const startLine = useMemo(() => getCompanionLine('sessionStart'), []);
 
+  const returnToTabs = () => {
+    if (router.canDismiss()) {
+      router.dismissAll();
+      return;
+    }
+    router.replace('/');
+  };
+
   useEffect(() => {
     if (isPaused) return;
     const id = setInterval(() => {
@@ -100,7 +108,7 @@ export default function SessionScreen() {
               },
             });
           } else {
-            router.replace('/');
+            returnToTabs();
           }
         },
       },

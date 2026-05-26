@@ -15,8 +15,15 @@ type Step = 'subject' | 'task';
 
 export default function SubjectPickerScreen() {
   const { sessionLength } = useLocalSearchParams<{ sessionLength: string }>();
-  const { subjects, tasks, addMoodEntry, incrementSkipSubjectCount, resetSkipSubjectCount, skipSubjectCount } =
-    useApp();
+  const {
+    subjects,
+    tasks,
+    addMoodEntry,
+    incrementSkipSubjectCount,
+    resetSkipSubjectCount,
+    skipSubjectCount,
+    startActiveSession,
+  } = useApp();
 
   const [step, setStep] = useState<Step>('subject');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
@@ -34,7 +41,12 @@ export default function SubjectPickerScreen() {
     ? tasks.filter((t) => t.subjectId === selectedSubjectId && t.status !== 'done')
     : [];
 
-  const recordMoodAndNavigate = (subjectName: string | null, taskId: string | null, taskTitle: string | null) => {
+  const recordMoodAndStartSession = (
+    subjectName: string | null,
+    taskId: string | null,
+    taskTitle: string | null,
+  ) => {
+    const durationMinutes = parseInt(sessionLength ?? '25', 10);
     if (selectedMood) {
       const moodOption = BEFORE_SESSION_MOODS.find((m) => m.value === selectedMood);
       if (moodOption) {
@@ -42,26 +54,29 @@ export default function SubjectPickerScreen() {
           value: selectedMood,
           label: moodOption.label,
           type: 'before',
-          sessionMinutes: parseInt(sessionLength ?? '25', 10),
+          sessionMinutes: durationMinutes,
           timestamp: new Date().toISOString(),
         });
       }
     }
 
-    router.replace({
-      pathname: '/session',
-      params: {
-        sessionLength: sessionLength ?? '25',
-        subject: subjectName ?? '',
-        taskId: taskId ?? '',
-        taskTitle: taskTitle ?? '',
-      },
+    startActiveSession({
+      durationMinutes,
+      subjectName,
+      taskId,
+      taskTitle,
     });
+
+    if (router.canDismiss()) {
+      router.dismissAll();
+      return;
+    }
+    router.replace('/');
   };
 
   const handleSkipSubject = () => {
     incrementSkipSubjectCount();
-    recordMoodAndNavigate(null, null, null);
+    recordMoodAndStartSession(null, null, null);
   };
 
   const handleStartWithSubject = () => {
@@ -73,19 +88,19 @@ export default function SubjectPickerScreen() {
       setStep('task');
     } else {
       resetSkipSubjectCount();
-      recordMoodAndNavigate(selectedSubject?.name ?? null, null, null);
+      recordMoodAndStartSession(selectedSubject?.name ?? null, null, null);
     }
   };
 
   const handleStartWithTask = () => {
     const task = tasks.find((t) => t.id === selectedTaskId) ?? null;
     resetSkipSubjectCount();
-    recordMoodAndNavigate(selectedSubject?.name ?? null, task?.id ?? null, task?.title ?? null);
+    recordMoodAndStartSession(selectedSubject?.name ?? null, task?.id ?? null, task?.title ?? null);
   };
 
   const handleSkipTask = () => {
     resetSkipSubjectCount();
-    recordMoodAndNavigate(selectedSubject?.name ?? null, null, null);
+    recordMoodAndStartSession(selectedSubject?.name ?? null, null, null);
   };
 
   if (step === 'task') {

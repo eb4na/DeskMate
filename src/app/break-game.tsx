@@ -17,7 +17,8 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type GameId = 'tictactoe' | 'memory' | 'wordpuzzle';
-type Phase = 'select' | 'playing' | 'over';
+type Phase = 'select' | 'playing' | 'resting' | 'over';
+type TicTacToeMode = 'ai' | 'friend';
 
 // ─── Tic-Tac-Toe ─────────────────────────────────────────────────────────────
 type Cell = 'X' | 'O' | null;
@@ -59,20 +60,35 @@ function getAIMove(board: Cell[]): number {
 function TicTacToeGame() {
   const [board, setBoard] = useState<Cell[]>(Array(9).fill(null));
   const [isPlayerTurn, setIsPlayerTurn] = useState(true);
+  const [mode, setMode] = useState<TicTacToeMode>('ai');
   const aiMovePending = useRef(false);
 
   const { winner, line: winLine } = checkWinner(board);
   const gameOver = !!winner;
 
+  const resetBoard = () => {
+    aiMovePending.current = false;
+    setBoard(Array(9).fill(null));
+    setIsPlayerTurn(true);
+  };
+
+  const handleModeChange = (nextMode: TicTacToeMode) => {
+    if (nextMode === mode) return;
+    setMode(nextMode);
+    resetBoard();
+  };
+
   const handlePress = (idx: number) => {
-    if (!isPlayerTurn || board[idx] || gameOver) return;
+    if (board[idx] || gameOver) return;
+    if (mode === 'ai' && !isPlayerTurn) return;
     const newBoard = [...board];
-    newBoard[idx] = 'X';
+    newBoard[idx] = isPlayerTurn ? 'X' : 'O';
     setBoard(newBoard);
-    setIsPlayerTurn(false);
+    setIsPlayerTurn((turn) => !turn);
   };
 
   useEffect(() => {
+    if (mode !== 'ai') return;
     if (isPlayerTurn || gameOver) return;
     const { winner: w } = checkWinner(board);
     if (w) return;
@@ -91,25 +107,56 @@ function TicTacToeGame() {
       clearTimeout(t);
       aiMovePending.current = false;
     };
-  }, [board, isPlayerTurn, gameOver]);
+  }, [board, gameOver, isPlayerTurn, mode]);
 
   const reset = () => {
-    setBoard(Array(9).fill(null));
-    setIsPlayerTurn(true);
+    resetBoard();
   };
 
-  const resultMsg = !winner
-    ? null
-    : winner === 'X'
-    ? 'You win! 🎉'
-    : winner === 'draw'
-    ? "It's a draw!"
-    : 'Companion wins! 😄';
+  const statusText = gameOver
+    ? winner === 'draw'
+      ? "It's a draw!"
+      : mode === 'ai'
+        ? winner === 'X'
+          ? 'You win! 🎉'
+          : 'Companion wins! 😄'
+        : winner === 'X'
+          ? 'Player X wins! 🎉'
+          : 'Player O wins! 🎉'
+    : mode === 'ai'
+      ? isPlayerTurn
+        ? 'Your turn (X)'
+        : 'Companion thinking...'
+      : isPlayerTurn
+        ? 'Player X turn'
+        : 'Player O turn';
 
   return (
     <ThemedView style={tttStyles.container}>
+      <ThemedView style={tttStyles.modeRow}>
+        <Pressable onPress={() => handleModeChange('ai')}>
+          <ThemedView
+            style={[tttStyles.modeChip, mode === 'ai' && tttStyles.modeChipActive]}>
+            <ThemedText
+              type="smallBold"
+              style={[tttStyles.modeChipText, mode === 'ai' && tttStyles.modeChipTextActive]}>
+              vs AI
+            </ThemedText>
+          </ThemedView>
+        </Pressable>
+        <Pressable onPress={() => handleModeChange('friend')}>
+          <ThemedView
+            style={[tttStyles.modeChip, mode === 'friend' && tttStyles.modeChipActive]}>
+            <ThemedText
+              type="smallBold"
+              style={[tttStyles.modeChipText, mode === 'friend' && tttStyles.modeChipTextActive]}>
+              vs Friend
+            </ThemedText>
+          </ThemedView>
+        </Pressable>
+      </ThemedView>
       <ThemedText type="smallBold" style={tttStyles.subtitle}>
-        {!winner ? (isPlayerTurn ? 'Your turn (X)' : 'Companion thinking...') : resultMsg}
+        {statusText}
       </ThemedText>
       <ThemedView style={tttStyles.grid}>
         {board.map((cell, i) => {
@@ -139,6 +186,22 @@ function TicTacToeGame() {
 
 const tttStyles = StyleSheet.create({
   container: { alignItems: 'center', gap: Spacing.three },
+  modeRow: { flexDirection: 'row', gap: Spacing.two },
+  modeChip: {
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(124,111,90,0.12)',
+  },
+  modeChipActive: {
+    backgroundColor: '#7C6F5A',
+  },
+  modeChipText: {
+    color: '#7C6F5A',
+  },
+  modeChipTextActive: {
+    color: '#FFF',
+  },
   subtitle: { fontSize: 15 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', width: 240, gap: 4 },
   cell: {
@@ -165,6 +228,8 @@ const tttStyles = StyleSheet.create({
 
 // ─── Memory Cards ─────────────────────────────────────────────────────────────
 const EMOJI_PAIRS = ['🐶', '🐱', '🐻', '🦊', '🐼', '🦁', '🐸', '🦋'];
+type MemoryMode = 'ai' | 'friend';
+type MemoryPlayer = 'one' | 'two';
 
 type MemCard = { id: number; emoji: string; flipped: boolean; matched: boolean };
 
@@ -177,20 +242,108 @@ function initCards(): MemCard[] {
 const { width: SCREEN_W } = Dimensions.get('window');
 const CARD_SIZE = Math.max(60, Math.floor((Math.min(SCREEN_W, 400) - 48 - 18) / 4));
 
+function pickRandomCardId(ids: number[]): number | null {
+  if (ids.length === 0) return null;
+  return ids[Math.floor(Math.random() * ids.length)];
+}
+
+function getAiMemoryChoices(cards: MemCard[], seenCards: Record<string, number[]>): [number, number] | null {
+  const availableIds = cards.filter((card) => !card.matched && !card.flipped).map((card) => card.id);
+  if (availableIds.length < 2) return null;
+
+  for (const ids of Object.values(seenCards)) {
+    const known = Array.from(new Set(ids)).filter((id) => availableIds.includes(id));
+    if (known.length >= 2) return [known[0], known[1]];
+  }
+
+  const seenIdSet = new Set(Object.values(seenCards).flat());
+  const unseenIds = availableIds.filter((id) => !seenIdSet.has(id));
+  const firstId = pickRandomCardId(unseenIds.length > 0 ? unseenIds : availableIds);
+  if (firstId === null) return null;
+
+  const firstCard = cards.find((card) => card.id === firstId);
+  if (!firstCard) return null;
+
+  const knownMateIds = Array.from(new Set(seenCards[firstCard.emoji] ?? [])).filter(
+    (id) => id !== firstId && availableIds.includes(id),
+  );
+  const remainingIds = availableIds.filter((id) => id !== firstId);
+  const remainingSeenIdSet = new Set(
+    Object.values(seenCards)
+      .flat()
+      .filter((id) => id !== firstId),
+  );
+  const remainingUnseenIds = remainingIds.filter((id) => !remainingSeenIdSet.has(id));
+  const secondId =
+    knownMateIds[0] ??
+    pickRandomCardId(remainingUnseenIds.length > 0 ? remainingUnseenIds : remainingIds);
+
+  return secondId === null ? null : [firstId, secondId];
+}
+
 function MemoryCardsGame() {
   const [cards, setCards] = useState<MemCard[]>(() => initCards());
   const [flippedIds, setFlippedIds] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
+  const [mode, setMode] = useState<MemoryMode>('ai');
+  const [currentPlayer, setCurrentPlayer] = useState<MemoryPlayer>('one');
+  const [scores, setScores] = useState<Record<MemoryPlayer, number>>({ one: 0, two: 0 });
+  const [seenCards, setSeenCards] = useState<Record<string, number[]>>({});
   const checking = useRef(false);
+  const timeoutIds = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+  const aiPlannedSecondId = useRef<number | null>(null);
 
   const matchedCount = cards.filter((c) => c.matched).length;
   const isComplete = matchedCount === 16;
+  const pairCount = matchedCount / 2;
+  const playerOneLabel = mode === 'ai' ? 'You' : 'Player 1';
+  const playerTwoLabel = mode === 'ai' ? 'Companion' : 'Player 2';
+
+  const clearPendingTimeouts = () => {
+    timeoutIds.current.forEach((id) => clearTimeout(id));
+    timeoutIds.current = [];
+  };
+
+  const rememberCard = (id: number, emoji: string) => {
+    setSeenCards((prev) => ({
+      ...prev,
+      [emoji]: Array.from(new Set([...(prev[emoji] ?? []), id])),
+    }));
+  };
+
+  const forgetEmoji = (emoji: string) => {
+    setSeenCards((prev) => {
+      const next = { ...prev };
+      delete next[emoji];
+      return next;
+    });
+  };
+
+  const reset = () => {
+    clearPendingTimeouts();
+    checking.current = false;
+    aiPlannedSecondId.current = null;
+    setCards(initCards());
+    setFlippedIds([]);
+    setMoves(0);
+    setCurrentPlayer('one');
+    setScores({ one: 0, two: 0 });
+    setSeenCards({});
+  };
+
+  const handleModeChange = (nextMode: MemoryMode) => {
+    if (nextMode === mode) return;
+    setMode(nextMode);
+    reset();
+  };
 
   const handleCardPress = (id: number) => {
+    if (mode === 'ai' && currentPlayer === 'two') return;
     if (checking.current) return;
     const card = cards[id];
     if (card.flipped || card.matched || flippedIds.length >= 2) return;
 
+    rememberCard(id, card.emoji);
     const newFlipped = [...flippedIds, id];
     setCards((prev) => prev.map((c) => (c.id === id ? { ...c, flipped: true } : c)));
     setFlippedIds(newFlipped);
@@ -202,37 +355,135 @@ function MemoryCardsGame() {
       const emoA = cards[a].emoji;
       const emoB = id === b ? card.emoji : cards[b].emoji;
       const matched = emoA === (id === b ? card.emoji : cards[b].emoji);
+      const activePlayer = currentPlayer;
 
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         if (matched) {
           setCards((prev) =>
             prev.map((c) => (c.id === a || c.id === b ? { ...c, matched: true, flipped: true } : c)),
           );
+          forgetEmoji(emoA);
+          setScores((prev) => ({
+            ...prev,
+            [activePlayer]: prev[activePlayer] + 1,
+          }));
         } else {
           setCards((prev) =>
             prev.map((c) => (c.id === a || c.id === b ? { ...c, flipped: false } : c)),
           );
+          setCurrentPlayer((prev) => (prev === 'one' ? 'two' : 'one'));
         }
         setFlippedIds([]);
         checking.current = false;
       }, 900);
+      timeoutIds.current.push(timeoutId);
     }
   };
 
-  const reset = () => {
-    setCards(initCards());
-    setFlippedIds([]);
-    setMoves(0);
-  };
+  useEffect(() => {
+    return () => {
+      clearPendingTimeouts();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (mode !== 'ai' || currentPlayer !== 'two' || checking.current || flippedIds.length > 0 || isComplete) {
+      return;
+    }
+
+    const choices = getAiMemoryChoices(cards, seenCards);
+    if (!choices) return;
+    const [firstId, secondId] = choices;
+    aiPlannedSecondId.current = secondId;
+
+    const firstTimeout = setTimeout(() => {
+      handleCardPress(firstId);
+    }, 450);
+
+    timeoutIds.current.push(firstTimeout);
+
+    return () => {
+      clearTimeout(firstTimeout);
+    };
+  }, [cards, currentPlayer, flippedIds.length, isComplete, mode, seenCards]);
+
+  useEffect(() => {
+    if (mode !== 'ai' || currentPlayer !== 'two' || checking.current || flippedIds.length !== 1 || isComplete) {
+      return;
+    }
+
+    const secondId = aiPlannedSecondId.current;
+    if (secondId === null) return;
+
+    const secondTimeout = setTimeout(() => {
+      handleCardPress(secondId);
+      aiPlannedSecondId.current = null;
+    }, 550);
+
+    timeoutIds.current.push(secondTimeout);
+
+    return () => {
+      clearTimeout(secondTimeout);
+    };
+  }, [currentPlayer, flippedIds.length, isComplete, mode]);
+
+  const statusText = isComplete
+    ? scores.one === scores.two
+      ? "It's a tie! 🎉"
+      : mode === 'ai'
+        ? scores.one > scores.two
+          ? 'You win! 🎉'
+          : 'Companion wins! 🎉'
+        : scores.one > scores.two
+          ? 'Player 1 wins! 🎉'
+          : 'Player 2 wins! 🎉'
+    : mode === 'ai'
+      ? currentPlayer === 'one'
+        ? 'Your turn'
+        : 'Companion turn'
+      : currentPlayer === 'one'
+        ? 'Player 1 turn'
+        : 'Player 2 turn';
 
   return (
     <ThemedView style={memStyles.container}>
+      <ThemedView style={tttStyles.modeRow}>
+        <Pressable onPress={() => handleModeChange('ai')}>
+          <ThemedView style={[tttStyles.modeChip, mode === 'ai' && tttStyles.modeChipActive]}>
+            <ThemedText
+              type="smallBold"
+              style={[tttStyles.modeChipText, mode === 'ai' && tttStyles.modeChipTextActive]}>
+              vs AI
+            </ThemedText>
+          </ThemedView>
+        </Pressable>
+        <Pressable onPress={() => handleModeChange('friend')}>
+          <ThemedView style={[tttStyles.modeChip, mode === 'friend' && tttStyles.modeChipActive]}>
+            <ThemedText
+              type="smallBold"
+              style={[tttStyles.modeChipText, mode === 'friend' && tttStyles.modeChipTextActive]}>
+              vs Friend
+            </ThemedText>
+          </ThemedView>
+        </Pressable>
+      </ThemedView>
+      <ThemedText type="smallBold" style={memStyles.statusText}>
+        {statusText}
+      </ThemedText>
       <ThemedView style={memStyles.meta}>
         <ThemedText type="small" themeColor="textSecondary">
-          Pairs: {matchedCount / 2}/8
+          Pairs: {pairCount}/8
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
           Moves: {moves}
+        </ThemedText>
+      </ThemedView>
+      <ThemedView style={memStyles.scoreRow}>
+        <ThemedText type="small" themeColor="textSecondary">
+          {playerOneLabel}: {scores.one}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {playerTwoLabel}: {scores.two}
         </ThemedText>
       </ThemedView>
       <ThemedView style={memStyles.grid}>
@@ -254,7 +505,7 @@ function MemoryCardsGame() {
       </ThemedView>
       {isComplete && (
         <ThemedView style={memStyles.completeRow}>
-          <ThemedText type="smallBold">All matched in {moves} moves! 🎉</ThemedText>
+          <ThemedText type="smallBold">{statusText}</ThemedText>
           <Pressable style={tttStyles.resetBtn} onPress={reset}>
             <ThemedText type="smallBold" style={tttStyles.resetBtnText}>Play again</ThemedText>
           </Pressable>
@@ -266,7 +517,9 @@ function MemoryCardsGame() {
 
 const memStyles = StyleSheet.create({
   container: { alignItems: 'center', gap: Spacing.two },
+  statusText: { fontSize: 15 },
   meta: { flexDirection: 'row', gap: Spacing.four },
+  scoreRow: { flexDirection: 'row', gap: Spacing.four },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, justifyContent: 'center' },
   card: {
     width: CARD_SIZE,
@@ -459,8 +712,16 @@ export default function BreakGameScreen() {
   const validEntry =
     fromSession === '1' && ALLOWED_BREAK_MINUTES.includes(parsedMinutes);
 
+  const returnToTabs = () => {
+    if (router.canDismiss()) {
+      router.dismissAll();
+      return;
+    }
+    router.replace('/');
+  };
+
   useEffect(() => {
-    if (!validEntry) router.replace('/');
+    if (!validEntry) returnToTabs();
   }, [validEntry]);
 
   const totalSeconds = validEntry ? parsedMinutes * 60 : 0;
@@ -468,6 +729,16 @@ export default function BreakGameScreen() {
   const [phase, setPhase] = useState<Phase>('select');
   const [selectedGame, setSelectedGame] = useState<GameId | null>(null);
   const breakOverLine = useMemo(() => getCompanionLine('breakOver'), []);
+
+  const startResting = () => {
+    setSelectedGame(null);
+    setPhase('resting');
+  };
+
+  const showGames = () => {
+    setSelectedGame(null);
+    setPhase('select');
+  };
 
   useEffect(() => {
     if (!validEntry || phase === 'over') return;
@@ -483,7 +754,9 @@ export default function BreakGameScreen() {
     return () => clearInterval(id);
   }, [phase, validEntry]);
 
-  const goHome = () => router.replace('/');
+  const goHome = () => {
+    returnToTabs();
+  };
 
   const mm = Math.floor(secondsLeft / 60);
   const ss = secondsLeft % 60;
@@ -595,15 +868,35 @@ export default function BreakGameScreen() {
                 })}
               </ThemedView>
 
-              <Pressable onPress={goHome} style={styles.restBtn}>
+              <Pressable onPress={startResting} style={styles.restBtn}>
                 <ThemedText type="linkPrimary">Just rest →</ThemedText>
+              </Pressable>
+            </ThemedView>
+          </ScrollView>
+        ) : phase === 'resting' ? (
+          <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollFlex}>
+            <ThemedView style={styles.restContent}>
+              <Companion pose="idle" size="full" />
+              <ThemedView type="backgroundElement" style={styles.restCard}>
+                <ThemedText type="subtitle" style={styles.restTitle}>
+                  Rest a little
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.restText}>
+                  Your break timer is still running. Sit back until you are ready to study again.
+                </ThemedText>
+              </ThemedView>
+
+              <Pressable onPress={showGames} style={styles.backGameBtn}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  ← Choose a game instead
+                </ThemedText>
               </Pressable>
             </ThemedView>
           </ScrollView>
         ) : (
           <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollFlex}>
             <ThemedView style={styles.gameContainer}>
-              <Pressable onPress={() => setPhase('select')} style={styles.backGameBtn}>
+              <Pressable onPress={showGames} style={styles.backGameBtn}>
                 <ThemedText type="small" themeColor="textSecondary">← Games</ThemedText>
               </Pressable>
               {selectedGame === 'tictactoe' && <TicTacToeGame />}
@@ -612,6 +905,14 @@ export default function BreakGameScreen() {
             </ThemedView>
           </ScrollView>
         )}
+
+        <Pressable
+          style={({ pressed }) => [styles.endStudyBtn, pressed && styles.pressed]}
+          onPress={goHome}>
+          <ThemedText type="smallBold" style={styles.endStudyBtnText}>
+            End study
+          </ThemedText>
+        </Pressable>
       </SafeAreaView>
     </ThemedView>
   );
@@ -675,12 +976,39 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   restBtn: { alignItems: 'center', paddingVertical: Spacing.two },
+  restContent: {
+    gap: Spacing.three,
+    alignItems: 'center',
+    paddingBottom: Spacing.four,
+  },
+  restCard: {
+    width: '100%',
+    borderRadius: 16,
+    padding: Spacing.three,
+    gap: Spacing.one,
+    alignItems: 'center',
+  },
+  restTitle: { fontSize: 22, lineHeight: 28 },
+  restText: { textAlign: 'center', lineHeight: 22 },
   gameContainer: {
     gap: Spacing.three,
     alignItems: 'center',
     paddingBottom: Spacing.four,
   },
   backGameBtn: { alignSelf: 'flex-start' },
+  endStudyBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+    paddingVertical: Spacing.three,
+    borderWidth: 1.5,
+    borderColor: '#7C6F5A',
+    backgroundColor: 'rgba(124,111,90,0.12)',
+  },
+  endStudyBtnText: {
+    color: '#7C6F5A',
+    fontSize: 16,
+  },
   pressed: { opacity: 0.8 },
   // Over phase
   overBlock: { alignItems: 'center', gap: Spacing.three },
