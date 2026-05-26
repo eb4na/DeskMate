@@ -58,7 +58,7 @@ function formatTimerLabel(totalSeconds: number): string {
 }
 
 const HOME_ROOM_IMAGE = require('@/assets/images/sunlit-bedroom-sanctuary-stockcake.webp');
-const HOME_CHARACTER_IMAGE = require('@/assets/images/companion/anime_girl_PNG96_cutout.png');
+const HOME_CHARACTER_IMAGE = require('@/assets/images/companion/bakery-server-home-cutout.png');
 
 export default function HomeScreen() {
   const {
@@ -342,11 +342,23 @@ export default function HomeScreen() {
 
               <View style={styles.bottomHud}>
                 <Pressable
-                  style={({ pressed }) => [styles.startButton, pressed && styles.startButtonPressed]}
+                  style={({ pressed }) => [styles.homeBreadButtonWrap, pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/session-picker')}>
-                  <ThemedText type="smallBold" style={styles.startButtonText}>
-                    Start Session
-                  </ThemedText>
+                  <View style={styles.homeBreadTop}>
+                    <View style={[styles.homeBreadBump, styles.homeBreadBumpLeft]} />
+                    <View style={[styles.homeBreadBump, styles.homeBreadBumpCenter]} />
+                    <View style={[styles.homeBreadBump, styles.homeBreadBumpRight]} />
+                  </View>
+                  <View style={styles.homeBreadButton}>
+                    <View style={styles.homeBreadScores}>
+                      <View style={[styles.homeBreadScore, styles.homeBreadScoreLeft]} />
+                      <View style={[styles.homeBreadScore, styles.homeBreadScoreCenter]} />
+                      <View style={[styles.homeBreadScore, styles.homeBreadScoreRight]} />
+                    </View>
+                    <ThemedText type="smallBold" style={styles.startButtonText}>
+                      Start Session
+                    </ThemedText>
+                  </View>
                 </Pressable>
               </View>
             </>
@@ -499,6 +511,82 @@ const styles = StyleSheet.create({
   bottomHud: {
     zIndex: 2,
     backgroundColor: 'transparent',
+  },
+  homeBreadButtonWrap: {
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 320,
+    paddingTop: 20,
+  },
+  homeBreadTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 44,
+  },
+  homeBreadBump: {
+    position: 'absolute',
+    top: 0,
+    height: 42,
+    borderWidth: 1.5,
+    borderBottomWidth: 0,
+    borderColor: '#D29649',
+    backgroundColor: '#F6C979',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+  },
+  homeBreadBumpLeft: {
+    left: '5%',
+    width: '34%',
+  },
+  homeBreadBumpCenter: {
+    left: '33%',
+    width: '34%',
+  },
+  homeBreadBumpRight: {
+    right: '5%',
+    width: '34%',
+  },
+  homeBreadButton: {
+    minHeight: 66,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.four,
+    paddingBottom: Spacing.three,
+    backgroundColor: BakeryColors.honey,
+    borderRadius: 26,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    borderWidth: 1.5,
+    borderColor: '#D29649',
+    overflow: 'hidden',
+    ...BakeryShadow,
+  },
+  homeBreadScores: {
+    position: 'absolute',
+    top: 14,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  homeBreadScore: {
+    width: 22,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 248, 241, 0.42)',
+  },
+  homeBreadScoreLeft: {
+    transform: [{ rotate: '-24deg' }],
+  },
+  homeBreadScoreCenter: {
+    transform: [{ rotate: '-12deg' }],
+  },
+  homeBreadScoreRight: {
+    transform: [{ rotate: '16deg' }],
   },
   cardPressed: { opacity: 0.85 },
   bubbleCard: {
