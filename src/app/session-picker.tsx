@@ -93,7 +93,7 @@ export default function SessionPickerScreen() {
           {/* Custom timer (Plus) */}
           <Pressable
             style={({ pressed }) => [styles.customRow, pressed && styles.cardPressed]}
-            onPress={() => router.push('/custom-timer')}>
+            onPress={() => router.push({ pathname: '/custom-timer', params: { mode: 'focus' } })}>
             <ThemedView type="backgroundElement" style={styles.customCard}>
               <ThemedText style={styles.customEmoji}>⏱</ThemedText>
               <ThemedView style={styles.customText}>

@@ -4,20 +4,20 @@ import { createContext, ReactNode, useContext, useEffect, useMemo, useState } fr
 import { supabase } from '@/lib/supabase';
 
 type AuthContextType = {
+  continueAsGuest: () => void;
+  isGuest: boolean;
   initialized: boolean;
   session: Session | null;
   user: User | null;
-  isGuest: boolean;
-  continueAsGuest: () => void;
   signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const [isGuest, setIsGuest] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
-  const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
       setSession(data.session ?? null);
-      if (data.session) setIsGuest(false);
+      setIsGuest(false);
       setInitialized(true);
     });
 
@@ -33,7 +33,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
-      if (nextSession) setIsGuest(false);
+      if (nextSession) {
+        setIsGuest(false);
+      }
       setInitialized(true);
     });
 
@@ -45,19 +47,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthContextType>(
     () => ({
-      initialized,
-      session,
-      user: session?.user ?? null,
-      isGuest,
       continueAsGuest: () => {
+        setSession(null);
         setIsGuest(true);
         setInitialized(true);
       },
+      isGuest,
+      initialized,
+      session,
+      user: session?.user ?? null,
       signOut: async () => {
-        if (isGuest) {
-          setIsGuest(false);
+        setIsGuest(false);
+
+        if (!session) {
           return;
         }
+
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
       },

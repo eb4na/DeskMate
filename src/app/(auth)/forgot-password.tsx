@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { authCallbackUrl, supabase } from '@/lib/supabase';
 
 export default function ForgotPasswordScreen() {
@@ -60,13 +60,14 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView style={[styles.container, styles.screenBackground]}>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.select({ ios: 'padding', android: undefined })}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
           <SafeAreaView style={styles.safeArea}>
             <ThemedView style={styles.hero}>
+              <ThemedText style={styles.heroEmoji}>🍞</ThemedText>
               <ThemedText type="subtitle" style={styles.title}>
                 Reset password
               </ThemedText>
@@ -130,6 +131,7 @@ export default function ForgotPasswordScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  screenBackground: { backgroundColor: BakeryColors.frosting },
   scrollContent: { flexGrow: 1 },
   safeArea: {
     flex: 1,
@@ -141,29 +143,34 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   hero: { gap: Spacing.two },
+  heroEmoji: { textAlign: 'center', fontSize: 48, lineHeight: 56 },
   title: { textAlign: 'center' },
   subtitle: { textAlign: 'center', lineHeight: 20 },
   card: {
-    borderRadius: 20,
+    borderRadius: BakeryRadii.panel,
     padding: Spacing.four,
     gap: Spacing.two,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.border,
+    backgroundColor: BakeryColors.glass,
+    ...BakeryShadow,
   },
   primaryButton: {
     marginTop: Spacing.one,
-    backgroundColor: '#7C6F5A',
-    borderRadius: 16,
+    backgroundColor: BakeryColors.honey,
+    borderRadius: BakeryRadii.button,
     paddingVertical: Spacing.three,
     alignItems: 'center',
   },
-  primaryButtonText: { color: '#FFF' },
+  primaryButtonText: { color: BakeryColors.cocoaDark },
   linkRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: Spacing.two,
   },
-  linkText: { color: '#7C6F5A' },
-  errorText: { color: '#D35B42', lineHeight: 20 },
-  successText: { color: '#4B8A58', lineHeight: 20 },
+  linkText: { color: BakeryColors.mocha },
+  errorText: { color: BakeryColors.danger, lineHeight: 20 },
+  successText: { color: BakeryColors.success, lineHeight: 20 },
   pressed: { opacity: 0.85 },
 });

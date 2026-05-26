@@ -8,7 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { COIN_REWARDS } from '@/constants/placeholder-data';
 import { getCompanionLine } from '@/constants/companion-lines';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
 const MAX_PAUSES = 2;
 const MIN_MINUTES_FOR_COINS = 10;
@@ -165,7 +165,7 @@ export default function SessionScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: BakeryColors.frosting },
   safeArea: {
     flex: 1,
     paddingHorizontal: Spacing.four,
@@ -178,30 +178,46 @@ const styles = StyleSheet.create({
   },
   subjectLabel: { textAlign: 'center' },
   companionLine: { textAlign: 'center', fontStyle: 'italic', fontSize: 12 },
-  timerBlock: { alignItems: 'center', gap: Spacing.two },
+  timerBlock: {
+    alignItems: 'center',
+    gap: Spacing.two,
+    backgroundColor: BakeryColors.glass,
+    borderRadius: BakeryRadii.panel,
+    padding: Spacing.four,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.border,
+    ...BakeryShadow,
+  },
   timerText: {
     fontSize: 72,
     fontWeight: '700',
     lineHeight: 80,
     letterSpacing: -2,
+    color: BakeryColors.cocoaDark,
   },
   progressTrack: {
     width: '100%',
     height: 6,
-    backgroundColor: 'rgba(0,0,0,0.08)',
+    backgroundColor: BakeryColors.shortbread,
     borderRadius: 3,
     overflow: 'hidden',
     marginTop: Spacing.two,
   },
-  progressFill: { height: 6, backgroundColor: '#7C6F5A', borderRadius: 3 },
+  progressFill: { height: 6, backgroundColor: BakeryColors.honey, borderRadius: 3 },
   controls: { gap: Spacing.three, alignItems: 'center' },
   pauseBtn: {
-    backgroundColor: '#7C6F5A',
-    borderRadius: 16,
+    backgroundColor: BakeryColors.honey,
+    borderRadius: BakeryRadii.button,
     paddingVertical: Spacing.three,
     paddingHorizontal: 48,
+    ...BakeryShadow,
   },
   btnPressed: { opacity: 0.85 },
-  pauseBtnText: { color: '#FFFFFF', fontSize: 16 },
-  cancelBtn: { paddingVertical: Spacing.two },
+  pauseBtnText: { color: BakeryColors.cocoaDark, fontSize: 16 },
+  cancelBtn: {
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    borderRadius: BakeryRadii.chip,
+    backgroundColor: BakeryColors.cream,
+  },
 });

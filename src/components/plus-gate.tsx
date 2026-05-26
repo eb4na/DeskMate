@@ -5,7 +5,7 @@ import { Pressable, StyleSheet } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
-import { Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
 
 type CardProps = {
   emoji: string;
@@ -23,12 +23,12 @@ export function PlusGateCard({ emoji, title, description }: CardProps) {
         <ThemedView style={styles.header}>
           <ThemedText style={styles.emoji}>{emoji}</ThemedText>
           <ThemedView style={styles.badge}>
-            <ThemedText style={styles.badgeText}>🔒 Plus</ThemedText>
+            <ThemedText style={styles.badgeText}>Chef&apos;s Special</ThemedText>
           </ThemedView>
         </ThemedView>
         <ThemedText type="smallBold" style={styles.title}>{title}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.desc}>{description}</ThemedText>
-        <ThemedText type="small" style={styles.tapHint}>Tap to see what's included →</ThemedText>
+        <ThemedText type="small" style={styles.tapHint}>Tap to peek at the bakery pass →</ThemedText>
       </ThemedView>
     </Pressable>
   );
@@ -53,10 +53,14 @@ export function PlusGate({ children, feature, description, emoji = '✨' }: Gate
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: BakeryRadii.card,
     padding: Spacing.three,
     gap: Spacing.one,
-    opacity: 0.85,
+    opacity: 0.96,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.rose,
+    backgroundColor: BakeryColors.glass,
+    ...BakeryShadow,
   },
   header: {
     flexDirection: 'row',
@@ -66,14 +70,16 @@ const styles = StyleSheet.create({
   },
   emoji: { fontSize: 28, lineHeight: 34 },
   badge: {
-    backgroundColor: 'rgba(245,166,35,0.15)',
-    borderRadius: 8,
-    paddingHorizontal: 8,
+    backgroundColor: BakeryColors.shortbread,
+    borderRadius: BakeryRadii.pill,
+    paddingHorizontal: 10,
     paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: BakeryColors.border,
   },
-  badgeText: { fontSize: 12, fontWeight: '700', color: '#F5A623' },
+  badgeText: { fontSize: 12, fontWeight: '700', color: BakeryColors.mocha },
   title: { fontSize: 14 },
   desc: { lineHeight: 18, fontSize: 12 },
-  tapHint: { fontSize: 11, color: '#7C6F5A', marginTop: 4 },
+  tapHint: { fontSize: 11, color: BakeryColors.berry, marginTop: 6 },
   pressed: { opacity: 0.8 },
 });

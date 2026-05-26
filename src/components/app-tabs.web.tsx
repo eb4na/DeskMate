@@ -6,12 +6,12 @@ import {
   TabTriggerSlotProps,
   TabListProps,
 } from 'expo-router/ui';
-import { Pressable, useColorScheme, View, StyleSheet } from 'react-native';
+import { Pressable, View, StyleSheet } from 'react-native';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
 export default function AppTabs() {
   return (
@@ -20,16 +20,16 @@ export default function AppTabs() {
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="home" href="/" asChild>
-            <TabButton>Home</TabButton>
+            <TabButton icon="🏠">Home</TabButton>
           </TabTrigger>
           <TabTrigger name="tasks" href="/tasks" asChild>
-            <TabButton>Tasks</TabButton>
+            <TabButton icon="🧁">Tasks</TabButton>
           </TabTrigger>
           <TabTrigger name="progress" href="/progress" asChild>
-            <TabButton>Progress</TabButton>
+            <TabButton icon="🍓">Progress</TabButton>
           </TabTrigger>
           <TabTrigger name="shop" href="/shop" asChild>
-            <TabButton>Shop</TabButton>
+            <TabButton icon="🥐">Shop</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>
@@ -37,12 +37,18 @@ export default function AppTabs() {
   );
 }
 
-export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+export function TabButton({
+  children,
+  isFocused,
+  icon,
+  ...props
+}: TabTriggerSlotProps & { icon: string }) {
   return (
     <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView
         type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
-        style={styles.tabButtonView}>
+        style={[styles.tabButtonView, isFocused && styles.tabButtonViewFocused]}>
+        <ThemedText style={styles.tabIcon}>{icon}</ThemedText>
         <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
           {children}
         </ThemedText>
@@ -56,7 +62,7 @@ export function CustomTabList(props: TabListProps) {
     <View {...props} style={styles.tabListContainer}>
       <ThemedView type="backgroundElement" style={styles.innerContainer}>
         <ThemedText type="smallBold" style={styles.brandText}>
-          DeskMate
+          Memobun Cafe
         </ThemedText>
         {props.children}
       </ThemedView>
@@ -76,15 +82,20 @@ const styles = StyleSheet.create({
   innerContainer: {
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.four,
-    borderRadius: Spacing.five,
+    borderRadius: BakeryRadii.panel,
     flexDirection: 'row',
     alignItems: 'center',
     flexGrow: 1,
     gap: Spacing.two,
     maxWidth: MaxContentWidth,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.border,
+    backgroundColor: BakeryColors.glass,
+    ...BakeryShadow,
   },
   brandText: {
     marginRight: Spacing.two,
+    color: BakeryColors.cocoa,
   },
   pressed: {
     opacity: 0.7,
@@ -92,6 +103,15 @@ const styles = StyleSheet.create({
   tabButtonView: {
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.two,
-    borderRadius: Spacing.three,
+    borderRadius: BakeryRadii.chip,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
+  tabButtonViewFocused: {
+    borderWidth: 1,
+    borderColor: BakeryColors.rose,
+    backgroundColor: BakeryColors.cream,
+  },
+  tabIcon: { fontSize: 14, lineHeight: 18 },
 });

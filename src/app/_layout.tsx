@@ -5,13 +5,16 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { AppProvider } from '@/context/app-context';
+import { useApp } from '@/context/app-context';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { Spacing } from '@/constants/theme';
+import '@/lib/notifications';
 
 function RootNavigator() {
   const { initialized, isGuest, session } = useAuth();
+  const { loaded } = useApp();
 
-  if (!initialized) {
+  if (!initialized || !loaded) {
     return (
       <ThemedView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#7C6F5A" />
@@ -25,10 +28,7 @@ function RootNavigator() {
   return (
     <Stack>
       <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
-
-      <Stack.Protected guard={!session && !isGuest}>
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      </Stack.Protected>
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
 
       <Stack.Protected guard={!!session || isGuest}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

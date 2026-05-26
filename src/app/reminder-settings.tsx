@@ -4,11 +4,13 @@ import { Alert, Pressable, ScrollView, StyleSheet, Switch, TextInput, useColorSc
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlusGateCard } from '@/components/plus-gate';
+import { getReminderStyleEffect } from '@/constants/shop-effects';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { type ReminderEntry } from '@/context/app-context';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { syncStudyReminders } from '@/lib/notifications';
 
 function isValidTime(t: string): boolean {
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(t.trim());
@@ -28,6 +30,7 @@ export default function ReminderSettingsScreen() {
     isPlus,
     multipleReminders,
     setMultipleReminders,
+    equippedShopItems,
   } = useApp();
   const [enabled, setEnabled] = useState(reminderEnabled);
   const [time, setTime] = useState(reminderTime);
@@ -36,13 +39,40 @@ export default function ReminderSettingsScreen() {
   const [newTime, setNewTime] = useState('');
   const [newLabel, setNewLabel] = useState('');
   const [newWeekdays, setNewWeekdays] = useState(false);
+  const [saving, setSaving] = useState(false);
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const reminderStyle = getReminderStyleEffect(equippedShopItems);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (enabled && !isValidTime(time)) return;
-    setReminder(enabled, time.trim());
-    if (isPlus) setMultipleReminders(reminders);
+
+    setSaving(true);
+    const trimmedTime = time.trim();
+    const nextReminders = isPlus ? reminders : [];
+
+    setReminder(enabled, trimmedTime);
+    if (isPlus) {
+      setMultipleReminders(reminders);
+    }
+
+    const syncResult = await syncStudyReminders({
+      enabled,
+      time: trimmedTime,
+      extraReminders: nextReminders,
+      reminderEmoji: reminderStyle?.emoji,
+      reminderLine: reminderStyle?.line,
+    });
+
+    setSaving(false);
+
+    if (!syncResult.granted) {
+      Alert.alert(
+        'Notifications are off',
+        'Your reminder settings were saved, but this device has not granted notification permission yet.',
+      );
+    }
+
     router.back();
   };
 
@@ -102,14 +132,22 @@ export default function ReminderSettingsScreen() {
         <SafeAreaView style={styles.safeArea}>
           {/* Companion quote */}
           <ThemedView type="backgroundElement" style={styles.quoteCard}>
-            <ThemedText style={styles.quoteEmoji}>🔔</ThemedText>
+            <ThemedText style={styles.quoteEmoji}>{reminderStyle?.emoji ?? '🔔'}</ThemedText>
             <ThemedText type="default" style={styles.quoteText}>
-              "Study time. I saved your seat."
+              {reminderStyle?.line ?? '"Study time. I saved your seat."'}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               — your study companion
             </ThemedText>
           </ThemedView>
+
+          {reminderStyle ? (
+            <ThemedView type="backgroundElement" style={styles.noticeCard}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.noticeText}>
+                {reminderStyle.preview} is active from the shop.
+              </ThemedText>
+            </ThemedView>
+          ) : null}
 
           {/* Daily reminder toggle */}
           <ThemedView type="backgroundElement" style={styles.toggleRow}>
@@ -150,8 +188,8 @@ export default function ReminderSettingsScreen() {
 
           <ThemedView type="backgroundElement" style={styles.noticeCard}>
             <ThemedText type="small" themeColor="textSecondary" style={styles.noticeText}>
-              🛠 Push notifications will be wired to the device in a future update. Your preference
-              is saved.
+              Local study reminders can now be scheduled on this device. Keep notifications enabled
+              if you want the nudges to appear.
             </ThemedText>
           </ThemedView>
 
@@ -240,9 +278,10 @@ export default function ReminderSettingsScreen() {
 
           <Pressable
             style={({ pressed }) => [styles.saveBtn, pressed && styles.saveBtnPressed]}
-            onPress={handleSave}>
+            onPress={handleSave}
+            disabled={saving}>
             <ThemedText type="smallBold" style={styles.saveBtnText}>
-              Save
+              {saving ? 'Saving...' : 'Save'}
             </ThemedText>
           </Pressable>
         </SafeAreaView>

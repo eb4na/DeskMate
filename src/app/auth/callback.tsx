@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { useEffect } from 'react';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -15,28 +15,23 @@ export default function AuthCallbackScreen() {
     error_description?: string;
     error_code?: string;
   }>();
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [message, setMessage] = useState('Finishing sign-in...');
 
   useEffect(() => {
     let cancelled = false;
 
     async function completeAuth() {
       if (typeof error_description === 'string' && error_description) {
-        setStatus('error');
-        setMessage(error_description);
+        router.replace('/login');
         return;
       }
 
       if (typeof error_code === 'string' && error_code) {
-        setStatus('error');
-        setMessage(error_code);
+        router.replace('/login');
         return;
       }
 
       if (typeof code !== 'string' || !code) {
-        setStatus('error');
-        setMessage('This sign-in link is missing its confirmation code.');
+        router.replace('/login');
         return;
       }
 
@@ -45,20 +40,16 @@ export default function AuthCallbackScreen() {
       if (cancelled) return;
 
       if (error) {
-        setStatus('error');
-        setMessage(error.message);
+        router.replace('/login');
         return;
       }
 
-      setStatus('success');
       if (type === 'recovery') {
-        setMessage('Recovery link accepted. Choose your new password next.');
-        setTimeout(() => router.replace('/reset-password'), 500);
+        router.replace('/reset-password');
         return;
       }
 
-      setMessage('Your account is ready. Taking you back into DeskMate...');
-      setTimeout(() => router.replace('/'), 500);
+      router.replace('/');
     }
 
     completeAuth();
@@ -72,25 +63,13 @@ export default function AuthCallbackScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ThemedView type="backgroundElement" style={styles.card}>
-          {status === 'loading' ? <ActivityIndicator size="large" color="#7C6F5A" /> : null}
+          <ActivityIndicator size="large" color="#7C6F5A" />
           <ThemedText type="subtitle" style={styles.title}>
-            {status === 'success'
-              ? 'Signed in'
-              : status === 'error'
-                ? 'Link issue'
-                : 'Checking link'}
+            Checking link
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.message}>
-            {message}
+            Taking you to the right screen...
           </ThemedText>
-
-          {status === 'error' ? (
-            <Pressable onPress={() => router.replace('/login')} style={styles.button}>
-              <ThemedText type="smallBold" style={styles.buttonText}>
-                Back to login
-              </ThemedText>
-            </Pressable>
-          ) : null}
         </ThemedView>
       </SafeAreaView>
     </ThemedView>
@@ -115,12 +94,4 @@ const styles = StyleSheet.create({
   },
   title: { textAlign: 'center' },
   message: { textAlign: 'center', lineHeight: 20 },
-  button: {
-    marginTop: Spacing.one,
-    backgroundColor: '#7C6F5A',
-    borderRadius: 16,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
-  },
-  buttonText: { color: '#FFF' },
 });

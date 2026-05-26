@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, TextInput, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,15 +9,30 @@ import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 
-const QUICK_PICKS = [15, 20, 35, 60, 75, 120];
+const FOCUS_QUICK_PICKS = [15, 20, 35, 60, 75, 120];
+const BREAK_QUICK_PICKS = [5, 10, 15, 20, 30, 45];
+
+type TimerMode = 'focus' | 'break';
 
 function CustomTimerContent() {
-  const { savedTimerPresets, saveTimerPreset, deleteTimerPreset } = useApp();
+  const { mode } = useLocalSearchParams<{ mode?: TimerMode }>();
+  const timerMode: TimerMode = mode === 'break' ? 'break' : 'focus';
+  const isBreakMode = timerMode === 'break';
+  const {
+    savedTimerPresets,
+    saveTimerPreset,
+    deleteTimerPreset,
+    savedBreakPresets,
+    saveBreakPreset,
+    deleteBreakPreset,
+  } = useApp();
   const [customMinutes, setCustomMinutes] = useState('');
   const [savePreset, setSavePreset] = useState(false);
   const [presetLabel, setPresetLabel] = useState('');
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const savedPresets = isBreakMode ? savedBreakPresets : savedTimerPresets;
+  const quickPicks = isBreakMode ? BREAK_QUICK_PICKS : FOCUS_QUICK_PICKS;
 
   const inputStyle = {
     borderWidth: 1.5,
@@ -34,9 +49,24 @@ function CustomTimerContent() {
       Alert.alert('Invalid duration', 'Please enter between 1 and 300 minutes.');
       return;
     }
+
     if (savePreset && presetLabel.trim()) {
-      saveTimerPreset({ label: presetLabel.trim(), minutes });
+      const nextPreset = { label: presetLabel.trim(), minutes };
+      if (isBreakMode) {
+        saveBreakPreset(nextPreset);
+      } else {
+        saveTimerPreset(nextPreset);
+      }
     }
+
+    if (isBreakMode) {
+      router.replace({
+        pathname: '/break-game',
+        params: { breakMinutes: String(minutes), fromSession: '1' },
+      });
+      return;
+    }
+
     router.push({ pathname: '/subject-picker', params: { sessionLength: String(minutes) } });
   };
 
@@ -49,33 +79,38 @@ function CustomTimerContent() {
     handleStart(mins);
   };
 
+  const handleDelete = (id: string) => {
+    if (isBreakMode) {
+      deleteBreakPreset(id);
+    } else {
+      deleteTimerPreset(id);
+    }
+  };
+
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
       <SafeAreaView style={styles.safeArea}>
         <ThemedText type="default" themeColor="textSecondary" style={styles.hint}>
-          Set any focus duration that works for you.
+          {isBreakMode
+            ? 'Set a custom break length or save a few reset-friendly presets.'
+            : 'Set any focus duration that works for you.'}
         </ThemedText>
 
-        {/* Saved presets */}
-        {savedTimerPresets.length > 0 && (
+        {savedPresets.length > 0 && (
           <ThemedView style={styles.section}>
             <ThemedText type="smallBold" style={styles.sectionTitle}>
-              Saved presets
+              Saved {isBreakMode ? 'break' : 'focus'} presets
             </ThemedText>
             <ThemedView style={styles.presetList}>
-              {savedTimerPresets.map((p) => (
+              {savedPresets.map((p) => (
                 <ThemedView key={p.id} type="backgroundElement" style={styles.presetRow}>
-                  <Pressable
-                    style={styles.presetMain}
-                    onPress={() => handleStart(p.minutes)}>
+                  <Pressable style={styles.presetMain} onPress={() => handleStart(p.minutes)}>
                     <ThemedText type="smallBold">{p.label}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
                       {p.minutes} min
                     </ThemedText>
                   </Pressable>
-                  <Pressable
-                    onPress={() => deleteTimerPreset(p.id)}
-                    style={styles.presetDelete}>
+                  <Pressable onPress={() => handleDelete(p.id)} style={styles.presetDelete}>
                     <ThemedText type="small" themeColor="textSecondary">
                       ✕
                     </ThemedText>
@@ -86,13 +121,12 @@ function CustomTimerContent() {
           </ThemedView>
         )}
 
-        {/* Quick picks */}
         <ThemedView style={styles.section}>
           <ThemedText type="smallBold" style={styles.sectionTitle}>
             Quick picks
           </ThemedText>
           <ThemedView style={styles.quickGrid}>
-            {QUICK_PICKS.map((min) => (
+            {quickPicks.map((min) => (
               <Pressable
                 key={min}
                 style={({ pressed }) => [styles.quickCard, pressed && styles.pressed]}
@@ -110,17 +144,16 @@ function CustomTimerContent() {
           </ThemedView>
         </ThemedView>
 
-        {/* Custom input */}
         <ThemedView style={styles.section}>
           <ThemedText type="smallBold" style={styles.sectionTitle}>
-            Custom duration
+            Custom {isBreakMode ? 'break' : 'focus'} duration
           </ThemedText>
           <ThemedView style={styles.customRow}>
             <TextInput
               style={[inputStyle, styles.customInput]}
               value={customMinutes}
               onChangeText={setCustomMinutes}
-              placeholder="e.g. 45"
+              placeholder={isBreakMode ? 'e.g. 18' : 'e.g. 45'}
               placeholderTextColor={colors.textSecondary}
               keyboardType="number-pad"
               returnKeyType="done"
@@ -130,13 +163,8 @@ function CustomTimerContent() {
             </ThemedText>
           </ThemedView>
 
-          {/* Save as preset toggle */}
-          <Pressable
-            style={styles.savePresetRow}
-            onPress={() => setSavePreset((v) => !v)}>
-            <ThemedView
-              style={[styles.checkbox, savePreset && styles.checkboxActive]}
-            />
+          <Pressable style={styles.savePresetRow} onPress={() => setSavePreset((v) => !v)}>
+            <ThemedView style={[styles.checkbox, savePreset && styles.checkboxActive]} />
             <ThemedText type="small">Save as preset</ThemedText>
           </Pressable>
 
@@ -145,7 +173,9 @@ function CustomTimerContent() {
               style={inputStyle}
               value={presetLabel}
               onChangeText={setPresetLabel}
-              placeholder="Preset name (e.g. Deep Work)"
+              placeholder={
+                isBreakMode ? 'Preset name (e.g. Stretch break)' : 'Preset name (e.g. Deep Work)'
+              }
               placeholderTextColor={colors.textSecondary}
               returnKeyType="done"
             />
@@ -155,7 +185,7 @@ function CustomTimerContent() {
             style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]}
             onPress={handleCustomStart}>
             <ThemedText type="smallBold" style={styles.startBtnText}>
-              Start session
+              {isBreakMode ? 'Start break' : 'Start session'}
             </ThemedText>
           </Pressable>
         </ThemedView>
@@ -173,7 +203,7 @@ export default function CustomTimerScreen() {
     <ThemedView style={styles.container}>
       <PlusGate
         feature="Custom Timers"
-        description="Set any focus duration, save your favourite presets, and study on your terms."
+        description="Set any focus duration, save your favourite presets, and keep custom break lengths ready too."
         emoji="⏱">
         <CustomTimerContent />
       </PlusGate>

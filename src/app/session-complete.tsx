@@ -9,7 +9,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { AFTER_SESSION_MOODS, BREAK_LENGTHS } from '@/constants/placeholder-data';
 import { getCompanionLine } from '@/constants/companion-lines';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
 type Stage = 'reward' | 'mood' | 'break';
 
@@ -22,8 +22,16 @@ export default function SessionCompleteScreen() {
     taskTitle?: string;
   }>();
 
-  const { addCoins, recordSession, addMoodEntry, updateStreak, addSubjectTime, completeTask } =
-    useApp();
+  const {
+    addCoins,
+    recordSession,
+    addMoodEntry,
+    updateStreak,
+    addSubjectTime,
+    completeTask,
+    isPlus,
+    savedBreakPresets,
+  } = useApp();
   const credited = useRef(false);
   const [stage, setStage] = useState<Stage>('reward');
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
@@ -80,6 +88,11 @@ export default function SessionCompleteScreen() {
       pathname: '/break-game',
       params: { breakMinutes: String(breakMins), fromSession: '1' },
     });
+  const openCustomBreak = () =>
+    router.push({ pathname: '/custom-timer', params: { mode: 'break' } });
+  const breakOptions = Array.from(
+    new Set([...BREAK_LENGTHS, ...(isPlus ? savedBreakPresets.map((preset) => preset.minutes) : [])]),
+  ).sort((a, b) => a - b);
 
   return (
     <ThemedView style={styles.container}>
@@ -219,7 +232,7 @@ export default function SessionCompleteScreen() {
                 You earned it. Relax for a bit.
               </ThemedText>
               <ThemedView style={styles.breakButtons}>
-                {BREAK_LENGTHS.map((len) => (
+                {breakOptions.map((len) => (
                   <Pressable
                     key={len}
                     style={({ pressed }) => [styles.breakBtn, pressed && styles.btnPressed]}
@@ -228,6 +241,18 @@ export default function SessionCompleteScreen() {
                   </Pressable>
                 ))}
               </ThemedView>
+              {isPlus ? (
+                <>
+                  {savedBreakPresets.length > 0 && (
+                    <ThemedText type="small" themeColor="textSecondary" style={styles.breakHint}>
+                      Saved break presets are included above.
+                    </ThemedText>
+                  )}
+                  <Pressable onPress={openCustomBreak} style={styles.customBreakLink}>
+                    <ThemedText type="linkPrimary">Custom break →</ThemedText>
+                  </Pressable>
+                </>
+              ) : null}
             </ThemedView>
 
             <Pressable
@@ -245,7 +270,7 @@ export default function SessionCompleteScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: BakeryColors.frosting },
   safeArea: {
     flex: 1,
     paddingHorizontal: Spacing.four,
@@ -264,57 +289,64 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
-    borderRadius: 16,
+    borderRadius: BakeryRadii.card,
+    backgroundColor: BakeryColors.glass,
+    ...BakeryShadow,
   },
   coinEmoji: { fontSize: 28, lineHeight: 34 },
-  coinAmount: { fontSize: 28, fontWeight: '700', lineHeight: 34, color: '#F5A623' },
+  coinAmount: { fontSize: 28, fontWeight: '700', lineHeight: 34, color: BakeryColors.honey },
   bonusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
-    borderRadius: 16,
+    borderRadius: BakeryRadii.card,
     width: '100%',
+    backgroundColor: BakeryColors.glass,
   },
   bonusEmoji: { fontSize: 28, lineHeight: 34 },
   taskPromptCard: {
-    borderRadius: 16,
+    borderRadius: BakeryRadii.card,
     padding: Spacing.three,
     gap: Spacing.two,
     width: '100%',
     alignItems: 'center',
+    backgroundColor: BakeryColors.glass,
   },
   taskPromptTitle: { fontSize: 15 },
   taskPromptName: { textAlign: 'center', fontSize: 13 },
   taskPromptBtns: { flexDirection: 'row', gap: Spacing.two, marginTop: 2 },
   taskYesBtn: {
-    backgroundColor: '#7C6F5A',
-    borderRadius: 12,
+    backgroundColor: BakeryColors.honey,
+    borderRadius: BakeryRadii.button,
     paddingHorizontal: Spacing.three,
     paddingVertical: 8,
   },
-  taskYesBtnText: { color: '#FFF', fontSize: 14 },
+  taskYesBtnText: { color: BakeryColors.cocoaDark, fontSize: 14 },
   taskNoBtn: {
-    borderRadius: 12,
+    borderRadius: BakeryRadii.button,
     paddingHorizontal: Spacing.three,
     paddingVertical: 8,
+    backgroundColor: BakeryColors.cream,
   },
   bubbleCard: {
-    borderRadius: 14,
+    borderRadius: BakeryRadii.card,
     paddingHorizontal: Spacing.three,
     paddingVertical: 10,
     width: '100%',
+    backgroundColor: BakeryColors.glass,
   },
   bubbleText: { textAlign: 'center', lineHeight: 20, fontStyle: 'italic' },
   primaryBtn: {
-    backgroundColor: '#7C6F5A',
-    borderRadius: 16,
+    backgroundColor: BakeryColors.honey,
+    borderRadius: BakeryRadii.button,
     paddingVertical: Spacing.three,
     alignItems: 'center',
+    ...BakeryShadow,
   },
   btnPressed: { opacity: 0.85 },
-  primaryBtnText: { color: '#FFFFFF', fontSize: 16 },
+  primaryBtnText: { color: BakeryColors.cocoaDark, fontSize: 16 },
   moodBlock: { alignItems: 'center', gap: Spacing.three },
   moodTitle: { fontSize: 24, lineHeight: 30 },
   moodGrid: {
@@ -327,21 +359,25 @@ const styles = StyleSheet.create({
   moodBtn: {
     alignItems: 'center',
     padding: Spacing.two,
-    borderRadius: 12,
+    borderRadius: BakeryRadii.card,
     gap: 4,
     minWidth: 76,
+    backgroundColor: BakeryColors.glass,
   },
   moodEmoji: { fontSize: 32, lineHeight: 40 },
   skipBtn: { alignItems: 'center', paddingVertical: Spacing.two },
   breakBlock: { alignItems: 'center', gap: Spacing.three },
   breakTitle: { fontSize: 24, lineHeight: 30 },
   breakButtons: { flexDirection: 'row', gap: Spacing.three, marginTop: Spacing.two },
+  breakHint: { textAlign: 'center' },
   breakBtn: {
-    borderRadius: 14,
+    borderRadius: BakeryRadii.card,
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.four,
     borderWidth: 1.5,
-    borderColor: '#7C6F5A',
+    borderColor: BakeryColors.border,
     alignItems: 'center',
+    backgroundColor: BakeryColors.cream,
   },
+  customBreakLink: { paddingVertical: Spacing.one },
 });

@@ -7,7 +7,14 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import {
+  BakeryColors,
+  BakeryRadii,
+  BakeryShadow,
+  BottomTabInset,
+  MaxContentWidth,
+  Spacing,
+} from '@/constants/theme';
 
 function daysUntil(dateISO: string): number {
   const today = new Date();
@@ -39,7 +46,7 @@ function daysSince(dateISO: string): number {
 }
 
 export default function ProgressScreen() {
-  const { user, signOut } = useAuth();
+  const { isGuest, user, signOut } = useAuth();
   const {
     sessionsCompleted,
     totalMinutes,
@@ -53,7 +60,7 @@ export default function ProgressScreen() {
     isPlus,
     streakFreezes,
     aiTickets,
-    useStreakFreeze,
+    useStreakFreeze: applyStreakFreeze,
   } = useApp();
 
   const canAddExam = isPlus || examCountdowns.length < 3;
@@ -104,14 +111,17 @@ export default function ProgressScreen() {
   const daysThisWeek = new Set(sessionHistory.filter((r) => r.dateISO >= mondayISO).map((r) => r.dateISO)).size;
 
   const handleSignOut = () => {
-    Alert.alert('Sign out?', 'You can sign back in anytime with the same account.', [
+    Alert.alert(isGuest ? 'Leave guest mode?' : 'Sign out?', isGuest
+      ? 'You can come back to the login screen anytime.'
+      : 'You can sign back in anytime with the same account.', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Sign out',
+        text: isGuest ? 'Leave guest mode' : 'Sign out',
         style: 'destructive',
         onPress: async () => {
           try {
             await signOut();
+            router.replace('/login');
           } catch (error) {
             Alert.alert(
               'Sign-out failed',
@@ -135,14 +145,14 @@ export default function ProgressScreen() {
             <ThemedView style={styles.accountInfo}>
               <ThemedText type="smallBold">Account</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                {user?.email ?? 'Signed in'}
+                {isGuest ? 'Guest mode' : user?.email ?? 'Signed in'}
               </ThemedText>
             </ThemedView>
             <Pressable
               style={({ pressed }) => [styles.signOutBtn, pressed && styles.pressed]}
               onPress={handleSignOut}>
               <ThemedText type="smallBold" style={styles.signOutText}>
-                Sign out
+                {isGuest ? 'Leave guest mode' : 'Sign out'}
               </ThemedText>
             </Pressable>
           </ThemedView>
@@ -205,7 +215,7 @@ export default function ProgressScreen() {
                           {
                             text: 'Use Freeze',
                             onPress: () => {
-                              const used = useStreakFreeze();
+                              const used = applyStreakFreeze();
                               if (used) Alert.alert('Streak protected! 🧊', 'Your streak is safe.');
                             },
                           },
@@ -512,7 +522,7 @@ export default function ProgressScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: BakeryColors.frosting },
   safeArea: {
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.four,
@@ -524,41 +534,60 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 28, lineHeight: 34 },
   accountCard: {
-    borderRadius: 14,
+    borderRadius: BakeryRadii.card,
     padding: Spacing.three,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
+    backgroundColor: BakeryColors.glass,
+    ...BakeryShadow,
   },
   accountInfo: { flex: 1, gap: 2 },
   signOutBtn: {
-    borderRadius: 10,
+    borderRadius: BakeryRadii.chip,
     paddingHorizontal: Spacing.two,
     paddingVertical: 6,
     borderWidth: 1.5,
-    borderColor: '#7C6F5A',
+    borderColor: BakeryColors.border,
+    backgroundColor: BakeryColors.cream,
   },
-  signOutText: { color: '#7C6F5A' },
+  signOutText: { color: BakeryColors.mocha },
   streakCard: {
-    borderRadius: 20,
+    borderRadius: BakeryRadii.panel,
     padding: Spacing.four,
     gap: Spacing.one,
     alignItems: 'center',
+    backgroundColor: BakeryColors.glass,
+    ...BakeryShadow,
   },
   streakFire: { fontSize: 40, lineHeight: 48 },
-  streakNumber: { fontSize: 56, fontWeight: '700', lineHeight: 64, color: '#F5A623' },
+  streakNumber: { fontSize: 56, fontWeight: '700', lineHeight: 64, color: BakeryColors.honey },
   statsRow: { flexDirection: 'row', gap: Spacing.two },
-  statCard: { flex: 1, borderRadius: 16, padding: Spacing.two, alignItems: 'center', gap: 2 },
+  statCard: {
+    flex: 1,
+    borderRadius: BakeryRadii.card,
+    padding: Spacing.two,
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: BakeryColors.glass,
+  },
   statValue: { fontSize: 26, fontWeight: '700', lineHeight: 32 },
   statLabel: { textAlign: 'center', fontSize: 11 },
   section: { gap: Spacing.two },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   insightRow: { flexDirection: 'row', gap: Spacing.two },
-  insightCard: { flex: 1, borderRadius: 14, padding: Spacing.three, alignItems: 'center', gap: 2 },
+  insightCard: {
+    flex: 1,
+    borderRadius: BakeryRadii.card,
+    padding: Spacing.three,
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: BakeryColors.glass,
+  },
   insightValue: { fontSize: 24, fontWeight: '700', lineHeight: 30 },
   insightLabel: { textAlign: 'center', fontSize: 12 },
   subjectList: { gap: Spacing.two },
-  subjectRow: { borderRadius: 14, padding: Spacing.two, gap: 6 },
+  subjectRow: { borderRadius: BakeryRadii.card, padding: Spacing.two, gap: 6, backgroundColor: BakeryColors.glass },
   subjectRowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   subjectLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   subjectDot: { width: 10, height: 10, borderRadius: 5 },
@@ -567,93 +596,100 @@ const styles = StyleSheet.create({
   subjectBar: { height: 5, borderRadius: 3, backgroundColor: 'rgba(0,0,0,0.06)', overflow: 'hidden' },
   subjectBarFill: { height: '100%', borderRadius: 3 },
   highlightRow: { gap: 4, paddingTop: Spacing.one },
-  emptyCard: { borderRadius: 14, padding: Spacing.four, alignItems: 'center' },
+  emptyCard: { borderRadius: BakeryRadii.card, padding: Spacing.four, alignItems: 'center', backgroundColor: BakeryColors.glass },
   emptyText: { textAlign: 'center', lineHeight: 20 },
   moodList: { gap: Spacing.two },
   moodRow: {
-    borderRadius: 14,
+    borderRadius: BakeryRadii.card,
     padding: Spacing.three,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
+    backgroundColor: BakeryColors.glass,
   },
   moodType: { width: 40, fontSize: 11 },
   moodLabel: { flex: 1 },
   moodMeta: { fontSize: 11 },
   examCard: {
-    borderRadius: 14,
+    borderRadius: BakeryRadii.card,
     padding: Spacing.three,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
+    backgroundColor: BakeryColors.glass,
   },
   examInfo: { flex: 1, gap: 2 },
   examRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  examDays: { fontSize: 22, fontWeight: '700', color: '#7C6F5A' },
-  examDaysUrgent: { color: '#E05C3A' },
+  examDays: { fontSize: 22, fontWeight: '700', color: BakeryColors.mocha },
+  examDaysUrgent: { color: BakeryColors.danger },
   examDaysPast: { color: '#999' },
   removeBtn: { padding: 4 },
   addExamBtn: {
-    borderRadius: 12,
+    borderRadius: BakeryRadii.button,
     paddingVertical: Spacing.three,
     borderWidth: 1.5,
-    borderColor: '#7C6F5A',
+    borderColor: BakeryColors.border,
     alignItems: 'center',
     borderStyle: 'dashed',
+    backgroundColor: BakeryColors.cream,
   },
   addExamBtnPressed: { opacity: 0.7 },
-  addExamText: { color: '#7C6F5A' },
+  addExamText: { color: BakeryColors.mocha },
   maxNote: { textAlign: 'center' },
-  freezeCard: { borderRadius: 16, padding: Spacing.three, gap: Spacing.two },
+  freezeCard: { borderRadius: BakeryRadii.card, padding: Spacing.three, gap: Spacing.two, backgroundColor: BakeryColors.glass },
   freezeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   freezeEmoji: { fontSize: 28, lineHeight: 34, width: 36 },
   freezeInfo: { flex: 1, gap: 2 },
   freezeBtn: {
-    backgroundColor: '#7C6F5A',
-    borderRadius: 10,
+    backgroundColor: BakeryColors.honey,
+    borderRadius: BakeryRadii.chip,
     paddingHorizontal: Spacing.two,
     paddingVertical: 6,
   },
-  freezeBtnText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
+  freezeBtnText: { color: BakeryColors.cocoaDark, fontSize: 13, fontWeight: '700' },
   pressed: { opacity: 0.85 },
-  plusBadge: { color: '#F5A623', fontSize: 11 },
+  plusBadge: { color: BakeryColors.berry, fontSize: 11 },
   upgradeExamCard: {
     borderRadius: 12,
     paddingVertical: Spacing.three,
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(245,166,35,0.3)',
+    borderColor: `${BakeryColors.honey}55`,
     borderStyle: 'dashed',
+    backgroundColor: BakeryColors.cream,
   },
-  upgradeExamText: { color: '#F5A623' },
+  upgradeExamText: { color: BakeryColors.mocha },
   plusShortcut: {
-    borderRadius: 14,
+    borderRadius: BakeryRadii.card,
     padding: Spacing.three,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
+    backgroundColor: BakeryColors.glass,
   },
   plusShortcutEmoji: { fontSize: 26, lineHeight: 32, width: 34 },
   plusShortcutText: { flex: 1, gap: 2 },
-  arrowLink: { color: '#7C6F5A', fontWeight: '700', fontSize: 16 },
+  arrowLink: { color: BakeryColors.mocha, fontWeight: '700', fontSize: 16 },
   weekCard: {},
   weekCardInner: {
-    borderRadius: 14,
+    borderRadius: BakeryRadii.card,
     paddingHorizontal: Spacing.three,
     paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    backgroundColor: BakeryColors.glass,
   },
   weekLeft: { gap: 2 },
   weekRight: {},
-  weekReportLink: { color: '#7C6F5A', fontWeight: '600' },
+  weekReportLink: { color: BakeryColors.mocha, fontWeight: '700' },
   moodInsightCard: {
-    borderRadius: 16,
+    borderRadius: BakeryRadii.card,
     padding: Spacing.three,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
+    backgroundColor: BakeryColors.glass,
   },
   moodInsightEmoji: { fontSize: 28, lineHeight: 34 },
   moodInsightText: { flex: 1, lineHeight: 20 },

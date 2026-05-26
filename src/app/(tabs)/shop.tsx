@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { isEquipableCategory } from '@/constants/shop-effects';
 import { useApp } from '@/context/app-context';
 import {
   SHOP_ITEMS,
@@ -13,7 +14,14 @@ import {
   type ShopCategory,
 } from '@/constants/shop-data';
 import { DAILY_EARN_CAP } from '@/constants/placeholder-data';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import {
+  BakeryColors,
+  BakeryRadii,
+  BakeryShadow,
+  BottomTabInset,
+  MaxContentWidth,
+  Spacing,
+} from '@/constants/theme';
 
 type CoinPack = { id: string; name: string; emoji: string; coins: number; price: string; popular?: boolean };
 const COIN_PACKS: CoinPack[] = [
@@ -24,7 +32,16 @@ const COIN_PACKS: CoinPack[] = [
 ];
 
 export default function ShopScreen() {
-  const { coins, earnedToday, ownedShopItems, purchaseShopItem, isPlus, addPurchasedCoins } =
+  const {
+    coins,
+    earnedToday,
+    ownedShopItems,
+    equippedShopItems,
+    purchaseShopItem,
+    equipShopItem,
+    isPlus,
+    addPurchasedCoins,
+  } =
     useApp();
   const [activeCategory, setActiveCategory] = useState<ShopCategory>('decoration');
   const capRemaining = Math.max(0, DAILY_EARN_CAP - earnedToday);
@@ -35,7 +52,7 @@ export default function ShopScreen() {
   const handleCoinPack = (packName: string, packCoins: number, packPrice: string) => {
     Alert.alert(
       `Buy ${packName}?`,
-      `${packCoins} coins for ${packPrice}. Purchased coins never expire and don't count toward the daily free earn cap.\n\n🛠 Real payment processing coming in a future update.`,
+      `${packCoins} coins for ${packPrice}. Purchased coins never expire and do not count toward the daily free earn cap.\n\n🛠 Real payment processing coming in a future update.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -47,6 +64,15 @@ export default function ShopScreen() {
         },
       ],
     );
+  };
+
+  const handleEquip = (itemId: string, name: string) => {
+    const ok = equipShopItem(itemId);
+    if (!ok) {
+      Alert.alert('Can’t equip yet', 'Unlock this item first.');
+      return;
+    }
+    Alert.alert('Equipped', `${name} is now active.`);
   };
 
   const handleBuy = (itemId: string, name: string, basePrice: number) => {
@@ -175,11 +201,17 @@ export default function ShopScreen() {
               const owned = ownedShopItems.includes(item.id);
               const discountedPrice = Math.floor(item.price * discount);
               const canAfford = coins >= discountedPrice;
+              const equipable = isEquipableCategory(item.category);
+              const equippedCategory = equipable
+                ? (item.category as keyof typeof equippedShopItems)
+                : null;
+              const activeItemId = equippedCategory ? equippedShopItems[equippedCategory] : null;
+              const isEquipped = owned && activeItemId === item.id;
               return (
                 <ThemedView
                   key={item.id}
                   type="backgroundElement"
-                  style={[styles.itemCard, owned && styles.itemCardOwned]}>
+                  style={[styles.itemCard, owned && styles.itemCardOwned, isEquipped && styles.itemCardEquipped]}>
                   <ThemedText style={styles.itemEmoji}>{item.emoji}</ThemedText>
                   <ThemedText type="smallBold" style={styles.itemName} numberOfLines={1}>
                     {item.name}
@@ -189,9 +221,23 @@ export default function ShopScreen() {
                   </ThemedText>
 
                   {owned ? (
-                    <ThemedView style={styles.ownedBadge}>
-                      <ThemedText style={styles.ownedText}>✓ Owned</ThemedText>
-                    </ThemedView>
+                    equipable ? (
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.equipBtn,
+                          isEquipped && styles.equipBtnActive,
+                          pressed && styles.pressed,
+                        ]}
+                        onPress={() => !isEquipped && handleEquip(item.id, item.name)}>
+                        <ThemedText style={[styles.equipBtnText, isEquipped && styles.equipBtnTextActive]}>
+                          {isEquipped ? '✓ Equipped' : 'Use item'}
+                        </ThemedText>
+                      </Pressable>
+                    ) : (
+                      <ThemedView style={styles.ownedBadge}>
+                        <ThemedText style={styles.ownedText}>✓ Unlocked</ThemedText>
+                      </ThemedView>
+                    )
                   ) : (
                     <Pressable
                       style={({ pressed }) => [
@@ -223,7 +269,7 @@ export default function ShopScreen() {
               </ThemedText>
             </ThemedView>
             <ThemedText type="small" themeColor="textSecondary" style={styles.packNote}>
-              Purchased coins are added directly to your balance and don't count toward the daily
+              Purchased coins are added directly to your balance and do not count toward the daily
               free earn cap.
             </ThemedText>
             {COIN_PACKS.map((pack) => (
@@ -287,7 +333,7 @@ export default function ShopScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: BakeryColors.frosting },
   safeArea: {
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.four,
@@ -309,14 +355,19 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: Spacing.three,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: BakeryRadii.pill,
+    backgroundColor: BakeryColors.glass,
+    borderWidth: 1,
+    borderColor: BakeryColors.border,
   },
   coinEmoji: { fontSize: 18, lineHeight: 22 },
-  balanceAmount: { fontSize: 22, fontWeight: '700', color: '#F5A623' },
+  balanceAmount: { fontSize: 22, fontWeight: '700', color: BakeryColors.honey },
   capCard: {
-    borderRadius: 16,
+    borderRadius: BakeryRadii.card,
     padding: Spacing.three,
     gap: Spacing.one,
+    backgroundColor: BakeryColors.glass,
+    ...BakeryShadow,
   },
   capRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   progressBar: {
@@ -329,18 +380,21 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     borderRadius: 3,
-    backgroundColor: '#F5A623',
+    backgroundColor: BakeryColors.honey,
   },
   capNote: { fontSize: 12 },
   categoryRow: { gap: Spacing.two, paddingVertical: 2 },
   categoryChip: {
     paddingHorizontal: Spacing.three,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: BakeryRadii.pill,
+    borderWidth: 1,
+    borderColor: BakeryColors.shortbread,
   },
   outfitNoteCard: {
-    borderRadius: 12,
+    borderRadius: BakeryRadii.card,
     padding: Spacing.three,
+    backgroundColor: BakeryColors.glass,
   },
   outfitNoteText: { textAlign: 'center', lineHeight: 18, fontSize: 12 },
   categoryActive: { fontWeight: '700' },
@@ -352,89 +406,110 @@ const styles = StyleSheet.create({
   },
   itemCard: {
     width: '47%',
-    borderRadius: 16,
+    borderRadius: BakeryRadii.card,
     padding: Spacing.three,
     gap: Spacing.one,
     alignItems: 'center',
+    backgroundColor: BakeryColors.glass,
+    ...BakeryShadow,
   },
-  itemCardOwned: { borderWidth: 1.5, borderColor: '#81C784' },
+  itemCardOwned: { borderWidth: 1.5, borderColor: BakeryColors.success },
+  itemCardEquipped: { borderColor: BakeryColors.honey },
   itemEmoji: { fontSize: 36, lineHeight: 44 },
   itemName: { textAlign: 'center', fontSize: 14 },
   itemDesc: { textAlign: 'center', lineHeight: 18, fontSize: 12 },
   ownedBadge: {
     marginTop: 4,
-    backgroundColor: '#81C78430',
-    borderRadius: 10,
+    backgroundColor: `${BakeryColors.success}30`,
+    borderRadius: BakeryRadii.chip,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  ownedText: { fontSize: 12, color: '#4CAF50', fontWeight: '600' },
+  ownedText: { fontSize: 12, color: BakeryColors.success, fontWeight: '700' },
+  equipBtn: {
+    marginTop: 4,
+    borderRadius: BakeryRadii.chip,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.border,
+    backgroundColor: BakeryColors.cream,
+  },
+  equipBtnActive: {
+    backgroundColor: `${BakeryColors.honey}22`,
+    borderColor: BakeryColors.honey,
+  },
+  equipBtnText: { fontSize: 13, fontWeight: '700', color: BakeryColors.mocha },
+  equipBtnTextActive: { color: BakeryColors.cocoaDark },
   buyBtn: {
     marginTop: 4,
-    backgroundColor: '#7C6F5A',
-    borderRadius: 10,
+    backgroundColor: BakeryColors.honey,
+    borderRadius: BakeryRadii.chip,
     paddingHorizontal: 14,
     paddingVertical: 6,
   },
-  buyBtnDisabled: { backgroundColor: '#CCC' },
-  buyBtnText: { fontSize: 13, fontWeight: '700', color: '#FFF' },
+  buyBtnDisabled: { backgroundColor: BakeryColors.latte },
+  buyBtnText: { fontSize: 13, fontWeight: '700', color: BakeryColors.cocoaDark },
   buyBtnTextDisabled: { color: '#888' },
   tipCard: {
-    borderRadius: 16,
+    borderRadius: BakeryRadii.card,
     padding: Spacing.three,
     gap: Spacing.two,
     marginTop: Spacing.two,
+    backgroundColor: BakeryColors.glass,
   },
   tipTitle: { fontSize: 14, marginBottom: 2 },
   tipRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  tipCoins: { color: '#F5A623', fontSize: 13 },
+  tipCoins: { color: BakeryColors.honey, fontSize: 13 },
   section: { gap: Spacing.two },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   packNote: { lineHeight: 18 },
   packCard: {
-    borderRadius: 14,
+    borderRadius: BakeryRadii.card,
     padding: Spacing.three,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
+    backgroundColor: BakeryColors.glass,
   },
-  packCardPopular: { borderWidth: 1.5, borderColor: '#F5A623' },
+  packCardPopular: { borderWidth: 1.5, borderColor: BakeryColors.honey },
   packEmoji: { fontSize: 28, lineHeight: 34, width: 36 },
   packInfo: { flex: 1, gap: 2 },
   packNameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   popularBadge: {
-    backgroundColor: 'rgba(245,166,35,0.15)',
-    borderRadius: 6,
+    backgroundColor: `${BakeryColors.honey}22`,
+    borderRadius: BakeryRadii.chip,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  popularText: { fontSize: 10, fontWeight: '700', color: '#F5A623' },
+  popularText: { fontSize: 10, fontWeight: '700', color: BakeryColors.mocha },
   packPriceBtn: {
-    backgroundColor: '#7C6F5A',
-    borderRadius: 10,
+    backgroundColor: BakeryColors.honey,
+    borderRadius: BakeryRadii.chip,
     paddingHorizontal: Spacing.two,
     paddingVertical: 6,
   },
-  packPrice: { color: '#FFF', fontWeight: '700', fontSize: 14 },
-  packDisclaimerCard: { borderRadius: 12, padding: Spacing.three },
+  packPrice: { color: BakeryColors.cocoaDark, fontWeight: '700', fontSize: 14 },
+  packDisclaimerCard: { borderRadius: BakeryRadii.card, padding: Spacing.three, backgroundColor: BakeryColors.glass },
   packDisclaimer: { textAlign: 'center', lineHeight: 18, fontSize: 12 },
   originalPrice: { textDecorationLine: 'line-through', color: '#999', fontSize: 11 },
   plusBanner: {
-    borderRadius: 14,
+    borderRadius: BakeryRadii.card,
     padding: Spacing.three,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    opacity: 0.8,
+    opacity: 0.95,
+    backgroundColor: BakeryColors.glass,
   },
   plusBannerEmoji: { fontSize: 22, lineHeight: 28 },
   plusBannerText: { flex: 1, gap: 2 },
   plusBadge: {
-    backgroundColor: 'rgba(245,166,35,0.15)',
-    borderRadius: 8,
+    backgroundColor: `${BakeryColors.rose}22`,
+    borderRadius: BakeryRadii.chip,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
-  plusBadgeText: { fontSize: 12, fontWeight: '700', color: '#F5A623' },
-  plusBannerActive: { borderWidth: 1.5, borderColor: '#81C784', opacity: 1 },
+  plusBadgeText: { fontSize: 12, fontWeight: '700', color: BakeryColors.berry },
+  plusBannerActive: { borderWidth: 1.5, borderColor: BakeryColors.success, opacity: 1 },
 });

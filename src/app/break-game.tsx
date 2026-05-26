@@ -579,7 +579,17 @@ export default function BreakGameScreen() {
                             : '🔒 Buy in Shop or get Plus'}
                         </ThemedText>
                       </ThemedView>
-                      {unlocked && <ThemedText style={styles.gameArrow}>→</ThemedText>}
+                      {unlocked ? (
+                        g.free ? (
+                          <ThemedText style={styles.gameArrow}>→</ThemedText>
+                        ) : (
+                          <ThemedView style={styles.unlockedBadge}>
+                            <ThemedText style={styles.unlockedBadgeText}>
+                              {isPlus ? 'Plus' : 'Shop unlock'}
+                            </ThemedText>
+                          </ThemedView>
+                        )
+                      ) : null}
                     </Pressable>
                   );
                 })}
@@ -653,6 +663,17 @@ const styles = StyleSheet.create({
   gameEmoji: { fontSize: 28, lineHeight: 34 },
   gameInfo: { flex: 1, gap: 2 },
   gameArrow: { fontSize: 18, color: '#7C6F5A' },
+  unlockedBadge: {
+    backgroundColor: 'rgba(129,199,132,0.22)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  unlockedBadgeText: {
+    color: '#2F7A3F',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   restBtn: { alignItems: 'center', paddingVertical: Spacing.two },
   gameContainer: {
     gap: Spacing.three,

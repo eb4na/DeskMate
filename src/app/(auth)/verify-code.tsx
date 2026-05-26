@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -17,14 +17,21 @@ import { useAuth } from '@/context/auth-context';
 import { BakeryColors, BakeryRadii, BakeryShadow, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 
-export default function ResendConfirmationScreen() {
+type VerifyMode = 'login' | 'signup';
+
+export default function VerifyCodeScreen() {
+  const { email, mode } = useLocalSearchParams<{ email?: string; mode?: VerifyMode }>();
   const { continueAsGuest } = useAuth();
-  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [resending, setResending] = useState(false);
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+
+  const normalizedEmail = typeof email === 'string' ? email : '';
+  const verifyMode: VerifyMode = mode === 'signup' ? 'signup' : 'login';
 
   const inputStyle = {
     borderWidth: 1.5,
@@ -33,19 +40,21 @@ export default function ResendConfirmationScreen() {
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     color: colors.text,
-    fontSize: 16,
+    fontSize: 18,
+    letterSpacing: 4,
+    textAlign: 'center' as const,
   };
 
-  const handleResend = async () => {
-    const normalizedEmail = email.trim().toLowerCase();
+  const sendCode = async () => {
     if (!normalizedEmail) {
-      setErrorMessage('Enter the email you used to sign up.');
-      return;
+      setErrorMessage('Missing email address. Go back and try again.');
+      return false;
     }
 
-    setSubmitting(true);
-    setErrorMessage('');
-    setSuccessMessage('');
+    if (verifyMode !== 'signup') {
+      setErrorMessage('Login uses your password now. Go back and sign in there.');
+      return false;
+    }
 
     const { error } = await supabase.auth.resend({
       type: 'signup',
@@ -54,13 +63,57 @@ export default function ResendConfirmationScreen() {
 
     if (error) {
       setErrorMessage(error.message);
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleVerify = async () => {
+    if (!normalizedEmail) {
+      setErrorMessage('Missing email address. Go back and try again.');
+      return;
+    }
+
+    const token = code.trim();
+    if (!token) {
+      setErrorMessage('Enter the verification code from your email.');
+      return;
+    }
+
+    setSubmitting(true);
+    setErrorMessage('');
+    setSuccessMessage('');
+
+            const {
+              data: { session },
+              error,
+            } = await supabase.auth.verifyOtp({
+              email: normalizedEmail,
+              token,
+              type: 'email',
+            });
+
+    if (error) {
+      setErrorMessage(error.message);
       setSubmitting(false);
       return;
     }
 
-    setSuccessMessage('Verification code sent again. Enter it on the verification screen.');
+    setSuccessMessage(session ? 'You are in. Opening DeskMate...' : 'Code verified.');
     setSubmitting(false);
-    router.push({ pathname: '/verify-code', params: { email: normalizedEmail, mode: 'signup' } });
+    router.replace('/');
+  };
+
+  const handleResend = async () => {
+    setResending(true);
+    setErrorMessage('');
+    setSuccessMessage('');
+    const ok = await sendCode();
+    if (ok) {
+      setSuccessMessage('A fresh code is on the way.');
+    }
+    setResending(false);
   };
 
   const handleGuest = () => {
@@ -76,29 +129,28 @@ export default function ResendConfirmationScreen() {
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
           <SafeAreaView style={styles.safeArea}>
             <ThemedView style={styles.hero}>
-              <ThemedText style={styles.heroEmoji}>🍓</ThemedText>
+              <ThemedText style={styles.heroEmoji}>🧁</ThemedText>
               <ThemedText type="subtitle" style={styles.title}>
-                Resend confirmation
+                Verify your email
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
-                If your verification code expired or got buried, we can send a fresh one.
+                Enter the verification code sent to {normalizedEmail || 'your email'}.
               </ThemedText>
             </ThemedView>
 
             <ThemedView type="backgroundElement" style={styles.card}>
-              <ThemedText type="smallBold">Email</ThemedText>
+              <ThemedText type="smallBold">Verification code</ThemedText>
               <TextInput
                 style={inputStyle}
-                value={email}
-                onChangeText={setEmail}
+                value={code}
+                onChangeText={(text) => setCode(text.replace(/\s+/g, ''))}
                 autoCapitalize="none"
                 autoCorrect={false}
-                keyboardType="email-address"
-                textContentType="emailAddress"
-                placeholder="you@example.com"
+                keyboardType="number-pad"
+                placeholder="123456"
                 placeholderTextColor={colors.textSecondary}
                 returnKeyType="done"
-                onSubmitEditing={handleResend}
+                onSubmitEditing={handleVerify}
               />
 
               {errorMessage ? (
@@ -118,18 +170,27 @@ export default function ResendConfirmationScreen() {
                   styles.primaryButton,
                   (pressed || submitting) && styles.pressed,
                 ]}
-                onPress={handleResend}
+                onPress={handleVerify}
                 disabled={submitting}>
                 <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                  {submitting ? 'Sending...' : 'Resend verification'}
+                  {submitting ? 'Verifying...' : 'Verify code'}
+                </ThemedText>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.secondaryButton, (pressed || resending) && styles.pressed]}
+                onPress={handleResend}
+                disabled={resending}>
+                <ThemedText type="smallBold" style={styles.secondaryButtonText}>
+                  {resending ? 'Sending...' : 'Resend verification code'}
                 </ThemedText>
               </Pressable>
             </ThemedView>
 
             <ThemedView style={styles.linkActions}>
-              <Pressable onPress={() => router.replace('/login')} style={styles.linkRow}>
+              <Pressable onPress={() => router.back()} style={styles.linkRow}>
                 <ThemedText type="smallBold" style={styles.linkText}>
-                  Back to login
+                  Back
                 </ThemedText>
               </Pressable>
               <Pressable onPress={handleGuest} style={styles.linkRow}>
@@ -179,6 +240,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: { color: BakeryColors.cocoaDark },
+  secondaryButton: {
+    borderRadius: BakeryRadii.button,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: BakeryColors.border,
+    backgroundColor: BakeryColors.cream,
+  },
+  secondaryButtonText: { color: BakeryColors.cocoa },
   linkActions: { gap: Spacing.one },
   linkRow: {
     flexDirection: 'row',

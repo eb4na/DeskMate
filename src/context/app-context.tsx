@@ -1,6 +1,8 @@
-import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { DAILY_EARN_CAP, STATIC_SUBJECTS } from '@/constants/placeholder-data';
-import { loadPersistedState, savePersistedState } from '@/lib/storage';
+import { SHOP_ITEMS, type ShopCategory } from '@/constants/shop-data';
+import { useAuth } from '@/context/auth-context';
+import { getAppStateScope, loadScopedAppState, saveScopedAppState } from '@/lib/app-state-repository';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -84,6 +86,9 @@ export type ReminderEntry = {
   weekdaysOnly: boolean;
 };
 
+export type EquipableShopCategory = Exclude<ShopCategory, 'game'>;
+export type EquippedShopItems = Record<EquipableShopCategory, string | null>;
+
 export type AdvancedExamFields = {
   topics: string;
   targetHours: number | null;
@@ -119,6 +124,7 @@ type PersistedState = {
   subjects: Subject[];
   tasks: Task[];
   ownedShopItems: string[];
+  equippedShopItems: EquippedShopItems;
   subjectTimeMap: Record<string, number>;
   skipSubjectCount: number;
   sessionHistory: SessionRecord[];
@@ -127,6 +133,7 @@ type PersistedState = {
   streakFreezes: number;
   streakFreezeResetMonth: string;
   savedTimerPresets: TimerPreset[];
+  savedBreakPresets: TimerPreset[];
   ambienceId: string | null;
   defaultCompanionId: DefaultCompanionId;
   companionSlots: CompanionSlot[];
@@ -151,6 +158,13 @@ const DEFAULTS: PersistedState = {
   subjects: INITIAL_SUBJECTS,
   tasks: [],
   ownedShopItems: [],
+  equippedShopItems: {
+    decoration: null,
+    outfit: null,
+    theme: null,
+    pose: null,
+    reminder: null,
+  },
   subjectTimeMap: {},
   skipSubjectCount: 0,
   sessionHistory: [],
@@ -159,6 +173,7 @@ const DEFAULTS: PersistedState = {
   streakFreezes: 3,
   streakFreezeResetMonth: '',
   savedTimerPresets: [],
+  savedBreakPresets: [],
   ambienceId: null,
   defaultCompanionId: 'girl',
   companionSlots: [],
@@ -194,6 +209,36 @@ function uid(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
+function getShopItem(itemId: string) {
+  return SHOP_ITEMS.find((item) => item.id === itemId) ?? null;
+}
+
+function normalizePersistedState(saved?: Partial<PersistedState> | null): PersistedState {
+  if (!saved) {
+    return DEFAULTS;
+  }
+
+  const month = new Date().toISOString().slice(0, 7);
+  const merged = { ...saved };
+
+  if (!merged.streakFreezeResetMonth || merged.streakFreezeResetMonth < month) {
+    merged.streakFreezes = 3;
+    merged.streakFreezeResetMonth = month;
+  }
+
+  if (merged.isPlus && (!merged.aiTicketsResetMonth || merged.aiTicketsResetMonth < month)) {
+    merged.aiTickets = 3;
+    merged.aiTicketsResetMonth = month;
+  }
+
+  merged.equippedShopItems = {
+    ...DEFAULTS.equippedShopItems,
+    ...(merged.equippedShopItems ?? {}),
+  };
+
+  return { ...DEFAULTS, ...merged };
+}
+
 // ─── Context type ─────────────────────────────────────────────────────────────
 
 type AppContextType = {
@@ -214,6 +259,7 @@ type AppContextType = {
   subjects: Subject[];
   tasks: Task[];
   ownedShopItems: string[];
+  equippedShopItems: EquippedShopItems;
   subjectTimeMap: Record<string, number>;
   skipSubjectCount: number;
   sessionHistory: SessionRecord[];
@@ -222,6 +268,7 @@ type AppContextType = {
   isPlus: boolean;
   streakFreezes: number;
   savedTimerPresets: TimerPreset[];
+  savedBreakPresets: TimerPreset[];
   ambienceId: string | null;
   defaultCompanionId: DefaultCompanionId;
   companionSlots: CompanionSlot[];
@@ -262,12 +309,15 @@ type AppContextType = {
 
   // Wave 2 shop
   purchaseShopItem: (itemId: string, price: number) => boolean;
+  equipShopItem: (itemId: string) => boolean;
 
   // Wave 4 actions
   setIsPlus: (value: boolean) => void;
   useStreakFreeze: () => boolean;
   saveTimerPreset: (preset: Omit<TimerPreset, 'id'>) => void;
   deleteTimerPreset: (id: string) => void;
+  saveBreakPreset: (preset: Omit<TimerPreset, 'id'>) => void;
+  deleteBreakPreset: (id: string) => void;
   setAmbience: (id: string | null) => void;
   setDefaultCompanion: (id: DefaultCompanionId) => void;
   saveCompanionSlot: (slot: Omit<CompanionSlot, 'id'>) => void;
@@ -283,35 +333,40 @@ type AppContextType = {
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const { initialized: authInitialized, session } = useAuth();
   const [s, setS] = useState<PersistedState>(DEFAULTS);
   const [loaded, setLoaded] = useState(false);
+  const [loadedScopeKey, setLoadedScopeKey] = useState<string | null>(null);
+  const appStateScope = useMemo(() => getAppStateScope(session), [session]);
 
   useEffect(() => {
-    loadPersistedState<Partial<PersistedState>>()
+    if (!authInitialized) return;
+
+    let mounted = true;
+    setLoaded(false);
+    setLoadedScopeKey(null);
+
+    loadScopedAppState<Partial<PersistedState>>(appStateScope)
       .then((saved) => {
-        if (saved) {
-          const month = new Date().toISOString().slice(0, 7);
-          const merged = { ...saved };
-          // Monthly reset: streak freezes
-          if (!merged.streakFreezeResetMonth || merged.streakFreezeResetMonth < month) {
-            merged.streakFreezes = 3;
-            merged.streakFreezeResetMonth = month;
-          }
-          // Monthly reset: AI tickets (only if Plus)
-          if (merged.isPlus && (!merged.aiTicketsResetMonth || merged.aiTicketsResetMonth < month)) {
-            merged.aiTickets = 3;
-            merged.aiTicketsResetMonth = month;
-          }
-          setS((prev) => ({ ...prev, ...merged }));
-        }
+        if (!mounted) return;
+        setS(normalizePersistedState(saved));
+        setLoadedScopeKey(appStateScope.storageKey);
       })
-      .finally(() => setLoaded(true));
-  }, []);
+      .finally(() => {
+        if (mounted) {
+          setLoaded(true);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [appStateScope, authInitialized]);
 
   useEffect(() => {
-    if (!loaded) return;
-    savePersistedState(s);
-  }, [s, loaded]);
+    if (!loaded || loadedScopeKey !== appStateScope.storageKey) return;
+    saveScopedAppState(appStateScope, s);
+  }, [appStateScope, loaded, loadedScopeKey, s]);
 
   // ─── Wave 1 actions ──────────────────────────────────────────────────────
 
@@ -593,6 +648,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       savedTimerPresets: prev.savedTimerPresets.filter((p) => p.id !== id),
     }));
 
+  const saveBreakPreset = (preset: Omit<TimerPreset, 'id'>) =>
+    setS((prev) => ({
+      ...prev,
+      savedBreakPresets: [...prev.savedBreakPresets, { ...preset, id: uid() }],
+    }));
+
+  const deleteBreakPreset = (id: string) =>
+    setS((prev) => ({
+      ...prev,
+      savedBreakPresets: prev.savedBreakPresets.filter((p) => p.id !== id),
+    }));
+
   const setAmbience = (id: string | null) =>
     setS((prev) => ({ ...prev, ambienceId: id }));
 
@@ -642,11 +709,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ─── Wave 2 shop ─────────────────────────────────────────────────────────
 
   const purchaseShopItem = (itemId: string, price: number): boolean => {
-    if (s.ownedShopItems.includes(itemId) || s.coins < price) return false;
+    const item = getShopItem(itemId);
+    if (!item || s.ownedShopItems.includes(itemId) || s.coins < price) return false;
     setS((prev) => {
       if (prev.ownedShopItems.includes(itemId) || prev.coins < price) return prev;
-      return { ...prev, coins: prev.coins - price, ownedShopItems: [...prev.ownedShopItems, itemId] };
+
+      const nextState: PersistedState = {
+        ...prev,
+        coins: prev.coins - price,
+        ownedShopItems: [...prev.ownedShopItems, itemId],
+      };
+
+      if (item.category !== 'game') {
+        nextState.equippedShopItems = {
+          ...prev.equippedShopItems,
+          [item.category]: itemId,
+        };
+      }
+
+      return nextState;
     });
+    return true;
+  };
+
+  const equipShopItem = (itemId: string): boolean => {
+    const item = getShopItem(itemId);
+    if (!item || item.category === 'game' || !s.ownedShopItems.includes(itemId)) return false;
+
+    setS((prev) => {
+      if (!prev.ownedShopItems.includes(itemId)) return prev;
+      return {
+        ...prev,
+        equippedShopItems: {
+          ...prev.equippedShopItems,
+          [item.category]: itemId,
+        },
+      };
+    });
+
     return true;
   };
 
@@ -666,6 +766,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         subjects: s.subjects,
         tasks: s.tasks,
         ownedShopItems: s.ownedShopItems,
+        equippedShopItems: s.equippedShopItems,
         subjectTimeMap: s.subjectTimeMap,
         skipSubjectCount: s.skipSubjectCount,
         sessionHistory: s.sessionHistory,
@@ -690,10 +791,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         incrementSkipSubjectCount,
         resetSkipSubjectCount,
         purchaseShopItem,
+        equipShopItem,
         // Wave 4
         isPlus: s.isPlus,
         streakFreezes: s.streakFreezes,
         savedTimerPresets: s.savedTimerPresets,
+        savedBreakPresets: s.savedBreakPresets,
         ambienceId: s.ambienceId,
         defaultCompanionId: s.defaultCompanionId,
         companionSlots: s.companionSlots,
@@ -705,6 +808,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         useStreakFreeze,
         saveTimerPreset,
         deleteTimerPreset,
+        saveBreakPreset,
+        deleteBreakPreset,
         setAmbience,
         setDefaultCompanion,
         saveCompanionSlot,

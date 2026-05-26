@@ -7,7 +7,14 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import type { Task, TaskStatus } from '@/context/app-context';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import {
+  BakeryColors,
+  BakeryRadii,
+  BakeryShadow,
+  BottomTabInset,
+  MaxContentWidth,
+  Spacing,
+} from '@/constants/theme';
 
 const STATUS_CYCLE: Record<TaskStatus, TaskStatus> = {
   not_started: 'in_progress',
@@ -196,7 +203,8 @@ export default function TasksScreen() {
                 No tasks yet
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.welcomeText}>
-                Add your first task to stay organized. You'll earn 🪙 10 coins for every task you complete!
+                Add your first task to stay organized. You&apos;ll earn 🪙 10 coins for every task you
+                complete!
               </ThemedText>
               <Pressable
                 style={({ pressed }) => [styles.addBtn, styles.welcomeAddBtn, pressed && styles.pressed]}
@@ -275,7 +283,7 @@ export default function TasksScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: BakeryColors.frosting },
   safeArea: {
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.four,
@@ -291,22 +299,28 @@ const styles = StyleSheet.create({
   manageBtn: {
     paddingHorizontal: Spacing.two,
     paddingVertical: 6,
-    borderRadius: 10,
+    borderRadius: BakeryRadii.chip,
+    backgroundColor: BakeryColors.cream,
   },
   addBtn: {
-    backgroundColor: '#7C6F5A',
-    borderRadius: 12,
+    backgroundColor: BakeryColors.honey,
+    borderRadius: BakeryRadii.button,
     paddingHorizontal: Spacing.three,
     paddingVertical: 8,
+    ...BakeryShadow,
   },
-  addBtnText: { color: '#FFF', fontSize: 14, fontWeight: '600' },
+  addBtnText: { color: BakeryColors.cocoaDark, fontSize: 14, fontWeight: '700' },
   pressed: { opacity: 0.8 },
   welcomeCard: {
-    borderRadius: 20,
+    borderRadius: BakeryRadii.panel,
     padding: Spacing.five,
     alignItems: 'center',
     gap: Spacing.two,
     marginTop: Spacing.two,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.border,
+    backgroundColor: BakeryColors.glass,
+    ...BakeryShadow,
   },
   welcomeEmoji: { fontSize: 48, lineHeight: 56 },
   welcomeTitle: { fontSize: 18 },
@@ -317,16 +331,19 @@ const styles = StyleSheet.create({
   doneToggle: {},
   taskList: { gap: Spacing.two },
   taskRow: {
-    borderRadius: 14,
+    borderRadius: BakeryRadii.card,
     padding: Spacing.two,
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: Spacing.two,
+    borderWidth: 1,
+    borderColor: BakeryColors.shortbread,
+    backgroundColor: BakeryColors.glass,
   },
   taskRowDone: { opacity: 0.55 },
   statusBtn: { paddingTop: 2, paddingHorizontal: 4 },
-  statusIcon: { fontSize: 18, lineHeight: 22, color: '#7C6F5A' },
-  statusIconDone: { color: '#81C784' },
+  statusIcon: { fontSize: 18, lineHeight: 22, color: BakeryColors.mocha },
+  statusIconDone: { color: BakeryColors.success },
   taskContent: { flex: 1, gap: 4 },
   taskTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4 },
   taskTitle: { flex: 1, fontSize: 15, lineHeight: 20 },
@@ -346,24 +363,31 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 11, fontWeight: '600' },
   taskActions: { flexDirection: 'row', gap: 2, alignItems: 'center' },
   actionBtn: { padding: 6 },
-  deleteIcon: { fontSize: 13, color: '#E05C3A' },
-  emptyCard: { borderRadius: 14, padding: Spacing.three, alignItems: 'center' },
+  deleteIcon: { fontSize: 13, color: BakeryColors.danger },
+  emptyCard: {
+    borderRadius: BakeryRadii.card,
+    padding: Spacing.three,
+    alignItems: 'center',
+    backgroundColor: BakeryColors.glass,
+  },
   emptyText: { textAlign: 'center', lineHeight: 20 },
   nudgeCard: {
-    borderRadius: 16,
+    borderRadius: BakeryRadii.card,
     padding: Spacing.three,
     gap: Spacing.two,
     borderLeftWidth: 3,
-    borderLeftColor: '#FFB74D',
+    borderLeftColor: BakeryColors.honey,
+    backgroundColor: BakeryColors.glass,
+    ...BakeryShadow,
   },
   nudgeTitle: { fontSize: 14 },
   nudgeText: { lineHeight: 20, fontSize: 13 },
   nudgeBtn: {
     alignSelf: 'flex-start',
-    backgroundColor: '#7C6F5A20',
-    borderRadius: 10,
+    backgroundColor: BakeryColors.cream,
+    borderRadius: BakeryRadii.chip,
     paddingHorizontal: Spacing.three,
     paddingVertical: 6,
   },
-  nudgeBtnText: { color: '#7C6F5A', fontWeight: '600' },
+  nudgeBtnText: { color: BakeryColors.mocha, fontWeight: '700' },
 });

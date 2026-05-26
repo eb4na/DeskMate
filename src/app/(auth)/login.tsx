@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -13,18 +13,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { BakeryColors, BakeryRadii, BakeryShadow, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 
 export default function LoginScreen() {
+  const { email: emailParam, notice } = useLocalSearchParams<{ email?: string; notice?: string }>();
   const { continueAsGuest } = useAuth();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(typeof emailParam === 'string' ? emailParam : '');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const noticeMessage = typeof notice === 'string' ? notice : '';
 
   const inputStyle = {
     borderWidth: 1.5,
@@ -52,7 +54,11 @@ export default function LoginScreen() {
     });
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(
+        /email not confirmed|email_not_confirmed/i.test(error.message)
+          ? 'Your email still needs verification. Tap Resend verification to get a fresh code.'
+          : error.message,
+      );
       setSubmitting(false);
       return;
     }
@@ -60,20 +66,26 @@ export default function LoginScreen() {
     setSubmitting(false);
   };
 
+  const handleGuest = () => {
+    continueAsGuest();
+    router.replace('/');
+  };
+
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView style={[styles.container, styles.screenBackground]}>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.select({ ios: 'padding', android: undefined })}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
           <SafeAreaView style={styles.safeArea}>
             <ThemedView style={styles.hero}>
+              <ThemedText style={styles.heroEmoji}>🥐</ThemedText>
               <ThemedText type="subtitle" style={styles.title}>
                 Welcome back
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
-                Sign in with Supabase to keep building on this Expo app. Your current DeskMate
-                progress stays local for now.
+                Slip back into your cozy study bakery. Your current Memobun progress stays local for
+                now.
               </ThemedText>
             </ThemedView>
 
@@ -111,6 +123,12 @@ export default function LoginScreen() {
                 </ThemedText>
               ) : null}
 
+              {!errorMessage && noticeMessage ? (
+                <ThemedText type="small" style={styles.noticeText}>
+                  {noticeMessage}
+                </ThemedText>
+              ) : null}
+
               <Pressable
                 style={({ pressed }) => [
                   styles.primaryButton,
@@ -124,12 +142,16 @@ export default function LoginScreen() {
               </Pressable>
 
               <Pressable
-                style={({ pressed }) => [styles.guestButton, pressed && styles.pressed]}
-                onPress={continueAsGuest}>
-                <ThemedText type="smallBold" style={styles.guestButtonText}>
-                  Continue as Guest
+                style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
+                onPress={handleGuest}>
+                <ThemedText type="smallBold" style={styles.secondaryButtonText}>
+                  Continue as guest
                 </ThemedText>
               </Pressable>
+
+              <ThemedText type="small" themeColor="textSecondary" style={styles.guestNote}>
+                Guest mode keeps your progress on this device so you can start studying right away.
+              </ThemedText>
 
               <ThemedView style={styles.supportLinks}>
                 <Pressable onPress={() => router.push('/forgot-password')}>
@@ -139,7 +161,7 @@ export default function LoginScreen() {
                 </Pressable>
                 <Pressable onPress={() => router.push('/resend-confirmation')}>
                   <ThemedText type="smallBold" style={styles.linkText}>
-                    Resend confirmation
+                    Resend verification
                   </ThemedText>
                 </Pressable>
               </ThemedView>
@@ -162,6 +184,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  screenBackground: { backgroundColor: BakeryColors.frosting },
   scrollContent: { flexGrow: 1 },
   safeArea: {
     flex: 1,
@@ -173,29 +196,36 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   hero: { gap: Spacing.two },
+  heroEmoji: { textAlign: 'center', fontSize: 48, lineHeight: 56 },
   title: { textAlign: 'center' },
   subtitle: { textAlign: 'center', lineHeight: 20 },
   card: {
-    borderRadius: 20,
+    borderRadius: BakeryRadii.panel,
     padding: Spacing.four,
     gap: Spacing.two,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.border,
+    backgroundColor: BakeryColors.glass,
+    ...BakeryShadow,
   },
   primaryButton: {
     marginTop: Spacing.one,
-    backgroundColor: '#7C6F5A',
-    borderRadius: 16,
+    backgroundColor: BakeryColors.honey,
+    borderRadius: BakeryRadii.button,
     paddingVertical: Spacing.three,
     alignItems: 'center',
   },
-  primaryButtonText: { color: '#FFF' },
-  guestButton: {
-    borderRadius: 16,
+  primaryButtonText: { color: BakeryColors.cocoaDark },
+  secondaryButton: {
+    borderRadius: BakeryRadii.button,
     paddingVertical: Spacing.three,
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#7C6F5A',
+    borderColor: BakeryColors.border,
+    backgroundColor: BakeryColors.cream,
   },
-  guestButtonText: { color: '#7C6F5A' },
+  secondaryButtonText: { color: BakeryColors.cocoa },
+  guestNote: { textAlign: 'center', lineHeight: 20 },
   supportLinks: {
     marginTop: Spacing.one,
     flexDirection: 'row',
@@ -208,7 +238,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
-  linkText: { color: '#7C6F5A' },
-  errorText: { color: '#D35B42', lineHeight: 20 },
+  linkText: { color: BakeryColors.mocha },
+  errorText: { color: BakeryColors.danger, lineHeight: 20 },
+  noticeText: { color: BakeryColors.success, lineHeight: 20 },
   pressed: { opacity: 0.85 },
 });
