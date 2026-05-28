@@ -1,12 +1,16 @@
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, TextInput, useColorScheme } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, TextInput, useColorScheme, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlusGate } from '@/components/plus-gate';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useAuth } from '@/context/auth-context';
 import { useApp } from '@/context/app-context';
+import { generateAiCompanion } from '@/lib/ai-companion';
+import { getStarterActiveId } from '@/lib/companion-utils';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 
 const MAX_SLOTS = 3;
@@ -14,19 +18,29 @@ const MAX_SLOTS = 3;
 const EMOJI_OPTIONS = ['🐱', '🐶', '🦊', '🐺', '🦋', '🐉', '🦄', '🐧', '🦅', '🌸'];
 
 function GalleryContent() {
+  const { isGuest } = useAuth();
   const {
+    activeCompanionId,
     companionSlots,
     saveCompanionSlot,
     deleteCompanionSlot,
     aiTickets,
     consumeAiTicket,
+    restoreAiTicket,
     defaultCompanionId,
     setDefaultCompanion,
+    setActiveCompanion,
   } = useApp();
   const [showForm, setShowForm] = useState(false);
+  const [showGenerator, setShowGenerator] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [slotName, setSlotName] = useState('');
   const [slotEmoji, setSlotEmoji] = useState(EMOJI_OPTIONS[0]);
   const [slotDesc, setSlotDesc] = useState('');
+  const [generateName, setGenerateName] = useState('');
+  const [generateVibe, setGenerateVibe] = useState('sweet, cozy, and gentle');
+  const [generateOutfit, setGenerateOutfit] = useState('bakery apron with a soft beret');
+  const [generatePrompt, setGeneratePrompt] = useState('');
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
@@ -49,19 +63,37 @@ function GalleryContent() {
       Alert.alert('Slot limit', `You can save up to ${MAX_SLOTS} companions.`);
       return;
     }
-    saveCompanionSlot({
+    const savedId = saveCompanionSlot({
       name: slotName.trim(),
       emoji: slotEmoji,
       description: slotDesc.trim(),
       isGenerated: false,
+      imageUri: null,
+      imagePath: null,
+      prompt: null,
     });
+    if (!savedId) {
+      Alert.alert('Slot limit', `You can save up to ${MAX_SLOTS} companions.`);
+      return;
+    }
     setSlotName('');
     setSlotDesc('');
     setSlotEmoji(EMOJI_OPTIONS[0]);
     setShowForm(false);
   };
 
-  const handleGeneratePlaceholder = () => {
+  const handleGenerateCompanion = async () => {
+    if (isGuest) {
+      Alert.alert(
+        'Sign in required',
+        'AI generation uses your secure account session. Sign in first, then come back here to generate a companion.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Go to login', onPress: () => router.push('/login') },
+        ],
+      );
+      return;
+    }
     if (aiTickets <= 0) {
       Alert.alert(
         'No tickets left',
@@ -73,26 +105,71 @@ function GalleryContent() {
       Alert.alert('Slot limit', `You can save up to ${MAX_SLOTS} companions.`);
       return;
     }
-    Alert.alert(
-      'Generate companion (placeholder)',
-      `This will use 1 ticket (${aiTickets} remaining). AI generation will be connected in a future update — a placeholder companion will be saved.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Use ticket',
-          onPress: () => {
-            const ok = consumeAiTicket();
-            if (!ok) return;
-            saveCompanionSlot({
-              name: `AI Companion ${companionSlots.filter((s) => s.isGenerated).length + 1}`,
-              emoji: '🎨',
-              description: 'AI-generated companion (placeholder)',
-              isGenerated: true,
-            });
-          },
-        },
-      ],
-    );
+
+    if (!generateName.trim()) {
+      Alert.alert('Name required', 'Give your generated companion a name.');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const result = await generateAiCompanion({
+        name: generateName.trim(),
+        vibe: generateVibe.trim(),
+        outfit: generateOutfit.trim(),
+        prompt: generatePrompt.trim(),
+      });
+
+      const consumed = consumeAiTicket();
+      if (!consumed) {
+        throw new Error('You do not have any AI generation tickets left.');
+      }
+
+      const slotId = saveCompanionSlot({
+        name: generateName.trim(),
+        emoji: '🎨',
+        description: result.description,
+        isGenerated: true,
+        imageUri: result.imageUrl,
+        imagePath: result.storagePath,
+        prompt: result.prompt,
+      });
+
+      if (!slotId) {
+        restoreAiTicket();
+        throw new Error(`You can save up to ${MAX_SLOTS} companions.`);
+      }
+
+      setActiveCompanion(slotId);
+      setGenerateName('');
+      setGenerateVibe('sweet, cozy, and gentle');
+      setGenerateOutfit('bakery apron with a soft beret');
+      setGeneratePrompt('');
+      setShowGenerator(false);
+
+      Alert.alert(
+        'Companion ready',
+        `${generateName.trim()} was generated and is now active across Home and your study screens.`,
+      );
+    } catch (error) {
+      Alert.alert(
+        'Generation failed',
+        error instanceof Error ? error.message : 'The companion could not be generated.',
+      );
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleUseSlot = (slotId: string, hasRenderableImage: boolean) => {
+    if (!hasRenderableImage) {
+      Alert.alert(
+        'No art to show yet',
+        'This custom slot does not have character art yet. Generate a companion to use it across Home and study screens.',
+      );
+      return;
+    }
+    setActiveCompanion(slotId);
   };
 
   return (
@@ -110,14 +187,66 @@ function GalleryContent() {
             </ThemedView>
             <Pressable
               style={({ pressed }) => [styles.generateBtn, pressed && styles.pressed]}
-              onPress={handleGeneratePlaceholder}>
-              <ThemedText style={styles.generateBtnText}>Generate</ThemedText>
+              onPress={() => setShowGenerator((value) => !value)}>
+              <ThemedText style={styles.generateBtnText}>
+                {showGenerator ? 'Hide' : 'Generate'}
+              </ThemedText>
             </Pressable>
           </ThemedView>
           <ThemedText type="small" themeColor="textSecondary" style={styles.ticketNote}>
             Each ticket creates one static companion design. Tickets reset monthly. Failed
             generations are refunded.
           </ThemedText>
+          {showGenerator && (
+            <ThemedView type="backgroundElement" style={styles.form}>
+              <ThemedText type="smallBold">AI character generator</ThemedText>
+              <TextInput
+                style={inputStyle}
+                value={generateName}
+                onChangeText={setGenerateName}
+                placeholder="Name (e.g. Miel)"
+                placeholderTextColor={colors.textSecondary}
+                returnKeyType="next"
+                autoFocus
+              />
+              <TextInput
+                style={inputStyle}
+                value={generateVibe}
+                onChangeText={setGenerateVibe}
+                placeholder="Vibe (e.g. shy, dreamy, warm)"
+                placeholderTextColor={colors.textSecondary}
+                returnKeyType="next"
+              />
+              <TextInput
+                style={inputStyle}
+                value={generateOutfit}
+                onChangeText={setGenerateOutfit}
+                placeholder="Outfit (e.g. frilly baker dress)"
+                placeholderTextColor={colors.textSecondary}
+                returnKeyType="next"
+              />
+              <TextInput
+                style={[inputStyle, styles.promptInput]}
+                value={generatePrompt}
+                onChangeText={setGeneratePrompt}
+                placeholder="Extra details (optional)"
+                placeholderTextColor={colors.textSecondary}
+                multiline
+              />
+              <ThemedText type="small" themeColor="textSecondary" style={styles.generatorNote}>
+                Generates one transparent bakery-style companion through the secure server-side OpenAI
+                function.
+              </ThemedText>
+              <Pressable
+                style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed, isGenerating && styles.disabledBtn]}
+                disabled={isGenerating}
+                onPress={handleGenerateCompanion}>
+                <ThemedText type="smallBold" style={styles.saveBtnText}>
+                  {isGenerating ? 'Generating...' : `Use 1 ticket (${aiTickets} left)`}
+                </ThemedText>
+              </Pressable>
+            </ThemedView>
+          )}
         </ThemedView>
 
         {/* Starter companions */}
@@ -132,7 +261,7 @@ function GalleryContent() {
           </ThemedText>
 
           {[
-            { id: 'girl' as const, emoji: '👧', name: 'Default Girl' },
+            { id: 'girl' as const, emoji: '🍞', name: 'Bakery Girl' },
             { id: 'dude' as const, emoji: '👦', name: 'Default Dude' },
           ].map((starter) => (
             <Pressable key={starter.id} onPress={() => setDefaultCompanion(starter.id)}>
@@ -141,7 +270,7 @@ function GalleryContent() {
                 style={[
                   styles.slotCard,
                   styles.defaultSlot,
-                  defaultCompanionId === starter.id && styles.defaultSlotActive,
+                  activeCompanionId === getStarterActiveId(starter.id) && styles.defaultSlotActive,
                 ]}>
                 <ThemedText style={styles.slotEmoji}>{starter.emoji}</ThemedText>
                 <ThemedView style={styles.slotInfo}>
@@ -150,7 +279,7 @@ function GalleryContent() {
                     Founder-created starter companion
                   </ThemedText>
                 </ThemedView>
-                {defaultCompanionId === starter.id && (
+                {activeCompanionId === getStarterActiveId(starter.id) && (
                   <ThemedView style={styles.activeBadge}>
                     <ThemedText style={styles.activeBadgeText}>Active</ThemedText>
                   </ThemedView>
@@ -215,55 +344,88 @@ function GalleryContent() {
           )}
 
           {/* User slots */}
-          {companionSlots.map((slot) => (
-            <ThemedView key={slot.id} type="backgroundElement" style={styles.slotCard}>
-              <ThemedText style={styles.slotEmoji}>{slot.emoji}</ThemedText>
-              <ThemedView style={styles.slotInfo}>
-                <ThemedText type="smallBold">
-                  {slot.name}
-                  {slot.isGenerated && (
-                    <ThemedText type="small" style={styles.aiBadgeInline}>
-                      {' '}
-                      🎨 AI
-                    </ThemedText>
+          {companionSlots.map((slot) => {
+            const canUseSlot = !!slot.imageUri;
+            const isActive = activeCompanionId === slot.id;
+
+            return (
+              <Pressable key={slot.id} onPress={() => handleUseSlot(slot.id, canUseSlot)}>
+                <ThemedView
+                  type="backgroundElement"
+                  style={[styles.slotCard, isActive && styles.defaultSlotActive]}>
+                  {slot.imageUri ? (
+                    <Image
+                      source={{ uri: slot.imageUri }}
+                      style={styles.slotPreview}
+                      contentFit="contain"
+                      contentPosition="center"
+                    />
+                  ) : (
+                    <ThemedText style={styles.slotEmoji}>{slot.emoji}</ThemedText>
                   )}
-                </ThemedText>
-                {slot.description ? (
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {slot.description}
-                  </ThemedText>
-                ) : null}
-              </ThemedView>
-              <Pressable
-                onPress={() =>
-                  Alert.alert('Remove companion?', `Remove "${slot.name}"?`, [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Remove',
-                      style: 'destructive',
-                      onPress: () => deleteCompanionSlot(slot.id),
-                    },
-                  ])
-                }
-                style={styles.deleteBtn}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  ✕
-                </ThemedText>
+                  <ThemedView style={styles.slotInfo}>
+                    <ThemedText type="smallBold">
+                      {slot.name}
+                      {slot.isGenerated && (
+                        <ThemedText type="small" style={styles.aiBadgeInline}>
+                          {' '}
+                          🎨 AI
+                        </ThemedText>
+                      )}
+                    </ThemedText>
+                    {slot.description ? (
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {slot.description}
+                      </ThemedText>
+                    ) : null}
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {canUseSlot
+                        ? isActive
+                          ? 'Active across Home and study screens'
+                          : 'Tap to use this companion'
+                        : 'Saved note only — generate art to use it'}
+                    </ThemedText>
+                  </ThemedView>
+                  <View style={styles.slotActions}>
+                    {isActive ? (
+                      <ThemedView style={styles.activeBadge}>
+                        <ThemedText style={styles.activeBadgeText}>Active</ThemedText>
+                      </ThemedView>
+                    ) : null}
+                    <Pressable
+                      onPress={() =>
+                        Alert.alert('Remove companion?', `Remove "${slot.name}"?`, [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Remove',
+                            style: 'destructive',
+                            onPress: () => deleteCompanionSlot(slot.id),
+                          },
+                        ])
+                      }
+                      style={styles.deleteBtn}>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        ✕
+                      </ThemedText>
+                    </Pressable>
+                  </View>
+                </ThemedView>
               </Pressable>
-            </ThemedView>
-          ))}
+            );
+          })}
 
           {companionSlots.length === 0 && (
             <ThemedText type="small" themeColor="textSecondary" style={styles.emptyNote}>
-              You have 2 open slots. Add a custom companion or use an AI ticket to generate one!
+              You have 3 open slots. Add a custom note companion or use an AI ticket to generate
+              one with art.
             </ThemedText>
           )}
         </ThemedView>
 
         <ThemedView type="backgroundElement" style={styles.noticeCard}>
           <ThemedText type="small" themeColor="textSecondary" style={styles.noticeText}>
-            🛠 AI-generated companion art will be wired in a future update. Saved companions will be
-            displayed in your home screen soon.
+            AI-generated companions become usable across Home, sessions, breaks, and completion
+            screens right away. Guest mode cannot use the secure AI generator.
           </ThemedText>
         </ThemedView>
 
@@ -317,6 +479,8 @@ const styles = StyleSheet.create({
   starterNote: { lineHeight: 18 },
   addLink: { color: '#7C6F5A', fontWeight: '700' },
   form: { borderRadius: 16, padding: Spacing.three, gap: Spacing.two },
+  promptInput: { minHeight: 88, textAlignVertical: 'top' },
+  generatorNote: { lineHeight: 18 },
   emojiRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one },
   emojiBtn: {
     borderRadius: 8,
@@ -353,7 +517,14 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   slotEmoji: { fontSize: 28, lineHeight: 34, width: 36 },
+  slotPreview: {
+    width: 58,
+    height: 58,
+    borderRadius: 12,
+    backgroundColor: 'rgba(124,111,90,0.08)',
+  },
   slotInfo: { flex: 1, gap: 2 },
+  slotActions: { alignItems: 'center', gap: Spacing.one },
   aiBadgeInline: { color: '#7C6F5A' },
   deleteBtn: { padding: Spacing.two },
   activeBadge: {
@@ -373,5 +544,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   doneBtnText: { color: '#FFF', fontSize: 16 },
+  disabledBtn: { opacity: 0.6 },
   pressed: { opacity: 0.85 },
 });

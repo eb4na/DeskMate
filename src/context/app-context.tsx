@@ -79,6 +79,7 @@ export type TimerPreset = {
 };
 
 export type DefaultCompanionId = 'girl' | 'dude';
+export type ActiveCompanionId = `starter:${DefaultCompanionId}` | string;
 
 export type CompanionSlot = {
   id: string;
@@ -86,6 +87,9 @@ export type CompanionSlot = {
   emoji: string;
   description: string;
   isGenerated: boolean;
+  imageUri: string | null;
+  imagePath: string | null;
+  prompt: string | null;
 };
 
 export type ReminderEntry = {
@@ -145,6 +149,7 @@ type PersistedState = {
   savedBreakPresets: TimerPreset[];
   ambienceId: string | null;
   defaultCompanionId: DefaultCompanionId;
+  activeCompanionId: ActiveCompanionId;
   companionSlots: CompanionSlot[];
   aiTickets: number;
   aiTicketsResetMonth: string;
@@ -185,6 +190,7 @@ const DEFAULTS: PersistedState = {
   savedBreakPresets: [],
   ambienceId: null,
   defaultCompanionId: 'girl',
+  activeCompanionId: 'starter:girl',
   companionSlots: [],
   aiTickets: 0,
   aiTicketsResetMonth: '',
@@ -245,6 +251,25 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
     ...(merged.equippedShopItems ?? {}),
   };
 
+  merged.companionSlots = (merged.companionSlots ?? []).map((slot) => {
+    const normalizedSlot = slot as Partial<CompanionSlot>;
+    return {
+      ...normalizedSlot,
+      imagePath: normalizedSlot.imagePath ?? null,
+      imageUri: normalizedSlot.imageUri ?? null,
+      prompt: normalizedSlot.prompt ?? null,
+    } as CompanionSlot;
+  });
+
+  const activeCompanionId = merged.activeCompanionId ?? `starter:${merged.defaultCompanionId ?? DEFAULTS.defaultCompanionId}`;
+  const activeCompanionExists =
+    activeCompanionId === 'starter:girl' ||
+    activeCompanionId === 'starter:dude' ||
+    merged.companionSlots.some((slot) => slot.id === activeCompanionId);
+  merged.activeCompanionId = activeCompanionExists
+    ? activeCompanionId
+    : `starter:${merged.defaultCompanionId ?? DEFAULTS.defaultCompanionId}`;
+
   return { ...DEFAULTS, ...merged };
 }
 
@@ -281,6 +306,7 @@ type AppContextType = {
   savedBreakPresets: TimerPreset[];
   ambienceId: string | null;
   defaultCompanionId: DefaultCompanionId;
+  activeCompanionId: ActiveCompanionId;
   companionSlots: CompanionSlot[];
   aiTickets: number;
   purchasedCoins: number;
@@ -337,9 +363,11 @@ type AppContextType = {
   deleteBreakPreset: (id: string) => void;
   setAmbience: (id: string | null) => void;
   setDefaultCompanion: (id: DefaultCompanionId) => void;
-  saveCompanionSlot: (slot: Omit<CompanionSlot, 'id'>) => void;
+  setActiveCompanion: (id: ActiveCompanionId) => void;
+  saveCompanionSlot: (slot: Omit<CompanionSlot, 'id'>) => string | null;
   deleteCompanionSlot: (id: string) => void;
   consumeAiTicket: () => boolean;
+  restoreAiTicket: () => void;
   addPurchasedCoins: (amount: number) => void;
   setMultipleReminders: (reminders: ReminderEntry[]) => void;
   updateAdvancedExam: (examId: string, fields: AdvancedExamFields) => void;
@@ -708,21 +736,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setS((prev) => ({ ...prev, ambienceId: id }));
 
   const setDefaultCompanion = (id: DefaultCompanionId) =>
-    setS((prev) => ({ ...prev, defaultCompanionId: id }));
+    setS((prev) => ({ ...prev, defaultCompanionId: id, activeCompanionId: `starter:${id}` }));
 
-  const saveCompanionSlot = (slot: Omit<CompanionSlot, 'id'>) =>
+  const setActiveCompanion = (id: ActiveCompanionId) =>
+    setS((prev) => {
+      if (id === 'starter:girl' || id === 'starter:dude') {
+        return { ...prev, activeCompanionId: id, defaultCompanionId: id === 'starter:girl' ? 'girl' : 'dude' };
+      }
+
+      if (!prev.companionSlots.some((slot) => slot.id === id && slot.imageUri)) {
+        return prev;
+      }
+
+      return { ...prev, activeCompanionId: id };
+    });
+
+  const saveCompanionSlot = (slot: Omit<CompanionSlot, 'id'>): string | null => {
+    const slotId = uid();
+    let saved = false;
     setS((prev) => {
       if (!prev.isPlus || prev.companionSlots.length >= MAX_COMPANION_SLOTS) return prev;
+      saved = true;
       return {
         ...prev,
-        companionSlots: [...prev.companionSlots, { ...slot, id: uid() }],
+        companionSlots: [...prev.companionSlots, { ...slot, id: slotId }],
       };
     });
+    return saved ? slotId : null;
+  };
 
   const deleteCompanionSlot = (id: string) =>
     setS((prev) => ({
       ...prev,
       companionSlots: prev.companionSlots.filter((c) => c.id !== id),
+      activeCompanionId:
+        prev.activeCompanionId === id ? `starter:${prev.defaultCompanionId}` : prev.activeCompanionId,
     }));
 
   const consumeAiTicket = (): boolean => {
@@ -733,6 +781,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
     return true;
   };
+
+  const restoreAiTicket = () =>
+    setS((prev) => ({
+      ...prev,
+      aiTickets: Math.min(3, prev.aiTickets + 1),
+    }));
 
   const addPurchasedCoins = (amount: number) =>
     setS((prev) => ({
@@ -846,6 +900,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         savedBreakPresets: s.savedBreakPresets,
         ambienceId: s.ambienceId,
         defaultCompanionId: s.defaultCompanionId,
+        activeCompanionId: s.activeCompanionId,
         companionSlots: s.companionSlots,
         aiTickets: s.aiTickets,
         purchasedCoins: s.purchasedCoins,
@@ -859,9 +914,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deleteBreakPreset,
         setAmbience,
         setDefaultCompanion,
+        setActiveCompanion,
         saveCompanionSlot,
         deleteCompanionSlot,
         consumeAiTicket,
+        restoreAiTicket,
         addPurchasedCoins,
         setMultipleReminders,
         updateAdvancedExam,

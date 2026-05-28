@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { COIN_REWARDS } from '@/constants/placeholder-data';
+import { STARTER_COMPANION_IMAGES, resolveActiveCompanion } from '@/lib/companion-utils';
 import { getAmbienceEmoji, getAmbienceName } from '@/app/ambience-picker';
 import {
   BakeryColors,
@@ -57,8 +58,7 @@ function formatTimerLabel(totalSeconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-const HOME_ROOM_IMAGE = require('@/assets/images/sunlit-bedroom-sanctuary-stockcake.webp');
-const HOME_CHARACTER_IMAGE = require('@/assets/images/companion/bakery-server-home-cutout.png');
+const HOME_ROOM_IMAGE = require('@/assets/images/home-bedroom.png');
 
 export default function HomeScreen() {
   const {
@@ -71,11 +71,20 @@ export default function HomeScreen() {
     equippedShopItems,
     examCountdowns,
     activeSession,
+    activeCompanionId,
     clearActiveSession,
+    companionSlots,
+    defaultCompanionId,
   } = useApp();
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [didHomeImageFail, setDidHomeImageFail] = useState(false);
   const handledCompletionId = useRef<string | null>(null);
   const activeSessionId = activeSession?.id ?? null;
+  const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots);
+  const homeCompanionSource =
+    didHomeImageFail && activeCompanion.type === 'slot'
+      ? STARTER_COMPANION_IMAGES[defaultCompanionId]
+      : activeCompanion.imageSource;
   const reminderStyle = getReminderStyleEffect(equippedShopItems);
   const nextUpcomingExam = [...examCountdowns]
     .filter((exam) => daysUntil(exam.dateISO) >= 0)
@@ -107,6 +116,10 @@ export default function HomeScreen() {
 
     return () => clearInterval(intervalId);
   }, [activeSessionId]);
+
+  useEffect(() => {
+    setDidHomeImageFail(false);
+  }, [activeCompanionId]);
 
   useEffect(() => {
     if (!activeSession || sessionSecondsLeft > 0) return;
@@ -201,8 +214,12 @@ export default function HomeScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.scene}>
-          <Image source={HOME_ROOM_IMAGE} style={styles.roomBackground} contentFit="cover" />
-          <View style={styles.roomOverlay} />
+          <Image
+            source={HOME_ROOM_IMAGE}
+            style={styles.roomBackground}
+            contentFit="cover"
+            contentPosition="center"
+          />
 
           {activeSession ? (
             <View style={styles.focusMode}>
@@ -227,13 +244,20 @@ export default function HomeScreen() {
                 </ThemedView>
 
                 <View style={styles.focusCharacterArea} pointerEvents="none">
-                  <Image
-                    source={HOME_CHARACTER_IMAGE}
-                    style={styles.focusHeroImage}
-                    contentFit="contain"
-                    contentPosition="bottom"
-                    accessibilityLabel="Home character"
-                  />
+                  <View style={styles.heroImageClip}>
+                    <Image
+                      source={homeCompanionSource}
+                      style={styles.heroImage}
+                      contentFit="cover"
+                      contentPosition="top"
+                      onError={() => {
+                        if (activeCompanion.type === 'slot') {
+                          setDidHomeImageFail(true);
+                        }
+                      }}
+                      accessibilityLabel={`${activeCompanion.name} home character`}
+                    />
+                  </View>
                 </View>
 
                 <View style={styles.focusActions}>
@@ -331,13 +355,20 @@ export default function HomeScreen() {
               </View>
 
               <View style={styles.characterArea} pointerEvents="none">
-                <Image
-                  source={HOME_CHARACTER_IMAGE}
-                  style={styles.heroImage}
-                  contentFit="contain"
-                  contentPosition="bottom"
-                  accessibilityLabel="Home character"
-                />
+                <View style={styles.heroImageClip}>
+                  <Image
+                    source={homeCompanionSource}
+                    style={styles.heroImage}
+                    contentFit="cover"
+                    contentPosition="top"
+                    onError={() => {
+                      if (activeCompanion.type === 'slot') {
+                        setDidHomeImageFail(true);
+                      }
+                    }}
+                    accessibilityLabel={`${activeCompanion.name} home character`}
+                  />
+                </View>
               </View>
 
               <View style={styles.bottomHud}>
@@ -372,34 +403,30 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#AF949B',
+    backgroundColor: '#EDE8DF',
   },
   safeArea: {
     flex: 1,
     maxWidth: MaxContentWidth,
     width: '100%',
     alignSelf: 'center',
-    backgroundColor: '#AF949B',
+    backgroundColor: '#EDE8DF',
   },
   scene: {
     flex: 1,
     overflow: 'hidden',
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.two,
     justifyContent: 'space-between',
-    backgroundColor: '#AF949B',
+    backgroundColor: '#EDE8DF',
   },
   roomBackground: {
     ...StyleSheet.absoluteFill,
   },
-  roomOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(74, 48, 32, 0.03)',
-  },
   focusMode: {
     flex: 1,
     zIndex: 2,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.three,
+    paddingBottom: BottomTabInset + Spacing.two,
   },
   focusModeInner: {
     flex: 1,
@@ -451,12 +478,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'transparent',
   },
-  focusHeroImage: {
-    width: '98%',
-    maxWidth: 380,
-    height: '100%',
-    maxHeight: 440,
-  },
   focusActions: {
     width: '100%',
     maxWidth: 360,
@@ -465,6 +486,8 @@ const styles = StyleSheet.create({
   topHud: {
     gap: Spacing.two,
     zIndex: 2,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.three,
   },
   statusStack: {
     flexDirection: 'row',
@@ -502,14 +525,22 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.one,
     backgroundColor: 'transparent',
   },
-  heroImage: {
+  heroImageClip: {
     width: '96%',
     maxWidth: 372,
+    height: 420,
+    overflow: 'hidden',
+    alignSelf: 'center',
+    backgroundColor: 'transparent',
+  },
+  heroImage: {
+    width: '100%',
     height: '100%',
-    maxHeight: 430,
   },
   bottomHud: {
     zIndex: 2,
+    paddingHorizontal: Spacing.three,
+    paddingBottom: BottomTabInset + Spacing.two,
     backgroundColor: 'transparent',
   },
   homeBreadButtonWrap: {
