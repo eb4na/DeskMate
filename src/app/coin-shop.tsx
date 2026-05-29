@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinAmount, CoinIcon } from '@/components/coin-icon';
 import { BreadPouchIcon, BreadBagIcon, BreadChestIcon, BreadVaultIcon } from '@/components/coin-pack-icons';
+import { BakeryStarEmoji, BakeryLockEmoji, BakeryWrenchEmoji } from '@/components/bakery-emoji';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
@@ -129,7 +130,7 @@ export default function CoinShopScreen() {
           {/* Plus discount note */}
           {isPlus ? (
             <ThemedView type="backgroundElement" style={[styles.plusBanner, styles.plusBannerActive]}>
-              <ThemedText style={styles.plusBannerEmoji}>🌟</ThemedText>
+              <BakeryStarEmoji size={28} />
               <ThemedView style={styles.plusBannerText}>
                 <ThemedText type="smallBold">20% Plus discount active</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">Applied to all shop items</ThemedText>
@@ -140,13 +141,16 @@ export default function CoinShopScreen() {
               style={({ pressed }) => [pressed && styles.pressed]}
               onPress={() => router.push('/plus-upgrade')}>
               <ThemedView type="backgroundElement" style={styles.plusBanner}>
-                <ThemedText style={styles.plusBannerEmoji}>🌟</ThemedText>
+                <BakeryStarEmoji size={28} />
                 <ThemedView style={styles.plusBannerText}>
                   <ThemedText type="smallBold">Plus members save 20% in shop</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">Tap to upgrade</ThemedText>
                 </ThemedView>
                 <ThemedView style={styles.plusBadge}>
-                  <ThemedText style={styles.plusBadgeText}>🔒 Plus</ThemedText>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <BakeryLockEmoji size={14} />
+                    <ThemedText style={styles.plusBadgeText}>Plus</ThemedText>
+                  </View>
                 </ThemedView>
               </ThemedView>
             </Pressable>

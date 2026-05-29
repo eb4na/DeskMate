@@ -1,9 +1,12 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinAmount, CoinIcon } from '@/components/coin-icon';
+import { BreadPouchIcon, BreadBagIcon, BreadChestIcon, BreadVaultIcon } from '@/components/coin-pack-icons';
+import { DecoIcon, OutfitIcon, ThemeIcon, PoseIcon, GameIcon, ReminderIcon } from '@/components/category-icons';
+import { BakeryStarEmoji, BakeryToastStarEmoji, BakeryLockEmoji, BakeryWrenchEmoji, BakeryCoinEmoji } from '@/components/bakery-emoji';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { isEquipableCategory } from '@/constants/shop-effects';
@@ -11,7 +14,6 @@ import { useApp } from '@/context/app-context';
 import {
   SHOP_ITEMS,
   CATEGORIES,
-  CATEGORY_LABELS,
   type ShopCategory,
 } from '@/constants/shop-data';
 import { DAILY_EARN_CAP } from '@/constants/placeholder-data';
@@ -24,13 +26,69 @@ import {
   Spacing,
 } from '@/constants/theme';
 
-type CoinPack = { id: string; name: string; emoji: string; coins: number; price: string; popular?: boolean };
+function CategoryIcon({ id, size }: { id: ShopCategory; size?: number }) {
+  if (id === 'decoration') return <DecoIcon size={size} />;
+  if (id === 'outfit') return <OutfitIcon size={size} />;
+  if (id === 'theme') return <ThemeIcon size={size} />;
+  if (id === 'pose') return <PoseIcon size={size} />;
+  if (id === 'game') return <GameIcon size={size} />;
+  return <ReminderIcon size={size} />;
+}
+
+const CATEGORY_SHORT: Record<ShopCategory, string> = {
+  decoration: 'Deco',
+  outfit: 'Outfit',
+  theme: 'Theme',
+  pose: 'Pose',
+  game: 'Game',
+  reminder: 'Alert',
+};
+
+const WIN_W = Math.min(Dimensions.get('window').width, MaxContentWidth);
+const H_PAD = Spacing.three;
+const COLS = 2;
+const GAP = 8;
+const PAGE_W = WIN_W;
+const CARD = Math.floor((PAGE_W - H_PAD * 2 - GAP) / COLS);
+
+type CoinPack = { id: string; name: string; coins: number; price: string; popular?: boolean };
 const COIN_PACKS: CoinPack[] = [
-  { id: 'pouch', name: 'Small Pouch', emoji: '👛', coins: 200, price: '$0.99' },
-  { id: 'bag', name: 'Study Bag', emoji: '🎒', coins: 600, price: '$2.49' },
-  { id: 'chest', name: 'Coin Chest', emoji: '📦', coins: 1400, price: '$4.99', popular: true },
-  { id: 'vault', name: 'Scholar Vault', emoji: '🏛️', coins: 3500, price: '$9.99' },
+  { id: 'pouch', name: 'Small Pouch', coins: 200, price: '$0.99' },
+  { id: 'bag', name: 'Study Bag', coins: 600, price: '$2.49' },
+  { id: 'chest', name: 'Coin Chest', coins: 1400, price: '$4.99', popular: true },
+  { id: 'vault', name: 'Scholar Vault', coins: 3500, price: '$9.99' },
 ];
+
+const INDICATOR_TRACK = 100;
+
+function HScrollIndicator({ scrollX, contentW, viewW }: { scrollX: number; contentW: number; viewW: number }) {
+  if (contentW <= viewW) return null;
+  const scrollable = contentW - viewW;
+  const pillW = Math.max(16, (viewW / contentW) * INDICATOR_TRACK);
+  const pillLeft = (scrollX / scrollable) * (INDICATOR_TRACK - pillW);
+  return (
+    <View style={indStyles.wrap}>
+      <View style={indStyles.track}>
+        <View style={[indStyles.pill, { width: pillW, left: pillLeft }]} />
+      </View>
+    </View>
+  );
+}
+
+const indStyles = StyleSheet.create({
+  wrap: { alignItems: 'center', marginTop: 6 },
+  track: { width: INDICATOR_TRACK, height: 4, borderRadius: 2, backgroundColor: BakeryColors.shortbread },
+  pill: { position: 'absolute', height: 4, borderRadius: 2, backgroundColor: BakeryColors.honey },
+});
+
+function PackIcon({ id }: { id: string }) {
+  if (id === 'pouch') return <BreadPouchIcon size={52} />;
+  if (id === 'bag') return <BreadBagIcon size={52} />;
+  if (id === 'chest') return <BreadChestIcon size={52} />;
+  return <BreadVaultIcon size={52} />;
+}
+
+const ITEMS_PER_PAGE = 6;
 
 export default function ShopScreen() {
   const {
@@ -42,299 +100,276 @@ export default function ShopScreen() {
     equipShopItem,
     isPlus,
     addPurchasedCoins,
-  } =
-    useApp();
+  } = useApp();
   const [activeCategory, setActiveCategory] = useState<ShopCategory>('decoration');
-  const capRemaining = Math.max(0, DAILY_EARN_CAP - earnedToday);
+  const [itemPage, setItemPage] = useState(0);
+  const itemScrollRef = useRef<ScrollView>(null);
+
+  const [catScrollX, setCatScrollX] = useState(0);
+  const [catContentW, setCatContentW] = useState(0);
+  const [catViewW, setCatViewW] = useState(0);
+
+  const [packScrollX, setPackScrollX] = useState(0);
+  const [packContentW, setPackContentW] = useState(0);
+  const [packViewW, setPackViewW] = useState(0);
 
   const discount = isPlus ? 0.8 : 1;
   const items = SHOP_ITEMS.filter((i) => i.category === activeCategory);
+  const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
+  const pages = Array.from({ length: totalPages }, (_, i) => items.slice(i * ITEMS_PER_PAGE, (i + 1) * ITEMS_PER_PAGE));
+  const capRemaining = Math.max(0, DAILY_EARN_CAP - earnedToday);
 
-  const handleCoinPack = (packName: string, packCoins: number, packPrice: string) => {
+  const handleCoinPack = (pack: CoinPack) => {
     Alert.alert(
-      `Buy ${packName}?`,
-      `${packCoins} coins for ${packPrice}. Purchased coins never expire and do not count toward the daily free earn cap.\n\n🛠 Real payment processing coming in a future update.`,
+      `Buy ${pack.name}?`,
+      `${pack.coins} coins for ${pack.price}. Purchased coins never expire.\n\n🛠 Mock purchase — real payments coming soon.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: `Buy for ${packPrice} (Mock)`,
+          text: `Buy for ${pack.price} (Mock)`,
           onPress: () => {
-            addPurchasedCoins(packCoins);
-            Alert.alert(`+${packCoins} coins added!`, 'Mock purchase complete.');
+            addPurchasedCoins(pack.coins);
+            Alert.alert(`+${pack.coins} coins added!`, 'Mock purchase complete.');
           },
         },
       ],
     );
   };
 
-  const handleEquip = (itemId: string, name: string) => {
-    const ok = equipShopItem(itemId);
-    if (!ok) {
-      Alert.alert('Can’t equip yet', 'Unlock this item first.');
-      return;
-    }
-    Alert.alert('Equipped', `${name} is now active.`);
-  };
-
   const handleBuy = (itemId: string, name: string, basePrice: number) => {
     const price = Math.floor(basePrice * discount);
     if (ownedShopItems.includes(itemId)) return;
     if (coins < price) {
-      Alert.alert(
-        'Not enough coins',
-        `You need ${price} coins but only have ${coins}. Keep studying to earn more!`,
-      );
+      Alert.alert('Not enough coins', `You need ${price} coins but only have ${coins}.`);
       return;
     }
-    const discountNote = isPlus ? ` (20% Plus discount applied)` : '';
-    Alert.alert(`Buy "${name}"?`, `Spend ${price} coins to unlock this item.${discountNote}`, [
+    Alert.alert(`Buy "${name}"?`, `Spend ${price} coins${isPlus ? ' (20% Plus discount)' : ''}.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: `Buy for ${price} coins`,
         onPress: () => {
-          const ok = purchaseShopItem(itemId, price);
-          if (!ok) {
+          if (!purchaseShopItem(itemId, price))
             Alert.alert('Purchase failed', 'Something went wrong. Please try again.');
-          }
         },
       },
     ]);
   };
 
+  const handleEquip = (itemId: string, name: string) => {
+    const ok = equipShopItem(itemId);
+    if (!ok) { Alert.alert("Can't equip yet", 'Unlock this item first.'); return; }
+    Alert.alert('Equipped', `${name} is now active.`);
+  };
+
   return (
     <ThemedView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <SafeAreaView style={styles.safeArea}>
-          {/* Header balance */}
-          <ThemedView style={styles.balanceRow}>
+      <ScrollView showsVerticalScrollIndicator={false} stickyHeaderIndices={[0]}>
+
+        {/* ── Sticky header: balance + daily cap ── */}
+        <ThemedView style={styles.header}>
+          <ThemedView style={styles.headerInner}>
             <ThemedText type="subtitle" style={styles.title}>Shop</ThemedText>
-            <ThemedView type="backgroundElement" style={styles.balancePill}>
-              <CoinIcon size={44} />
-              <ThemedText style={styles.balanceAmount}>{coins}</ThemedText>
-            </ThemedView>
+            <View style={styles.headerRight}>
+              {!isPlus && (
+                <Pressable onPress={() => router.push('/plus-upgrade')}>
+                  <ThemedView style={styles.plusPill}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <BakeryStarEmoji size={14} />
+                      <ThemedText style={styles.plusPillText}>Plus −20%</ThemedText>
+                    </View>
+                  </ThemedView>
+                </Pressable>
+              )}
+              <ThemedView style={styles.balancePill}>
+                <CoinIcon size={32} />
+                <ThemedText style={styles.balanceNum}>{coins}</ThemedText>
+              </ThemedView>
+            </View>
           </ThemedView>
 
-          {/* Daily earn progress */}
-          <ThemedView type="backgroundElement" style={styles.capCard}>
-            <ThemedView style={styles.capRow}>
-              <ThemedText type="small" themeColor="textSecondary">Daily earn</ThemedText>
-              <View style={styles.capCoins}>
-                <ThemedText type="smallBold">
-                  {earnedToday}/{DAILY_EARN_CAP}
-                </ThemedText>
-                <CoinIcon size={32} />
-              </View>
-            </ThemedView>
-            <ThemedView style={styles.progressBar}>
-              <ThemedView
-                style={[
-                  styles.progressFill,
-                  { width: `${Math.min(100, (earnedToday / DAILY_EARN_CAP) * 100)}%` },
-                ]}
-              />
-            </ThemedView>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.capNote}>
-              {capRemaining > 0
-                ? `${capRemaining} more coins available today`
-                : 'Daily cap reached — resets tomorrow!'}
+          {/* Earn progress bar */}
+          <ThemedView style={styles.capRow}>
+            <ThemedText style={styles.capLabel}>Daily earn  {earnedToday}/{DAILY_EARN_CAP}</ThemedText>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${Math.min(100, (earnedToday / DAILY_EARN_CAP) * 100)}%` }]} />
+            </View>
+            <ThemedText style={styles.capLabel}>
+              {capRemaining > 0 ? `+${capRemaining} left` : 'Full!'}
             </ThemedText>
           </ThemedView>
+        </ThemedView>
 
-          {/* Plus discount banner */}
-          {isPlus ? (
-            <ThemedView type="backgroundElement" style={[styles.plusBanner, styles.plusBannerActive]}>
-              <ThemedText style={styles.plusBannerEmoji}>🌟</ThemedText>
-              <ThemedView style={styles.plusBannerText}>
-                <ThemedText type="smallBold">20% Plus discount active</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Applied automatically to all shop items
-                </ThemedText>
-              </ThemedView>
-            </ThemedView>
-          ) : (
-            <Pressable
-              style={({ pressed }) => [pressed && styles.pressed]}
-              onPress={() => router.push('/plus-upgrade')}>
-              <ThemedView type="backgroundElement" style={styles.plusBanner}>
-                <ThemedText style={styles.plusBannerEmoji}>🌟</ThemedText>
-                <ThemedView style={styles.plusBannerText}>
-                  <ThemedText type="smallBold">Plus members save 20%</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    Discount on all shop items — tap to upgrade
-                  </ThemedText>
-                </ThemedView>
-                <ThemedView style={styles.plusBadge}>
-                  <ThemedText style={styles.plusBadgeText}>🔒 Plus</ThemedText>
-                </ThemedView>
-              </ThemedView>
-            </Pressable>
-          )}
+        <SafeAreaView edges={['bottom']} style={styles.body}>
 
-          {/* Category tabs */}
+          {/* ── Category icon strip ── */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoryRow}>
-            {CATEGORIES.map((cat) => (
-              <Pressable
-                key={cat}
-                style={({ pressed }) => [pressed && styles.pressed]}
-                onPress={() => setActiveCategory(cat)}>
-                <ThemedView
-                  type={activeCategory === cat ? 'backgroundSelected' : 'backgroundElement'}
-                  style={styles.categoryChip}>
-                  <ThemedText type="small" style={activeCategory === cat ? styles.categoryActive : undefined}>
-                    {CATEGORY_LABELS[cat]}
-                  </ThemedText>
-                </ThemedView>
-              </Pressable>
+            contentContainerStyle={styles.catStrip}
+            scrollEventThrottle={16}
+            onScroll={(e) => setCatScrollX(e.nativeEvent.contentOffset.x)}
+            onContentSizeChange={(w) => setCatContentW(w)}
+            onLayout={(e) => setCatViewW(e.nativeEvent.layout.width)}>
+            {CATEGORIES.map((cat) => {
+              const active = cat === activeCategory;
+              return (
+                <Pressable key={cat} onPress={() => setActiveCategory(cat)} style={({ pressed }) => pressed && styles.pressed}>
+                  <View style={[styles.catSquare, active && styles.catSquareActive]}>
+                    <CategoryIcon id={cat} size={36} />
+                    <ThemedText style={[styles.catLabel, active && styles.catLabelActive]}>
+                      {CATEGORY_SHORT[cat]}
+                    </ThemedText>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+          {catContentW > catViewW && (
+            <HScrollIndicator scrollX={catScrollX} contentW={catContentW} viewW={catViewW} />
+          )}
+
+          {activeCategory === 'outfit' && (
+            <View style={styles.noteCard}>
+              <ThemedText style={styles.noteText}>
+                Outfits in v1 are for the free default girl and default dude only.
+              </ThemedText>
+            </View>
+          )}
+
+          {/* ── Items paged grid ── */}
+          <ScrollView
+            ref={itemScrollRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            scrollEventThrottle={16}
+            onMomentumScrollEnd={(e) => {
+              const page = Math.round(e.nativeEvent.contentOffset.x / PAGE_W);
+              setItemPage(page);
+            }}
+            style={styles.itemScroll}
+          >
+            {pages.map((pageItems, pageIdx) => (
+              <View key={pageIdx} style={styles.itemPage}>
+                {Array.from({ length: ITEMS_PER_PAGE }, (_, slotIdx) => {
+                  const item = pageItems[slotIdx];
+                  if (!item) {
+                    return <View key={`empty-${slotIdx}`} style={[styles.itemCard, styles.itemSlot]} />;
+                  }
+                  const owned = ownedShopItems.includes(item.id);
+                  const discountedPrice = Math.floor(item.price * discount);
+                  const canAfford = coins >= discountedPrice;
+                  const equipable = isEquipableCategory(item.category);
+                  const equippedCat = equipable ? (item.category as keyof typeof equippedShopItems) : null;
+                  const isEquipped = owned && equippedCat && equippedShopItems[equippedCat] === item.id;
+
+                  return (
+                    <Pressable
+                      key={item.id}
+                      style={({ pressed }) => pressed && styles.pressed}
+                      onPress={() => {
+                        if (owned) {
+                          if (equipable && !isEquipped) handleEquip(item.id, item.name);
+                        } else {
+                          handleBuy(item.id, item.name, item.price);
+                        }
+                      }}>
+                      <View style={[
+                        styles.itemCard,
+                        owned && styles.itemOwned,
+                        isEquipped && styles.itemEquipped,
+                        !owned && !canAfford && styles.itemDim,
+                      ]}>
+                        <ThemedText style={styles.itemEmoji}>{item.emoji}</ThemedText>
+                        {owned ? (
+                          <View style={[styles.priceBadge, isEquipped ? styles.badgeEquipped : styles.badgeOwned]}>
+                            <ThemedText style={styles.badgeText}>{isEquipped ? '✓ Equipped' : '✓ Owned'}</ThemedText>
+                          </View>
+                        ) : (
+                          <CoinAmount
+                            amount={discountedPrice}
+                            size={22}
+                            textStyle={[styles.priceText, !canAfford && styles.priceTextDim]}
+                          />
+                        )}
+                        <ThemedText style={styles.itemName} numberOfLines={1}>{item.name}</ThemedText>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
             ))}
           </ScrollView>
 
-          {activeCategory === 'outfit' && (
-            <ThemedView type="backgroundElement" style={styles.outfitNoteCard}>
-              <ThemedText type="small" themeColor="textSecondary" style={styles.outfitNoteText}>
-                Outfits in v1 are made for the free default girl and default dude only.
+          {/* Sliding page indicator */}
+          {totalPages > 1 && (
+            <View style={styles.indicatorWrap}>
+              <View style={styles.indicatorTrack}>
+                <View style={[styles.indicatorPill, { left: `${(itemPage / totalPages) * 100}%`, width: `${(1 / totalPages) * 100}%` }]} />
+              </View>
+              <ThemedText style={styles.indicatorLabel}>
+                {itemPage + 1} / {totalPages}  ·  {items.length} items
               </ThemedText>
-            </ThemedView>
+            </View>
           )}
 
-          {/* Items grid */}
-          <ThemedView style={styles.grid}>
-            {items.map((item) => {
-              const owned = ownedShopItems.includes(item.id);
-              const discountedPrice = Math.floor(item.price * discount);
-              const canAfford = coins >= discountedPrice;
-              const equipable = isEquipableCategory(item.category);
-              const equippedCategory = equipable
-                ? (item.category as keyof typeof equippedShopItems)
-                : null;
-              const activeItemId = equippedCategory ? equippedShopItems[equippedCategory] : null;
-              const isEquipped = owned && activeItemId === item.id;
-              return (
-                <ThemedView
-                  key={item.id}
-                  type="backgroundElement"
-                  style={[styles.itemCard, owned && styles.itemCardOwned, isEquipped && styles.itemCardEquipped]}>
-                  <ThemedText style={styles.itemEmoji}>{item.emoji}</ThemedText>
-                  <ThemedText type="smallBold" style={styles.itemName} numberOfLines={1}>
-                    {item.name}
-                  </ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.itemDesc} numberOfLines={2}>
-                    {item.description}
-                  </ThemedText>
+          {/* ── Coin Packs ── */}
+          <View style={styles.sectionHead}>
+            <ThemedText type="smallBold" style={styles.sectionTitle}>Coin Packs</ThemedText>
+            <ThemedText style={styles.sectionSub}>No expiry · Not capped</ThemedText>
+          </View>
 
-                  {owned ? (
-                    equipable ? (
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.equipBtn,
-                          isEquipped && styles.equipBtnActive,
-                          pressed && styles.pressed,
-                        ]}
-                        onPress={() => !isEquipped && handleEquip(item.id, item.name)}>
-                        <ThemedText style={[styles.equipBtnText, isEquipped && styles.equipBtnTextActive]}>
-                          {isEquipped ? '✓ Equipped' : 'Use item'}
-                        </ThemedText>
-                      </Pressable>
-                    ) : (
-                      <ThemedView style={styles.ownedBadge}>
-                        <ThemedText style={styles.ownedText}>✓ Unlocked</ThemedText>
-                      </ThemedView>
-                    )
-                  ) : (
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.buyBtn,
-                        !canAfford && styles.buyBtnDisabled,
-                        pressed && styles.pressed,
-                      ]}
-                      onPress={() => handleBuy(item.id, item.name, item.price)}>
-                      <View style={styles.buyBtnInner}>
-                        <CoinAmount
-                          amount={discountedPrice}
-                          size={28}
-                          textStyle={[styles.buyBtnText, !canAfford && styles.buyBtnTextDisabled]}
-                        />
-                        {isPlus && discountedPrice < item.price && (
-                          <ThemedText style={styles.originalPrice}> {item.price}</ThemedText>
-                        )}
-                      </View>
-                    </Pressable>
-                  )}
-                </ThemedView>
-              );
-            })}
-          </ThemedView>
-
-          {/* ── Coin Packs ─────────────────────────────────────────────────── */}
-          <ThemedView style={styles.section}>
-            <ThemedView style={styles.sectionHeader}>
-              <ThemedText type="smallBold">Coin Packs</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                No expiry · Not capped
-              </ThemedText>
-            </ThemedView>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.packNote}>
-              Purchased coins are added directly to your balance and do not count toward the daily
-              free earn cap.
-            </ThemedText>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.packStrip}
+            scrollEventThrottle={16}
+            onScroll={(e) => setPackScrollX(e.nativeEvent.contentOffset.x)}
+            onContentSizeChange={(w) => setPackContentW(w)}
+            onLayout={(e) => setPackViewW(e.nativeEvent.layout.width)}>
             {COIN_PACKS.map((pack) => (
-              <Pressable
-                key={pack.id}
-                style={({ pressed }) => [pressed && styles.pressed]}
-                onPress={() => handleCoinPack(pack.name, pack.coins, pack.price)}>
-                <ThemedView
-                  type="backgroundElement"
-                  style={[styles.packCard, pack.popular && styles.packCardPopular]}>
-                  <ThemedText style={styles.packEmoji}>{pack.emoji}</ThemedText>
-                  <ThemedView style={styles.packInfo}>
-                    <ThemedView style={styles.packNameRow}>
-                      <ThemedText type="smallBold">{pack.name}</ThemedText>
-                      {pack.popular && (
-                        <ThemedView style={styles.popularBadge}>
-                          <ThemedText style={styles.popularText}>Popular</ThemedText>
-                        </ThemedView>
-                      )}
-                    </ThemedView>
-                    <CoinAmount amount={pack.coins} size={20} textStyle={styles.packCoinText} />
-                  </ThemedView>
-                  <ThemedView style={styles.packPriceBtn}>
-                    <ThemedText style={styles.packPrice}>{pack.price}</ThemedText>
-                  </ThemedView>
-                </ThemedView>
+              <Pressable key={pack.id} onPress={() => handleCoinPack(pack)} style={({ pressed }) => pressed && styles.pressed}>
+                <View style={[styles.packCard, pack.popular && styles.packPopular]}>
+                  {pack.popular && <View style={styles.popularStar}><BakeryToastStarEmoji size={16} /></View>}
+                  <PackIcon id={pack.id} />
+                  <ThemedText style={styles.packName} numberOfLines={1}>{pack.name}</ThemedText>
+                  <CoinAmount amount={pack.coins} size={20} textStyle={styles.packCoinAmt} />
+                  <View style={styles.packPriceBtn}>
+                    <ThemedText style={styles.packPriceText}>{pack.price}</ThemedText>
+                  </View>
+                </View>
               </Pressable>
             ))}
-            <ThemedView type="backgroundElement" style={styles.packDisclaimerCard}>
-              <ThemedText type="small" themeColor="textSecondary" style={styles.packDisclaimer}>
-                🛠 Real payment processing will be connected in a future update. Packs are mock
-                purchases for now.
-              </ThemedText>
-            </ThemedView>
-          </ThemedView>
+          </ScrollView>
+          <HScrollIndicator scrollX={packScrollX} contentW={packContentW} viewW={packViewW} />
 
-          {/* How to earn */}
-          <ThemedView type="backgroundElement" style={styles.tipCard}>
-            <ThemedText type="smallBold" style={styles.tipTitle}>How to earn coins</ThemedText>
+          <View style={styles.disclaimerCard}>
+            <ThemedText style={styles.disclaimerText}>
+              🛠 Real payment processing coming in a future update. Packs are mock purchases for now.
+            </ThemedText>
+          </View>
+
+          {/* ── How to earn ── */}
+          <View style={styles.tipCard}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <ThemedText style={styles.tipTitle}>How to earn coins</ThemedText>
+              <BakeryCoinEmoji size={16} />
+            </View>
             {[
-              { label: 'Complete a 10 min session', coins: 5 },
-              { label: 'Complete a 25 min session', coins: 15 },
-              { label: 'Complete a 50 min session', coins: 35 },
-              { label: 'Complete a 90 min session', coins: 70 },
-              { label: '3-day streak bonus', coins: 30 },
-              { label: '7-day streak bonus', coins: 80 },
+              { label: '10 min session', coins: 5 },
+              { label: '25 min session', coins: 15 },
+              { label: '50 min session', coins: 35 },
+              { label: '90 min session', coins: 70 },
+              { label: '3-day streak', coins: 30 },
+              { label: '7-day streak', coins: 80 },
             ].map((row) => (
-              <ThemedView key={row.label} style={styles.tipRow}>
-                <ThemedText type="small" themeColor="textSecondary">{row.label}</ThemedText>
-                <CoinAmount
-                  amount={row.coins}
-                  prefix="+"
-                  size={28}
-                  textStyle={styles.tipCoins}
-                />
-              </ThemedView>
+              <View key={row.label} style={styles.tipRow}>
+                <ThemedText style={styles.tipLabel}>{row.label}</ThemedText>
+                <CoinAmount amount={row.coins} prefix="+" size={20} textStyle={styles.tipCoins} />
+              </View>
             ))}
-          </ThemedView>
+          </View>
+
         </SafeAreaView>
       </ScrollView>
     </ThemedView>
@@ -342,186 +377,221 @@ export default function ShopScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BakeryColors.frosting },
-  safeArea: {
-    paddingHorizontal: Spacing.four,
+  container: { flex: 1 },
+
+  // Sticky header
+  header: {
+    paddingHorizontal: H_PAD,
     paddingTop: Spacing.four,
-    paddingBottom: BottomTabInset + Spacing.four,
-    maxWidth: MaxContentWidth,
-    width: '100%',
-    alignSelf: 'center',
-    gap: Spacing.three,
+    paddingBottom: Spacing.two,
+    gap: Spacing.two,
+    backgroundColor: BakeryColors.frosting,
+    borderBottomWidth: 1,
+    borderBottomColor: BakeryColors.shortbread,
   },
-  balanceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  headerInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  title: { fontSize: 24, lineHeight: 30 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  plusPill: {
+    backgroundColor: `${BakeryColors.honey}22`,
+    borderRadius: BakeryRadii.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: BakeryColors.honey,
   },
-  title: { fontSize: 28, lineHeight: 34 },
+  plusPillText: { fontSize: 11, fontWeight: '700', color: BakeryColors.mocha, lineHeight: 16 },
   balancePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 6,
-    minHeight: 52,
-    borderRadius: BakeryRadii.pill,
+    gap: 4,
     backgroundColor: BakeryColors.glass,
+    borderRadius: BakeryRadii.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderWidth: 1,
     borderColor: BakeryColors.border,
   },
-  capCoins: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  balanceAmount: { fontSize: 22, fontWeight: '700', color: BakeryColors.honey },
-  buyBtnInner: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  packCoinText: { fontSize: 12, opacity: 0.72 },
-  capCard: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
-    gap: Spacing.one,
-    backgroundColor: BakeryColors.glass,
-    ...BakeryShadow,
-  },
-  capRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  progressBar: {
-    height: 6,
+  balanceNum: { fontSize: 16, fontWeight: '700', color: BakeryColors.honey, lineHeight: 22 },
+  capRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  capLabel: { fontSize: 11, color: BakeryColors.mocha, fontWeight: '600', lineHeight: 16 },
+  progressTrack: {
+    flex: 1,
+    height: 5,
     borderRadius: 3,
     backgroundColor: 'rgba(0,0,0,0.08)',
     overflow: 'hidden',
-    marginVertical: 4,
   },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-    backgroundColor: BakeryColors.honey,
+  progressFill: { height: '100%', borderRadius: 3, backgroundColor: BakeryColors.honey },
+
+  body: {
+    paddingHorizontal: H_PAD,
+    paddingTop: Spacing.three,
+    paddingBottom: BottomTabInset + Spacing.four,
+    gap: Spacing.three,
   },
-  capNote: { fontSize: 12 },
-  categoryRow: { gap: Spacing.two, paddingVertical: 2 },
-  categoryChip: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 8,
-    borderRadius: BakeryRadii.pill,
+
+  // Category strip
+  catStrip: { gap: Spacing.two, paddingBottom: 2 },
+  catSquare: {
+    width: 60,
+    height: 64,
+    borderRadius: BakeryRadii.card,
+    backgroundColor: BakeryColors.glass,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+  },
+  catSquareActive: {
+    borderColor: BakeryColors.honey,
+    backgroundColor: `${BakeryColors.honey}18`,
+  },
+
+  catLabel: { fontSize: 10, fontWeight: '600', color: BakeryColors.mocha, lineHeight: 13 },
+  catLabelActive: { color: BakeryColors.cocoaDark, fontWeight: '700' },
+
+  noteCard: {
+    backgroundColor: BakeryColors.glass,
+    borderRadius: BakeryRadii.card,
+    padding: Spacing.two,
     borderWidth: 1,
     borderColor: BakeryColors.shortbread,
   },
-  outfitNoteCard: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
-    backgroundColor: BakeryColors.glass,
-  },
-  outfitNoteText: { textAlign: 'center', lineHeight: 18, fontSize: 12 },
-  categoryActive: { fontWeight: '700' },
-  pressed: { opacity: 0.8 },
-  grid: {
+  noteText: { fontSize: 12, color: BakeryColors.mocha, textAlign: 'center', lineHeight: 17 },
+
+  // Items paged scroll
+  itemScroll: { marginHorizontal: -H_PAD },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
+  itemPage: {
+    width: PAGE_W,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.two,
+    gap: GAP,
+    paddingHorizontal: H_PAD,
+    alignContent: 'flex-start',
+    paddingBottom: Spacing.two,
   },
+  itemSlot: {
+    borderStyle: 'dashed',
+    borderColor: BakeryColors.shortbread,
+    backgroundColor: `${BakeryColors.shortbread}40`,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+
+  // Sliding indicator
+  indicatorWrap: { alignItems: 'center', gap: 6 },
+  indicatorTrack: {
+    width: '50%',
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: BakeryColors.shortbread,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  indicatorPill: {
+    position: 'absolute',
+    top: 0,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: BakeryColors.honey,
+  },
+  indicatorLabel: { fontSize: 11, color: BakeryColors.mocha, fontWeight: '600', lineHeight: 16 },
   itemCard: {
-    width: '47%',
+    width: CARD,
     borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
-    gap: Spacing.one,
-    alignItems: 'center',
     backgroundColor: BakeryColors.glass,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.two,
+    gap: Spacing.two,
     ...BakeryShadow,
   },
-  itemCardOwned: { borderWidth: 1.5, borderColor: BakeryColors.success },
-  itemCardEquipped: { borderColor: BakeryColors.honey },
-  itemEmoji: { fontSize: 36, lineHeight: 44 },
-  itemName: { textAlign: 'center', fontSize: 14 },
-  itemDesc: { textAlign: 'center', lineHeight: 18, fontSize: 12 },
-  ownedBadge: {
-    marginTop: 4,
-    backgroundColor: `${BakeryColors.success}30`,
-    borderRadius: BakeryRadii.chip,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  itemOwned: { borderColor: BakeryColors.success },
+  itemEquipped: { borderColor: BakeryColors.honey, backgroundColor: `${BakeryColors.honey}12` },
+  itemDim: { opacity: 0.55 },
+  itemEmoji: { fontSize: 52, lineHeight: 62 },
+  itemName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: BakeryColors.mocha,
+    lineHeight: 17,
+    textAlign: 'center',
   },
-  ownedText: { fontSize: 12, color: BakeryColors.success, fontWeight: '700' },
-  equipBtn: {
-    marginTop: 4,
-    borderRadius: BakeryRadii.chip,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderWidth: 1.5,
-    borderColor: BakeryColors.border,
-    backgroundColor: BakeryColors.cream,
-  },
-  equipBtnActive: {
-    backgroundColor: `${BakeryColors.honey}22`,
-    borderColor: BakeryColors.honey,
-  },
-  equipBtnText: { fontSize: 13, fontWeight: '700', color: BakeryColors.mocha },
-  equipBtnTextActive: { color: BakeryColors.cocoaDark },
-  buyBtn: {
-    marginTop: 4,
-    backgroundColor: BakeryColors.honey,
-    borderRadius: BakeryRadii.chip,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-  },
-  buyBtnDisabled: { backgroundColor: BakeryColors.latte },
-  buyBtnText: { fontSize: 13, fontWeight: '700', color: BakeryColors.cocoaDark },
-  buyBtnTextDisabled: { color: '#888' },
-  tipCard: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
-    gap: Spacing.two,
-    marginTop: Spacing.two,
-    backgroundColor: BakeryColors.glass,
-  },
-  tipTitle: { fontSize: 14, marginBottom: 2 },
-  tipRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  tipCoins: { color: BakeryColors.honey, fontSize: 13 },
-  section: { gap: Spacing.two },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  packNote: { lineHeight: 18 },
-  packCard: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
+
+  // Price / status below emoji
+  priceBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
-    backgroundColor: BakeryColors.glass,
-  },
-  packCardPopular: { borderWidth: 1.5, borderColor: BakeryColors.honey },
-  packEmoji: { fontSize: 28, lineHeight: 34, width: 36 },
-  packInfo: { flex: 1, gap: 2 },
-  packNameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  popularBadge: {
-    backgroundColor: `${BakeryColors.honey}22`,
+    gap: 4,
     borderRadius: BakeryRadii.chip,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
-  popularText: { fontSize: 10, fontWeight: '700', color: BakeryColors.mocha },
+  badgeOwned: { backgroundColor: `${BakeryColors.success}25` },
+  badgeEquipped: { backgroundColor: `${BakeryColors.honey}25` },
+  badgeText: { fontSize: 12, fontWeight: '700', color: BakeryColors.mocha, lineHeight: 16 },
+  priceText: { fontSize: 14, fontWeight: '700', color: BakeryColors.cocoaDark, lineHeight: 18 },
+  priceTextDim: { color: BakeryColors.latte },
+
+  // Coin packs horizontal scroll
+  sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionTitle: { fontSize: 15, lineHeight: 20 },
+  sectionSub: { fontSize: 11, color: BakeryColors.mocha, lineHeight: 16 },
+  packStrip: { gap: Spacing.two, paddingBottom: 4 },
+  packCard: {
+    width: 120,
+    height: 140,
+    borderRadius: BakeryRadii.card,
+    backgroundColor: BakeryColors.glass,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: Spacing.two,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+    ...BakeryShadow,
+  },
+  packPopular: { borderColor: BakeryColors.honey },
+  popularStar: { position: 'absolute', top: 6, right: 6, fontSize: 12 },
+  packName: { fontSize: 12, fontWeight: '700', color: BakeryColors.mocha, textAlign: 'center', lineHeight: 16 },
+  packCoinRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  packCoinAmt: { fontSize: 12, fontWeight: '600', color: BakeryColors.mocha, lineHeight: 16 },
   packPriceBtn: {
     backgroundColor: BakeryColors.honey,
     borderRadius: BakeryRadii.chip,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    alignSelf: 'stretch',
+    alignItems: 'center',
   },
-  packPrice: { color: BakeryColors.cocoaDark, fontWeight: '700', fontSize: 14 },
-  packDisclaimerCard: { borderRadius: BakeryRadii.card, padding: Spacing.three, backgroundColor: BakeryColors.glass },
-  packDisclaimer: { textAlign: 'center', lineHeight: 18, fontSize: 12 },
-  originalPrice: { textDecorationLine: 'line-through', color: '#999', fontSize: 11 },
-  plusBanner: {
+  packPriceText: { fontSize: 13, fontWeight: '800', color: BakeryColors.cocoaDark, lineHeight: 18 },
+
+  disclaimerCard: {
+    backgroundColor: BakeryColors.glass,
+    borderRadius: BakeryRadii.card,
+    padding: Spacing.two,
+    borderWidth: 1,
+    borderColor: BakeryColors.shortbread,
+  },
+  disclaimerText: { fontSize: 11, color: BakeryColors.mocha, textAlign: 'center', lineHeight: 16 },
+
+  // Earn tips
+  tipCard: {
+    backgroundColor: BakeryColors.glass,
     borderRadius: BakeryRadii.card,
     padding: Spacing.three,
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: Spacing.two,
-    opacity: 0.95,
-    backgroundColor: BakeryColors.glass,
+    borderWidth: 1,
+    borderColor: BakeryColors.shortbread,
   },
-  plusBannerEmoji: { fontSize: 22, lineHeight: 28 },
-  plusBannerText: { flex: 1, gap: 2 },
-  plusBadge: {
-    backgroundColor: `${BakeryColors.rose}22`,
-    borderRadius: BakeryRadii.chip,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  plusBadgeText: { fontSize: 12, fontWeight: '700', color: BakeryColors.berry },
-  plusBannerActive: { borderWidth: 1.5, borderColor: BakeryColors.success, opacity: 1 },
+  tipTitle: { fontSize: 13, fontWeight: '700', color: BakeryColors.mocha, lineHeight: 18 },
+  tipRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  tipLabel: { fontSize: 12, color: BakeryColors.mocha, lineHeight: 17 },
+  tipCoins: { color: BakeryColors.honey, fontSize: 12, lineHeight: 17 },
+
+  pressed: { opacity: 0.75 },
 });

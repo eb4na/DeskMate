@@ -1,22 +1,8 @@
 import { Tabs } from 'expo-router';
-import { SymbolView, type SymbolViewProps } from 'expo-symbols';
-import { Platform, useColorScheme, type ColorValue } from 'react-native';
+import { Platform, useColorScheme } from 'react-native';
 
 import { BakeryColors, BakeryRadii, Colors } from '@/constants/theme';
-
-type IosSymbol = SymbolViewProps['name'];
-
-function TabIcon({ name, color }: { name: IosSymbol; color: ColorValue }) {
-  return (
-    <SymbolView
-      name={name}
-      size={22}
-      weight="semibold"
-      tintColor={typeof color === 'string' ? color : undefined}
-      fallback={null}
-    />
-  );
-}
+import { HomeTabIcon, TasksTabIcon, ProgressTabIcon, ShopTabIcon } from '@/components/tab-icons';
 
 export default function AppTabs() {
   const scheme = useColorScheme();
@@ -27,7 +13,7 @@ export default function AppTabs() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: '#FFFDF9',
           borderTopWidth: 0,
           height: 78,
           paddingTop: 10,
@@ -39,16 +25,16 @@ export default function AppTabs() {
           borderWidth: 1,
           borderColor: '#E8D4C4',
           shadowColor: BakeryColors.shadow,
-          shadowOpacity: 0.12,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: 4 },
-          elevation: 4,
+          shadowOpacity: 0.14,
+          shadowRadius: 16,
+          shadowOffset: { width: 0, height: 6 },
+          elevation: 6,
         },
         tabBarItemStyle: {
           borderRadius: 14,
           marginHorizontal: 4,
         },
-        tabBarActiveBackgroundColor: '#F3E6D6',
+        tabBarActiveBackgroundColor: '#F5E8D6',
         tabBarActiveTintColor: BakeryColors.cocoa,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarLabelStyle: {
@@ -61,28 +47,28 @@ export default function AppTabs() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <TabIcon name="house.fill" color={color} />,
+          tabBarIcon: ({ color }) => <HomeTabIcon color={color} size={24} />,
         }}
       />
       <Tabs.Screen
         name="tasks"
         options={{
           title: 'Tasks',
-          tabBarIcon: ({ color }) => <TabIcon name="checklist" color={color} />,
+          tabBarIcon: ({ color }) => <TasksTabIcon color={color} size={24} />,
         }}
       />
       <Tabs.Screen
         name="progress"
         options={{
           title: 'Progress',
-          tabBarIcon: ({ color }) => <TabIcon name="chart.bar.fill" color={color} />,
+          tabBarIcon: ({ color }) => <ProgressTabIcon color={color} size={24} />,
         }}
       />
       <Tabs.Screen
         name="shop"
         options={{
           title: 'Shop',
-          tabBarIcon: ({ color }) => <TabIcon name="basket.fill" color={color} />,
+          tabBarIcon: ({ color }) => <ShopTabIcon color={color} size={24} />,
         }}
       />
     </Tabs>

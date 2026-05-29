@@ -5,6 +5,8 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/coin-icon';
+import { ExamBookIcon, ExamCalendarIcon, ReminderBellIcon } from '@/components/home-icons';
+import { BakeryGearEmoji, BakeryBreadEmoji } from '@/components/bakery-emoji';
 import { getReminderStyleEffect } from '@/constants/shop-effects';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -68,12 +70,8 @@ function formatTimerLabel(totalSeconds: number): string {
 }
 
 const HOME_ROOM_IMAGE = require('@/assets/images/home-bedroom.png');
-const EXAM_BOOK_ICON = require('@/assets/images/home/exam-book-icon.png');
-const EXAM_CALENDAR_ICON = require('@/assets/images/home/exam-calendar-icon.png');
-const REMINDER_BELL_ICON = require('@/assets/images/home/reminder-bell-icon.png');
-const REMINDER_BREAD_ICON = require('@/assets/images/home/reminder-bread-icon.png');
-const START_SESSION_BUTTON = require('@/assets/images/home/start-session-button.png');
 const STREAK_FIRE_ICON = require('@/assets/images/home/streak-fire-icon.png');
+const REMINDER_BREAD_ICON = require('@/assets/images/home/reminder-bread-icon.png');
 
 export default function HomeScreen() {
   const {
@@ -300,12 +298,7 @@ export default function HomeScreen() {
               <View style={styles.topHud}>
                 <View style={styles.statusRow}>
                   <View style={styles.statusChip}>
-                    <Image
-                      source={STREAK_FIRE_ICON}
-                      style={styles.statusStreakIcon}
-                      contentFit="contain"
-                      accessibilityLabel=""
-                    />
+                    <Image source={STREAK_FIRE_ICON} style={styles.statusStreakIcon} contentFit="contain" accessibilityLabel="" />
                     <ThemedText type="smallBold" style={styles.statusChipText}>
                       {streak.currentStreak} day streak
                     </ThemedText>
@@ -338,12 +331,7 @@ export default function HomeScreen() {
                       ]}>
                       <View style={styles.metaCardHeader}>
                         <View style={styles.examTitleRow}>
-                          <Image
-                            source={EXAM_BOOK_ICON}
-                            style={styles.examBookIcon}
-                            contentFit="contain"
-                            accessibilityLabel=""
-                          />
+                          <ExamBookIcon size={24} />
                           <ThemedText style={styles.metaCardTitle}>Exam</ThemedText>
                         </View>
                       </View>
@@ -372,11 +360,9 @@ export default function HomeScreen() {
                           )}
                         </View>
                         <View style={styles.metaCardArt} pointerEvents="none">
-                          <Image
-                            source={EXAM_CALENDAR_ICON}
-                            style={styles.examCalendarIcon}
-                            contentFit="contain"
-                            accessibilityLabel=""
+                          <ExamCalendarIcon
+                            size={48}
+                            day={featuredExam ? getExamDay(featuredExam.dateISO) : undefined}
                           />
                           {featuredExam ? (
                             <ThemedText style={styles.examCalendarDay}>
@@ -392,14 +378,7 @@ export default function HomeScreen() {
                     <View style={styles.metaCard}>
                       <View style={styles.metaCardHeader}>
                         <View style={styles.reminderTitleRow}>
-                          <View style={styles.reminderBellSlot}>
-                            <Image
-                              source={REMINDER_BELL_ICON}
-                              style={styles.reminderBellIcon}
-                              contentFit="contain"
-                              accessibilityLabel=""
-                            />
-                          </View>
+                          <ReminderBellIcon size={20} />
                           <ThemedText style={styles.metaCardTitle}>Reminder</ThemedText>
                         </View>
                       </View>
@@ -416,12 +395,7 @@ export default function HomeScreen() {
                           </ThemedText>
                         </View>
                         <View style={styles.metaCardArt} pointerEvents="none">
-                          <Image
-                            source={REMINDER_BREAD_ICON}
-                            style={styles.reminderBreadIcon}
-                            contentFit="contain"
-                            accessibilityLabel=""
-                          />
+                          <Image source={REMINDER_BREAD_ICON} style={styles.reminderBreadIcon} contentFit="contain" accessibilityLabel="" />
                         </View>
                       </View>
                     </View>
@@ -434,8 +408,9 @@ export default function HomeScreen() {
                 style={({ pressed }) => [styles.settingsButton, pressed && styles.cardPressed]}
                 accessibilityLabel="Open settings"
                 hitSlop={8}>
-                <ThemedText style={styles.settingsIcon}>⚙️</ThemedText>
+                <BakeryGearEmoji size={22} />
               </Pressable>
+
 
               <View style={styles.homeCharacterLayer} pointerEvents="none">
                 <Image
@@ -456,12 +431,19 @@ export default function HomeScreen() {
                 style={({ pressed }) => [styles.startSessionPressable, pressed && styles.startButtonPressed]}
                 onPress={() => router.push('/session-picker')}
                 accessibilityLabel="Start session">
-                <Image
-                  source={START_SESSION_BUTTON}
-                  style={styles.startSessionImage}
-                  contentFit="contain"
-                  accessibilityLabel=""
-                />
+                <View style={styles.startSessionBtn}>
+                  {/* Bread score marks across the top */}
+                  <View style={styles.scoreRow}>
+                    <View style={[styles.scoreMark, { transform: [{ rotate: '-18deg' }] }]} />
+                    <View style={[styles.scoreMark, { transform: [{ rotate: '-8deg' }] }]} />
+                    <View style={[styles.scoreMark, { transform: [{ rotate: '6deg' }] }]} />
+                    <View style={[styles.scoreMark, { transform: [{ rotate: '18deg' }] }]} />
+                  </View>
+                  <View style={styles.startSessionInner}>
+                    <ThemedText style={styles.startSessionText}>Start Session</ThemedText>
+                    <BakeryBreadEmoji size={26} />
+                  </View>
+                </View>
               </Pressable>
             </>
           )}
@@ -627,10 +609,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     lineHeight: 16,
-  },
-  statusStreakIcon: {
-    width: 18,
-    height: 20,
   },
   statusChipText: {
     fontSize: 13,
@@ -827,36 +805,11 @@ const styles = StyleSheet.create({
     gap: 6,
     backgroundColor: 'transparent',
   },
-  examBookIcon: {
-    width: 22,
-    height: 22,
-  },
   reminderTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     backgroundColor: 'transparent',
-  },
-  reminderBellSlot: {
-    width: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-  },
-  reminderBellIcon: {
-    width: 18,
-    height: 18,
-    transform: [{ rotate: '-12deg' }],
-  },
-  reminderBreadIcon: {
-    width: 44,
-    height: 44,
-    transform: [{ rotate: '-8deg' }],
-  },
-  examCalendarIcon: {
-    width: 44,
-    height: 44,
   },
   examCalendarDay: {
     position: 'absolute',
@@ -920,15 +873,47 @@ const styles = StyleSheet.create({
     right: Spacing.three,
     bottom: BottomTabInset + 22,
     zIndex: 4,
+  },
+  startSessionBtn: {
+    backgroundColor: BakeryColors.honey,
+    borderRadius: 32,
+    paddingVertical: 18,
+    paddingHorizontal: Spacing.four,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#D29649',
+    shadowColor: '#8B6B57',
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+    overflow: 'hidden',
   },
-  startSessionImage: {
-    width: '100%',
-    maxWidth: 360,
-    height: 80,
-    alignSelf: 'center',
+  scoreRow: {
+    position: 'absolute',
+    top: 10,
+    flexDirection: 'row',
+    gap: 14,
+    opacity: 0.25,
   },
+  scoreMark: {
+    width: 28,
+    height: 7,
+    borderRadius: 999,
+    backgroundColor: BakeryColors.cocoaDark,
+  },
+  startSessionText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: BakeryColors.cocoaDark,
+    lineHeight: 24,
+    letterSpacing: 0.2,
+  },
+  startSessionInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   startButtonPressed: { opacity: 0.88 },
+  statusStreakIcon: { width: 18, height: 20 },
+  reminderBreadIcon: { width: 44, height: 44, transform: [{ rotate: '-8deg' }] },
   startButtonText: { color: BakeryColors.cocoaDark, fontSize: 17 },
   breakButton: {
     borderRadius: BakeryRadii.button,
