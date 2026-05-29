@@ -416,7 +416,7 @@ export default function HomeScreen() {
                 style={({ pressed }) => [styles.chatButton, pressed && styles.cardPressed]}
                 accessibilityLabel="Chat with your companion"
                 hitSlop={8}>
-                <ChatBubbleIcon size={22} />
+                <ChatBubbleIcon size={34} />
               </Pressable>
 
 
@@ -570,12 +570,12 @@ const styles = StyleSheet.create({
   settingsIcon: { fontSize: 18, lineHeight: 22 },
   chatButton: {
     position: 'absolute',
-    top: 242,
-    right: Spacing.three,
+    left: Spacing.three,
+    bottom: BottomTabInset + 22 + 96,
     zIndex: 5,
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFF9F2',
