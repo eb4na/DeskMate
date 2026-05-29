@@ -205,6 +205,31 @@ export function ChatBubbleIcon({
   );
 }
 
+// ── 💬🍪 Companion chat → Chocolate-chip cookie speech bubble ──────────────────
+export function CookieChatIcon({ size = 32 }: IconProps) {
+  const CHIP = '#6B4226';
+  return (
+    <Svg width={size} height={size} viewBox="0 0 48 48">
+      {/* Cookie-dough speech bubble with a little tail */}
+      <Path d="M7 13 Q7 9 12 9 L36 9 Q41 9 41 13 L41 28 Q41 32 36 32 L20 32 L12 39 L13.5 32 L12 32 Q7 32 7 28 Z"
+        fill={B} stroke={S} strokeWidth="2.2" strokeLinejoin="round" />
+      {/* Toasted top edge */}
+      <Path d="M11 14 Q24 11 37 14" stroke={H} strokeWidth="2" strokeLinecap="round" fill="none" opacity={0.5} />
+      {/* Chocolate chips (double as the chat dots) */}
+      <Ellipse cx="16" cy="17" rx="2.4" ry="2" fill={CHIP} />
+      <Ellipse cx="27" cy="15" rx="2.1" ry="1.8" fill={CHIP} />
+      <Ellipse cx="33" cy="22" rx="2.3" ry="2" fill={CHIP} />
+      <Ellipse cx="20" cy="24" rx="2" ry="1.7" fill={CHIP} />
+      <Ellipse cx="13" cy="25" rx="1.6" ry="1.4" fill={CHIP} opacity={0.85} />
+      {/* Blush */}
+      <Ellipse cx="14" cy="29" rx="3" ry="1.8" fill={R} opacity={0.5} />
+      <Ellipse cx="34" cy="29" rx="3" ry="1.8" fill={R} opacity={0.5} />
+      {/* Shine */}
+      <Path d="M11 19 Q13 16 16 17" stroke="white" strokeWidth="1.6" strokeLinecap="round" fill="none" opacity={0.4} />
+    </Svg>
+  );
+}
+
 // ── ℹ️ Version → Info badge ────────────────────────────────────────────────────
 export function InfoIcon({ size = 32 }: IconProps) {
   return (

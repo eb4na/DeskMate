@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/coin-icon';
 import { BakeryGearEmoji } from '@/components/bakery-emoji';
-import { ChatBubbleIcon } from '@/components/settings-icons';
+import { CookieChatIcon } from '@/components/settings-icons';
 import { getReminderStyleEffect } from '@/constants/shop-effects';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -416,7 +416,7 @@ export default function HomeScreen() {
                 style={({ pressed }) => [styles.chatButton, pressed && styles.cardPressed]}
                 accessibilityLabel="Chat with your companion"
                 hitSlop={8}>
-                <ChatBubbleIcon size={34} color="#FFFFFF" dotColor="#E6B25C" />
+                <CookieChatIcon size={42} />
               </Pressable>
 
 
@@ -578,9 +578,9 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#E6B25C',
+    backgroundColor: '#FFF6E6',
     borderWidth: 2,
-    borderColor: '#B07F3C',
+    borderColor: '#E2C9A6',
     ...metaCardShadow,
   },
   topHud: {
