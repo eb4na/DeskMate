@@ -160,7 +160,7 @@ export function BreadVaultIcon({ size = 60 }: { size?: number }) {
       <Line x1="14" y1="22" x2="18" y2="18" stroke={S} strokeWidth="0.8" strokeLinecap="round" opacity={0.15} />
       <Line x1="42" y1="40" x2="46" y2="36" stroke={S} strokeWidth="0.8" strokeLinecap="round" opacity={0.15} />
       {/* Shine */}
-      <Path d="M16" Q20 12 26 14" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" opacity={0.3} />
+      <Path d="M16 14 Q20 12 26 14" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" opacity={0.3} />
     </Svg>
   );
 }

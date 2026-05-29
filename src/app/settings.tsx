@@ -5,6 +5,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AiTicketIcon } from '@/components/ai-ticket-icon';
 import { CoinIcon } from '@/components/coin-icon';
+import {
+  BakerHatIcon,
+  DoorOutIcon,
+  SparkleStarIcon,
+  MeasuringCupIcon,
+  PawIcon,
+  KitchenTimerIcon,
+  RecipeBooksIcon,
+  MusicNoteIcon,
+  BellIcon,
+  GearIcon,
+  ChartIcon,
+  ChatBubbleIcon,
+  InfoIcon,
+} from '@/components/settings-icons';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
@@ -115,7 +130,7 @@ export default function SettingsScreen() {
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
             <SettingRow
-              icon="👤"
+              icon={<BakerHatIcon size={32} />}
               label={isGuest ? 'Guest mode' : 'Signed in'}
               value={isGuest ? 'Progress saved on this device' : user?.email ?? 'Account'}
             />
@@ -123,7 +138,9 @@ export default function SettingsScreen() {
             <Pressable
               onPress={handleSignOut}
               style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
-              <ThemedText style={styles.rowIcon}>🚪</ThemedText>
+              <View style={styles.rowIconImage}>
+                <DoorOutIcon size={32} />
+              </View>
               <View style={styles.rowBody}>
                 <ThemedText type="smallBold" style={styles.dangerText}>
                   {isGuest ? 'Leave guest mode' : 'Sign out'}
@@ -138,7 +155,7 @@ export default function SettingsScreen() {
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
             <SettingRow
-              icon="✨"
+              icon={<SparkleStarIcon size={32} />}
               label="DeskMate Plus"
               value={isPlus ? 'Active — all features unlocked' : 'Free plan'}
               badge={isPlus ? 'PLUS' : undefined}
@@ -146,7 +163,9 @@ export default function SettingsScreen() {
             />
             <View style={styles.divider} />
             <View style={styles.row}>
-              <ThemedText style={styles.rowIcon}>🧪</ThemedText>
+              <View style={styles.rowIconImage}>
+                <MeasuringCupIcon size={32} />
+              </View>
               <View style={styles.rowBody}>
                 <ThemedText type="smallBold">Plus (test toggle)</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
@@ -182,7 +201,7 @@ export default function SettingsScreen() {
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
             <SettingRow
-              icon="🐾"
+              icon={<PawIcon size={32} />}
               label="Companion gallery"
               value={`Active: ${activeCompanion.name}`}
               onPress={() => router.push('/companion-gallery')}
@@ -195,21 +214,21 @@ export default function SettingsScreen() {
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
             <SettingRow
-              icon="⏱️"
+              icon={<KitchenTimerIcon size={32} />}
               label="Custom timer & presets"
               value={isPlus ? 'Set your own session lengths' : 'Plus feature'}
               onPress={() => router.push('/custom-timer')}
             />
             <View style={styles.divider} />
             <SettingRow
-              icon="📚"
+              icon={<RecipeBooksIcon size={32} />}
               label="Manage subjects"
               value="Add, rename, reorder subjects"
               onPress={() => router.push('/manage-subjects')}
             />
             <View style={styles.divider} />
             <SettingRow
-              icon="🎵"
+              icon={<MusicNoteIcon size={32} />}
               label="Ambience sounds"
               value={ambienceId ? getAmbienceName(ambienceId) : isPlus ? 'None selected' : 'Plus feature'}
               onPress={() => router.push('/ambience-picker')}
@@ -222,7 +241,9 @@ export default function SettingsScreen() {
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
             <View style={styles.row}>
-              <ThemedText style={styles.rowIcon}>🔔</ThemedText>
+              <View style={styles.rowIconImage}>
+                <BellIcon size={32} />
+              </View>
               <View style={styles.rowBody}>
                 <ThemedText type="smallBold">Daily study reminder</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
@@ -238,7 +259,7 @@ export default function SettingsScreen() {
             </View>
             <View style={styles.divider} />
             <SettingRow
-              icon="⚙️"
+              icon={<GearIcon size={32} />}
               label="Reminder settings"
               value="Times, days, and extra reminders"
               onPress={() => router.push('/reminder-settings')}
@@ -251,20 +272,20 @@ export default function SettingsScreen() {
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
             <SettingRow
-              icon="📊"
+              icon={<ChartIcon size={32} />}
               label="Progress & stats"
               value="Streaks, weekly report, mood"
               onPress={() => router.push('/progress')}
             />
             <View style={styles.divider} />
             <SettingRow
-              icon="💬"
+              icon={<ChatBubbleIcon size={32} />}
               label="Send feedback"
               value="Tell us what to improve"
               onPress={() => Linking.openURL('mailto:hello@deskmate.app?subject=DeskMate%20Feedback')}
             />
             <View style={styles.divider} />
-            <SettingRow icon="ℹ️" label="Version" value="DeskMate 1.0.0" />
+            <SettingRow icon={<InfoIcon size={32} />} label="Version" value="DeskMate 1.0.0" />
           </ThemedView>
 
           <View style={styles.footer} />

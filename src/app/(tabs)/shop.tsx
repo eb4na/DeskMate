@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CoinAmount, CoinIcon } from '@/components/coin-icon';
 import { BreadPouchIcon, BreadBagIcon, BreadChestIcon, BreadVaultIcon } from '@/components/coin-pack-icons';
 import { DecoIcon, OutfitIcon, ThemeIcon, PoseIcon, GameIcon, ReminderIcon } from '@/components/category-icons';
-import { BakeryStarEmoji, BakeryToastStarEmoji, BakeryLockEmoji, BakeryWrenchEmoji, BakeryCoinEmoji } from '@/components/bakery-emoji';
+import { BakeryStarEmoji, BakeryToastStarEmoji, BakeryLockEmoji, BakeryWrenchEmoji } from '@/components/bakery-emoji';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { isEquipableCategory } from '@/constants/shop-effects';
@@ -344,16 +344,19 @@ export default function ShopScreen() {
           <HScrollIndicator scrollX={packScrollX} contentW={packContentW} viewW={packViewW} />
 
           <View style={styles.disclaimerCard}>
-            <ThemedText style={styles.disclaimerText}>
-              🛠 Real payment processing coming in a future update. Packs are mock purchases for now.
-            </ThemedText>
+            <View style={styles.disclaimerRow}>
+              <BakeryWrenchEmoji size={16} />
+              <ThemedText style={styles.disclaimerText}>
+                Real payment processing coming in a future update. Packs are mock purchases for now.
+              </ThemedText>
+            </View>
           </View>
 
           {/* ── How to earn ── */}
           <View style={styles.tipCard}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <ThemedText style={styles.tipTitle}>How to earn coins</ThemedText>
-              <BakeryCoinEmoji size={16} />
+              <CoinIcon size={18} />
             </View>
             {[
               { label: '10 min session', coins: 5 },
@@ -577,7 +580,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: BakeryColors.shortbread,
   },
-  disclaimerText: { fontSize: 11, color: BakeryColors.mocha, textAlign: 'center', lineHeight: 16 },
+  disclaimerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  disclaimerText: { flex: 1, fontSize: 11, color: BakeryColors.mocha, lineHeight: 16 },
 
   // Earn tips
   tipCard: {

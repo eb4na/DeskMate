@@ -5,8 +5,7 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/coin-icon';
-import { ExamBookIcon, ExamCalendarIcon, ReminderBellIcon } from '@/components/home-icons';
-import { BakeryGearEmoji, BakeryBreadEmoji } from '@/components/bakery-emoji';
+import { BakeryGearEmoji } from '@/components/bakery-emoji';
 import { getReminderStyleEffect } from '@/constants/shop-effects';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -71,6 +70,9 @@ function formatTimerLabel(totalSeconds: number): string {
 
 const HOME_ROOM_IMAGE = require('@/assets/images/home-bedroom.png');
 const STREAK_FIRE_ICON = require('@/assets/images/home/streak-fire-icon.png');
+const EXAM_BOOK_ICON = require('@/assets/images/home/exam-book-icon.png');
+const EXAM_CALENDAR_ICON = require('@/assets/images/home/exam-calendar-icon.png');
+const REMINDER_BELL_ICON = require('@/assets/images/home/reminder-bell-icon.png');
 const REMINDER_BREAD_ICON = require('@/assets/images/home/reminder-bread-icon.png');
 
 export default function HomeScreen() {
@@ -331,7 +333,7 @@ export default function HomeScreen() {
                       ]}>
                       <View style={styles.metaCardHeader}>
                         <View style={styles.examTitleRow}>
-                          <ExamBookIcon size={24} />
+                          <Image source={EXAM_BOOK_ICON} style={styles.examBookIcon} contentFit="contain" accessibilityLabel="" />
                           <ThemedText style={styles.metaCardTitle}>Exam</ThemedText>
                         </View>
                       </View>
@@ -360,10 +362,7 @@ export default function HomeScreen() {
                           )}
                         </View>
                         <View style={styles.metaCardArt} pointerEvents="none">
-                          <ExamCalendarIcon
-                            size={48}
-                            day={featuredExam ? getExamDay(featuredExam.dateISO) : undefined}
-                          />
+                          <Image source={EXAM_CALENDAR_ICON} style={styles.examCalendarIcon} contentFit="contain" accessibilityLabel="" />
                           {featuredExam ? (
                             <ThemedText style={styles.examCalendarDay}>
                               {getExamDay(featuredExam.dateISO)}
@@ -378,7 +377,7 @@ export default function HomeScreen() {
                     <View style={styles.metaCard}>
                       <View style={styles.metaCardHeader}>
                         <View style={styles.reminderTitleRow}>
-                          <ReminderBellIcon size={20} />
+                          <Image source={REMINDER_BELL_ICON} style={styles.reminderBellIcon} contentFit="contain" accessibilityLabel="" />
                           <ThemedText style={styles.metaCardTitle}>Reminder</ThemedText>
                         </View>
                       </View>
@@ -432,16 +431,16 @@ export default function HomeScreen() {
                 onPress={() => router.push('/session-picker')}
                 accessibilityLabel="Start session">
                 <View style={styles.startSessionBtn}>
-                  {/* Bread score marks across the top */}
-                  <View style={styles.scoreRow}>
-                    <View style={[styles.scoreMark, { transform: [{ rotate: '-18deg' }] }]} />
-                    <View style={[styles.scoreMark, { transform: [{ rotate: '-8deg' }] }]} />
-                    <View style={[styles.scoreMark, { transform: [{ rotate: '6deg' }] }]} />
-                    <View style={[styles.scoreMark, { transform: [{ rotate: '18deg' }] }]} />
+                  {/* Baguette crust highlight along the top */}
+                  <View style={styles.baguetteHighlight} pointerEvents="none" />
+                  {/* Diagonal score cuts like a real baguette */}
+                  <View style={styles.scoreRow} pointerEvents="none">
+                    {[0, 1, 2, 3, 4, 5].map((i) => (
+                      <View key={i} style={styles.scoreMark} />
+                    ))}
                   </View>
                   <View style={styles.startSessionInner}>
                     <ThemedText style={styles.startSessionText}>Start Session</ThemedText>
-                    <BakeryBreadEmoji size={26} />
                   </View>
                 </View>
               </Pressable>
@@ -875,14 +874,14 @@ const styles = StyleSheet.create({
     zIndex: 4,
   },
   startSessionBtn: {
-    backgroundColor: BakeryColors.honey,
-    borderRadius: 32,
-    paddingVertical: 18,
+    backgroundColor: '#E6B25C',
+    borderRadius: 999,
+    paddingVertical: 20,
     paddingHorizontal: Spacing.four,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#D29649',
+    borderWidth: 2,
+    borderColor: '#B07F3C',
     shadowColor: '#8B6B57',
     shadowOpacity: 0.3,
     shadowRadius: 14,
@@ -890,18 +889,33 @@ const styles = StyleSheet.create({
     elevation: 8,
     overflow: 'hidden',
   },
+  baguetteHighlight: {
+    position: 'absolute',
+    top: 5,
+    left: 24,
+    right: 24,
+    height: 9,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 247, 230, 0.45)',
+  },
   scoreRow: {
     position: 'absolute',
-    top: 10,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     flexDirection: 'row',
-    gap: 14,
-    opacity: 0.25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 26,
+    opacity: 0.28,
   },
   scoreMark: {
-    width: 28,
-    height: 7,
+    width: 6,
+    height: 30,
     borderRadius: 999,
-    backgroundColor: BakeryColors.cocoaDark,
+    backgroundColor: '#7A5435',
+    transform: [{ rotate: '32deg' }],
   },
   startSessionText: {
     fontSize: 18,
@@ -913,6 +927,9 @@ const styles = StyleSheet.create({
   startSessionInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   startButtonPressed: { opacity: 0.88 },
   statusStreakIcon: { width: 18, height: 20 },
+  examBookIcon: { width: 22, height: 22 },
+  reminderBellIcon: { width: 18, height: 18, transform: [{ rotate: '-12deg' }] },
+  examCalendarIcon: { width: 44, height: 44 },
   reminderBreadIcon: { width: 44, height: 44, transform: [{ rotate: '-8deg' }] },
   startButtonText: { color: BakeryColors.cocoaDark, fontSize: 17 },
   breakButton: {

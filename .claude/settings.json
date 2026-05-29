@@ -3,7 +3,7 @@
     "expo@claude-plugins-official": true
   },
   "permissions": {
-    "defaultMode": "acceptEdits"
+    "defaultMode": "bypassPermissions"
   }
 }
 
