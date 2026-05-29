@@ -18,6 +18,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { BakeryBreadEmoji } from '@/components/bakery-emoji';
 import { CoinIcon } from '@/components/coin-icon';
+import { HomeTabIcon, ProgressTabIcon, ShopTabIcon, TasksTabIcon } from '@/components/tab-icons';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import {
@@ -244,6 +245,11 @@ export default function CompanionChatScreen() {
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}>
+          {/* Faint room mascot, like the cozy background in the design */}
+          <View pointerEvents="none" style={styles.bgMascot}>
+            <BakeryBreadEmoji size={150} />
+          </View>
+
           {/* Companion profile card */}
           <View style={styles.profileCard}>
             <View style={styles.profileAvatarRing}>
@@ -257,7 +263,7 @@ export default function CompanionChatScreen() {
             </View>
             <View style={styles.profileInfo}>
               <View style={styles.profileNameRow}>
-                <ThemedText style={styles.profileName}>{companion.name}</ThemedText>
+                <ThemedText style={styles.profileName}>DeskMate</ThemedText>
                 <HeartIcon />
               </View>
               <View style={styles.onlineRow}>
@@ -373,16 +379,41 @@ export default function CompanionChatScreen() {
             </Pressable>
           </View>
         </KeyboardAvoidingView>
+
+        {/* Bottom tab bar (matches the app shell) */}
+        <View style={styles.tabBar}>
+          {TAB_ITEMS.map((t, i) => {
+            const active = i === 0;
+            const tint = active ? BakeryColors.cocoa : BakeryColors.latte;
+            return (
+              <Pressable
+                key={t.label}
+                onPress={() => router.navigate(t.route)}
+                style={[styles.tabItem, active && styles.tabItemActive]}>
+                <t.Icon color={tint} size={24} />
+                <ThemedText style={[styles.tabLabel, { color: tint }]}>{t.label}</ThemedText>
+              </Pressable>
+            );
+          })}
+        </View>
       </SafeAreaView>
     </ThemedView>
   );
 }
 
+const TAB_ITEMS = [
+  { label: 'Home', Icon: HomeTabIcon, route: '/' as const },
+  { label: 'Tasks', Icon: TasksTabIcon, route: '/tasks' as const },
+  { label: 'Progress', Icon: ProgressTabIcon, route: '/progress' as const },
+  { label: 'Shop', Icon: ShopTabIcon, route: '/shop' as const },
+];
+
 const AVATAR = 34;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BakeryColors.cream },
+  container: { flex: 1, backgroundColor: '#F7E7D3' },
   flex: { flex: 1 },
+  bgMascot: { position: 'absolute', bottom: 96, right: 14, opacity: 0.16, zIndex: 0 },
 
   // Header
   header: {
@@ -498,8 +529,40 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.two,
-    paddingBottom: Spacing.two,
+    paddingBottom: Spacing.one,
   },
+
+  // Bottom tab bar (mirrors components/app-tabs.tsx)
+  tabBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    height: 78,
+    paddingTop: 10,
+    paddingBottom: Platform.OS === 'ios' ? 18 : 12,
+    marginHorizontal: 16,
+    marginBottom: 14,
+    borderRadius: BakeryRadii.panel,
+    backgroundColor: '#FFFDF9',
+    borderWidth: 1,
+    borderColor: '#E8D4C4',
+    shadowColor: BakeryColors.shadow,
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    marginHorizontal: 4,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  tabItemActive: { backgroundColor: '#F5E8D6' },
+  tabLabel: { fontSize: 11, fontWeight: '700', marginTop: 2 },
   inputPill: {
     flex: 1,
     flexDirection: 'row',
