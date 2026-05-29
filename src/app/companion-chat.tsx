@@ -16,7 +16,7 @@ import { router } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { CHAT_MESSAGES_PER_TICKET, PLUS_DAILY_CHAT, useApp } from '@/context/app-context';
+import { CHAT_HISTORY_CAP, CHAT_MESSAGES_PER_TICKET, PLUS_DAILY_CHAT, useApp } from '@/context/app-context';
 import { sendCompanionChat, type ChatMessage } from '@/lib/companion-chat';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { BakeryColors, BakeryRadii, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -130,6 +130,18 @@ export default function CompanionChatScreen() {
     }
   };
 
+  const handleClear = () => {
+    if (messages.length === 0) return;
+    Alert.alert(
+      'Clear chat?',
+      `This permanently deletes your saved conversation with ${companion.name}.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Clear', style: 'destructive', onPress: () => setMessages([]) },
+      ],
+    );
+  };
+
   const inputStyle = {
     flex: 1,
     borderWidth: 1.5,
@@ -182,6 +194,26 @@ export default function CompanionChatScreen() {
               </ThemedText>
             </Pressable>
           </ThemedView>
+
+          {/* History meter + clear */}
+          {messages.length > 0 && (
+            <View style={styles.historyBar}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.historyText}>
+                {messages.length}/{CHAT_HISTORY_CAP} saved
+              </ThemedText>
+              <View style={styles.historyMeter}>
+                <View
+                  style={[
+                    styles.historyFill,
+                    { width: `${Math.min(100, (messages.length / CHAT_HISTORY_CAP) * 100)}%` },
+                  ]}
+                />
+              </View>
+              <Pressable onPress={handleClear} hitSlop={8} style={({ pressed }) => pressed && styles.pressed}>
+                <ThemedText type="smallBold" style={styles.clearText}>Clear chat</ThemedText>
+              </Pressable>
+            </View>
+          )}
 
           <ScrollView
             ref={scrollRef}
@@ -283,6 +315,19 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(0,0,0,0.08)',
   },
   balanceText: { color: BakeryColors.mocha },
+  historyBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.one,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.06)',
+  },
+  historyText: { fontSize: 12 },
+  historyMeter: { flex: 1, height: 5, borderRadius: 3, backgroundColor: 'rgba(0,0,0,0.08)', overflow: 'hidden' },
+  historyFill: { height: '100%', borderRadius: 3, backgroundColor: BakeryColors.honey },
+  clearText: { color: BakeryColors.berry, fontSize: 13 },
   thread: {
     padding: Spacing.four,
     gap: Spacing.two,

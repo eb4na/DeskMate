@@ -171,6 +171,9 @@ export const CHAT_MESSAGES_PER_TICKET = 250;
 // Free companion chat messages a Plus member gets each day (no ticket needed).
 export const PLUS_DAILY_CHAT = 40;
 
+// Most recent companion chat messages kept in local history.
+export const CHAT_HISTORY_CAP = 50;
+
 const DEFAULTS: PersistedState = {
   coins: 0,
   sessionsCompleted: 0,
@@ -854,7 +857,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Persist the companion chat thread (capped) so it survives app restarts.
   const setChatThread = (turns: ChatTurn[]) =>
-    setS((prev) => ({ ...prev, chatThread: turns.slice(-50) }));
+    setS((prev) => ({ ...prev, chatThread: turns.slice(-CHAT_HISTORY_CAP) }));
 
   const addPurchasedCoins = (amount: number) =>
     setS((prev) => ({
