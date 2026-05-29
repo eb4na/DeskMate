@@ -1,9 +1,10 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlusGateCard } from '@/components/plus-gate';
+import { MusicNoteIcon, PawIcon } from '@/components/settings-icons';
 import { StreakFreezeIcon } from '@/components/streak-freeze-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -470,7 +471,9 @@ export default function ProgressScreen() {
                 style={({ pressed }) => [pressed && styles.pressed]}
                 onPress={() => router.push('/ambience-picker')}>
                 <ThemedView type="backgroundElement" style={styles.plusShortcut}>
-                  <ThemedText style={styles.plusShortcutEmoji}>🎵</ThemedText>
+                  <View style={styles.plusShortcutIcon}>
+                    <MusicNoteIcon size={32} />
+                  </View>
                   <ThemedView style={styles.plusShortcutText}>
                     <ThemedText type="smallBold">Ambience Sounds</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
@@ -484,7 +487,9 @@ export default function ProgressScreen() {
                 style={({ pressed }) => [pressed && styles.pressed]}
                 onPress={() => router.push('/companion-gallery')}>
                 <ThemedView type="backgroundElement" style={styles.plusShortcut}>
-                  <ThemedText style={styles.plusShortcutEmoji}>🐾</ThemedText>
+                  <View style={styles.plusShortcutIcon}>
+                    <PawIcon size={32} />
+                  </View>
                   <ThemedView style={styles.plusShortcutText}>
                     <ThemedText type="smallBold">Companion Gallery</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
@@ -679,7 +684,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     backgroundColor: BakeryColors.glass,
   },
-  plusShortcutEmoji: { fontSize: 26, lineHeight: 32, width: 34 },
+  plusShortcutIcon: { width: 34, alignItems: 'center', justifyContent: 'center' },
   plusShortcutText: { flex: 1, gap: 2 },
   arrowLink: { color: BakeryColors.mocha, fontWeight: '700', fontSize: 16 },
   weekCard: {},

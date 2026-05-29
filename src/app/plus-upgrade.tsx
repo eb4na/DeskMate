@@ -3,23 +3,33 @@ import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AiTicketIcon } from '@/components/ai-ticket-icon';
+import { GameIcon } from '@/components/category-icons';
+import { ExamCalendarIcon } from '@/components/home-icons';
+import {
+  BellIcon,
+  ChartIcon,
+  KitchenTimerIcon,
+  MusicNoteIcon,
+  PawIcon,
+} from '@/components/settings-icons';
 import { StreakFreezeIcon } from '@/components/streak-freeze-icon';
+import { ShopTabIcon } from '@/components/tab-icons';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { BakeryColors, MaxContentWidth, Spacing } from '@/constants/theme';
 
-const FEATURES = [
-  { emoji: '⏱', title: 'Custom timers', desc: 'Any duration, saved presets' },
-  { emoji: '🔔', title: 'Multiple reminders', desc: 'Weekday/weekend schedules, custom messages' },
-  { emoji: '📆', title: 'Unlimited exam countdowns', desc: 'Plus advanced exam planning fields' },
-  { title: 'Streak freezes', desc: '3 per month — protect your streak from missed days', streakFreezeIcon: true },
-  { emoji: '📊', title: 'Advanced reports', desc: 'Monthly trends, best study hours, mood insights' },
-  { emoji: '🎵', title: 'Ambience sounds', desc: 'Rain, cafe, library, fireplace, and more' },
-  { emoji: '🐾', title: 'Extra companion slots', desc: 'Keep your two free starter companions and save up to 3 more' },
-  { title: 'AI companion tickets', desc: '3 generation tickets/month for custom art', aiTicketIcon: true },
-  { emoji: '🎮', title: 'All break games', desc: 'Unlock Memory Cards, Word Puzzle, and future games' },
-  { emoji: '🛍️', title: 'Plus shop discount', desc: '20% off all shop items' },
+const FEATURES: { title: string; desc: string; renderIcon: (size: number) => React.ReactNode }[] = [
+  { title: 'Custom timers', desc: 'Any duration, saved presets', renderIcon: (s) => <KitchenTimerIcon size={s} /> },
+  { title: 'Multiple reminders', desc: 'Weekday/weekend schedules, custom messages', renderIcon: (s) => <BellIcon size={s} /> },
+  { title: 'Unlimited exam countdowns', desc: 'Plus advanced exam planning fields', renderIcon: (s) => <ExamCalendarIcon size={s} /> },
+  { title: 'Streak freezes', desc: '3 per month — protect your streak from missed days', renderIcon: (s) => <StreakFreezeIcon size={s} /> },
+  { title: 'Advanced reports', desc: 'Monthly trends, best study hours, mood insights', renderIcon: (s) => <ChartIcon size={s} /> },
+  { title: 'Ambience sounds', desc: 'Rain, cafe, library, fireplace, and more', renderIcon: (s) => <MusicNoteIcon size={s} /> },
+  { title: 'Extra companion slots', desc: 'Keep your two free starter companions and save up to 3 more', renderIcon: (s) => <PawIcon size={s} /> },
+  { title: 'AI companion tickets', desc: '3 generation tickets/month for custom art', renderIcon: (s) => <AiTicketIcon size={s} /> },
+  { title: 'All break games', desc: 'Unlock Memory Cards, Word Puzzle, and future games', renderIcon: (s) => <GameIcon size={s} /> },
+  { title: 'Plus shop discount', desc: '20% off all shop items', renderIcon: (s) => <ShopTabIcon size={s} color={BakeryColors.honey} /> },
 ];
 
 export default function PlusUpgradeScreen() {
@@ -93,13 +103,7 @@ export default function PlusUpgradeScreen() {
           <ThemedView style={styles.featureList}>
             {FEATURES.map((f) => (
               <ThemedView key={f.title} style={styles.featureRow}>
-                {'streakFreezeIcon' in f && f.streakFreezeIcon ? (
-                  <StreakFreezeIcon size={56} style={styles.featureCustomIcon} />
-                ) : 'aiTicketIcon' in f && f.aiTicketIcon ? (
-                  <AiTicketIcon size={56} style={styles.featureCustomIcon} />
-                ) : (
-                  <ThemedText style={styles.featureEmoji}>{'emoji' in f ? f.emoji : ''}</ThemedText>
-                )}
+                <ThemedView style={styles.featureIcon}>{f.renderIcon(40)}</ThemedView>
                 <ThemedView style={styles.featureText}>
                   <ThemedText type="smallBold">{f.title}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
@@ -223,8 +227,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(0,0,0,0.06)',
   },
-  featureEmoji: { fontSize: 22, lineHeight: 28, width: 30 },
-  featureCustomIcon: { width: 60, height: 60 },
+  featureIcon: { width: 44, alignItems: 'center', justifyContent: 'center' },
   featureText: { flex: 1, gap: 2 },
   checkmark: { fontSize: 16, color: '#81C784', fontWeight: '700' },
   priceCard: { borderRadius: 16, padding: Spacing.three, gap: Spacing.two },
