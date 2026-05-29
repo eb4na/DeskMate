@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -30,6 +30,8 @@ export default function CompanionChatScreen() {
     purchasedAiTickets,
     exchangeTicketForChat,
     consumeChatMessage,
+    chatThread,
+    setChatThread,
     activeCompanionId,
     defaultCompanionId,
     companionSlots,
@@ -43,10 +45,17 @@ export default function CompanionChatScreen() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Seed from the cached thread so the conversation survives leaving/restarting.
+  const [messages, setMessages] = useState<ChatMessage[]>(() => chatThread);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+
+  // Keep the cached thread in sync with the visible conversation.
+  useEffect(() => {
+    setChatThread(messages);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
 
   const scrollToEnd = () => requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
 

@@ -6,6 +6,8 @@ import { getAppStateScope, loadScopedAppState, saveScopedAppState } from '@/lib/
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+export type ChatTurn = { role: 'user' | 'assistant'; content: string };
+
 export type MoodEntry = {
   id: string;
   value: string;
@@ -157,6 +159,7 @@ type PersistedState = {
   chatMessages: number;
   chatFreeUsedToday: number;
   chatFreeDate: string;
+  chatThread: ChatTurn[];
   purchasedCoins: number;
   multipleReminders: ReminderEntry[];
   advancedExamMap: Record<string, AdvancedExamFields>;
@@ -208,6 +211,7 @@ const DEFAULTS: PersistedState = {
   chatMessages: 0,
   chatFreeUsedToday: 0,
   chatFreeDate: '',
+  chatThread: [],
   purchasedCoins: 0,
   multipleReminders: [],
   advancedExamMap: {},
@@ -326,6 +330,7 @@ type AppContextType = {
   purchasedAiTickets: number;
   chatMessages: number;
   dailyChatRemaining: number;
+  chatThread: ChatTurn[];
   purchasedCoins: number;
   multipleReminders: ReminderEntry[];
   advancedExamMap: Record<string, AdvancedExamFields>;
@@ -388,6 +393,7 @@ type AppContextType = {
   purchaseAiTickets: (amount: number) => void;
   exchangeTicketForChat: () => boolean;
   consumeChatMessage: () => boolean;
+  setChatThread: (turns: ChatTurn[]) => void;
   addPurchasedCoins: (amount: number) => void;
   setMultipleReminders: (reminders: ReminderEntry[]) => void;
   updateAdvancedExam: (examId: string, fields: AdvancedExamFields) => void;
@@ -846,6 +852,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
+  // Persist the companion chat thread (capped) so it survives app restarts.
+  const setChatThread = (turns: ChatTurn[]) =>
+    setS((prev) => ({ ...prev, chatThread: turns.slice(-50) }));
+
   const addPurchasedCoins = (amount: number) =>
     setS((prev) => ({
       ...prev,
@@ -966,6 +976,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dailyChatRemaining: s.isPlus
           ? Math.max(0, PLUS_DAILY_CHAT - (s.chatFreeDate === todayISO() ? s.chatFreeUsedToday : 0))
           : 0,
+        chatThread: s.chatThread,
         purchasedCoins: s.purchasedCoins,
         multipleReminders: s.multipleReminders,
         advancedExamMap: s.advancedExamMap,
@@ -985,6 +996,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         purchaseAiTickets,
         exchangeTicketForChat,
         consumeChatMessage,
+        setChatThread,
         addPurchasedCoins,
         setMultipleReminders,
         updateAdvancedExam,
