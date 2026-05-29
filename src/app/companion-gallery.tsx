@@ -12,7 +12,7 @@ import { useAuth } from '@/context/auth-context';
 import { useApp } from '@/context/app-context';
 import { generateAiCompanion } from '@/lib/ai-companion';
 import { getStarterActiveId } from '@/lib/companion-utils';
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BakeryColors, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 
 const MAX_SLOTS = 3;
 
@@ -26,6 +26,7 @@ function GalleryContent() {
     saveCompanionSlot,
     deleteCompanionSlot,
     aiTickets,
+    purchasedAiTickets,
     consumeAiTicket,
     restoreAiTicket,
     defaultCompanionId,
@@ -33,6 +34,7 @@ function GalleryContent() {
     setDefaultCompanion,
     setActiveCompanion,
   } = useApp();
+  const ticketTotal = aiTickets + purchasedAiTickets;
   const [showForm, setShowForm] = useState(false);
   const [showGenerator, setShowGenerator] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -100,10 +102,14 @@ function GalleryContent() {
       Alert.alert('Plus required', 'AI companion generation is included with DeskMate Plus.');
       return;
     }
-    if (aiTickets <= 0) {
+    if (ticketTotal <= 0) {
       Alert.alert(
         'No tickets left',
-        'You have used all AI generation tickets for this month. Tickets reset on the 1st.',
+        'You have used all your AI generation tickets. Free tickets reset on the 1st, or you can buy more anytime.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Buy tickets', onPress: () => router.push('/coin-shop') },
+        ],
       );
       return;
     }
@@ -192,7 +198,8 @@ function GalleryContent() {
             <ThemedView style={styles.ticketInfo}>
               <ThemedText type="smallBold">AI Generation Tickets</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                {aiTickets}/3 remaining this month
+                {aiTickets}/3 free this month
+                {purchasedAiTickets > 0 ? ` · +${purchasedAiTickets} purchased` : ''}
               </ThemedText>
             </ThemedView>
             <Pressable
@@ -207,6 +214,13 @@ function GalleryContent() {
             Each ticket creates one static companion design. Tickets reset monthly. Failed
             generations are refunded.
           </ThemedText>
+          <Pressable
+            style={({ pressed }) => [pressed && styles.pressed]}
+            onPress={() => router.push('/coin-shop')}>
+            <ThemedText type="smallBold" style={styles.buyTicketsLink}>
+              Buy more tickets →
+            </ThemedText>
+          </Pressable>
           {showGenerator && (
             <ThemedView type="backgroundElement" style={styles.form}>
               <ThemedText type="smallBold">AI character generator</ThemedText>
@@ -252,7 +266,7 @@ function GalleryContent() {
                 disabled={isGenerating}
                 onPress={handleGenerateCompanion}>
                 <ThemedText type="smallBold" style={styles.saveBtnText}>
-                  {isGenerating ? 'Generating...' : `Use 1 ticket (${aiTickets} left)`}
+                  {isGenerating ? 'Generating...' : `Use 1 ticket (${ticketTotal} left)`}
                 </ThemedText>
               </Pressable>
             </ThemedView>
@@ -476,6 +490,7 @@ const styles = StyleSheet.create({
   ticketIcon: { width: 80 },
   ticketInfo: { flex: 1, gap: 2 },
   ticketNote: { lineHeight: 18, fontSize: 12 },
+  buyTicketsLink: { color: BakeryColors.mocha, fontSize: 13 },
   generateBtn: {
     backgroundColor: '#7C6F5A',
     borderRadius: 10,

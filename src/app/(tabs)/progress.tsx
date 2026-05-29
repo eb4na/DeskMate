@@ -65,8 +65,10 @@ export default function ProgressScreen() {
     isPlus,
     streakFreezes,
     aiTickets,
+    purchasedAiTickets,
     useStreakFreeze: applyStreakFreeze,
   } = useApp();
+  const aiTicketTotal = aiTickets + purchasedAiTickets;
 
   const canAddExam = isPlus || examCountdowns.length < 3;
   const examLimitText = isPlus
@@ -493,7 +495,7 @@ export default function ProgressScreen() {
                   <ThemedView style={styles.plusShortcutText}>
                     <ThemedText type="smallBold">Companion Gallery</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
-                      {aiTickets} AI ticket{aiTickets !== 1 ? 's' : ''} remaining
+                      {aiTicketTotal} AI ticket{aiTicketTotal !== 1 ? 's' : ''} remaining
                     </ThemedText>
                   </ThemedView>
                   <ThemedText type="small" style={styles.arrowLink}>→</ThemedText>

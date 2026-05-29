@@ -153,6 +153,7 @@ type PersistedState = {
   companionSlots: CompanionSlot[];
   aiTickets: number;
   aiTicketsResetMonth: string;
+  purchasedAiTickets: number;
   purchasedCoins: number;
   multipleReminders: ReminderEntry[];
   advancedExamMap: Record<string, AdvancedExamFields>;
@@ -194,6 +195,7 @@ const DEFAULTS: PersistedState = {
   companionSlots: [],
   aiTickets: 0,
   aiTicketsResetMonth: '',
+  purchasedAiTickets: 0,
   purchasedCoins: 0,
   multipleReminders: [],
   advancedExamMap: {},
@@ -309,6 +311,7 @@ type AppContextType = {
   activeCompanionId: ActiveCompanionId;
   companionSlots: CompanionSlot[];
   aiTickets: number;
+  purchasedAiTickets: number;
   purchasedCoins: number;
   multipleReminders: ReminderEntry[];
   advancedExamMap: Record<string, AdvancedExamFields>;
@@ -368,6 +371,7 @@ type AppContextType = {
   deleteCompanionSlot: (id: string) => void;
   consumeAiTicket: () => boolean;
   restoreAiTicket: () => void;
+  purchaseAiTickets: (amount: number) => void;
   addPurchasedCoins: (amount: number) => void;
   setMultipleReminders: (reminders: ReminderEntry[]) => void;
   updateAdvancedExam: (examId: string, fields: AdvancedExamFields) => void;
@@ -764,18 +768,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
 
   const consumeAiTicket = (): boolean => {
-    if (!s.isPlus || s.aiTickets <= 0) return false;
+    if (!s.isPlus || s.aiTickets + s.purchasedAiTickets <= 0) return false;
     setS((prev) => {
-      if (!prev.isPlus || prev.aiTickets <= 0) return prev;
-      return { ...prev, aiTickets: prev.aiTickets - 1 };
+      if (!prev.isPlus || prev.aiTickets + prev.purchasedAiTickets <= 0) return prev;
+      // Spend the monthly free tickets first, then dip into purchased ones.
+      return prev.aiTickets > 0
+        ? { ...prev, aiTickets: prev.aiTickets - 1 }
+        : { ...prev, purchasedAiTickets: prev.purchasedAiTickets - 1 };
     });
     return true;
   };
 
   const restoreAiTicket = () =>
+    setS((prev) =>
+      // Refund into the free pool up to the monthly cap, overflow into purchased.
+      prev.aiTickets < 3
+        ? { ...prev, aiTickets: prev.aiTickets + 1 }
+        : { ...prev, purchasedAiTickets: prev.purchasedAiTickets + 1 },
+    );
+
+  const purchaseAiTickets = (amount: number) =>
     setS((prev) => ({
       ...prev,
-      aiTickets: Math.min(3, prev.aiTickets + 1),
+      purchasedAiTickets: prev.purchasedAiTickets + amount,
     }));
 
   const addPurchasedCoins = (amount: number) =>
@@ -893,6 +908,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         activeCompanionId: s.activeCompanionId,
         companionSlots: s.companionSlots,
         aiTickets: s.aiTickets,
+        purchasedAiTickets: s.purchasedAiTickets,
         purchasedCoins: s.purchasedCoins,
         multipleReminders: s.multipleReminders,
         advancedExamMap: s.advancedExamMap,
@@ -909,6 +925,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deleteCompanionSlot,
         consumeAiTicket,
         restoreAiTicket,
+        purchaseAiTickets,
         addPurchasedCoins,
         setMultipleReminders,
         updateAdvancedExam,

@@ -75,6 +75,7 @@ export default function SettingsScreen() {
     coins,
     isPlus,
     aiTickets,
+    purchasedAiTickets,
     ambienceId,
     reminderEnabled,
     reminderTime,
@@ -191,7 +192,11 @@ export default function SettingsScreen() {
             <SettingRow
               icon={<AiTicketIcon size={40} />}
               label="AI generation tickets"
-              value={isPlus ? `${aiTickets} / 3 this month` : 'Plus only'}
+              value={
+                isPlus
+                  ? `${aiTickets} / 3 this month${purchasedAiTickets > 0 ? ` (+${purchasedAiTickets} purchased)` : ''}`
+                  : 'Plus only'
+              }
             />
           </ThemedView>
 
