@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/coin-icon';
 import { BakeryGearEmoji } from '@/components/bakery-emoji';
+import { ChatBubbleIcon } from '@/components/settings-icons';
 import { getReminderStyleEffect } from '@/constants/shop-effects';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -410,6 +411,14 @@ export default function HomeScreen() {
                 <BakeryGearEmoji size={22} />
               </Pressable>
 
+              <Pressable
+                onPress={() => router.push('/companion-chat')}
+                style={({ pressed }) => [styles.chatButton, pressed && styles.cardPressed]}
+                accessibilityLabel="Chat with your companion"
+                hitSlop={8}>
+                <ChatBubbleIcon size={22} />
+              </Pressable>
+
 
               <View style={styles.homeCharacterLayer} pointerEvents="none">
                 <Image
@@ -559,6 +568,21 @@ const styles = StyleSheet.create({
     ...metaCardShadow,
   },
   settingsIcon: { fontSize: 18, lineHeight: 22 },
+  chatButton: {
+    position: 'absolute',
+    top: 242,
+    right: Spacing.three,
+    zIndex: 5,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF9F2',
+    borderWidth: 1,
+    borderColor: '#D9C5B2',
+    ...metaCardShadow,
+  },
   topHud: {
     gap: Spacing.two,
     zIndex: 3,

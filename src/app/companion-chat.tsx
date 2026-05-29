@@ -1,0 +1,286 @@
+import { useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  useColorScheme,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { CHAT_MESSAGES_PER_TICKET, useApp } from '@/context/app-context';
+import { sendCompanionChat, type ChatMessage } from '@/lib/companion-chat';
+import { resolveActiveCompanion } from '@/lib/companion-utils';
+import { BakeryColors, BakeryRadii, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+
+export default function CompanionChatScreen() {
+  const {
+    isPlus,
+    chatMessages,
+    aiTickets,
+    purchasedAiTickets,
+    exchangeTicketForChat,
+    consumeChatMessage,
+    activeCompanionId,
+    defaultCompanionId,
+    companionSlots,
+  } = useApp();
+
+  const companion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots);
+  const vibe = companion.type === 'slot' ? companion.slot.prompt ?? '' : '';
+  const ticketTotal = aiTickets + purchasedAiTickets;
+
+  const scheme = useColorScheme();
+  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+
+  const scrollToEnd = () => requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+
+  const handleExchange = () => {
+    if (!isPlus) {
+      Alert.alert(
+        'Plus required',
+        'Companion chat is a Plus feature. Upgrade to Plus to chat with your companion.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'See Plus', onPress: () => router.push('/plus-upgrade') },
+        ],
+      );
+      return;
+    }
+    if (ticketTotal <= 0) {
+      Alert.alert(
+        'No tickets',
+        'You need an AI generation ticket to top up chat. Get more in the shop.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Get tickets', onPress: () => router.push('/coin-shop') },
+        ],
+      );
+      return;
+    }
+    Alert.alert(
+      'Exchange 1 ticket?',
+      `Trade 1 AI generation ticket for ${CHAT_MESSAGES_PER_TICKET} companion chat messages?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Exchange',
+          onPress: () => {
+            if (exchangeTicketForChat()) {
+              Alert.alert(`+${CHAT_MESSAGES_PER_TICKET} messages added!`, 'Chat away 💬');
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleSend = async () => {
+    const text = input.trim();
+    if (!text || isSending) return;
+    if (chatMessages <= 0) {
+      handleExchange();
+      return;
+    }
+
+    const history: ChatMessage[] = [...messages, { role: 'user', content: text }];
+    setMessages(history);
+    setInput('');
+    setIsSending(true);
+    scrollToEnd();
+
+    try {
+      const { reply } = await sendCompanionChat({ companionName: companion.name, vibe, history });
+      // Only charge a message once the companion actually replies.
+      consumeChatMessage();
+      setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+      scrollToEnd();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'The companion could not reply.';
+      Alert.alert('Chat hiccup', `${message}\n\nNo message was used — try again.`);
+      // Roll the failed user turn back out of the visible thread.
+      setMessages((prev) => prev.slice(0, -1));
+      setInput(text);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const inputStyle = {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: colors.backgroundSelected,
+    borderRadius: 20,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    color: colors.text,
+    fontSize: 15,
+    maxHeight: 120,
+  };
+
+  const outOfMessages = chatMessages <= 0;
+
+  return (
+    <ThemedView style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
+        <SafeAreaView style={styles.flex} edges={['bottom']}>
+          {/* Balance header */}
+          <ThemedView type="backgroundElement" style={styles.balanceBar}>
+            <ThemedText type="smallBold">{companion.name}</ThemedText>
+            <Pressable onPress={handleExchange} style={({ pressed }) => pressed && styles.pressed}>
+              <ThemedText type="small" style={styles.balanceText}>
+                💬 {chatMessages} left · +{CHAT_MESSAGES_PER_TICKET}/ticket
+              </ThemedText>
+            </Pressable>
+          </ThemedView>
+
+          <ScrollView
+            ref={scrollRef}
+            style={styles.flex}
+            contentContainerStyle={styles.thread}
+            showsVerticalScrollIndicator={false}
+            onContentSizeChange={scrollToEnd}>
+            {messages.length === 0 && (
+              <ThemedView type="backgroundElement" style={styles.emptyCard}>
+                <ThemedText type="smallBold">Say hi to {companion.name} 👋</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
+                  Your companion is here to keep you company while you study. Each message you send
+                  uses one chat message.
+                </ThemedText>
+              </ThemedView>
+            )}
+
+            {messages.map((m, i) => (
+              <View
+                key={i}
+                style={[styles.bubbleRow, m.role === 'user' ? styles.bubbleRowUser : styles.bubbleRowAssistant]}>
+                <ThemedView
+                  type="backgroundElement"
+                  style={[styles.bubble, m.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant]}>
+                  <ThemedText type="small" style={m.role === 'user' ? styles.bubbleUserText : undefined}>
+                    {m.content}
+                  </ThemedText>
+                </ThemedView>
+              </View>
+            ))}
+
+            {isSending && (
+              <View style={[styles.bubbleRow, styles.bubbleRowAssistant]}>
+                <ThemedView type="backgroundElement" style={[styles.bubble, styles.bubbleAssistant]}>
+                  <ActivityIndicator size="small" color={BakeryColors.mocha} />
+                </ThemedView>
+              </View>
+            )}
+          </ScrollView>
+
+          {outOfMessages && (
+            <Pressable onPress={handleExchange} style={({ pressed }) => [styles.exchangeCta, pressed && styles.pressed]}>
+              <ThemedText type="smallBold" style={styles.exchangeCtaText}>
+                Out of messages — exchange 1 ticket for {CHAT_MESSAGES_PER_TICKET} →
+              </ThemedText>
+            </Pressable>
+          )}
+
+          {/* Composer */}
+          <ThemedView type="backgroundElement" style={styles.composer}>
+            <TextInput
+              style={inputStyle}
+              value={input}
+              onChangeText={setInput}
+              placeholder={outOfMessages ? 'Exchange a ticket to chat…' : `Message ${companion.name}…`}
+              placeholderTextColor={colors.textSecondary}
+              multiline
+              editable={!outOfMessages}
+              onSubmitEditing={handleSend}
+            />
+            <Pressable
+              onPress={handleSend}
+              disabled={isSending || !input.trim() || outOfMessages}
+              style={({ pressed }) => [
+                styles.sendBtn,
+                (isSending || !input.trim() || outOfMessages) && styles.sendBtnDisabled,
+                pressed && styles.pressed,
+              ]}>
+              <ThemedText style={styles.sendBtnText}>Send</ThemedText>
+            </Pressable>
+          </ThemedView>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  flex: { flex: 1 },
+  balanceBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.two,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.08)',
+  },
+  balanceText: { color: BakeryColors.mocha },
+  thread: {
+    padding: Spacing.four,
+    gap: Spacing.two,
+    maxWidth: MaxContentWidth,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  emptyCard: { borderRadius: BakeryRadii.card, padding: Spacing.four, gap: Spacing.one, marginTop: Spacing.four },
+  emptyText: { lineHeight: 20 },
+  bubbleRow: { flexDirection: 'row' },
+  bubbleRowUser: { justifyContent: 'flex-end' },
+  bubbleRowAssistant: { justifyContent: 'flex-start' },
+  bubble: { maxWidth: '82%', borderRadius: BakeryRadii.card, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
+  bubbleUser: { backgroundColor: BakeryColors.honey, borderBottomRightRadius: 4 },
+  bubbleAssistant: { borderBottomLeftRadius: 4 },
+  bubbleUserText: { color: BakeryColors.cocoaDark },
+  exchangeCta: {
+    marginHorizontal: Spacing.four,
+    marginBottom: Spacing.two,
+    backgroundColor: `${BakeryColors.honey}22`,
+    borderRadius: BakeryRadii.chip,
+    paddingVertical: Spacing.two,
+    alignItems: 'center',
+  },
+  exchangeCtaText: { color: BakeryColors.mocha },
+  composer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.two,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(0,0,0,0.08)',
+  },
+  sendBtn: {
+    backgroundColor: BakeryColors.mocha,
+    borderRadius: 20,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.two + 2,
+  },
+  sendBtnDisabled: { opacity: 0.4 },
+  sendBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
+  pressed: { opacity: 0.8 },
+});

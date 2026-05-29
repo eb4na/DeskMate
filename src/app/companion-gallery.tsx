@@ -214,13 +214,22 @@ function GalleryContent() {
             Each ticket creates one static companion design. Tickets reset monthly. Failed
             generations are refunded.
           </ThemedText>
-          <Pressable
-            style={({ pressed }) => [pressed && styles.pressed]}
-            onPress={() => router.push('/coin-shop')}>
-            <ThemedText type="smallBold" style={styles.buyTicketsLink}>
-              Buy more tickets →
-            </ThemedText>
-          </Pressable>
+          <View style={styles.ticketLinksRow}>
+            <Pressable
+              style={({ pressed }) => [pressed && styles.pressed]}
+              onPress={() => router.push('/coin-shop')}>
+              <ThemedText type="smallBold" style={styles.buyTicketsLink}>
+                Buy more tickets →
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [pressed && styles.pressed]}
+              onPress={() => router.push('/companion-chat')}>
+              <ThemedText type="smallBold" style={styles.buyTicketsLink}>
+                Trade for chat →
+              </ThemedText>
+            </Pressable>
+          </View>
           {showGenerator && (
             <ThemedView type="backgroundElement" style={styles.form}>
               <ThemedText type="smallBold">AI character generator</ThemedText>
@@ -491,6 +500,7 @@ const styles = StyleSheet.create({
   ticketInfo: { flex: 1, gap: 2 },
   ticketNote: { lineHeight: 18, fontSize: 12 },
   buyTicketsLink: { color: BakeryColors.mocha, fontSize: 13 },
+  ticketLinksRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   generateBtn: {
     backgroundColor: '#7C6F5A',
     borderRadius: 10,

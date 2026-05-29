@@ -154,10 +154,14 @@ type PersistedState = {
   aiTickets: number;
   aiTicketsResetMonth: string;
   purchasedAiTickets: number;
+  chatMessages: number;
   purchasedCoins: number;
   multipleReminders: ReminderEntry[];
   advancedExamMap: Record<string, AdvancedExamFields>;
 };
+
+// How many companion chat messages one AI generation ticket converts into.
+export const CHAT_MESSAGES_PER_TICKET = 150;
 
 const DEFAULTS: PersistedState = {
   coins: 0,
@@ -196,6 +200,7 @@ const DEFAULTS: PersistedState = {
   aiTickets: 0,
   aiTicketsResetMonth: '',
   purchasedAiTickets: 0,
+  chatMessages: 0,
   purchasedCoins: 0,
   multipleReminders: [],
   advancedExamMap: {},
@@ -312,6 +317,7 @@ type AppContextType = {
   companionSlots: CompanionSlot[];
   aiTickets: number;
   purchasedAiTickets: number;
+  chatMessages: number;
   purchasedCoins: number;
   multipleReminders: ReminderEntry[];
   advancedExamMap: Record<string, AdvancedExamFields>;
@@ -372,6 +378,8 @@ type AppContextType = {
   consumeAiTicket: () => boolean;
   restoreAiTicket: () => void;
   purchaseAiTickets: (amount: number) => void;
+  exchangeTicketForChat: () => boolean;
+  consumeChatMessage: () => boolean;
   addPurchasedCoins: (amount: number) => void;
   setMultipleReminders: (reminders: ReminderEntry[]) => void;
   updateAdvancedExam: (examId: string, fields: AdvancedExamFields) => void;
@@ -793,6 +801,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
       purchasedAiTickets: prev.purchasedAiTickets + amount,
     }));
 
+  // Spend one AI generation ticket to top up the companion chat balance.
+  const exchangeTicketForChat = (): boolean => {
+    if (!s.isPlus || s.aiTickets + s.purchasedAiTickets <= 0) return false;
+    setS((prev) => {
+      if (!prev.isPlus || prev.aiTickets + prev.purchasedAiTickets <= 0) return prev;
+      // Spend free tickets before purchased ones, mirroring consumeAiTicket.
+      const ticketUpdate =
+        prev.aiTickets > 0
+          ? { aiTickets: prev.aiTickets - 1 }
+          : { purchasedAiTickets: prev.purchasedAiTickets - 1 };
+      return {
+        ...prev,
+        ...ticketUpdate,
+        chatMessages: prev.chatMessages + CHAT_MESSAGES_PER_TICKET,
+      };
+    });
+    return true;
+  };
+
+  const consumeChatMessage = (): boolean => {
+    if (s.chatMessages <= 0) return false;
+    setS((prev) => {
+      if (prev.chatMessages <= 0) return prev;
+      return { ...prev, chatMessages: prev.chatMessages - 1 };
+    });
+    return true;
+  };
+
   const addPurchasedCoins = (amount: number) =>
     setS((prev) => ({
       ...prev,
@@ -909,6 +945,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         companionSlots: s.companionSlots,
         aiTickets: s.aiTickets,
         purchasedAiTickets: s.purchasedAiTickets,
+        chatMessages: s.chatMessages,
         purchasedCoins: s.purchasedCoins,
         multipleReminders: s.multipleReminders,
         advancedExamMap: s.advancedExamMap,
@@ -926,6 +963,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         consumeAiTicket,
         restoreAiTicket,
         purchaseAiTickets,
+        exchangeTicketForChat,
+        consumeChatMessage,
         addPurchasedCoins,
         setMultipleReminders,
         updateAdvancedExam,
