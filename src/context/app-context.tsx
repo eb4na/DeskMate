@@ -6,7 +6,7 @@ import { getAppStateScope, loadScopedAppState, saveScopedAppState } from '@/lib/
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export type ChatTurn = { role: 'user' | 'assistant'; content: string };
+export type ChatTurn = { role: 'user' | 'assistant'; content: string; at?: number };
 
 export type MoodEntry = {
   id: string;

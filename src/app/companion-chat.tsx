@@ -14,17 +14,70 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import Svg, { Path } from 'react-native-svg';
 
+import { BakeryBreadEmoji } from '@/components/bakery-emoji';
+import { CoinIcon } from '@/components/coin-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { CHAT_HISTORY_CAP, CHAT_MESSAGES_PER_TICKET, PLUS_DAILY_CHAT, useApp } from '@/context/app-context';
-import { sendCompanionChat, type ChatMessage } from '@/lib/companion-chat';
+import {
+  CHAT_HISTORY_CAP,
+  CHAT_MESSAGES_PER_TICKET,
+  PLUS_DAILY_CHAT,
+  useApp,
+  type ChatTurn,
+} from '@/context/app-context';
+import { sendCompanionChat } from '@/lib/companion-chat';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { BakeryColors, BakeryRadii, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+
+function BackIcon() {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24">
+      <Path
+        d="M15 5 L8 12 L15 19"
+        stroke={BakeryColors.cocoaDark}
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+function HeartIcon({ size = 14 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M12 21 C12 21 3 14.6 3 8.7 C3 5.7 5.2 3.6 7.9 3.6 C9.7 3.6 11.2 4.7 12 6.1 C12.8 4.7 14.3 3.6 16.1 3.6 C18.8 3.6 21 5.7 21 8.7 C21 14.6 12 21 12 21 Z"
+        fill={BakeryColors.berry}
+      />
+    </Svg>
+  );
+}
+
+function SendIcon() {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24">
+      <Path d="M3 11 L21 3 L13.5 21 L11 13 Z" fill="#FFFFFF" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function formatTime(at?: number) {
+  if (!at) return '';
+  try {
+    return new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  } catch {
+    return '';
+  }
+}
 
 export default function CompanionChatScreen() {
   const {
     isPlus,
+    coins,
     chatMessages,
     dailyChatRemaining,
     aiTickets,
@@ -47,7 +100,7 @@ export default function CompanionChatScreen() {
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
   // Seed from the cached thread so the conversation survives leaving/restarting.
-  const [messages, setMessages] = useState<ChatMessage[]>(() => chatThread);
+  const [messages, setMessages] = useState<ChatTurn[]>(() => chatThread);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
@@ -58,7 +111,8 @@ export default function CompanionChatScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
-  const scrollToEnd = () => requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+  const scrollToEnd = () =>
+    requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
 
   const handleExchange = () => {
     if (!isPlus) {
@@ -73,14 +127,10 @@ export default function CompanionChatScreen() {
       return;
     }
     if (ticketTotal <= 0) {
-      Alert.alert(
-        'No tickets',
-        'You need an AI generation ticket to top up chat. Get more in the shop.',
-        [
-          { text: 'Not now', style: 'cancel' },
-          { text: 'Get tickets', onPress: () => router.push('/coin-shop') },
-        ],
-      );
+      Alert.alert('No tickets', 'You need an AI generation ticket to top up chat. Get more in the shop.', [
+        { text: 'Not now', style: 'cancel' },
+        { text: 'Get tickets', onPress: () => router.push('/coin-shop') },
+      ]);
       return;
     }
     Alert.alert(
@@ -100,37 +150,6 @@ export default function CompanionChatScreen() {
     );
   };
 
-  const handleSend = async () => {
-    const text = input.trim();
-    if (!text || isSending) return;
-    if (chatTotal <= 0) {
-      handleExchange();
-      return;
-    }
-
-    const history: ChatMessage[] = [...messages, { role: 'user', content: text }];
-    setMessages(history);
-    setInput('');
-    setIsSending(true);
-    scrollToEnd();
-
-    try {
-      const { reply } = await sendCompanionChat({ companionName: companion.name, vibe, history });
-      // Only charge a message once the companion actually replies.
-      consumeChatMessage();
-      setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
-      scrollToEnd();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'The companion could not reply.';
-      Alert.alert('Chat hiccup', `${message}\n\nNo message was used — try again.`);
-      // Roll the failed user turn back out of the visible thread.
-      setMessages((prev) => prev.slice(0, -1));
-      setInput(text);
-    } finally {
-      setIsSending(false);
-    }
-  };
-
   const handleClear = () => {
     if (messages.length === 0) return;
     Alert.alert(
@@ -143,78 +162,126 @@ export default function CompanionChatScreen() {
     );
   };
 
-  const inputStyle = {
-    flex: 1,
-    borderWidth: 1.5,
-    borderColor: colors.backgroundSelected,
-    borderRadius: 20,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    color: colors.text,
-    fontSize: 15,
-    maxHeight: 120,
+  const handleSend = async () => {
+    const text = input.trim();
+    if (!text || isSending) return;
+    if (chatTotal <= 0) {
+      handleExchange();
+      return;
+    }
+
+    const history: ChatTurn[] = [...messages, { role: 'user', content: text, at: Date.now() }];
+    setMessages(history);
+    setInput('');
+    setIsSending(true);
+    scrollToEnd();
+
+    try {
+      const { reply } = await sendCompanionChat({ companionName: companion.name, vibe, history });
+      // Only charge a message once the companion actually replies.
+      consumeChatMessage();
+      setMessages((prev) => [...prev, { role: 'assistant', content: reply, at: Date.now() }]);
+      scrollToEnd();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'The companion could not reply.';
+      Alert.alert('Chat hiccup', `${message}\n\nNo message was used — try again.`);
+      setMessages((prev) => prev.slice(0, -1));
+      setInput(text);
+    } finally {
+      setIsSending(false);
+    }
   };
 
-  const outOfMessages = chatTotal <= 0;
-
+  // ── Plus gate ────────────────────────────────────────────────────────────────
   if (!isPlus) {
     return (
       <ThemedView style={styles.container}>
-        <SafeAreaView style={styles.lockedWrap} edges={['bottom']}>
-          <ThemedView type="backgroundElement" style={styles.lockedCard}>
-            <ThemedText type="subtitle">Companion chat is a Plus feature 🔒</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.lockedText}>
-              Upgrade to DeskMate Plus to chat with your companion. Plus members get{' '}
-              {PLUS_DAILY_CHAT} free chats every day.
-            </ThemedText>
-            <Pressable
-              onPress={() => router.push('/plus-upgrade')}
-              style={({ pressed }) => [styles.upgradeBtn, pressed && styles.pressed]}>
-              <ThemedText style={styles.upgradeBtnText}>See Plus</ThemedText>
+        <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
+          <View style={styles.header}>
+            <Pressable onPress={() => router.back()} hitSlop={8} style={styles.headerBtn}>
+              <BackIcon />
             </Pressable>
-          </ThemedView>
+            <ThemedText style={styles.headerTitle}>Chat Companion</ThemedText>
+            <View style={styles.headerBtn} />
+          </View>
+          <View style={styles.lockedWrap}>
+            <View style={styles.lockedCard}>
+              <ThemedText type="subtitle">Companion chat is a Plus feature 🔒</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.lockedText}>
+                Upgrade to DeskMate Plus to chat with your companion. Plus members get{' '}
+                {PLUS_DAILY_CHAT} free chats every day.
+              </ThemedText>
+              <Pressable
+                onPress={() => router.push('/plus-upgrade')}
+                style={({ pressed }) => [styles.upgradeBtn, pressed && styles.pressed]}>
+                <ThemedText style={styles.upgradeBtnText}>See Plus</ThemedText>
+              </Pressable>
+            </View>
+          </View>
         </SafeAreaView>
       </ThemedView>
     );
   }
 
+  const outOfMessages = chatTotal <= 0;
+
   return (
     <ThemedView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
-        <SafeAreaView style={styles.flex} edges={['bottom']}>
-          {/* Balance header */}
-          <ThemedView type="backgroundElement" style={styles.balanceBar}>
-            <ThemedText type="smallBold">{companion.name}</ThemedText>
-            <Pressable onPress={handleExchange} style={({ pressed }) => pressed && styles.pressed}>
-              <ThemedText type="small" style={styles.balanceText}>
-                💬 {dailyChatRemaining}/{PLUS_DAILY_CHAT} free today
-                {chatMessages > 0 ? ` · +${chatMessages}` : ''}
-              </ThemedText>
-            </Pressable>
-          </ThemedView>
+      <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Pressable onPress={() => router.back()} hitSlop={8} style={styles.headerBtn}>
+            <BackIcon />
+          </Pressable>
+          <ThemedText style={styles.headerTitle}>Chat Companion</ThemedText>
+          <View style={styles.coinPill}>
+            <CoinIcon size={18} />
+            <ThemedText style={styles.coinText}>{coins}</ThemedText>
+          </View>
+        </View>
 
-          {/* History meter + clear */}
-          {messages.length > 0 && (
-            <View style={styles.historyBar}>
-              <ThemedText type="small" themeColor="textSecondary" style={styles.historyText}>
-                {messages.length}/{CHAT_HISTORY_CAP} saved
-              </ThemedText>
-              <View style={styles.historyMeter}>
-                <View
-                  style={[
-                    styles.historyFill,
-                    { width: `${Math.min(100, (messages.length / CHAT_HISTORY_CAP) * 100)}%` },
-                  ]}
-                />
-              </View>
-              <Pressable onPress={handleClear} hitSlop={8} style={({ pressed }) => pressed && styles.pressed}>
-                <ThemedText type="smallBold" style={styles.clearText}>Clear chat</ThemedText>
-              </Pressable>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}>
+          {/* Companion profile card */}
+          <View style={styles.profileCard}>
+            <View style={styles.profileAvatarRing}>
+              <Image
+                source={companion.imageSource}
+                style={styles.profileAvatar}
+                contentFit="cover"
+                contentPosition="top"
+                accessibilityLabel={`${companion.name}`}
+              />
             </View>
-          )}
+            <View style={styles.profileInfo}>
+              <View style={styles.profileNameRow}>
+                <ThemedText style={styles.profileName}>{companion.name}</ThemedText>
+                <HeartIcon />
+              </View>
+              <View style={styles.onlineRow}>
+                <View style={styles.onlineDot} />
+                <ThemedText style={styles.onlineText}>Online</ThemedText>
+              </View>
+              <ThemedText style={styles.profileSub}>Your cozy study buddy is here to help!</ThemedText>
+            </View>
+            <BakeryBreadEmoji size={40} />
+          </View>
+
+          {/* Allowance + history + clear */}
+          <View style={styles.utilBar}>
+            <ThemedText style={styles.utilText} numberOfLines={1}>
+              💬 {dailyChatRemaining}/{PLUS_DAILY_CHAT} free today
+              {chatMessages > 0 ? ` · +${chatMessages}` : ''}
+              {messages.length > 0 ? ` · ${messages.length}/${CHAT_HISTORY_CAP} saved` : ''}
+            </ThemedText>
+            {messages.length > 0 && (
+              <Pressable onPress={handleClear} hitSlop={8} style={({ pressed }) => pressed && styles.pressed}>
+                <ThemedText style={styles.clearText}>Clear</ThemedText>
+              </Pressable>
+            )}
+          </View>
 
           <ScrollView
             ref={scrollRef}
@@ -223,13 +290,18 @@ export default function CompanionChatScreen() {
             showsVerticalScrollIndicator={false}
             onContentSizeChange={scrollToEnd}>
             {messages.length === 0 && (
-              <ThemedView type="backgroundElement" style={styles.emptyCard}>
-                <ThemedText type="smallBold">Say hi to {companion.name} 👋</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                  Your companion is here to keep you company while you study. Each message you send
-                  uses one chat message.
-                </ThemedText>
-              </ThemedView>
+              <View style={[styles.bubbleRow, styles.bubbleRowAssistant]}>
+                <View style={styles.avatarRing}>
+                  <Image source={companion.imageSource} style={styles.avatar} contentFit="cover" contentPosition="top" />
+                </View>
+                <View style={styles.msgCol}>
+                  <View style={[styles.bubble, styles.bubbleAssistant]}>
+                    <ThemedText style={styles.bubbleAssistantText}>
+                      Hi! Ready to study together? 🍞
+                    </ThemedText>
+                  </View>
+                </View>
+              </View>
             )}
 
             {messages.map((m, i) => (
@@ -237,60 +309,58 @@ export default function CompanionChatScreen() {
                 key={i}
                 style={[styles.bubbleRow, m.role === 'user' ? styles.bubbleRowUser : styles.bubbleRowAssistant]}>
                 {m.role === 'assistant' && (
-                  <Image
-                    source={companion.imageSource}
-                    style={styles.avatar}
-                    contentFit="cover"
-                    contentPosition="top"
-                    accessibilityLabel={`${companion.name} avatar`}
-                  />
+                  <View style={styles.avatarRing}>
+                    <Image source={companion.imageSource} style={styles.avatar} contentFit="cover" contentPosition="top" />
+                  </View>
                 )}
-                <ThemedView
-                  type="backgroundElement"
-                  style={[styles.bubble, m.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant]}>
-                  <ThemedText type="small" style={m.role === 'user' ? styles.bubbleUserText : undefined}>
-                    {m.content}
-                  </ThemedText>
-                </ThemedView>
+                <View style={[styles.msgCol, m.role === 'user' && styles.msgColUser]}>
+                  <View style={[styles.bubble, m.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant]}>
+                    <ThemedText style={m.role === 'user' ? styles.bubbleUserText : styles.bubbleAssistantText}>
+                      {m.content}
+                    </ThemedText>
+                  </View>
+                  {!!m.at && <ThemedText style={styles.timestamp}>{formatTime(m.at)}</ThemedText>}
+                </View>
               </View>
             ))}
 
             {isSending && (
               <View style={[styles.bubbleRow, styles.bubbleRowAssistant]}>
-                <Image
-                  source={companion.imageSource}
-                  style={styles.avatar}
-                  contentFit="cover"
-                  contentPosition="top"
-                  accessibilityLabel={`${companion.name} avatar`}
-                />
-                <ThemedView type="backgroundElement" style={[styles.bubble, styles.bubbleAssistant]}>
-                  <ActivityIndicator size="small" color={BakeryColors.mocha} />
-                </ThemedView>
+                <View style={styles.avatarRing}>
+                  <Image source={companion.imageSource} style={styles.avatar} contentFit="cover" contentPosition="top" />
+                </View>
+                <View style={styles.msgCol}>
+                  <View style={[styles.bubble, styles.bubbleAssistant]}>
+                    <ActivityIndicator size="small" color={BakeryColors.mocha} />
+                  </View>
+                </View>
               </View>
             )}
           </ScrollView>
 
           {outOfMessages && (
             <Pressable onPress={handleExchange} style={({ pressed }) => [styles.exchangeCta, pressed && styles.pressed]}>
-              <ThemedText type="smallBold" style={styles.exchangeCtaText}>
+              <ThemedText style={styles.exchangeCtaText}>
                 Daily chats used — resets tomorrow, or exchange 1 ticket for {CHAT_MESSAGES_PER_TICKET} →
               </ThemedText>
             </Pressable>
           )}
 
           {/* Composer */}
-          <ThemedView type="backgroundElement" style={styles.composer}>
-            <TextInput
-              style={inputStyle}
-              value={input}
-              onChangeText={setInput}
-              placeholder={outOfMessages ? 'Exchange a ticket to chat…' : `Message ${companion.name}…`}
-              placeholderTextColor={colors.textSecondary}
-              multiline
-              editable={!outOfMessages}
-              onSubmitEditing={handleSend}
-            />
+          <View style={styles.composer}>
+            <View style={styles.inputPill}>
+              <BakeryBreadEmoji size={20} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                value={input}
+                onChangeText={setInput}
+                placeholder={outOfMessages ? 'Exchange a ticket to chat…' : 'Type a message...'}
+                placeholderTextColor={BakeryColors.latte}
+                multiline
+                editable={!outOfMessages}
+                onSubmitEditing={handleSend}
+              />
+            </View>
             <Pressable
               onPress={handleSend}
               disabled={isSending || !input.trim() || outOfMessages}
@@ -299,20 +369,171 @@ export default function CompanionChatScreen() {
                 (isSending || !input.trim() || outOfMessages) && styles.sendBtnDisabled,
                 pressed && styles.pressed,
               ]}>
-              <ThemedText style={styles.sendBtnText}>Send</ThemedText>
+              <SendIcon />
             </Pressable>
-          </ThemedView>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </ThemedView>
   );
 }
 
+const AVATAR = 34;
+
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: BakeryColors.cream },
   flex: { flex: 1 },
+
+  // Header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: BakeryColors.frosting,
+  },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: BakeryColors.cocoaDark },
+  coinPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingLeft: 6,
+    paddingRight: Spacing.two,
+    paddingVertical: 5,
+    borderRadius: 20,
+    backgroundColor: BakeryColors.frosting,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+  },
+  coinText: { fontWeight: '800', color: BakeryColors.cocoaDark, fontSize: 14 },
+
+  // Profile card
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    marginHorizontal: Spacing.three,
+    marginBottom: Spacing.two,
+    padding: Spacing.three,
+    borderRadius: BakeryRadii.card,
+    backgroundColor: BakeryColors.frosting,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+  },
+  profileAvatarRing: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    padding: 2,
+    backgroundColor: BakeryColors.butter,
+    overflow: 'hidden',
+  },
+  profileAvatar: { width: '100%', height: '100%', borderRadius: 25, backgroundColor: BakeryColors.shortbread },
+  profileInfo: { flex: 1, gap: 2 },
+  profileNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  profileName: { fontSize: 16, fontWeight: '800', color: BakeryColors.cocoaDark },
+  onlineRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: BakeryColors.success },
+  onlineText: { fontSize: 12, color: BakeryColors.success, fontWeight: '700' },
+  profileSub: { fontSize: 12, color: BakeryColors.mocha },
+
+  // Utility bar
+  utilBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.one,
+    gap: Spacing.two,
+  },
+  utilText: { flex: 1, fontSize: 11, color: BakeryColors.mocha },
+  clearText: { fontSize: 12, fontWeight: '700', color: BakeryColors.berry },
+
+  // Thread
+  thread: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.three, gap: Spacing.two, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' },
+  bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
+  bubbleRowUser: { justifyContent: 'flex-end' },
+  bubbleRowAssistant: { justifyContent: 'flex-start' },
+  avatarRing: {
+    width: AVATAR,
+    height: AVATAR,
+    borderRadius: AVATAR / 2,
+    padding: 1.5,
+    backgroundColor: BakeryColors.butter,
+    overflow: 'hidden',
+  },
+  avatar: { width: '100%', height: '100%', borderRadius: AVATAR / 2, backgroundColor: BakeryColors.shortbread },
+  msgCol: { maxWidth: '78%', gap: 2 },
+  msgColUser: { alignItems: 'flex-end' },
+  bubble: { borderRadius: 18, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
+  bubbleAssistant: { backgroundColor: BakeryColors.frosting, borderBottomLeftRadius: 5, borderWidth: 1, borderColor: BakeryColors.shortbread },
+  bubbleUser: { backgroundColor: BakeryColors.butter, borderBottomRightRadius: 5 },
+  bubbleAssistantText: { color: BakeryColors.cocoa, fontSize: 14, lineHeight: 19 },
+  bubbleUserText: { color: BakeryColors.cocoaDark, fontSize: 14, lineHeight: 19 },
+  timestamp: { fontSize: 10, color: BakeryColors.latte, marginHorizontal: 6 },
+
+  // Exchange CTA
+  exchangeCta: {
+    marginHorizontal: Spacing.four,
+    marginBottom: Spacing.two,
+    backgroundColor: `${BakeryColors.honey}22`,
+    borderRadius: BakeryRadii.chip,
+    paddingVertical: Spacing.two,
+    alignItems: 'center',
+  },
+  exchangeCtaText: { color: BakeryColors.mocha, fontWeight: '700', fontSize: 13, textAlign: 'center', paddingHorizontal: Spacing.three },
+
+  // Composer
+  composer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.two,
+  },
+  inputPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Platform.OS === 'ios' ? 10 : 4,
+    borderRadius: 24,
+    backgroundColor: BakeryColors.frosting,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+  },
+  input: { flex: 1, fontSize: 15, maxHeight: 110, paddingVertical: 0 },
+  sendBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: BakeryColors.honey,
+    borderWidth: 2,
+    borderColor: '#B07F3C',
+  },
+  sendBtnDisabled: { opacity: 0.45 },
+
+  // Locked
   lockedWrap: { flex: 1, justifyContent: 'center', padding: Spacing.four },
-  lockedCard: { borderRadius: BakeryRadii.card, padding: Spacing.four, gap: Spacing.two, alignItems: 'center' },
+  lockedCard: {
+    borderRadius: BakeryRadii.card,
+    padding: Spacing.four,
+    gap: Spacing.two,
+    alignItems: 'center',
+    backgroundColor: BakeryColors.frosting,
+  },
   lockedText: { textAlign: 'center', lineHeight: 20 },
   upgradeBtn: {
     backgroundColor: BakeryColors.mocha,
@@ -322,79 +543,5 @@ const styles = StyleSheet.create({
     marginTop: Spacing.one,
   },
   upgradeBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
-  balanceBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.08)',
-  },
-  balanceText: { color: BakeryColors.mocha },
-  historyBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.one,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.06)',
-  },
-  historyText: { fontSize: 12 },
-  historyMeter: { flex: 1, height: 5, borderRadius: 3, backgroundColor: 'rgba(0,0,0,0.08)', overflow: 'hidden' },
-  historyFill: { height: '100%', borderRadius: 3, backgroundColor: BakeryColors.honey },
-  clearText: { color: BakeryColors.berry, fontSize: 13 },
-  thread: {
-    padding: Spacing.four,
-    gap: Spacing.two,
-    maxWidth: MaxContentWidth,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  emptyCard: { borderRadius: BakeryRadii.card, padding: Spacing.four, gap: Spacing.one, marginTop: Spacing.four },
-  emptyText: { lineHeight: 20 },
-  bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.one },
-  bubbleRowUser: { justifyContent: 'flex-end' },
-  bubbleRowAssistant: { justifyContent: 'flex-start' },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: BakeryColors.shortbread,
-    borderWidth: 1,
-    borderColor: '#E2C9A6',
-  },
-  bubble: { maxWidth: '82%', borderRadius: BakeryRadii.card, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
-  bubbleUser: { backgroundColor: BakeryColors.honey, borderBottomRightRadius: 4 },
-  bubbleAssistant: { borderBottomLeftRadius: 4 },
-  bubbleUserText: { color: BakeryColors.cocoaDark },
-  exchangeCta: {
-    marginHorizontal: Spacing.four,
-    marginBottom: Spacing.two,
-    backgroundColor: `${BakeryColors.honey}22`,
-    borderRadius: BakeryRadii.chip,
-    paddingVertical: Spacing.two,
-    alignItems: 'center',
-  },
-  exchangeCtaText: { color: BakeryColors.mocha },
-  composer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.two,
-    paddingBottom: Spacing.two,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(0,0,0,0.08)',
-  },
-  sendBtn: {
-    backgroundColor: BakeryColors.mocha,
-    borderRadius: 20,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two + 2,
-  },
-  sendBtnDisabled: { opacity: 0.4 },
-  sendBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
   pressed: { opacity: 0.8 },
 });
