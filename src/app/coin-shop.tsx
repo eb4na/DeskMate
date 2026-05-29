@@ -3,20 +3,28 @@ import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinAmount, CoinIcon } from '@/components/coin-icon';
+import { BreadPouchIcon, BreadBagIcon, BreadChestIcon, BreadVaultIcon } from '@/components/coin-pack-icons';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { DAILY_EARN_CAP } from '@/constants/placeholder-data';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
-type CoinPack = { id: string; name: string; emoji: string; coins: number; price: string; popular?: boolean };
+type CoinPack = { id: string; name: string; coins: number; price: string; popular?: boolean };
 
 const COIN_PACKS: CoinPack[] = [
-  { id: 'pouch', name: 'Small Pouch', emoji: '👛', coins: 200, price: '$0.99' },
-  { id: 'bag', name: 'Study Bag', emoji: '🎒', coins: 600, price: '$2.49' },
-  { id: 'chest', name: 'Coin Chest', emoji: '📦', coins: 1400, price: '$4.99', popular: true },
-  { id: 'vault', name: 'Scholar Vault', emoji: '🏛️', coins: 3500, price: '$9.99' },
+  { id: 'pouch', name: 'Small Pouch', coins: 200, price: '$0.99' },
+  { id: 'bag', name: 'Study Bag', coins: 600, price: '$2.49' },
+  { id: 'chest', name: 'Coin Chest', coins: 1400, price: '$4.99', popular: true },
+  { id: 'vault', name: 'Scholar Vault', coins: 3500, price: '$9.99' },
 ];
+
+function PackIcon({ id }: { id: string }) {
+  if (id === 'pouch') return <BreadPouchIcon size={56} />;
+  if (id === 'bag') return <BreadBagIcon size={56} />;
+  if (id === 'chest') return <BreadChestIcon size={56} />;
+  return <BreadVaultIcon size={56} />;
+}
 
 export default function CoinShopScreen() {
   const { coins, earnedToday, addPurchasedCoins, isPlus } = useApp();
@@ -48,7 +56,7 @@ export default function CoinShopScreen() {
           <ThemedView type="backgroundElement" style={styles.balanceCard}>
             <ThemedText type="small" themeColor="textSecondary">Your balance</ThemedText>
             <View style={styles.balanceRow}>
-              <CoinIcon size={48} />
+              <CoinIcon size={40} />
               <ThemedText style={styles.balanceAmount}>{coins}</ThemedText>
             </View>
           </ThemedView>
@@ -92,7 +100,7 @@ export default function CoinShopScreen() {
               <ThemedView
                 type="backgroundElement"
                 style={[styles.packCard, pack.popular && styles.packCardPopular]}>
-                <ThemedText style={styles.packEmoji}>{pack.emoji}</ThemedText>
+                <PackIcon id={pack.id} />
                 <ThemedView style={styles.packInfo}>
                   <View style={styles.packNameRow}>
                     <ThemedText type="smallBold" style={styles.packName}>{pack.name}</ThemedText>
@@ -188,7 +196,7 @@ const styles = StyleSheet.create({
     ...BakeryShadow,
   },
   balanceRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  balanceAmount: { fontSize: 36, fontWeight: '800', color: BakeryColors.honey },
+  balanceAmount: { fontSize: 32, lineHeight: 40, fontWeight: '800', color: BakeryColors.honey },
   capCard: {
     borderRadius: BakeryRadii.card,
     padding: Spacing.three,
@@ -225,7 +233,7 @@ const styles = StyleSheet.create({
     ...BakeryShadow,
   },
   packCardPopular: { borderWidth: 1.5, borderColor: BakeryColors.honey },
-  packEmoji: { fontSize: 30, lineHeight: 36, width: 40 },
+
   packInfo: { flex: 1, gap: 4 },
   packNameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   packName: { fontSize: 15 },
