@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
@@ -235,6 +236,15 @@ export default function CompanionChatScreen() {
               <View
                 key={i}
                 style={[styles.bubbleRow, m.role === 'user' ? styles.bubbleRowUser : styles.bubbleRowAssistant]}>
+                {m.role === 'assistant' && (
+                  <Image
+                    source={companion.imageSource}
+                    style={styles.avatar}
+                    contentFit="cover"
+                    contentPosition="top"
+                    accessibilityLabel={`${companion.name} avatar`}
+                  />
+                )}
                 <ThemedView
                   type="backgroundElement"
                   style={[styles.bubble, m.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant]}>
@@ -247,6 +257,13 @@ export default function CompanionChatScreen() {
 
             {isSending && (
               <View style={[styles.bubbleRow, styles.bubbleRowAssistant]}>
+                <Image
+                  source={companion.imageSource}
+                  style={styles.avatar}
+                  contentFit="cover"
+                  contentPosition="top"
+                  accessibilityLabel={`${companion.name} avatar`}
+                />
                 <ThemedView type="backgroundElement" style={[styles.bubble, styles.bubbleAssistant]}>
                   <ActivityIndicator size="small" color={BakeryColors.mocha} />
                 </ThemedView>
@@ -337,9 +354,17 @@ const styles = StyleSheet.create({
   },
   emptyCard: { borderRadius: BakeryRadii.card, padding: Spacing.four, gap: Spacing.one, marginTop: Spacing.four },
   emptyText: { lineHeight: 20 },
-  bubbleRow: { flexDirection: 'row' },
+  bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.one },
   bubbleRowUser: { justifyContent: 'flex-end' },
   bubbleRowAssistant: { justifyContent: 'flex-start' },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: BakeryColors.shortbread,
+    borderWidth: 1,
+    borderColor: '#E2C9A6',
+  },
   bubble: { maxWidth: '82%', borderRadius: BakeryRadii.card, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   bubbleUser: { backgroundColor: BakeryColors.honey, borderBottomRightRadius: 4 },
   bubbleAssistant: { borderBottomLeftRadius: 4 },
