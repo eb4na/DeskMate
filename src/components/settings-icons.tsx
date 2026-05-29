@@ -186,14 +186,21 @@ export function ChartIcon({ size = 32 }: IconProps) {
 }
 
 // ── 💬 Feedback → Chat bubble ─────────────────────────────────────────────────
-export function ChatBubbleIcon({ size = 32 }: IconProps) {
+export function ChatBubbleIcon({
+  size = 32,
+  color,
+  dotColor,
+}: IconProps & { color?: string; dotColor?: string }) {
+  const fill = color ?? H;
+  const stroke = color ?? S;
+  const dots = dotColor ?? S;
   return (
     <Svg width={size} height={size} viewBox="0 0 48 48">
       <Path d="M9 12 Q9 9 12 9 L36 9 Q39 9 39 12 L39 28 Q39 31 36 31 L20 31 L13 38 L14 31 L12 31 Q9 31 9 28 Z"
-        fill={H} stroke={S} strokeWidth="2" strokeLinejoin="round" />
-      <Circle cx="18" cy="20" r="2" fill={S} />
-      <Circle cx="24" cy="20" r="2" fill={S} />
-      <Circle cx="30" cy="20" r="2" fill={S} />
+        fill={fill} stroke={stroke} strokeWidth="2" strokeLinejoin="round" />
+      <Circle cx="18" cy="20" r="2" fill={dots} />
+      <Circle cx="24" cy="20" r="2" fill={dots} />
+      <Circle cx="30" cy="20" r="2" fill={dots} />
     </Svg>
   );
 }
