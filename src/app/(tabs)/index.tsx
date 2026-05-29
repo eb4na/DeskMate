@@ -311,7 +311,7 @@ export default function HomeScreen() {
                     </ThemedText>
                   </View>
                   <Pressable
-                    onPress={() => router.push('/shop')}
+                    onPress={() => router.push('/coin-shop')}
                     style={({ pressed }) => pressed && styles.cardPressed}
                     accessibilityLabel="Add coins">
                     <View style={[styles.statusChip, styles.coinChip]}>

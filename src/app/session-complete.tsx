@@ -28,6 +28,7 @@ export default function SessionCompleteScreen() {
     addMoodEntry,
     updateStreak,
     addSubjectTime,
+    addCoins,
     completeTask,
     isPlus,
     savedBreakPresets,
