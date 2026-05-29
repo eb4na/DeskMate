@@ -163,10 +163,10 @@ type PersistedState = {
 };
 
 // How many companion chat messages one AI generation ticket converts into.
-export const CHAT_MESSAGES_PER_TICKET = 150;
+export const CHAT_MESSAGES_PER_TICKET = 250;
 
 // Free companion chat messages a Plus member gets each day (no ticket needed).
-export const PLUS_DAILY_CHAT = 20;
+export const PLUS_DAILY_CHAT = 40;
 
 const DEFAULTS: PersistedState = {
   coins: 0,
