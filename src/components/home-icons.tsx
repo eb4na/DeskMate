@@ -59,7 +59,7 @@ export function ExamCalendarIcon({ size = 48, day }: { size?: number; day?: numb
       <Circle cx="17" cy="9" r="4.5" fill="#A46F56" stroke={S} strokeWidth="1.5" />
       <Circle cx="17" cy="9" r="2.5" fill={C} />
       {/* Spiral right */}
-      <Circle cx="43" cy="9" r="4.5" fill="#A46F56" stroke={S} strokeWidth="1.5} />
+      <Circle cx="43" cy="9" r="4.5" fill="#A46F56" stroke={S} strokeWidth="1.5" />
       <Circle cx="43" cy="9" r="2.5" fill={C} />
       {/* Grid lines - slightly imperfect */}
       <Line x1="5" y1="36" x2="55" y2="36" stroke="#F7DFC4" strokeWidth="1.2" />

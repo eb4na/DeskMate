@@ -73,7 +73,7 @@ export function BreadBagIcon({ size = 60 }: { size?: number }) {
       <Path d="M30 28 L31.2 31.5 L35 31.5 L32 33.5 L33 37 L30 35 L27 37 L28 33.5 L25 31.5 L28.8 31.5 Z"
         fill={B} opacity={0.7} stroke={S} strokeWidth="0.8" strokeLinejoin="round" />
       {/* Shine */}
-      <Path d="M12" y1="42" Q14 38 16 40" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none" opacity={0.35} />
+      <Path d="M12 42 Q14 38 16 40" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none" opacity={0.35} />
       {/* Blush */}
       <Ellipse cx="16" cy="52" rx="4" ry="2.5" fill={R} opacity={0.5} />
     </Svg>
@@ -111,7 +111,7 @@ export function BreadChestIcon({ size = 60 }: { size?: number }) {
       <Path d="M27 40 Q27 35 30 35 Q33 35 33 40" fill="none" stroke={S} strokeWidth="2" strokeLinecap="round" />
       <Circle cx="30" cy="45" r="2" fill={S} opacity={0.6} />
       {/* Rivets */}
-      <Circle cx="14" cy="53" r="2.5" fill={H} stroke={S} strokeWidth="1.5} />
+      <Circle cx="14" cy="53" r="2.5" fill={H} stroke={S} strokeWidth="1.5" />
       <Circle cx="46" cy="53" r="2.5" fill={H} stroke={S} strokeWidth="1.5" />
       {/* Shine */}
       <Path d="M14 28 Q18 24 22 26" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" opacity={0.4} />
@@ -149,7 +149,7 @@ export function BreadVaultIcon({ size = 60 }: { size?: number }) {
       <Circle cx="30" cy="30" r="4" fill={S} opacity={0.75} />
       <Circle cx="30" cy="30" r="2" fill={H} />
       {/* Bolts */}
-      <Circle cx="30" cy="10" r="2.5" fill="#C38F72" stroke={S} strokeWidth="1.2} />
+      <Circle cx="30" cy="10" r="2.5" fill="#C38F72" stroke={S} strokeWidth="1.2" />
       <Circle cx="30" cy="50" r="2.5" fill="#C38F72" stroke={S} strokeWidth="1.2" />
       <Circle cx="8" cy="30" r="2.5" fill="#C38F72" stroke={S} strokeWidth="1.2" />
       <Circle cx="52" cy="30" r="2.5" fill="#C38F72" stroke={S} strokeWidth="1.2" />

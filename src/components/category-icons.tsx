@@ -15,8 +15,8 @@ export function DecoIcon({ size = 56 }: { size?: number }) {
       {/* Chimney */}
       <Rect x="38" y="15" width="6" height="13" rx="2" fill="#A46F56" stroke={S} strokeWidth="2" strokeLinejoin="round" />
       {/* Smoke puffs */}
-      <Circle cx="41" cy="12" r="3.5" fill={C} stroke={S} strokeWidth="1.5} opacity={0.7} />
-      <Circle cx="43" cy="8" r="2.5" fill={C} stroke={S} strokeWidth="1.2} opacity={0.45} />
+      <Circle cx="41" cy="12" r="3.5" fill={C} stroke={S} strokeWidth="1.5" opacity={0.7} />
+      <Circle cx="43" cy="8" r="2.5" fill={C} stroke={S} strokeWidth="1.2" opacity={0.45} />
       {/* Roof - bread loaf arch, wobbly */}
       <Path d="M7 31 Q6 12 30 11 Q54 12 53 31 Z"
         fill={B} stroke={S} strokeWidth="2.5" strokeLinejoin="round" />
@@ -107,7 +107,7 @@ export function ThemeIcon({ size = 56 }: { size?: number }) {
       <Circle cx="31" cy="13" r="3" fill="white" opacity={0.3} />
       <Circle cx="43" cy="20" r="7" fill={M} stroke={S} strokeWidth="2" />
       <Circle cx="43" cy="20" r="3" fill="white" opacity={0.3} />
-      <Circle cx="46" cy="33" r="7" fill={B} stroke={S} strokeWidth="2} />
+      <Circle cx="46" cy="33" r="7" fill={B} stroke={S} strokeWidth="2" />
       <Circle cx="46" cy="33" r="3" fill="white" opacity={0.3} />
       {/* Paintbrush - wobbly handle */}
       <Path d="M4 54 Q6 50 10 48 L34 26 Q36 24 38 25 L36 29 L12 50 Z"
@@ -178,7 +178,7 @@ export function GameIcon({ size = 56 }: { size?: number }) {
       {/* Buttons - slightly offset circles */}
       <Circle cx="42" cy="25" r="5" fill={P} stroke={S} strokeWidth="2" />
       <Circle cx="42" cy="25" r="2.5" fill="#CC6B7B" opacity={0.5} />
-      <Circle cx="47" cy="32" r="5" fill={M} stroke={S} strokeWidth="2} />
+      <Circle cx="47" cy="32" r="5" fill={M} stroke={S} strokeWidth="2" />
       <Circle cx="47" cy="32" r="2.5" fill="#84A89C" opacity={0.5} />
       <Circle cx="37" cy="32" r="5" fill={H} stroke={S} strokeWidth="2" />
       <Circle cx="37" cy="32" r="2.5" fill="#D29649" opacity={0.5} />
@@ -188,7 +188,7 @@ export function GameIcon({ size = 56 }: { size?: number }) {
       <Ellipse cx="28" cy="32" rx="6" ry="6" fill={C} stroke={S} strokeWidth="1.8" />
       <Path d="M24 32 Q28 29 32 32" stroke={S} strokeWidth="1.5" strokeLinecap="round" fill="none" opacity={0.6} />
       {/* Grips */}
-      <Ellipse cx="19" cy="47" rx="9" ry="6" fill={H} stroke={S} strokeWidth="2} />
+      <Ellipse cx="19" cy="47" rx="9" ry="6" fill={H} stroke={S} strokeWidth="2" />
       <Ellipse cx="41" cy="47" rx="9" ry="6" fill={H} stroke={S} strokeWidth="2" />
       {/* Blush on grips */}
       <Ellipse cx="19" cy="47" rx="5" ry="3" fill={R} opacity={0.5} />
