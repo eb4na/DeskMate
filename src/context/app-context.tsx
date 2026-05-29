@@ -155,6 +155,8 @@ type PersistedState = {
   aiTicketsResetMonth: string;
   purchasedAiTickets: number;
   chatMessages: number;
+  chatFreeUsedToday: number;
+  chatFreeDate: string;
   purchasedCoins: number;
   multipleReminders: ReminderEntry[];
   advancedExamMap: Record<string, AdvancedExamFields>;
@@ -162,6 +164,9 @@ type PersistedState = {
 
 // How many companion chat messages one AI generation ticket converts into.
 export const CHAT_MESSAGES_PER_TICKET = 150;
+
+// Free companion chat messages a Plus member gets each day (no ticket needed).
+export const PLUS_DAILY_CHAT = 20;
 
 const DEFAULTS: PersistedState = {
   coins: 0,
@@ -201,6 +206,8 @@ const DEFAULTS: PersistedState = {
   aiTicketsResetMonth: '',
   purchasedAiTickets: 0,
   chatMessages: 0,
+  chatFreeUsedToday: 0,
+  chatFreeDate: '',
   purchasedCoins: 0,
   multipleReminders: [],
   advancedExamMap: {},
@@ -318,6 +325,7 @@ type AppContextType = {
   aiTickets: number;
   purchasedAiTickets: number;
   chatMessages: number;
+  dailyChatRemaining: number;
   purchasedCoins: number;
   multipleReminders: ReminderEntry[];
   advancedExamMap: Record<string, AdvancedExamFields>;
@@ -821,9 +829,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const consumeChatMessage = (): boolean => {
-    if (s.chatMessages <= 0) return false;
+    const today = todayISO();
+    const freeUsed = s.isPlus && s.chatFreeDate === today ? s.chatFreeUsedToday : 0;
+    const freeRemaining = s.isPlus ? Math.max(0, PLUS_DAILY_CHAT - freeUsed) : 0;
+    if (freeRemaining + s.chatMessages <= 0) return false;
     setS((prev) => {
-      if (prev.chatMessages <= 0) return prev;
+      const prevFreeUsed = prev.isPlus && prev.chatFreeDate === today ? prev.chatFreeUsedToday : 0;
+      const prevFreeRemaining = prev.isPlus ? Math.max(0, PLUS_DAILY_CHAT - prevFreeUsed) : 0;
+      if (prevFreeRemaining + prev.chatMessages <= 0) return prev;
+      // Spend the free daily Plus allowance first, then the ticket-bought balance.
+      if (prevFreeRemaining > 0) {
+        return { ...prev, chatFreeUsedToday: prevFreeUsed + 1, chatFreeDate: today };
+      }
       return { ...prev, chatMessages: prev.chatMessages - 1 };
     });
     return true;
@@ -946,6 +963,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         aiTickets: s.aiTickets,
         purchasedAiTickets: s.purchasedAiTickets,
         chatMessages: s.chatMessages,
+        dailyChatRemaining: s.isPlus
+          ? Math.max(0, PLUS_DAILY_CHAT - (s.chatFreeDate === todayISO() ? s.chatFreeUsedToday : 0))
+          : 0,
         purchasedCoins: s.purchasedCoins,
         multipleReminders: s.multipleReminders,
         advancedExamMap: s.advancedExamMap,

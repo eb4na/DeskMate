@@ -16,7 +16,7 @@ import { router } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { CHAT_MESSAGES_PER_TICKET, useApp } from '@/context/app-context';
+import { CHAT_MESSAGES_PER_TICKET, PLUS_DAILY_CHAT, useApp } from '@/context/app-context';
 import { sendCompanionChat, type ChatMessage } from '@/lib/companion-chat';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { BakeryColors, BakeryRadii, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -25,6 +25,7 @@ export default function CompanionChatScreen() {
   const {
     isPlus,
     chatMessages,
+    dailyChatRemaining,
     aiTickets,
     purchasedAiTickets,
     exchangeTicketForChat,
@@ -37,6 +38,7 @@ export default function CompanionChatScreen() {
   const companion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots);
   const vibe = companion.type === 'slot' ? companion.slot.prompt ?? '' : '';
   const ticketTotal = aiTickets + purchasedAiTickets;
+  const chatTotal = dailyChatRemaining + chatMessages;
 
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
@@ -91,7 +93,7 @@ export default function CompanionChatScreen() {
   const handleSend = async () => {
     const text = input.trim();
     if (!text || isSending) return;
-    if (chatMessages <= 0) {
+    if (chatTotal <= 0) {
       handleExchange();
       return;
     }
@@ -131,7 +133,28 @@ export default function CompanionChatScreen() {
     maxHeight: 120,
   };
 
-  const outOfMessages = chatMessages <= 0;
+  const outOfMessages = chatTotal <= 0;
+
+  if (!isPlus) {
+    return (
+      <ThemedView style={styles.container}>
+        <SafeAreaView style={styles.lockedWrap} edges={['bottom']}>
+          <ThemedView type="backgroundElement" style={styles.lockedCard}>
+            <ThemedText type="subtitle">Companion chat is a Plus feature 🔒</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.lockedText}>
+              Upgrade to DeskMate Plus to chat with your companion. Plus members get{' '}
+              {PLUS_DAILY_CHAT} free chats every day.
+            </ThemedText>
+            <Pressable
+              onPress={() => router.push('/plus-upgrade')}
+              style={({ pressed }) => [styles.upgradeBtn, pressed && styles.pressed]}>
+              <ThemedText style={styles.upgradeBtnText}>See Plus</ThemedText>
+            </Pressable>
+          </ThemedView>
+        </SafeAreaView>
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -145,7 +168,8 @@ export default function CompanionChatScreen() {
             <ThemedText type="smallBold">{companion.name}</ThemedText>
             <Pressable onPress={handleExchange} style={({ pressed }) => pressed && styles.pressed}>
               <ThemedText type="small" style={styles.balanceText}>
-                💬 {chatMessages} left · +{CHAT_MESSAGES_PER_TICKET}/ticket
+                💬 {dailyChatRemaining}/{PLUS_DAILY_CHAT} free today
+                {chatMessages > 0 ? ` · +${chatMessages}` : ''}
               </ThemedText>
             </Pressable>
           </ThemedView>
@@ -192,7 +216,7 @@ export default function CompanionChatScreen() {
           {outOfMessages && (
             <Pressable onPress={handleExchange} style={({ pressed }) => [styles.exchangeCta, pressed && styles.pressed]}>
               <ThemedText type="smallBold" style={styles.exchangeCtaText}>
-                Out of messages — exchange 1 ticket for {CHAT_MESSAGES_PER_TICKET} →
+                Daily chats used — resets tomorrow, or exchange 1 ticket for {CHAT_MESSAGES_PER_TICKET} →
               </ThemedText>
             </Pressable>
           )}
@@ -229,6 +253,17 @@ export default function CompanionChatScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   flex: { flex: 1 },
+  lockedWrap: { flex: 1, justifyContent: 'center', padding: Spacing.four },
+  lockedCard: { borderRadius: BakeryRadii.card, padding: Spacing.four, gap: Spacing.two, alignItems: 'center' },
+  lockedText: { textAlign: 'center', lineHeight: 20 },
+  upgradeBtn: {
+    backgroundColor: BakeryColors.mocha,
+    borderRadius: 20,
+    paddingHorizontal: Spacing.five,
+    paddingVertical: Spacing.two + 2,
+    marginTop: Spacing.one,
+  },
+  upgradeBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
   balanceBar: {
     flexDirection: 'row',
     alignItems: 'center',
