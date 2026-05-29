@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CoinIcon } from '@/components/coin-icon';
 import { Companion } from '@/components/companion';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -23,7 +24,6 @@ export default function SessionCompleteScreen() {
   }>();
 
   const {
-    addCoins,
     recordSession,
     addMoodEntry,
     updateStreak,
@@ -72,7 +72,6 @@ export default function SessionCompleteScreen() {
   const handleTaskComplete = () => {
     if (taskId) {
       completeTask(taskId);
-      addCoins(10);
       setTaskDone(true);
     }
     setTaskAnswered(true);
@@ -119,7 +118,7 @@ export default function SessionCompleteScreen() {
               </ThemedView>
 
               <ThemedView type="backgroundElement" style={styles.coinRow}>
-                <ThemedText style={styles.coinEmoji}>🪙</ThemedText>
+                <CoinIcon size={56} />
                 <ThemedText style={styles.coinAmount}>+{earned}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   Focus Coins
@@ -131,7 +130,7 @@ export default function SessionCompleteScreen() {
                   <ThemedText style={styles.bonusEmoji}>✅</ThemedText>
                   <ThemedView>
                     <ThemedText type="smallBold">Task done!</ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">+10 bonus coins</ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">Marked complete</ThemedText>
                   </ThemedView>
                 </ThemedView>
               )}
@@ -164,7 +163,7 @@ export default function SessionCompleteScreen() {
                       style={({ pressed }) => [styles.taskYesBtn, pressed && styles.btnPressed]}
                       onPress={handleTaskComplete}>
                       <ThemedText type="smallBold" style={styles.taskYesBtnText}>
-                        ✓ Yes! +10 🪙
+                        ✓ Yes, finished
                       </ThemedText>
                     </Pressable>
                     <Pressable
@@ -299,7 +298,6 @@ const styles = StyleSheet.create({
     backgroundColor: BakeryColors.glass,
     ...BakeryShadow,
   },
-  coinEmoji: { fontSize: 28, lineHeight: 34 },
   coinAmount: { fontSize: 28, fontWeight: '700', lineHeight: 34, color: BakeryColors.honey },
   bonusRow: {
     flexDirection: 'row',

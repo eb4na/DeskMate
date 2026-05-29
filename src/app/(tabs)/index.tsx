@@ -4,12 +4,13 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CoinIcon } from '@/components/coin-icon';
 import { getReminderStyleEffect } from '@/constants/shop-effects';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { COIN_REWARDS } from '@/constants/placeholder-data';
-import { STARTER_COMPANION_IMAGES, resolveActiveCompanion } from '@/lib/companion-utils';
+import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { getAmbienceEmoji, getAmbienceName } from '@/app/ambience-picker';
 import {
   BakeryColors,
@@ -32,14 +33,22 @@ function daysUntil(dateISO: string): number {
 }
 
 function formatExamDate(dateISO: string): string {
-  return new Date(dateISO).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return new Date(dateISO).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
-function getCountdownLabel(days: number): string {
+function getExamDay(dateISO: string): number {
+  return new Date(dateISO).getDate();
+}
+
+function getExamCountdownLabel(days: number): string {
   if (days < 0) return 'Past due';
   if (days === 0) return 'Today';
-  if (days === 1) return '1 day';
-  return `${days} days`;
+  if (days === 1) return '1 day left';
+  return `${days} days left`;
 }
 
 function getSessionSecondsLeft(startedAt: string, durationMinutes: number, nowMs: number): number {
@@ -59,6 +68,12 @@ function formatTimerLabel(totalSeconds: number): string {
 }
 
 const HOME_ROOM_IMAGE = require('@/assets/images/home-bedroom.png');
+const EXAM_BOOK_ICON = require('@/assets/images/home/exam-book-icon.png');
+const EXAM_CALENDAR_ICON = require('@/assets/images/home/exam-calendar-icon.png');
+const REMINDER_BELL_ICON = require('@/assets/images/home/reminder-bell-icon.png');
+const REMINDER_BREAD_ICON = require('@/assets/images/home/reminder-bread-icon.png');
+const START_SESSION_BUTTON = require('@/assets/images/home/start-session-button.png');
+const STREAK_FIRE_ICON = require('@/assets/images/home/streak-fire-icon.png');
 
 export default function HomeScreen() {
   const {
@@ -83,7 +98,8 @@ export default function HomeScreen() {
   const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots);
   const homeCompanionSource =
     didHomeImageFail && activeCompanion.type === 'slot'
-      ? STARTER_COMPANION_IMAGES[defaultCompanionId]
+      ? resolveActiveCompanion(`starter:${defaultCompanionId}`, defaultCompanionId, companionSlots)
+          .imageSource
       : activeCompanion.imageSource;
   const reminderStyle = getReminderStyleEffect(equippedShopItems);
   const nextUpcomingExam = [...examCountdowns]
@@ -105,6 +121,10 @@ export default function HomeScreen() {
     : 0;
 
   useEffect(() => {
+    setDidHomeImageFail(false);
+  }, [activeCompanionId]);
+
+  useEffect(() => {
     if (!activeSessionId) {
       handledCompletionId.current = null;
       return;
@@ -116,10 +136,6 @@ export default function HomeScreen() {
 
     return () => clearInterval(intervalId);
   }, [activeSessionId]);
-
-  useEffect(() => {
-    setDidHomeImageFail(false);
-  }, [activeCompanionId]);
 
   useEffect(() => {
     if (!activeSession || sessionSecondsLeft > 0) return;
@@ -160,7 +176,7 @@ export default function HomeScreen() {
         : 0;
     const message =
       cancelCoins > 0
-        ? `You studied ${sessionElapsedMinutes} min and will earn 🪙 ${cancelCoins}.`
+        ? `You studied ${sessionElapsedMinutes} min and will earn ${cancelCoins} coins.`
         : `Less than ${MIN_MINUTES_FOR_COINS} min studied, so no coins this time.`;
 
     Alert.alert('Stop session?', message, [
@@ -248,8 +264,8 @@ export default function HomeScreen() {
                     <Image
                       source={homeCompanionSource}
                       style={styles.heroImage}
-                      contentFit="cover"
-                      contentPosition="top"
+                      contentFit="contain"
+                      contentPosition="bottom"
                       onError={() => {
                         if (activeCompanion.type === 'slot') {
                           setDidHomeImageFail(true);
@@ -282,116 +298,171 @@ export default function HomeScreen() {
           ) : (
             <>
               <View style={styles.topHud}>
-                <View style={styles.statusStack}>
-                  <ThemedView style={[styles.statusChip, styles.coinChip]}>
-                    <ThemedText type="smallBold" style={styles.coinChipText}>
-                      🪙 {coins}
+                <View style={styles.statusRow}>
+                  <View style={styles.statusChip}>
+                    <Image
+                      source={STREAK_FIRE_ICON}
+                      style={styles.statusStreakIcon}
+                      contentFit="contain"
+                      accessibilityLabel=""
+                    />
+                    <ThemedText type="smallBold" style={styles.statusChipText}>
+                      {streak.currentStreak} day streak
                     </ThemedText>
-                  </ThemedView>
-                  <ThemedView style={styles.statusChip}>
-                    <ThemedText type="small" style={styles.statusChipText}>
-                      🔥 {streak.currentStreak} day streak
-                    </ThemedText>
-                  </ThemedView>
-                </View>
-
-                <View style={styles.topInfoStack}>
-                  <View style={styles.metaRow}>
-                    <Pressable
-                      style={({ pressed }) => [styles.metaCardPressable, pressed && styles.cardPressed]}
-                      onPress={handleExamPress}>
-                      <ThemedView
-                        style={[
-                          styles.metaCard,
-                          examIsUrgent && styles.metaCardUrgent,
-                          examIsPast && styles.metaCardPast,
-                        ]}>
-                        <ThemedText type="smallBold">Exam</ThemedText>
-                        {featuredExam ? (
-                          <>
-                            <ThemedText style={styles.metaHeadline} numberOfLines={1}>
-                              {featuredExam.name}
-                            </ThemedText>
-                            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-                              {featuredExam.subject ? `${featuredExam.subject} · ` : ''}
-                              {formatExamDate(featuredExam.dateISO)}
-                            </ThemedText>
-                            <ThemedText
-                              type="smallBold"
-                              style={[
-                                styles.metaAccentText,
-                                examIsUrgent && styles.metaAccentTextUrgent,
-                                examIsPast && styles.metaAccentTextPast,
-                              ]}>
-                              {examDays === null ? '--' : getCountdownLabel(examDays)}
-                            </ThemedText>
-                          </>
-                        ) : (
-                          <>
-                            <ThemedText style={styles.metaHeadline}>No exam yet</ThemedText>
-                            <ThemedText type="small" themeColor="textSecondary">
-                              Add a countdown
-                            </ThemedText>
-                          </>
-                        )}
-                      </ThemedView>
-                    </Pressable>
-
-                    <ThemedView style={styles.metaCard}>
-                      <ThemedText type="smallBold">Reminder</ThemedText>
-                      <ThemedText style={styles.metaHeadline}>
-                        {reminderStyle?.emoji ?? '🔔'} {reminderEnabled ? reminderTime : 'Reminder off'}
-                      </ThemedText>
-                      <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
-                        {isPlus
-                          ? ambienceId
-                            ? `${getAmbienceEmoji(ambienceId)} ${getAmbienceName(ambienceId)}`
-                            : 'Pick an ambience'
-                          : 'Unlock ambience with Plus'}
-                      </ThemedText>
-                    </ThemedView>
                   </View>
-                </View>
-              </View>
-
-              <View style={styles.characterArea} pointerEvents="none">
-                <View style={styles.heroImageClip}>
-                  <Image
-                    source={homeCompanionSource}
-                    style={styles.heroImage}
-                    contentFit="cover"
-                    contentPosition="top"
-                    onError={() => {
-                      if (activeCompanion.type === 'slot') {
-                        setDidHomeImageFail(true);
-                      }
-                    }}
-                    accessibilityLabel={`${activeCompanion.name} home character`}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.bottomHud}>
-                <Pressable
-                  style={({ pressed }) => [styles.homeBreadButtonWrap, pressed && styles.startButtonPressed]}
-                  onPress={() => router.push('/session-picker')}>
-                  <View style={styles.homeBreadTop}>
-                    <View style={[styles.homeBreadBump, styles.homeBreadBumpLeft]} />
-                    <View style={[styles.homeBreadBump, styles.homeBreadBumpCenter]} />
-                    <View style={[styles.homeBreadBump, styles.homeBreadBumpRight]} />
-                  </View>
-                  <View style={styles.homeBreadButton}>
-                    <View style={styles.homeBreadScores}>
-                      <View style={[styles.homeBreadScore, styles.homeBreadScoreLeft]} />
-                      <View style={[styles.homeBreadScore, styles.homeBreadScoreCenter]} />
-                      <View style={[styles.homeBreadScore, styles.homeBreadScoreRight]} />
+                  <Pressable
+                    onPress={() => router.push('/shop')}
+                    style={({ pressed }) => pressed && styles.cardPressed}
+                    accessibilityLabel="Add coins">
+                    <View style={[styles.statusChip, styles.coinChip]}>
+                      <CoinIcon size={40} />
+                      <ThemedText type="smallBold" style={styles.coinChipText}>
+                        {coins}
+                      </ThemedText>
+                      <View style={styles.coinAddBubble}>
+                        <ThemedText style={styles.coinAddText}>+</ThemedText>
+                      </View>
                     </View>
-                    <ThemedText type="smallBold" style={styles.startButtonText}>
-                      Start Session
-                    </ThemedText>
+                  </Pressable>
+                </View>
+
+                <View style={styles.metaRow}>
+                  <Pressable
+                    style={({ pressed }) => [styles.metaCardPressable, pressed && styles.cardPressed]}
+                    onPress={handleExamPress}>
+                    <View
+                      style={[
+                        styles.metaCard,
+                        examIsUrgent && styles.metaCardUrgent,
+                        examIsPast && styles.metaCardPast,
+                      ]}>
+                      <View style={styles.metaCardHeader}>
+                        <View style={styles.examTitleRow}>
+                          <Image
+                            source={EXAM_BOOK_ICON}
+                            style={styles.examBookIcon}
+                            contentFit="contain"
+                            accessibilityLabel=""
+                          />
+                          <ThemedText style={styles.metaCardTitle}>Exam</ThemedText>
+                        </View>
+                      </View>
+                      <View style={styles.metaCardContent}>
+                        <View style={styles.metaCardTextBlock}>
+                          {featuredExam ? (
+                            <>
+                              <ThemedText style={styles.metaHeadline} numberOfLines={2}>
+                                {featuredExam.name}
+                              </ThemedText>
+                              <ThemedText style={styles.metaSubline}>{formatExamDate(featuredExam.dateISO)}</ThemedText>
+                              <ThemedText
+                                style={[
+                                  styles.metaAccentText,
+                                  examIsUrgent && styles.metaAccentTextUrgent,
+                                  examIsPast && styles.metaAccentTextPast,
+                                ]}>
+                                {examDays === null ? '--' : getExamCountdownLabel(examDays)}
+                              </ThemedText>
+                            </>
+                          ) : (
+                            <>
+                              <ThemedText style={styles.metaHeadline}>No exam yet</ThemedText>
+                              <ThemedText style={styles.metaSubline}>Tap to add</ThemedText>
+                            </>
+                          )}
+                        </View>
+                        <View style={styles.metaCardArt} pointerEvents="none">
+                          <Image
+                            source={EXAM_CALENDAR_ICON}
+                            style={styles.examCalendarIcon}
+                            contentFit="contain"
+                            accessibilityLabel=""
+                          />
+                          {featuredExam ? (
+                            <ThemedText style={styles.examCalendarDay}>
+                              {getExamDay(featuredExam.dateISO)}
+                            </ThemedText>
+                          ) : null}
+                        </View>
+                      </View>
+                    </View>
+                  </Pressable>
+
+                  <View style={styles.metaCardPressable}>
+                    <View style={styles.metaCard}>
+                      <View style={styles.metaCardHeader}>
+                        <View style={styles.reminderTitleRow}>
+                          <View style={styles.reminderBellSlot}>
+                            <Image
+                              source={REMINDER_BELL_ICON}
+                              style={styles.reminderBellIcon}
+                              contentFit="contain"
+                              accessibilityLabel=""
+                            />
+                          </View>
+                          <ThemedText style={styles.metaCardTitle}>Reminder</ThemedText>
+                        </View>
+                      </View>
+                      <View style={styles.metaCardContent}>
+                        <View style={styles.metaCardTextBlock}>
+                          <ThemedText style={styles.reminderCopy}>
+                            {reminderEnabled
+                              ? `Daily ping at ${reminderTime}. ${
+                                  isPlus && ambienceId
+                                    ? `${getAmbienceEmoji(ambienceId)} ${getAmbienceName(ambienceId)}`
+                                    : "You've got this!"
+                                }`
+                              : "Don't forget to take breaks!\nYou've got this!"}
+                          </ThemedText>
+                        </View>
+                        <View style={styles.metaCardArt} pointerEvents="none">
+                          <Image
+                            source={REMINDER_BREAD_ICON}
+                            style={styles.reminderBreadIcon}
+                            contentFit="contain"
+                            accessibilityLabel=""
+                          />
+                        </View>
+                      </View>
+                    </View>
                   </View>
-                </Pressable>
+                </View>
               </View>
+
+              <Pressable
+                onPress={() => router.push('/settings')}
+                style={({ pressed }) => [styles.settingsButton, pressed && styles.cardPressed]}
+                accessibilityLabel="Open settings"
+                hitSlop={8}>
+                <ThemedText style={styles.settingsIcon}>⚙️</ThemedText>
+              </Pressable>
+
+              <View style={styles.homeCharacterLayer} pointerEvents="none">
+                <Image
+                  source={homeCompanionSource}
+                  style={styles.homeCharacterImage}
+                  contentFit="contain"
+                  contentPosition="bottom"
+                  onError={() => {
+                    if (activeCompanion.type === 'slot') {
+                      setDidHomeImageFail(true);
+                    }
+                  }}
+                  accessibilityLabel={`${activeCompanion.name} home character`}
+                />
+              </View>
+
+              <Pressable
+                style={({ pressed }) => [styles.startSessionPressable, pressed && styles.startButtonPressed]}
+                onPress={() => router.push('/session-picker')}
+                accessibilityLabel="Start session">
+                <Image
+                  source={START_SESSION_BUTTON}
+                  style={styles.startSessionImage}
+                  contentFit="contain"
+                  accessibilityLabel=""
+                />
+              </Pressable>
             </>
           )}
         </View>
@@ -399,6 +470,14 @@ export default function HomeScreen() {
     </ThemedView>
   );
 }
+
+const metaCardShadow = {
+  shadowColor: '#8B6B57',
+  shadowOpacity: 0.1,
+  shadowRadius: 10,
+  shadowOffset: { width: 0, height: 4 },
+  elevation: 3,
+} as const;
 
 const styles = StyleSheet.create({
   container: {
@@ -483,49 +562,83 @@ const styles = StyleSheet.create({
     maxWidth: 360,
     gap: Spacing.two,
   },
+  settingsButton: {
+    position: 'absolute',
+    top: 196,
+    right: Spacing.three,
+    zIndex: 5,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF9F2',
+    borderWidth: 1,
+    borderColor: '#D9C5B2',
+    ...metaCardShadow,
+  },
+  settingsIcon: { fontSize: 18, lineHeight: 22 },
   topHud: {
     gap: Spacing.two,
-    zIndex: 2,
+    zIndex: 3,
     paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.three,
+    paddingTop: Spacing.two,
   },
-  statusStack: {
+  statusRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     gap: Spacing.two,
-    alignSelf: 'flex-start',
-  },
-  topInfoStack: {
-    gap: Spacing.two,
-    width: '100%',
   },
   statusChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    minHeight: 52,
+    overflow: 'hidden',
     borderRadius: BakeryRadii.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(255, 249, 241, 0.94)',
-    borderWidth: 1.5,
-    borderColor: BakeryColors.border,
-    ...BakeryShadow,
+    backgroundColor: '#FFF9F2',
+    borderWidth: 1,
+    borderColor: '#D9C5B2',
+    ...metaCardShadow,
   },
   coinChip: {
-    backgroundColor: 'rgba(255, 236, 199, 0.98)',
+    paddingLeft: 12,
+    paddingRight: 6,
+    paddingVertical: 6,
   },
   coinChipText: {
     color: BakeryColors.cocoaDark,
   },
-  statusChipText: {
-    color: BakeryColors.cocoa,
-  },
-  characterArea: {
-    flex: 1,
-    justifyContent: 'center',
+  coinAddBubble: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: BakeryColors.honey,
     alignItems: 'center',
-    paddingTop: Spacing.two,
-    paddingBottom: Spacing.one,
-    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#D29649',
+  },
+  coinAddText: {
+    color: BakeryColors.cocoaDark,
+    fontSize: 14,
+    fontWeight: '800',
+    lineHeight: 16,
+  },
+  statusStreakIcon: {
+    width: 18,
+    height: 20,
+  },
+  statusChipText: {
+    fontSize: 13,
+    lineHeight: 16,
+    color: BakeryColors.cocoaDark,
   },
   heroImageClip: {
+    flex: 1,
     width: '96%',
     maxWidth: 372,
     height: 420,
@@ -537,11 +650,23 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  bottomHud: {
-    zIndex: 2,
-    paddingHorizontal: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.two,
+  homeCharacterLayer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 152,
+    bottom: 86,
+    zIndex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
     backgroundColor: 'transparent',
+    overflow: 'hidden',
+  },
+  homeCharacterImage: {
+    width: '135%',
+    height: '135%',
+    maxWidth: 560,
+    transform: [{ translateY: 18 }],
   },
   homeBreadButtonWrap: {
     alignSelf: 'center',
@@ -637,38 +762,145 @@ const styles = StyleSheet.create({
   },
   metaRow: {
     flexDirection: 'row',
-    gap: Spacing.two,
+    gap: 12,
+    alignItems: 'stretch',
     backgroundColor: 'transparent',
   },
   metaCardPressable: {
     flex: 1,
+    minWidth: 0,
+    alignSelf: 'stretch',
   },
   metaCard: {
-    minHeight: 96,
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.two,
+    flex: 1,
+    width: '100%',
+    minHeight: 100,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 10,
     gap: 4,
-    backgroundColor: 'rgba(255, 249, 241, 0.95)',
-    borderWidth: 1.5,
-    borderColor: BakeryColors.border,
-    ...BakeryShadow,
+    overflow: 'hidden',
+    borderRadius: 20,
+    backgroundColor: '#FFF9F2',
+    borderWidth: 1,
+    borderColor: '#D9C5B2',
+    ...metaCardShadow,
   },
-  metaCardUrgent: {
-    borderColor: `${BakeryColors.danger}66`,
-  },
-  metaCardPast: {
-    borderColor: '#99999955',
-  },
-  metaHeadline: {
-    fontSize: 15,
-    lineHeight: 19,
+  metaCardTitle: {
+    fontSize: 13,
+    lineHeight: 16,
     fontWeight: '700',
+    color: BakeryColors.cocoaDark,
   },
-  metaAccentText: {
+  metaSubline: {
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: '500',
     color: BakeryColors.mocha,
   },
+  metaCardContent: {
+    position: 'relative',
+    flex: 1,
+    minHeight: 52,
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  metaCardTextBlock: {
+    paddingRight: 48,
+    gap: 2,
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  metaCardArt: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  examTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'transparent',
+  },
+  examBookIcon: {
+    width: 22,
+    height: 22,
+  },
+  reminderTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'transparent',
+  },
+  reminderBellSlot: {
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  reminderBellIcon: {
+    width: 18,
+    height: 18,
+    transform: [{ rotate: '-12deg' }],
+  },
+  reminderBreadIcon: {
+    width: 44,
+    height: 44,
+    transform: [{ rotate: '-8deg' }],
+  },
+  examCalendarIcon: {
+    width: 44,
+    height: 44,
+  },
+  examCalendarDay: {
+    position: 'absolute',
+    top: 14,
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    fontSize: 14,
+    lineHeight: 17,
+    fontWeight: '700',
+    color: BakeryColors.cocoaDark,
+  },
+  metaCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  reminderCopy: {
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: '500',
+    color: BakeryColors.cocoa,
+  },
+  metaCardUrgent: {
+    shadowColor: BakeryColors.danger,
+  },
+  metaCardPast: {
+    opacity: 0.92,
+  },
+  metaHeadline: {
+    fontSize: 14,
+    lineHeight: 16,
+    fontWeight: '700',
+    color: BakeryColors.cocoaDark,
+  },
+  metaAccentText: {
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: '700',
+    color: '#B87A5A',
+  },
   metaAccentTextUrgent: {
-    color: BakeryColors.danger,
+    color: '#C45E4A',
   },
   metaAccentTextPast: {
     color: '#999',
@@ -682,7 +914,21 @@ const styles = StyleSheet.create({
     borderColor: '#D29649',
     ...BakeryShadow,
   },
-  startButtonPressed: { opacity: 0.85 },
+  startSessionPressable: {
+    position: 'absolute',
+    left: Spacing.three,
+    right: Spacing.three,
+    bottom: BottomTabInset + 22,
+    zIndex: 4,
+    alignItems: 'center',
+  },
+  startSessionImage: {
+    width: '100%',
+    maxWidth: 360,
+    height: 80,
+    alignSelf: 'center',
+  },
+  startButtonPressed: { opacity: 0.88 },
   startButtonText: { color: BakeryColors.cocoaDark, fontSize: 17 },
   breakButton: {
     borderRadius: BakeryRadii.button,

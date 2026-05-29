@@ -86,7 +86,7 @@ export default function SessionScreen() {
 
     const coinMsg =
       cancelCoins > 0
-        ? `You studied ${minutesElapsed} min and will earn 🪙 ${cancelCoins}.`
+        ? `You studied ${minutesElapsed} min and will earn ${cancelCoins} coins.`
         : `Less than ${MIN_MINUTES_FOR_COINS} min studied — no coins this time.`;
 
     Alert.alert('End session early?', coinMsg, [

@@ -1,8 +1,10 @@
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlusGateCard } from '@/components/plus-gate';
+import { StreakFreezeIcon } from '@/components/streak-freeze-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
@@ -15,6 +17,8 @@ import {
   MaxContentWidth,
   Spacing,
 } from '@/constants/theme';
+
+const STREAK_FIRE_ICON = require('@/assets/images/home/streak-fire-icon.png');
 
 function daysUntil(dateISO: string): number {
   const today = new Date();
@@ -178,7 +182,12 @@ export default function ProgressScreen() {
 
           {/* ── Streak ────────────────────────────────────────────────────── */}
           <ThemedView type="backgroundElement" style={styles.streakCard}>
-            <ThemedText style={styles.streakFire}>🔥</ThemedText>
+            <Image
+              source={STREAK_FIRE_ICON}
+              style={styles.streakFireIcon}
+              contentFit="contain"
+              accessibilityLabel=""
+            />
             <ThemedText style={styles.streakNumber}>{streak.currentStreak}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               day streak
@@ -194,7 +203,7 @@ export default function ProgressScreen() {
           {isPlus ? (
             <ThemedView type="backgroundElement" style={styles.freezeCard}>
               <ThemedView style={styles.freezeRow}>
-                <ThemedText style={styles.freezeEmoji}>🧊</ThemedText>
+                <StreakFreezeIcon size={72} style={styles.freezeIcon} />
                 <ThemedView style={styles.freezeInfo}>
                   <ThemedText type="smallBold">Streak Freeze</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
@@ -216,7 +225,7 @@ export default function ProgressScreen() {
                             text: 'Use Freeze',
                             onPress: () => {
                               const used = applyStreakFreeze();
-                              if (used) Alert.alert('Streak protected! 🧊', 'Your streak is safe.');
+                              if (used) Alert.alert('Streak protected!', 'Your streak is safe.');
                             },
                           },
                         ],
@@ -239,7 +248,7 @@ export default function ProgressScreen() {
             </ThemedView>
           ) : (
             <PlusGateCard
-              emoji="🧊"
+              icon={<StreakFreezeIcon size={52} />}
               title="Streak Freeze"
               description="3 per month — protect your streak from missed days without earning coins."
             />
@@ -560,7 +569,10 @@ const styles = StyleSheet.create({
     backgroundColor: BakeryColors.glass,
     ...BakeryShadow,
   },
-  streakFire: { fontSize: 40, lineHeight: 48 },
+  streakFireIcon: {
+    width: 48,
+    height: 54,
+  },
   streakNumber: { fontSize: 56, fontWeight: '700', lineHeight: 64, color: BakeryColors.honey },
   statsRow: { flexDirection: 'row', gap: Spacing.two },
   statCard: {
@@ -638,7 +650,7 @@ const styles = StyleSheet.create({
   maxNote: { textAlign: 'center' },
   freezeCard: { borderRadius: BakeryRadii.card, padding: Spacing.three, gap: Spacing.two, backgroundColor: BakeryColors.glass },
   freezeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  freezeEmoji: { fontSize: 28, lineHeight: 34, width: 36 },
+  freezeIcon: { width: 80 },
   freezeInfo: { flex: 1, gap: 2 },
   freezeBtn: {
     backgroundColor: BakeryColors.honey,

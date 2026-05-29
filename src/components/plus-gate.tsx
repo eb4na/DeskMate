@@ -8,20 +8,21 @@ import { useApp } from '@/context/app-context';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
 
 type CardProps = {
-  emoji: string;
+  emoji?: string;
+  icon?: ReactNode;
   title: string;
   description: string;
 };
 
 /** Tappable locked card — navigates to the Plus upgrade screen */
-export function PlusGateCard({ emoji, title, description }: CardProps) {
+export function PlusGateCard({ emoji = '✨', icon, title, description }: CardProps) {
   return (
     <Pressable
       style={({ pressed }) => [pressed && styles.pressed]}
       onPress={() => router.push('/plus-upgrade')}>
       <ThemedView type="backgroundElement" style={styles.card}>
         <ThemedView style={styles.header}>
-          <ThemedText style={styles.emoji}>{emoji}</ThemedText>
+          {icon ?? <ThemedText style={styles.emoji}>{emoji}</ThemedText>}
           <ThemedView style={styles.badge}>
             <ThemedText style={styles.badgeText}>Chef&apos;s Special</ThemedText>
           </ThemedView>

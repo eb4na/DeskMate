@@ -139,6 +139,15 @@ export default function AddTaskScreen() {
                   </ThemedView>
                 </Pressable>
               ))}
+              <Pressable
+                onPress={() => router.push('/manage-subjects')}
+                style={({ pressed }) => [pressed && styles.pressed]}>
+                <ThemedView type="backgroundElement" style={[styles.chip, styles.addSubjectChip]}>
+                  <ThemedText type="smallBold" style={styles.addSubjectChipText}>
+                    + Add subject
+                  </ThemedText>
+                </ThemedView>
+              </Pressable>
             </ThemedView>
           </ThemedView>
 
@@ -291,6 +300,14 @@ const styles = StyleSheet.create({
   },
   chipEmoji: { fontSize: 14, lineHeight: 18 },
   subjectDot: { width: 10, height: 10, borderRadius: 5 },
+  addSubjectChip: {
+    borderWidth: 1,
+    borderColor: '#D9C5B2',
+    borderStyle: 'dashed',
+  },
+  addSubjectChipText: {
+    color: '#7A5240',
+  },
   pressed: { opacity: 0.8 },
   saveBtn: {
     backgroundColor: '#7C6F5A',

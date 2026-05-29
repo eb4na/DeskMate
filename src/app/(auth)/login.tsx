@@ -48,7 +48,7 @@ export default function LoginScreen() {
     setSubmitting(true);
     setErrorMessage('');
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: normalizedEmail,
       password,
     });
@@ -57,12 +57,23 @@ export default function LoginScreen() {
       setErrorMessage(
         /email not confirmed|email_not_confirmed/i.test(error.message)
           ? 'Your email still needs verification. Tap Resend verification to get a fresh code.'
-          : error.message,
+          : /invalid login credentials/i.test(error.message)
+            ? 'That email or password is incorrect. Try again or reset your password.'
+            : error.message,
       );
       setSubmitting(false);
       return;
     }
 
+    if (!data.session) {
+      setErrorMessage(
+        'Sign-in did not finish. If this is a new account, verify your email first (Resend verification).',
+      );
+      setSubmitting(false);
+      return;
+    }
+
+    router.replace('/');
     setSubmitting(false);
   };
 

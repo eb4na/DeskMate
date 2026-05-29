@@ -20,16 +20,16 @@ export default function AppTabs() {
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="home" href="/" asChild>
-            <TabButton icon="🏠">Home</TabButton>
+            <TabButton glyph="⌂">Home</TabButton>
           </TabTrigger>
           <TabTrigger name="tasks" href="/tasks" asChild>
-            <TabButton icon="🧁">Tasks</TabButton>
+            <TabButton glyph="☑">Tasks</TabButton>
           </TabTrigger>
           <TabTrigger name="progress" href="/progress" asChild>
-            <TabButton icon="🍓">Progress</TabButton>
+            <TabButton glyph="▥">Progress</TabButton>
           </TabTrigger>
           <TabTrigger name="shop" href="/shop" asChild>
-            <TabButton icon="🥐">Shop</TabButton>
+            <TabButton glyph="🧺">Shop</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>
@@ -40,19 +40,26 @@ export default function AppTabs() {
 export function TabButton({
   children,
   isFocused,
-  icon,
+  glyph,
   ...props
-}: TabTriggerSlotProps & { icon: string }) {
+}: TabTriggerSlotProps & { glyph: string }) {
   return (
     <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
-      <ThemedView
-        type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
-        style={[styles.tabButtonView, isFocused && styles.tabButtonViewFocused]}>
-        <ThemedText style={styles.tabIcon}>{icon}</ThemedText>
-        <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
+      <View style={[styles.tabButtonView, isFocused && styles.tabButtonViewFocused]}>
+        <ThemedText
+          style={[
+            styles.tabIcon,
+            isFocused ? styles.tabIconFocused : styles.tabIconInactive,
+          ]}>
+          {glyph}
+        </ThemedText>
+        <ThemedText
+          type="smallBold"
+          themeColor={isFocused ? 'text' : 'textSecondary'}
+          style={styles.tabLabel}>
           {children}
         </ThemedText>
-      </ThemedView>
+      </View>
     </Pressable>
   );
 }
@@ -61,9 +68,6 @@ export function CustomTabList(props: TabListProps) {
   return (
     <View {...props} style={styles.tabListContainer}>
       <ThemedView type="backgroundElement" style={styles.innerContainer}>
-        <ThemedText type="smallBold" style={styles.brandText}>
-          Memobun Cafe
-        </ThemedText>
         {props.children}
       </ThemedView>
     </View>
@@ -81,37 +85,31 @@ const styles = StyleSheet.create({
   },
   innerContainer: {
     paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: Spacing.two,
     borderRadius: BakeryRadii.panel,
     flexDirection: 'row',
     alignItems: 'center',
     flexGrow: 1,
-    gap: Spacing.two,
+    justifyContent: 'space-around',
     maxWidth: MaxContentWidth,
     borderWidth: 1.5,
     borderColor: BakeryColors.border,
-    backgroundColor: BakeryColors.glass,
+    backgroundColor: BakeryColors.cream,
     ...BakeryShadow,
   },
-  brandText: {
-    marginRight: Spacing.two,
-    color: BakeryColors.cocoa,
-  },
-  pressed: {
-    opacity: 0.7,
-  },
+  pressed: { opacity: 0.7 },
   tabButtonView: {
     paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.two,
+    paddingHorizontal: Spacing.three,
     borderRadius: BakeryRadii.chip,
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 2,
   },
   tabButtonViewFocused: {
-    borderWidth: 1,
-    borderColor: BakeryColors.rose,
-    backgroundColor: BakeryColors.cream,
+    backgroundColor: BakeryColors.shortbread,
   },
-  tabIcon: { fontSize: 14, lineHeight: 18 },
+  tabIcon: { fontSize: 20, lineHeight: 24 },
+  tabIconFocused: { color: BakeryColors.cocoa },
+  tabIconInactive: { color: BakeryColors.mocha, opacity: 0.7 },
+  tabLabel: { fontSize: 11, letterSpacing: 0.2 },
 });

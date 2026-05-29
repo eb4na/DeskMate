@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, TextInput, useColorScheme, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AiTicketIcon } from '@/components/ai-ticket-icon';
 import { PlusGate } from '@/components/plus-gate';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -28,6 +29,7 @@ function GalleryContent() {
     consumeAiTicket,
     restoreAiTicket,
     defaultCompanionId,
+    isPlus,
     setDefaultCompanion,
     setActiveCompanion,
   } = useApp();
@@ -94,6 +96,10 @@ function GalleryContent() {
       );
       return;
     }
+    if (!isPlus) {
+      Alert.alert('Plus required', 'AI companion generation is included with DeskMate Plus.');
+      return;
+    }
     if (aiTickets <= 0) {
       Alert.alert(
         'No tickets left',
@@ -112,21 +118,23 @@ function GalleryContent() {
     }
 
     setIsGenerating(true);
+    let ticketUsed = false;
+    const savedName = generateName.trim();
     try {
+      if (!consumeAiTicket()) {
+        throw new Error('You do not have any AI generation tickets left.');
+      }
+      ticketUsed = true;
+
       const result = await generateAiCompanion({
-        name: generateName.trim(),
+        name: savedName,
         vibe: generateVibe.trim(),
         outfit: generateOutfit.trim(),
         prompt: generatePrompt.trim(),
       });
 
-      const consumed = consumeAiTicket();
-      if (!consumed) {
-        throw new Error('You do not have any AI generation tickets left.');
-      }
-
       const slotId = saveCompanionSlot({
-        name: generateName.trim(),
+        name: savedName,
         emoji: '🎨',
         description: result.description,
         isGenerated: true,
@@ -136,7 +144,6 @@ function GalleryContent() {
       });
 
       if (!slotId) {
-        restoreAiTicket();
         throw new Error(`You can save up to ${MAX_SLOTS} companions.`);
       }
 
@@ -149,9 +156,12 @@ function GalleryContent() {
 
       Alert.alert(
         'Companion ready',
-        `${generateName.trim()} was generated and is now active across Home and your study screens.`,
+        `${savedName} was generated and is now active across Home and your study screens.`,
       );
     } catch (error) {
+      if (ticketUsed) {
+        restoreAiTicket();
+      }
       Alert.alert(
         'Generation failed',
         error instanceof Error ? error.message : 'The companion could not be generated.',
@@ -178,7 +188,7 @@ function GalleryContent() {
         {/* Ticket counter */}
         <ThemedView type="backgroundElement" style={styles.ticketCard}>
           <ThemedView style={styles.ticketRow}>
-            <ThemedText style={styles.ticketEmoji}>🎨</ThemedText>
+            <AiTicketIcon size={72} style={styles.ticketIcon} />
             <ThemedView style={styles.ticketInfo}>
               <ThemedText type="smallBold">AI Generation Tickets</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
@@ -234,8 +244,8 @@ function GalleryContent() {
                 multiline
               />
               <ThemedText type="small" themeColor="textSecondary" style={styles.generatorNote}>
-                Generates one transparent bakery-style companion through the secure server-side OpenAI
-                function.
+                Generates a bakery-style companion with OpenAI, then automatically removes the
+                background so your sprite is ready for Home.
               </ThemedText>
               <Pressable
                 style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed, isGenerating && styles.disabledBtn]}
@@ -463,7 +473,7 @@ const styles = StyleSheet.create({
   },
   ticketCard: { borderRadius: 16, padding: Spacing.three, gap: Spacing.two },
   ticketRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  ticketEmoji: { fontSize: 28, lineHeight: 34, width: 36 },
+  ticketIcon: { width: 80 },
   ticketInfo: { flex: 1, gap: 2 },
   ticketNote: { lineHeight: 18, fontSize: 12 },
   generateBtn: {

@@ -2,6 +2,9 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 
 import { createClient } from 'npm:@supabase/supabase-js@2.50.0';
 
+import { assertPromptIsSafe } from './moderation.ts';
+import { removeBackgroundFromImage } from './remove-background.ts';
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -22,13 +25,20 @@ function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: CORS_HEADERS });
 }
 
-function buildPrompt({ name, vibe, outfit, prompt }: Required<GenerateRequest>) {
+function buildPrompt(
+  { name, vibe, outfit, prompt }: Required<GenerateRequest>,
+  useGreenScreen: boolean,
+) {
+  const backgroundLine = useGreenScreen
+    ? 'Background: solid flat chroma green #00FF00 only. No checkerboard, no gradient, no scenery, no props outside the character silhouette.'
+    : 'Background: fully transparent PNG alpha. No checkerboard pattern, no room, no text, no frame.';
+
   return [
     'Create a full-body anime bakery companion character for a cozy study app.',
     'Style: soft bakery illustration, warm sepia palette, cute and fluffy, gentle face, clean silhouette.',
     'Pose: standing and facing forward, centered subject, readable from mobile UI.',
     'Props: subtle bakery detail or pastry accessory that matches the character.',
-    'Background: transparent PNG with no room, no text, no frame, no extra objects outside the character.',
+    backgroundLine,
     `Character name inspiration: ${name}.`,
     `Vibe: ${vibe}.`,
     `Outfit or styling: ${outfit}.`,
@@ -60,6 +70,7 @@ Deno.serve(async (request) => {
   const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   const openAiKey = Deno.env.get('OPENAI_API_KEY');
+  const removeBgKey = Deno.env.get('REMOVE_BG_API_KEY');
 
   if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
     return jsonResponse({ error: 'Supabase function secrets are not configured.' }, 500);
@@ -102,12 +113,15 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: 'Name, vibe, and outfit are required.' }, 400);
   }
 
-  const finalPrompt = buildPrompt({
-    name,
-    vibe,
-    outfit,
-    prompt,
-  });
+  try {
+    assertPromptIsSafe(name, vibe, outfit, prompt);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Prompt blocked.';
+    return jsonResponse({ error: message }, 400);
+  }
+
+  const useGreenScreen = Boolean(removeBgKey);
+  const finalPrompt = buildPrompt({ name, vibe, outfit, prompt }, useGreenScreen);
 
   const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
@@ -120,7 +134,7 @@ Deno.serve(async (request) => {
       prompt: finalPrompt,
       size: '1024x1536',
       quality: 'medium',
-      background: 'transparent',
+      background: useGreenScreen ? 'opaque' : 'transparent',
       output_format: 'png',
     }),
   });
@@ -139,10 +153,21 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: 'OpenAI did not return an image payload.' }, 502);
   }
 
+  let uploadBytes: Uint8Array;
+  try {
+    uploadBytes = await removeBackgroundFromImage(
+      base64ToBytes(base64Image),
+      removeBgKey ?? undefined,
+      { type: 'person' },
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Background removal failed.';
+    return jsonResponse({ error: 'Background removal failed.', details: message }, 502);
+  }
+
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
   const fileName = `${crypto.randomUUID()}.png`;
   const storagePath = `${user.id}/${fileName}`;
-  const uploadBytes = base64ToBytes(base64Image);
 
   const { error: uploadError } = await adminClient.storage.from(BUCKET_NAME).upload(
     storagePath,

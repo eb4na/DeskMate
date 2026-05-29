@@ -29,6 +29,12 @@ export async function generateAiCompanion(
     throw new Error('The generator returned an unexpected response.');
   }
 
+  const payload = data as { error?: string; details?: string };
+  if (payload.error) {
+    const detail = payload.details ? ` ${payload.details}` : '';
+    throw new Error(`${payload.error}${detail}`);
+  }
+
   const result = data as Partial<GenerateCompanionResult>;
   if (!result.imageUrl || !result.storagePath || !result.prompt) {
     throw new Error('The generator response was missing image data.');

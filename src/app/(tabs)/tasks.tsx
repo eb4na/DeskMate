@@ -203,8 +203,7 @@ export default function TasksScreen() {
                 No tasks yet
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.welcomeText}>
-                Add your first task to stay organized. You&apos;ll earn 🪙 10 coins for every task you
-                complete!
+                Add your first task to stay organized and track what you need to study.
               </ThemedText>
               <Pressable
                 style={({ pressed }) => [styles.addBtn, styles.welcomeAddBtn, pressed && styles.pressed]}

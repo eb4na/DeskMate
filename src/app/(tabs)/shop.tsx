@@ -1,8 +1,9 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CoinAmount, CoinIcon } from '@/components/coin-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { isEquipableCategory } from '@/constants/shop-effects';
@@ -27,7 +28,7 @@ type CoinPack = { id: string; name: string; emoji: string; coins: number; price:
 const COIN_PACKS: CoinPack[] = [
   { id: 'pouch', name: 'Small Pouch', emoji: '👛', coins: 200, price: '$0.99' },
   { id: 'bag', name: 'Study Bag', emoji: '🎒', coins: 600, price: '$2.49' },
-  { id: 'chest', name: 'Coin Chest', emoji: '🪙', coins: 1400, price: '$4.99', popular: true },
+  { id: 'chest', name: 'Coin Chest', emoji: '📦', coins: 1400, price: '$4.99', popular: true },
   { id: 'vault', name: 'Scholar Vault', emoji: '🏛️', coins: 3500, price: '$9.99' },
 ];
 
@@ -59,7 +60,7 @@ export default function ShopScreen() {
           text: `Buy for ${packPrice} (Mock)`,
           onPress: () => {
             addPurchasedCoins(packCoins);
-            Alert.alert(`+${packCoins} coins added! 🪙`, 'Mock purchase complete.');
+            Alert.alert(`+${packCoins} coins added!`, 'Mock purchase complete.');
           },
         },
       ],
@@ -81,15 +82,15 @@ export default function ShopScreen() {
     if (coins < price) {
       Alert.alert(
         'Not enough coins',
-        `You need ${price} 🪙 but only have ${coins}. Keep studying to earn more!`,
+        `You need ${price} coins but only have ${coins}. Keep studying to earn more!`,
       );
       return;
     }
     const discountNote = isPlus ? ` (20% Plus discount applied)` : '';
-    Alert.alert(`Buy "${name}"?`, `Spend ${price} 🪙 to unlock this item.${discountNote}`, [
+    Alert.alert(`Buy "${name}"?`, `Spend ${price} coins to unlock this item.${discountNote}`, [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: `Buy for ${price} 🪙`,
+        text: `Buy for ${price} coins`,
         onPress: () => {
           const ok = purchaseShopItem(itemId, price);
           if (!ok) {
@@ -108,7 +109,7 @@ export default function ShopScreen() {
           <ThemedView style={styles.balanceRow}>
             <ThemedText type="subtitle" style={styles.title}>Shop</ThemedText>
             <ThemedView type="backgroundElement" style={styles.balancePill}>
-              <ThemedText style={styles.coinEmoji}>🪙</ThemedText>
+              <CoinIcon size={44} />
               <ThemedText style={styles.balanceAmount}>{coins}</ThemedText>
             </ThemedView>
           </ThemedView>
@@ -117,9 +118,12 @@ export default function ShopScreen() {
           <ThemedView type="backgroundElement" style={styles.capCard}>
             <ThemedView style={styles.capRow}>
               <ThemedText type="small" themeColor="textSecondary">Daily earn</ThemedText>
-              <ThemedText type="smallBold">
-                {earnedToday}/{DAILY_EARN_CAP} 🪙
-              </ThemedText>
+              <View style={styles.capCoins}>
+                <ThemedText type="smallBold">
+                  {earnedToday}/{DAILY_EARN_CAP}
+                </ThemedText>
+                <CoinIcon size={32} />
+              </View>
             </ThemedView>
             <ThemedView style={styles.progressBar}>
               <ThemedView
@@ -246,13 +250,16 @@ export default function ShopScreen() {
                         pressed && styles.pressed,
                       ]}
                       onPress={() => handleBuy(item.id, item.name, item.price)}>
-                      <ThemedText
-                        style={[styles.buyBtnText, !canAfford && styles.buyBtnTextDisabled]}>
-                        🪙 {discountedPrice}
+                      <View style={styles.buyBtnInner}>
+                        <CoinAmount
+                          amount={discountedPrice}
+                          size={28}
+                          textStyle={[styles.buyBtnText, !canAfford && styles.buyBtnTextDisabled]}
+                        />
                         {isPlus && discountedPrice < item.price && (
                           <ThemedText style={styles.originalPrice}> {item.price}</ThemedText>
                         )}
-                      </ThemedText>
+                      </View>
                     </Pressable>
                   )}
                 </ThemedView>
@@ -290,9 +297,7 @@ export default function ShopScreen() {
                         </ThemedView>
                       )}
                     </ThemedView>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {pack.coins} 🪙
-                    </ThemedText>
+                    <CoinAmount amount={pack.coins} size={20} textStyle={styles.packCoinText} />
                   </ThemedView>
                   <ThemedView style={styles.packPriceBtn}>
                     <ThemedText style={styles.packPrice}>{pack.price}</ThemedText>
@@ -316,13 +321,17 @@ export default function ShopScreen() {
               { label: 'Complete a 25 min session', coins: 15 },
               { label: 'Complete a 50 min session', coins: 35 },
               { label: 'Complete a 90 min session', coins: 70 },
-              { label: 'Complete a task', coins: 10 },
               { label: '3-day streak bonus', coins: 30 },
               { label: '7-day streak bonus', coins: 80 },
             ].map((row) => (
               <ThemedView key={row.label} style={styles.tipRow}>
                 <ThemedText type="small" themeColor="textSecondary">{row.label}</ThemedText>
-                <ThemedText type="smallBold" style={styles.tipCoins}>+{row.coins} 🪙</ThemedText>
+                <CoinAmount
+                  amount={row.coins}
+                  prefix="+"
+                  size={28}
+                  textStyle={styles.tipCoins}
+                />
               </ThemedView>
             ))}
           </ThemedView>
@@ -352,16 +361,19 @@ const styles = StyleSheet.create({
   balancePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     paddingHorizontal: Spacing.three,
-    paddingVertical: 8,
+    paddingVertical: 6,
+    minHeight: 52,
     borderRadius: BakeryRadii.pill,
     backgroundColor: BakeryColors.glass,
     borderWidth: 1,
     borderColor: BakeryColors.border,
   },
-  coinEmoji: { fontSize: 18, lineHeight: 22 },
+  capCoins: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   balanceAmount: { fontSize: 22, fontWeight: '700', color: BakeryColors.honey },
+  buyBtnInner: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  packCoinText: { fontSize: 12, opacity: 0.72 },
   capCard: {
     borderRadius: BakeryRadii.card,
     padding: Spacing.three,

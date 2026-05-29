@@ -592,18 +592,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setS((prev) => ({ ...prev, tasks: prev.tasks.filter((t) => t.id !== id) }));
 
   const completeTask = (id: string) => {
-    if (!s.tasks.find((t) => t.id === id && t.status !== 'done')) return;
     const now = new Date().toISOString();
-    const today = todayISO();
 
     setS((prev) => {
       const task = prev.tasks.find((t) => t.id === id);
       if (!task || task.status === 'done') return prev;
-
-      const isNewDay = prev.earnedDate !== today;
-      const basedToday = isNewDay ? 0 : prev.earnedToday;
-      const remaining = Math.max(0, DAILY_EARN_CAP - basedToday);
-      const actualAdd = Math.min(10, remaining);
 
       return {
         ...prev,
@@ -612,9 +605,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             ? { ...t, status: 'done' as TaskStatus, completedAt: now, lastActivityAt: now }
             : t,
         ),
-        coins: prev.coins + actualAdd,
-        earnedToday: basedToday + actualAdd,
-        earnedDate: today,
       };
     });
   };

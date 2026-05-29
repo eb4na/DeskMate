@@ -51,6 +51,7 @@ function RootNavigator() {
         <Stack.Screen name="custom-timer" options={{ presentation: 'modal', title: 'Custom Timer' }} />
         <Stack.Screen name="ambience-picker" options={{ presentation: 'modal', title: 'Ambience' }} />
         <Stack.Screen name="companion-gallery" options={{ presentation: 'modal', title: 'Companion Gallery' }} />
+        <Stack.Screen name="settings" options={{ presentation: 'modal', title: 'Settings' }} />
       </Stack.Protected>
     </Stack>
   );

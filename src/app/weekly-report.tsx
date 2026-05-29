@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CoinIcon } from '@/components/coin-icon';
 import { PlusGateCard } from '@/components/plus-gate';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -106,7 +107,7 @@ export default function WeeklyReportScreen() {
     { label: 'Days showed up', value: String(weekDays), emoji: '📅' },
     { label: 'Tasks done', value: String(weekTasks.length), emoji: '✅' },
     { label: 'Streak now', value: `${streak.currentStreak}d`, emoji: '🔥' },
-    { label: 'Est. coins', value: estimatedCoins > 0 ? String(estimatedCoins) : '—', emoji: '🪙' },
+    { label: 'Est. coins', value: estimatedCoins > 0 ? String(estimatedCoins) : '—', coinIcon: true },
   ];
 
   const hasData = weekSessionCount > 0 || weekTasks.length > 0;
@@ -141,7 +142,11 @@ export default function WeeklyReportScreen() {
           <ThemedView style={styles.statsGrid}>
             {stats.map((s) => (
               <ThemedView key={s.label} type="backgroundElement" style={styles.statCard}>
-                <ThemedText style={styles.statEmoji}>{s.emoji}</ThemedText>
+                {'coinIcon' in s && s.coinIcon ? (
+                  <CoinIcon size={48} style={styles.statCoinIcon} />
+                ) : (
+                  <ThemedText style={styles.statEmoji}>{'emoji' in s ? s.emoji : ''}</ThemedText>
+                )}
                 <ThemedText style={styles.statValue}>{s.value}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.statLabel}>
                   {s.label}
@@ -310,6 +315,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   statEmoji: { fontSize: 20, lineHeight: 26 },
+  statCoinIcon: { marginBottom: 2 },
   statValue: { fontSize: 20, fontWeight: '700', lineHeight: 26 },
   statLabel: { textAlign: 'center', fontSize: 11 },
   section: { gap: Spacing.two },

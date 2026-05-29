@@ -2,6 +2,8 @@ import { router } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AiTicketIcon } from '@/components/ai-ticket-icon';
+import { StreakFreezeIcon } from '@/components/streak-freeze-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
@@ -11,11 +13,11 @@ const FEATURES = [
   { emoji: '⏱', title: 'Custom timers', desc: 'Any duration, saved presets' },
   { emoji: '🔔', title: 'Multiple reminders', desc: 'Weekday/weekend schedules, custom messages' },
   { emoji: '📆', title: 'Unlimited exam countdowns', desc: 'Plus advanced exam planning fields' },
-  { emoji: '🧊', title: 'Streak freezes', desc: '3 per month — protect your streak from missed days' },
+  { title: 'Streak freezes', desc: '3 per month — protect your streak from missed days', streakFreezeIcon: true },
   { emoji: '📊', title: 'Advanced reports', desc: 'Monthly trends, best study hours, mood insights' },
   { emoji: '🎵', title: 'Ambience sounds', desc: 'Rain, cafe, library, fireplace, and more' },
   { emoji: '🐾', title: 'Extra companion slots', desc: 'Keep your two free starter companions and save up to 3 more' },
-  { emoji: '🎨', title: 'AI companion tickets', desc: '3 generation tickets/month for custom art' },
+  { title: 'AI companion tickets', desc: '3 generation tickets/month for custom art', aiTicketIcon: true },
   { emoji: '🎮', title: 'All break games', desc: 'Unlock Memory Cards, Word Puzzle, and future games' },
   { emoji: '🛍️', title: 'Plus shop discount', desc: '20% off all shop items' },
 ];
@@ -91,7 +93,13 @@ export default function PlusUpgradeScreen() {
           <ThemedView style={styles.featureList}>
             {FEATURES.map((f) => (
               <ThemedView key={f.title} style={styles.featureRow}>
-                <ThemedText style={styles.featureEmoji}>{f.emoji}</ThemedText>
+                {'streakFreezeIcon' in f && f.streakFreezeIcon ? (
+                  <StreakFreezeIcon size={56} style={styles.featureCustomIcon} />
+                ) : 'aiTicketIcon' in f && f.aiTicketIcon ? (
+                  <AiTicketIcon size={56} style={styles.featureCustomIcon} />
+                ) : (
+                  <ThemedText style={styles.featureEmoji}>{'emoji' in f ? f.emoji : ''}</ThemedText>
+                )}
                 <ThemedView style={styles.featureText}>
                   <ThemedText type="smallBold">{f.title}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
@@ -115,14 +123,14 @@ export default function PlusUpgradeScreen() {
                     Flexible, cancel anytime
                   </ThemedText>
                 </ThemedView>
-                <ThemedText style={styles.priceValue}>$7.00</ThemedText>
+                <ThemedText style={styles.priceValue}>$8.00</ThemedText>
               </ThemedView>
               <ThemedView style={styles.divider} />
               <ThemedView style={styles.priceRow}>
                 <ThemedView>
                   <ThemedText type="smallBold" style={styles.priceTitle}>
                     Yearly{' '}
-                    <ThemedText style={styles.saveBadge}>Save 40%</ThemedText>
+                    <ThemedText style={styles.saveBadge}>Save 48%</ThemedText>
                   </ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
                     $49.99/year · Best value
@@ -216,6 +224,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(0,0,0,0.06)',
   },
   featureEmoji: { fontSize: 22, lineHeight: 28, width: 30 },
+  featureCustomIcon: { width: 60, height: 60 },
   featureText: { flex: 1, gap: 2 },
   checkmark: { fontSize: 16, color: '#81C784', fontWeight: '700' },
   priceCard: { borderRadius: 16, padding: Spacing.three, gap: Spacing.two },
