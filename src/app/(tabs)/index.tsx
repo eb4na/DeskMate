@@ -770,7 +770,7 @@ const styles = StyleSheet.create({
   metaCard: {
     flex: 1,
     width: '100%',
-    minHeight: 130,
+    minHeight: 160,
     paddingHorizontal: 12,
     paddingTop: 10,
     paddingBottom: 10,
@@ -899,8 +899,8 @@ const styles = StyleSheet.create({
   statusStreakIcon: { width: 22, height: 22 },
   examBookIcon: { width: 28, height: 28 },
   reminderBellIcon: { width: 30, height: 36 },
-  examCalendarIcon: { width: 38, height: 38 },
-  reminderBreadIcon: { width: 36, height: 52 },
+  examCalendarIcon: { width: 58, height: 62 },
+  reminderBreadIcon: { width: 50, height: 76 },
   startButtonText: { color: BakeryColors.cocoaDark, fontSize: 17 },
   breakButton: {
     borderRadius: BakeryRadii.button,
