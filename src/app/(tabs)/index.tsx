@@ -313,7 +313,7 @@ export default function HomeScreen() {
                     style={({ pressed }) => pressed && styles.cardPressed}
                     accessibilityLabel="Add coins">
                     <View style={[styles.statusChip, styles.coinChip]}>
-                      <CoinIcon size={40} />
+                      <CoinIcon size={26} />
                       <ThemedText type="smallBold" style={styles.coinChipText}>
                         {coins}
                       </ThemedText>
@@ -770,7 +770,7 @@ const styles = StyleSheet.create({
   metaCard: {
     flex: 1,
     width: '100%',
-    minHeight: 100,
+    minHeight: 130,
     paddingHorizontal: 12,
     paddingTop: 10,
     paddingBottom: 10,
