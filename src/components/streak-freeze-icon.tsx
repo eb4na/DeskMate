@@ -8,14 +8,11 @@ type StreakFreezeIconProps = {
   style?: StyleProp<ImageStyle>;
 };
 
-/** Slight left tilt — diagonal, not flat sideways. */
-const DIAGONAL_ROTATE = '-38deg';
-
 export function StreakFreezeIcon({ size = 72, style }: StreakFreezeIconProps) {
   return (
     <Image
       source={STREAK_FREEZE_ICON}
-      style={[{ width: size, height: size, transform: [{ rotate: DIAGONAL_ROTATE }] }, style]}
+      style={[{ width: size, height: size }, style]}
       contentFit="contain"
       accessibilityLabel="Streak freeze"
     />

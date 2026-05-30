@@ -891,7 +891,7 @@ const styles = StyleSheet.create({
     height: 72,
   },
   startButtonPressed: { opacity: 0.88 },
-  statusStreakIcon: { width: 18, height: 20 },
+  statusStreakIcon: { width: 22, height: 22 },
   examBookIcon: { width: 28, height: 28 },
   reminderBellIcon: { width: 30, height: 36 },
   examCalendarIcon: { width: 38, height: 38 },
