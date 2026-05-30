@@ -70,11 +70,11 @@ function formatTimerLabel(totalSeconds: number): string {
 }
 
 const HOME_ROOM_IMAGE = require('@/assets/images/home-bedroom.png');
-const STREAK_FIRE_ICON = require('@/assets/images/home/streak-strawberry-icon.png');
+const STREAK_FIRE_ICON = require('@/assets/images/home/streak-fire-icon.png');
 const EXAM_BOOK_ICON = require('@/assets/images/home/exam-cupcake-icon.png');
 const EXAM_CALENDAR_ICON = require('@/assets/images/home/exam-calendar-icon.png');
 const REMINDER_BELL_ICON = require('@/assets/images/home/reminder-bell-icon.png');
-const REMINDER_BREAD_ICON = require('@/assets/images/home/reminder-sundae-icon.png');
+const REMINDER_BREAD_ICON = require('@/assets/images/home/reminder-bread-icon.png');
 
 export default function HomeScreen() {
   const {
@@ -950,11 +950,11 @@ const styles = StyleSheet.create({
   },
   startSessionInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   startButtonPressed: { opacity: 0.88 },
-  statusStreakIcon: { width: 24, height: 20 },
-  examBookIcon: { width: 38, height: 38 },
+  statusStreakIcon: { width: 18, height: 20 },
+  examBookIcon: { width: 26, height: 26 },
   reminderBellIcon: { width: 18, height: 18, transform: [{ rotate: '-12deg' }] },
   examCalendarIcon: { width: 44, height: 44 },
-  reminderBreadIcon: { width: 34, height: 54, transform: [{ rotate: '-8deg' }] },
+  reminderBreadIcon: { width: 44, height: 44, transform: [{ rotate: '-8deg' }] },
   startButtonText: { color: BakeryColors.cocoaDark, fontSize: 17 },
   breakButton: {
     borderRadius: BakeryRadii.button,
