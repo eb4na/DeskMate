@@ -71,7 +71,7 @@ function formatTimerLabel(totalSeconds: number): string {
 
 const HOME_ROOM_IMAGE = require('@/assets/images/home-bedroom.png');
 const STREAK_FIRE_ICON = require('@/assets/images/home/streak-fire-icon.png');
-const EXAM_BOOK_ICON = require('@/assets/images/home/exam-cupcake-icon.png');
+const EXAM_BOOK_ICON = require('@/assets/images/home/exam-book-icon.png');
 const EXAM_CALENDAR_ICON = require('@/assets/images/home/exam-calendar-icon.png');
 const REMINDER_BELL_ICON = require('@/assets/images/home/reminder-bell-icon.png');
 const REMINDER_BREAD_ICON = require('@/assets/images/home/reminder-bread-icon.png');
@@ -951,7 +951,7 @@ const styles = StyleSheet.create({
   startSessionInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   startButtonPressed: { opacity: 0.88 },
   statusStreakIcon: { width: 18, height: 20 },
-  examBookIcon: { width: 26, height: 26 },
+  examBookIcon: { width: 22, height: 22 },
   reminderBellIcon: { width: 18, height: 18, transform: [{ rotate: '-12deg' }] },
   examCalendarIcon: { width: 44, height: 44 },
   reminderBreadIcon: { width: 44, height: 44, transform: [{ rotate: '-8deg' }] },
