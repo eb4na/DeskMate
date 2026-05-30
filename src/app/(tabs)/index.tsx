@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
   topHud: {
     gap: Spacing.two,
     zIndex: 3,
-    paddingHorizontal: Spacing.two,
+    paddingHorizontal: 4,
     paddingTop: Spacing.two,
   },
   statusRow: {
@@ -800,17 +800,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   metaCardTextBlock: {
-    paddingRight: 48,
+    paddingRight: 66,
     gap: 2,
     justifyContent: 'center',
     backgroundColor: 'transparent',
   },
   metaCardArt: {
     position: 'absolute',
-    right: 0,
+    right: -4,
     top: 0,
     bottom: 0,
-    width: 44,
+    width: 70,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent',
