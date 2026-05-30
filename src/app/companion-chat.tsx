@@ -12,12 +12,12 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
 
 import { BakeryBreadEmoji } from '@/components/bakery-emoji';
 import { CoinIcon } from '@/components/coin-icon';
+import { CompanionAvatar } from '@/components/companion-avatar';
 import { HomeTabIcon, ProgressTabIcon, ShopTabIcon, TasksTabIcon } from '@/components/tab-icons';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -94,6 +94,8 @@ export default function CompanionChatScreen() {
 
   const companion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots);
   const vibe = companion.type === 'slot' ? companion.slot.prompt ?? '' : '';
+  const pfpFocus = companion.type === 'slot' ? companion.slot.pfp : undefined;
+  const activeSlotId = companion.type === 'slot' ? companion.slot.id : null;
   const ticketTotal = aiTickets + purchasedAiTickets;
   const chatTotal = dailyChatRemaining + chatMessages;
 
@@ -252,15 +254,14 @@ export default function CompanionChatScreen() {
 
           {/* Companion profile card */}
           <View style={styles.profileCard}>
-            <View style={styles.profileAvatarRing}>
-              <Image
-                source={companion.imageSource}
-                style={styles.profileAvatar}
-                contentFit="cover"
-                contentPosition="top"
-                accessibilityLabel={`${companion.name}`}
-              />
-            </View>
+            <Pressable
+              disabled={!activeSlotId}
+              onPress={() =>
+                activeSlotId &&
+                router.push({ pathname: '/companion-pfp', params: { slotId: activeSlotId } })
+              }>
+              <CompanionAvatar source={companion.imageSource} size={54} focus={pfpFocus} style={styles.profileAvatarRing} />
+            </Pressable>
             <View style={styles.profileInfo}>
               <View style={styles.profileNameRow}>
                 <ThemedText style={styles.profileName}>DeskMate</ThemedText>
@@ -297,9 +298,7 @@ export default function CompanionChatScreen() {
             onContentSizeChange={scrollToEnd}>
             {messages.length === 0 && (
               <View style={[styles.bubbleRow, styles.bubbleRowAssistant]}>
-                <View style={styles.avatarRing}>
-                  <Image source={companion.imageSource} style={styles.avatar} contentFit="cover" contentPosition="top" />
-                </View>
+                <CompanionAvatar source={companion.imageSource} size={AVATAR} focus={pfpFocus} style={styles.avatarRing} />
                 <View style={styles.msgCol}>
                   <View style={[styles.bubble, styles.bubbleAssistant]}>
                     <ThemedText style={styles.bubbleAssistantText}>
@@ -315,9 +314,7 @@ export default function CompanionChatScreen() {
                 key={i}
                 style={[styles.bubbleRow, m.role === 'user' ? styles.bubbleRowUser : styles.bubbleRowAssistant]}>
                 {m.role === 'assistant' && (
-                  <View style={styles.avatarRing}>
-                    <Image source={companion.imageSource} style={styles.avatar} contentFit="cover" contentPosition="top" />
-                  </View>
+                  <CompanionAvatar source={companion.imageSource} size={AVATAR} focus={pfpFocus} style={styles.avatarRing} />
                 )}
                 <View style={[styles.msgCol, m.role === 'user' && styles.msgColUser]}>
                   <View style={[styles.bubble, m.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant]}>
@@ -332,9 +329,7 @@ export default function CompanionChatScreen() {
 
             {isSending && (
               <View style={[styles.bubbleRow, styles.bubbleRowAssistant]}>
-                <View style={styles.avatarRing}>
-                  <Image source={companion.imageSource} style={styles.avatar} contentFit="cover" contentPosition="top" />
-                </View>
+                <CompanionAvatar source={companion.imageSource} size={AVATAR} focus={pfpFocus} style={styles.avatarRing} />
                 <View style={styles.msgCol}>
                   <View style={[styles.bubble, styles.bubbleAssistant]}>
                     <ActivityIndicator size="small" color={BakeryColors.mocha} />
@@ -459,15 +454,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
-  profileAvatarRing: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    padding: 2,
-    backgroundColor: BakeryColors.butter,
-    overflow: 'hidden',
-  },
-  profileAvatar: { width: '100%', height: '100%', borderRadius: 25, backgroundColor: BakeryColors.shortbread },
+  profileAvatarRing: { borderWidth: 3, borderColor: BakeryColors.butter },
   profileInfo: { flex: 1, gap: 2 },
   profileNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   profileName: { fontSize: 16, fontWeight: '800', color: BakeryColors.cocoaDark },
@@ -493,15 +480,7 @@ const styles = StyleSheet.create({
   bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
   bubbleRowUser: { justifyContent: 'flex-end' },
   bubbleRowAssistant: { justifyContent: 'flex-start' },
-  avatarRing: {
-    width: AVATAR,
-    height: AVATAR,
-    borderRadius: AVATAR / 2,
-    padding: 1.5,
-    backgroundColor: BakeryColors.butter,
-    overflow: 'hidden',
-  },
-  avatar: { width: '100%', height: '100%', borderRadius: AVATAR / 2, backgroundColor: BakeryColors.shortbread },
+  avatarRing: { borderWidth: 2, borderColor: BakeryColors.butter },
   msgCol: { maxWidth: '78%', gap: 2 },
   msgColUser: { alignItems: 'flex-end' },
   bubble: { borderRadius: 18, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },

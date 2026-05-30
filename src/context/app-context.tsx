@@ -83,6 +83,12 @@ export type TimerPreset = {
 export type DefaultCompanionId = 'girl' | 'dude';
 export type ActiveCompanionId = `starter:${DefaultCompanionId}` | string;
 
+// Profile-picture framing: zoom + normalized pan offsets applied as an avatar transform.
+export type PfpFocus = { scale: number; x: number; y: number };
+
+// Default avatar framing — a gentle zoom onto the face (image top).
+export const DEFAULT_PFP_FOCUS: PfpFocus = { scale: 1.4, x: 0, y: 0 };
+
 export type CompanionSlot = {
   id: string;
   name: string;
@@ -92,6 +98,7 @@ export type CompanionSlot = {
   imageUri: string | null;
   imagePath: string | null;
   prompt: string | null;
+  pfp?: PfpFocus;
 };
 
 export type ReminderEntry = {
@@ -391,6 +398,7 @@ type AppContextType = {
   setActiveCompanion: (id: ActiveCompanionId) => void;
   saveCompanionSlot: (slot: Omit<CompanionSlot, 'id'>) => string | null;
   deleteCompanionSlot: (id: string) => void;
+  setCompanionPfp: (id: string, pfp: PfpFocus) => void;
   consumeAiTicket: () => boolean;
   restoreAiTicket: () => void;
   purchaseAiTickets: (amount: number) => void;
@@ -792,6 +800,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         prev.activeCompanionId === id ? `starter:${prev.defaultCompanionId}` : prev.activeCompanionId,
     }));
 
+  // Save the per-companion profile-picture framing (zoom + pan).
+  const setCompanionPfp = (id: string, pfp: PfpFocus) =>
+    setS((prev) => ({
+      ...prev,
+      companionSlots: prev.companionSlots.map((c) => (c.id === id ? { ...c, pfp } : c)),
+    }));
+
   const consumeAiTicket = (): boolean => {
     if (!s.isPlus || s.aiTickets + s.purchasedAiTickets <= 0) return false;
     setS((prev) => {
@@ -994,6 +1009,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setActiveCompanion,
         saveCompanionSlot,
         deleteCompanionSlot,
+        setCompanionPfp,
         consumeAiTicket,
         restoreAiTicket,
         purchaseAiTickets,

@@ -160,10 +160,8 @@ function GalleryContent() {
       setGeneratePrompt('');
       setShowGenerator(false);
 
-      Alert.alert(
-        'Companion ready',
-        `${savedName} was generated and is now active across Home and your study screens.`,
-      );
+      // Let the user crop a profile picture from the freshly generated art.
+      router.push({ pathname: '/companion-pfp', params: { slotId } });
     } catch (error) {
       if (ticketUsed) {
         restoreAiTicket();
