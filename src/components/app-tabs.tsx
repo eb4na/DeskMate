@@ -1,76 +1,71 @@
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { Image } from 'expo-image';
 import { Tabs } from 'expo-router';
-import { Platform, useColorScheme } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { BakeryColors, BakeryRadii, Colors } from '@/constants/theme';
-import { HomeTabIcon, TasksTabIcon, ProgressTabIcon, ShopTabIcon } from '@/components/tab-icons';
+const TAB_BAR_FULL = require('@/assets/images/home/bottom-nav-lace.png');
 
-export default function AppTabs() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+function CustomTabBar({ state, navigation }: BottomTabBarProps) {
+  const routes = ['index', 'tasks', 'progress', 'shop'];
 
   return (
+    <View style={styles.wrapper}>
+      <Image
+        source={TAB_BAR_FULL}
+        style={[StyleSheet.absoluteFill, { backgroundColor: 'transparent' }]}
+        contentFit="fill"
+      />
+      <View style={styles.tapRow}>
+        {routes.map((name, index) => {
+          const isFocused = state.index === index;
+          return (
+            <Pressable
+              key={name}
+              style={styles.tapZone}
+              onPress={() => {
+                const route = state.routes[index];
+                const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+                if (!isFocused && !event.defaultPrevented) navigation.navigate(name);
+              }}
+            />
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+export default function AppTabs() {
+  return (
     <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: '#FFFDF9',
-          borderTopWidth: 0,
-          height: 78,
-          paddingTop: 10,
-          paddingBottom: Platform.OS === 'ios' ? 18 : 12,
-          position: 'absolute',
-          marginHorizontal: 16,
-          marginBottom: 14,
-          borderRadius: BakeryRadii.panel,
-          borderWidth: 1,
-          borderColor: '#E8D4C4',
-          shadowColor: BakeryColors.shadow,
-          shadowOpacity: 0.14,
-          shadowRadius: 16,
-          shadowOffset: { width: 0, height: 6 },
-          elevation: 6,
-        },
-        tabBarItemStyle: {
-          borderRadius: 14,
-          marginHorizontal: 4,
-        },
-        tabBarActiveBackgroundColor: '#F5E8D6',
-        tabBarActiveTintColor: BakeryColors.cocoa,
-        tabBarInactiveTintColor: colors.textSecondary,
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '700',
-          marginTop: 2,
-        },
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <HomeTabIcon color={color} size={24} />,
-        }}
-      />
-      <Tabs.Screen
-        name="tasks"
-        options={{
-          title: 'Tasks',
-          tabBarIcon: ({ color }) => <TasksTabIcon color={color} size={24} />,
-        }}
-      />
-      <Tabs.Screen
-        name="progress"
-        options={{
-          title: 'Progress',
-          tabBarIcon: ({ color }) => <ProgressTabIcon color={color} size={24} />,
-        }}
-      />
-      <Tabs.Screen
-        name="shop"
-        options={{
-          title: 'Shop',
-          tabBarIcon: ({ color }) => <ShopTabIcon color={color} size={24} />,
-        }}
-      />
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{ headerShown: false }}>
+      <Tabs.Screen name="index" options={{ title: 'Home' }} />
+      <Tabs.Screen name="tasks" options={{ title: 'Tasks' }} />
+      <Tabs.Screen name="progress" options={{ title: 'Progress' }} />
+      <Tabs.Screen name="shop" options={{ title: 'Shop' }} />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  wrapper: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    aspectRatio: 1.6,
+    backgroundColor: 'transparent',
+  },
+  tapRow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: '30%',
+    flexDirection: 'row',
+  },
+  tapZone: {
+    flex: 1,
+  },
+});

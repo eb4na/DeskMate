@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, ImageBackground, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/coin-icon';
@@ -71,7 +71,6 @@ function formatTimerLabel(totalSeconds: number): string {
 
 const HOME_ROOM_IMAGE = require('@/assets/images/home-bedroom.png');
 const START_SESSION_BTN = require('@/assets/images/home/start-session-btn.png');
-const META_CARD_BG = require('@/assets/images/home/meta-card-bg.png');
 const STREAK_FIRE_ICON = require('@/assets/images/home/streak-fire-icon.png');
 const EXAM_BOOK_ICON = require('@/assets/images/home/exam-book-icon.png');
 const EXAM_CALENDAR_ICON = require('@/assets/images/home/exam-calendar-icon.png');
@@ -317,7 +316,7 @@ export default function HomeScreen() {
                       <ThemedText type="smallBold" style={styles.coinChipText}>
                         {coins}
                       </ThemedText>
-                      <View style={styles.coinAddBubble}>
+                      <View style={styles.coinAddBtn}>
                         <ThemedText style={styles.coinAddText}>+</ThemedText>
                       </View>
                     </View>
@@ -328,14 +327,12 @@ export default function HomeScreen() {
                   <Pressable
                     style={({ pressed }) => [styles.metaCardPressable, pressed && styles.cardPressed]}
                     onPress={handleExamPress}>
-                    <ImageBackground
-                      source={META_CARD_BG}
+                    <View
                       style={[
                         styles.metaCard,
                         examIsUrgent && styles.metaCardUrgent,
                         examIsPast && styles.metaCardPast,
-                      ]}
-                      imageStyle={styles.metaCardBgImage}>
+                      ]}>
                       <View style={styles.metaCardHeader}>
                         <View style={styles.examTitleRow}>
                           <Image source={EXAM_BOOK_ICON} style={styles.examBookIcon} contentFit="contain" accessibilityLabel="" />
@@ -375,14 +372,11 @@ export default function HomeScreen() {
                           ) : null}
                         </View>
                       </View>
-                    </ImageBackground>
+                    </View>
                   </Pressable>
 
                   <View style={styles.metaCardPressable}>
-                    <ImageBackground
-                      source={META_CARD_BG}
-                      style={styles.metaCard}
-                      imageStyle={styles.metaCardBgImage}>
+                    <View style={styles.metaCard}>
                       <View style={styles.metaCardHeader}>
                         <View style={styles.reminderTitleRow}>
                           <Image source={REMINDER_BELL_ICON} style={styles.reminderBellIcon} contentFit="contain" accessibilityLabel="" />
@@ -405,7 +399,7 @@ export default function HomeScreen() {
                           <Image source={REMINDER_BREAD_ICON} style={styles.reminderBreadIcon} contentFit="contain" accessibilityLabel="" />
                         </View>
                       </View>
-                    </ImageBackground>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -455,6 +449,10 @@ export default function HomeScreen() {
     </ThemedView>
   );
 }
+
+const META_CARD_RATIO = 1.5;
+const META_ROW_INSET = 4;
+const META_ROW_GAP = 6;
 
 const metaCardShadow = {
   shadowColor: '#8B6B57',
@@ -549,7 +547,7 @@ const styles = StyleSheet.create({
   },
   settingsButton: {
     position: 'absolute',
-    top: 196,
+    top: 228,
     right: Spacing.three,
     zIndex: 5,
     width: 38,
@@ -581,14 +579,17 @@ const styles = StyleSheet.create({
   topHud: {
     gap: Spacing.two,
     zIndex: 3,
-    paddingHorizontal: 4,
+    paddingHorizontal: 0,
     paddingTop: Spacing.two,
+    width: '100%',
   },
   statusRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: Spacing.two,
+    paddingHorizontal: META_ROW_INSET,
+    width: '100%',
   },
   statusChip: {
     flexDirection: 'row',
@@ -599,9 +600,9 @@ const styles = StyleSheet.create({
     minHeight: 52,
     overflow: 'hidden',
     borderRadius: BakeryRadii.pill,
-    backgroundColor: '#FFF9F2',
-    borderWidth: 1,
-    borderColor: '#D9C5B2',
+    backgroundColor: '#FFF3EC',
+    borderWidth: 1.5,
+    borderColor: '#E8A870',
     ...metaCardShadow,
   },
   coinChip: {
@@ -612,18 +613,18 @@ const styles = StyleSheet.create({
   coinChipText: {
     color: BakeryColors.cocoaDark,
   },
-  coinAddBubble: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: BakeryColors.honey,
+  coinAddBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#F4A0A8',
+    borderWidth: 1.5,
+    borderColor: '#E8B87A',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#D29649',
   },
   coinAddText: {
-    color: BakeryColors.cocoaDark,
+    color: '#fff',
     fontSize: 14,
     fontWeight: '800',
     lineHeight: 16,
@@ -758,28 +759,31 @@ const styles = StyleSheet.create({
   },
   metaRow: {
     flexDirection: 'row',
-    gap: 8,
-    alignItems: 'stretch',
+    gap: META_ROW_GAP,
+    alignItems: 'flex-start',
+    paddingHorizontal: META_ROW_INSET,
+    width: '100%',
     backgroundColor: 'transparent',
   },
   metaCardPressable: {
     flex: 1,
     minWidth: 0,
-    alignSelf: 'stretch',
+    aspectRatio: META_CARD_RATIO,
   },
   metaCard: {
-    flex: 1,
     width: '100%',
-    minHeight: 160,
+    height: '100%',
     paddingHorizontal: 10,
     paddingTop: 10,
-    paddingBottom: 10,
+    paddingBottom: 8,
     gap: 4,
     borderRadius: 20,
-    backgroundColor: 'transparent',
+    backgroundColor: '#FFF8F6',
+    borderWidth: 1.5,
+    borderColor: '#EAB0B0',
+    overflow: 'hidden',
     ...metaCardShadow,
   },
-  metaCardBgImage: { borderRadius: 20, resizeMode: 'stretch' },
   metaCardTitle: {
     fontSize: 13,
     lineHeight: 16,
@@ -793,26 +797,29 @@ const styles = StyleSheet.create({
     color: BakeryColors.mocha,
   },
   metaCardContent: {
-    position: 'relative',
     flex: 1,
-    minHeight: 52,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 64,
+    overflow: 'hidden',
     backgroundColor: 'transparent',
   },
   metaCardTextBlock: {
-    paddingRight: 66,
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 4,
+    paddingBottom: 2,
     gap: 2,
     justifyContent: 'center',
     backgroundColor: 'transparent',
   },
   metaCardArt: {
-    position: 'absolute',
-    right: -4,
-    top: 0,
-    bottom: 0,
-    width: 70,
+    width: 62,
+    height: 66,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
+    marginRight: -2,
     backgroundColor: 'transparent',
   },
   examTitleRow: {
@@ -829,12 +836,12 @@ const styles = StyleSheet.create({
   },
   examCalendarDay: {
     position: 'absolute',
-    top: 14,
+    top: 10,
     left: 0,
     right: 0,
     textAlign: 'center',
-    fontSize: 14,
-    lineHeight: 17,
+    fontSize: 12,
+    lineHeight: 15,
     fontWeight: '700',
     color: BakeryColors.cocoaDark,
   },
@@ -845,8 +852,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   reminderCopy: {
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 11,
+    lineHeight: 14,
     fontWeight: '500',
     color: BakeryColors.cocoa,
   },
@@ -885,21 +892,21 @@ const styles = StyleSheet.create({
   },
   startSessionPressable: {
     position: 'absolute',
-    left: Spacing.three,
-    right: Spacing.three,
-    bottom: BottomTabInset + 22,
+    left: Spacing.one,
+    right: Spacing.one,
+    bottom: BottomTabInset + 110,
     zIndex: 4,
   },
   startSessionBtn: {
     width: '100%',
-    height: 72,
+    height: 80,
   },
   startButtonPressed: { opacity: 0.88 },
   statusStreakIcon: { width: 22, height: 22 },
   examBookIcon: { width: 28, height: 28 },
   reminderBellIcon: { width: 30, height: 36 },
-  examCalendarIcon: { width: 58, height: 62 },
-  reminderBreadIcon: { width: 50, height: 76 },
+  examCalendarIcon: { width: 56, height: 60 },
+  reminderBreadIcon: { width: 50, height: 66 },
   startButtonText: { color: BakeryColors.cocoaDark, fontSize: 17 },
   breakButton: {
     borderRadius: BakeryRadii.button,
