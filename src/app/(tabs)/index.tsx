@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
   topHud: {
     gap: Spacing.two,
     zIndex: 3,
-    paddingHorizontal: Spacing.three,
+    paddingHorizontal: Spacing.two,
     paddingTop: Spacing.two,
   },
   statusRow: {
@@ -758,7 +758,7 @@ const styles = StyleSheet.create({
   },
   metaRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
     alignItems: 'stretch',
     backgroundColor: 'transparent',
   },
@@ -771,11 +771,10 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     minHeight: 160,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingTop: 10,
     paddingBottom: 10,
     gap: 4,
-    overflow: 'hidden',
     borderRadius: 20,
     backgroundColor: 'transparent',
     ...metaCardShadow,
