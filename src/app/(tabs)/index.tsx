@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, ImageBackground, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/coin-icon';
@@ -71,6 +71,7 @@ function formatTimerLabel(totalSeconds: number): string {
 
 const HOME_ROOM_IMAGE = require('@/assets/images/home-bedroom.png');
 const START_SESSION_BTN = require('@/assets/images/home/start-session-btn.png');
+const META_CARD_BG = require('@/assets/images/home/meta-card-bg.png');
 const STREAK_FIRE_ICON = require('@/assets/images/home/streak-fire-icon.png');
 const EXAM_BOOK_ICON = require('@/assets/images/home/exam-book-icon.png');
 const EXAM_CALENDAR_ICON = require('@/assets/images/home/exam-calendar-icon.png');
@@ -327,12 +328,14 @@ export default function HomeScreen() {
                   <Pressable
                     style={({ pressed }) => [styles.metaCardPressable, pressed && styles.cardPressed]}
                     onPress={handleExamPress}>
-                    <View
+                    <ImageBackground
+                      source={META_CARD_BG}
                       style={[
                         styles.metaCard,
                         examIsUrgent && styles.metaCardUrgent,
                         examIsPast && styles.metaCardPast,
-                      ]}>
+                      ]}
+                      imageStyle={styles.metaCardBgImage}>
                       <View style={styles.metaCardHeader}>
                         <View style={styles.examTitleRow}>
                           <Image source={EXAM_BOOK_ICON} style={styles.examBookIcon} contentFit="contain" accessibilityLabel="" />
@@ -372,11 +375,14 @@ export default function HomeScreen() {
                           ) : null}
                         </View>
                       </View>
-                    </View>
+                    </ImageBackground>
                   </Pressable>
 
                   <View style={styles.metaCardPressable}>
-                    <View style={styles.metaCard}>
+                    <ImageBackground
+                      source={META_CARD_BG}
+                      style={styles.metaCard}
+                      imageStyle={styles.metaCardBgImage}>
                       <View style={styles.metaCardHeader}>
                         <View style={styles.reminderTitleRow}>
                           <Image source={REMINDER_BELL_ICON} style={styles.reminderBellIcon} contentFit="contain" accessibilityLabel="" />
@@ -399,7 +405,7 @@ export default function HomeScreen() {
                           <Image source={REMINDER_BREAD_ICON} style={styles.reminderBreadIcon} contentFit="contain" accessibilityLabel="" />
                         </View>
                       </View>
-                    </View>
+                    </ImageBackground>
                   </View>
                 </View>
               </View>
@@ -771,11 +777,10 @@ const styles = StyleSheet.create({
     gap: 4,
     overflow: 'hidden',
     borderRadius: 20,
-    backgroundColor: '#FFF9F2',
-    borderWidth: 1,
-    borderColor: '#D9C5B2',
+    backgroundColor: 'transparent',
     ...metaCardShadow,
   },
+  metaCardBgImage: { borderRadius: 20, resizeMode: 'stretch' },
   metaCardTitle: {
     fontSize: 13,
     lineHeight: 16,
