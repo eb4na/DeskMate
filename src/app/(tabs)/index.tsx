@@ -954,7 +954,7 @@ const styles = StyleSheet.create({
   examBookIcon: { width: 22, height: 22 },
   reminderBellIcon: { width: 18, height: 18, transform: [{ rotate: '-12deg' }] },
   examCalendarIcon: { width: 44, height: 44 },
-  reminderBreadIcon: { width: 44, height: 52, transform: [{ rotate: '-8deg' }] },
+  reminderBreadIcon: { width: 58, height: 90, transform: [{ rotate: '-8deg' }] },
   startButtonText: { color: BakeryColors.cocoaDark, fontSize: 17 },
   breakButton: {
     borderRadius: BakeryRadii.button,
