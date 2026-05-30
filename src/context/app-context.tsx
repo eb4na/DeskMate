@@ -98,6 +98,7 @@ export type CompanionSlot = {
   imageUri: string | null;
   imagePath: string | null;
   prompt: string | null;
+  personality?: string;
   pfp?: PfpFocus;
 };
 

@@ -93,7 +93,8 @@ export default function CompanionChatScreen() {
   } = useApp();
 
   const companion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots);
-  const vibe = companion.type === 'slot' ? companion.slot.prompt ?? '' : '';
+  const vibe =
+    companion.type === 'slot' ? companion.slot.personality || companion.slot.prompt || '' : '';
   const pfpFocus = companion.type === 'slot' ? companion.slot.pfp : undefined;
   const activeSlotId = companion.type === 'slot' ? companion.slot.id : null;
   const ticketTotal = aiTickets + purchasedAiTickets;

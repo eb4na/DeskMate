@@ -44,6 +44,7 @@ function GalleryContent() {
   const [generateName, setGenerateName] = useState('');
   const [generateVibe, setGenerateVibe] = useState('sweet, cozy, and gentle');
   const [generateOutfit, setGenerateOutfit] = useState('bakery apron with a soft beret');
+  const [generatePersonality, setGeneratePersonality] = useState('');
   const [generatePrompt, setGeneratePrompt] = useState('');
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
@@ -114,7 +115,10 @@ function GalleryContent() {
       return;
     }
     if (companionSlots.length >= MAX_SLOTS) {
-      Alert.alert('Slot limit', `You can save up to ${MAX_SLOTS} companions.`);
+      Alert.alert(
+        'Companion slots full',
+        `You already have ${MAX_SLOTS} companions (the max). Delete one below to make room for a new one.`,
+      );
       return;
     }
 
@@ -136,7 +140,7 @@ function GalleryContent() {
         name: savedName,
         vibe: generateVibe.trim(),
         outfit: generateOutfit.trim(),
-        prompt: generatePrompt.trim(),
+        prompt: [generatePersonality.trim(), generatePrompt.trim()].filter(Boolean).join('. '),
       });
 
       const slotId = saveCompanionSlot({
@@ -147,6 +151,7 @@ function GalleryContent() {
         imageUri: result.imageUrl,
         imagePath: result.storagePath,
         prompt: result.prompt,
+        personality: generatePersonality.trim() || undefined,
       });
 
       if (!slotId) {
@@ -157,6 +162,7 @@ function GalleryContent() {
       setGenerateName('');
       setGenerateVibe('sweet, cozy, and gentle');
       setGenerateOutfit('bakery apron with a soft beret');
+      setGeneratePersonality('');
       setGeneratePrompt('');
       setShowGenerator(false);
 
@@ -258,9 +264,17 @@ function GalleryContent() {
               />
               <TextInput
                 style={[inputStyle, styles.promptInput]}
+                value={generatePersonality}
+                onChangeText={setGeneratePersonality}
+                placeholder="Personality (how they talk & act in chat)"
+                placeholderTextColor={colors.textSecondary}
+                multiline
+              />
+              <TextInput
+                style={[inputStyle, styles.promptInput]}
                 value={generatePrompt}
                 onChangeText={setGeneratePrompt}
-                placeholder="Extra details (optional)"
+                placeholder="Extra art details (optional)"
                 placeholderTextColor={colors.textSecondary}
                 multiline
               />
