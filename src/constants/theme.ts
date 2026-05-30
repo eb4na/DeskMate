@@ -112,5 +112,12 @@ export const Spacing = {
   six: 64,
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
+/** Lace pill area in custom tab bar (`app-tabs.tsx`). Bow sits slightly below. */
+export const TabBarHeight = Platform.select({ ios: 186, android: 192 }) ?? 186;
+export const TabBarBowHeight = 46;
+export const TabBarBowWidth = 114;
+/** Nudge entire bar onto the physical bottom edge (small negative). */
+export const TabBarBottomOffset = Platform.select({ ios: -16, android: -12 }) ?? -16;
+export const TabBarTotalHeight = TabBarHeight + TabBarBowHeight;
+export const BottomTabInset = TabBarTotalHeight + 6 + Math.abs(TabBarBottomOffset);
 export const MaxContentWidth = 800;

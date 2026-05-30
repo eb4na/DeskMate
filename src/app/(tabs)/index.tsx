@@ -21,6 +21,7 @@ import {
   BottomTabInset,
   MaxContentWidth,
   Spacing,
+  TabBarTotalHeight,
 } from '@/constants/theme';
 
 const MIN_MINUTES_FOR_COINS = 10;
@@ -437,7 +438,11 @@ export default function HomeScreen() {
               </View>
 
               <Pressable
-                style={({ pressed }) => [styles.startSessionPressable, pressed && styles.startButtonPressed]}
+                style={({ pressed }) => [
+                  styles.startSessionPressable,
+                  { bottom: TabBarTotalHeight + 10 },
+                  pressed && styles.startButtonPressed,
+                ]}
                 onPress={() => router.push('/session-picker')}
                 accessibilityLabel="Start session">
                 <Image source={START_SESSION_BTN} style={styles.startSessionBtn} contentFit="contain" />
@@ -894,7 +899,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: Spacing.one,
     right: Spacing.one,
-    bottom: BottomTabInset + 110,
     zIndex: 4,
   },
   startSessionBtn: {
