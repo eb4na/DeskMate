@@ -951,9 +951,9 @@ const styles = StyleSheet.create({
   startSessionInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   startButtonPressed: { opacity: 0.88 },
   statusStreakIcon: { width: 18, height: 20 },
-  examBookIcon: { width: 22, height: 22 },
-  reminderBellIcon: { width: 18, height: 18, transform: [{ rotate: '-12deg' }] },
-  examCalendarIcon: { width: 44, height: 44 },
+  examBookIcon: { width: 28, height: 28 },
+  reminderBellIcon: { width: 30, height: 36 },
+  examCalendarIcon: { width: 38, height: 38 },
   reminderBreadIcon: { width: 36, height: 52 },
   startButtonText: { color: BakeryColors.cocoaDark, fontSize: 17 },
   breakButton: {
