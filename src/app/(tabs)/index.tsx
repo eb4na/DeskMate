@@ -1,8 +1,8 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Alert, Image as RNImage, Pressable, StyleSheet, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/coin-icon';
 import { BakeryGearEmoji } from '@/components/bakery-emoji';
@@ -21,6 +21,7 @@ import {
   BottomTabInset,
   MaxContentWidth,
   Spacing,
+  TabBarBottomOffset,
   TabBarTotalHeight,
 } from '@/constants/theme';
 
@@ -70,8 +71,11 @@ function formatTimerLabel(totalSeconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-const HOME_ROOM_IMAGE = require('@/assets/images/home-bedroom.png');
+const HOME_ROOM_IMAGE = require('@/assets/images/home/home-room.jpg');
+const DESK_OVERLAY = require('@/assets/images/home/desk-overlay.png');
+const DESK_HANDS = require('@/assets/images/home/desk-hands.png');
 const START_SESSION_BTN = require('@/assets/images/home/start-session-btn.png');
+const SETTINGS_BTN = require('@/assets/images/home/settings-scallop-btn.png');
 const STREAK_FIRE_ICON = require('@/assets/images/home/streak-fire-icon.png');
 const EXAM_BOOK_ICON = require('@/assets/images/home/exam-book-icon.png');
 const EXAM_CALENDAR_ICON = require('@/assets/images/home/exam-calendar-icon.png');
@@ -79,6 +83,7 @@ const REMINDER_BELL_ICON = require('@/assets/images/home/reminder-bell-icon.png'
 const REMINDER_BREAD_ICON = require('@/assets/images/home/reminder-sundae-icon.png');
 
 export default function HomeScreen() {
+  const insets = useSafeAreaInsets();
   const {
     coins,
     reminderEnabled,
@@ -405,29 +410,14 @@ export default function HomeScreen() {
                 </View>
               </View>
 
-              <Pressable
-                onPress={() => router.push('/settings')}
-                style={({ pressed }) => [styles.settingsButton, pressed && styles.cardPressed]}
-                accessibilityLabel="Open settings"
-                hitSlop={8}>
-                <BakeryGearEmoji size={22} />
-              </Pressable>
 
-              <Pressable
-                onPress={() => router.push('/companion-chat')}
-                style={({ pressed }) => [styles.chatButton, pressed && styles.cardPressed]}
-                accessibilityLabel="Chat with your companion"
-                hitSlop={8}>
-                <CookieChatIcon size={42} />
-              </Pressable>
 
 
               <View style={styles.homeCharacterLayer} pointerEvents="none">
-                <Image
+                <RNImage
                   source={homeCompanionSource}
                   style={styles.homeCharacterImage}
-                  contentFit="contain"
-                  contentPosition="bottom"
+                  resizeMode="contain"
                   onError={() => {
                     if (activeCompanion.type === 'slot') {
                       setDidHomeImageFail(true);
@@ -437,16 +427,20 @@ export default function HomeScreen() {
                 />
               </View>
 
-              <Pressable
-                style={({ pressed }) => [
-                  styles.startSessionPressable,
-                  { bottom: TabBarTotalHeight + 10 },
-                  pressed && styles.startButtonPressed,
-                ]}
-                onPress={() => router.push('/session-picker')}
-                accessibilityLabel="Start session">
-                <Image source={START_SESSION_BTN} style={styles.startSessionBtn} contentFit="contain" />
-              </Pressable>
+              <View style={[styles.startSessionPressable, { bottom: 155 }]}>
+                <Pressable
+                  style={({ pressed }) => [styles.startSessionInner, pressed && styles.startButtonPressed]}
+                  onPress={() => router.push('/session-picker')}
+                  accessibilityLabel="Start session">
+                  <Image source={START_SESSION_BTN} style={styles.startSessionBtn} contentFit="contain" />
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [styles.settingsFloating, pressed && styles.startButtonPressed]}
+                  onPress={() => router.push('/settings')}
+                  accessibilityLabel="Open settings">
+                  <Image source={SETTINGS_BTN} style={styles.settingsFloatingIcon} contentFit="contain" />
+                </Pressable>
+              </View>
             </>
           )}
         </View>
@@ -470,23 +464,39 @@ const metaCardShadow = {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#EDE8DF',
+    backgroundColor: '#FFD6DF',
   },
   safeArea: {
     flex: 1,
     maxWidth: MaxContentWidth,
     width: '100%',
     alignSelf: 'center',
-    backgroundColor: '#EDE8DF',
+    backgroundColor: 'transparent',
   },
   scene: {
     flex: 1,
     overflow: 'hidden',
     justifyContent: 'space-between',
-    backgroundColor: '#EDE8DF',
+    backgroundColor: 'transparent',
   },
   roomBackground: {
     ...StyleSheet.absoluteFill,
+  },
+  deskOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '33%',
+    zIndex: 2,
+  },
+  deskHands: {
+    position: 'absolute',
+    left: -60,
+    right: 60,
+    bottom: '29%',
+    height: 120,
+    zIndex: 3,
   },
   focusMode: {
     flex: 1,
@@ -552,20 +562,15 @@ const styles = StyleSheet.create({
   },
   settingsButton: {
     position: 'absolute',
-    top: 228,
+    top: 220,
     right: Spacing.three,
     zIndex: 5,
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 52,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFF9F2',
-    borderWidth: 1,
-    borderColor: '#D9C5B2',
-    ...metaCardShadow,
   },
-  settingsIcon: { fontSize: 18, lineHeight: 22 },
+  settingsIcon: { width: 52, height: 52 },
   chatButton: {
     position: 'absolute',
     left: Spacing.three,
@@ -656,13 +661,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    top: 152,
-    bottom: 86,
+    top: 280,
+    bottom: 20,
     zIndex: 1,
     alignItems: 'center',
     justifyContent: 'flex-end',
     backgroundColor: 'transparent',
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   homeCharacterImage: {
     width: '135%',
@@ -897,13 +902,26 @@ const styles = StyleSheet.create({
   },
   startSessionPressable: {
     position: 'absolute',
-    left: Spacing.one,
-    right: Spacing.one,
+    left: 50,
+    right: Spacing.two,
     zIndex: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  startSessionInner: {
+    marginRight: 8,
   },
   startSessionBtn: {
-    width: '100%',
-    height: 80,
+    height: 72,
+    aspectRatio: 1331 / 372,
+  },
+  settingsFloating: {
+    width: 72,
+    height: 72,
+  },
+  settingsFloatingIcon: {
+    width: 72,
+    height: 72,
   },
   startButtonPressed: { opacity: 0.88 },
   statusStreakIcon: { width: 22, height: 22 },

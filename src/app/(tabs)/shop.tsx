@@ -3,7 +3,6 @@ import { useRef, useState } from 'react';
 import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AiTicketIcon } from '@/components/ai-ticket-icon';
 import { CoinAmount, CoinIcon } from '@/components/coin-icon';
 import { BreadPouchIcon, BreadBagIcon, BreadChestIcon, BreadVaultIcon } from '@/components/coin-pack-icons';
 import { DecoIcon, OutfitIcon, ThemeIcon, PoseIcon, GameIcon, ReminderIcon } from '@/components/category-icons';
@@ -60,12 +59,6 @@ const COIN_PACKS: CoinPack[] = [
   { id: 'vault', name: 'Scholar Vault', coins: 3500, price: '$9.99' },
 ];
 
-type TicketPack = { id: string; name: string; tickets: number; price: string; popular?: boolean };
-const TICKET_PACKS: TicketPack[] = [
-  { id: 'ticket1', name: 'Single Ticket', tickets: 1, price: '$1.99' },
-  { id: 'ticket3', name: 'Ticket Trio', tickets: 3, price: '$4.99', popular: true },
-  { id: 'ticket10', name: "Baker's Batch", tickets: 10, price: '$12.99' },
-];
 
 const INDICATOR_TRACK = 100;
 
@@ -108,11 +101,7 @@ export default function ShopScreen() {
     equipShopItem,
     isPlus,
     addPurchasedCoins,
-    aiTickets,
-    purchasedAiTickets,
-    purchaseAiTickets,
   } = useApp();
-  const ticketTotal = aiTickets + purchasedAiTickets;
   const [activeCategory, setActiveCategory] = useState<ShopCategory>('decoration');
   const [itemPage, setItemPage] = useState(0);
   const itemScrollRef = useRef<ScrollView>(null);
@@ -125,9 +114,6 @@ export default function ShopScreen() {
   const [packContentW, setPackContentW] = useState(0);
   const [packViewW, setPackViewW] = useState(0);
 
-  const [ticketScrollX, setTicketScrollX] = useState(0);
-  const [ticketContentW, setTicketContentW] = useState(0);
-  const [ticketViewW, setTicketViewW] = useState(0);
 
   const discount = isPlus ? 0.8 : 1;
   const items = SHOP_ITEMS.filter((i) => i.category === activeCategory);
@@ -152,34 +138,6 @@ export default function ShopScreen() {
     );
   };
 
-  const handleTicketPack = (pack: TicketPack) => {
-    if (!isPlus) {
-      Alert.alert(
-        'Plus required',
-        'AI companion generation is a Plus feature. Upgrade to Plus to use generation tickets.',
-        [
-          { text: 'Not now', style: 'cancel' },
-          { text: 'See Plus', onPress: () => router.push('/plus-upgrade') },
-        ],
-      );
-      return;
-    }
-    const plural = pack.tickets > 1 ? 's' : '';
-    Alert.alert(
-      `Buy ${pack.name}?`,
-      `${pack.tickets} AI generation ticket${plural} for ${pack.price}. Purchased tickets never expire and stack on top of your 3 free monthly tickets.\n\n🛠 Mock purchase — real payments coming soon.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: `Buy for ${pack.price} (Mock)`,
-          onPress: () => {
-            purchaseAiTickets(pack.tickets);
-            Alert.alert(`+${pack.tickets} ticket${plural} added!`, 'Mock purchase complete.');
-          },
-        },
-      ],
-    );
-  };
 
   const handleBuy = (itemId: string, name: string, basePrice: number) => {
     const price = Math.floor(basePrice * discount);
@@ -397,39 +355,6 @@ export default function ShopScreen() {
             </View>
           </View>
 
-          {/* ── AI Generation Tickets ── */}
-          <View style={styles.sectionHead}>
-            <ThemedText type="smallBold" style={styles.sectionTitle}>AI Generation Tickets</ThemedText>
-            <ThemedText style={styles.sectionSub}>{ticketTotal} available</ThemedText>
-          </View>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.packStrip}
-            scrollEventThrottle={16}
-            onScroll={(e) => setTicketScrollX(e.nativeEvent.contentOffset.x)}
-            onContentSizeChange={(w) => setTicketContentW(w)}
-            onLayout={(e) => setTicketViewW(e.nativeEvent.layout.width)}>
-            {TICKET_PACKS.map((pack) => (
-              <Pressable key={pack.id} onPress={() => handleTicketPack(pack)} style={({ pressed }) => pressed && styles.pressed}>
-                <View style={[styles.packCard, pack.popular && styles.packPopular]}>
-                  {pack.popular && <View style={styles.popularStar}><BakeryToastStarEmoji size={16} /></View>}
-                  <AiTicketIcon size={52} />
-                  <ThemedText style={styles.packName} numberOfLines={1}>{pack.name}</ThemedText>
-                  <ThemedText style={styles.packCoinAmt}>{pack.tickets} ticket{pack.tickets > 1 ? 's' : ''}</ThemedText>
-                  <View style={styles.packPriceBtn}>
-                    <ThemedText style={styles.packPriceText}>{pack.price}</ThemedText>
-                  </View>
-                </View>
-              </Pressable>
-            ))}
-          </ScrollView>
-          <HScrollIndicator scrollX={ticketScrollX} contentW={ticketContentW} viewW={ticketViewW} />
-
-          <ThemedText style={styles.ticketHint}>
-            Each ticket generates one custom AI companion. Plus members get 3 free every month.
-          </ThemedText>
 
           {/* ── How to earn ── */}
           <View style={styles.tipCard}>

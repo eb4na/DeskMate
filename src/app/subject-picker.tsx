@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -14,6 +14,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 type Step = 'subject' | 'task';
 
 export default function SubjectPickerScreen() {
+  const insets = useSafeAreaInsets();
   const { sessionLength } = useLocalSearchParams<{ sessionLength: string }>();
   const {
     subjects,
@@ -106,8 +107,8 @@ export default function SubjectPickerScreen() {
   if (step === 'task') {
     return (
       <ThemedView style={styles.container}>
-        <ScrollView>
-          <SafeAreaView style={styles.safeArea}>
+        <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
+          <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
             <ThemedText type="small" themeColor="textSecondary" style={styles.sessionHint}>
               {sessionLength ? `${sessionLength} minute session` : 'Study session'} ·{' '}
               <ThemedText type="small" style={{ color: selectedSubject?.color }}>
@@ -142,29 +143,28 @@ export default function SubjectPickerScreen() {
                 })}
               </ThemedView>
             </ThemedView>
-
-            <ThemedView style={styles.actions}>
-              <Pressable
-                style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
-                onPress={handleStartWithTask}>
-                <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                  {selectedTaskId ? 'Start session' : 'Start without task'}
-                </ThemedText>
-              </Pressable>
-              <Pressable onPress={handleSkipTask} style={styles.skipButton}>
-                <ThemedText type="linkPrimary">Skip for now</ThemedText>
-              </Pressable>
-            </ThemedView>
           </SafeAreaView>
         </ScrollView>
+        <ThemedView style={[styles.actions, { paddingBottom: insets.bottom + Spacing.two }]}>
+          <Pressable
+            style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
+            onPress={handleStartWithTask}>
+            <ThemedText type="smallBold" style={styles.primaryButtonText}>
+              {selectedTaskId ? 'Start session' : 'Start without task'}
+            </ThemedText>
+          </Pressable>
+          <Pressable onPress={handleSkipTask} style={styles.skipButton}>
+            <ThemedText type="linkPrimary">Skip for now</ThemedText>
+          </Pressable>
+        </ThemedView>
       </ThemedView>
     );
   }
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView>
-        <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
+        <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
           <ThemedText type="small" themeColor="textSecondary" style={styles.sessionHint}>
             {sessionLength ? `${sessionLength} minute session` : 'Study session'}
           </ThemedText>
@@ -259,23 +259,23 @@ export default function SubjectPickerScreen() {
               })}
             </ThemedView>
           </ThemedView>
-
-          {/* Actions */}
-          <ThemedView style={styles.actions}>
-            <Pressable
-              style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
-              onPress={handleStartWithSubject}>
-              <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                {selectedSubjectId ? `Study ${selectedSubject?.name}` : 'Start Session'}
-              </ThemedText>
-            </Pressable>
-
-            <Pressable onPress={handleSkipSubject} style={styles.skipButton}>
-              <ThemedText type="linkPrimary">Skip subject for now</ThemedText>
-            </Pressable>
-          </ThemedView>
         </SafeAreaView>
       </ScrollView>
+
+      {/* Actions pinned above tab bar */}
+      <ThemedView style={[styles.actions, { paddingBottom: insets.bottom + Spacing.two }]}>
+        <Pressable
+          style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
+          onPress={handleStartWithSubject}>
+          <ThemedText type="smallBold" style={styles.primaryButtonText}>
+            {selectedSubjectId ? `Study ${selectedSubject?.name}` : 'Start Session'}
+          </ThemedText>
+        </Pressable>
+
+        <Pressable onPress={handleSkipSubject} style={styles.skipButton}>
+          <ThemedText type="linkPrimary">Skip subject for now</ThemedText>
+        </Pressable>
+      </ThemedView>
     </ThemedView>
   );
 }
@@ -348,7 +348,11 @@ const styles = StyleSheet.create({
   },
   moodEmoji: { fontSize: 28, lineHeight: 36 },
   buttonPressed: { opacity: 0.85 },
-  actions: { gap: Spacing.two, paddingTop: Spacing.two },
+  actions: {
+    gap: Spacing.two,
+    paddingTop: Spacing.three,
+    paddingHorizontal: Spacing.four,
+  },
   primaryButton: {
     backgroundColor: '#7C6F5A',
     borderRadius: 16,

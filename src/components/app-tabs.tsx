@@ -1,6 +1,6 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Image } from 'expo-image';
-import { Tabs } from 'expo-router';
+import { router, Tabs } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -13,6 +13,7 @@ import {
 } from '@/constants/theme';
 
 const LACE_BG = require('@/assets/images/home/bottom-nav-lace.png');
+const COMPANION_BTN = require('@/assets/images/home/companion-button.png');
 const BOW = require('@/assets/images/home/bottom-nav-bow.png');
 
 const ICONS: Record<string, ReturnType<typeof require>> = {
@@ -29,7 +30,29 @@ const LABELS: Record<string, string> = {
   shop: 'Shop',
 };
 
-const ROUTES = ['index', 'tasks', 'progress', 'shop'];
+const LEFT_ROUTES = ['index', 'tasks'];
+const RIGHT_ROUTES = ['progress', 'shop'];
+const ROUTE_INDEX: Record<string, number> = { index: 0, tasks: 1, progress: 2, shop: 3 };
+
+function TabItem({ name, isFocused, onPress }: { name: string; isFocused: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      style={[
+        styles.tab,
+        name === 'index' && styles.tabHome,
+        name === 'tasks' && styles.tabTasks,
+        name === 'progress' && styles.tabProgress,
+        name === 'shop' && styles.tabShop,
+      ]}
+      onPress={onPress}
+    >
+      <View style={[styles.iconWrap, isFocused && styles.iconWrapActive]}>
+        <Image source={ICONS[name]} style={styles.icon} contentFit="contain" />
+      </View>
+      <Text style={[styles.label, isFocused && styles.labelActive]}>{LABELS[name]}</Text>
+    </Pressable>
+  );
+}
 
 function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   return (
@@ -37,27 +60,45 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
       <View style={styles.laceSlot}>
         <Image source={LACE_BG} style={styles.lace} contentFit="contain" contentPosition="bottom" />
       </View>
+      <View style={styles.heartButton}>
+        <Image source={COMPANION_BTN} style={styles.companionBtn} contentFit="contain" />
+      </View>
+      <View style={styles.dangleThread} pointerEvents="none" />
       <View style={styles.bowSlot} pointerEvents="none">
         <Image source={BOW} style={styles.bow} contentFit="contain" />
       </View>
       <View style={styles.row}>
-        {ROUTES.map((name, index) => {
+        {LEFT_ROUTES.map((name) => {
+          const index = ROUTE_INDEX[name];
           const isFocused = state.index === index;
           return (
-            <Pressable
+            <TabItem
               key={name}
-              style={styles.tab}
+              name={name}
+              isFocused={isFocused}
               onPress={() => {
                 const route = state.routes[index];
                 const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
                 if (!isFocused && !event.defaultPrevented) navigation.navigate(name);
               }}
-            >
-              <View style={[styles.iconWrap, isFocused && styles.iconWrapActive]}>
-                <Image source={ICONS[name]} style={styles.icon} contentFit="contain" />
-              </View>
-              <Text style={[styles.label, isFocused && styles.labelActive]}>{LABELS[name]}</Text>
-            </Pressable>
+            />
+          );
+        })}
+
+        {RIGHT_ROUTES.map((name) => {
+          const index = ROUTE_INDEX[name];
+          const isFocused = state.index === index;
+          return (
+            <TabItem
+              key={name}
+              name={name}
+              isFocused={isFocused}
+              onPress={() => {
+                const route = state.routes[index];
+                const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+                if (!isFocused && !event.defaultPrevented) navigation.navigate(name);
+              }}
+            />
           );
         })}
       </View>
@@ -112,9 +153,18 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  dangleThread: {
+    position: 'absolute',
+    bottom: TabBarBowHeight - 2,
+    alignSelf: 'center',
+    width: 3,
+    height: 14,
+    backgroundColor: '#E8C4B8',
+    borderRadius: 2,
+  },
   bowSlot: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 48,
     left: 0,
     right: 0,
     height: TabBarBowHeight,
@@ -129,9 +179,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: '5%',
     right: '5%',
-    bottom: TabBarBowHeight + 8,
-    height: TabBarHeight - 34,
+    bottom: TabBarBowHeight + 14,
+    height: TabBarHeight - 50,
     flexDirection: 'row',
+    alignItems: 'center',
   },
   tab: {
     flex: 1,
@@ -139,24 +190,55 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 2,
   },
+  tabHome: {
+    paddingLeft: 22,
+  },
+  tabTasks: {
+    paddingRight: 10,
+  },
+  tabProgress: {
+    paddingLeft: 10,
+  },
+  tabShop: {
+    paddingRight: 22,
+  },
+  heartButton: {
+    position: 'absolute',
+    alignSelf: 'center',
+    bottom: TabBarBowHeight + 22,
+    width: 62,
+    height: 62,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  heartButtonPressed: {
+    opacity: 0.75,
+  },
+  companionBtn: {
+    width: 62,
+    height: 62,
+  },
   iconWrap: {
     width: 60,
     height: 60,
     borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 4,
   },
   iconWrapActive: {
     backgroundColor: 'rgba(255, 182, 205, 0.6)',
   },
   icon: {
-    width: 54,
-    height: 54,
+    width: 38,
+    height: 38,
   },
   label: {
     fontSize: 12,
     color: '#C4728A',
     fontWeight: '500',
+    marginTop: -12,
   },
   labelActive: {
     color: '#D94F72',
