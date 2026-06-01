@@ -60,9 +60,12 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
       <View style={styles.laceSlot}>
         <Image source={LACE_BG} style={styles.lace} contentFit="contain" contentPosition="bottom" />
       </View>
-      <View style={styles.heartButton}>
+      <Pressable
+        style={({ pressed }) => [styles.heartButton, pressed && styles.heartButtonPressed]}
+        onPress={() => router.push('/companion-gallery')}
+      >
         <Image source={COMPANION_BTN} style={styles.companionBtn} contentFit="contain" />
-      </View>
+      </Pressable>
       <View style={styles.dangleThread} pointerEvents="none" />
       <View style={styles.bowSlot} pointerEvents="none">
         <Image source={BOW} style={styles.bow} contentFit="contain" />
@@ -205,7 +208,7 @@ const styles = StyleSheet.create({
   heartButton: {
     position: 'absolute',
     alignSelf: 'center',
-    bottom: TabBarBowHeight + 22,
+    bottom: TabBarBowHeight + 52,
     width: 62,
     height: 62,
     alignItems: 'center',

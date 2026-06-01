@@ -33,7 +33,7 @@ function RootNavigator() {
       <Stack.Protected guard={!!session || isGuest}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         {/* Session flow */}
-        <Stack.Screen name="session-picker" options={{ presentation: 'modal', title: 'Session length' }} />
+        <Stack.Screen name="session-picker" options={{ headerShown: false, presentation: 'card' }} />
         <Stack.Screen name="subject-picker" options={{ presentation: 'modal', title: 'Subject & mood' }} />
         <Stack.Screen name="session" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="session-complete" options={{ headerShown: false }} />
