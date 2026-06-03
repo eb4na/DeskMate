@@ -24,7 +24,7 @@ export default function SessionPickerScreen() {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
 
   const activeSubjects = subjects.filter((s) => !s.archived).sort((a, b) => a.order - b.order);
-  const cardWidth = (width - 96) / 2;
+  const cardWidth = Math.min((width - 96) / 2, 148);
 
   function startSession() {
     router.push({
@@ -36,9 +36,8 @@ export default function SessionPickerScreen() {
   return (
     <View style={styles.container}>
       {/* Lace background */}
-      <Image source={SESSION_BG} style={styles.bg} resizeMode="stretch" />
+      <Image source={SESSION_BG} style={styles.bg} resizeMode="cover" />
 
-      {/* Character peeking top-right */}
       <Image source={CHARACTER} style={styles.character} resizeMode="contain" />
 
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -142,39 +141,39 @@ const styles = StyleSheet.create({
 
   character: {
     position: 'absolute',
-    right: -16,
-    top: 48,
-    width: 130,
-    height: 170,
+    right: 4,
+    top: 52,
+    width: 88,
+    height: 112,
     zIndex: 2,
   },
 
   safe: { flex: 1 },
   scroll: {
-    paddingHorizontal: 28,
-    paddingBottom: 40,
-    gap: 16,
+    paddingHorizontal: 24,
+    paddingBottom: 32,
+    gap: 12,
   },
 
   // Header
   header: {
     alignItems: 'center',
-    paddingTop: 12,
-    paddingRight: 100,
-    gap: 4,
+    paddingTop: 8,
+    paddingRight: 72,
+    gap: 2,
   },
   title: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '700',
     fontStyle: 'italic',
     color: '#E05878',
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#C4607A',
   },
   hint: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#C4607A',
     opacity: 0.7,
   },
@@ -183,15 +182,17 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 10,
     justifyContent: 'center',
+    maxWidth: 320,
+    alignSelf: 'center',
   },
   card: {
     backgroundColor: 'rgba(255,255,255,0.82)',
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 2,
     borderColor: '#F4C2C8',
-    paddingTop: 12,
+    paddingTop: 8,
     paddingBottom: 0,
     alignItems: 'center',
     overflow: 'hidden',
@@ -214,29 +215,29 @@ const styles = StyleSheet.create({
     color: '#E05878',
     fontWeight: '700',
   },
-  cardEmoji: { fontSize: 40, lineHeight: 50 },
+  cardEmoji: { fontSize: 28, lineHeight: 34 },
   cardMin: {
-    fontSize: 30,
+    fontSize: 24,
     fontWeight: '700',
     color: '#C4607A',
-    lineHeight: 36,
+    lineHeight: 28,
   },
   cardMinLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#C4607A',
     opacity: 0.75,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   ribbon: {
     width: '100%',
     backgroundColor: '#F4839A',
-    paddingVertical: 5,
+    paddingVertical: 4,
     alignItems: 'center',
   },
   ribbonText: {
     color: '#fff',
     fontWeight: '600',
-    fontSize: 12,
+    fontSize: 11,
   },
 
   // Subject
@@ -280,13 +281,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.78)',
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1.5,
     borderColor: '#F4C2C8',
-    padding: 14,
-    gap: 10,
+    padding: 12,
+    gap: 8,
+    maxWidth: 320,
+    alignSelf: 'center',
+    width: '100%',
   },
-  customEmoji: { fontSize: 22 },
+  customEmoji: { fontSize: 18 },
   customText: { flex: 1, gap: 2 },
   customTitle: { fontSize: 14, fontWeight: '600', color: '#C4607A' },
   customSub: { fontSize: 11, color: '#C4607A', opacity: 0.7 },
@@ -302,9 +306,12 @@ const styles = StyleSheet.create({
   // Start button
   startBtn: {
     backgroundColor: '#E8607A',
-    borderRadius: 30,
-    paddingVertical: 16,
+    borderRadius: 26,
+    paddingVertical: 13,
     alignItems: 'center',
+    maxWidth: 320,
+    alignSelf: 'center',
+    width: '100%',
     shadowColor: '#C0405A',
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -313,7 +320,7 @@ const styles = StyleSheet.create({
   },
   startBtnPressed: { opacity: 0.88 },
   startBtnText: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
   },
