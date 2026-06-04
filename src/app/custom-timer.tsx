@@ -1,276 +1,220 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, TextInput, useColorScheme } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Alert, Image, ImageBackground, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { PlusGate } from '@/components/plus-gate';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 
-const FOCUS_QUICK_PICKS = [15, 20, 35, 60, 75, 120];
-const BREAK_QUICK_PICKS = [5, 10, 15, 20, 30, 45];
+const SESSION_FRAME = require('@/assets/images/home/session-frame.png');
+const START_BTN     = require('@/assets/images/home/start-btn.png');
+const BACK_BTN      = require('@/assets/images/home/back-btn.png');
+
+const DESSERTS: Record<number, ReturnType<typeof require>> = {
+  0: require('@/assets/images/home/dessert-10.png'),
+  1: require('@/assets/images/home/dessert-25.png'),
+  2: require('@/assets/images/home/dessert-50.png'),
+  3: require('@/assets/images/home/dessert-90.png'),
+};
+
+const FOCUS_PICKS = [15, 20, 35, 60, 75, 120];
+const BREAK_PICKS = [5, 10, 15, 20, 30, 45];
 
 type TimerMode = 'focus' | 'break';
 
-function CustomTimerContent() {
+export default function CustomTimerScreen() {
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const { mode } = useLocalSearchParams<{ mode?: TimerMode }>();
   const timerMode: TimerMode = mode === 'break' ? 'break' : 'focus';
   const isBreakMode = timerMode === 'break';
-  const {
-    savedTimerPresets,
-    saveTimerPreset,
-    deleteTimerPreset,
-    savedBreakPresets,
-    saveBreakPreset,
-    deleteBreakPreset,
-  } = useApp();
-  const [customMinutes, setCustomMinutes] = useState('');
+  const { subjects, saveTimerPreset, isPlus } = useApp();
+
+  const [selectedMinutes, setSelectedMinutes] = useState<number | null>(null);
+  const [customInput, setCustomInput] = useState('');
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [savePreset, setSavePreset] = useState(false);
-  const [presetLabel, setPresetLabel] = useState('');
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
-  const savedPresets = isBreakMode ? savedBreakPresets : savedTimerPresets;
-  const quickPicks = isBreakMode ? BREAK_QUICK_PICKS : FOCUS_QUICK_PICKS;
 
-  const inputStyle = {
-    borderWidth: 1.5,
-    borderColor: colors.backgroundSelected,
-    borderRadius: 12,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    color: colors.text,
-    fontSize: 16,
-  };
+  const activeSubjects = subjects.filter((s) => !s.archived).sort((a, b) => a.order - b.order);
+  const quickPicks = isBreakMode ? BREAK_PICKS : FOCUS_PICKS;
+  const cardWidth = Math.min((width * 0.96 - 88 - 16) / 3, 90);
 
-  const handleStart = (minutes: number) => {
-    if (minutes < 1 || minutes > 300) {
-      Alert.alert('Invalid duration', 'Please enter between 1 and 300 minutes.');
-      return;
-    }
-
-    if (savePreset && presetLabel.trim()) {
-      const nextPreset = { label: presetLabel.trim(), minutes };
-      if (isBreakMode) {
-        saveBreakPreset(nextPreset);
-      } else {
-        saveTimerPreset(nextPreset);
-      }
-    }
-
+  const handleStart = () => {
+    const parsed = customInput ? parseInt(customInput, 10) : null;
+    const mins = parsed && !isNaN(parsed) ? parsed : selectedMinutes;
+    if (!mins) { Alert.alert('Pick a duration first'); return; }
+    if (mins < 1 || mins > 300) { Alert.alert('Enter between 1–300 minutes'); return; }
+    if (savePreset && isPlus) saveTimerPreset({ label: `${mins} min`, minutes: mins });
     if (isBreakMode) {
-      router.replace({
-        pathname: '/break-game',
-        params: { breakMinutes: String(minutes), fromSession: '1' },
-      });
-      return;
-    }
-
-    router.push({ pathname: '/subject-picker', params: { sessionLength: String(minutes) } });
-  };
-
-  const handleCustomStart = () => {
-    const mins = parseInt(customMinutes, 10);
-    if (isNaN(mins)) {
-      Alert.alert('Invalid input', 'Please enter a number of minutes.');
-      return;
-    }
-    handleStart(mins);
-  };
-
-  const handleDelete = (id: string) => {
-    if (isBreakMode) {
-      deleteBreakPreset(id);
+      router.replace({ pathname: '/break-game', params: { breakMinutes: String(mins), fromSession: '1' } });
     } else {
-      deleteTimerPreset(id);
+      router.push({ pathname: '/subject-picker', params: { sessionLength: String(mins) } });
     }
   };
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="default" themeColor="textSecondary" style={styles.hint}>
-          {isBreakMode
-            ? 'Set a custom break length or save a few reset-friendly presets.'
-            : 'Set any focus duration that works for you.'}
-        </ThemedText>
+    <View style={styles.backdrop}>
+      <Pressable style={StyleSheet.absoluteFillObject} onPress={() => router.back()} />
 
-        {savedPresets.length > 0 && (
-          <ThemedView style={styles.section}>
-            <ThemedText type="smallBold" style={styles.sectionTitle}>
-              Saved {isBreakMode ? 'break' : 'focus'} presets
-            </ThemedText>
-            <ThemedView style={styles.presetList}>
-              {savedPresets.map((p) => (
-                <ThemedView key={p.id} type="backgroundElement" style={styles.presetRow}>
-                  <Pressable style={styles.presetMain} onPress={() => handleStart(p.minutes)}>
-                    <ThemedText type="smallBold">{p.label}</ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {p.minutes} min
-                    </ThemedText>
-                  </Pressable>
-                  <Pressable onPress={() => handleDelete(p.id)} style={styles.presetDelete}>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      ✕
-                    </ThemedText>
-                  </Pressable>
-                </ThemedView>
-              ))}
-            </ThemedView>
-          </ThemedView>
-        )}
+      <ImageBackground
+        source={SESSION_FRAME}
+        style={[styles.frame, { width: width * 0.96, height: height * 0.93, paddingTop: 70 }]}
+        resizeMode="stretch"
+        imageStyle={{ borderRadius: 28 }}>
 
-        <ThemedView style={styles.section}>
-          <ThemedText type="smallBold" style={styles.sectionTitle}>
-            Quick picks
-          </ThemedText>
-          <ThemedView style={styles.quickGrid}>
-            {quickPicks.map((min) => (
-              <Pressable
-                key={min}
-                style={({ pressed }) => [styles.quickCard, pressed && styles.pressed]}
-                onPress={() => handleStart(min)}>
-                <ThemedView type="backgroundElement" style={styles.quickCardInner}>
-                  <ThemedText type="smallBold" style={styles.quickMin}>
-                    {min}
-                  </ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    min
-                  </ThemedText>
-                </ThemedView>
-              </Pressable>
-            ))}
-          </ThemedView>
-        </ThemedView>
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} scrollEnabled={false}>
 
-        <ThemedView style={styles.section}>
-          <ThemedText type="smallBold" style={styles.sectionTitle}>
-            Custom {isBreakMode ? 'break' : 'focus'} duration
-          </ThemedText>
-          <ThemedView style={styles.customRow}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>✦ Custom Timer ✦</Text>
+            <Text style={styles.subtitle}>Choose your focus recipe</Text>
+          </View>
+
+          {/* Quick picks label */}
+          <Text style={styles.sectionLabel}>QUICK PICKS</Text>
+
+          {/* Quick pick cards */}
+          <View style={styles.grid}>
+            {quickPicks.map((min, i) => {
+              const isActive = selectedMinutes === min;
+              return (
+                <Pressable
+                  key={min}
+                  style={[styles.card, { width: cardWidth }, isActive && styles.cardActive]}
+                  onPress={() => setSelectedMinutes(isActive ? null : min)}>
+                  {isActive && <View style={styles.checkBadge}><Text style={styles.checkIcon}>✓</Text></View>}
+                  <Image source={DESSERTS[i % 4]} style={styles.cardImg} resizeMode="contain" />
+                  <Text style={styles.cardMin}>{min}</Text>
+                  <Text style={styles.cardMinLabel}>min</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Custom input */}
+          <View style={styles.customInputRow}>
             <TextInput
-              style={[inputStyle, styles.customInput]}
-              value={customMinutes}
-              onChangeText={setCustomMinutes}
-              placeholder={isBreakMode ? 'e.g. 18' : 'e.g. 45'}
-              placeholderTextColor={colors.textSecondary}
+              style={styles.customInput}
+              value={customInput}
+              onChangeText={(v) => { setCustomInput(v); setSelectedMinutes(null); }}
+              placeholder="Custom min..."
+              placeholderTextColor="#D4A0AF"
               keyboardType="number-pad"
               returnKeyType="done"
             />
-            <ThemedText type="small" themeColor="textSecondary">
-              minutes
-            </ThemedText>
-          </ThemedView>
+            <Text style={styles.customInputLabel}>min</Text>
+          </View>
 
-          <Pressable style={styles.savePresetRow} onPress={() => setSavePreset((v) => !v)}>
-            <ThemedView style={[styles.checkbox, savePreset && styles.checkboxActive]} />
-            <ThemedText type="small">Save as preset</ThemedText>
+          {/* Subject */}
+          <Text style={styles.sectionLabel}>✦ SUBJECT (OPTIONAL) ✦</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={styles.chipRow}>
+            <Pressable
+              style={[styles.chip, !selectedSubjectId && styles.chipActive]}
+              onPress={() => setSelectedSubjectId(null)}>
+              <Text style={[styles.chipText, !selectedSubjectId && styles.chipTextActive]}>None</Text>
+            </Pressable>
+            {activeSubjects.map((s) => {
+              const isActive = selectedSubjectId === s.id;
+              return (
+                <Pressable
+                  key={s.id}
+                  style={[styles.chip, { borderColor: isActive ? s.color : '#F4C2C8', backgroundColor: isActive ? s.color + '33' : 'rgba(255,255,255,0.75)' }]}
+                  onPress={() => setSelectedSubjectId(isActive ? null : s.id)}>
+                  <Text style={styles.chipText}>{s.emoji ? `${s.emoji} ` : ''}{s.name}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          {/* Save as preset */}
+          <Pressable style={styles.presetRow} onPress={() => setSavePreset(v => !v)}>
+            <View style={[styles.checkbox, savePreset && styles.checkboxOn]}>
+              {savePreset && <Text style={styles.checkboxTick}>✓</Text>}
+            </View>
+            <View>
+              <Text style={styles.presetTitle}>Save as preset</Text>
+              <Text style={styles.presetSub}>Quickly reuse this duration</Text>
+            </View>
           </Pressable>
 
-          {savePreset && (
-            <TextInput
-              style={inputStyle}
-              value={presetLabel}
-              onChangeText={setPresetLabel}
-              placeholder={
-                isBreakMode ? 'Preset name (e.g. Stretch break)' : 'Preset name (e.g. Deep Work)'
-              }
-              placeholderTextColor={colors.textSecondary}
-              returnKeyType="done"
-            />
-          )}
-
-          <Pressable
-            style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]}
-            onPress={handleCustomStart}>
-            <ThemedText type="smallBold" style={styles.startBtnText}>
-              {isBreakMode ? 'Start break' : 'Start session'}
-            </ThemedText>
+          {/* Start button */}
+          <Pressable style={({ pressed }) => [styles.startWrap, pressed && { opacity: 0.85 }]} onPress={handleStart}>
+            <ImageBackground source={START_BTN} style={styles.startBtn} resizeMode="stretch">
+              <Text style={styles.startBtnText}>Start Session</Text>
+            </ImageBackground>
           </Pressable>
-        </ThemedView>
 
-        <Pressable onPress={() => router.back()} style={styles.cancelBtn}>
-          <ThemedText type="linkPrimary">Back</ThemedText>
-        </Pressable>
-      </SafeAreaView>
-    </ScrollView>
-  );
-}
+          {/* Back button */}
+          <View style={styles.backRow}>
+            <Pressable onPress={() => router.back()}>
+              <Image source={BACK_BTN} style={styles.backBtn} resizeMode="contain" />
+            </Pressable>
+          </View>
 
-export default function CustomTimerScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <PlusGate
-        feature="Custom Timers"
-        description="Set any focus duration, save your favourite presets, and keep custom break lengths ready too."
-        emoji="⏱">
-        <CustomTimerContent />
-      </PlusGate>
-    </ThemedView>
+        </ScrollView>
+      </ImageBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  safeArea: {
-    padding: Spacing.four,
-    maxWidth: MaxContentWidth,
-    width: '100%',
-    alignSelf: 'center',
-    gap: Spacing.four,
+  backdrop: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center', justifyContent: 'center',
   },
-  hint: { textAlign: 'center' },
-  section: { gap: Spacing.two },
-  sectionTitle: { fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 },
-  presetList: { gap: Spacing.two },
-  presetRow: {
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    overflow: 'hidden',
+  frame: {
+    borderRadius: 28, overflow: 'hidden',
+    paddingBottom: 16, paddingHorizontal: 44,
   },
-  presetMain: { flex: 1, padding: Spacing.three, gap: 2 },
-  presetDelete: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.three },
-  quickGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
+  scroll: { flexGrow: 1, justifyContent: 'center', paddingBottom: 8, gap: 10 },
+
+  header: { alignItems: 'center', gap: 1 },
+  title: { fontSize: 18, fontWeight: '700', fontStyle: 'italic', color: '#E05878' },
+  subtitle: { fontSize: 10, color: '#C4607A' },
+
+  sectionLabel: { fontSize: 10, fontWeight: '700', color: '#C4607A', letterSpacing: 1, textAlign: 'center' },
+
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' },
+  card: {
+    backgroundColor: 'rgba(255,255,255,0.82)', borderRadius: 12,
+    borderWidth: 2, borderColor: '#F4C2C8',
+    paddingTop: 6, alignItems: 'center', overflow: 'hidden', minHeight: 90,
+    shadowColor: '#E0789A', shadowOpacity: 0.12, shadowRadius: 5, shadowOffset: { width: 0, height: 2 }, elevation: 2,
   },
-  quickCard: { flexBasis: '30%', flexGrow: 1 },
-  quickCardInner: {
-    borderRadius: 12,
-    padding: Spacing.two,
-    alignItems: 'center',
-    gap: 2,
+  cardActive: { borderColor: '#E05878', borderWidth: 2.5, backgroundColor: 'rgba(255,240,245,0.92)' },
+  checkBadge: {
+    position: 'absolute', top: 4, right: 4, width: 14, height: 14, borderRadius: 7,
+    backgroundColor: '#E05878', alignItems: 'center', justifyContent: 'center',
   },
-  quickMin: { fontSize: 24, lineHeight: 30 },
-  customRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  customInput: { flex: 1 },
-  savePresetRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    paddingVertical: Spacing.one,
+  checkIcon: { fontSize: 8, color: '#fff', fontWeight: '700' },
+  cardImg: { width: 52, height: 52 },
+  cardMin: { fontSize: 18, fontWeight: '700', color: '#C4607A', lineHeight: 22 },
+  cardMinLabel: { fontSize: 8, color: '#C4607A', opacity: 0.75, marginBottom: 2 },
+
+  chipRow: { flexDirection: 'row', gap: 6, paddingVertical: 2 },
+  chip: { borderRadius: 20, borderWidth: 1.5, borderColor: '#F4C2C8', paddingHorizontal: 10, paddingVertical: 4, backgroundColor: 'rgba(255,255,255,0.75)' },
+  chipActive: { borderColor: '#E05878', backgroundColor: '#E0587822' },
+  chipText: { fontSize: 11, color: '#C4607A', fontWeight: '500' },
+  chipTextActive: { color: '#E05878', fontWeight: '700' },
+
+  customInputRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 16,
+    borderWidth: 1.5, borderColor: '#F4C2C8', paddingHorizontal: 14, paddingVertical: 6,
   },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#7C6F5A',
-  },
-  checkboxActive: {
-    backgroundColor: '#7C6F5A',
-  },
-  startBtn: {
-    backgroundColor: '#7C6F5A',
-    borderRadius: 16,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-    marginTop: Spacing.two,
-  },
-  startBtnText: { color: '#FFF', fontSize: 16 },
-  pressed: { opacity: 0.85 },
-  cancelBtn: { alignItems: 'center', paddingVertical: Spacing.two },
+  customInput: { flex: 1, fontSize: 15, fontWeight: '600', color: '#C4607A' },
+  customInputLabel: { fontSize: 13, color: '#C4607A', fontWeight: '500' },
+
+  presetRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  checkbox: { width: 18, height: 18, borderRadius: 5, borderWidth: 2, borderColor: '#E05878', alignItems: 'center', justifyContent: 'center' },
+  checkboxOn: { backgroundColor: '#E05878' },
+  checkboxTick: { fontSize: 10, color: '#fff', fontWeight: '700' },
+  presetTitle: { fontSize: 12, fontWeight: '600', color: '#C4607A' },
+  presetSub: { fontSize: 9, color: '#C4607A', opacity: 0.7 },
+
+  startWrap: { alignSelf: 'center' },
+  startBtn: { width: 250, height: 54, alignItems: 'center', justifyContent: 'center', paddingBottom: 8 },
+  startBtnText: { fontSize: 14, fontWeight: '700', color: '#fff', fontStyle: 'italic', fontFamily: 'Georgia', textShadowColor: '#fff', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 },
+
+  backRow: { alignItems: 'center' },
+  backBtn: { width: 64, height: 44 },
 });

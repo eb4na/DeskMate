@@ -16,10 +16,12 @@ import { ThemedView } from '@/components/themed-view';
 import { BakeryColors, BakeryRadii, BakeryShadow, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { supabase } from '@/lib/supabase';
+import { useTranslation } from '@/i18n';
 
 export default function LoginScreen() {
   const { email: emailParam, notice } = useLocalSearchParams<{ email?: string; notice?: string }>();
   const { continueAsGuest } = useAuth();
+  const { t } = useTranslation();
   const [email, setEmail] = useState(typeof emailParam === 'string' ? emailParam : '');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -56,9 +58,9 @@ export default function LoginScreen() {
     if (error) {
       setErrorMessage(
         /email not confirmed|email_not_confirmed/i.test(error.message)
-          ? 'Your email still needs verification. Tap Resend verification to get a fresh code.'
+          ? t('errors.emailNotVerified')
           : /invalid login credentials/i.test(error.message)
-            ? 'That email or password is incorrect. Try again or reset your password.'
+            ? t('errors.invalidCredentials')
             : error.message,
       );
       setSubmitting(false);
@@ -66,9 +68,7 @@ export default function LoginScreen() {
     }
 
     if (!data.session) {
-      setErrorMessage(
-        'Sign-in did not finish. If this is a new account, verify your email first (Resend verification).',
-      );
+      setErrorMessage(t('errors.signInFailed'));
       setSubmitting(false);
       return;
     }
@@ -92,11 +92,10 @@ export default function LoginScreen() {
             <ThemedView style={styles.hero}>
               <ThemedText style={styles.heroEmoji}>🥐</ThemedText>
               <ThemedText type="subtitle" style={styles.title}>
-                Welcome back
+                {t('auth.welcomeBack')}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
-                Slip back into your cozy study bakery. Your current Memobun progress stays local for
-                now.
+                {t('auth.tagline')} {t('auth.guestNote')}
               </ThemedText>
             </ThemedView>
 

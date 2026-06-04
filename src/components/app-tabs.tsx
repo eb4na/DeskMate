@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: '5%',
     right: '5%',
-    bottom: TabBarBowHeight + 14,
+    bottom: TabBarBowHeight + 18,
     height: TabBarHeight - 50,
     flexDirection: 'row',
     alignItems: 'center',
@@ -193,18 +193,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 2,
   },
-  tabHome: {
-    paddingLeft: 22,
-  },
-  tabTasks: {
-    paddingRight: 10,
-  },
-  tabProgress: {
-    paddingLeft: 10,
-  },
-  tabShop: {
-    paddingRight: 22,
-  },
+  tabHome: {},
+  tabTasks: { paddingRight: 28 },
+  tabProgress: { paddingLeft: 28 },
+  tabShop: {},
   heartButton: {
     position: 'absolute',
     alignSelf: 'center',
@@ -223,25 +215,25 @@ const styles = StyleSheet.create({
     height: 62,
   },
   iconWrap: {
-    width: 60,
-    height: 60,
-    borderRadius: 19,
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
+    marginTop: 0,
   },
   iconWrapActive: {
     backgroundColor: 'rgba(255, 182, 205, 0.6)',
   },
   icon: {
-    width: 38,
-    height: 38,
+    width: 34,
+    height: 34,
   },
   label: {
     fontSize: 12,
     color: '#C4728A',
     fontWeight: '500',
-    marginTop: -12,
+    marginTop: -6,
   },
   labelActive: {
     color: '#D94F72',

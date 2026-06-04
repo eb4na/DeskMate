@@ -74,6 +74,12 @@ function formatTimerLabel(totalSeconds: number): string {
 const HOME_ROOM_IMAGE = require('@/assets/images/home/home-room.jpg');
 const DESK_OVERLAY = require('@/assets/images/home/desk-overlay.png');
 const DESK_HANDS = require('@/assets/images/home/desk-hands.png');
+const DESK_NEW = require('@/assets/images/home/desk-new.png');
+const DESK_MIXER = require('@/assets/images/home/desk-mixer.png');
+const DESK_STRAWBERRIES = require('@/assets/images/home/desk-strawberries.png');
+const DESK_EGGS = require('@/assets/images/home/desk-eggs.png');
+const DESK_BUTTER = require('@/assets/images/home/desk-butter.png');
+const HOME_CAT = require('@/assets/images/home/home-cat.png');
 const START_SESSION_BTN = require('@/assets/images/home/start-session-btn.png');
 const SETTINGS_BTN = require('@/assets/images/home/settings-scallop-btn.png');
 const STREAK_FIRE_ICON = require('@/assets/images/home/streak-fire-icon.png');
@@ -415,17 +421,24 @@ export default function HomeScreen() {
 
               <View style={styles.homeCharacterLayer} pointerEvents="none">
                 <RNImage
-                  source={homeCompanionSource}
+                  source={HOME_CAT}
                   style={styles.homeCharacterImage}
                   resizeMode="contain"
-                  onError={() => {
-                    if (activeCompanion.type === 'slot') {
-                      setDidHomeImageFail(true);
-                    }
-                  }}
-                  accessibilityLabel={`${activeCompanion.name} home character`}
                 />
               </View>
+
+              {/* New desk in front of cat */}
+              <RNImage
+                source={DESK_NEW}
+                style={styles.deskNewLayer}
+                resizeMode="cover"
+                pointerEvents="none"
+              />
+              {/* Mixer on desk */}
+              <RNImage source={DESK_MIXER} style={styles.deskMixer} resizeMode="contain" pointerEvents="none" />
+              <RNImage source={DESK_STRAWBERRIES} style={styles.deskStrawberries} resizeMode="contain" />
+              <RNImage source={DESK_EGGS} style={styles.deskEggs} resizeMode="contain" />
+              <RNImage source={DESK_BUTTER} style={styles.deskButter} resizeMode="contain" />
 
               <View style={[styles.startSessionPressable, { bottom: 155 }]}>
                 <Pressable
@@ -481,6 +494,34 @@ const styles = StyleSheet.create({
   },
   roomBackground: {
     ...StyleSheet.absoluteFill,
+  },
+  deskMixer: {
+    position: 'absolute',
+    right: 12,
+    bottom: '35%',
+    width: 170,
+    height: 140,
+    zIndex: 3,
+  },
+  deskStrawberries: {
+    position: 'absolute', left: 4, bottom: 240,
+    width: 120, height: 100, zIndex: 10,
+  },
+  deskEggs: {
+    position: 'absolute', left: 110, bottom: 235,
+    width: 100, height: 85, zIndex: 10,
+  },
+  deskButter: {
+    position: 'absolute', right: 180, bottom: 235,
+    width: 100, height: 85, zIndex: 10,
+  },
+  deskNewLayer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '45%',
+    zIndex: 2,
   },
   deskOverlay: {
     position: 'absolute',
@@ -661,8 +702,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    top: 280,
-    bottom: 20,
+    bottom: '38%',
+    height: 280,
     zIndex: 1,
     alignItems: 'center',
     justifyContent: 'flex-end',
@@ -670,10 +711,8 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   homeCharacterImage: {
-    width: '135%',
-    height: '135%',
-    maxWidth: 560,
-    transform: [{ translateY: 18 }],
+    width: 300,
+    height: 300,
   },
   homeBreadButtonWrap: {
     alignSelf: 'center',

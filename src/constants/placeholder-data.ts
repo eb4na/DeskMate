@@ -1,5 +1,5 @@
 export const SESSION_LENGTHS = [
-  { minutes: 10, label: 'Quick Focus' },
+  { minutes: 10, label: 'Quick Rescue' },
   { minutes: 25, label: 'Pomodoro' },
   { minutes: 50, label: 'Deep Work' },
   { minutes: 90, label: 'Marathon' },
@@ -30,7 +30,6 @@ export const STATIC_SUBJECTS = [
   { name: 'Math', color: '#64B5F6' },
   { name: 'Biology', color: '#81C784' },
   { name: 'History', color: '#FFB74D' },
-  { name: 'Spanish', color: '#F06292' },
 ] as const;
 
 // Before-session mood options (how you feel going into studying)

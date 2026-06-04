@@ -1,4 +1,5 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import i18n from '@/i18n';
 import { DAILY_EARN_CAP, STATIC_SUBJECTS } from '@/constants/placeholder-data';
 import { SHOP_ITEMS, type ShopCategory } from '@/constants/shop-data';
 import { useAuth } from '@/context/auth-context';
@@ -171,6 +172,10 @@ type PersistedState = {
   purchasedCoins: number;
   multipleReminders: ReminderEntry[];
   advancedExamMap: Record<string, AdvancedExamFields>;
+
+  // i18n
+  language: string;
+  languageSelected: boolean;
 };
 
 // How many companion chat messages one AI generation ticket converts into.
@@ -226,6 +231,8 @@ const DEFAULTS: PersistedState = {
   purchasedCoins: 0,
   multipleReminders: [],
   advancedExamMap: {},
+  language: 'en',
+  languageSelected: false,
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -434,7 +441,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadScopedAppState<Partial<PersistedState>>(appStateScope)
       .then((saved) => {
         if (!mounted) return;
-        setS(normalizePersistedState(saved));
+        const normalized = normalizePersistedState(saved);
+        setS(normalized);
+        if (normalized.language) i18n.changeLanguage(normalized.language);
         setLoadedScopeKey(appStateScope.storageKey);
       })
       .finally(() => {
@@ -891,6 +900,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       advancedExamMap: { ...prev.advancedExamMap, [examId]: fields },
     }));
 
+  const setLanguage = (lang: string) => {
+    i18n.changeLanguage(lang);
+    setS((prev) => ({ ...prev, language: lang }));
+  };
+
+  const markLanguageSelected = () =>
+    setS((prev) => ({ ...prev, languageSelected: true }));
+
   // ─── Wave 2 shop ─────────────────────────────────────────────────────────
 
   const purchaseShopItem = (itemId: string, price: number): boolean => {
@@ -1020,6 +1037,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addPurchasedCoins,
         setMultipleReminders,
         updateAdvancedExam,
+        language: s.language ?? 'en',
+        languageSelected: s.languageSelected ?? false,
+        setLanguage,
+        markLanguageSelected,
       }}>
       {children}
     </AppContext.Provider>

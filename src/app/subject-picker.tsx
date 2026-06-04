@@ -7,8 +7,6 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import type { Task } from '@/context/app-context';
-import { BEFORE_SESSION_MOODS } from '@/constants/placeholder-data';
-import type { BeforeMoodValue } from '@/constants/placeholder-data';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 type Step = 'subject' | 'task';
@@ -29,7 +27,6 @@ export default function SubjectPickerScreen() {
   const [step, setStep] = useState<Step>('subject');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [selectedMood, setSelectedMood] = useState<BeforeMoodValue | null>(null);
 
   const activeSubjects = subjects
     .filter((s) => !s.archived)
@@ -48,19 +45,6 @@ export default function SubjectPickerScreen() {
     taskTitle: string | null,
   ) => {
     const durationMinutes = parseInt(sessionLength ?? '25', 10);
-    if (selectedMood) {
-      const moodOption = BEFORE_SESSION_MOODS.find((m) => m.value === selectedMood);
-      if (moodOption) {
-        addMoodEntry({
-          value: selectedMood,
-          label: moodOption.label,
-          type: 'before',
-          sessionMinutes: durationMinutes,
-          timestamp: new Date().toISOString(),
-        });
-      }
-    }
-
     startActiveSession({
       durationMinutes,
       subjectName,
@@ -235,30 +219,6 @@ export default function SubjectPickerScreen() {
             )}
           </ThemedView>
 
-          {/* Before-session mood */}
-          <ThemedView style={styles.section}>
-            <ThemedText type="default" style={styles.prompt}>
-              How are you feeling? (optional)
-            </ThemedText>
-            <ThemedView style={styles.moodGrid}>
-              {BEFORE_SESSION_MOODS.map((mood) => {
-                const isSelected = selectedMood === mood.value;
-                return (
-                  <Pressable
-                    key={mood.value}
-                    style={({ pressed }) => [pressed && styles.buttonPressed]}
-                    onPress={() => setSelectedMood(isSelected ? null : mood.value)}>
-                    <ThemedView
-                      type={isSelected ? 'backgroundSelected' : 'backgroundElement'}
-                      style={styles.moodBtn}>
-                      <ThemedText style={styles.moodEmoji}>{mood.emoji}</ThemedText>
-                      <ThemedText type="small">{mood.label}</ThemedText>
-                    </ThemedView>
-                  </Pressable>
-                );
-              })}
-            </ThemedView>
-          </ThemedView>
         </SafeAreaView>
       </ScrollView>
 
