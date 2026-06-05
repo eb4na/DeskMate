@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { TaskCalendar } from '@/components/task-calendar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
@@ -195,6 +196,9 @@ export default function TasksScreen() {
               </Pressable>
             </ThemedView>
           </ThemedView>
+
+          {/* Calendar with day notes + task peek */}
+          <TaskCalendar />
 
           {!hasAnyTask && (
             <ThemedView type="backgroundElement" style={styles.welcomeCard}>

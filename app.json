@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "DeskMate",
+    "name": "Memobun",
     "slug": "DeskMate",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,12 +8,12 @@
     "scheme": "deskmate",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.anonymous.DeskMate"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#C7E7FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"

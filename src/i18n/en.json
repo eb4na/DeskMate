@@ -77,7 +77,7 @@
   },
   "sessionPicker": {
     "title": "Start Session",
-    "subtitle": "✦ Choose your focus recipe ✦",
+    "subtitle": "Choose your focus time",
     "hint": "Study time, I saved your seat.",
     "quickRescue": "Quick Rescue",
     "pomodoro": "Pomodoro",
@@ -118,7 +118,10 @@
     "studySubject": "Study {{name}}",
     "session": "{{length}} minute session",
     "nudge": "Want to add subjects so your progress reports look better?",
-    "manageSubjects": "Manage subjects →"
+    "manageSubjects": "Manage subjects →",
+    "moodTitle": "How are you feeling?",
+    "moodSubtitle": "Track your mood to see patterns over time",
+    "skipMood": "Skip and start session"
   },
   "session": {
     "focusTime": "Focus time",
@@ -137,7 +140,26 @@
     "subject": "Subject",
     "generalStudy": "General Study",
     "home": "Home",
-    "startAnother": "Start another"
+    "startAnother": "Start another",
+    "focusCoins": "Focus Coins",
+    "taskDone": "Task done!",
+    "markedComplete": "Marked complete",
+    "welcomeBack": "Welcome back!",
+    "streakBonus": "Streak bonus!",
+    "bonusCoins": "+{{amount}} bonus coins",
+    "didYouFinish": "Did you finish this task?",
+    "yesFinished": "✓ Yes, finished",
+    "notYet": "Not yet",
+    "continue": "Continue",
+    "howDoYouFeel": "How do you feel?",
+    "afterStudying": "After studying",
+    "skip": "Skip for now",
+    "takeABreak": "Take a break?",
+    "youEarnedIt": "You earned it. Relax for a bit.",
+    "min": "min",
+    "savedPresetsIncluded": "Saved break presets are included above.",
+    "customBreak": "Custom break →",
+    "backToHome": "Back to home"
   },
   "tasks": {
     "title": "Tasks",

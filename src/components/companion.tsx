@@ -11,7 +11,7 @@ import {
 import { Colors } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { useTheme } from '@/hooks/use-theme';
-import { STARTER_COMPANION_IMAGES, resolveActiveCompanion } from '@/lib/companion-utils';
+import { getBunSkinImage, resolveActiveCompanion } from '@/lib/companion-utils';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
@@ -31,11 +31,11 @@ type Props = {
 };
 
 export function Companion({ pose, size = 'full' }: Props) {
-  const { activeCompanionId, companionSlots, defaultCompanionId, equippedShopItems } = useApp();
+  const { activeCompanionId, companionSlots, defaultCompanionId, equippedShopItems, bunSkinId } = useApp();
   const config = POSE_CONFIG[pose];
   const isFull = size === 'full';
   const theme = useTheme();
-  const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots);
+  const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId);
   const [didImageFail, setDidImageFail] = useState(false);
   const activeTheme = getThemeEffect(equippedShopItems);
   const activeOutfit =
@@ -57,7 +57,7 @@ export function Companion({ pose, size = 'full' }: Props) {
     .join(' · ');
   const resolvedImageSource =
     didImageFail && activeCompanion.type === 'slot'
-      ? STARTER_COMPANION_IMAGES[defaultCompanionId]
+      ? getBunSkinImage(bunSkinId)
       : activeCompanion.imageSource;
 
   useEffect(() => {

@@ -43,7 +43,7 @@ function RootNavigator() {
         <Stack.Screen name="language-picker" options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         {/* Session flow */}
-        <Stack.Screen name="session-picker" options={{ headerShown: false, presentation: 'transparentModal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="session-picker" options={{ headerShown: false, presentation: 'modal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="subject-picker" options={{ presentation: 'modal', title: 'Subject & mood' }} />
         <Stack.Screen name="session" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="session-complete" options={{ headerShown: false }} />
@@ -56,11 +56,14 @@ function RootNavigator() {
         {/* Wave 3 */}
         <Stack.Screen name="weekly-report" options={{ presentation: 'modal', title: 'Weekly Report' }} />
         <Stack.Screen name="break-game" options={{ headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="cake-game" options={{ headerShown: false, gestureEnabled: false }} />
         {/* Wave 4 */}
         <Stack.Screen name="plus-upgrade" options={{ presentation: 'modal', title: 'DeskMate Plus' }} />
         <Stack.Screen name="custom-timer" options={{ headerShown: false, presentation: 'transparentModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="ambience-picker" options={{ presentation: 'modal', title: 'Ambience' }} />
-        <Stack.Screen name="companion-gallery" options={{ presentation: 'modal', title: 'Companion Gallery' }} />
+        <Stack.Screen name="companion-gallery" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="food-gallery" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="friends" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="companion-chat" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="companion-pfp" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="settings" options={{ presentation: 'modal', title: 'Settings' }} />

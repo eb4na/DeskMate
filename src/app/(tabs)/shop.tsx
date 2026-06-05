@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Dimensions, Image as RNImage, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinAmount, CoinIcon } from '@/components/coin-icon';
@@ -16,6 +16,8 @@ import {
   CATEGORIES,
   type ShopCategory,
 } from '@/constants/shop-data';
+import { outfitsForCharacter } from '@/constants/outfit-data';
+import { SHOP_COMPANIONS, STARTER_COMPANION_IMAGES, getStarterActiveId } from '@/lib/companion-utils';
 import { DAILY_EARN_CAP } from '@/constants/placeholder-data';
 import {
   BakeryColors,
@@ -26,22 +28,39 @@ import {
   Spacing,
 } from '@/constants/theme';
 
+const CATEGORY_EMOJI: Partial<Record<ShopCategory, string>> = {
+  companion: '🐾',
+  outfits: '👗',
+  background: '🖼️',
+  desk: '🪵',
+  recipe: '🍰',
+  sound: '🎧',
+};
+
 function CategoryIcon({ id, size }: { id: ShopCategory; size?: number }) {
+  if (id === 'game') return <GameIcon size={size} />;
+  if (id === 'reminder') return <ReminderIcon size={size} />;
+  const emoji = CATEGORY_EMOJI[id];
+  if (emoji) return <ThemedText style={{ fontSize: (size ?? 56) * 0.46 }}>{emoji}</ThemedText>;
   if (id === 'decoration') return <DecoIcon size={size} />;
   if (id === 'outfit') return <OutfitIcon size={size} />;
   if (id === 'theme') return <ThemeIcon size={size} />;
-  if (id === 'pose') return <PoseIcon size={size} />;
-  if (id === 'game') return <GameIcon size={size} />;
-  return <ReminderIcon size={size} />;
+  return <PoseIcon size={size} />;
 }
 
 const CATEGORY_SHORT: Record<ShopCategory, string> = {
+  companion: 'Buddy',
+  outfits: 'Outfits',
+  background: 'Room',
+  desk: 'Desk',
+  recipe: 'Recipe',
+  sound: 'Sound',
+  game: 'Game',
+  reminder: 'Alert',
   decoration: 'Deco',
   outfit: 'Outfit',
   theme: 'Theme',
   pose: 'Pose',
-  game: 'Game',
-  reminder: 'Alert',
 };
 
 const WIN_W = Math.min(Dimensions.get('window').width, MaxContentWidth);
@@ -101,9 +120,27 @@ export default function ShopScreen() {
     equipShopItem,
     isPlus,
     addPurchasedCoins,
+    companionSlots,
   } = useApp();
-  const [activeCategory, setActiveCategory] = useState<ShopCategory>('decoration');
+  const [activeCategory, setActiveCategory] = useState<ShopCategory>('companion');
+  const [zoomImage, setZoomImage] = useState<number | null>(null);
+  const [outfitCharId, setOutfitCharId] = useState<string | null>(null);
   const [itemPage, setItemPage] = useState(0);
+
+  // Characters the user owns (for the Outfits tab).
+  const ownedCharacters: { id: string; name: string; image: number | { uri: string } | null; emoji: string }[] = [
+    { id: getStarterActiveId('girl'), name: 'Bun', image: STARTER_COMPANION_IMAGES.girl, emoji: '🐱' },
+    ...SHOP_COMPANIONS.filter((c) => ownedShopItems.includes(c.id)).map((c) => ({
+      id: `shop:${c.id}`,
+      name: c.name,
+      image: (c.image as number) ?? null,
+      emoji: c.emoji,
+    })),
+    ...companionSlots
+      .filter((s) => !!s.imageUri)
+      .map((s) => ({ id: s.id, name: s.name, image: { uri: s.imageUri as string }, emoji: s.emoji })),
+  ];
+  const outfitChar = ownedCharacters.find((c) => c.id === outfitCharId) ?? null;
   const itemScrollRef = useRef<ScrollView>(null);
 
   const [catScrollX, setCatScrollX] = useState(0);
@@ -239,8 +276,88 @@ export default function ShopScreen() {
             </View>
           )}
 
+          {/* ── Outfits: owned characters → their costumes ── */}
+          {activeCategory === 'outfits' && (
+            <View style={styles.outfitsWrap}>
+              {!outfitChar ? (
+                <>
+                  <ThemedText style={styles.outfitsHint}>Pick a character to dress up</ThemedText>
+                  <View style={styles.outfitCharGrid}>
+                    {ownedCharacters.map((c) => (
+                      <Pressable key={c.id} style={styles.outfitCharCard} onPress={() => setOutfitCharId(c.id)}>
+                        {c.image ? (
+                          <RNImage source={c.image} style={styles.outfitCharImg} resizeMode="contain" />
+                        ) : (
+                          <ThemedText style={styles.itemEmoji}>{c.emoji}</ThemedText>
+                        )}
+                        <ThemedText style={styles.itemName} numberOfLines={1}>{c.name}</ThemedText>
+                      </Pressable>
+                    ))}
+                  </View>
+                </>
+              ) : (
+                <>
+                  <Pressable style={styles.outfitBack} onPress={() => setOutfitCharId(null)}>
+                    <ThemedText style={styles.outfitBackText}>‹ {outfitChar.name}'s outfits</ThemedText>
+                  </Pressable>
+                  {outfitsForCharacter(outfitChar.id).length === 0 && (
+                    <View style={styles.emptyCard}>
+                      <ThemedText style={styles.emptyEmoji}>👗</ThemedText>
+                      <ThemedText style={styles.emptyTitle}>No outfits yet</ThemedText>
+                      <ThemedText style={styles.emptyText}>{outfitChar.name}'s wardrobe is empty for now.</ThemedText>
+                    </View>
+                  )}
+                  <View style={styles.outfitGrid}>
+                    {outfitsForCharacter(outfitChar.id).map((o) => {
+                      const owned = o.price === 0 || ownedShopItems.includes(o.id);
+                      const canAfford = coins >= o.price;
+                      return (
+                        <Pressable
+                          key={o.id}
+                          disabled={owned || !canAfford}
+                          onPress={() => {
+                            if (purchaseShopItem(o.id, o.price)) {
+                              Alert.alert('Outfit unlocked!', `${o.name} is now in ${outfitChar.name}'s wardrobe.`);
+                            } else {
+                              Alert.alert('Not enough coins', `You need ${o.price} coins for ${o.name}.`);
+                            }
+                          }}>
+                          <View style={[styles.itemCard, owned && styles.itemOwned, !owned && !canAfford && styles.itemDim]}>
+                            {o.image ? (
+                              <RNImage source={o.image} style={styles.outfitItemImg} resizeMode="contain" />
+                            ) : (
+                              <ThemedText style={styles.itemEmoji}>{o.emoji}</ThemedText>
+                            )}
+                            {owned ? (
+                              <View style={[styles.priceBadge, styles.badgeOwned]}>
+                                <ThemedText style={styles.badgeText}>{o.price === 0 ? 'Default' : '✓ Owned'}</ThemedText>
+                              </View>
+                            ) : (
+                              <CoinAmount amount={o.price} size={22} textStyle={[styles.priceText, !canAfford && styles.priceTextDim]} />
+                            )}
+                            <ThemedText style={styles.itemName} numberOfLines={1}>{o.name}</ThemedText>
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
+            </View>
+          )}
+
+          {/* ── Empty category ── */}
+          {activeCategory !== 'outfits' && items.length === 0 && (
+            <View style={styles.emptyCard}>
+              <ThemedText style={styles.emptyEmoji}>🧁</ThemedText>
+              <ThemedText style={styles.emptyTitle}>Nothing here yet</ThemedText>
+              <ThemedText style={styles.emptyText}>New treats are coming to this shelf soon!</ThemedText>
+            </View>
+          )}
+
           {/* ── Items paged grid ── */}
-          <ScrollView
+          {activeCategory !== 'outfits' && items.length > 0 && (
+          <><ScrollView
             ref={itemScrollRef}
             horizontal
             pagingEnabled
@@ -283,7 +400,22 @@ export default function ShopScreen() {
                         isEquipped && styles.itemEquipped,
                         !owned && !canAfford && styles.itemDim,
                       ]}>
-                        <ThemedText style={styles.itemEmoji}>{item.emoji}</ThemedText>
+                        {item.image ? (
+                          <>
+                            <RNImage source={item.image} style={styles.itemImage} resizeMode="contain" />
+                            <Pressable
+                              style={styles.zoomBtn}
+                              hitSlop={8}
+                              onPress={(e) => {
+                                e.stopPropagation?.();
+                                setZoomImage(item.image ?? null);
+                              }}>
+                              <ThemedText style={styles.zoomBtnText}>🔍</ThemedText>
+                            </Pressable>
+                          </>
+                        ) : (
+                          <ThemedText style={styles.itemEmoji}>{item.emoji}</ThemedText>
+                        )}
                         {owned ? (
                           <View style={[styles.priceBadge, isEquipped ? styles.badgeEquipped : styles.badgeOwned]}>
                             <ThemedText style={styles.badgeText}>{isEquipped ? '✓ Equipped' : '✓ Owned'}</ThemedText>
@@ -314,6 +446,8 @@ export default function ShopScreen() {
                 {itemPage + 1} / {totalPages}  ·  {items.length} items
               </ThemedText>
             </View>
+          )}
+          </>
           )}
 
           {/* ── Coin Packs ── */}
@@ -363,12 +497,12 @@ export default function ShopScreen() {
               <CoinIcon size={18} />
             </View>
             {[
-              { label: '10 min session', coins: 5 },
-              { label: '25 min session', coins: 15 },
-              { label: '50 min session', coins: 35 },
-              { label: '90 min session', coins: 70 },
-              { label: '3-day streak', coins: 30 },
-              { label: '7-day streak', coins: 80 },
+              { label: '1 coin per minute studied', coins: 1 },
+              { label: '10 min session', coins: 10 },
+              { label: '25 min session', coins: 25 },
+              { label: '50 min session', coins: 50 },
+              { label: '90 min session', coins: 90 },
+              { label: `Daily max ${DAILY_EARN_CAP}`, coins: DAILY_EARN_CAP },
             ].map((row) => (
               <View key={row.label} style={styles.tipRow}>
                 <ThemedText style={styles.tipLabel}>{row.label}</ThemedText>
@@ -379,12 +513,54 @@ export default function ShopScreen() {
 
         </SafeAreaView>
       </ScrollView>
+
+      {/* Zoom-in viewer for companion art */}
+      <Modal visible={zoomImage !== null} transparent animationType="fade" onRequestClose={() => setZoomImage(null)}>
+        <Pressable style={styles.zoomBackdrop} onPress={() => setZoomImage(null)}>
+          {zoomImage !== null && (
+            <View style={styles.zoomCard}>
+              <RNImage source={zoomImage} style={styles.zoomImage} resizeMode="contain" />
+              <ThemedText style={styles.zoomHint}>Tap anywhere to close</ThemedText>
+            </View>
+          )}
+        </Pressable>
+      </Modal>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  zoomBtn: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  zoomBtnText: { fontSize: 13 },
+  zoomBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(60,40,30,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  zoomCard: {
+    backgroundColor: '#FFFDF8',
+    borderRadius: 28,
+    padding: 20,
+    alignItems: 'center',
+    gap: 12,
+    width: '86%',
+    maxWidth: 360,
+  },
+  zoomImage: { width: '100%', height: 300 },
+  zoomHint: { fontSize: 12, color: '#9A7B6D' },
 
   // Sticky header
   header: {
@@ -522,6 +698,40 @@ const styles = StyleSheet.create({
   itemEquipped: { borderColor: BakeryColors.honey, backgroundColor: `${BakeryColors.honey}12` },
   itemDim: { opacity: 0.55 },
   itemEmoji: { fontSize: 52, lineHeight: 62 },
+  itemImage: { width: 62, height: 62 },
+  outfitsWrap: { gap: 10, paddingVertical: 4 },
+  outfitsHint: { fontSize: 13, color: '#9A7B6D', fontWeight: '600', paddingHorizontal: 4 },
+  outfitCharGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-start' },
+  outfitCharCard: {
+    width: '30%',
+    aspectRatio: 0.82,
+    backgroundColor: '#FFFDF8',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#FBD9E0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 8,
+    gap: 4,
+  },
+  outfitCharImg: { width: '78%', height: '64%' },
+  outfitItemImg: { width: 62, height: 62 },
+  outfitBack: { paddingVertical: 4 },
+  outfitBackText: { fontSize: 14, fontWeight: '800', color: '#C4607A' },
+  outfitGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  emptyCard: {
+    backgroundColor: '#FFFDF8',
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: '#FBD9E0',
+    paddingVertical: 28,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    gap: 6,
+  },
+  emptyEmoji: { fontSize: 40 },
+  emptyTitle: { fontSize: 16, fontWeight: '800', color: '#5B3A2E' },
+  emptyText: { fontSize: 13, color: '#9A7B6D', textAlign: 'center' },
   itemName: {
     fontSize: 13,
     fontWeight: '600',
@@ -549,7 +759,6 @@ const styles = StyleSheet.create({
   sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionTitle: { fontSize: 15, lineHeight: 20 },
   sectionSub: { fontSize: 11, color: BakeryColors.mocha, lineHeight: 16 },
-  ticketHint: { fontSize: 12, color: BakeryColors.mocha, lineHeight: 18, opacity: 0.8 },
   packStrip: { gap: Spacing.two, paddingBottom: 4 },
   packCard: {
     width: 120,

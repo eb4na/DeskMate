@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AiTicketIcon } from '@/components/ai-ticket-icon';
 import { CoinIcon } from '@/components/coin-icon';
 import {
   BakerHatIcon,
@@ -26,6 +25,7 @@ import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { getAmbienceName } from '@/app/ambience-picker';
+import { LANGUAGES } from '@/i18n';
 import { BakeryColors, BakeryRadii, MaxContentWidth, Spacing } from '@/constants/theme';
 
 type RowProps = {
@@ -74,19 +74,19 @@ export default function SettingsScreen() {
   const {
     coins,
     isPlus,
-    aiTickets,
-    purchasedAiTickets,
     ambienceId,
     reminderEnabled,
+    language,
     reminderTime,
     setReminder,
     activeCompanionId,
     defaultCompanionId,
     companionSlots,
+    bunSkinId,
     setIsPlus,
   } = useApp();
 
-  const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots);
+  const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId);
 
   const handleSignOut = () => {
     Alert.alert(
@@ -188,29 +188,6 @@ export default function SettingsScreen() {
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
             <SettingRow icon={<CoinIcon size={40} />} label="Focus Coins" value={`${coins} coins`} />
-            <View style={styles.divider} />
-            <SettingRow
-              icon={<AiTicketIcon size={40} />}
-              label="AI generation tickets"
-              value={
-                isPlus
-                  ? `${aiTickets} / 3 this month${purchasedAiTickets > 0 ? ` (+${purchasedAiTickets} purchased)` : ''}`
-                  : 'Plus only'
-              }
-            />
-          </ThemedView>
-
-          {/* Companion */}
-          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-            COMPANION
-          </ThemedText>
-          <ThemedView type="backgroundElement" style={styles.group}>
-            <SettingRow
-              icon={<PawIcon size={32} />}
-              label="Companion gallery"
-              value={`Active: ${activeCompanion.name}`}
-              onPress={() => router.push('/companion-gallery')}
-            />
           </ThemedView>
 
           {/* Focus & study */}
@@ -276,6 +253,16 @@ export default function SettingsScreen() {
             ABOUT
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
+            <SettingRow
+              icon="🌐"
+              label="Language"
+              value={(() => {
+                const lang = LANGUAGES.find((l) => l.code === language);
+                return lang ? `${lang.flag} ${lang.native}` : 'English';
+              })()}
+              onPress={() => router.push('/language-picker')}
+            />
+            <View style={styles.divider} />
             <SettingRow
               icon={<ChartIcon size={32} />}
               label="Progress & stats"

@@ -2,7 +2,6 @@ import { router } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AiTicketIcon } from '@/components/ai-ticket-icon';
 import { GameIcon } from '@/components/category-icons';
 import { ExamCalendarIcon } from '@/components/home-icons';
 import {
@@ -10,7 +9,6 @@ import {
   ChartIcon,
   KitchenTimerIcon,
   MusicNoteIcon,
-  PawIcon,
 } from '@/components/settings-icons';
 import { StreakFreezeIcon } from '@/components/streak-freeze-icon';
 import { ShopTabIcon } from '@/components/tab-icons';
@@ -26,8 +24,6 @@ const FEATURES: { title: string; desc: string; renderIcon: (size: number) => Rea
   { title: 'Streak freezes', desc: '3 per month — protect your streak from missed days', renderIcon: (s) => <StreakFreezeIcon size={s} /> },
   { title: 'Advanced reports', desc: 'Monthly trends, best study hours, mood insights', renderIcon: (s) => <ChartIcon size={s} /> },
   { title: 'Ambience sounds', desc: 'Rain, cafe, library, fireplace, and more', renderIcon: (s) => <MusicNoteIcon size={s} /> },
-  { title: 'Extra companion slots', desc: 'Keep your two free starter companions and save up to 3 more', renderIcon: (s) => <PawIcon size={s} /> },
-  { title: 'AI companion tickets', desc: '3 generation tickets/month for custom art', renderIcon: (s) => <AiTicketIcon size={s} /> },
   { title: 'All break games', desc: 'Unlock Memory Cards, Word Puzzle, and future games', renderIcon: (s) => <GameIcon size={s} /> },
   { title: 'Plus shop discount', desc: '20% off all shop items', renderIcon: (s) => <ShopTabIcon size={s} color={BakeryColors.honey} /> },
 ];

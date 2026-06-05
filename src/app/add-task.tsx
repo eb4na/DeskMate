@@ -12,7 +12,12 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import type { TaskPriority, TaskStatus } from '@/context/app-context';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { cancelTaskNotification, scheduleTaskNotification } from '@/lib/notifications';
+import { BakeryColors, BakeryRadii, MaxContentWidth, Spacing } from '@/constants/theme';
+
+function isValidTime(v: string) {
+  return /^([01]\d|2[0-3]):([0-5]\d)$/.test(v.trim());
+}
 
 const PRIORITY_OPTIONS: { value: TaskPriority; label: string; emoji: string }[] = [
   { value: 'low', label: 'Low', emoji: '○' },
@@ -27,7 +32,7 @@ const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
 ];
 
 export default function AddTaskScreen() {
-  const { taskId } = useLocalSearchParams<{ taskId?: string }>();
+  const { taskId, date } = useLocalSearchParams<{ taskId?: string; date?: string }>();
   const { tasks, subjects, addTask, updateTask } = useApp();
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
@@ -39,12 +44,24 @@ export default function AddTaskScreen() {
   const [title, setTitle] = useState(existingTask?.title ?? '');
   const [subjectId, setSubjectId] = useState<string | null>(existingTask?.subjectId ?? null);
   const [dueDateEnabled, setDueDateEnabled] = useState(existingTask?.dueDate != null || !editing);
-  const [dueDate, setDueDate] = useState(existingTask?.dueDate ?? todayISO);
+  const [dueDate, setDueDate] = useState(existingTask?.dueDate ?? date ?? todayISO);
   const [estimatedMinutes, setEstimatedMinutes] = useState(
     existingTask?.estimatedMinutes ? String(existingTask.estimatedMinutes) : '',
   );
   const [priority, setPriority] = useState<TaskPriority>(existingTask?.priority ?? 'medium');
   const [status, setStatus] = useState<TaskStatus>(existingTask?.status ?? 'not_started');
+
+  // Notification reminder
+  const existingNotify = existingTask?.notifyAt ? new Date(existingTask.notifyAt) : null;
+  const [notifyEnabled, setNotifyEnabled] = useState(!!existingTask?.notifyAt);
+  const [notifyDate, setNotifyDate] = useState(
+    existingNotify ? existingTask!.notifyAt!.slice(0, 10) : todayISO,
+  );
+  const [notifyTime, setNotifyTime] = useState(
+    existingNotify
+      ? `${String(existingNotify.getHours()).padStart(2, '0')}:${String(existingNotify.getMinutes()).padStart(2, '0')}`
+      : '09:00',
+  );
 
   useEffect(() => {
     if (editing && !existingTask) {
@@ -54,9 +71,13 @@ export default function AddTaskScreen() {
 
   const activeSubjects = subjects.filter((s) => !s.archived);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title.trim()) {
       Alert.alert('Title required', 'Please enter a task title.');
+      return;
+    }
+    if (notifyEnabled && !isValidTime(notifyTime)) {
+      Alert.alert('Invalid time', 'Enter the reminder time as HH:MM (24-hour).');
       return;
     }
 
@@ -66,17 +87,36 @@ export default function AddTaskScreen() {
 
     const dueDateValue = dueDateEnabled ? dueDate.trim() || todayISO : null;
 
+    // Build the notifyAt ISO from the picked date + time.
+    let notifyAt: string | null = null;
+    if (notifyEnabled) {
+      const [h, m] = notifyTime.split(':').map(Number);
+      const dt = new Date(`${notifyDate}T00:00:00`);
+      dt.setHours(h, m, 0, 0);
+      notifyAt = dt.toISOString();
+    }
+
+    // Cancel any previously scheduled reminder for this task.
+    await cancelTaskNotification(existingTask?.notifId ?? null);
+
+    const titleVal = title.trim();
+    const id = editing ? taskId! : addTask({
+      title: titleVal,
+      subjectId,
+      dueDate: dueDateValue,
+      estimatedMinutes: estimatedNum,
+      priority,
+      status,
+      notifyAt,
+    });
+
+    // Schedule the new reminder (if any) and persist its id.
+    const notifId = notifyAt ? await scheduleTaskNotification({ id, title: titleVal, notifyAt }) : null;
+
     if (editing) {
-      updateTask(taskId!, { title: title.trim(), subjectId, dueDate: dueDateValue, estimatedMinutes: estimatedNum, priority, status });
-    } else {
-      addTask({
-        title: title.trim(),
-        subjectId,
-        dueDate: dueDateValue,
-        estimatedMinutes: estimatedNum,
-        priority,
-        status,
-      });
+      updateTask(taskId!, { title: titleVal, subjectId, dueDate: dueDateValue, estimatedMinutes: estimatedNum, priority, status, notifyAt, notifId });
+    } else if (notifId) {
+      updateTask(id, { notifId });
     }
 
     router.back();
@@ -84,7 +124,7 @@ export default function AddTaskScreen() {
 
   const inputStyle = [
     styles.input,
-    { color: isDark ? '#fff' : '#000', borderColor: isDark ? '#444' : '#DDD', backgroundColor: isDark ? '#1A1A1A' : '#FAFAFA' },
+    { color: BakeryColors.cocoaDark, borderColor: BakeryColors.border, backgroundColor: BakeryColors.cream },
   ];
 
   return (
@@ -232,6 +272,42 @@ export default function AddTaskScreen() {
             )}
           </ThemedView>
 
+          {/* Reminder notification */}
+          <ThemedView style={styles.fieldGroup}>
+            <ThemedText type="smallBold" style={styles.label}>
+              Reminder (optional)
+            </ThemedText>
+            <ThemedView style={styles.chipRow}>
+              <Pressable onPress={() => setNotifyEnabled(true)} style={({ pressed }) => [pressed && styles.pressed]}>
+                <ThemedView type={notifyEnabled ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
+                  <ThemedText type="small">🔔 Notify me</ThemedText>
+                </ThemedView>
+              </Pressable>
+              <Pressable onPress={() => setNotifyEnabled(false)} style={({ pressed }) => [pressed && styles.pressed]}>
+                <ThemedView type={!notifyEnabled ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
+                  <ThemedText type="small">No reminder</ThemedText>
+                </ThemedView>
+              </Pressable>
+            </ThemedView>
+            {notifyEnabled && (
+              <>
+                <DateWheelPicker value={notifyDate} onChange={setNotifyDate} />
+                <ThemedView style={styles.timeRow}>
+                  <ThemedText type="small" themeColor="textSecondary">Time</ThemedText>
+                  <TextInput
+                    style={[inputStyle, styles.timeInput]}
+                    value={notifyTime}
+                    onChangeText={setNotifyTime}
+                    placeholder="09:00"
+                    placeholderTextColor={isDark ? '#666' : '#AAA'}
+                    keyboardType="numbers-and-punctuation"
+                    maxLength={5}
+                  />
+                </ThemedView>
+              </>
+            )}
+          </ThemedView>
+
           {/* Estimated time */}
           <ThemedView style={styles.fieldGroup}>
             <ThemedText type="smallBold" style={styles.label}>
@@ -279,7 +355,7 @@ const styles = StyleSheet.create({
   label: { fontSize: 13 },
   input: {
     borderWidth: 1.5,
-    borderRadius: 12,
+    borderRadius: BakeryRadii.button,
     paddingHorizontal: Spacing.three,
     paddingVertical: 10,
     fontSize: 15,
@@ -299,6 +375,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
   },
   chipEmoji: { fontSize: 14, lineHeight: 18 },
+  timeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  timeInput: { flex: 1 },
   subjectDot: { width: 10, height: 10, borderRadius: 5 },
   addSubjectChip: {
     borderWidth: 1,
@@ -310,12 +388,12 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.8 },
   saveBtn: {
-    backgroundColor: '#7C6F5A',
-    borderRadius: 16,
+    backgroundColor: BakeryColors.honey,
+    borderRadius: BakeryRadii.button,
     paddingVertical: Spacing.three,
     alignItems: 'center',
     marginTop: Spacing.two,
   },
-  saveBtnText: { color: '#FFF', fontSize: 15 },
+  saveBtnText: { color: BakeryColors.cocoaDark, fontSize: 15, fontWeight: '800' },
   cancelBtn: { alignItems: 'center', paddingVertical: Spacing.two },
 });

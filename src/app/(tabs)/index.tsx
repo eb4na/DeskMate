@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { Alert, Image as RNImage, Pressable, StyleSheet, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, Animated, Image as RNImage, ImageBackground, PanResponder, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/coin-icon';
@@ -11,8 +11,9 @@ import { getReminderStyleEffect } from '@/constants/shop-effects';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
-import { COIN_REWARDS } from '@/constants/placeholder-data';
+import { coinsForMinutes } from '@/constants/placeholder-data';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
+import { takePendingDragSession, setDragActive, type DragSessionData } from '@/lib/drag-session';
 import { getAmbienceEmoji, getAmbienceName } from '@/app/ambience-picker';
 import {
   BakeryColors,
@@ -71,7 +72,7 @@ function formatTimerLabel(totalSeconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-const HOME_ROOM_IMAGE = require('@/assets/images/home/home-room.jpg');
+const HOME_ROOM_IMAGE = require('@/assets/images/home/home-room-bg.png');
 const DESK_OVERLAY = require('@/assets/images/home/desk-overlay.png');
 const DESK_HANDS = require('@/assets/images/home/desk-hands.png');
 const DESK_NEW = require('@/assets/images/home/desk-new.png');
@@ -79,14 +80,79 @@ const DESK_MIXER = require('@/assets/images/home/desk-mixer.png');
 const DESK_STRAWBERRIES = require('@/assets/images/home/desk-strawberries.png');
 const DESK_EGGS = require('@/assets/images/home/desk-eggs.png');
 const DESK_BUTTER = require('@/assets/images/home/desk-butter.png');
-const HOME_CAT = require('@/assets/images/home/home-cat.png');
+const HOME_CAT = require('@/assets/images/bun/bun-home.png');
+const BUN_STUDYING = require('@/assets/images/bun/bun-studying.png');
+const STUDY_OVEN = require('@/assets/images/cake/oven.png');
+const STUDY_FRAME = require('@/assets/images/home/study-frame.png');
+const STUDY_RADIO = require('@/assets/images/home/study-radio.png');
+const STOP_STUDYING_BTN = require('@/assets/images/home/stop-studying-btn.png');
+const BREAK_GAME_BTN = require('@/assets/images/home/break-game-btn.png');
+const FRIEND_BTN = require('@/assets/images/home/friend-btn.png');
+const GAME_BTN = require('@/assets/images/home/game-btn.png');
 const START_SESSION_BTN = require('@/assets/images/home/start-session-btn.png');
+const SWITCH_CHARACTER_BTN = require('@/assets/images/home/switch-character-btn.png');
+const FOOD_MENU_BTN = require('@/assets/images/home/food-menu-btn.png');
 const SETTINGS_BTN = require('@/assets/images/home/settings-scallop-btn.png');
 const STREAK_FIRE_ICON = require('@/assets/images/home/streak-fire-icon.png');
 const EXAM_BOOK_ICON = require('@/assets/images/home/exam-book-icon.png');
 const EXAM_CALENDAR_ICON = require('@/assets/images/home/exam-calendar-icon.png');
 const REMINDER_BELL_ICON = require('@/assets/images/home/reminder-bell-icon.png');
 const REMINDER_BREAD_ICON = require('@/assets/images/home/reminder-sundae-icon.png');
+
+const DRAG_INGREDIENTS = [
+  { id: 'eggs',         src: require('@/assets/images/home/desk-eggs.png') },
+  { id: 'strawberries', src: require('@/assets/images/home/desk-strawberries.png') },
+  { id: 'butter',       src: require('@/assets/images/home/desk-butter.png') },
+] as const;
+
+type DragId = 'eggs' | 'strawberries' | 'butter';
+
+function DraggableIngredient({
+  id, src, style, onDropped, mixerCenterX, mixerCenterY,
+}: {
+  id: DragId; src: any; style: any;
+  onDropped: () => void;
+  mixerCenterX: number; mixerCenterY: number;
+}) {
+  const pan = useRef(new Animated.ValueXY()).current;
+  const scale = useRef(new Animated.Value(1)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
+  const dropped = useRef(false);
+
+  const pr = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => !dropped.current,
+    onMoveShouldSetPanResponder: () => !dropped.current,
+    onPanResponderGrant: () => {
+      pan.setOffset({ x: (pan.x as any)._value, y: (pan.y as any)._value });
+      pan.setValue({ x: 0, y: 0 });
+      Animated.spring(scale, { toValue: 1.2, useNativeDriver: true }).start();
+    },
+    onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
+    onPanResponderRelease: (_, g) => {
+      pan.flattenOffset();
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start();
+      const dist = Math.hypot(g.moveX - mixerCenterX, g.moveY - mixerCenterY);
+      if (dist < 100) {
+        dropped.current = true;
+        Animated.parallel([
+          Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+          Animated.spring(scale, { toValue: 0.5, useNativeDriver: true }),
+        ]).start(onDropped);
+      } else {
+        Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: false }).start();
+      }
+    },
+  })).current;
+
+  return (
+    <Animated.View
+      style={[style, { transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale }], opacity, zIndex: 20 }]}
+      {...pr.panHandlers}
+    >
+      <RNImage source={src} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+    </Animated.View>
+  );
+}
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -104,15 +170,56 @@ export default function HomeScreen() {
     clearActiveSession,
     companionSlots,
     defaultCompanionId,
+    bunSkinId,
+    addMoodEntry,
+    startActiveSession,
   } = useApp();
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [didHomeImageFail, setDidHomeImageFail] = useState(false);
   const handledCompletionId = useRef<string | null>(null);
+  const [dragSession, setDragSession] = useState<DragSessionData | null>(null);
+  const [droppedIds, setDroppedIds] = useState<Set<DragId>>(new Set());
+  const fadeOverlay = useRef(new Animated.Value(0)).current;
+  // Mixer bowl centre (approx) — right:-30, bottom:30%, size 285×235
+  // These are rough screen coords; close enough for the drop zone
+  const MIXER_CX = 393 - 30 - 285 / 2 + 285 * 0.35;
+  const MIXER_CY_FROM_TOP = 852 * (1 - 0.30) - 235 * 0.55;
+
+  useFocusEffect(useCallback(() => {
+    const session = takePendingDragSession();
+    if (session) {
+      setDragSession(session);
+      setDroppedIds(new Set());
+      fadeOverlay.setValue(0);
+    }
+  }, []));
+
+
+  const handleIngredientDropped = (id: DragId) => {
+    setDroppedIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      if (next.size === 3) {
+        setTimeout(() => {
+          Animated.timing(fadeOverlay, { toValue: 1, duration: 800, useNativeDriver: true }).start(() => {
+            if (dragSession) {
+              if (dragSession.moodValue && dragSession.moodLabel) {
+                addMoodEntry({ value: dragSession.moodValue, label: dragSession.moodLabel, type: 'before', sessionMinutes: dragSession.durationMinutes, timestamp: new Date().toISOString() });
+              }
+              startActiveSession({ durationMinutes: dragSession.durationMinutes, subjectName: dragSession.subjectName, taskId: dragSession.taskId, taskTitle: dragSession.taskTitle });
+            }
+            setDragSession(null);
+          });
+        }, 300);
+      }
+      return next;
+    });
+  };
   const activeSessionId = activeSession?.id ?? null;
-  const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots);
+  const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId);
   const homeCompanionSource =
     didHomeImageFail && activeCompanion.type === 'slot'
-      ? resolveActiveCompanion(`starter:${defaultCompanionId}`, defaultCompanionId, companionSlots)
+      ? resolveActiveCompanion(`starter:${defaultCompanionId}`, defaultCompanionId, companionSlots, bunSkinId)
           .imageSource
       : activeCompanion.imageSource;
   const reminderStyle = getReminderStyleEffect(equippedShopItems);
@@ -134,6 +241,12 @@ export default function HomeScreen() {
     ? getSessionElapsedMinutes(activeSession.startedAt, activeSession.durationMinutes, sessionNowMs)
     : 0;
 
+  // Hide the bottom tab bar while dragging ingredients or studying.
+  useEffect(() => {
+    setDragActive(!!dragSession || !!activeSession);
+    return () => setDragActive(false);
+  }, [dragSession, activeSession]);
+
   useEffect(() => {
     setDidHomeImageFail(false);
   }, [activeCompanionId]);
@@ -152,8 +265,13 @@ export default function HomeScreen() {
   }, [activeSessionId]);
 
   useEffect(() => {
-    if (!activeSession || sessionSecondsLeft > 0) return;
+    if (!activeSession) return;
     if (handledCompletionId.current === activeSession.id) return;
+
+    // Only finish when the real wall-clock time has truly elapsed — never on a
+    // mere app focus / re-render. Compare against Date.now() directly.
+    const endMs = new Date(activeSession.startedAt).getTime() + activeSession.durationMinutes * 60000;
+    if (Date.now() < endMs) return;
 
     handledCompletionId.current = activeSession.id;
     clearActiveSession();
@@ -162,7 +280,7 @@ export default function HomeScreen() {
       params: {
         sessionLength: String(activeSession.durationMinutes),
         subject: activeSession.subjectName ?? '',
-        coinsEarned: String(COIN_REWARDS[activeSession.durationMinutes] ?? 15),
+        coinsEarned: String(coinsForMinutes(activeSession.durationMinutes)),
         taskId: activeSession.taskId ?? '',
         taskTitle: activeSession.taskTitle ?? '',
       },
@@ -180,14 +298,9 @@ export default function HomeScreen() {
   const handleStopSession = () => {
     if (!activeSession) return;
 
+    // 1 coin per minute actually studied (no coins under the minimum).
     const cancelCoins =
-      sessionElapsedMinutes >= MIN_MINUTES_FOR_COINS
-        ? Math.floor(
-            (sessionElapsedMinutes / activeSession.durationMinutes) *
-              (COIN_REWARDS[activeSession.durationMinutes] ?? 15) *
-              0.5,
-          )
-        : 0;
+      sessionElapsedMinutes >= MIN_MINUTES_FOR_COINS ? coinsForMinutes(sessionElapsedMinutes) : 0;
     const message =
       cancelCoins > 0
         ? `You studied ${sessionElapsedMinutes} min and will earn ${cancelCoins} coins.`
@@ -252,66 +365,55 @@ export default function HomeScreen() {
           />
 
           {activeSession ? (
-            <View style={styles.focusMode}>
-              <View style={styles.focusModeInner}>
-                <ThemedView style={styles.focusBadge}>
-                  <ThemedText type="smallBold" style={styles.focusBadgeText}>
-                    Focus Mode
-                  </ThemedText>
-                </ThemedView>
-
-                <ThemedView style={styles.focusTimerCard}>
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.focusMeta}>
-                    {activeSession.subjectName ?? 'General Study'}
-                    {activeSession.taskTitle ? ` · ${activeSession.taskTitle}` : ''}
-                  </ThemedText>
-                  <ThemedText style={styles.focusTimerText}>
-                    {formatTimerLabel(sessionSecondsLeft)}
-                  </ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.focusMeta}>
-                    {activeSession.durationMinutes} minute session
-                  </ThemedText>
-                </ThemedView>
-
-                <View style={styles.focusCharacterArea} pointerEvents="none">
-                  <View style={styles.heroImageClip}>
-                    <Image
-                      source={homeCompanionSource}
-                      style={styles.heroImage}
-                      contentFit="contain"
-                      contentPosition="bottom"
-                      onError={() => {
-                        if (activeCompanion.type === 'slot') {
-                          setDidHomeImageFail(true);
-                        }
-                      }}
-                      accessibilityLabel={`${activeCompanion.name} home character`}
-                    />
+            <>
+              {/* Timer inside the bow frame */}
+              <View style={[styles.focusTopArea, { paddingTop: insets.top + 4 }]}>
+                <ImageBackground source={STUDY_FRAME} style={styles.studyFrame} resizeMode="contain">
+                  <View style={styles.studyFrameInner}>
+                    <ThemedText style={styles.studyFrameSubject} numberOfLines={1}>
+                      {activeSession.subjectName ?? 'General Study'}
+                    </ThemedText>
+                    <ThemedText style={styles.studyFrameTimer}>
+                      {formatTimerLabel(sessionSecondsLeft)}
+                    </ThemedText>
+                    <ThemedText style={styles.studyFrameMeta}>
+                      {activeSession.durationMinutes} minute session
+                    </ThemedText>
                   </View>
-                </View>
-
-                <View style={styles.focusActions}>
-                  <Pressable
-                    style={({ pressed }) => [styles.startButton, pressed && styles.startButtonPressed]}
-                    onPress={handleStopSession}>
-                    <ThemedText type="smallBold" style={styles.startButtonText}>
-                      Stop
-                    </ThemedText>
-                  </Pressable>
-
-                  <Pressable
-                    style={({ pressed }) => [styles.breakButton, pressed && styles.cardPressed]}
-                    onPress={handleBreakGame}>
-                    <ThemedText type="smallBold" style={styles.breakButtonText}>
-                      Break Game
-                    </ThemedText>
-                  </Pressable>
-                </View>
+                </ImageBackground>
               </View>
-            </View>
+
+              {/* Studying cat reading at the desk */}
+              <View style={styles.studyCharacterLayer} pointerEvents="none">
+                <RNImage source={BUN_STUDYING} style={styles.studyCharacterImage} resizeMode="contain" />
+              </View>
+
+              {/* Desk */}
+              <RNImage source={DESK_NEW} style={styles.deskNewLayer} resizeMode="cover" pointerEvents="none" />
+              {/* Oven on the desk */}
+              <RNImage source={STUDY_OVEN} style={styles.deskOven} resizeMode="contain" pointerEvents="none" />
+              {/* Radio playing study sounds */}
+              <RNImage source={STUDY_RADIO} style={styles.deskRadio} resizeMode="contain" pointerEvents="none" />
+
+              {/* Controls */}
+              <View style={[styles.focusActions, { bottom: insets.bottom + 120 }]}>
+                <Pressable
+                  style={({ pressed }) => [styles.imgButton, pressed && styles.startButtonPressed]}
+                  onPress={handleStopSession}>
+                  <Image source={STOP_STUDYING_BTN} style={styles.stopBtnImg} contentFit="contain" />
+                </Pressable>
+                {Math.floor(activeSession.durationMinutes / 12) > 1 && (
+                  <Pressable
+                    style={({ pressed }) => [styles.imgButton, pressed && styles.startButtonPressed]}
+                    onPress={handleBreakGame}>
+                    <Image source={BREAK_GAME_BTN} style={styles.breakBtnImg} contentFit="contain" />
+                  </Pressable>
+                )}
+              </View>
+            </>
           ) : (
             <>
-              <View style={styles.topHud}>
+              {!dragSession && <View style={styles.topHud}>
                 <View style={styles.statusRow}>
                   <View style={styles.statusChip}>
                     <Image source={STREAK_FIRE_ICON} style={styles.statusStreakIcon} contentFit="contain" accessibilityLabel="" />
@@ -414,20 +516,57 @@ export default function HomeScreen() {
                     </View>
                   </View>
                 </View>
-              </View>
+              </View>}
 
+              {/* Switch character button — top left, below exam card */}
+              {!dragSession && (
+                <Pressable
+                  style={({ pressed }) => [styles.switchCharBtn, pressed && styles.startButtonPressed]}
+                  onPress={() => router.push('/companion-gallery')}
+                  accessibilityLabel="Switch character">
+                  <Image source={SWITCH_CHARACTER_BTN} style={styles.switchCharImg} contentFit="contain" />
+                </Pressable>
+              )}
 
+              {/* Food menu button — top left, below switch character */}
+              {!dragSession && (
+                <Pressable
+                  style={({ pressed }) => [styles.foodMenuBtn, pressed && styles.startButtonPressed]}
+                  onPress={() => router.push('/food-gallery')}
+                  accessibilityLabel="Food menu">
+                  <Image source={FOOD_MENU_BTN} style={styles.foodMenuImg} contentFit="contain" />
+                </Pressable>
+              )}
 
+              {/* Settings button — top left, below food menu */}
+              {!dragSession && (
+                <Pressable
+                  style={({ pressed }) => [styles.topSettingsBtn, pressed && styles.startButtonPressed]}
+                  onPress={() => router.push('/settings')}
+                  accessibilityLabel="Open settings">
+                  <Image source={SETTINGS_BTN} style={styles.topSettingsImg} contentFit="contain" />
+                </Pressable>
+              )}
+
+              {/* Friend button — right side */}
+              {!dragSession && (
+                <Pressable
+                  style={({ pressed }) => [styles.friendBtn, pressed && styles.startButtonPressed]}
+                  onPress={() => router.push('/friends')}
+                  accessibilityLabel="Friends">
+                  <Image source={FRIEND_BTN} style={styles.friendBtnImg} contentFit="contain" />
+                </Pressable>
+              )}
 
               <View style={styles.homeCharacterLayer} pointerEvents="none">
                 <RNImage
-                  source={HOME_CAT}
+                  source={homeCompanionSource}
                   style={styles.homeCharacterImage}
                   resizeMode="contain"
                 />
               </View>
 
-              {/* New desk in front of cat */}
+              {/* Desk surface */}
               <RNImage
                 source={DESK_NEW}
                 style={styles.deskNewLayer}
@@ -436,11 +575,43 @@ export default function HomeScreen() {
               />
               {/* Mixer on desk */}
               <RNImage source={DESK_MIXER} style={styles.deskMixer} resizeMode="contain" pointerEvents="none" />
-              <RNImage source={DESK_STRAWBERRIES} style={styles.deskStrawberries} resizeMode="contain" />
-              <RNImage source={DESK_EGGS} style={styles.deskEggs} resizeMode="contain" />
-              <RNImage source={DESK_BUTTER} style={styles.deskButter} resizeMode="contain" />
 
-              <View style={[styles.startSessionPressable, { bottom: 155 }]}>
+              {/* Ingredients — draggable in drag mode, static otherwise */}
+              {dragSession ? (
+                <>
+                  {DRAG_INGREDIENTS.map((ing) => (
+                    droppedIds.has(ing.id) ? null : (
+                      <DraggableIngredient
+                        key={ing.id}
+                        id={ing.id}
+                        src={ing.src}
+                        style={styles[`desk${ing.id.charAt(0).toUpperCase() + ing.id.slice(1)}` as keyof typeof styles]}
+                        onDropped={() => handleIngredientDropped(ing.id)}
+                        mixerCenterX={MIXER_CX}
+                        mixerCenterY={MIXER_CY_FROM_TOP}
+                      />
+                    )
+                  ))}
+                  {/* Drag prompt */}
+                  <View style={[styles.dragPrompt, { top: insets.top + 16 }]}>
+                    <View style={styles.dragPromptBubble}>
+                      <ThemedText style={styles.dragPromptText}>
+                        {droppedIds.size === 3 ? '🍰 Let\'s study!' : 'Drag all ingredients into the mixer!'}
+                      </ThemedText>
+                    </View>
+                  </View>
+                  {/* Fade to black */}
+                  <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#000', opacity: fadeOverlay, zIndex: 99 }]} />
+                </>
+              ) : (
+                <>
+                  <RNImage source={DESK_STRAWBERRIES} style={styles.deskStrawberries} resizeMode="contain" />
+                  <RNImage source={DESK_EGGS} style={styles.deskEggs} resizeMode="contain" />
+                  <RNImage source={DESK_BUTTER} style={styles.deskButter} resizeMode="contain" />
+                </>
+              )}
+
+              {!dragSession && <View style={[styles.startSessionPressable, { bottom: 155 }]}>
                 <Pressable
                   style={({ pressed }) => [styles.startSessionInner, pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/session-picker')}
@@ -448,12 +619,12 @@ export default function HomeScreen() {
                   <Image source={START_SESSION_BTN} style={styles.startSessionBtn} contentFit="contain" />
                 </Pressable>
                 <Pressable
-                  style={({ pressed }) => [styles.settingsFloating, pressed && styles.startButtonPressed]}
-                  onPress={() => router.push('/settings')}
-                  accessibilityLabel="Open settings">
-                  <Image source={SETTINGS_BTN} style={styles.settingsFloatingIcon} contentFit="contain" />
+                  style={({ pressed }) => [styles.settingsFloating, styles.gameFloating, pressed && styles.startButtonPressed]}
+                  onPress={() => router.push({ pathname: '/break-game', params: { browse: '1' } })}
+                  accessibilityLabel="Play a game">
+                  <Image source={GAME_BTN} style={styles.gameFloatingImg} contentFit="contain" />
                 </Pressable>
-              </View>
+              </View>}
             </>
           )}
         </View>
@@ -462,8 +633,8 @@ export default function HomeScreen() {
   );
 }
 
-const META_CARD_RATIO = 1.5;
-const META_ROW_INSET = 4;
+const META_CARD_RATIO = 1.8;
+const META_ROW_INSET = 18;
 const META_ROW_GAP = 6;
 
 const metaCardShadow = {
@@ -477,7 +648,7 @@ const metaCardShadow = {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFD6DF',
+    backgroundColor: '#FBEDDA',
   },
   safeArea: {
     flex: 1,
@@ -486,6 +657,76 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     backgroundColor: 'transparent',
   },
+  switchCharBtn: {
+    position: 'absolute',
+    left: 4,
+    top: 210,
+    zIndex: 5,
+    width: 80,
+    height: 80,
+  },
+  switchCharImg: {
+    width: 80,
+    height: 80,
+  },
+  foodMenuBtn: {
+    position: 'absolute',
+    left: 4,
+    top: 292,
+    zIndex: 5,
+    width: 80,
+    height: 80,
+  },
+  foodMenuImg: {
+    width: 80,
+    height: 80,
+  },
+  topSettingsBtn: {
+    position: 'absolute',
+    left: 4,
+    top: 374,
+    zIndex: 5,
+    width: 72,
+    height: 72,
+  },
+  topSettingsImg: { width: 72, height: 72 },
+  friendBtn: {
+    position: 'absolute',
+    right: 12,
+    top: 300,
+    zIndex: 5,
+    width: 62,
+    height: 62,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  friendBtnImg: { width: 62, height: 62 },
+  gameFloating: {
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gameFloatingImg: { width: 72, height: 72 },
+  dragPrompt: {
+    position: 'absolute',
+    left: 0, right: 0,
+    alignItems: 'center',
+    zIndex: 30,
+  },
+  dragPromptBubble: {
+    backgroundColor: 'rgba(255,248,240,0.96)',
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderWidth: 1.5,
+    borderColor: '#F4C2C8',
+  },
+  dragPromptText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#C4607A',
+    textAlign: 'center',
+  },
   scene: {
     flex: 1,
     overflow: 'hidden',
@@ -493,34 +734,40 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   roomBackground: {
-    ...StyleSheet.absoluteFill,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
   },
   deskMixer: {
     position: 'absolute',
-    right: 12,
-    bottom: '35%',
-    width: 170,
-    height: 140,
+    right: -30,
+    bottom: '30%',
+    width: 285,
+    height: 235,
     zIndex: 3,
   },
-  deskStrawberries: {
-    position: 'absolute', left: 4, bottom: 240,
-    width: 120, height: 100, zIndex: 10,
-  },
   deskEggs: {
-    position: 'absolute', left: 110, bottom: 235,
-    width: 100, height: 85, zIndex: 10,
+    position: 'absolute', left: 25, bottom: 258,
+    width: 82, height: 69, zIndex: 10,
+  },
+  deskStrawberries: {
+    position: 'absolute', left: 115, bottom: 288,
+    width: 92, height: 76, zIndex: 10,
   },
   deskButter: {
-    position: 'absolute', right: 180, bottom: 235,
-    width: 100, height: 85, zIndex: 10,
+    position: 'absolute', left: 212, bottom: 258,
+    width: 82, height: 69, zIndex: 10,
   },
   deskNewLayer: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    height: '45%',
+    height: '47%',
     zIndex: 2,
   },
   deskOverlay: {
@@ -539,19 +786,43 @@ const styles = StyleSheet.create({
     height: 120,
     zIndex: 3,
   },
-  focusMode: {
-    flex: 1,
-    zIndex: 2,
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.two,
-  },
-  focusModeInner: {
-    flex: 1,
-    width: '100%',
-    justifyContent: 'space-between',
+  focusTopArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 6,
     alignItems: 'center',
     gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+  },
+  studyFrame: {
+    width: 320,
+    aspectRatio: 1266 / 924,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  studyFrameInner: {
+    alignItems: 'center',
+    paddingTop: '12%',
+    gap: 2,
+  },
+  studyFrameSubject: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#A46F56',
+  },
+  studyFrameTimer: {
+    fontSize: 56,
+    lineHeight: 62,
+    fontWeight: '800',
+    letterSpacing: -1,
+    color: '#5D3C2E',
+  },
+  studyFrameMeta: {
+    fontSize: 12,
+    color: '#A46F56',
+    opacity: 0.85,
   },
   focusBadge: {
     borderRadius: BakeryRadii.pill,
@@ -589,16 +860,53 @@ const styles = StyleSheet.create({
     letterSpacing: -2,
     color: BakeryColors.cocoaDark,
   },
-  focusCharacterArea: {
-    flex: 1,
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
+  studyCharacterLayer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: '38%',
+    height: 300,
+    zIndex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'flex-end',
+    paddingRight: 36,
+  },
+  studyCharacterImage: {
+    width: 260,
+    height: 300,
+  },
+  deskOven: {
+    position: 'absolute',
+    left: 10,
+    bottom: '30%',
+    width: 150,
+    aspectRatio: 821 / 1099,
+    zIndex: 3,
+  },
+  deskRadio: {
+    position: 'absolute',
+    right: 16,
+    bottom: '31%',
+    width: 110,
+    height: 110,
+    zIndex: 3,
+  },
+  imgButton: {
+    alignSelf: 'center',
+  },
+  stopBtnImg: {
+    width: 230,
+    aspectRatio: 1787 / 473,
+  },
+  breakBtnImg: {
+    width: 230,
+    aspectRatio: 1882 / 562,
   },
   focusActions: {
-    width: '100%',
-    maxWidth: 360,
+    position: 'absolute',
+    left: Spacing.four,
+    right: Spacing.four,
+    zIndex: 6,
     gap: Spacing.two,
   },
   settingsButton: {
@@ -834,14 +1142,14 @@ const styles = StyleSheet.create({
     ...metaCardShadow,
   },
   metaCardTitle: {
-    fontSize: 13,
-    lineHeight: 16,
+    fontSize: 11,
+    lineHeight: 14,
     fontWeight: '700',
     color: BakeryColors.cocoaDark,
   },
   metaSubline: {
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 10.5,
+    lineHeight: 13,
     fontWeight: '500',
     color: BakeryColors.mocha,
   },
@@ -849,7 +1157,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 64,
+    minHeight: 44,
     overflow: 'hidden',
     backgroundColor: 'transparent',
   },
@@ -885,12 +1193,12 @@ const styles = StyleSheet.create({
   },
   examCalendarDay: {
     position: 'absolute',
-    top: 10,
+    top: 8,
     left: 0,
     right: 0,
     textAlign: 'center',
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 10,
+    lineHeight: 13,
     fontWeight: '700',
     color: BakeryColors.cocoaDark,
   },
@@ -901,8 +1209,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   reminderCopy: {
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 9.5,
+    lineHeight: 12,
     fontWeight: '500',
     color: BakeryColors.cocoa,
   },
@@ -913,14 +1221,14 @@ const styles = StyleSheet.create({
     opacity: 0.92,
   },
   metaHeadline: {
-    fontSize: 14,
-    lineHeight: 16,
+    fontSize: 12.5,
+    lineHeight: 14,
     fontWeight: '700',
     color: BakeryColors.cocoaDark,
   },
   metaAccentText: {
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: 10.5,
+    lineHeight: 13,
     fontWeight: '700',
     color: '#B87A5A',
   },
@@ -941,7 +1249,7 @@ const styles = StyleSheet.create({
   },
   startSessionPressable: {
     position: 'absolute',
-    left: 50,
+    left: 40,
     right: Spacing.two,
     zIndex: 4,
     flexDirection: 'row',
@@ -951,8 +1259,8 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   startSessionBtn: {
-    height: 72,
-    aspectRatio: 1331 / 372,
+    height: 68,
+    aspectRatio: 1013 / 261,
   },
   settingsFloating: {
     width: 72,
@@ -964,10 +1272,10 @@ const styles = StyleSheet.create({
   },
   startButtonPressed: { opacity: 0.88 },
   statusStreakIcon: { width: 22, height: 22 },
-  examBookIcon: { width: 28, height: 28 },
-  reminderBellIcon: { width: 30, height: 36 },
-  examCalendarIcon: { width: 56, height: 60 },
-  reminderBreadIcon: { width: 50, height: 66 },
+  examBookIcon: { width: 22, height: 22 },
+  reminderBellIcon: { width: 24, height: 28 },
+  examCalendarIcon: { width: 44, height: 48 },
+  reminderBreadIcon: { width: 34, height: 44 },
   startButtonText: { color: BakeryColors.cocoaDark, fontSize: 17 },
   breakButton: {
     borderRadius: BakeryRadii.button,

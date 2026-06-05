@@ -3,6 +3,7 @@
  * Hosts a countdown timer + optional game (Tic-Tac-Toe free; Memory Cards / Word Puzzle unlocked via shop).
  * No coins are earned here.
  */
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, Pressable, ScrollView, StyleSheet, TextInput, useColorScheme } from 'react-native';
@@ -16,7 +17,7 @@ import { getCompanionLine } from '@/constants/companion-lines';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-type GameId = 'tictactoe' | 'memory' | 'wordpuzzle';
+type GameId = 'tictactoe' | 'memory' | 'wordpuzzle' | 'cakekitchen';
 type Phase = 'select' | 'playing' | 'resting' | 'over';
 type TicTacToeMode = 'ai' | 'friend';
 
@@ -702,15 +703,19 @@ const wpStyles = StyleSheet.create({
 const ALLOWED_BREAK_MINUTES = [5, 10, 15];
 
 export default function BreakGameScreen() {
-  const { breakMinutes, fromSession } = useLocalSearchParams<{
+  const { breakMinutes, fromSession, browse } = useLocalSearchParams<{
     breakMinutes: string;
     fromSession?: string;
+    browse?: string;
   }>();
   const { ownedShopItems, isPlus } = useApp();
 
+  // "browse" = opened from the Home game button (not a real study break): no
+  // break timer, no study framing — just pick a game.
+  const isBrowse = browse === '1';
   const parsedMinutes = parseInt(breakMinutes ?? '', 10);
   const validEntry =
-    fromSession === '1' && ALLOWED_BREAK_MINUTES.includes(parsedMinutes);
+    isBrowse || (fromSession === '1' && ALLOWED_BREAK_MINUTES.includes(parsedMinutes));
 
   const returnToTabs = () => {
     if (router.canDismiss()) {
@@ -741,7 +746,7 @@ export default function BreakGameScreen() {
   };
 
   useEffect(() => {
-    if (!validEntry || phase === 'over') return;
+    if (!validEntry || isBrowse || phase === 'over') return;
     const id = setInterval(() => {
       setSecondsLeft((s) => {
         if (s <= 1) {
@@ -762,7 +767,8 @@ export default function BreakGameScreen() {
   const ss = secondsLeft % 60;
   const pct = totalSeconds > 0 ? (secondsLeft / totalSeconds) * 100 : 0;
 
-  const GAMES: { id: GameId; name: string; emoji: string; free: boolean; shopItemId: string | null }[] = [
+  const GAMES: { id: GameId; name: string; emoji: string; free: boolean; shopItemId: string | null; route?: string; icon?: number }[] = [
+    { id: 'cakekitchen', name: 'BatterDash', emoji: '🎂', free: true, shopItemId: null, route: '/cake-game', icon: require('@/assets/images/cake/game-icon.png') },
     { id: 'tictactoe', name: 'Tic-Tac-Toe', emoji: '⭕', free: true, shopItemId: null },
     { id: 'memory', name: 'Memory Cards', emoji: '🃏', free: false, shopItemId: 'game_memory' },
     { id: 'wordpuzzle', name: 'Word Puzzle', emoji: '🔤', free: false, shopItemId: 'game_words' },
@@ -798,21 +804,23 @@ export default function BreakGameScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        {/* Timer bar always visible */}
-        <ThemedView type="backgroundElement" style={styles.timerBar}>
-          <ThemedText style={styles.timerEmoji}>🕐</ThemedText>
-          <ThemedView style={styles.timerContent}>
-            <ThemedView style={styles.timerRow}>
-              <ThemedText type="smallBold">Break ends in</ThemedText>
-              <ThemedText type="smallBold" style={styles.timerCount}>
-                {String(mm).padStart(2, '0')}:{String(ss).padStart(2, '0')}
-              </ThemedText>
-            </ThemedView>
-            <ThemedView style={styles.progressTrack}>
-              <ThemedView style={[styles.progressFill, { width: `${pct}%` as unknown as number }]} />
+        {/* Break timer — only during a real study break, not when browsing */}
+        {!isBrowse && (
+          <ThemedView type="backgroundElement" style={styles.timerBar}>
+            <ThemedText style={styles.timerEmoji}>🕐</ThemedText>
+            <ThemedView style={styles.timerContent}>
+              <ThemedView style={styles.timerRow}>
+                <ThemedText type="smallBold">Break ends in</ThemedText>
+                <ThemedText type="smallBold" style={styles.timerCount}>
+                  {String(mm).padStart(2, '0')}:{String(ss).padStart(2, '0')}
+                </ThemedText>
+              </ThemedView>
+              <ThemedView style={styles.progressTrack}>
+                <ThemedView style={[styles.progressFill, { width: `${pct}%` as unknown as number }]} />
+              </ThemedView>
             </ThemedView>
           </ThemedView>
-        </ThemedView>
+        )}
 
         {phase === 'select' ? (
           <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollFlex}>
@@ -820,9 +828,11 @@ export default function BreakGameScreen() {
               <ThemedText type="subtitle" style={styles.selectTitle}>
                 Choose a game
               </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                No coins are earned during breaks
-              </ThemedText>
+              {!isBrowse && (
+                <ThemedText type="small" themeColor="textSecondary">
+                  No coins are earned during breaks
+                </ThemedText>
+              )}
 
               <ThemedView style={styles.gameList}>
                 {GAMES.map((g) => {
@@ -836,10 +846,18 @@ export default function BreakGameScreen() {
                       style={({ pressed }) => [styles.gameCard, !unlocked && styles.gameCardLocked, pressed && unlocked && styles.pressed]}
                       onPress={() => {
                         if (!unlocked) return;
+                        if (g.route) {
+                          router.push(g.route as never);
+                          return;
+                        }
                         setSelectedGame(g.id);
                         setPhase('playing');
                       }}>
-                      <ThemedText style={styles.gameEmoji}>{g.emoji}</ThemedText>
+                      {g.icon ? (
+                        <Image source={g.icon} style={styles.gameIconImg} contentFit="cover" />
+                      ) : (
+                        <ThemedText style={styles.gameEmoji}>{g.emoji}</ThemedText>
+                      )}
                       <ThemedView style={styles.gameInfo}>
                         <ThemedText type="smallBold">{g.name}</ThemedText>
                         <ThemedText type="small" themeColor="textSecondary">
@@ -868,9 +886,11 @@ export default function BreakGameScreen() {
                 })}
               </ThemedView>
 
-              <Pressable onPress={startResting} style={styles.restBtn}>
-                <ThemedText type="linkPrimary">Just rest →</ThemedText>
-              </Pressable>
+              {!isBrowse && (
+                <Pressable onPress={startResting} style={styles.restBtn}>
+                  <ThemedText type="linkPrimary">Just rest →</ThemedText>
+                </Pressable>
+              )}
             </ThemedView>
           </ScrollView>
         ) : phase === 'resting' ? (
@@ -910,7 +930,7 @@ export default function BreakGameScreen() {
           style={({ pressed }) => [styles.endStudyBtn, pressed && styles.pressed]}
           onPress={goHome}>
           <ThemedText type="smallBold" style={styles.endStudyBtnText}>
-            End study
+            {isBrowse ? '🏠 Home' : 'End study'}
           </ThemedText>
         </Pressable>
       </SafeAreaView>
@@ -962,6 +982,7 @@ const styles = StyleSheet.create({
   },
   gameCardLocked: { opacity: 0.5 },
   gameEmoji: { fontSize: 28, lineHeight: 34 },
+  gameIconImg: { width: 44, height: 44, borderRadius: 12 },
   gameInfo: { flex: 1, gap: 2 },
   gameArrow: { fontSize: 18, color: '#7C6F5A' },
   unlockedBadge: {

@@ -23,7 +23,6 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import {
   CHAT_HISTORY_CAP,
-  CHAT_MESSAGES_PER_TICKET,
   PLUS_DAILY_CHAT,
   useApp,
   type ChatTurn,
@@ -81,23 +80,20 @@ export default function CompanionChatScreen() {
     coins,
     chatMessages,
     dailyChatRemaining,
-    aiTickets,
-    purchasedAiTickets,
-    exchangeTicketForChat,
     consumeChatMessage,
     chatThread,
     setChatThread,
     activeCompanionId,
     defaultCompanionId,
     companionSlots,
+    bunSkinId,
   } = useApp();
 
-  const companion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots);
+  const companion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId);
   const vibe =
     companion.type === 'slot' ? companion.slot.personality || companion.slot.prompt || '' : '';
   const pfpFocus = companion.type === 'slot' ? companion.slot.pfp : undefined;
   const activeSlotId = companion.type === 'slot' ? companion.slot.id : null;
-  const ticketTotal = aiTickets + purchasedAiTickets;
   const chatTotal = dailyChatRemaining + chatMessages;
 
   const scheme = useColorScheme();
@@ -118,42 +114,6 @@ export default function CompanionChatScreen() {
   const scrollToEnd = () =>
     requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
 
-  const handleExchange = () => {
-    if (!isPlus) {
-      Alert.alert(
-        'Plus required',
-        'Companion chat is a Plus feature. Upgrade to Plus to chat with your companion.',
-        [
-          { text: 'Not now', style: 'cancel' },
-          { text: 'See Plus', onPress: () => router.push('/plus-upgrade') },
-        ],
-      );
-      return;
-    }
-    if (ticketTotal <= 0) {
-      Alert.alert('No tickets', 'You need an AI generation ticket to top up chat. Get more in the shop.', [
-        { text: 'Not now', style: 'cancel' },
-        { text: 'Get tickets', onPress: () => router.push('/coin-shop') },
-      ]);
-      return;
-    }
-    Alert.alert(
-      'Exchange 1 ticket?',
-      `Trade 1 AI generation ticket for ${CHAT_MESSAGES_PER_TICKET} companion chat messages?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Exchange',
-          onPress: () => {
-            if (exchangeTicketForChat()) {
-              Alert.alert(`+${CHAT_MESSAGES_PER_TICKET} messages added!`, 'Chat away 💬');
-            }
-          },
-        },
-      ],
-    );
-  };
-
   const handleClear = () => {
     if (messages.length === 0) return;
     Alert.alert(
@@ -170,7 +130,7 @@ export default function CompanionChatScreen() {
     const text = input.trim();
     if (!text || isSending) return;
     if (chatTotal <= 0) {
-      handleExchange();
+      Alert.alert('Out of chats', 'You have used your daily companion chats. They reset tomorrow 💬');
       return;
     }
 
@@ -341,11 +301,11 @@ export default function CompanionChatScreen() {
           </ScrollView>
 
           {outOfMessages && (
-            <Pressable onPress={handleExchange} style={({ pressed }) => [styles.exchangeCta, pressed && styles.pressed]}>
+            <View style={styles.exchangeCta}>
               <ThemedText style={styles.exchangeCtaText}>
-                Daily chats used — resets tomorrow, or exchange 1 ticket for {CHAT_MESSAGES_PER_TICKET} →
+                Daily chats used — they reset tomorrow 💬
               </ThemedText>
-            </Pressable>
+            </View>
           )}
 
           {/* Composer */}
@@ -356,7 +316,7 @@ export default function CompanionChatScreen() {
                 style={[styles.input, { color: colors.text }]}
                 value={input}
                 onChangeText={setInput}
-                placeholder={outOfMessages ? 'Exchange a ticket to chat…' : 'Type a message...'}
+                placeholder={outOfMessages ? 'Chats reset tomorrow…' : 'Type a message...'}
                 placeholderTextColor={BakeryColors.latte}
                 multiline
                 editable={!outOfMessages}

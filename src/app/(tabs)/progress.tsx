@@ -10,6 +10,12 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
+import { AFTER_SESSION_MOODS, BEFORE_SESSION_MOODS } from '@/constants/placeholder-data';
+
+const MOOD_IMAGE: Record<string, number> = {};
+for (const m of [...BEFORE_SESSION_MOODS, ...AFTER_SESSION_MOODS]) {
+  if (!(m.value in MOOD_IMAGE)) MOOD_IMAGE[m.value] = m.image;
+}
 import {
   BakeryColors,
   BakeryRadii,
@@ -64,11 +70,8 @@ export default function ProgressScreen() {
     sessionHistory,
     isPlus,
     streakFreezes,
-    aiTickets,
-    purchasedAiTickets,
     useStreakFreeze: applyStreakFreeze,
   } = useApp();
-  const aiTicketTotal = aiTickets + purchasedAiTickets;
 
   const canAddExam = isPlus || examCountdowns.length < 3;
   const examLimitText = isPlus
@@ -375,6 +378,9 @@ export default function ProgressScreen() {
                       <ThemedText type="small" themeColor="textSecondary" style={styles.moodType}>
                         {entry.type === 'before' ? 'Before' : 'After'}
                       </ThemedText>
+                      {MOOD_IMAGE[entry.value] && (
+                        <Image source={MOOD_IMAGE[entry.value]} style={styles.moodImage} contentFit="contain" />
+                      )}
                       <ThemedText type="smallBold" style={styles.moodLabel}>
                         {entry.label}
                       </ThemedText>
@@ -495,7 +501,7 @@ export default function ProgressScreen() {
                   <ThemedView style={styles.plusShortcutText}>
                     <ThemedText type="smallBold">Companion Gallery</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
-                      {aiTicketTotal} AI ticket{aiTicketTotal !== 1 ? 's' : ''} remaining
+                      Switch who studies with you
                     </ThemedText>
                   </ThemedView>
                   <ThemedText type="small" style={styles.arrowLink}>→</ThemedText>
@@ -627,6 +633,7 @@ const styles = StyleSheet.create({
     backgroundColor: BakeryColors.glass,
   },
   moodType: { width: 40, fontSize: 11 },
+  moodImage: { width: 30, height: 30 },
   moodLabel: { flex: 1 },
   moodMeta: { fontSize: 11 },
   examCard: {

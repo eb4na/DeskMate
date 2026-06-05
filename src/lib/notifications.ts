@@ -70,6 +70,7 @@ async function scheduleDailyReminder(title: string, body: string, time: string) 
       title,
       body,
       sound: 'default',
+      data: { kind: 'study-reminder' },
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -93,6 +94,7 @@ async function scheduleWeekdayReminder(title: string, body: string, time: string
           title,
           body,
           sound: 'default',
+          data: { kind: 'study-reminder' },
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
@@ -108,6 +110,54 @@ async function scheduleWeekdayReminder(title: string, body: string, time: string
   return WEEKDAY_VALUES.length;
 }
 
+// Cancel only the study-reminder notifications, leaving task notifications intact.
+async function cancelStudyReminders() {
+  const all = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.all(
+    all
+      .filter((n) => (n.content.data as { kind?: string } | undefined)?.kind === 'study-reminder')
+      .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
+  );
+}
+
+// Schedule a one-time local notification for a task at its notifyAt datetime.
+export async function scheduleTaskNotification(task: {
+  id: string;
+  title: string;
+  notifyAt: string | null;
+}): Promise<string | null> {
+  if (!task.notifyAt) return null;
+  const when = new Date(task.notifyAt);
+  if (isNaN(when.getTime()) || when.getTime() <= Date.now()) return null;
+
+  await ensureReminderChannel();
+  const granted = await ensureNotificationPermission();
+  if (!granted) return null;
+
+  return Notifications.scheduleNotificationAsync({
+    content: {
+      title: '🔔 Task reminder',
+      body: task.title,
+      sound: 'default',
+      data: { kind: 'task', taskId: task.id },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: when,
+      channelId: STUDY_REMINDER_CHANNEL_ID,
+    },
+  });
+}
+
+export async function cancelTaskNotification(notifId: string | null) {
+  if (!notifId) return;
+  try {
+    await Notifications.cancelScheduledNotificationAsync(notifId);
+  } catch {
+    // already fired or removed
+  }
+}
+
 export async function syncStudyReminders({
   enabled,
   time,
@@ -116,7 +166,7 @@ export async function syncStudyReminders({
   reminderLine,
 }: ReminderSyncInput) {
   await ensureReminderChannel();
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  await cancelStudyReminders();
 
   const needsAnyReminder = enabled || extraReminders.length > 0;
   if (!needsAnyReminder) {

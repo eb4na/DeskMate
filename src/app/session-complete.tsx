@@ -1,6 +1,7 @@
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/coin-icon';
@@ -8,11 +9,45 @@ import { Companion } from '@/components/companion';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
-import { AFTER_SESSION_MOODS, BREAK_LENGTHS } from '@/constants/placeholder-data';
+import { AFTER_SESSION_MOODS, BREAK_LENGTHS, DAILY_EARN_CAP } from '@/constants/placeholder-data';
 import { getCompanionLine } from '@/constants/companion-lines';
+import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
-type Stage = 'reward' | 'mood' | 'break';
+const BUN_FINISHED = require('@/assets/images/bun/bun-finished.png');
+
+// Patisserie palette for the finished-session card.
+const FP = {
+  cream: '#FFF8EF',
+  card: '#FFFDF8',
+  pink: '#F4A6B6',
+  pinkSoft: '#FBDCE2',
+  brown: '#5B3A2E',
+  muted: '#9A7B6D',
+};
+
+type Stage = 'reward' | 'break';
+
+function ReceiptRow({
+  label,
+  value,
+  valueIcon,
+}: {
+  label: string;
+  value: string;
+  valueIcon?: React.ReactNode;
+}) {
+  return (
+    <View style={styles.receiptRow}>
+      <Text style={styles.receiptLabel}>{label}</Text>
+      <View style={styles.receiptDots} />
+      <View style={styles.receiptValueWrap}>
+        <Text style={styles.receiptValue}>{value}</Text>
+        {valueIcon}
+      </View>
+    </View>
+  );
+}
 
 export default function SessionCompleteScreen() {
   const { sessionLength, subject, coinsEarned, taskId, taskTitle } = useLocalSearchParams<{
@@ -32,8 +67,14 @@ export default function SessionCompleteScreen() {
     completeTask,
     isPlus,
     savedBreakPresets,
+    selectedFoodId,
+    markFoodMade,
+    earnedToday,
   } = useApp();
+  const { t } = useTranslation();
   const credited = useRef(false);
+  const moodSaved = useRef(false);
+  const moodRing = useRef(new Animated.Value(0)).current;
   const [stage, setStage] = useState<Stage>('reward');
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [streakBonus, setStreakBonus] = useState(0);
@@ -46,28 +87,65 @@ export default function SessionCompleteScreen() {
   const minutes = parseInt(sessionLength ?? '25', 10);
   const subjectName = subject && subject.length > 0 ? subject : null;
 
+  // Coins actually credited after the daily cap (snapshot earnedToday before crediting).
+  const earnedTodayAtMount = useRef(earnedToday).current;
+  const actualEarned = Math.min(earned, Math.max(0, DAILY_EARN_CAP - earnedTodayAtMount));
+
+  // Break game is offered only for longer sessions: floor(minutes / 12) > 1.
+  const breakUnits = Math.floor(minutes / 12);
+  const showBreakGame = breakUnits > 1;
+
+  // Receipt details for the finished-session card (computed once).
+  const receipt = useMemo(() => {
+    const now = new Date();
+    const num = `${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    return {
+      sessionNo: `#SESSION-${num}`,
+      date: now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+    };
+  }, []);
+
   useEffect(() => {
     if (!credited.current) {
       credited.current = true;
       addCoins(earned);
       recordSession(minutes);
       addSubjectTime(subjectName, minutes);
+      if (selectedFoodId) markFoodMade(selectedFoodId);
       const { bonus, isComeback: comeback } = updateStreak();
       setStreakBonus(bonus);
       setIsComeback(comeback);
     }
   }, []);
 
-  const handleMoodSelect = (value: string, label: string) => {
+  const handleMoodSelect = (value: string) => {
     setSelectedMood(value);
-    addMoodEntry({
-      value,
-      label,
-      type: 'after',
-      sessionMinutes: minutes,
-      timestamp: new Date().toISOString(),
-    });
-    setStage('break');
+    // Pink circle sweep around the chosen mood.
+    moodRing.setValue(0);
+    Animated.spring(moodRing, { toValue: 1, useNativeDriver: true, friction: 5, tension: 80 }).start();
+  };
+
+  // Persist the chosen mood (once) and continue to the break offer.
+  const commitMoodAndContinue = () => {
+    if (selectedMood && !moodSaved.current) {
+      const opt = AFTER_SESSION_MOODS.find((m) => m.value === selectedMood);
+      if (opt) {
+        moodSaved.current = true;
+        addMoodEntry({
+          value: opt.value,
+          label: opt.label,
+          type: 'after',
+          sessionMinutes: minutes,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+    if (showBreakGame) {
+      setStage('break');
+    } else {
+      goHome();
+    }
   };
 
   const handleTaskComplete = () => {
@@ -104,126 +182,90 @@ export default function SessionCompleteScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         {stage === 'reward' && (
-          <>
-            <Companion pose="proud" size="full" />
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.receiptScroll}>
+            {/* Circular badge with Bun holding the cake */}
+            <View style={styles.badgeCircle}>
+              <Image source={BUN_FINISHED} style={styles.badgeImage} contentFit="contain" />
+            </View>
 
-            <ThemedView style={styles.rewardBlock}>
-              <ThemedText type="subtitle" style={styles.rewardTitle}>
-                Session complete!
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {subjectName ?? 'General Study'} · {minutes} min
-              </ThemedText>
-              <ThemedView type="backgroundElement" style={styles.bubbleCard}>
-                <ThemedText type="small" style={styles.bubbleText}>{sessionEndLine}</ThemedText>
-              </ThemedView>
+            <Text style={styles.finishedTitle}>YOU FINISHED YOUR SESSION!</Text>
+            <Text style={styles.finishedSubtitle}>Thank you for studying!</Text>
 
-              <ThemedView type="backgroundElement" style={styles.coinRow}>
-                <CoinIcon size={56} />
-                <ThemedText style={styles.coinAmount}>+{earned}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Focus Coins
-                </ThemedText>
-              </ThemedView>
+            <Text style={styles.heartDivider}>♥</Text>
 
-              {taskDone && (
-                <ThemedView type="backgroundElement" style={styles.bonusRow}>
-                  <ThemedText style={styles.bonusEmoji}>✅</ThemedText>
-                  <ThemedView>
-                    <ThemedText type="smallBold">Task done!</ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">Marked complete</ThemedText>
-                  </ThemedView>
-                </ThemedView>
+            {/* Receipt rows */}
+            <View style={styles.receiptList}>
+              <ReceiptRow label="Session Number" value={receipt.sessionNo} />
+              <ReceiptRow label="Date" value={receipt.date} />
+              <ReceiptRow label="Time" value={receipt.time} />
+              <ReceiptRow label="Study Time" value={`${minutes} min`} />
+              <ReceiptRow
+                label="Coins Earned"
+                value={`+${actualEarned}`}
+                valueIcon={<CoinIcon size={16} />}
+              />
+              {actualEarned < earned && (
+                <Text style={styles.capNote}>Daily cap reached ({DAILY_EARN_CAP}/day)</Text>
               )}
-
               {streakBonus > 0 && (
-                <ThemedView type="backgroundElement" style={styles.bonusRow}>
-                  <ThemedText style={styles.bonusEmoji}>{isComeback ? '💪' : '🔥'}</ThemedText>
-                  <ThemedView>
-                    <ThemedText type="smallBold">
-                      {isComeback ? 'Welcome back!' : 'Streak bonus!'}
-                    </ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      +{streakBonus} bonus coins
-                    </ThemedText>
-                  </ThemedView>
-                </ThemedView>
+                <ReceiptRow
+                  label={isComeback ? 'Welcome Back Bonus' : 'Streak Bonus'}
+                  value={`+${streakBonus}`}
+                  valueIcon={<CoinIcon size={16} />}
+                />
               )}
+            </View>
 
-              {/* Task completion prompt */}
-              {taskTitle && taskTitle.length > 0 && !taskAnswered && (
-                <ThemedView type="backgroundElement" style={styles.taskPromptCard}>
-                  <ThemedText type="smallBold" style={styles.taskPromptTitle}>
-                    Did you finish this task?
-                  </ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary" numberOfLines={2} style={styles.taskPromptName}>
-                    {taskTitle}
-                  </ThemedText>
-                  <ThemedView style={styles.taskPromptBtns}>
-                    <Pressable
-                      style={({ pressed }) => [styles.taskYesBtn, pressed && styles.btnPressed]}
-                      onPress={handleTaskComplete}>
-                      <ThemedText type="smallBold" style={styles.taskYesBtnText}>
-                        ✓ Yes, finished
-                      </ThemedText>
-                    </Pressable>
-                    <Pressable
-                      style={({ pressed }) => [styles.taskNoBtn, pressed && styles.btnPressed]}
-                      onPress={handleTaskSkip}>
-                      <ThemedText type="small" themeColor="textSecondary">
-                        Not yet
-                      </ThemedText>
-                    </Pressable>
-                  </ThemedView>
-                </ThemedView>
-              )}
-            </ThemedView>
+            <Text style={styles.heartDivider}>♥</Text>
+
+            {/* Mood picker inline at the bottom of the receipt */}
+            <Text style={styles.moodPrompt}>How do you feel after studying?</Text>
+            <View style={styles.moodRow}>
+              {AFTER_SESSION_MOODS.map((opt) => {
+                const isSelected = selectedMood === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    style={styles.moodOption}
+                    onPress={() => handleMoodSelect(opt.value)}>
+                    <View style={styles.moodCircle}>
+                      <Image source={opt.image} style={styles.moodFace} contentFit="contain" />
+                      {isSelected && (
+                        <Animated.View
+                          pointerEvents="none"
+                          style={[
+                            styles.moodRing,
+                            {
+                              opacity: moodRing,
+                              transform: [
+                                {
+                                  scale: moodRing.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [1.4, 1],
+                                  }),
+                                },
+                              ],
+                            },
+                          ]}
+                        />
+                      )}
+                    </View>
+                    <Text style={[styles.moodLabel, isSelected && styles.moodLabelActive]} numberOfLines={1}>
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
 
             <Pressable
-              style={({ pressed }) => [styles.primaryBtn, pressed && styles.btnPressed]}
-              onPress={() => setStage('mood')}>
-              <ThemedText type="smallBold" style={styles.primaryBtnText}>
-                Continue
-              </ThemedText>
+              style={({ pressed }) => [styles.doneBtn, pressed && styles.btnPressed]}
+              onPress={commitMoodAndContinue}>
+              <Text style={styles.doneBtnText}>Done</Text>
             </Pressable>
-          </>
-        )}
-
-        {stage === 'mood' && (
-          <>
-            <Companion pose="cheering" size="full" />
-
-            <ThemedView style={styles.moodBlock}>
-              <ThemedText type="subtitle" style={styles.moodTitle}>
-                How do you feel?
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                After studying
-              </ThemedText>
-              <ThemedView style={styles.moodGrid}>
-                {AFTER_SESSION_MOODS.map((opt) => {
-                  const isSelected = selectedMood === opt.value;
-                  return (
-                    <Pressable
-                      key={opt.value}
-                      style={({ pressed }) => [pressed && styles.btnPressed]}
-                      onPress={() => handleMoodSelect(opt.value, opt.label)}>
-                      <ThemedView
-                        type={isSelected ? 'backgroundSelected' : 'backgroundElement'}
-                        style={styles.moodBtn}>
-                        <ThemedText style={styles.moodEmoji}>{opt.emoji}</ThemedText>
-                        <ThemedText type="small">{opt.label}</ThemedText>
-                      </ThemedView>
-                    </Pressable>
-                  );
-                })}
-              </ThemedView>
-            </ThemedView>
-
-            <Pressable onPress={() => setStage('break')} style={styles.skipBtn}>
-              <ThemedText type="linkPrimary">Skip for now</ThemedText>
-            </Pressable>
-          </>
+          </ScrollView>
         )}
 
         {stage === 'break' && (
@@ -232,10 +274,10 @@ export default function SessionCompleteScreen() {
 
             <ThemedView style={styles.breakBlock}>
               <ThemedText type="subtitle" style={styles.breakTitle}>
-                Take a break?
+                {t('sessionComplete.takeABreak')}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                You earned it. Relax for a bit.
+                {t('sessionComplete.youEarnedIt')}
               </ThemedText>
               <ThemedView style={styles.breakButtons}>
                 {breakOptions.map((len) => (
@@ -243,7 +285,7 @@ export default function SessionCompleteScreen() {
                     key={len}
                     style={({ pressed }) => [styles.breakBtn, pressed && styles.btnPressed]}
                     onPress={() => startBreak(len)}>
-                    <ThemedText type="smallBold">{len} min</ThemedText>
+                    <ThemedText type="smallBold">{len} {t('sessionComplete.min')}</ThemedText>
                   </Pressable>
                 ))}
               </ThemedView>
@@ -251,11 +293,11 @@ export default function SessionCompleteScreen() {
                 <>
                   {savedBreakPresets.length > 0 && (
                     <ThemedText type="small" themeColor="textSecondary" style={styles.breakHint}>
-                      Saved break presets are included above.
+                      {t('sessionComplete.savedPresetsIncluded')}
                     </ThemedText>
                   )}
                   <Pressable onPress={openCustomBreak} style={styles.customBreakLink}>
-                    <ThemedText type="linkPrimary">Custom break →</ThemedText>
+                    <ThemedText type="linkPrimary">{t('sessionComplete.customBreak')}</ThemedText>
                   </Pressable>
                 </>
               ) : null}
@@ -265,7 +307,7 @@ export default function SessionCompleteScreen() {
               style={({ pressed }) => [styles.primaryBtn, pressed && styles.btnPressed]}
               onPress={goHome}>
               <ThemedText type="smallBold" style={styles.primaryBtnText}>
-                Back to home
+                {t('sessionComplete.backToHome')}
               </ThemedText>
             </Pressable>
           </>
@@ -276,7 +318,7 @@ export default function SessionCompleteScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BakeryColors.frosting },
+  container: { flex: 1, backgroundColor: FP.cream },
   safeArea: {
     flex: 1,
     paddingHorizontal: Spacing.four,
@@ -287,6 +329,133 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     gap: Spacing.four,
   },
+
+  // Finished-session receipt design
+  receiptScroll: {
+    alignItems: 'center',
+    paddingVertical: Spacing.two,
+    gap: Spacing.two,
+  },
+  badgeCircle: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: FP.pinkSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    marginBottom: Spacing.two,
+  },
+  badgeImage: { width: '92%', height: '92%' },
+  finishedTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: FP.brown,
+    textAlign: 'center',
+    letterSpacing: 0.3,
+    paddingHorizontal: Spacing.two,
+  },
+  finishedSubtitle: {
+    fontSize: 14,
+    color: FP.muted,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  heartDivider: {
+    fontSize: 14,
+    color: FP.pink,
+    marginVertical: 2,
+  },
+  receiptList: {
+    width: '100%',
+    gap: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  receiptRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  receiptLabel: {
+    fontSize: 14,
+    color: FP.muted,
+    fontWeight: '500',
+  },
+  receiptDots: {
+    flex: 1,
+    borderBottomWidth: 1.5,
+    borderColor: FP.pinkSoft,
+    borderStyle: 'dotted',
+    marginBottom: 4,
+  },
+  receiptValueWrap: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  receiptValue: {
+    fontSize: 14,
+    color: FP.brown,
+    fontWeight: '700',
+  },
+  greatJob: {
+    fontSize: 14,
+    color: FP.muted,
+    fontWeight: '600',
+    marginBottom: Spacing.two,
+  },
+  doneBtn: {
+    width: '100%',
+    backgroundColor: FP.pink,
+    borderRadius: 999,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+    shadowColor: '#D98B9C',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  doneBtnText: { color: '#FFF', fontSize: 17, fontWeight: '800' },
+  capNote: {
+    fontSize: 11,
+    color: FP.muted,
+    textAlign: 'right',
+    fontStyle: 'italic',
+  },
+  moodPrompt: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: FP.brown,
+    textAlign: 'center',
+    marginBottom: Spacing.one,
+  },
+  moodRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: Spacing.three,
+    marginBottom: Spacing.three,
+  },
+  moodOption: { alignItems: 'center', gap: 4, width: 64 },
+  moodCircle: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: FP.pinkSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  moodFace: { width: 46, height: 46 },
+  moodRing: {
+    position: 'absolute',
+    top: -4,
+    left: -4,
+    right: -4,
+    bottom: -4,
+    borderRadius: 30,
+    borderWidth: 3,
+    borderColor: FP.pink,
+  },
+  moodLabel: { fontSize: 10, color: FP.muted, fontWeight: '500', textAlign: 'center' },
+  moodLabelActive: { color: FP.pink, fontWeight: '800' },
+
   rewardBlock: { alignItems: 'center', gap: Spacing.three },
   rewardTitle: { fontSize: 26, lineHeight: 32 },
   coinRow: {

@@ -2,7 +2,6 @@ import { router } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AiTicketIcon } from '@/components/ai-ticket-icon';
 import { CoinAmount, CoinIcon } from '@/components/coin-icon';
 import { BreadPouchIcon, BreadBagIcon, BreadChestIcon, BreadVaultIcon } from '@/components/coin-pack-icons';
 import { BakeryStarEmoji, BakeryLockEmoji, BakeryWrenchEmoji } from '@/components/bakery-emoji';
@@ -21,14 +20,6 @@ const COIN_PACKS: CoinPack[] = [
   { id: 'vault', name: 'Scholar Vault', coins: 3500, price: '$9.99' },
 ];
 
-type TicketPack = { id: string; name: string; tickets: number; price: string; popular?: boolean };
-
-const TICKET_PACKS: TicketPack[] = [
-  { id: 'ticket1', name: 'Single Ticket', tickets: 1, price: '$1.99' },
-  { id: 'ticket3', name: 'Ticket Trio', tickets: 3, price: '$4.99', popular: true },
-  { id: 'ticket10', name: "Baker's Batch", tickets: 10, price: '$12.99' },
-];
-
 function PackIcon({ id }: { id: string }) {
   if (id === 'pouch') return <BreadPouchIcon size={56} />;
   if (id === 'bag') return <BreadBagIcon size={56} />;
@@ -37,39 +28,8 @@ function PackIcon({ id }: { id: string }) {
 }
 
 export default function CoinShopScreen() {
-  const { coins, earnedToday, addPurchasedCoins, isPlus, aiTickets, purchasedAiTickets, purchaseAiTickets } =
-    useApp();
+  const { coins, earnedToday, addPurchasedCoins, isPlus } = useApp();
   const capRemaining = Math.max(0, DAILY_EARN_CAP - earnedToday);
-  const ticketTotal = aiTickets + purchasedAiTickets;
-
-  const handleTicketPack = (pack: TicketPack) => {
-    if (!isPlus) {
-      Alert.alert(
-        'Plus required',
-        'AI companion generation is a Plus feature. Upgrade to Plus to use generation tickets.',
-        [
-          { text: 'Not now', style: 'cancel' },
-          { text: 'See Plus', onPress: () => router.push('/plus-upgrade') },
-        ],
-      );
-      return;
-    }
-    const plural = pack.tickets > 1 ? 's' : '';
-    Alert.alert(
-      `Buy ${pack.name}?`,
-      `${pack.tickets} AI generation ticket${plural} for ${pack.price}. Purchased tickets never expire and stack on top of your 3 free monthly tickets.\n\n🛠 Real payment processing coming in a future update.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: `Buy for ${pack.price} (Mock)`,
-          onPress: () => {
-            purchaseAiTickets(pack.tickets);
-            Alert.alert(`+${pack.tickets} ticket${plural} added!`, 'Mock purchase complete.');
-          },
-        },
-      ],
-    );
-  };
 
   const handleCoinPack = (pack: CoinPack) => {
     Alert.alert(
@@ -152,46 +112,6 @@ export default function CoinShopScreen() {
                     )}
                   </View>
                   <CoinAmount amount={pack.coins} size={22} textStyle={styles.packCoinText} />
-                </ThemedView>
-                <ThemedView style={styles.packPriceBtn}>
-                  <ThemedText style={styles.packPrice}>{pack.price}</ThemedText>
-                </ThemedView>
-              </ThemedView>
-            </Pressable>
-          ))}
-
-          {/* AI ticket packs header */}
-          <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>AI Generation Tickets</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">{ticketTotal} available</ThemedText>
-          </View>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.packNote}>
-            Each ticket generates one custom AI companion. Purchased tickets never expire and stack on top of
-            your 3 free monthly Plus tickets.
-          </ThemedText>
-
-          {/* Ticket pack cards */}
-          {TICKET_PACKS.map((pack) => (
-            <Pressable
-              key={pack.id}
-              style={({ pressed }) => [pressed && styles.pressed]}
-              onPress={() => handleTicketPack(pack)}>
-              <ThemedView
-                type="backgroundElement"
-                style={[styles.packCard, pack.popular && styles.packCardPopular]}>
-                <AiTicketIcon size={56} />
-                <ThemedView style={styles.packInfo}>
-                  <View style={styles.packNameRow}>
-                    <ThemedText type="smallBold" style={styles.packName}>{pack.name}</ThemedText>
-                    {pack.popular && (
-                      <ThemedView style={styles.popularBadge}>
-                        <ThemedText style={styles.popularText}>Popular</ThemedText>
-                      </ThemedView>
-                    )}
-                  </View>
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.packCoinText}>
-                    {pack.tickets} ticket{pack.tickets > 1 ? 's' : ''}
-                  </ThemedText>
                 </ThemedView>
                 <ThemedView style={styles.packPriceBtn}>
                   <ThemedText style={styles.packPrice}>{pack.price}</ThemedText>

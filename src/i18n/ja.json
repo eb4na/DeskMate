@@ -118,7 +118,10 @@
     "studySubject": "{{name}}を学習",
     "session": "{{length}}分セッション",
     "nudge": "科目を追加すると進捗レポートが充実します！",
-    "manageSubjects": "科目を管理 →"
+    "manageSubjects": "科目を管理 →",
+    "moodTitle": "今の気分は？",
+    "moodSubtitle": "気分を記録してパターンを確認しよう",
+    "skipMood": "スキップしてセッション開始"
   },
   "session": {
     "focusTime": "集中時間",
@@ -137,7 +140,26 @@
     "subject": "科目",
     "generalStudy": "総合学習",
     "home": "ホーム",
-    "startAnother": "もう一度"
+    "startAnother": "もう一度",
+    "focusCoins": "フォーカスコイン",
+    "taskDone": "タスク完了！",
+    "markedComplete": "完了としてマーク",
+    "welcomeBack": "おかえり！",
+    "streakBonus": "連続ボーナス！",
+    "bonusCoins": "+{{amount}}ボーナスコイン",
+    "didYouFinish": "このタスクは終わりましたか？",
+    "yesFinished": "✓ 完了した",
+    "notYet": "まだ",
+    "continue": "続ける",
+    "howDoYouFeel": "今の気分は？",
+    "afterStudying": "学習後",
+    "skip": "今はスキップ",
+    "takeABreak": "休憩する？",
+    "youEarnedIt": "頑張ったね。少し休もう。",
+    "min": "分",
+    "savedPresetsIncluded": "保存した休憩プリセットも含まれています。",
+    "customBreak": "カスタム休憩 →",
+    "backToHome": "ホームへ戻る"
   },
   "tasks": {
     "title": "タスク",

@@ -4,6 +4,7 @@ import { DAILY_EARN_CAP, STATIC_SUBJECTS } from '@/constants/placeholder-data';
 import { SHOP_ITEMS, type ShopCategory } from '@/constants/shop-data';
 import { useAuth } from '@/context/auth-context';
 import { getAppStateScope, loadScopedAppState, saveScopedAppState } from '@/lib/app-state-repository';
+import { getEffectiveBunSkinId } from '@/lib/companion-utils';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -56,6 +57,8 @@ export type Task = {
   completedAt: string | null;
   postponeCount: number;
   lastActivityAt: string | null;
+  notifyAt: string | null;
+  notifId: string | null;
 };
 
 export type SessionRecord = {
@@ -80,6 +83,23 @@ export type TimerPreset = {
   label: string;
   minutes: number;
 };
+
+export type Friend = {
+  code: string;
+  name: string;
+  addedAt: string;
+};
+
+// Short, shareable friend code. A–Z + 2–9, with ambiguous chars (I/O/0/1) removed.
+function generateFriendCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+// Saved presets behave as a fixed-size queue: newest first, oldest dropped.
+const MAX_TIMER_PRESETS = 4;
 
 export type DefaultCompanionId = 'girl' | 'dude';
 export type ActiveCompanionId = `starter:${DefaultCompanionId}` | string;
@@ -162,6 +182,7 @@ type PersistedState = {
   defaultCompanionId: DefaultCompanionId;
   activeCompanionId: ActiveCompanionId;
   companionSlots: CompanionSlot[];
+  bunSkinId: string;
   aiTickets: number;
   aiTicketsResetMonth: string;
   purchasedAiTickets: number;
@@ -172,6 +193,22 @@ type PersistedState = {
   purchasedCoins: number;
   multipleReminders: ReminderEntry[];
   advancedExamMap: Record<string, AdvancedExamFields>;
+
+  // Food / baking
+  selectedFoodId: string;
+  madeFoods: string[];
+
+  // Calendar day notes (dateISO → note text)
+  dayNotes: Record<string, string>;
+
+  // Friends
+  friendCode: string;
+  friends: Friend[];
+
+  // Cake Kitchen mini-game best scores + chosen character
+  cakeBestRush: number;
+  cakeBestLine: number;
+  cakeCharacter: string;
 
   // i18n
   language: string;
@@ -202,11 +239,17 @@ const DEFAULTS: PersistedState = {
   tasks: [],
   ownedShopItems: [],
   equippedShopItems: {
+    companion: null,
+    outfits: null,
+    background: null,
+    desk: null,
+    recipe: null,
+    sound: null,
+    reminder: null,
     decoration: null,
     outfit: null,
     theme: null,
     pose: null,
-    reminder: null,
   },
   subjectTimeMap: {},
   skipSubjectCount: 0,
@@ -221,6 +264,7 @@ const DEFAULTS: PersistedState = {
   defaultCompanionId: 'girl',
   activeCompanionId: 'starter:girl',
   companionSlots: [],
+  bunSkinId: 'classic',
   aiTickets: 0,
   aiTicketsResetMonth: '',
   purchasedAiTickets: 0,
@@ -231,6 +275,14 @@ const DEFAULTS: PersistedState = {
   purchasedCoins: 0,
   multipleReminders: [],
   advancedExamMap: {},
+  selectedFoodId: 'strawberry-shortcake',
+  madeFoods: [],
+  dayNotes: {},
+  friendCode: '',
+  friends: [],
+  cakeBestRush: 0,
+  cakeBestLine: 0,
+  cakeCharacter: 'bun',
   language: 'en',
   languageSelected: false,
 };
@@ -266,7 +318,7 @@ function getShopItem(itemId: string) {
 
 function normalizePersistedState(saved?: Partial<PersistedState> | null): PersistedState {
   if (!saved) {
-    return DEFAULTS;
+    return { ...DEFAULTS, friendCode: generateFriendCode() };
   }
 
   const month = new Date().toISOString().slice(0, 7);
@@ -301,10 +353,14 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
   const activeCompanionExists =
     activeCompanionId === 'starter:girl' ||
     activeCompanionId === 'starter:dude' ||
+    (activeCompanionId.startsWith('shop:') && (merged.ownedShopItems ?? []).includes(activeCompanionId.slice(5))) ||
     merged.companionSlots.some((slot) => slot.id === activeCompanionId);
   merged.activeCompanionId = activeCompanionExists
     ? activeCompanionId
     : `starter:${merged.defaultCompanionId ?? DEFAULTS.defaultCompanionId}`;
+
+  // Give every user a stable friend code the first time.
+  if (!merged.friendCode) merged.friendCode = generateFriendCode();
 
   return { ...DEFAULTS, ...merged };
 }
@@ -344,6 +400,7 @@ type AppContextType = {
   defaultCompanionId: DefaultCompanionId;
   activeCompanionId: ActiveCompanionId;
   companionSlots: CompanionSlot[];
+  bunSkinId: string;
   aiTickets: number;
   purchasedAiTickets: number;
   chatMessages: number;
@@ -352,6 +409,25 @@ type AppContextType = {
   purchasedCoins: number;
   multipleReminders: ReminderEntry[];
   advancedExamMap: Record<string, AdvancedExamFields>;
+  language: string;
+  languageSelected: boolean;
+  selectedFoodId: string;
+  madeFoods: string[];
+  setSelectedFood: (id: string) => void;
+  markFoodMade: (id: string) => void;
+  dayNotes: Record<string, string>;
+  setDayNote: (date: string, note: string) => void;
+  friendCode: string;
+  friends: Friend[];
+  addFriend: (code: string) => { ok: boolean; error?: string };
+  removeFriend: (code: string) => void;
+  cakeBestRush: number;
+  cakeBestLine: number;
+  cakeCharacter: string;
+  setCakeCharacter: (id: string) => void;
+  recordCakeBest: (mode: 'rush' | 'line', score: number) => void;
+  setLanguage: (lang: string) => void;
+  markLanguageSelected: () => void;
 
   // Wave 1 actions
   addCoins: (amount: number) => void;
@@ -370,8 +446,8 @@ type AppContextType = {
   reorderSubjects: (orderedIds: string[]) => void;
 
   // Wave 2 task actions
-  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completedAt' | 'postponeCount' | 'lastActivityAt'>) => void;
-  updateTask: (id: string, patch: Partial<Pick<Task, 'title' | 'subjectId' | 'dueDate' | 'estimatedMinutes' | 'priority' | 'status'>>) => void;
+  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completedAt' | 'postponeCount' | 'lastActivityAt' | 'notifId'>) => string;
+  updateTask: (id: string, patch: Partial<Pick<Task, 'title' | 'subjectId' | 'dueDate' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'notifId'>>) => void;
   deleteTask: (id: string) => void;
   completeTask: (id: string) => void;
   postponeTask: (id: string) => void;
@@ -404,6 +480,7 @@ type AppContextType = {
   setAmbience: (id: string | null) => void;
   setDefaultCompanion: (id: DefaultCompanionId) => void;
   setActiveCompanion: (id: ActiveCompanionId) => void;
+  setBunSkin: (skinId: string) => void;
   saveCompanionSlot: (slot: Omit<CompanionSlot, 'id'>) => string | null;
   deleteCompanionSlot: (id: string) => void;
   setCompanionPfp: (id: string, pfp: PfpFocus) => void;
@@ -611,21 +688,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ─── Wave 2 task actions ──────────────────────────────────────────────────
 
-  const addTask = (task: Omit<Task, 'id' | 'createdAt' | 'completedAt' | 'postponeCount' | 'lastActivityAt'>) =>
+  const addTask = (task: Omit<Task, 'id' | 'createdAt' | 'completedAt' | 'postponeCount' | 'lastActivityAt' | 'notifId'>) => {
+    const id = uid();
     setS((prev) => ({
       ...prev,
       tasks: [
         {
           ...task,
-          id: uid(),
+          id,
           createdAt: new Date().toISOString(),
           completedAt: null,
           postponeCount: 0,
           lastActivityAt: null,
+          notifId: null,
         },
         ...prev.tasks,
       ],
     }));
+    return id;
+  };
 
   const updateTask = (id: string, patch: Partial<Pick<Task, 'title' | 'subjectId' | 'dueDate' | 'estimatedMinutes' | 'priority' | 'status'>>) =>
     setS((prev) => ({
@@ -745,10 +826,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
+  // Newest preset goes to the front; the list is a fixed-size queue, so the
+  // oldest (last) preset is dropped once the cap is reached.
   const saveTimerPreset = (preset: Omit<TimerPreset, 'id'>) =>
     setS((prev) => ({
       ...prev,
-      savedTimerPresets: [...prev.savedTimerPresets, { ...preset, id: uid() }],
+      savedTimerPresets: [{ ...preset, id: uid() }, ...prev.savedTimerPresets].slice(0, MAX_TIMER_PRESETS),
     }));
 
   const deleteTimerPreset = (id: string) =>
@@ -760,7 +843,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const saveBreakPreset = (preset: Omit<TimerPreset, 'id'>) =>
     setS((prev) => ({
       ...prev,
-      savedBreakPresets: [...prev.savedBreakPresets, { ...preset, id: uid() }],
+      savedBreakPresets: [{ ...preset, id: uid() }, ...prev.savedBreakPresets].slice(0, MAX_TIMER_PRESETS),
     }));
 
   const deleteBreakPreset = (id: string) =>
@@ -775,10 +858,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setDefaultCompanion = (id: DefaultCompanionId) =>
     setS((prev) => ({ ...prev, defaultCompanionId: id, activeCompanionId: `starter:${id}` }));
 
+  const setBunSkin = (skinId: string) => setS((prev) => ({ ...prev, bunSkinId: skinId }));
+
   const setActiveCompanion = (id: ActiveCompanionId) =>
     setS((prev) => {
       if (id === 'starter:girl' || id === 'starter:dude') {
         return { ...prev, activeCompanionId: id, defaultCompanionId: id === 'starter:girl' ? 'girl' : 'dude' };
+      }
+
+      // Purchased shop companion (id form `shop:<itemId>`).
+      if (id.startsWith('shop:')) {
+        return prev.ownedShopItems.includes(id.slice(5)) ? { ...prev, activeCompanionId: id } : prev;
       }
 
       if (!prev.companionSlots.some((slot) => slot.id === id && slot.imageUri)) {
@@ -891,6 +981,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
       purchasedCoins: prev.purchasedCoins + amount,
     }));
 
+  const setSelectedFood = (id: string) =>
+    setS((prev) => ({ ...prev, selectedFoodId: id }));
+
+  const markFoodMade = (id: string) =>
+    setS((prev) => ({
+      ...prev,
+      madeFoods: prev.madeFoods.includes(id) ? prev.madeFoods : [...prev.madeFoods, id],
+    }));
+
+  const setDayNote = (date: string, note: string) =>
+    setS((prev) => {
+      const next = { ...prev.dayNotes };
+      if (note.trim()) next[date] = note;
+      else delete next[date];
+      return { ...prev, dayNotes: next };
+    });
+
+  const addFriend = (rawCode: string): { ok: boolean; error?: string } => {
+    const code = rawCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (code.length !== 6) return { ok: false, error: 'Friend codes are 6 letters/numbers.' };
+    if (code === s.friendCode) return { ok: false, error: "That's your own code!" };
+    if (s.friends.some((f) => f.code === code)) return { ok: false, error: 'Already friends with this code.' };
+    setS((prev) => ({
+      ...prev,
+      friends: [{ code, name: `Friend ${code}`, addedAt: new Date().toISOString() }, ...prev.friends],
+    }));
+    return { ok: true };
+  };
+
+  const removeFriend = (code: string) =>
+    setS((prev) => ({ ...prev, friends: prev.friends.filter((f) => f.code !== code) }));
+
+  const setCakeCharacter = (id: string) => setS((prev) => ({ ...prev, cakeCharacter: id }));
+
+  const recordCakeBest = (mode: 'rush' | 'line', score: number) =>
+    setS((prev) =>
+      mode === 'rush'
+        ? { ...prev, cakeBestRush: Math.max(prev.cakeBestRush, score) }
+        : { ...prev, cakeBestLine: Math.max(prev.cakeBestLine, score) },
+    );
+
   const setMultipleReminders = (reminders: ReminderEntry[]) =>
     setS((prev) => ({ ...prev, multipleReminders: reminders }));
 
@@ -916,20 +1047,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setS((prev) => {
       if (prev.ownedShopItems.includes(itemId) || prev.coins < price) return prev;
 
-      const nextState: PersistedState = {
+      // Buying only marks an item owned — the player equips it separately.
+      return {
         ...prev,
         coins: prev.coins - price,
         ownedShopItems: [...prev.ownedShopItems, itemId],
       };
-
-      if (item.category !== 'game') {
-        nextState.equippedShopItems = {
-          ...prev.equippedShopItems,
-          [item.category]: itemId,
-        };
-      }
-
-      return nextState;
     });
     return true;
   };
@@ -1006,6 +1129,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         defaultCompanionId: s.defaultCompanionId,
         activeCompanionId: s.activeCompanionId,
         companionSlots: s.companionSlots,
+        bunSkinId: getEffectiveBunSkinId(s.bunSkinId, s.ownedShopItems),
         aiTickets: s.aiTickets,
         purchasedAiTickets: s.purchasedAiTickets,
         chatMessages: s.chatMessages,
@@ -1016,6 +1140,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
         purchasedCoins: s.purchasedCoins,
         multipleReminders: s.multipleReminders,
         advancedExamMap: s.advancedExamMap,
+        selectedFoodId: s.selectedFoodId ?? 'strawberry-shortcake',
+        madeFoods: s.madeFoods ?? [],
+        setSelectedFood,
+        markFoodMade,
+        dayNotes: s.dayNotes ?? {},
+        setDayNote,
+        friendCode: s.friendCode,
+        friends: s.friends ?? [],
+        addFriend,
+        removeFriend,
+        cakeBestRush: s.cakeBestRush ?? 0,
+        cakeBestLine: s.cakeBestLine ?? 0,
+        cakeCharacter: s.cakeCharacter ?? 'bun',
+        setCakeCharacter,
+        recordCakeBest,
         setIsPlus,
         useStreakFreeze,
         saveTimerPreset,
@@ -1025,6 +1164,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setAmbience,
         setDefaultCompanion,
         setActiveCompanion,
+        setBunSkin,
         saveCompanionSlot,
         deleteCompanionSlot,
         setCompanionPfp,

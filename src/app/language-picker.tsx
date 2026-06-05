@@ -24,7 +24,11 @@ export default function LanguagePickerScreen() {
   const handleContinue = () => {
     setLanguage(selected);
     markLanguageSelected();
-    router.replace('/');
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
   };
 
   return (

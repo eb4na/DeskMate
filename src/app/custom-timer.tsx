@@ -10,10 +10,10 @@ const START_BTN     = require('@/assets/images/home/start-btn.png');
 const BACK_BTN      = require('@/assets/images/home/back-btn.png');
 
 const DESSERTS: Record<number, ReturnType<typeof require>> = {
-  0: require('@/assets/images/home/dessert-10.png'),
-  1: require('@/assets/images/home/dessert-25.png'),
-  2: require('@/assets/images/home/dessert-50.png'),
-  3: require('@/assets/images/home/dessert-90.png'),
+  0: require('@/assets/images/cake/dessert-10.png'),
+  1: require('@/assets/images/cake/dessert-25.png'),
+  2: require('@/assets/images/cake/dessert-50.png'),
+  3: require('@/assets/images/cake/dessert-90.png'),
 };
 
 const FOCUS_PICKS = [15, 20, 35, 60, 75, 120];

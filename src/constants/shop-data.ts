@@ -1,4 +1,17 @@
-export type ShopCategory = 'decoration' | 'outfit' | 'theme' | 'pose' | 'game' | 'reminder';
+export type ShopCategory =
+  | 'companion'
+  | 'outfits'
+  | 'recipe'
+  | 'background'
+  | 'desk'
+  | 'sound'
+  | 'game'
+  | 'reminder'
+  // Legacy categories kept for effect compatibility (not shown in the shop).
+  | 'decoration'
+  | 'outfit'
+  | 'theme'
+  | 'pose';
 
 export type ShopItem = {
   id: string;
@@ -7,114 +20,84 @@ export type ShopItem = {
   description: string;
   price: number;
   category: ShopCategory;
+  image?: number;
 };
 
 export const CATEGORY_LABELS: Record<ShopCategory, string> = {
+  companion: '🐾 Companions',
+  outfits: '👗 Outfits',
+  background: '🖼️ Backgrounds',
+  desk: '🪵 Desks',
+  recipe: '🍰 Recipes',
+  sound: '🎧 Study Sounds',
+  game: '🎮 Break Games',
+  reminder: '🔔 Reminders',
   decoration: '🏡 Decorations',
   outfit: '👘 Starter Outfits',
   theme: '🎨 Themes',
   pose: '✨ Poses',
-  game: '🎮 Break Games',
-  reminder: '🔔 Reminders',
 };
 
-export const CATEGORIES: ShopCategory[] = ['decoration', 'outfit', 'theme', 'pose', 'game', 'reminder'];
+// Categories shown as tabs in the shop, in order.
+export const CATEGORIES: ShopCategory[] = [
+  'companion',
+  'outfits',
+  'recipe',
+  'background',
+  'desk',
+  'sound',
+  'game',
+  'reminder',
+];
 
 export const SHOP_ITEMS: ShopItem[] = [
-  // ─── Decorations (80–150 coins) ───────────────────────────────────────────
+  // ─── Companions (300–600 coins) ──────────────────────────────────────────
   {
-    id: 'deco_lamp',
-    name: 'Cozy Lamp',
-    emoji: '🪔',
-    description: 'A warm amber lamp for your study corner.',
-    price: 80,
-    category: 'decoration',
-  },
-  {
-    id: 'deco_cactus',
-    name: 'Potted Cactus',
-    emoji: '🌵',
-    description: 'A tiny cactus that never needs watering.',
-    price: 100,
-    category: 'decoration',
-  },
-  {
-    id: 'deco_lights',
-    name: 'Fairy Lights',
-    emoji: '✨',
-    description: 'String lights to brighten your room.',
-    price: 120,
-    category: 'decoration',
-  },
-  {
-    id: 'deco_rug',
-    name: 'Fluffy Rug',
-    emoji: '🟫',
-    description: 'A soft rug that makes your room cozy.',
-    price: 150,
-    category: 'decoration',
-  },
-
-  // ─── Outfits (250–500 coins) ──────────────────────────────────────────────
-  {
-    id: 'outfit_sweater',
-    name: 'Cozy Sweater',
-    emoji: '🧥',
-    description: 'A comfy look for the free default girl and dude.',
-    price: 250,
-    category: 'outfit',
-  },
-  {
-    id: 'outfit_cape',
-    name: 'Silk Kimono',
-    emoji: '👘',
-    description: 'A dress-up kimono style for your two starter companions.',
-    price: 400,
-    category: 'outfit',
-  },
-  {
-    id: 'outfit_robe',
-    name: 'Scholar Robe',
-    emoji: '📜',
-    description: 'A study-ready robe for the default girl and dude.',
+    id: 'companion_cocoa',
+    name: 'Cocoa',
+    emoji: '🐱',
+    description: 'A cozy barista kitty in a cocoa-brown apron.',
     price: 500,
-    category: 'outfit',
+    category: 'companion',
+    image: require('@/assets/images/cocoa/cocoa.png'),
+  },
+  {
+    id: 'companion_bunny',
+    name: 'Bunny',
+    emoji: '🐰',
+    description: 'A princess bunny in a frilly pink gown.',
+    price: 550,
+    category: 'companion',
+    image: require('@/assets/images/bunny/bunny.png'),
+  },
+  {
+    id: 'companion_honey',
+    name: 'Miel',
+    emoji: '🐻',
+    description: 'A sweet honey-bear baker in a gingham chef coat.',
+    price: 550,
+    category: 'companion',
+    image: require('@/assets/images/honey/honey.png'),
+  },
+  {
+    id: 'companion_tira',
+    name: 'Tira',
+    emoji: '🐰',
+    description: 'A tiramisu bunny with a cocoa-dusted apron.',
+    price: 550,
+    category: 'companion',
+    image: require('@/assets/images/tira/tira.png'),
   },
 
-  // ─── Room themes (700–1200 coins) ─────────────────────────────────────────
+  // ─── Outfits / wardrobe skins (300–600 coins) ───────────────────────────
   {
-    id: 'theme_cabin',
-    name: 'Rainy Cabin',
-    emoji: '🌧️',
-    description: 'Rain taps softly on the window. Perfect focus.',
-    price: 700,
-    category: 'theme',
-  },
-  {
-    id: 'theme_blossom',
-    name: 'Cherry Blossom',
-    emoji: '🌸',
-    description: 'Study under a canopy of pink petals.',
-    price: 1200,
-    category: 'theme',
-  },
-
-  // ─── Companion poses (200–400 coins) ─────────────────────────────────────
-  {
-    id: 'pose_victory',
-    name: 'Victory Pose',
-    emoji: '🏆',
-    description: 'Your companion does a little victory dance.',
-    price: 200,
-    category: 'pose',
-  },
-  {
-    id: 'pose_reading',
-    name: 'Reading Nook',
-    emoji: '📖',
-    description: 'Your companion curls up with a good book.',
-    price: 350,
-    category: 'pose',
+    id: 'outfit_bun_angel',
+    name: 'Angel Bun',
+    emoji: '👼',
+    description: "A frilly angel gown with wings & bonnet — a new outfit for Bun. Wear it from Bun's Wardrobe.",
+    price: 450,
+    category: 'outfits',
+    image: require('@/assets/images/bun/bun-angel.png'),
   },
 
   // ─── Break games (500–900 coins) ─────────────────────────────────────────

@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
@@ -6,238 +7,91 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
-import type { Task } from '@/context/app-context';
+import { BEFORE_SESSION_MOODS } from '@/constants/placeholder-data';
+import { useTranslation } from '@/i18n';
+import { setPendingDragSession } from '@/lib/drag-session';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
-type Step = 'subject' | 'task';
+type Step = 'subject' | 'mood';
 
 export default function SubjectPickerScreen() {
   const insets = useSafeAreaInsets();
-  const { sessionLength } = useLocalSearchParams<{ sessionLength: string }>();
-  const {
-    subjects,
-    tasks,
-    addMoodEntry,
-    incrementSkipSubjectCount,
-    resetSkipSubjectCount,
-    skipSubjectCount,
-    startActiveSession,
-  } = useApp();
+  const { sessionLength, subjectId } = useLocalSearchParams<{ sessionLength: string; subjectId?: string }>();
+  const { subjects } = useApp();
 
-  const [step, setStep] = useState<Step>('subject');
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const { t } = useTranslation();
 
-  const activeSubjects = subjects
-    .filter((s) => !s.archived)
-    .sort((a, b) => a.order - b.order);
+  // Subject was already chosen on the session screen — this screen is mood only.
+  const preSelectedSubject = subjectId
+    ? subjects.find((s) => s.id === subjectId && !s.archived) ?? null
+    : null;
+  const pendingSubjectName = preSelectedSubject ? preSelectedSubject.name : null;
 
-  const selectedSubject = subjects.find((s) => s.id === selectedSubjectId) ?? null;
-
-  // Tasks for the selected subject that are not done
-  const subjectTasks: Task[] = selectedSubjectId
-    ? tasks.filter((t) => t.subjectId === selectedSubjectId && t.status !== 'done')
-    : [];
-
-  const recordMoodAndStartSession = (
-    subjectName: string | null,
-    taskId: string | null,
-    taskTitle: string | null,
+  const startSession = (
+    moodValue: string | null,
+    moodLabel: string | null,
   ) => {
-    const durationMinutes = parseInt(sessionLength ?? '25', 10);
-    startActiveSession({
-      durationMinutes,
-      subjectName,
-      taskId,
-      taskTitle,
+    setPendingDragSession({
+      durationMinutes: parseInt(sessionLength ?? '25', 10),
+      subjectName: pendingSubjectName,
+      taskId: null,
+      taskTitle: null,
+      moodValue,
+      moodLabel,
     });
-
     if (router.canDismiss()) {
       router.dismissAll();
-      return;
-    }
-    router.replace('/');
-  };
-
-  const handleSkipSubject = () => {
-    incrementSkipSubjectCount();
-    recordMoodAndStartSession(null, null, null);
-  };
-
-  const handleStartWithSubject = () => {
-    if (!selectedSubjectId) {
-      handleSkipSubject();
-      return;
-    }
-    if (subjectTasks.length > 0) {
-      setStep('task');
     } else {
-      resetSkipSubjectCount();
-      recordMoodAndStartSession(selectedSubject?.name ?? null, null, null);
+      router.replace('/');
     }
   };
 
-  const handleStartWithTask = () => {
-    const task = tasks.find((t) => t.id === selectedTaskId) ?? null;
-    resetSkipSubjectCount();
-    recordMoodAndStartSession(selectedSubject?.name ?? null, task?.id ?? null, task?.title ?? null);
+  const handleMoodSelect = (value: string, label: string) => {
+    startSession(value, label);
   };
 
-  const handleSkipTask = () => {
-    resetSkipSubjectCount();
-    recordMoodAndStartSession(selectedSubject?.name ?? null, null, null);
+  const handleSkipMood = () => {
+    startSession(null, null);
   };
 
-  if (step === 'task') {
-    return (
+  return (
       <ThemedView style={styles.container}>
         <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
           <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
             <ThemedText type="small" themeColor="textSecondary" style={styles.sessionHint}>
-              {sessionLength ? `${sessionLength} minute session` : 'Study session'} ·{' '}
-              <ThemedText type="small" style={{ color: selectedSubject?.color }}>
-                {selectedSubject?.name}
-              </ThemedText>
+              {sessionLength ? t('subjectPicker.session', { length: sessionLength }) : t('session.focusTime')}
             </ThemedText>
 
             <ThemedView style={styles.section}>
               <ThemedText type="default" style={styles.prompt}>
-                Pick a task (optional)
+                {t('subjectPicker.moodTitle')}
               </ThemedText>
-              <ThemedView style={styles.list}>
-                {subjectTasks.map((t) => {
-                  const isSelected = selectedTaskId === t.id;
-                  return (
-                    <Pressable
-                      key={t.id}
-                      onPress={() => setSelectedTaskId(isSelected ? null : t.id)}>
-                      <ThemedView
-                        type={isSelected ? 'backgroundSelected' : 'backgroundElement'}
-                        style={styles.taskRow}>
-                        <ThemedText style={styles.taskStatusIcon}>
-                          {t.status === 'in_progress' ? '◑' : '○'}
-                        </ThemedText>
-                        <ThemedText type="default" style={styles.taskTitle} numberOfLines={2}>
-                          {t.title}
-                        </ThemedText>
-                        {isSelected && <ThemedText>✓</ThemedText>}
-                      </ThemedView>
-                    </Pressable>
-                  );
-                })}
+              <ThemedText type="small" themeColor="textSecondary">
+                {t('subjectPicker.moodSubtitle')}
+              </ThemedText>
+              <ThemedView style={styles.moodGrid}>
+                {BEFORE_SESSION_MOODS.map((m) => (
+                  <Pressable
+                    key={m.value}
+                    style={({ pressed }) => [styles.moodBtn, pressed && styles.buttonPressed]}
+                    onPress={() => handleMoodSelect(m.value, m.label)}>
+                    <ThemedView type="backgroundElement" style={styles.moodBtnInner}>
+                      <Image source={m.image} style={styles.moodFace} contentFit="contain" />
+                      <ThemedText type="small">{m.label}</ThemedText>
+                    </ThemedView>
+                  </Pressable>
+                ))}
               </ThemedView>
             </ThemedView>
           </SafeAreaView>
         </ScrollView>
         <ThemedView style={[styles.actions, { paddingBottom: insets.bottom + Spacing.two }]}>
-          <Pressable
-            style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
-            onPress={handleStartWithTask}>
-            <ThemedText type="smallBold" style={styles.primaryButtonText}>
-              {selectedTaskId ? 'Start session' : 'Start without task'}
-            </ThemedText>
-          </Pressable>
-          <Pressable onPress={handleSkipTask} style={styles.skipButton}>
-            <ThemedText type="linkPrimary">Skip for now</ThemedText>
+          <Pressable onPress={handleSkipMood} style={styles.skipButton}>
+            <ThemedText type="linkPrimary">{t('subjectPicker.skipMood')}</ThemedText>
           </Pressable>
         </ThemedView>
       </ThemedView>
     );
-  }
-
-  return (
-    <ThemedView style={styles.container}>
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
-        <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.sessionHint}>
-            {sessionLength ? `${sessionLength} minute session` : 'Study session'}
-          </ThemedText>
-
-          {/* Skip nudge (after 3 skips) */}
-          {skipSubjectCount >= 3 && (
-            <ThemedView type="backgroundElement" style={styles.nudgeCard}>
-              <ThemedText style={styles.nudgeEmoji}>💡</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary" style={styles.nudgeText}>
-                Want to add subjects so your progress reports look better?
-              </ThemedText>
-              <Pressable onPress={() => router.push('/manage-subjects')} style={styles.nudgeLink}>
-                <ThemedText type="linkPrimary" style={styles.nudgeLinkText}>
-                  Manage subjects →
-                </ThemedText>
-              </Pressable>
-            </ThemedView>
-          )}
-
-          {/* Subject selection */}
-          <ThemedView style={styles.section}>
-            <ThemedView style={styles.sectionHeader}>
-              <ThemedText type="default" style={styles.prompt}>
-                Pick a subject (optional)
-              </ThemedText>
-              <Pressable onPress={() => router.push('/manage-subjects')}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Manage →
-                </ThemedText>
-              </Pressable>
-            </ThemedView>
-
-            {activeSubjects.length === 0 ? (
-              <ThemedView type="backgroundElement" style={styles.emptySubjects}>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                  No subjects yet.{' '}
-                </ThemedText>
-                <Pressable onPress={() => router.push('/manage-subjects')}>
-                  <ThemedText type="linkPrimary" style={styles.emptyLink}>Add one →</ThemedText>
-                </Pressable>
-              </ThemedView>
-            ) : (
-              <ThemedView style={styles.list}>
-                {activeSubjects.map((s) => {
-                  const isSelected = selectedSubjectId === s.id;
-                  return (
-                    <Pressable
-                      key={s.id}
-                      onPress={() => setSelectedSubjectId(isSelected ? null : s.id)}>
-                      <ThemedView
-                        type={isSelected ? 'backgroundSelected' : 'backgroundElement'}
-                        style={styles.subjectRow}>
-                        <ThemedView style={[styles.colorDot, { backgroundColor: s.color }]} />
-                        {s.emoji ? (
-                          <ThemedText style={styles.subjectEmoji}>{s.emoji}</ThemedText>
-                        ) : null}
-                        <ThemedText type="default" style={styles.subjectName}>
-                          {s.name}
-                        </ThemedText>
-                        {isSelected && (
-                          <ThemedText type="small" style={{ color: s.color }}>✓</ThemedText>
-                        )}
-                      </ThemedView>
-                    </Pressable>
-                  );
-                })}
-              </ThemedView>
-            )}
-          </ThemedView>
-
-        </SafeAreaView>
-      </ScrollView>
-
-      {/* Actions pinned above tab bar */}
-      <ThemedView style={[styles.actions, { paddingBottom: insets.bottom + Spacing.two }]}>
-        <Pressable
-          style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
-          onPress={handleStartWithSubject}>
-          <ThemedText type="smallBold" style={styles.primaryButtonText}>
-            {selectedSubjectId ? `Study ${selectedSubject?.name}` : 'Start Session'}
-          </ThemedText>
-        </Pressable>
-
-        <Pressable onPress={handleSkipSubject} style={styles.skipButton}>
-          <ThemedText type="linkPrimary">Skip subject for now</ThemedText>
-        </Pressable>
-      </ThemedView>
-    </ThemedView>
-  );
 }
 
 const styles = StyleSheet.create({
@@ -300,13 +154,17 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   moodBtn: {
+    width: '30%',
+    flexGrow: 1,
+  },
+  moodBtnInner: {
     alignItems: 'center',
     padding: Spacing.two,
     borderRadius: 12,
     gap: 4,
-    minWidth: 76,
   },
   moodEmoji: { fontSize: 28, lineHeight: 36 },
+  moodFace: { width: 48, height: 48 },
   buttonPressed: { opacity: 0.85 },
   actions: {
     gap: Spacing.two,

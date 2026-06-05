@@ -1,185 +1,86 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, TextInput, useColorScheme, View } from 'react-native';
+import {
+  Alert,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 
-import { AiTicketIcon } from '@/components/ai-ticket-icon';
 import { PlusGate } from '@/components/plus-gate';
-import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useAuth } from '@/context/auth-context';
 import { useApp } from '@/context/app-context';
-import { generateAiCompanion } from '@/lib/ai-companion';
-import { getStarterActiveId } from '@/lib/companion-utils';
-import { BakeryColors, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { getStarterActiveId, getBunSkinImage, BUN_SKINS, SHOP_COMPANIONS } from '@/lib/companion-utils';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 
-const MAX_SLOTS = 3;
+// Patisserie palette — soft strawberry-dessert theme.
+const P = {
+  cream: '#FFF8EF',
+  card: '#FFFDF8',
+  pink: '#F7A7B8',
+  pinkSoft: '#FBD9E0',
+  peach: '#F4C5A8',
+  brown: '#5B3A2E',
+  mutedBrown: '#9A7B6D',
+  green: '#8BCF8B',
+  greenSoft: '#E3F4E3',
+  button: '#8A7A60',
+} as const;
 
-const EMOJI_OPTIONS = ['🐱', '🐶', '🦊', '🐺', '🦋', '🐉', '🦄', '🐧', '🦅', '🌸'];
+function HangerIcon({ color = '#B06A50', size = 18 }: { color?: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      {/* hook */}
+      <Path
+        d="M12 8c0-1.4 1-2.3 2.1-1.9.9.3 1 1.4.1 2"
+        stroke={color}
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* triangle bar */}
+      <Path
+        d="M12 8 L3.5 13.5 H20.5 L12 8 Z"
+        stroke={color}
+        strokeWidth={1.7}
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+type ObtainedCharacter = {
+  id: string;
+  name: string;
+  image: number | { uri: string } | null;
+  emoji: string | null;
+  isActive: boolean;
+  isGenerated: boolean;
+  deletable: boolean;
+  onSelect: () => void;
+  onDelete?: () => void;
+};
 
 function GalleryContent() {
-  const { isGuest } = useAuth();
   const {
     activeCompanionId,
     companionSlots,
-    saveCompanionSlot,
     deleteCompanionSlot,
-    aiTickets,
-    purchasedAiTickets,
-    consumeAiTicket,
-    restoreAiTicket,
-    defaultCompanionId,
-    isPlus,
     setDefaultCompanion,
     setActiveCompanion,
+    ownedShopItems,
+    bunSkinId,
+    setBunSkin,
   } = useApp();
-  const ticketTotal = aiTickets + purchasedAiTickets;
-  const [showForm, setShowForm] = useState(false);
-  const [showGenerator, setShowGenerator] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [slotName, setSlotName] = useState('');
-  const [slotEmoji, setSlotEmoji] = useState(EMOJI_OPTIONS[0]);
-  const [slotDesc, setSlotDesc] = useState('');
-  const [generateName, setGenerateName] = useState('');
-  const [generateVibe, setGenerateVibe] = useState('sweet, cozy, and gentle');
-  const [generateOutfit, setGenerateOutfit] = useState('bakery apron with a soft beret');
-  const [generatePersonality, setGeneratePersonality] = useState('');
-  const [generatePrompt, setGeneratePrompt] = useState('');
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
-  const inputStyle = {
-    borderWidth: 1.5,
-    borderColor: colors.backgroundSelected,
-    borderRadius: 12,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    color: colors.text,
-    fontSize: 15,
-  };
-
-  const handleSaveSlot = () => {
-    if (!slotName.trim()) {
-      Alert.alert('Name required', 'Give your companion a name.');
-      return;
-    }
-    if (companionSlots.length >= MAX_SLOTS) {
-      Alert.alert('Slot limit', `You can save up to ${MAX_SLOTS} companions.`);
-      return;
-    }
-    const savedId = saveCompanionSlot({
-      name: slotName.trim(),
-      emoji: slotEmoji,
-      description: slotDesc.trim(),
-      isGenerated: false,
-      imageUri: null,
-      imagePath: null,
-      prompt: null,
-    });
-    if (!savedId) {
-      Alert.alert('Slot limit', `You can save up to ${MAX_SLOTS} companions.`);
-      return;
-    }
-    setSlotName('');
-    setSlotDesc('');
-    setSlotEmoji(EMOJI_OPTIONS[0]);
-    setShowForm(false);
-  };
-
-  const handleGenerateCompanion = async () => {
-    if (isGuest) {
-      Alert.alert(
-        'Sign in required',
-        'AI generation uses your secure account session. Sign in first, then come back here to generate a companion.',
-        [
-          { text: 'Not now', style: 'cancel' },
-          { text: 'Go to login', onPress: () => router.push('/login') },
-        ],
-      );
-      return;
-    }
-    if (!isPlus) {
-      Alert.alert('Plus required', 'AI companion generation is included with DeskMate Plus.');
-      return;
-    }
-    if (ticketTotal <= 0) {
-      Alert.alert(
-        'No tickets left',
-        'You have used all your AI generation tickets. Free tickets reset on the 1st, or you can buy more anytime.',
-        [
-          { text: 'Not now', style: 'cancel' },
-          { text: 'Buy tickets', onPress: () => router.push('/coin-shop') },
-        ],
-      );
-      return;
-    }
-    if (companionSlots.length >= MAX_SLOTS) {
-      Alert.alert(
-        'Companion slots full',
-        `You already have ${MAX_SLOTS} companions (the max). Delete one below to make room for a new one.`,
-      );
-      return;
-    }
-
-    if (!generateName.trim()) {
-      Alert.alert('Name required', 'Give your generated companion a name.');
-      return;
-    }
-
-    setIsGenerating(true);
-    let ticketUsed = false;
-    const savedName = generateName.trim();
-    try {
-      if (!consumeAiTicket()) {
-        throw new Error('You do not have any AI generation tickets left.');
-      }
-      ticketUsed = true;
-
-      const result = await generateAiCompanion({
-        name: savedName,
-        vibe: generateVibe.trim(),
-        outfit: generateOutfit.trim(),
-        prompt: [generatePersonality.trim(), generatePrompt.trim()].filter(Boolean).join('. '),
-      });
-
-      const slotId = saveCompanionSlot({
-        name: savedName,
-        emoji: '🎨',
-        description: result.description,
-        isGenerated: true,
-        imageUri: result.imageUrl,
-        imagePath: result.storagePath,
-        prompt: result.prompt,
-        personality: generatePersonality.trim() || undefined,
-      });
-
-      if (!slotId) {
-        throw new Error(`You can save up to ${MAX_SLOTS} companions.`);
-      }
-
-      setActiveCompanion(slotId);
-      setGenerateName('');
-      setGenerateVibe('sweet, cozy, and gentle');
-      setGenerateOutfit('bakery apron with a soft beret');
-      setGeneratePersonality('');
-      setGeneratePrompt('');
-      setShowGenerator(false);
-
-      // Let the user crop a profile picture from the freshly generated art.
-      router.push({ pathname: '/companion-pfp', params: { slotId } });
-    } catch (error) {
-      if (ticketUsed) {
-        restoreAiTicket();
-      }
-      Alert.alert(
-        'Generation failed',
-        error instanceof Error ? error.message : 'The companion could not be generated.',
-      );
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+  const [wardrobeOpen, setWardrobeOpen] = useState(false);
 
   const handleUseSlot = (slotId: string, hasRenderableImage: boolean) => {
     if (!hasRenderableImage) {
@@ -192,304 +93,198 @@ function GalleryContent() {
     setActiveCompanion(slotId);
   };
 
+  const confirmDelete = (slotId: string, name: string) => {
+    Alert.alert('Remove companion?', `Remove "${name}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => deleteCompanionSlot(slotId) },
+    ]);
+  };
+
+  // Owned characters — Bun (starter) plus saved slots. Grid grows with each one.
+  const obtainedCharacters: ObtainedCharacter[] = [
+    {
+      id: getStarterActiveId('girl'),
+      name: 'Bun',
+      image: getBunSkinImage(bunSkinId),
+      emoji: null,
+      isActive: activeCompanionId === getStarterActiveId('girl'),
+      isGenerated: false,
+      deletable: false,
+      onSelect: () => setDefaultCompanion('girl'),
+    },
+    // Purchased shop companions you own.
+    ...SHOP_COMPANIONS.filter((item) => ownedShopItems.includes(item.id)).map((item) => ({
+      id: `shop:${item.id}`,
+      name: item.name,
+      image: item.image as number,
+      emoji: item.emoji,
+      isActive: activeCompanionId === `shop:${item.id}`,
+      isGenerated: false,
+      deletable: false,
+      onSelect: () => setActiveCompanion(`shop:${item.id}`),
+    })),
+    ...companionSlots.map((slot) => ({
+      id: slot.id,
+      name: slot.name,
+      image: slot.imageUri ? { uri: slot.imageUri } : null,
+      emoji: slot.emoji,
+      isActive: activeCompanionId === slot.id,
+      isGenerated: slot.isGenerated,
+      deletable: true,
+      onSelect: () => handleUseSlot(slot.id, !!slot.imageUri),
+      onDelete: () => confirmDelete(slot.id, slot.name),
+    })),
+  ];
+
   return (
-    <ScrollView showsVerticalScrollIndicator={false}>
+    <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: P.cream }}>
       <SafeAreaView style={styles.safeArea}>
-        {/* Ticket counter */}
-        <ThemedView type="backgroundElement" style={styles.ticketCard}>
-          <ThemedView style={styles.ticketRow}>
-            <AiTicketIcon size={72} style={styles.ticketIcon} />
-            <ThemedView style={styles.ticketInfo}>
-              <ThemedText type="smallBold">AI Generation Tickets</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {aiTickets}/3 free this month
-                {purchasedAiTickets > 0 ? ` · +${purchasedAiTickets} purchased` : ''}
-              </ThemedText>
-            </ThemedView>
-            <Pressable
-              style={({ pressed }) => [styles.generateBtn, pressed && styles.pressed]}
-              onPress={() => setShowGenerator((value) => !value)}>
-              <ThemedText style={styles.generateBtnText}>
-                {showGenerator ? 'Hide' : 'Generate'}
-              </ThemedText>
-            </Pressable>
-          </ThemedView>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.ticketNote}>
-            Each ticket creates one static companion design. Tickets reset monthly. Failed
-            generations are refunded.
-          </ThemedText>
-          <View style={styles.ticketLinksRow}>
-            <Pressable
-              style={({ pressed }) => [pressed && styles.pressed]}
-              onPress={() => router.push('/coin-shop')}>
-              <ThemedText type="smallBold" style={styles.buyTicketsLink}>
-                Buy more tickets →
-              </ThemedText>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [pressed && styles.pressed]}
-              onPress={() => router.push('/companion-chat')}>
-              <ThemedText type="smallBold" style={styles.buyTicketsLink}>
-                Trade for chat →
-              </ThemedText>
-            </Pressable>
-          </View>
-          {showGenerator && (
-            <ThemedView type="backgroundElement" style={styles.form}>
-              <ThemedText type="smallBold">AI character generator</ThemedText>
-              <TextInput
-                style={inputStyle}
-                value={generateName}
-                onChangeText={setGenerateName}
-                placeholder="Name (e.g. Miel)"
-                placeholderTextColor={colors.textSecondary}
-                returnKeyType="next"
-                autoFocus
-              />
-              <TextInput
-                style={inputStyle}
-                value={generateVibe}
-                onChangeText={setGenerateVibe}
-                placeholder="Vibe (e.g. shy, dreamy, warm)"
-                placeholderTextColor={colors.textSecondary}
-                returnKeyType="next"
-              />
-              <TextInput
-                style={inputStyle}
-                value={generateOutfit}
-                onChangeText={setGenerateOutfit}
-                placeholder="Outfit (e.g. frilly baker dress)"
-                placeholderTextColor={colors.textSecondary}
-                returnKeyType="next"
-              />
-              <TextInput
-                style={[inputStyle, styles.promptInput]}
-                value={generatePersonality}
-                onChangeText={setGeneratePersonality}
-                placeholder="Personality (how they talk & act in chat)"
-                placeholderTextColor={colors.textSecondary}
-                multiline
-              />
-              <TextInput
-                style={[inputStyle, styles.promptInput]}
-                value={generatePrompt}
-                onChangeText={setGeneratePrompt}
-                placeholder="Extra art details (optional)"
-                placeholderTextColor={colors.textSecondary}
-                multiline
-              />
-              <ThemedText type="small" themeColor="textSecondary" style={styles.generatorNote}>
-                Generates a bakery-style companion with OpenAI, then automatically removes the
-                background so your sprite is ready for Home.
-              </ThemedText>
-              <Pressable
-                style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed, isGenerating && styles.disabledBtn]}
-                disabled={isGenerating}
-                onPress={handleGenerateCompanion}>
-                <ThemedText type="smallBold" style={styles.saveBtnText}>
-                  {isGenerating ? 'Generating...' : `Use 1 ticket (${ticketTotal} left)`}
-                </ThemedText>
-              </Pressable>
-            </ThemedView>
-          )}
-        </ThemedView>
+        {/* Header panel */}
+        <View style={styles.headerPanel}>
+          <Text style={styles.headerTitle}>🍓 Companion Bakery</Text>
+          <Text style={styles.headerSubtitle}>Choose who studies with you today</Text>
+        </View>
 
-        {/* Starter companions */}
-        <ThemedView style={styles.section}>
-          <ThemedView style={styles.sectionHeader}>
-            <ThemedText type="smallBold" style={styles.sectionTitle}>
-              Starter companions
-            </ThemedText>
-          </ThemedView>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.starterNote}>
-            Free for everyone. Shop outfits in v1 are made only for these two.
-          </ThemedText>
-
-          {[
-            { id: 'girl' as const, emoji: '🍞', name: 'Bakery Girl' },
-            { id: 'dude' as const, emoji: '👦', name: 'Default Dude' },
-          ].map((starter) => (
-            <Pressable key={starter.id} onPress={() => setDefaultCompanion(starter.id)}>
-              <ThemedView
-                type="backgroundElement"
-                style={[
-                  styles.slotCard,
-                  styles.defaultSlot,
-                  activeCompanionId === getStarterActiveId(starter.id) && styles.defaultSlotActive,
-                ]}>
-                <ThemedText style={styles.slotEmoji}>{starter.emoji}</ThemedText>
-                <ThemedView style={styles.slotInfo}>
-                  <ThemedText type="smallBold">{starter.name}</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    Founder-created starter companion
-                  </ThemedText>
-                </ThemedView>
-                {activeCompanionId === getStarterActiveId(starter.id) && (
-                  <ThemedView style={styles.activeBadge}>
-                    <ThemedText style={styles.activeBadgeText}>Active</ThemedText>
-                  </ThemedView>
-                )}
-              </ThemedView>
-            </Pressable>
-          ))}
-
-          {/* Companion slots */}
-          <ThemedView style={styles.sectionHeader}>
-            <ThemedText type="smallBold" style={styles.sectionTitle}>
-              Extra companion slots ({companionSlots.length}/{MAX_SLOTS})
-            </ThemedText>
-            {companionSlots.length < MAX_SLOTS && (
-              <Pressable onPress={() => setShowForm((v) => !v)}>
-                <ThemedText type="small" style={styles.addLink}>
-                  {showForm ? 'Cancel' : '+ Add'}
-                </ThemedText>
-              </Pressable>
-            )}
-          </ThemedView>
-
-          {/* Add form */}
-          {showForm && (
-            <ThemedView type="backgroundElement" style={styles.form}>
-              <ThemedText type="smallBold">New companion</ThemedText>
-              <TextInput
-                style={inputStyle}
-                value={slotName}
-                onChangeText={setSlotName}
-                placeholder="Name (e.g. Kira)"
-                placeholderTextColor={colors.textSecondary}
-                returnKeyType="next"
-                autoFocus
-              />
-              <ThemedView style={styles.emojiRow}>
-                {EMOJI_OPTIONS.map((e) => (
+        {/* My Companions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>My Companions</Text>
+          <View style={styles.companionGrid}>
+            {obtainedCharacters.map((char) => (
+              <View
+                key={char.id}
+                style={[styles.companionCard, char.isActive && styles.companionCardActive]}>
+                {char.deletable && (
                   <Pressable
-                    key={e}
-                    onPress={() => setSlotEmoji(e)}
-                    style={[styles.emojiBtn, slotEmoji === e && styles.emojiBtnSelected]}>
-                    <ThemedText style={styles.emojiOpt}>{e}</ThemedText>
+                    style={styles.cardDelete}
+                    onPress={char.onDelete}
+                    hitSlop={8}>
+                    <Text style={styles.cardDeleteText}>✕</Text>
                   </Pressable>
-                ))}
-              </ThemedView>
-              <TextInput
-                style={inputStyle}
-                value={slotDesc}
-                onChangeText={setSlotDesc}
-                placeholder="Short description (optional)"
-                placeholderTextColor={colors.textSecondary}
-                returnKeyType="done"
-              />
-              <Pressable
-                style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
-                onPress={handleSaveSlot}>
-                <ThemedText type="smallBold" style={styles.saveBtnText}>
-                  Save companion
-                </ThemedText>
-              </Pressable>
-            </ThemedView>
-          )}
-
-          {/* User slots */}
-          {companionSlots.map((slot) => {
-            const canUseSlot = !!slot.imageUri;
-            const isActive = activeCompanionId === slot.id;
-
-            return (
-              <Pressable key={slot.id} onPress={() => handleUseSlot(slot.id, canUseSlot)}>
-                <ThemedView
-                  type="backgroundElement"
-                  style={[styles.slotCard, isActive && styles.defaultSlotActive]}>
-                  {slot.imageUri ? (
-                    <Image
-                      source={{ uri: slot.imageUri }}
-                      style={styles.slotPreview}
-                      contentFit="contain"
-                      contentPosition="center"
-                    />
+                )}
+                {char.id === getStarterActiveId('girl') && (
+                  <Pressable
+                    style={({ pressed }) => [styles.hangerBtn, pressed && styles.pressed]}
+                    onPress={() => setWardrobeOpen(true)}
+                    hitSlop={8}>
+                    <HangerIcon />
+                    <Text style={styles.hangerLabel}>Outfits</Text>
+                  </Pressable>
+                )}
+                <View style={styles.companionImageWrap}>
+                  {char.image ? (
+                    <Image source={char.image} style={styles.companionImage} contentFit="contain" />
                   ) : (
-                    <ThemedText style={styles.slotEmoji}>{slot.emoji}</ThemedText>
+                    <Text style={styles.companionEmoji}>{char.emoji ?? '🐾'}</Text>
                   )}
-                  <ThemedView style={styles.slotInfo}>
-                    <ThemedText type="smallBold">
-                      {slot.name}
-                      {slot.isGenerated && (
-                        <ThemedText type="small" style={styles.aiBadgeInline}>
-                          {' '}
-                          🎨 AI
-                        </ThemedText>
-                      )}
-                    </ThemedText>
-                    {slot.description ? (
-                      <ThemedText type="small" themeColor="textSecondary">
-                        {slot.description}
-                      </ThemedText>
-                    ) : null}
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {canUseSlot
-                        ? isActive
-                          ? 'Active across Home and study screens'
-                          : 'Tap to use this companion'
-                        : 'Saved note only — generate art to use it'}
-                    </ThemedText>
-                  </ThemedView>
-                  <View style={styles.slotActions}>
-                    {isActive ? (
-                      <ThemedView style={styles.activeBadge}>
-                        <ThemedText style={styles.activeBadgeText}>Active</ThemedText>
-                      </ThemedView>
-                    ) : null}
-                    <Pressable
-                      onPress={() =>
-                        Alert.alert('Remove companion?', `Remove "${slot.name}"?`, [
-                          { text: 'Cancel', style: 'cancel' },
-                          {
-                            text: 'Remove',
-                            style: 'destructive',
-                            onPress: () => deleteCompanionSlot(slot.id),
-                          },
-                        ])
-                      }
-                      style={styles.deleteBtn}>
-                      <ThemedText type="small" themeColor="textSecondary">
-                        ✕
-                      </ThemedText>
-                    </Pressable>
+                </View>
+                <Text style={styles.companionName} numberOfLines={1}>
+                  {char.name}
+                  {char.isGenerated ? ' 🎨' : ''}
+                </Text>
+                <Text style={styles.companionSubtitle}>Your study buddy</Text>
+                {char.isActive ? (
+                  <View style={styles.activePill}>
+                    <Text style={styles.activePillText}>✦ Active</Text>
                   </View>
-                </ThemedView>
-              </Pressable>
-            );
-          })}
+                ) : (
+                  <Pressable
+                    style={({ pressed }) => [styles.setActiveBtn, pressed && styles.pressed]}
+                    onPress={char.onSelect}>
+                    <Text style={styles.setActiveBtnText}>Set Active</Text>
+                  </Pressable>
+                )}
+              </View>
+            ))}
+          </View>
+        </View>
 
-          {companionSlots.length === 0 && (
-            <ThemedText type="small" themeColor="textSecondary" style={styles.emptyNote}>
-              You have 3 open slots. Add a custom note companion or use an AI ticket to generate
-              one with art.
-            </ThemedText>
-          )}
-        </ThemedView>
+        {/* Info note */}
+        <View style={styles.infoCard}>
+          <Text style={styles.infoText}>
+            🧁 Your active companion appears across Home, sessions, breaks, and completion screens.
+          </Text>
+        </View>
 
-        <ThemedView type="backgroundElement" style={styles.noticeCard}>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.noticeText}>
-            AI-generated companions become usable across Home, sessions, breaks, and completion
-            screens right away. Guest mode cannot use the secure AI generator.
-          </ThemedText>
-        </ThemedView>
-
-        <Pressable onPress={() => router.back()} style={styles.doneBtn}>
-          <ThemedText type="smallBold" style={styles.doneBtnText}>
-            Done
-          </ThemedText>
+        {/* Done */}
+        <Pressable
+          style={({ pressed }) => [styles.doneButton, pressed && styles.pressed]}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
+          <Text style={styles.doneButtonText}>Done</Text>
         </Pressable>
       </SafeAreaView>
+
+      {/* Wardrobe — pick an outfit for Bun */}
+      <Modal
+        visible={wardrobeOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setWardrobeOpen(false)}>
+        <View style={styles.wardrobeBackdrop}>
+          <View style={styles.wardrobeSheet}>
+            <Text style={styles.wardrobeTitle}>👗 Bun&apos;s Wardrobe</Text>
+            <Text style={styles.wardrobeSubtitle}>Pick an outfit — Bun wears it everywhere</Text>
+            <View style={styles.skinGrid}>
+              {BUN_SKINS.map((skin) => {
+                const equipped = (bunSkinId ?? 'classic') === skin.id;
+                const locked = !!skin.shopItemId && !ownedShopItems.includes(skin.shopItemId);
+                return (
+                  <Pressable
+                    key={skin.id}
+                    style={[styles.skinCard, equipped && styles.skinCardActive, locked && styles.skinCardLocked]}
+                    onPress={() => {
+                      if (locked) {
+                        setWardrobeOpen(false);
+                        router.push('/shop');
+                      } else {
+                        setBunSkin(skin.id);
+                      }
+                    }}>
+                    <View style={styles.skinImageWrap}>
+                      <Image
+                        source={skin.image}
+                        style={[styles.skinImage, locked && styles.skinImageLocked]}
+                        contentFit="contain"
+                      />
+                      {locked && (
+                        <View style={styles.lockBadge}>
+                          <Text style={styles.lockBadgeText}>🔒</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.skinName} numberOfLines={1}>
+                      {skin.emoji} {skin.name}
+                    </Text>
+                    {locked ? (
+                      <Text style={styles.skinLockedText}>🛍️ Get in Shop</Text>
+                    ) : equipped ? (
+                      <View style={styles.skinPill}>
+                        <Text style={styles.skinPillText}>✦ Wearing</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.skinTap}>Tap to wear</Text>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Pressable
+              style={({ pressed }) => [styles.doneButton, pressed && styles.pressed]}
+              onPress={() => setWardrobeOpen(false)}>
+              <Text style={styles.doneButtonText}>Done</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
 
 export default function CompanionGalleryScreen() {
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView style={[styles.container, { backgroundColor: P.cream }]}>
       <PlusGate
-        feature="Companion Gallery"
-        description="Keep your free starter girl and dude, then save up to 3 extra companions with Plus."
+        feature="Companion Bakery"
+        description="Keep your free starter Bun, then save up to 3 extra companions with Plus."
         emoji="🐾">
         <GalleryContent />
       </PlusGate>
@@ -505,92 +300,349 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
     gap: Spacing.four,
+    backgroundColor: P.cream,
   },
-  ticketCard: { borderRadius: 16, padding: Spacing.three, gap: Spacing.two },
-  ticketRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  ticketIcon: { width: 80 },
-  ticketInfo: { flex: 1, gap: 2 },
-  ticketNote: { lineHeight: 18, fontSize: 12 },
-  buyTicketsLink: { color: BakeryColors.mocha, fontSize: 13 },
-  ticketLinksRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  generateBtn: {
-    backgroundColor: '#7C6F5A',
-    borderRadius: 10,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 6,
+
+  // Header
+  headerPanel: {
+    backgroundColor: P.card,
+    borderRadius: 26,
+    paddingVertical: Spacing.four,
+    paddingHorizontal: Spacing.four,
+    borderWidth: 1.5,
+    borderColor: P.peach,
+    alignItems: 'center',
+    gap: 4,
+    shadowColor: '#C9A18A',
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
   },
-  generateBtnText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: P.brown,
+    letterSpacing: 0.2,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: P.mutedBrown,
+    fontWeight: '500',
+  },
+
+  // Sections
   section: { gap: Spacing.two },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionTitle: { fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 },
-  starterNote: { lineHeight: 18 },
-  addLink: { color: '#7C6F5A', fontWeight: '700' },
-  form: { borderRadius: 16, padding: Spacing.three, gap: Spacing.two },
-  promptInput: { minHeight: 88, textAlignVertical: 'top' },
-  generatorNote: { lineHeight: 18 },
-  emojiRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one },
-  emojiBtn: {
-    borderRadius: 8,
-    padding: 4,
-    borderWidth: 2,
-    borderColor: 'transparent',
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  emojiBtnSelected: { borderColor: '#7C6F5A', backgroundColor: 'rgba(124,111,90,0.1)' },
-  emojiOpt: { fontSize: 22 },
-  saveBtn: {
-    backgroundColor: '#7C6F5A',
-    borderRadius: 12,
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: P.brown,
+  },
+  slotCount: { fontSize: 13, color: P.mutedBrown, fontWeight: '600' },
+  // Hanger button on Bun's card
+  hangerBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: P.pinkSoft,
+    borderRadius: 999,
+    paddingLeft: 7,
+    paddingRight: 10,
+    paddingVertical: 4,
+    borderWidth: 1.5,
+    borderColor: P.pink,
+  },
+  hangerLabel: { fontSize: 11, color: P.brown, fontWeight: '800' },
+
+  // Wardrobe modal
+  wardrobeBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(91,58,46,0.35)',
+    justifyContent: 'flex-end',
+  },
+  wardrobeSheet: {
+    backgroundColor: P.cream,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: Spacing.four,
+    gap: Spacing.three,
+    maxWidth: MaxContentWidth,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  wardrobeTitle: { fontSize: 20, fontWeight: '800', color: P.brown, textAlign: 'center' },
+  wardrobeSubtitle: { fontSize: 13, color: P.mutedBrown, fontWeight: '500', textAlign: 'center', marginTop: -6 },
+  skinGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three, justifyContent: 'center' },
+  skinCard: {
+    width: '47%',
+    backgroundColor: P.card,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: P.pinkSoft,
+    padding: Spacing.three,
+    alignItems: 'center',
+    gap: 4,
+  },
+  skinCardActive: {
+    borderColor: P.pink,
+    backgroundColor: '#FFF4F6',
+  },
+  skinCardLocked: {
+    borderColor: P.pinkSoft,
+    backgroundColor: '#FBF6F2',
+  },
+  skinImageWrap: { width: '85%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
+  skinImage: { width: '100%', height: '100%' },
+  skinImageLocked: { opacity: 0.45 },
+  lockBadge: {
+    position: 'absolute',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderWidth: 1.5,
+    borderColor: P.pink,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lockBadgeText: { fontSize: 15 },
+  skinLockedText: { fontSize: 11.5, color: P.pink, fontWeight: '800', marginTop: 6 },
+  skinName: { fontSize: 14, fontWeight: '800', color: P.brown, textAlign: 'center' },
+  skinPill: {
+    marginTop: 4,
+    backgroundColor: P.greenSoft,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderWidth: 1.5,
+    borderColor: P.green,
+  },
+  skinPillText: { fontSize: 11, color: '#5BA463', fontWeight: '800' },
+  skinTap: { fontSize: 11, color: P.mutedBrown, fontWeight: '600', marginTop: 6 },
+
+  // Companion grid
+  companionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.three,
+  },
+  companionCard: {
+    width: '47%',
+    backgroundColor: P.card,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: P.pinkSoft,
+    padding: Spacing.three,
+    alignItems: 'center',
+    gap: 4,
+    shadowColor: '#C9A18A',
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  companionCardActive: {
+    borderColor: P.pink,
+    backgroundColor: '#FFF4F6',
+    shadowColor: P.pink,
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+  },
+  cardDelete: {
+    position: 'absolute',
+    top: 8,
+    right: 10,
+    zIndex: 2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: P.pinkSoft,
+  },
+  cardDeleteText: { fontSize: 11, color: P.brown, fontWeight: '700' },
+  companionImageWrap: {
+    width: '80%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  companionImage: { width: '100%', height: '100%' },
+  companionEmoji: { fontSize: 56 },
+  companionName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: P.brown,
+    textAlign: 'center',
+  },
+  companionSubtitle: {
+    fontSize: 11,
+    color: P.mutedBrown,
+    fontWeight: '500',
+  },
+  activePill: {
+    marginTop: 6,
+    backgroundColor: P.greenSoft,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderWidth: 1.5,
+    borderColor: P.green,
+  },
+  activePillText: { fontSize: 12, color: '#5BA463', fontWeight: '800' },
+  setActiveBtn: {
+    marginTop: 6,
+    backgroundColor: P.pink,
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 7,
+  },
+  setActiveBtnText: { fontSize: 12, color: '#FFF', fontWeight: '800' },
+
+  // Receipt card
+  receiptCard: {
+    backgroundColor: P.card,
+    borderRadius: 20,
+    padding: Spacing.three,
+    borderWidth: 1.5,
+    borderColor: P.peach,
+    gap: Spacing.two,
+    overflow: 'hidden',
+    shadowColor: '#C9A18A',
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  receiptNotchLeft: {
+    position: 'absolute',
+    left: -10,
+    top: '46%',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: P.cream,
+  },
+  receiptNotchRight: {
+    position: 'absolute',
+    right: -10,
+    top: '46%',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: P.cream,
+  },
+  receiptRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  receiptEmoji: { fontSize: 34 },
+  receiptInfo: { flex: 1, gap: 2 },
+  receiptTitle: { fontSize: 15, fontWeight: '800', color: P.brown },
+  receiptCount: { fontSize: 13, color: P.mutedBrown, fontWeight: '600' },
+  generateBtn: {
+    backgroundColor: P.pink,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  generateBtnText: { color: '#FFF', fontSize: 13, fontWeight: '800' },
+  receiptDivider: {
+    height: 1.5,
+    borderRadius: 1,
+    borderWidth: 1,
+    borderColor: P.pinkSoft,
+    borderStyle: 'dashed',
+    marginVertical: 2,
+  },
+  receiptDesc: { fontSize: 12, color: P.mutedBrown, lineHeight: 17 },
+  receiptLinks: { flexDirection: 'row', justifyContent: 'space-between' },
+  linkText: { fontSize: 13, color: P.pink, fontWeight: '700' },
+
+  // Forms
+  formCard: {
+    backgroundColor: P.card,
+    borderRadius: 20,
+    padding: Spacing.three,
+    borderWidth: 1.5,
+    borderColor: P.peach,
+    gap: Spacing.two,
+  },
+  formTitle: { fontSize: 15, fontWeight: '800', color: P.brown },
+  promptInput: { minHeight: 80, textAlignVertical: 'top' },
+  formSubmitBtn: {
+    backgroundColor: P.button,
+    borderRadius: 14,
     paddingVertical: Spacing.two,
     alignItems: 'center',
+    marginTop: 2,
   },
-  saveBtnText: { color: '#FFF', fontSize: 15 },
-  defaultSlot: {
-    borderRadius: 14,
-    padding: Spacing.three,
-    flexDirection: 'row',
+  formSubmitText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+  disabledBtn: { opacity: 0.6 },
+
+  // Extra slots
+  slotsHint: { fontSize: 12, color: P.mutedBrown, fontWeight: '500', lineHeight: 17 },
+  slotsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  addSlotCard: {
+    flex: 1,
+    minWidth: 92,
+    aspectRatio: 0.95,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: P.pink,
+    borderStyle: 'dashed',
+    backgroundColor: 'rgba(247,167,184,0.06)',
     alignItems: 'center',
-    gap: Spacing.two,
+    justifyContent: 'center',
+    gap: 4,
+  },
+  addSlotPlus: { fontSize: 30, color: P.pink, fontWeight: '700', lineHeight: 34 },
+  addSlotText: { fontSize: 12, color: P.mutedBrown, fontWeight: '600' },
+  slotsFullNote: {
+    flex: 1,
+    fontSize: 12,
+    color: P.mutedBrown,
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingVertical: Spacing.two,
+  },
+
+  // Info
+  infoCard: {
+    backgroundColor: P.pinkSoft,
+    borderRadius: 18,
+    padding: Spacing.three,
     borderWidth: 1.5,
-    borderColor: 'rgba(124,111,90,0.15)',
+    borderColor: P.pink,
   },
-  defaultSlotActive: {
-    borderColor: '#81C784',
+  infoText: {
+    fontSize: 12.5,
+    color: P.brown,
+    textAlign: 'center',
+    lineHeight: 18,
+    fontWeight: '500',
   },
-  slotCard: {
-    borderRadius: 14,
-    padding: Spacing.three,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  slotEmoji: { fontSize: 28, lineHeight: 34, width: 36 },
-  slotPreview: {
-    width: 58,
-    height: 58,
-    borderRadius: 12,
-    backgroundColor: 'rgba(124,111,90,0.08)',
-  },
-  slotInfo: { flex: 1, gap: 2 },
-  slotActions: { alignItems: 'center', gap: Spacing.one },
-  aiBadgeInline: { color: '#7C6F5A' },
-  deleteBtn: { padding: Spacing.two },
-  activeBadge: {
-    backgroundColor: 'rgba(129,199,132,0.2)',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  activeBadgeText: { fontSize: 12, color: '#81C784', fontWeight: '700' },
-  emptyNote: { textAlign: 'center', lineHeight: 20 },
-  noticeCard: { borderRadius: 12, padding: Spacing.three },
-  noticeText: { textAlign: 'center', lineHeight: 20 },
-  doneBtn: {
-    backgroundColor: '#7C6F5A',
-    borderRadius: 16,
+
+  // Done
+  doneButton: {
+    backgroundColor: P.button,
+    borderRadius: 18,
     paddingVertical: Spacing.three,
     alignItems: 'center',
+    shadowColor: '#C9A18A',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
-  doneBtnText: { color: '#FFF', fontSize: 16 },
-  disabledBtn: { opacity: 0.6 },
+  doneButtonText: { color: '#FFF', fontSize: 17, fontWeight: '800' },
+
   pressed: { opacity: 0.85 },
 });
