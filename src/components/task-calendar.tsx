@@ -212,7 +212,9 @@ function SelectedDayPreview({ iso }: { iso: string }) {
 
   return (
     <View style={styles.previewWrap}>
-      <Text style={styles.previewDate}>{longLabel(iso)}</Text>
+      <View style={styles.previewDateStrip}>
+        <Text style={styles.previewDate}>📅 {longLabel(iso)}</Text>
+      </View>
 
       {dayTasks.length > 0 ? (
         <View style={styles.previewList}>
@@ -433,7 +435,16 @@ const styles = StyleSheet.create({
 
   // Selected day preview
   previewWrap: { gap: Spacing.two },
-  previewDate: { fontSize: 15, fontWeight: '800', color: C.cocoaDark, paddingLeft: 2 },
+  previewDateStrip: {
+    alignSelf: 'flex-start',
+    backgroundColor: C.cream,
+    borderWidth: 1.5,
+    borderColor: C.shortbread,
+    borderRadius: BakeryRadii.pill,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  previewDate: { fontSize: 14, fontWeight: '800', color: C.cocoaDark },
   previewList: { gap: Spacing.two },
 
   taskCard: {

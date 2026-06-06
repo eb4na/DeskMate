@@ -6,7 +6,7 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, Pressable, ScrollView, StyleSheet, TextInput, useColorScheme } from 'react-native';
+import { Dimensions, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Companion } from '@/components/companion';
@@ -14,10 +14,11 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { getCompanionLine } from '@/constants/companion-lines';
+import { Connect4Game } from '@/game/connect4/Connect4Game';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-type GameId = 'tictactoe' | 'memory' | 'wordpuzzle' | 'cakekitchen';
+type GameId = 'tictactoe' | 'memory' | 'connect4' | 'cakekitchen';
 type Phase = 'select' | 'playing' | 'resting' | 'over';
 type TicTacToeMode = 'ai' | 'friend';
 
@@ -537,168 +538,6 @@ const memStyles = StyleSheet.create({
   completeRow: { alignItems: 'center', gap: Spacing.two },
 });
 
-// ─── Word Puzzle ──────────────────────────────────────────────────────────────
-const PUZZLE_WORDS = [
-  { word: 'STUDY', clue: 'What you do with books' },
-  { word: 'FOCUS', clue: 'Concentrate on one thing' },
-  { word: 'NOTES', clue: 'What you write in class' },
-  { word: 'LEARN', clue: 'Gain new knowledge' },
-  { word: 'BRAIN', clue: 'The thinking organ' },
-  { word: 'TIMER', clue: 'Counts down seconds' },
-  { word: 'SMART', clue: 'Quick to understand' },
-  { word: 'GRADE', clue: 'How your work is scored' },
-  { word: 'CLASS', clue: 'Where students learn together' },
-  { word: 'PAGES', clue: 'Found in a book' },
-];
-
-function scramble(word: string): string {
-  let s = word;
-  let tries = 0;
-  while (s === word && tries < 20) {
-    s = word.split('').sort(() => Math.random() - 0.5).join('');
-    tries++;
-  }
-  return s;
-}
-
-function WordPuzzleGame() {
-  const [round, setRound] = useState(0);
-  const [score, setScore] = useState(0);
-  const [answer, setAnswer] = useState('');
-  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
-  const [gameOver, setGameOver] = useState(false);
-
-  const words = useMemo(
-    () => [...PUZZLE_WORDS].sort(() => Math.random() - 0.5).slice(0, 5),
-    [],
-  );
-
-  const current = words[round];
-  const scrambled = useMemo(() => (current ? scramble(current.word) : ''), [current]);
-
-  const handleSubmit = () => {
-    if (!current) return;
-    const correct = answer.trim().toUpperCase() === current.word;
-    setFeedback(correct ? 'correct' : 'wrong');
-    if (correct) setScore((s) => s + 1);
-    setTimeout(() => {
-      setFeedback(null);
-      setAnswer('');
-      if (round + 1 >= words.length) {
-        setGameOver(true);
-      } else {
-        setRound((r) => r + 1);
-      }
-    }, 900);
-  };
-
-  const reset = () => {
-    setRound(0);
-    setScore(0);
-    setAnswer('');
-    setFeedback(null);
-    setGameOver(false);
-  };
-
-  const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
-
-  if (gameOver) {
-    return (
-      <ThemedView style={wpStyles.container}>
-        <ThemedText style={wpStyles.finishEmoji}>
-          {score >= 4 ? '🏆' : score >= 2 ? '😊' : '💪'}
-        </ThemedText>
-        <ThemedText type="smallBold" style={wpStyles.finishTitle}>
-          {score}/5 correct!
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          {score === 5 ? 'Perfect score!' : score >= 3 ? 'Great job!' : 'Nice try — keep practicing!'}
-        </ThemedText>
-        <Pressable style={tttStyles.resetBtn} onPress={reset}>
-          <ThemedText type="smallBold" style={tttStyles.resetBtnText}>Play again</ThemedText>
-        </Pressable>
-      </ThemedView>
-    );
-  }
-
-  return (
-    <ThemedView style={wpStyles.container}>
-      <ThemedText type="small" themeColor="textSecondary">
-        Word {round + 1}/5 · Score: {score}
-      </ThemedText>
-      <ThemedView type="backgroundElement" style={wpStyles.clueCard}>
-        <ThemedText type="small" themeColor="textSecondary">{current?.clue}</ThemedText>
-      </ThemedView>
-      <ThemedView style={wpStyles.scrambleRow}>
-        {scrambled.split('').map((letter, i) => (
-          <ThemedView key={i} type="backgroundElement" style={wpStyles.letterChip}>
-            <ThemedText style={wpStyles.letterText}>{letter}</ThemedText>
-          </ThemedView>
-        ))}
-      </ThemedView>
-      <TextInput
-        style={[wpStyles.input, {
-          color: isDark ? '#fff' : '#000',
-          borderColor: feedback === 'correct' ? '#81C784' : feedback === 'wrong' ? '#E05C3A' : (isDark ? '#444' : '#DDD'),
-          backgroundColor: isDark ? '#1A1A1A' : '#FAFAFA',
-        }]}
-        value={answer}
-        onChangeText={(t) => setAnswer(t.toUpperCase())}
-        placeholder="Type your answer..."
-        placeholderTextColor={isDark ? '#666' : '#AAA'}
-        autoCapitalize="characters"
-        autoCorrect={false}
-        maxLength={current?.word.length ?? 10}
-        returnKeyType="done"
-        onSubmitEditing={handleSubmit}
-      />
-      {feedback && (
-        <ThemedText style={[wpStyles.feedback, feedback === 'correct' ? wpStyles.correct : wpStyles.wrong]}>
-          {feedback === 'correct' ? `✓ Correct! "${current?.word}"` : `✗ Answer: "${current?.word}"`}
-        </ThemedText>
-      )}
-      <Pressable
-        style={({ pressed }) => [wpStyles.submitBtn, !answer.trim() && wpStyles.submitBtnDisabled, pressed && wpStyles.pressed]}
-        onPress={handleSubmit}
-        disabled={!answer.trim()}>
-        <ThemedText type="smallBold" style={wpStyles.submitBtnText}>Check answer</ThemedText>
-      </Pressable>
-    </ThemedView>
-  );
-}
-
-const wpStyles = StyleSheet.create({
-  container: { alignItems: 'center', gap: Spacing.three, width: '100%' },
-  clueCard: { borderRadius: 12, paddingHorizontal: Spacing.three, paddingVertical: 10, alignItems: 'center' },
-  scrambleRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', justifyContent: 'center' },
-  letterChip: {
-    width: 38, height: 38, borderRadius: 8,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  letterText: { fontSize: 18, fontWeight: '700' },
-  input: {
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 10,
-    fontSize: 20,
-    fontWeight: '700',
-    textAlign: 'center',
-    letterSpacing: 4,
-    width: '80%',
-  },
-  feedback: { fontSize: 14, fontWeight: '600' },
-  correct: { color: '#4CAF50' },
-  wrong: { color: '#E05C3A' },
-  submitBtn: { backgroundColor: '#7C6F5A', borderRadius: 12, paddingHorizontal: 28, paddingVertical: 10 },
-  submitBtnDisabled: { opacity: 0.5 },
-  pressed: { opacity: 0.8 },
-  submitBtnText: { color: '#FFF' },
-  finishEmoji: { fontSize: 48, lineHeight: 56 },
-  finishTitle: { fontSize: 22 },
-});
-
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 const ALLOWED_BREAK_MINUTES = [5, 10, 15];
 
@@ -771,7 +610,7 @@ export default function BreakGameScreen() {
     { id: 'cakekitchen', name: 'BatterDash', emoji: '🎂', free: true, shopItemId: null, route: '/cake-game', icon: require('@/assets/images/cake/game-icon.png') },
     { id: 'tictactoe', name: 'Tic-Tac-Toe', emoji: '⭕', free: true, shopItemId: null },
     { id: 'memory', name: 'Memory Cards', emoji: '🃏', free: false, shopItemId: 'game_memory' },
-    { id: 'wordpuzzle', name: 'Word Puzzle', emoji: '🔤', free: false, shopItemId: 'game_words' },
+    { id: 'connect4', name: 'Connect 4', emoji: '🔴', free: false, shopItemId: 'game_words' },
   ];
 
   if (!validEntry) return null;
@@ -840,12 +679,15 @@ export default function BreakGameScreen() {
                     g.free ||
                     isPlus ||
                     (g.shopItemId ? ownedShopItems.includes(g.shopItemId) : false);
+                  // Connect 4 can always be opened — a friend who owns it (or has
+                  // Plus) can host you online even if you don't own it yourself.
+                  const canOpen = unlocked || g.id === 'connect4';
                   return (
                     <Pressable
                       key={g.id}
-                      style={({ pressed }) => [styles.gameCard, !unlocked && styles.gameCardLocked, pressed && unlocked && styles.pressed]}
+                      style={({ pressed }) => [styles.gameCard, !canOpen && styles.gameCardLocked, pressed && canOpen && styles.pressed]}
                       onPress={() => {
-                        if (!unlocked) return;
+                        if (!canOpen) return;
                         if (g.route) {
                           router.push(g.route as never);
                           return;
@@ -867,7 +709,9 @@ export default function BreakGameScreen() {
                               : isPlus
                                 ? 'Included with Plus'
                                 : 'Unlocked'
-                            : '🔒 Buy in Shop or get Plus'}
+                            : g.id === 'connect4'
+                              ? '🌐 Play a friend free · unlock AI'
+                              : '🔒 Buy in Shop or get Plus'}
                         </ThemedText>
                       </ThemedView>
                       {unlocked ? (
@@ -880,6 +724,8 @@ export default function BreakGameScreen() {
                             </ThemedText>
                           </ThemedView>
                         )
+                      ) : g.id === 'connect4' ? (
+                        <ThemedText style={styles.gameArrow}>→</ThemedText>
                       ) : null}
                     </Pressable>
                   );
@@ -921,7 +767,7 @@ export default function BreakGameScreen() {
               </Pressable>
               {selectedGame === 'tictactoe' && <TicTacToeGame />}
               {selectedGame === 'memory' && <MemoryCardsGame />}
-              {selectedGame === 'wordpuzzle' && <WordPuzzleGame />}
+              {selectedGame === 'connect4' && <Connect4Game />}
             </ThemedView>
           </ScrollView>
         )}
@@ -986,13 +832,13 @@ const styles = StyleSheet.create({
   gameInfo: { flex: 1, gap: 2 },
   gameArrow: { fontSize: 18, color: '#7C6F5A' },
   unlockedBadge: {
-    backgroundColor: 'rgba(129,199,132,0.22)',
+    backgroundColor: 'rgba(242,160,181,0.22)',
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   unlockedBadgeText: {
-    color: '#2F7A3F',
+    color: '#C75A78',
     fontSize: 11,
     fontWeight: '700',
   },

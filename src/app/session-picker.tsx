@@ -26,7 +26,7 @@ const CARD_IMG: Record<number, number> = {
 };
 
 export default function SessionPickerScreen() {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const { isPlus, subjects, coins } = useApp();
   const { t } = useTranslation();
   const [selected, setSelected] = useState(25);
@@ -54,6 +54,12 @@ export default function SessionPickerScreen() {
           {/* Top bar */}
           <View style={styles.topBar}>
             <Pressable
+              style={({ pressed }) => [styles.backPill, pressed && styles.pressed]}
+              onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+              hitSlop={8}>
+              <Text style={styles.backPillText}>‹</Text>
+            </Pressable>
+            <Pressable
               style={({ pressed }) => [styles.coinPill, pressed && styles.pressed]}
               onPress={() => router.push('/coin-shop')}>
               <CoinIcon size={22} />
@@ -71,6 +77,9 @@ export default function SessionPickerScreen() {
               <Text style={styles.subtitle}>{t('sessionPicker.subtitle')}</Text>
             </View>
           </View>
+
+          {/* Spacer — Bun peeks above, controls sit on the desk below */}
+          <View style={{ height: Math.round(height * 0.13) }} />
 
           {/* Session length cards */}
           <View style={styles.grid}>
@@ -132,12 +141,15 @@ export default function SessionPickerScreen() {
 
           {/* Custom Duration */}
           <Pressable
-            style={({ pressed }) => [pressed && styles.pressed]}
+            style={({ pressed }) => [styles.customCardWrap, pressed && styles.customCardPressed]}
             onPress={() => router.push({ pathname: '/custom-timer', params: { mode: 'focus' } })}>
-            <ImageBackground source={CUSTOM_CARD} style={styles.customCard} imageStyle={styles.customCardImg} resizeMode="stretch">
+            <ImageBackground
+              source={CUSTOM_CARD}
+              style={[styles.customCard, { width: Math.round(width * 0.84), height: Math.round(width * 0.84 * 220 / 1100) }]}
+              resizeMode="stretch">
               <View style={styles.customText}>
-                <Text style={styles.customTitle}>Custom Duration</Text>
-                <Text style={styles.customSub}>Set any time that fits your plan</Text>
+                <Text style={styles.customTitle} numberOfLines={1}>Custom Duration</Text>
+                <Text style={styles.customSub} numberOfLines={1}>Set your own focus time</Text>
               </View>
             </ImageBackground>
           </Pressable>
@@ -177,7 +189,14 @@ const styles = StyleSheet.create({
   },
 
   // Top bar
-  topBar: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingTop: Spacing.one },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: Spacing.one },
+  backPill: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: C.frosting, borderWidth: 1.5, borderColor: C.shortbread,
+    alignItems: 'center', justifyContent: 'center',
+    ...BakeryShadow,
+  },
+  backPillText: { fontSize: 22, fontWeight: '800', color: C.cocoaDark, marginTop: -2 },
   coinPill: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: C.frosting, borderWidth: 1.5, borderColor: C.shortbread,
@@ -200,7 +219,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
   },
-  title: { fontSize: 28, fontWeight: '800', color: C.cocoaDark, letterSpacing: 0.2 },
+  title: { fontSize: 26, fontWeight: '800', color: C.cocoaDark, letterSpacing: 0.2 },
   subtitle: { fontSize: 13, color: C.mocha, fontWeight: '700' },
 
   // Length cards
@@ -215,32 +234,32 @@ const styles = StyleSheet.create({
   },
   lenFrame: {
     flex: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     justifyContent: 'center',
-    gap: 4,
+    gap: 5,
   },
   lenFrameImg: { borderRadius: 16 },
   checkBadge: {
     position: 'absolute', top: 8, right: 10, zIndex: 2,
-    width: 22, height: 22, borderRadius: 11, backgroundColor: C.jam,
+    width: 24, height: 24, borderRadius: 12, backgroundColor: C.jam,
     alignItems: 'center', justifyContent: 'center',
   },
-  checkIcon: { fontSize: 12, color: '#fff', fontWeight: '800' },
-  lenTopRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  lenImg: { width: 44, height: 44 },
+  checkIcon: { fontSize: 13, color: '#fff', fontWeight: '800' },
+  lenTopRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  lenImg: { width: 52, height: 52 },
   lenDivider: { width: 0, alignSelf: 'stretch', borderLeftWidth: 1.5, borderColor: C.shortbread, borderStyle: 'dashed' },
   lenNumWrap: { flex: 1, alignItems: 'center' },
-  lenNum: { fontSize: 30, fontWeight: '800', color: C.cocoaDark, lineHeight: 32 },
+  lenNum: { fontSize: 36, fontWeight: '800', color: C.cocoaDark, lineHeight: 38 },
   lenNumActive: { color: C.berry },
-  lenMin: { fontSize: 12, color: C.mocha, fontWeight: '700', marginTop: -2 },
-  lenLabel: { fontSize: 13, fontWeight: '700', color: C.mocha, textAlign: 'center' },
+  lenMin: { fontSize: 13, color: C.mocha, fontWeight: '700', marginTop: -2 },
+  lenLabel: { fontSize: 14.5, fontWeight: '700', color: C.mocha, textAlign: 'center' },
 
   // Subject notebook frame
   subjectFrame: {
-    paddingLeft: 56,
+    paddingLeft: 54,
     paddingRight: 20,
-    paddingVertical: 18,
+    paddingVertical: 16,
     gap: Spacing.two,
     justifyContent: 'center',
   },
@@ -256,25 +275,24 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     ...BakeryShadow,
   },
-  cardHeading: { fontSize: 14, fontWeight: '800', color: C.cocoaDark },
+  cardHeading: { fontSize: 14.5, fontWeight: '800', color: C.cocoaDark },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { borderRadius: BakeryRadii.pill, borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 6 },
+  chip: { borderRadius: BakeryRadii.pill, borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 7 },
   chipAdd: { borderColor: C.jam, borderStyle: 'dashed', backgroundColor: 'transparent' },
-  chipText: { fontSize: 13, color: C.mocha, fontWeight: '600' },
+  chipText: { fontSize: 13.5, color: C.mocha, fontWeight: '600' },
 
   // Custom duration card (framed asset)
+  customCardWrap: { alignSelf: 'center', marginVertical: 4 },
+  customCardPressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
   customCard: {
-    width: '100%',
-    height: 92,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: '15%',
-    paddingRight: '18%',
+    paddingLeft: '14%',
+    paddingRight: '38%',
   },
-  customCardImg: { borderRadius: 16, resizeMode: 'stretch' },
-  customText: { flex: 1, gap: 2 },
-  customTitle: { fontSize: 14, fontWeight: '800', color: C.cocoaDark },
-  customSub: { fontSize: 10, color: C.mocha, lineHeight: 13 },
+  customText: { flex: 1, gap: 2, alignItems: 'center' },
+  customTitle: { fontSize: 17, fontWeight: '800', color: C.cocoaDark, textAlign: 'center' },
+  customSub: { fontSize: 11, color: C.mocha, lineHeight: 13.5, textAlign: 'center' },
 
   // Start button (framed asset)
   startBtnWrap: { width: '100%' },
@@ -285,13 +303,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   startBtnText: {
-    color: '#fff', fontSize: 18, fontWeight: '800', letterSpacing: 0.3,
+    color: '#fff', fontSize: 19, fontWeight: '800', letterSpacing: 0.3,
     textShadowColor: 'rgba(193,90,110,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
   },
 
   // Back (cat button asset)
   backBtn: { alignSelf: 'center' },
-  backBtnImg: { width: 80, height: 60 },
+  backBtnImg: { width: 66, height: 50 },
 
   pressed: { opacity: 0.85 },
 });

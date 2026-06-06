@@ -43,7 +43,7 @@ function RootNavigator() {
         <Stack.Screen name="language-picker" options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         {/* Session flow */}
-        <Stack.Screen name="session-picker" options={{ headerShown: false, presentation: 'modal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="session-picker" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="subject-picker" options={{ presentation: 'modal', title: 'Subject & mood' }} />
         <Stack.Screen name="session" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="session-complete" options={{ headerShown: false }} />

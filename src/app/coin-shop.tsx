@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     backgroundColor: BakeryColors.glass,
   },
-  plusBannerActive: { borderWidth: 1.5, borderColor: BakeryColors.success },
+  plusBannerActive: { borderWidth: 1.5, borderColor: '#F2A0B5' },
   plusBannerEmoji: { fontSize: 22, lineHeight: 28 },
   plusBannerText: { flex: 1, gap: 2 },
   plusBadge: {

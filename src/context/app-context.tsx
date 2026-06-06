@@ -224,6 +224,10 @@ export const PLUS_DAILY_CHAT = 40;
 // Most recent companion chat messages kept in local history.
 export const CHAT_HISTORY_CAP = 50;
 
+// Maximum active subjects — free tier vs Plus.
+export const MAX_SUBJECTS_FREE = 10;
+export const MAX_SUBJECTS_PLUS = 20;
+
 const DEFAULTS: PersistedState = {
   coins: 0,
   sessionsCompleted: 0,
@@ -439,7 +443,7 @@ type AppContextType = {
   updateStreak: () => { bonus: number; isComeback: boolean };
 
   // Wave 2 subject actions
-  addSubject: (name: string, color: string, emoji?: string) => void;
+  addSubject: (name: string, color: string, emoji?: string) => boolean;
   renameSubject: (id: string, name: string) => void;
   archiveSubject: (id: string) => void;
   deleteSubject: (id: string) => void;
@@ -646,14 +650,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ─── Wave 2 subject actions ───────────────────────────────────────────────
 
-  const addSubject = (name: string, color: string, emoji = '') => {
-    setS((prev) => ({
-      ...prev,
-      subjects: [
-        ...prev.subjects,
-        { id: uid(), name, color, emoji, archived: false, order: prev.subjects.length },
-      ],
-    }));
+  const addSubject = (name: string, color: string, emoji = ''): boolean => {
+    const limit = s.isPlus ? MAX_SUBJECTS_PLUS : MAX_SUBJECTS_FREE;
+    if (s.subjects.filter((sub) => !sub.archived).length >= limit) return false;
+    setS((prev) => {
+      const activeCount = prev.subjects.filter((sub) => !sub.archived).length;
+      if (activeCount >= (prev.isPlus ? MAX_SUBJECTS_PLUS : MAX_SUBJECTS_FREE)) return prev;
+      return {
+        ...prev,
+        subjects: [
+          ...prev.subjects,
+          { id: uid(), name, color, emoji, archived: false, order: prev.subjects.length },
+        ],
+      };
+    });
+    return true;
   };
 
   const renameSubject = (id: string, name: string) =>

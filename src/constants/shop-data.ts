@@ -103,9 +103,9 @@ export const SHOP_ITEMS: ShopItem[] = [
   // ─── Break games (500–900 coins) ─────────────────────────────────────────
   {
     id: 'game_words',
-    name: 'Word Puzzles',
-    emoji: '🔤',
-    description: 'Quick vocabulary puzzles for your break.',
+    name: 'Connect 4',
+    emoji: '🔴',
+    description: 'Drop discs and get four in a row — play the AI or a friend online.',
     price: 500,
     category: 'game',
   },

@@ -30,6 +30,9 @@ const P = {
   mutedBrown: '#9A7B6D',
   green: '#8BCF8B',
   greenSoft: '#E3F4E3',
+  pinkActive: '#F2A0B5',
+  pinkActiveSoft: '#FBDCE4',
+  pinkActiveText: '#C75A78',
   button: '#8A7A60',
 } as const;
 
@@ -166,8 +169,7 @@ function GalleryContent() {
                     style={({ pressed }) => [styles.hangerBtn, pressed && styles.pressed]}
                     onPress={() => setWardrobeOpen(true)}
                     hitSlop={8}>
-                    <HangerIcon />
-                    <Text style={styles.hangerLabel}>Outfits</Text>
+                    <HangerIcon color="#FFFFFF" size={22} />
                   </Pressable>
                 )}
                 <View style={styles.companionImageWrap}>
@@ -344,24 +346,21 @@ const styles = StyleSheet.create({
     color: P.brown,
   },
   slotCount: { fontSize: 13, color: P.mutedBrown, fontWeight: '600' },
-  // Hanger button on Bun's card
+  // Hanger button on Bun's card — white hanger on a pink chip
   hangerBtn: {
     position: 'absolute',
     top: 8,
     right: 8,
     zIndex: 2,
-    flexDirection: 'row',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: P.pinkSoft,
-    borderRadius: 999,
-    paddingLeft: 7,
-    paddingRight: 10,
-    paddingVertical: 4,
+    justifyContent: 'center',
+    backgroundColor: P.pink,
     borderWidth: 1.5,
-    borderColor: P.pink,
+    borderColor: '#FFFFFF',
   },
-  hangerLabel: { fontSize: 11, color: P.brown, fontWeight: '800' },
 
   // Wardrobe modal
   wardrobeBackdrop: {
@@ -419,14 +418,14 @@ const styles = StyleSheet.create({
   skinName: { fontSize: 14, fontWeight: '800', color: P.brown, textAlign: 'center' },
   skinPill: {
     marginTop: 4,
-    backgroundColor: P.greenSoft,
+    backgroundColor: P.pinkActiveSoft,
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 5,
     borderWidth: 1.5,
-    borderColor: P.green,
+    borderColor: P.pinkActive,
   },
-  skinPillText: { fontSize: 11, color: '#5BA463', fontWeight: '800' },
+  skinPillText: { fontSize: 11, color: P.pinkActiveText, fontWeight: '800' },
   skinTap: { fontSize: 11, color: P.mutedBrown, fontWeight: '600', marginTop: 6 },
 
   // Companion grid
@@ -492,14 +491,14 @@ const styles = StyleSheet.create({
   },
   activePill: {
     marginTop: 6,
-    backgroundColor: P.greenSoft,
+    backgroundColor: P.pinkActiveSoft,
     borderRadius: 999,
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderWidth: 1.5,
-    borderColor: P.green,
+    borderColor: P.pinkActive,
   },
-  activePillText: { fontSize: 12, color: '#5BA463', fontWeight: '800' },
+  activePillText: { fontSize: 12, color: P.pinkActiveText, fontWeight: '800' },
   setActiveBtn: {
     marginTop: 6,
     backgroundColor: P.pink,

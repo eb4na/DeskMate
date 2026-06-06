@@ -108,9 +108,9 @@ type Customer = {
 };
 const MAX_CUSTOMERS_SOLO = 4;
 const MAX_CUSTOMERS_MULTI = 10; // up to 3 players → up to 10 bunnies
-const GREET_MS = 10000; // time to greet a newly-arrived bunny before it leaves
-const ORDER_PATIENCE_MS = 28000; // time to fill an order before the bunny gets angry
-const SPAWN_GAP_MS = 3500; // minimum gap between bunnies arriving
+const GREET_MS = 18000; // time to greet a newly-arrived bunny before it leaves
+const ORDER_PATIENCE_MS = 48000; // time to fill an order before the bunny gets angry
+const SPAWN_GAP_MS = 5000; // minimum gap between bunnies arriving
 let custCounter = 0;
 const makeCustomer = (): Customer => {
   custCounter += 1;
@@ -1728,7 +1728,7 @@ const styles = StyleSheet.create({
     gap: 2,
     zIndex: 4,
   },
-  custSprite: { alignItems: 'center', width: 48 },
+  custSprite: { alignItems: 'center', width: 64 },
   custBubble: {
     minWidth: 22,
     minHeight: 20,
@@ -1753,9 +1753,9 @@ const styles = StyleSheet.create({
   },
   custDotEmoji: { fontSize: 9 },
   custGreetMark: { fontSize: 12 },
-  custBunny: { width: 40, height: 48 },
+  custBunny: { width: 60, height: 72 },
   custBar: {
-    width: 38,
+    width: 52,
     height: 4,
     borderRadius: 2,
     backgroundColor: BakeryColors.cream,

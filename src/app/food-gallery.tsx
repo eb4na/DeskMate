@@ -20,24 +20,6 @@ export const FOOD_ITEMS: FoodItem[] = [
     description: 'A classic layered cake with fresh strawberries and cream.',
     image: require('@/assets/images/cake/strawberry-shortcake.png'),
   },
-  {
-    id: 'macaron',
-    name: 'Macaron',
-    description: 'Delicate French sandwich cookies in pastel colours.',
-    image: require('@/assets/images/cake/dessert-10.png'),
-  },
-  {
-    id: 'layer-cake',
-    name: 'Layer Cake',
-    description: 'A tall celebration cake with fluffy frosting.',
-    image: require('@/assets/images/cake/dessert-50.png'),
-  },
-  {
-    id: 'cream-puff',
-    name: 'Cream Puff',
-    description: 'Light choux pastry filled with vanilla cream.',
-    image: require('@/assets/images/cake/dessert-90.png'),
-  },
 ];
 
 // Patisserie palette — mirrors the Companion Bakery screen.
@@ -50,6 +32,9 @@ const P = {
   mutedBrown: '#9A7B6D',
   green: '#8BCF8B',
   greenSoft: '#E3F4E3',
+  pinkActive: '#F2A0B5',
+  pinkActiveSoft: '#FBDCE4',
+  pinkActiveText: '#C75A78',
   button: '#8A7A60',
 } as const;
 
@@ -94,7 +79,7 @@ export default function FoodGalleryScreen() {
                     ) : (
                       <Pressable
                         style={({ pressed }) => [styles.selectBtn, pressed && styles.pressed]}
-                        onPress={() => { setSelectedFood(food.id); router.back(); }}>
+                        onPress={() => { setSelectedFood(food.id); if (router.canGoBack()) router.back(); else router.replace('/'); }}>
                         <Text style={styles.selectBtnText}>Bake this</Text>
                       </Pressable>
                     )}
@@ -114,7 +99,7 @@ export default function FoodGalleryScreen() {
           {/* Done */}
           <Pressable
             style={({ pressed }) => [styles.doneButton, pressed && styles.pressed]}
-            onPress={() => router.back()}>
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
             <Text style={styles.doneButtonText}>Done</Text>
           </Pressable>
         </SafeAreaView>
@@ -182,21 +167,21 @@ const styles = StyleSheet.create({
   foodImg: { width: 96, height: 96 },
   madeBadge: {
     position: 'absolute', bottom: 0, right: 0,
-    backgroundColor: P.green, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2,
+    backgroundColor: '#E88AA0', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2,
   },
   madeBadgeText: { fontSize: 10, color: '#fff', fontWeight: '700' },
   foodName: { fontSize: 15, fontWeight: '800', color: P.brown, textAlign: 'center' },
   foodDesc: { fontSize: 11, color: P.mutedBrown, textAlign: 'center', lineHeight: 15 },
   activePill: {
     marginTop: 6,
-    backgroundColor: P.greenSoft,
+    backgroundColor: P.pinkActiveSoft,
     borderRadius: 999,
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderWidth: 1.5,
-    borderColor: P.green,
+    borderColor: P.pinkActive,
   },
-  activePillText: { fontSize: 12, color: '#5BA463', fontWeight: '800' },
+  activePillText: { fontSize: 12, color: P.pinkActiveText, fontWeight: '800' },
   selectBtn: {
     marginTop: 6,
     backgroundColor: P.pink,

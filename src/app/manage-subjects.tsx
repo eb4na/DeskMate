@@ -5,13 +5,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useApp } from '@/context/app-context';
+import { useApp, MAX_SUBJECTS_FREE, MAX_SUBJECTS_PLUS } from '@/context/app-context';
 import { SUBJECT_COLORS } from '@/constants/placeholder-data';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 export default function ManageSubjectsScreen() {
-  const { subjects, addSubject, renameSubject, archiveSubject, deleteSubject, reorderSubjects } =
+  const { subjects, addSubject, renameSubject, archiveSubject, deleteSubject, reorderSubjects, isPlus } =
     useApp();
+  const subjectLimit = isPlus ? MAX_SUBJECTS_PLUS : MAX_SUBJECTS_FREE;
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
@@ -34,7 +35,16 @@ export default function ManageSubjectsScreen() {
 
   const handleAdd = () => {
     if (!newName.trim()) return;
-    addSubject(newName.trim(), selectedColor, newEmoji.trim());
+    const added = addSubject(newName.trim(), selectedColor, newEmoji.trim());
+    if (!added) {
+      Alert.alert(
+        'Subject limit reached',
+        isPlus
+          ? `You can have up to ${MAX_SUBJECTS_PLUS} subjects.`
+          : `Free accounts can have up to ${MAX_SUBJECTS_FREE} subjects. Upgrade to Plus for up to ${MAX_SUBJECTS_PLUS}.`,
+      );
+      return;
+    }
     setNewName('');
     setNewEmoji('');
     setSelectedColor(nextColor());
@@ -90,7 +100,7 @@ export default function ManageSubjectsScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView keyboardShouldPersistTaps="handled">
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 48 }}>
         <SafeAreaView style={styles.safeArea}>
           <ThemedText type="subtitle" style={styles.title}>
             Subjects
@@ -99,7 +109,7 @@ export default function ManageSubjectsScreen() {
           {/* Active subjects list */}
           <ThemedView style={styles.section}>
             <ThemedText type="smallBold" style={styles.sectionLabel}>
-              Your subjects
+              Your subjects ({activeSubjects.length}/{subjectLimit})
             </ThemedText>
 
             {activeSubjects.length === 0 && (
@@ -195,11 +205,11 @@ export default function ManageSubjectsScreen() {
             </ThemedView>
 
             <Pressable
-              style={({ pressed }) => [styles.addBtn, !newName.trim() && styles.addBtnDisabled, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.addBtn, (!newName.trim() || activeSubjects.length >= subjectLimit) && styles.addBtnDisabled, pressed && styles.pressed]}
               onPress={handleAdd}
-              disabled={!newName.trim()}>
+              disabled={!newName.trim() || activeSubjects.length >= subjectLimit}>
               <ThemedText type="smallBold" style={styles.addBtnText}>
-                + Add subject
+                {activeSubjects.length >= subjectLimit ? `Limit reached (${subjectLimit})` : '+ Add subject'}
               </ThemedText>
             </Pressable>
           </ThemedView>
@@ -228,7 +238,10 @@ export default function ManageSubjectsScreen() {
             </ThemedView>
           )}
 
-          <Pressable onPress={() => router.back()} style={styles.doneBtn}>
+          <Pressable
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+            style={styles.doneBtn}
+            hitSlop={12}>
             <ThemedText type="linkPrimary">Done</ThemedText>
           </Pressable>
         </SafeAreaView>
