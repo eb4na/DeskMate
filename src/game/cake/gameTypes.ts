@@ -2,9 +2,9 @@
 // Wave 0: types are shaped so later waves (movement, cooking loop, modes,
 // multiplayer) slot in without rewrites. Keep this file logic-free.
 
-export type CakeBase = 'vanilla' | 'chocolate' | 'strawberry' | 'blueberry';
-export type CakeFilling = 'cream' | 'chocCream' | 'strawJam' | 'blueJam';
-export type CakeTopping = 'strawberry' | 'cherry' | 'blueberry' | 'chocChunks' | 'sprinkles';
+export type CakeBase = 'vanilla' | 'chocolate' | 'strawberry' | 'redVelvet';
+export type CakeFilling = 'cream' | 'chocCream' | 'strawJam' | 'redVelvet';
+export type CakeTopping = 'strawberry' | 'cherry' | 'blueberry' | 'choco' | 'sprinkles';
 
 // A pickable ingredient with placeholder art (emoji + color) for now.
 export type IngredientDef<Id extends string = string> = {

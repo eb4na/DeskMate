@@ -423,15 +423,17 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      {/* Room background — full-bleed behind everything, including the notch and
+          bottom inset, so no cream shows at the screen edges. */}
+      <Image
+        source={bgRoom.backgroundImage}
+        style={styles.roomBackground}
+        contentFit="cover"
+        contentPosition="center"
+        pointerEvents="none"
+      />
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.scene}>
-          <Image
-            source={bgRoom.backgroundImage}
-            style={styles.roomBackground}
-            contentFit="cover"
-            contentPosition="center"
-          />
-
           {/* Soft sunlight shining from the top — kept gentle so the room stays clear */}
           <Image source={SUNLIGHT} style={styles.sunlight} contentFit="cover" pointerEvents="none" />
 
@@ -565,7 +567,9 @@ export default function HomeScreen() {
                     </View>
                   </Pressable>
 
-                  <View style={styles.metaCardPressable}>
+                  <Pressable
+                    style={({ pressed }) => [styles.metaCardPressable, pressed && styles.cardPressed]}
+                    onPress={() => router.push('/reminder-settings')}>
                     <View style={styles.metaCard}>
                       <View style={styles.metaCardHeader}>
                         <View style={styles.reminderTitleRow}>
@@ -582,12 +586,12 @@ export default function HomeScreen() {
                                     ? `${getAmbienceEmoji(ambienceId)} ${getAmbienceName(ambienceId)}`
                                     : "You've got this!"
                                 }`
-                              : "Don't forget to take breaks!\nYou've got this!"}
+                              : "Tap to set up reminders"}
                           </ThemedText>
                         </View>
                       </View>
                     </View>
-                  </View>
+                  </Pressable>
                 </View>
               </View>}
 

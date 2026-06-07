@@ -22,11 +22,13 @@ type ReminderSyncInput = {
   time: string;
   extraReminders: ReminderEntry[];
   reminderEmoji?: string;
-  // Reminder bodies in the active companion's voice (flavored by their skin).
-  // The primary daily reminder rotates through these across the week.
+  // Reminder bodies in the active companion's voice. The primary daily reminder
+  // rotates through these across the week.
   reminderLines?: string[];
   // Active companion's display name, used as the notification title.
   companionName?: string;
+  // If a task is due soon, this names it and takes priority over the voice line.
+  taskLine?: string;
 };
 
 function randomLine(lines: string[] | undefined, fallback: string): string {
@@ -207,6 +209,7 @@ export async function syncStudyReminders({
   reminderEmoji,
   reminderLines,
   companionName,
+  taskLine,
 }: ReminderSyncInput) {
   await ensureReminderChannel();
   await cancelStudyReminders();
@@ -227,8 +230,12 @@ export async function syncStudyReminders({
   const fallbackBody = 'Your study seat is ready.';
 
   if (enabled) {
-    if (reminderLines && reminderLines.length > 0) {
-      // Rotate a different line across the week.
+    if (taskLine) {
+      // A task is coming up — name it directly.
+      const scheduled = await scheduleDailyReminder(baseTitle, taskLine, time);
+      if (scheduled) scheduledCount += 1;
+    } else if (reminderLines && reminderLines.length > 0) {
+      // Otherwise rotate a different companion line across the week.
       scheduledCount += await scheduleRotatingReminder(baseTitle, reminderLines, time);
     } else {
       const scheduled = await scheduleDailyReminder(baseTitle, fallbackBody, time);
@@ -237,8 +244,9 @@ export async function syncStudyReminders({
   }
 
   for (const reminder of extraReminders) {
-    const title = `${reminderEmoji ?? '🔔'} ${reminder.label}`;
-    const body = randomLine(reminderLines, fallbackBody);
+    const title = baseTitle;
+    // Custom label wins; otherwise the upcoming task; otherwise the companion's voice.
+    const body = reminder.label?.trim() || taskLine || randomLine(reminderLines, fallbackBody);
 
     if (reminder.weekdaysOnly) {
       scheduledCount += await scheduleWeekdayReminder(title, body, reminder.time);

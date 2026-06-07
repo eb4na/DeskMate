@@ -1,6 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
+  Image as RNImage,
+  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,6 +19,9 @@ import { BakeryColors, BakeryRadii, BakeryShadow, Colors, MaxContentWidth, Spaci
 import { useAuth } from '@/context/auth-context';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from '@/i18n';
+
+const LOGIN_BG = require('@/assets/images/auth/login-bg.png');
+const FIELD_EMAIL = require('@/assets/images/auth/field-email.png');
 
 export default function LoginScreen() {
   const { email: emailParam, notice } = useLocalSearchParams<{ email?: string; notice?: string }>();
@@ -73,6 +78,13 @@ export default function LoginScreen() {
       return;
     }
 
+    // One device per account: signing in here revokes sessions on other devices.
+    try {
+      await supabase.auth.signOut({ scope: 'others' });
+    } catch {
+      // Non-fatal — the local session is still valid.
+    }
+
     router.replace('/');
     setSubmitting(false);
   };
@@ -84,6 +96,7 @@ export default function LoginScreen() {
 
   return (
     <ThemedView style={[styles.container, styles.screenBackground]}>
+      <RNImage source={LOGIN_BG} style={styles.bg} resizeMode="cover" />
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.select({ ios: 'padding', android: undefined })}>
@@ -100,19 +113,20 @@ export default function LoginScreen() {
             </ThemedView>
 
             <ThemedView type="backgroundElement" style={styles.card}>
-              <ThemedText type="smallBold">Email</ThemedText>
-              <TextInput
-                style={inputStyle}
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                textContentType="emailAddress"
-                placeholder="you@example.com"
-                placeholderTextColor={colors.textSecondary}
-                returnKeyType="next"
-              />
+              <ImageBackground source={FIELD_EMAIL} style={styles.fieldBg} imageStyle={styles.fieldBgImg} resizeMode="stretch">
+                <TextInput
+                  style={styles.fieldInput}
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  textContentType="emailAddress"
+                  placeholder=""
+                  placeholderTextColor={colors.textSecondary}
+                  returnKeyType="next"
+                />
+              </ImageBackground>
 
               <ThemedText type="smallBold">Password</ThemedText>
               <TextInput
@@ -195,6 +209,16 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   screenBackground: { backgroundColor: BakeryColors.frosting },
+  bg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
+  fieldBg: { width: '100%', aspectRatio: 5.833, justifyContent: 'center' },
+  fieldBgImg: { borderRadius: 16 },
+  fieldInput: {
+    marginLeft: '32%',
+    marginRight: '11%',
+    fontSize: 16,
+    color: BakeryColors.cocoaDark,
+    paddingVertical: 0,
+  },
   scrollContent: { flexGrow: 1 },
   safeArea: {
     flex: 1,
@@ -205,7 +229,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
-  hero: { gap: Spacing.two },
+  hero: { gap: Spacing.two, backgroundColor: 'transparent' },
   heroEmoji: { textAlign: 'center', fontSize: 48, lineHeight: 56 },
   title: { textAlign: 'center' },
   subtitle: { textAlign: 'center', lineHeight: 20 },

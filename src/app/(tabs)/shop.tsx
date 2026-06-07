@@ -4,9 +4,8 @@ import { Alert, Dimensions, Image as RNImage, Modal, Pressable, ScrollView, Styl
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinAmount, CoinIcon } from '@/components/coin-icon';
-import { BreadPouchIcon, BreadBagIcon, BreadChestIcon, BreadVaultIcon } from '@/components/coin-pack-icons';
 import { DecoIcon, OutfitIcon, ThemeIcon, PoseIcon, GameIcon, ReminderIcon } from '@/components/category-icons';
-import { BakeryStarEmoji, BakeryToastStarEmoji, BakeryLockEmoji, BakeryWrenchEmoji } from '@/components/bakery-emoji';
+import { BakeryStarEmoji, BakeryLockEmoji, BakeryWrenchEmoji } from '@/components/bakery-emoji';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { isEquipableCategory } from '@/constants/shop-effects';
@@ -91,11 +90,11 @@ const CARD = Math.floor((PAGE_W - H_PAD * 2 - GAP) / COLS);
 
 type CoinPack = { id: string; name: string; coins: number; price: string; popular?: boolean };
 const COIN_PACKS: CoinPack[] = [
-  { id: 'pouch', name: 'Small Pouch', coins: 200, price: '$0.99' },
-  { id: 'bag', name: 'Study Bag', coins: 600, price: '$2.49' },
-  { id: 'chest', name: 'Coin Chest', coins: 1400, price: '$4.99', popular: true },
-  { id: 'vault', name: 'Scholar Vault', coins: 3500, price: '$9.99' },
-  { id: 'treasury', name: 'Grand Treasury', coins: 50000, price: '$100.00' },
+  { id: 'pouch', name: 'Strawberry Cupcake', coins: 200, price: '$1.00' },
+  { id: 'bag', name: 'Lemon Slice', coins: 600, price: '$3.00' },
+  { id: 'chest', name: 'Chocolate Cake', coins: 1444, price: '$6.70', popular: true },
+  { id: 'vault', name: 'Red Velvet', coins: 5000, price: '$20.00' },
+  { id: 'treasury', name: 'Together With You', coins: 50000, price: '$100.00' },
 ];
 
 
@@ -121,12 +120,20 @@ const indStyles = StyleSheet.create({
   pill: { position: 'absolute', height: 4, borderRadius: 2, backgroundColor: BakeryColors.honey },
 });
 
-function PackIcon({ id }: { id: string }) {
-  if (id === 'pouch') return <BreadPouchIcon size={52} />;
-  if (id === 'bag') return <BreadBagIcon size={52} />;
-  if (id === 'chest') return <BreadChestIcon size={52} />;
-  return <BreadVaultIcon size={52} />;
-}
+// Coin packs are tiered desserts — bigger pack, bigger cake.
+const PACK_IMAGES: Record<string, number> = {
+  pouch: require('@/assets/images/shop/coin-cupcake.png'),
+  bag: require('@/assets/images/shop/coin-slice.png'),
+  chest: require('@/assets/images/shop/coin-cake1.png'),
+  vault: require('@/assets/images/shop/coin-cake2.png'),
+  treasury: require('@/assets/images/shop/coin-cake3.png'),
+};
+
+// Where each kind of item is actually used, shown under the shop card so players
+// know where to go after buying.
+const USE_HINTS: Partial<Record<ShopCategory, string>> = {
+  companion: 'Set active in Gallery',
+};
 
 const ITEMS_PER_PAGE = 6;
 
@@ -160,6 +167,21 @@ export default function ShopScreen() {
       .filter((s) => !!s.imageUri)
       .map((s) => ({ id: s.id, name: s.name, image: { uri: s.imageUri as string }, emoji: s.emoji })),
   ];
+  // Every dressable character (owned or not) — so the Outfits tab can show which
+  // characters you still need to unlock.
+  const allOutfitCharacters: { id: string; name: string; image: number | { uri: string } | null; emoji: string; owned: boolean }[] = [
+    { id: getStarterActiveId('girl'), name: 'Bun', image: STARTER_COMPANION_IMAGES.girl, emoji: '🐱', owned: true },
+    ...SHOP_COMPANIONS.map((c) => ({
+      id: `shop:${c.id}`,
+      name: c.name,
+      image: (c.image as number) ?? null,
+      emoji: c.emoji,
+      owned: ownedShopItems.includes(c.id),
+    })),
+    ...companionSlots
+      .filter((s) => !!s.imageUri)
+      .map((s) => ({ id: s.id, name: s.name, image: { uri: s.imageUri as string }, emoji: s.emoji, owned: true })),
+  ];
   const outfitChar = ownedCharacters.find((c) => c.id === outfitCharId) ?? null;
   const itemScrollRef = useRef<ScrollView>(null);
 
@@ -167,9 +189,6 @@ export default function ShopScreen() {
   const [catContentW, setCatContentW] = useState(0);
   const [catViewW, setCatViewW] = useState(0);
 
-  const [packScrollX, setPackScrollX] = useState(0);
-  const [packContentW, setPackContentW] = useState(0);
-  const [packViewW, setPackViewW] = useState(0);
 
 
   const discount = isPlus ? 0.8 : 1;
@@ -312,14 +331,25 @@ export default function ShopScreen() {
                 <>
                   <ThemedText style={styles.outfitsHint}>Pick a character to dress up</ThemedText>
                   <View style={styles.outfitCharGrid}>
-                    {ownedCharacters.map((c) => (
-                      <Pressable key={c.id} style={styles.outfitCharCard} onPress={() => setOutfitCharId(c.id)}>
+                    {allOutfitCharacters.map((c) => (
+                      <Pressable
+                        key={c.id}
+                        style={styles.outfitCharCard}
+                        onPress={() => {
+                          if (c.owned) setOutfitCharId(c.id);
+                          else Alert.alert(`${c.name} locked`, `Unlock ${c.name} first to dress them up.`);
+                        }}>
                         {c.image ? (
-                          <RNImage source={c.image} style={styles.outfitCharImg} resizeMode="contain" />
+                          <RNImage source={c.image} style={[styles.outfitCharImg, !c.owned && styles.lockedImg]} resizeMode="contain" />
                         ) : (
-                          <ThemedText style={styles.itemEmoji}>{c.emoji}</ThemedText>
+                          <ThemedText style={[styles.itemEmoji, !c.owned && styles.lockedImg]}>{c.emoji}</ThemedText>
                         )}
                         <ThemedText style={styles.itemName} numberOfLines={1}>{c.name}</ThemedText>
+                        <View style={[styles.charBadge, c.owned ? styles.badgeOwned : styles.charLockedBadge]}>
+                          <ThemedText style={c.owned ? styles.badgeText : styles.charLockedText}>
+                            {c.owned ? '✓ Owned' : '🔒 Locked'}
+                          </ThemedText>
+                        </View>
                       </Pressable>
                     ))}
                   </View>
@@ -491,6 +521,9 @@ export default function ShopScreen() {
                           />
                         )}
                         <ThemedText style={styles.itemName} numberOfLines={1}>{item.name}</ThemedText>
+                        {USE_HINTS[item.category] && (
+                          <ThemedText style={styles.useHint} numberOfLines={1}>{USE_HINTS[item.category]}</ThemedText>
+                        )}
                       </View>
                     </Pressable>
                   );
@@ -513,35 +546,34 @@ export default function ShopScreen() {
           </>
           )}
 
-          {/* ── Coin Packs ── */}
-          <View style={styles.sectionHead}>
-            <ThemedText type="smallBold" style={styles.sectionTitle}>Coin Packs</ThemedText>
-            <ThemedText style={styles.sectionSub}>No expiry · Not capped</ThemedText>
-          </View>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.packStrip}
-            scrollEventThrottle={16}
-            onScroll={(e) => setPackScrollX(e.nativeEvent.contentOffset.x)}
-            onContentSizeChange={(w) => setPackContentW(w)}
-            onLayout={(e) => setPackViewW(e.nativeEvent.layout.width)}>
-            {COIN_PACKS.map((pack) => (
+          {/* ── Coin Packs (bakery menu) ── */}
+          <View style={styles.menuCard}>
+            <View style={styles.menuHeader}>
+              <ThemedText style={styles.menuTitle}>♡ Bakery Menu ♡</ThemedText>
+              <ThemedText style={styles.menuSubtitle}>Coins never expire · not capped</ThemedText>
+            </View>
+            {COIN_PACKS.map((pack, i) => (
               <Pressable key={pack.id} onPress={() => handleCoinPack(pack)} style={({ pressed }) => pressed && styles.pressed}>
-                <View style={[styles.packCard, pack.popular && styles.packPopular]}>
-                  {pack.popular && <View style={styles.popularStar}><BakeryToastStarEmoji size={16} /></View>}
-                  <PackIcon id={pack.id} />
-                  <ThemedText style={styles.packName} numberOfLines={1}>{pack.name}</ThemedText>
-                  <CoinAmount amount={pack.coins} size={20} textStyle={styles.packCoinAmt} />
-                  <View style={styles.packPriceBtn}>
-                    <ThemedText style={styles.packPriceText}>{pack.price}</ThemedText>
+                <View style={styles.menuRow}>
+                  <RNImage source={PACK_IMAGES[pack.id] ?? PACK_IMAGES.pouch} style={styles.menuIcon} resizeMode="contain" />
+                  <View style={styles.menuBody}>
+                    <View style={styles.menuTopLine}>
+                      <ThemedText style={styles.menuName} numberOfLines={1}>{pack.name}</ThemedText>
+                      <View style={styles.menuLeader} />
+                      <ThemedText style={styles.menuPrice}>{pack.price}</ThemedText>
+                    </View>
+                    <View style={styles.menuSubLine}>
+                      <CoinAmount amount={pack.coins} size={20} textStyle={styles.menuCoinText} />
+                      {pack.popular && (
+                        <View style={styles.chefBadge}><ThemedText style={styles.chefText}>Chef's pick</ThemedText></View>
+                      )}
+                    </View>
                   </View>
                 </View>
+                {i < COIN_PACKS.length - 1 && <View style={styles.menuDivider} />}
               </Pressable>
             ))}
-          </ScrollView>
-          <HScrollIndicator scrollX={packScrollX} contentW={packContentW} viewW={packViewW} />
+          </View>
 
           <View style={styles.disclaimerCard}>
             <View style={styles.disclaimerRow}>
@@ -552,27 +584,6 @@ export default function ShopScreen() {
             </View>
           </View>
 
-
-          {/* ── How to earn ── */}
-          <View style={styles.tipCard}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <ThemedText style={styles.tipTitle}>How to earn coins</ThemedText>
-              <CoinIcon size={18} />
-            </View>
-            {[
-              { label: '1 coin per minute studied', coins: 1 },
-              { label: '10 min session', coins: 10 },
-              { label: '25 min session', coins: 25 },
-              { label: '50 min session', coins: 50 },
-              { label: '90 min session', coins: 90 },
-              { label: `Daily max ${DAILY_EARN_CAP}`, coins: DAILY_EARN_CAP },
-            ].map((row) => (
-              <View key={row.label} style={styles.tipRow}>
-                <ThemedText style={styles.tipLabel}>{row.label}</ThemedText>
-                <CoinAmount amount={row.coins} prefix="+" size={20} textStyle={styles.tipCoins} />
-              </View>
-            ))}
-          </View>
 
         </SafeAreaView>
       </ScrollView>
@@ -837,6 +848,11 @@ const styles = StyleSheet.create({
   },
   badgeOwned: { backgroundColor: '#F2A0B525' },
   badgeEquipped: { backgroundColor: `${BakeryColors.honey}25` },
+  useHint: { fontSize: 10, color: BakeryColors.latte, textAlign: 'center', lineHeight: 13, marginTop: 1 },
+  charBadge: { marginTop: 4, borderRadius: BakeryRadii.chip, paddingHorizontal: 8, paddingVertical: 2 },
+  charLockedBadge: { backgroundColor: 'rgba(124,111,90,0.14)' },
+  charLockedText: { fontSize: 11, fontWeight: '700', color: BakeryColors.mocha },
+  lockedImg: { opacity: 0.4 },
   badgePlus: { backgroundColor: '#C75A7820' },
   badgePlusText: { fontSize: 12, fontWeight: '700', color: '#C75A78', lineHeight: 16 },
   badgeText: { fontSize: 12, fontWeight: '700', color: BakeryColors.mocha, lineHeight: 16 },
@@ -844,6 +860,51 @@ const styles = StyleSheet.create({
   priceTextDim: { color: BakeryColors.latte },
 
   // Coin packs horizontal scroll
+  // ─── Bakery menu of coin packs ───────────────────────────────────────────
+  menuCard: {
+    borderRadius: BakeryRadii.card,
+    backgroundColor: BakeryColors.frosting,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    ...BakeryShadow,
+  },
+  menuHeader: {
+    alignItems: 'center',
+    gap: 2,
+    paddingBottom: Spacing.two,
+    marginBottom: Spacing.one,
+    borderBottomWidth: 1.5,
+    borderBottomColor: BakeryColors.shortbread,
+    borderStyle: 'dashed',
+  },
+  menuTitle: { fontSize: 18, fontWeight: '800', color: BakeryColors.cocoaDark, letterSpacing: 0.5 },
+  menuSubtitle: { fontSize: 12, color: BakeryColors.mocha },
+  menuRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.two },
+  menuIcon: { width: 54, height: 54 },
+  menuBody: { flex: 1, gap: 3 },
+  menuTopLine: { flexDirection: 'row', alignItems: 'flex-end' },
+  menuName: { fontSize: 15, fontWeight: '700', color: BakeryColors.cocoaDark },
+  menuLeader: {
+    flex: 1,
+    marginHorizontal: 6,
+    marginBottom: 4,
+    borderBottomWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: BakeryColors.latte,
+  },
+  menuPrice: { fontSize: 15, fontWeight: '800', color: BakeryColors.cocoaDark },
+  menuSubLine: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  menuCoinText: { fontSize: 13, color: BakeryColors.mocha },
+  chefBadge: {
+    backgroundColor: `${BakeryColors.honey}22`,
+    borderRadius: BakeryRadii.chip,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  chefText: { fontSize: 10, fontWeight: '700', color: BakeryColors.mocha },
+  menuDivider: { height: 1, backgroundColor: `${BakeryColors.shortbread}99` },
   sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionTitle: { fontSize: 15, lineHeight: 20 },
   sectionSub: { fontSize: 11, color: BakeryColors.mocha, lineHeight: 16 },
@@ -861,6 +922,7 @@ const styles = StyleSheet.create({
     ...BakeryShadow,
   },
   packPopular: { borderColor: BakeryColors.honey },
+  packIconImg: { width: 56, height: 56 },
   popularStar: { position: 'absolute', top: 6, right: 6, fontSize: 12 },
   packName: { fontSize: 12, fontWeight: '700', color: BakeryColors.mocha, textAlign: 'center', lineHeight: 16 },
   packCoinRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },

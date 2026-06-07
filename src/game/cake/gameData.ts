@@ -15,21 +15,21 @@ export const BASES: IngredientDef<CakeBase>[] = [
   { id: 'vanilla', label: 'Vanilla', emoji: '🟡', color: '#FDE6B8' },
   { id: 'chocolate', label: 'Chocolate', emoji: '🟤', color: '#C99878' },
   { id: 'strawberry', label: 'Strawberry', emoji: '🩷', color: '#F7B6C6' },
-  { id: 'blueberry', label: 'Blueberry', emoji: '🔵', color: '#B9C6F2' },
+  { id: 'redVelvet', label: 'Red Velvet', emoji: '🍰', color: '#B5352F' },
 ];
 
 export const FILLINGS: IngredientDef<CakeFilling>[] = [
   { id: 'cream', label: 'Cream', emoji: '🥛', color: '#FFF6E9' },
   { id: 'chocCream', label: 'Choc Cream', emoji: '🍫', color: '#B07A5C' },
   { id: 'strawJam', label: 'Strawberry Jam', emoji: '🍓', color: '#F28BA0' },
-  { id: 'blueJam', label: 'Blueberry Jam', emoji: '🫐', color: '#8E9BE0' },
+  { id: 'redVelvet', label: 'Red Velvet', emoji: '🍰', color: '#C0303A' },
 ];
 
 export const TOPPINGS: IngredientDef<CakeTopping>[] = [
   { id: 'strawberry', label: 'Strawberry', emoji: '🍓', color: '#F28BA0' },
   { id: 'cherry', label: 'Cherry', emoji: '🍒', color: '#E26A7E' },
   { id: 'blueberry', label: 'Blueberry', emoji: '🫐', color: '#8E9BE0' },
-  { id: 'chocChunks', label: 'Choc Chunks', emoji: '🍫', color: '#B07A5C' },
+  { id: 'choco', label: 'Chocolate', emoji: '🍫', color: '#6B4A33' },
   { id: 'sprinkles', label: 'Sprinkles', emoji: '✨', color: '#FAD9A0' },
 ];
 
@@ -57,7 +57,7 @@ export const STATIONS: Station[] = [
 // (Wave 2). More variety is added in later waves.
 export const STARTER_RECIPES: { base: CakeBase; filling: CakeFilling; topping: CakeTopping }[] = [
   { base: 'vanilla', filling: 'cream', topping: 'strawberry' },
-  { base: 'chocolate', filling: 'chocCream', topping: 'chocChunks' },
+  { base: 'chocolate', filling: 'chocCream', topping: 'choco' },
   { base: 'strawberry', filling: 'strawJam', topping: 'blueberry' },
 ];
 

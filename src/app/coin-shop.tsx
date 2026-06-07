@@ -1,9 +1,8 @@
 import { router } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinAmount, CoinIcon } from '@/components/coin-icon';
-import { BreadPouchIcon, BreadBagIcon, BreadChestIcon, BreadVaultIcon } from '@/components/coin-pack-icons';
 import { BakeryStarEmoji, BakeryLockEmoji, BakeryWrenchEmoji } from '@/components/bakery-emoji';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -14,18 +13,21 @@ import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } fro
 type CoinPack = { id: string; name: string; coins: number; price: string; popular?: boolean };
 
 const COIN_PACKS: CoinPack[] = [
-  { id: 'pouch', name: 'Small Pouch', coins: 200, price: '$0.99' },
-  { id: 'bag', name: 'Study Bag', coins: 600, price: '$2.49' },
-  { id: 'chest', name: 'Coin Chest', coins: 1400, price: '$4.99', popular: true },
-  { id: 'vault', name: 'Scholar Vault', coins: 3500, price: '$9.99' },
+  { id: 'pouch', name: 'Strawberry Cupcake', coins: 200, price: '$1.00' },
+  { id: 'bag', name: 'Lemon Slice', coins: 600, price: '$3.00' },
+  { id: 'chest', name: 'Chocolate Cake', coins: 1444, price: '$6.70', popular: true },
+  { id: 'vault', name: 'Red Velvet', coins: 5000, price: '$20.00' },
+  { id: 'treasury', name: 'Together With You', coins: 50000, price: '$100.00' },
 ];
 
-function PackIcon({ id }: { id: string }) {
-  if (id === 'pouch') return <BreadPouchIcon size={56} />;
-  if (id === 'bag') return <BreadBagIcon size={56} />;
-  if (id === 'chest') return <BreadChestIcon size={56} />;
-  return <BreadVaultIcon size={56} />;
-}
+// Coin packs are tiered desserts — bigger pack, bigger cake.
+const PACK_IMAGES: Record<string, number> = {
+  pouch: require('@/assets/images/shop/coin-cupcake.png'),
+  bag: require('@/assets/images/shop/coin-slice.png'),
+  chest: require('@/assets/images/shop/coin-cake1.png'),
+  vault: require('@/assets/images/shop/coin-cake2.png'),
+  treasury: require('@/assets/images/shop/coin-cake3.png'),
+};
 
 export default function CoinShopScreen() {
   const { coins, earnedToday, addPurchasedCoins, isPlus } = useApp();
@@ -84,41 +86,39 @@ export default function CoinShopScreen() {
           </ThemedView>
 
           {/* Packs header */}
-          <View style={styles.sectionHeader}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>Coin Packs</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">No expiry · Not capped</ThemedText>
-          </View>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.packNote}>
-            Purchased coins go straight to your balance and never count toward the daily earn cap.
-          </ThemedText>
-
-          {/* Pack cards */}
-          {COIN_PACKS.map((pack) => (
-            <Pressable
-              key={pack.id}
-              style={({ pressed }) => [pressed && styles.pressed]}
-              onPress={() => handleCoinPack(pack)}>
-              <ThemedView
-                type="backgroundElement"
-                style={[styles.packCard, pack.popular && styles.packCardPopular]}>
-                <PackIcon id={pack.id} />
-                <ThemedView style={styles.packInfo}>
-                  <View style={styles.packNameRow}>
-                    <ThemedText type="smallBold" style={styles.packName}>{pack.name}</ThemedText>
-                    {pack.popular && (
-                      <ThemedView style={styles.popularBadge}>
-                        <ThemedText style={styles.popularText}>Popular</ThemedText>
-                      </ThemedView>
-                    )}
+          {/* Bakery menu of coin packs */}
+          <View style={styles.menuCard}>
+            <View style={styles.menuHeader}>
+              <ThemedText style={styles.menuTitle}>♡ Bakery Menu ♡</ThemedText>
+              <ThemedText style={styles.menuSubtitle}>Coins never expire · not capped</ThemedText>
+            </View>
+            {COIN_PACKS.map((pack, i) => (
+              <Pressable
+                key={pack.id}
+                style={({ pressed }) => [pressed && styles.pressed]}
+                onPress={() => handleCoinPack(pack)}>
+                <View style={styles.menuRow}>
+                  <Image source={PACK_IMAGES[pack.id] ?? PACK_IMAGES.pouch} style={styles.menuIcon} resizeMode="contain" />
+                  <View style={styles.menuBody}>
+                    <View style={styles.menuTopLine}>
+                      <ThemedText style={styles.menuName} numberOfLines={1}>{pack.name}</ThemedText>
+                      <View style={styles.menuLeader} />
+                      <ThemedText style={styles.menuPrice}>{pack.price}</ThemedText>
+                    </View>
+                    <View style={styles.menuSubLine}>
+                      <CoinAmount amount={pack.coins} size={18} textStyle={styles.menuCoinText} />
+                      {pack.popular && (
+                        <View style={styles.chefBadge}>
+                          <ThemedText style={styles.chefText}>Chef's pick</ThemedText>
+                        </View>
+                      )}
+                    </View>
                   </View>
-                  <CoinAmount amount={pack.coins} size={22} textStyle={styles.packCoinText} />
-                </ThemedView>
-                <ThemedView style={styles.packPriceBtn}>
-                  <ThemedText style={styles.packPrice}>{pack.price}</ThemedText>
-                </ThemedView>
-              </ThemedView>
-            </Pressable>
-          ))}
+                </View>
+                {i < COIN_PACKS.length - 1 && <View style={styles.menuDivider} />}
+              </Pressable>
+            ))}
+          </View>
 
           {/* Mock disclaimer */}
           <ThemedView type="backgroundElement" style={styles.disclaimerCard}>
@@ -219,45 +219,51 @@ const styles = StyleSheet.create({
   },
   progressFill: { height: '100%', borderRadius: 3, backgroundColor: BakeryColors.honey },
   capNote: { fontSize: 12 },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: Spacing.one,
-  },
-  sectionTitle: { fontSize: 20 },
-  packNote: { lineHeight: 18, marginTop: -Spacing.two },
-  packCard: {
+  // ─── Bakery menu of coin packs ───────────────────────────────────────────
+  menuCard: {
     borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    backgroundColor: BakeryColors.glass,
+    backgroundColor: BakeryColors.frosting,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
     ...BakeryShadow,
   },
-  packCardPopular: { borderWidth: 1.5, borderColor: BakeryColors.honey },
-
-  packInfo: { flex: 1, gap: 4 },
-  packNameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  packName: { fontSize: 15 },
-  popularBadge: {
+  menuHeader: {
+    alignItems: 'center',
+    gap: 2,
+    paddingBottom: Spacing.two,
+    marginBottom: Spacing.one,
+    borderBottomWidth: 1.5,
+    borderBottomColor: BakeryColors.shortbread,
+    borderStyle: 'dashed',
+  },
+  menuTitle: { fontSize: 18, fontWeight: '800', color: BakeryColors.cocoaDark, letterSpacing: 0.5 },
+  menuSubtitle: { fontSize: 12, color: BakeryColors.mocha },
+  menuRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.two },
+  menuIcon: { width: 54, height: 54 },
+  menuBody: { flex: 1, gap: 3 },
+  menuTopLine: { flexDirection: 'row', alignItems: 'flex-end' },
+  menuName: { fontSize: 15, fontWeight: '700', color: BakeryColors.cocoaDark },
+  menuLeader: {
+    flex: 1,
+    marginHorizontal: 6,
+    marginBottom: 4,
+    borderBottomWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: BakeryColors.latte,
+  },
+  menuPrice: { fontSize: 15, fontWeight: '800', color: BakeryColors.cocoaDark },
+  menuSubLine: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  menuCoinText: { fontSize: 13, color: BakeryColors.mocha },
+  chefBadge: {
     backgroundColor: `${BakeryColors.honey}22`,
     borderRadius: BakeryRadii.chip,
-    paddingHorizontal: 6,
+    paddingHorizontal: 7,
     paddingVertical: 2,
   },
-  popularText: { fontSize: 10, fontWeight: '700', color: BakeryColors.mocha },
-  packCoinText: { fontSize: 13, color: BakeryColors.mocha },
-  packPriceBtn: {
-    backgroundColor: BakeryColors.honey,
-    borderRadius: BakeryRadii.chip,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 8,
-    minWidth: 64,
-    alignItems: 'center',
-  },
-  packPrice: { color: BakeryColors.cocoaDark, fontWeight: '700', fontSize: 15 },
+  chefText: { fontSize: 10, fontWeight: '700', color: BakeryColors.mocha },
+  menuDivider: { height: 1, backgroundColor: `${BakeryColors.shortbread}99` },
   disclaimerCard: {
     borderRadius: BakeryRadii.card,
     padding: Spacing.three,

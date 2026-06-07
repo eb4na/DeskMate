@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/coin-icon';
 import { useApp } from '@/context/app-context';
-import { SESSION_LENGTHS } from '@/constants/placeholder-data';
+import { SESSION_LENGTHS, coinsForMinutes } from '@/constants/placeholder-data';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
@@ -105,6 +105,10 @@ export default function SessionPickerScreen() {
                       </View>
                     </View>
                     <Text style={styles.lenLabel} numberOfLines={1}>{opt.label}</Text>
+                    <View style={styles.lenReward}>
+                      <CoinIcon size={16} />
+                      <Text style={styles.lenRewardText}>+{coinsForMinutes(opt.minutes)}</Text>
+                    </View>
                   </ImageBackground>
                 </Pressable>
               );
@@ -254,6 +258,8 @@ const styles = StyleSheet.create({
   lenNumActive: { color: C.berry },
   lenMin: { fontSize: 13, color: C.mocha, fontWeight: '700', marginTop: -2 },
   lenLabel: { fontSize: 14.5, fontWeight: '700', color: C.mocha, textAlign: 'center' },
+  lenReward: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3, marginTop: 3 },
+  lenRewardText: { fontSize: 13, fontWeight: '800', color: C.honey },
 
   // Subject notebook frame
   subjectFrame: {

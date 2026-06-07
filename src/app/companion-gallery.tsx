@@ -63,11 +63,11 @@ function HangerIcon({ color = '#B06A50', size = 18 }: { color?: string; size?: n
 
 // Per-companion taglines shown under each name in the gallery.
 const TAGLINES: Record<string, string> = {
-  Bun: '"Bun study with you forever."',
-  Cocoa: '"Work hard now, treat later."',
-  Bunny: '"bunny know bunny the cutest thing ever"',
-  Miel: '"Nap now, study after…"',
-  Tira: '"Tira dropped out, you should study though."',
+  Bun: 'Trip a lot but still help.',
+  Cocoa: 'Work first, fun later.',
+  Bunny: 'Bunny too cute to care.',
+  Miel: 'Sleep now, study maybe.',
+  Tira: 'Dropped out but still smart.',
 };
 
 type ObtainedCharacter = {

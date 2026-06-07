@@ -1236,6 +1236,11 @@ function KitchenView({
                             <View style={[styles.cookFill, { width: `${cookerProgress(cooker) * 100}%` }]} />
                           </View>
                         )}
+                        {cooker && (
+                          <View style={styles.cookInside} pointerEvents="none">
+                            <BaseIcon id={cooker.base} size={20} />
+                          </View>
+                        )}
                         {nextStationId === st.id && <Text style={styles.counterPoint}>👇</Text>}
                       </Pressable>
                     );
@@ -1284,6 +1289,11 @@ function KitchenView({
                         {cooker && !ready && (
                           <View style={styles.cookTrack}>
                             <View style={[styles.cookFill, { width: `${cookerProgress(cooker) * 100}%` }]} />
+                          </View>
+                        )}
+                        {cooker && (
+                          <View style={styles.cookInside} pointerEvents="none">
+                            <BaseIcon id={cooker.base} size={20} />
                           </View>
                         )}
                         {nextStationId === st.id && <Text style={styles.counterPoint}>👇</Text>}
@@ -2199,6 +2209,20 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   cookFill: { height: '100%', borderRadius: 4, backgroundColor: BakeryColors.honey },
+  cookInside: {
+    position: 'absolute',
+    top: -22,
+    alignSelf: 'center',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FFFDF8',
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 6,
+  },
 
   // Serving counter banner across the top of the kitchen
   counterBanner: { position: 'absolute', left: 0, top: 0, alignItems: 'center', zIndex: 8 },

@@ -100,6 +100,15 @@ export default function VerifyCodeScreen() {
       return;
     }
 
+    // One device per account: revoke any sessions on other devices.
+    if (session) {
+      try {
+        await supabase.auth.signOut({ scope: 'others' });
+      } catch {
+        // Non-fatal — the local session is still valid.
+      }
+    }
+
     setSuccessMessage(session ? 'You are in. Opening DeskMate...' : 'Code verified.');
     setSubmitting(false);
     router.replace('/');

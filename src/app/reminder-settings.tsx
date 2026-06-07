@@ -13,16 +13,12 @@ import { type ReminderEntry } from '@/context/app-context';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { syncStudyReminders } from '@/lib/notifications';
 import {
+  getCompanionReminderEmoji,
   getCompanionReminderLine,
   getCompanionReminderPool,
 } from '@/constants/companion-reminder-lines';
-import {
-  BUN_SKINS,
-  getCompanionSkins,
-  getEffectiveBunSkinId,
-  getEffectiveCompanionSkins,
-  resolveActiveCompanion,
-} from '@/lib/companion-utils';
+import { resolveActiveCompanion } from '@/lib/companion-utils';
+import { type Task } from '@/context/app-context';
 
 function isValidTime(t: string): boolean {
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(t.trim());
@@ -33,6 +29,29 @@ function uid(): string {
 }
 
 const MAX_EXTRA_REMINDERS = 4;
+// How far ahead a task counts as "coming up" for the reminder body.
+const UPCOMING_TASK_DAYS = 3;
+
+function daysUntil(dateISO: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(`${dateISO}T00:00:00`);
+  target.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
+}
+
+// The soonest unfinished task due within UPCOMING_TASK_DAYS, as a reminder line.
+// Returns null when nothing is coming up (caller falls back to the companion line).
+function buildUpcomingTaskLine(tasks: Task[]): string | null {
+  const upcoming = tasks
+    .filter((t) => t.status !== 'done' && t.dueDate)
+    .map((t) => ({ t, days: daysUntil(t.dueDate as string) }))
+    .filter(({ days }) => days >= 0 && days <= UPCOMING_TASK_DAYS)
+    .sort((a, b) => a.days - b.days)[0];
+  if (!upcoming) return null;
+  const when = upcoming.days === 0 ? 'today' : upcoming.days === 1 ? 'tomorrow' : `in ${upcoming.days} days`;
+  return `📚 "${upcoming.t.title}" is due ${when} — let's get a head start!`;
+}
 
 export default function ReminderSettingsScreen() {
   const {
@@ -47,9 +66,7 @@ export default function ReminderSettingsScreen() {
     activeCompanionId,
     defaultCompanionId,
     companionSlots,
-    bunSkinId,
-    companionSkins,
-    ownedShopItems,
+    tasks,
   } = useApp();
   const [enabled, setEnabled] = useState(reminderEnabled);
   const [time, setTime] = useState(reminderTime);
@@ -63,32 +80,23 @@ export default function ReminderSettingsScreen() {
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
   const reminderStyle = getReminderStyleEffect(equippedShopItems);
 
-  // Reminder text comes from whoever is equipped: the active companion + the
-  // skin they're currently wearing. The Chirp/Bells style only affects the
-  // notification sound, so it doesn't drive the words.
+  // Reminder text comes from whoever is equipped — one voice per character,
+  // regardless of outfit. The Chirp/Bells style only affects the sound.
   const voice = (() => {
-    const resolved = resolveActiveCompanion(
-      activeCompanionId,
-      defaultCompanionId,
-      companionSlots,
-      bunSkinId,
-      companionSkins,
-    );
-    if (resolved.type === 'starter') {
-      const skinId = getEffectiveBunSkinId(bunSkinId, ownedShopItems);
-      const emoji = BUN_SKINS.find((s) => s.id === skinId)?.emoji ?? '🍓';
-      return { companionKey: 'bun', skinId, name: resolved.name, emoji };
-    }
-    if (resolved.type === 'shop') {
-      const skinId = getEffectiveCompanionSkins(companionSkins, ownedShopItems)[activeCompanionId] ?? 'classic';
-      const emoji = getCompanionSkins(activeCompanionId).find((s) => s.id === skinId)?.emoji ?? '🔔';
-      return { companionKey: resolved.id, skinId, name: resolved.name, emoji };
-    }
-    // Custom AI slot — no skins; fall back to the generic pool.
-    return { companionKey: null, skinId: null, name: resolved.name, emoji: resolved.slot.emoji || '🔔' };
+    const resolved = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots);
+    const companionKey =
+      resolved.type === 'starter' ? 'bun' : resolved.type === 'shop' ? resolved.id : null;
+    const emoji =
+      resolved.type === 'slot'
+        ? resolved.slot.emoji || '🔔'
+        : getCompanionReminderEmoji(companionKey);
+    return { companionKey, name: resolved.name, emoji };
   })();
-  const reminderPool = getCompanionReminderPool(voice.companionKey, voice.skinId);
-  const previewLine = getCompanionReminderLine(voice.companionKey, voice.skinId);
+  const reminderPool = getCompanionReminderPool(voice.companionKey);
+  // Stable sample line for the screen (so it doesn't reshuffle on every render).
+  const [previewLine] = useState(() => getCompanionReminderLine(voice.companionKey));
+  // If a task is due within the next few days, the reminder names it instead.
+  const taskLine = buildUpcomingTaskLine(tasks);
 
   const handleSave = async () => {
     if (enabled && !isValidTime(time)) return;
@@ -109,6 +117,7 @@ export default function ReminderSettingsScreen() {
       reminderEmoji: voice.emoji,
       reminderLines: reminderPool,
       companionName: voice.name,
+      taskLine: taskLine ?? undefined,
     });
 
     setSaving(false);
@@ -137,7 +146,8 @@ export default function ReminderSettingsScreen() {
       {
         id: uid(),
         time: newTime.trim(),
-        label: newLabel.trim() || 'Study time',
+        // Blank = let the companion (or upcoming task) supply the words.
+        label: newLabel.trim(),
         weekdaysOnly: newWeekdays,
       },
     ]);
@@ -177,11 +187,12 @@ export default function ReminderSettingsScreen() {
     <ThemedView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <SafeAreaView style={styles.safeArea}>
-          {/* Companion quote — a live sample in the equipped companion's voice + outfit */}
+          {/* Companion quote — a live sample of the next reminder. Shows the
+              upcoming task when one's due soon, otherwise the equipped companion's line. */}
           <ThemedView type="backgroundElement" style={styles.quoteCard}>
             <ThemedText style={styles.quoteEmoji}>{voice.emoji}</ThemedText>
             <ThemedText type="default" style={styles.quoteText}>
-              {`"${previewLine}"`}
+              {taskLine ?? `"${previewLine}"`}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               — {voice.name}
@@ -190,8 +201,8 @@ export default function ReminderSettingsScreen() {
 
           <ThemedView type="backgroundElement" style={styles.noticeCard}>
             <ThemedText type="small" themeColor="textSecondary" style={styles.noticeText}>
-              Reminders are written by your active companion and the outfit they’re wearing — change
-              it anytime in the Companion Bakery.
+              Reminders are written by your active companion ({voice.name}) — switch companions in the
+              Companion Bakery. If a task is due soon, the reminder names it instead.
               {reminderStyle ? ` ${reminderStyle.preview} sets the sound.` : ''}
             </ThemedText>
           </ThemedView>
@@ -242,7 +253,7 @@ export default function ReminderSettingsScreen() {
                   <ThemedView style={styles.reminderInfo}>
                     <ThemedText type="smallBold">{formatTimeLabel(r.time, use24HourTime)}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
-                      {r.label}
+                      {r.label?.trim() ? r.label : `${voice.name}’s voice`}
                       {r.weekdaysOnly ? ' · Weekdays only' : ''}
                     </ThemedText>
                   </ThemedView>
@@ -266,7 +277,7 @@ export default function ReminderSettingsScreen() {
                     style={[smallInputStyle, styles.labelInput]}
                     value={newLabel}
                     onChangeText={setNewLabel}
-                    placeholder="Label (optional)"
+                    placeholder={previewLine}
                     placeholderTextColor={colors.textSecondary}
                   />
                   <ThemedView style={styles.weekdaysRow}>
