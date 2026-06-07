@@ -2,7 +2,8 @@
 // Board is row-major: board[row][col], row 0 = top, row ROWS-1 = bottom (gravity
 // pulls discs down to the largest empty row index in a column).
 
-export const COLS = 7;
+// Board art is 8 columns wide; win is still four-in-a-row.
+export const COLS = 8;
 export const ROWS = 6;
 
 export type Player = 1 | 2;

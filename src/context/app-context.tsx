@@ -4,7 +4,7 @@ import { DAILY_EARN_CAP, STATIC_SUBJECTS } from '@/constants/placeholder-data';
 import { SHOP_ITEMS, type ShopCategory } from '@/constants/shop-data';
 import { useAuth } from '@/context/auth-context';
 import { getAppStateScope, loadScopedAppState, saveScopedAppState } from '@/lib/app-state-repository';
-import { getEffectiveBunSkinId } from '@/lib/companion-utils';
+import { getEffectiveBunSkinId, getEffectiveCompanionSkins } from '@/lib/companion-utils';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -24,6 +24,8 @@ export type ExamCountdown = {
   name: string;
   subject: string;
   dateISO: string;
+  /** Time of day the exam starts, as "HH:MM" (24-hour). Optional for legacy data. */
+  time?: string;
   reminderEnabled: boolean;
 };
 
@@ -50,6 +52,8 @@ export type Task = {
   title: string;
   subjectId: string | null;
   dueDate: string | null;
+  /** Optional time of day the task is due, as "HH:MM" (24-hour). */
+  dueTime: string | null;
   estimatedMinutes: number | null;
   priority: TaskPriority;
   status: TaskStatus;
@@ -88,6 +92,16 @@ export type Friend = {
   code: string;
   name: string;
   addedAt: string;
+  // Synced from the friend's cloud profile (when available).
+  displayName?: string;
+  companionId?: string;
+  skinId?: string;
+  backgroundId?: string;
+  description?: string;
+  birthday?: string;
+  currentStreak?: number;
+  longestStreak?: number;
+  totalMinutes?: number;
 };
 
 // Short, shareable friend code. A–Z + 2–9, with ambiguous chars (I/O/0/1) removed.
@@ -161,6 +175,7 @@ type PersistedState = {
   examCountdowns: ExamCountdown[];
   reminderEnabled: boolean;
   reminderTime: string;
+  use24HourTime: boolean;
   streak: StreakData;
   earnedToday: number;
   earnedDate: string;
@@ -183,6 +198,9 @@ type PersistedState = {
   activeCompanionId: ActiveCompanionId;
   companionSlots: CompanionSlot[];
   bunSkinId: string;
+  companionSkins: Record<string, string>;
+  equippedBackgroundRoomId: string;
+  equippedDeskRoomId: string;
   aiTickets: number;
   aiTicketsResetMonth: string;
   purchasedAiTickets: number;
@@ -204,6 +222,14 @@ type PersistedState = {
   // Friends
   friendCode: string;
   friends: Friend[];
+
+  // Profile card (shareable ID card)
+  profileDisplayName: string;
+  profileDescription: string;
+  profileBirthday: string; // YYYY-MM-DD or ''
+  profileBackgroundId: string; // room id used as the card backdrop
+  profileCompanionId: string; // chosen character for the card ('' = use active)
+  profileSkinId: string; // chosen outfit/skin for that character
 
   // Cake Kitchen mini-game best scores + chosen character
   cakeBestRush: number;
@@ -236,6 +262,7 @@ const DEFAULTS: PersistedState = {
   examCountdowns: [],
   reminderEnabled: false,
   reminderTime: '20:00',
+  use24HourTime: false,
   streak: { currentStreak: 0, longestStreak: 0, lastStudyDate: null },
   earnedToday: 0,
   earnedDate: '',
@@ -269,6 +296,9 @@ const DEFAULTS: PersistedState = {
   activeCompanionId: 'starter:girl',
   companionSlots: [],
   bunSkinId: 'classic',
+  companionSkins: {},
+  equippedBackgroundRoomId: 'cozy',
+  equippedDeskRoomId: 'cozy',
   aiTickets: 0,
   aiTicketsResetMonth: '',
   purchasedAiTickets: 0,
@@ -284,6 +314,12 @@ const DEFAULTS: PersistedState = {
   dayNotes: {},
   friendCode: '',
   friends: [],
+  profileDisplayName: '',
+  profileDescription: '',
+  profileBirthday: '',
+  profileBackgroundId: 'cozy',
+  profileCompanionId: '',
+  profileSkinId: 'classic',
   cakeBestRush: 0,
   cakeBestLine: 0,
   cakeCharacter: 'bun',
@@ -338,6 +374,12 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
     merged.aiTicketsResetMonth = month;
   }
 
+  // Plus exclusive: ensure Plus members own Tira (covers players who had Plus
+  // before she became a Plus perk).
+  if (merged.isPlus && !(merged.ownedShopItems ?? []).includes('companion_tira')) {
+    merged.ownedShopItems = [...(merged.ownedShopItems ?? []), 'companion_tira'];
+  }
+
   merged.equippedShopItems = {
     ...DEFAULTS.equippedShopItems,
     ...(merged.equippedShopItems ?? {}),
@@ -382,6 +424,7 @@ type AppContextType = {
   examCountdowns: ExamCountdown[];
   reminderEnabled: boolean;
   reminderTime: string;
+  use24HourTime: boolean;
   streak: StreakData;
   earnedToday: number;
 
@@ -405,6 +448,9 @@ type AppContextType = {
   activeCompanionId: ActiveCompanionId;
   companionSlots: CompanionSlot[];
   bunSkinId: string;
+  companionSkins: Record<string, string>;
+  equippedBackgroundRoomId: string;
+  equippedDeskRoomId: string;
   aiTickets: number;
   purchasedAiTickets: number;
   chatMessages: number;
@@ -425,6 +471,21 @@ type AppContextType = {
   friends: Friend[];
   addFriend: (code: string) => { ok: boolean; error?: string };
   removeFriend: (code: string) => void;
+  setFriendProfile: (code: string, data: Partial<Friend>) => void;
+  profileDisplayName: string;
+  profileDescription: string;
+  profileBirthday: string;
+  profileBackgroundId: string;
+  profileCompanionId: string;
+  profileSkinId: string;
+  updateProfile: (patch: Partial<{
+    displayName: string;
+    description: string;
+    birthday: string;
+    backgroundId: string;
+    companionId: string;
+    skinId: string;
+  }>) => void;
   cakeBestRush: number;
   cakeBestLine: number;
   cakeCharacter: string;
@@ -440,6 +501,7 @@ type AppContextType = {
   addExam: (exam: Omit<ExamCountdown, 'id'>) => string | null;
   removeExam: (id: string) => void;
   setReminder: (enabled: boolean, time: string) => void;
+  setUse24HourTime: (value: boolean) => void;
   updateStreak: () => { bonus: number; isComeback: boolean };
 
   // Wave 2 subject actions
@@ -451,7 +513,7 @@ type AppContextType = {
 
   // Wave 2 task actions
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completedAt' | 'postponeCount' | 'lastActivityAt' | 'notifId'>) => string;
-  updateTask: (id: string, patch: Partial<Pick<Task, 'title' | 'subjectId' | 'dueDate' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'notifId'>>) => void;
+  updateTask: (id: string, patch: Partial<Pick<Task, 'title' | 'subjectId' | 'dueDate' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'notifId'>>) => void;
   deleteTask: (id: string) => void;
   completeTask: (id: string) => void;
   postponeTask: (id: string) => void;
@@ -485,6 +547,9 @@ type AppContextType = {
   setDefaultCompanion: (id: DefaultCompanionId) => void;
   setActiveCompanion: (id: ActiveCompanionId) => void;
   setBunSkin: (skinId: string) => void;
+  setCompanionSkin: (companionId: string, skinId: string) => void;
+  setEquippedBackground: (roomId: string) => void;
+  setEquippedDesk: (roomId: string) => void;
   saveCompanionSlot: (slot: Omit<CompanionSlot, 'id'>) => string | null;
   deleteCompanionSlot: (id: string) => void;
   setCompanionPfp: (id: string, pfp: PfpFocus) => void;
@@ -596,6 +661,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const setReminder = (enabled: boolean, time: string) =>
     setS((prev) => ({ ...prev, reminderEnabled: enabled, reminderTime: time }));
+
+  const setUse24HourTime = (value: boolean) =>
+    setS((prev) => ({ ...prev, use24HourTime: value }));
+
+  const updateProfile = (patch: Partial<{
+    displayName: string;
+    description: string;
+    birthday: string;
+    backgroundId: string;
+    companionId: string;
+    skinId: string;
+  }>) =>
+    setS((prev) => ({
+      ...prev,
+      ...(patch.displayName !== undefined ? { profileDisplayName: patch.displayName } : {}),
+      ...(patch.description !== undefined ? { profileDescription: patch.description } : {}),
+      ...(patch.birthday !== undefined ? { profileBirthday: patch.birthday } : {}),
+      ...(patch.backgroundId !== undefined ? { profileBackgroundId: patch.backgroundId } : {}),
+      ...(patch.companionId !== undefined ? { profileCompanionId: patch.companionId } : {}),
+      ...(patch.skinId !== undefined ? { profileSkinId: patch.skinId } : {}),
+    }));
 
   const updateStreak = (): { bonus: number; isComeback: boolean } => {
     let bonus = 0;
@@ -719,7 +805,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return id;
   };
 
-  const updateTask = (id: string, patch: Partial<Pick<Task, 'title' | 'subjectId' | 'dueDate' | 'estimatedMinutes' | 'priority' | 'status'>>) =>
+  const updateTask = (id: string, patch: Partial<Pick<Task, 'title' | 'subjectId' | 'dueDate' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'notifId'>>) =>
     setS((prev) => ({
       ...prev,
       tasks: prev.tasks.map((t) =>
@@ -814,6 +900,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updates.aiTickets = 3;
         updates.aiTicketsResetMonth = month;
       }
+      // Plus exclusive: getting Plus grants Tira (the companion) for free. She is
+      // kept even if Plus later lapses; her outfits must still be bought.
+      if (value && !prev.ownedShopItems.includes('companion_tira')) {
+        updates.ownedShopItems = [...prev.ownedShopItems, 'companion_tira'];
+      }
       return { ...prev, ...updates };
     });
   };
@@ -870,6 +961,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setS((prev) => ({ ...prev, defaultCompanionId: id, activeCompanionId: `starter:${id}` }));
 
   const setBunSkin = (skinId: string) => setS((prev) => ({ ...prev, bunSkinId: skinId }));
+
+  const setCompanionSkin = (companionId: string, skinId: string) =>
+    setS((prev) => ({ ...prev, companionSkins: { ...prev.companionSkins, [companionId]: skinId } }));
+
+  const setEquippedBackground = (roomId: string) => setS((prev) => ({ ...prev, equippedBackgroundRoomId: roomId }));
+  const setEquippedDesk = (roomId: string) => setS((prev) => ({ ...prev, equippedDeskRoomId: roomId }));
 
   const setActiveCompanion = (id: ActiveCompanionId) =>
     setS((prev) => {
@@ -1024,6 +1121,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const removeFriend = (code: string) =>
     setS((prev) => ({ ...prev, friends: prev.friends.filter((f) => f.code !== code) }));
 
+  const setFriendProfile = (code: string, data: Partial<Friend>) =>
+    setS((prev) => ({
+      ...prev,
+      friends: prev.friends.map((f) => (f.code === code ? { ...f, ...data } : f)),
+    }));
+
   const setCakeCharacter = (id: string) => setS((prev) => ({ ...prev, cakeCharacter: id }));
 
   const recordCakeBest = (mode: 'rush' | 'line', score: number) =>
@@ -1097,6 +1200,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         examCountdowns: s.examCountdowns,
         reminderEnabled: s.reminderEnabled,
         reminderTime: s.reminderTime,
+        use24HourTime: s.use24HourTime,
         streak: s.streak,
         earnedToday: s.earnedDate === todayISO() ? s.earnedToday : 0,
         subjects: s.subjects,
@@ -1113,6 +1217,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addExam,
         removeExam,
         setReminder,
+        setUse24HourTime,
         updateStreak,
         addSubject,
         renameSubject,
@@ -1141,6 +1246,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         activeCompanionId: s.activeCompanionId,
         companionSlots: s.companionSlots,
         bunSkinId: getEffectiveBunSkinId(s.bunSkinId, s.ownedShopItems),
+        companionSkins: getEffectiveCompanionSkins(s.companionSkins, s.ownedShopItems),
+        equippedBackgroundRoomId: s.equippedBackgroundRoomId ?? 'cozy',
+        equippedDeskRoomId: s.equippedDeskRoomId ?? 'cozy',
         aiTickets: s.aiTickets,
         purchasedAiTickets: s.purchasedAiTickets,
         chatMessages: s.chatMessages,
@@ -1161,6 +1269,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         friends: s.friends ?? [],
         addFriend,
         removeFriend,
+        setFriendProfile,
+        profileDisplayName: s.profileDisplayName ?? '',
+        profileDescription: s.profileDescription ?? '',
+        profileBirthday: s.profileBirthday ?? '',
+        profileBackgroundId: s.profileBackgroundId ?? 'cozy',
+        profileCompanionId: s.profileCompanionId ?? '',
+        profileSkinId: s.profileSkinId ?? 'classic',
+        updateProfile,
         cakeBestRush: s.cakeBestRush ?? 0,
         cakeBestLine: s.cakeBestLine ?? 0,
         cakeCharacter: s.cakeCharacter ?? 'bun',
@@ -1176,6 +1292,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setDefaultCompanion,
         setActiveCompanion,
         setBunSkin,
+        setCompanionSkin,
+        setEquippedBackground,
+        setEquippedDesk,
         saveCompanionSlot,
         deleteCompanionSlot,
         setCompanionPfp,

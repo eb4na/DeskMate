@@ -6,7 +6,7 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Dimensions, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Companion } from '@/components/companion';
@@ -15,6 +15,8 @@ import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { getCompanionLine } from '@/constants/companion-lines';
 import { Connect4Game } from '@/game/connect4/Connect4Game';
+import { joinGameRoom, type GameRoom } from '@/lib/game-net';
+import { HeartToken, StarToken, MemoryIcon, MEMORY_ICON_COUNT } from '@/game/cute-icons';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -59,14 +61,50 @@ function getAIMove(board: Cell[]): number {
   return empty[Math.floor(Math.random() * empty.length)];
 }
 
-function TicTacToeGame() {
+function TicTacToeGame({ online }: { online?: { room: string; isHost: boolean } } = {}) {
   const [board, setBoard] = useState<Cell[]>(Array(9).fill(null));
   const [isPlayerTurn, setIsPlayerTurn] = useState(true);
   const [mode, setMode] = useState<TicTacToeMode>('ai');
   const aiMovePending = useRef(false);
 
+  // Online: host plays Hearts (X, moves first), guest plays Stars (O).
+  const mySymbol: 'X' | 'O' | null = online ? (online.isHost ? 'X' : 'O') : null;
+  const roomRef = useRef<GameRoom | null>(null);
+  const [opponentPresent, setOpponentPresent] = useState(false);
+
   const { winner, line: winLine } = checkWinner(board);
   const gameOver = !!winner;
+
+  const xCount = board.filter((c) => c === 'X').length;
+  const oCount = board.filter((c) => c === 'O').length;
+  const nextSymbol: 'X' | 'O' = xCount === oCount ? 'X' : 'O';
+  const myTurnOnline = mySymbol === nextSymbol;
+
+  const applyMove = (idx: number, symbol: 'X' | 'O') => {
+    setBoard((prev) => {
+      if (prev[idx] || checkWinner(prev).winner) return prev;
+      const nb = [...prev];
+      nb[idx] = symbol;
+      return nb;
+    });
+  };
+
+  useEffect(() => {
+    if (!online) return;
+    roomRef.current = joinGameRoom(online.room, online.isHost, {
+      onMessage: (type, data) => {
+        if (type === 'move') {
+          const d = data as { idx: number; symbol: 'X' | 'O' };
+          applyMove(d.idx, d.symbol);
+        } else if (type === 'rematch') {
+          setBoard(Array(9).fill(null));
+        }
+      },
+      onPresence: setOpponentPresent,
+    });
+    return () => roomRef.current?.leave();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const resetBoard = () => {
     aiMovePending.current = false;
@@ -82,6 +120,12 @@ function TicTacToeGame() {
 
   const handlePress = (idx: number) => {
     if (board[idx] || gameOver) return;
+    if (online) {
+      if (!mySymbol || !myTurnOnline || !opponentPresent) return;
+      applyMove(idx, mySymbol);
+      roomRef.current?.send('move', { idx, symbol: mySymbol });
+      return;
+    }
     if (mode === 'ai' && !isPlayerTurn) return;
     const newBoard = [...board];
     newBoard[idx] = isPlayerTurn ? 'X' : 'O';
@@ -90,6 +134,7 @@ function TicTacToeGame() {
   };
 
   useEffect(() => {
+    if (online) return;
     if (mode !== 'ai') return;
     if (isPlayerTurn || gameOver) return;
     const { winner: w } = checkWinner(board);
@@ -109,54 +154,77 @@ function TicTacToeGame() {
       clearTimeout(t);
       aiMovePending.current = false;
     };
-  }, [board, gameOver, isPlayerTurn, mode]);
+  }, [board, gameOver, isPlayerTurn, mode, online]);
 
   const reset = () => {
+    if (online) {
+      setBoard(Array(9).fill(null));
+      roomRef.current?.send('rematch');
+      return;
+    }
     resetBoard();
   };
 
-  const statusText = gameOver
-    ? winner === 'draw'
-      ? "It's a draw!"
-      : mode === 'ai'
-        ? winner === 'X'
+  const statusText = online
+    ? gameOver
+      ? winner === 'draw'
+        ? "It's a draw!"
+        : winner === mySymbol
           ? 'You win! 🎉'
-          : 'Companion wins! 😄'
-        : winner === 'X'
-          ? 'Player X wins! 🎉'
-          : 'Player O wins! 🎉'
-    : mode === 'ai'
-      ? isPlayerTurn
-        ? 'Your turn (X)'
-        : 'Companion thinking...'
-      : isPlayerTurn
-        ? 'Player X turn'
-        : 'Player O turn';
+          : 'Friend wins!'
+      : !opponentPresent
+        ? 'Waiting for friend…'
+        : myTurnOnline
+          ? 'Your turn'
+          : "Friend's turn"
+    : gameOver
+      ? winner === 'draw'
+        ? "It's a draw!"
+        : mode === 'ai'
+          ? winner === 'X'
+            ? 'You win!'
+            : 'Companion wins!'
+          : winner === 'X'
+            ? 'Player 1 wins!'
+            : 'Player 2 wins!'
+      : mode === 'ai'
+        ? isPlayerTurn
+          ? 'Your turn'
+          : 'Companion thinking...'
+        : isPlayerTurn
+          ? 'Player 1 turn'
+          : 'Player 2 turn';
 
   return (
     <ThemedView style={tttStyles.container}>
-      <ThemedView style={tttStyles.modeRow}>
-        <Pressable onPress={() => handleModeChange('ai')}>
-          <ThemedView
-            style={[tttStyles.modeChip, mode === 'ai' && tttStyles.modeChipActive]}>
-            <ThemedText
-              type="smallBold"
-              style={[tttStyles.modeChipText, mode === 'ai' && tttStyles.modeChipTextActive]}>
-              vs AI
-            </ThemedText>
-          </ThemedView>
-        </Pressable>
-        <Pressable onPress={() => handleModeChange('friend')}>
-          <ThemedView
-            style={[tttStyles.modeChip, mode === 'friend' && tttStyles.modeChipActive]}>
-            <ThemedText
-              type="smallBold"
-              style={[tttStyles.modeChipText, mode === 'friend' && tttStyles.modeChipTextActive]}>
-              vs Friend
-            </ThemedText>
-          </ThemedView>
-        </Pressable>
-      </ThemedView>
+      {online ? (
+        <ThemedText type="smallBold" style={tttStyles.subtitle}>
+          You are {mySymbol === 'X' ? '💗 Hearts' : '⭐ Stars'}
+        </ThemedText>
+      ) : (
+        <ThemedView style={tttStyles.modeRow}>
+          <Pressable onPress={() => handleModeChange('ai')}>
+            <ThemedView
+              style={[tttStyles.modeChip, mode === 'ai' && tttStyles.modeChipActive]}>
+              <ThemedText
+                type="smallBold"
+                style={[tttStyles.modeChipText, mode === 'ai' && tttStyles.modeChipTextActive]}>
+                vs AI
+              </ThemedText>
+            </ThemedView>
+          </Pressable>
+          <Pressable onPress={() => handleModeChange('friend')}>
+            <ThemedView
+              style={[tttStyles.modeChip, mode === 'friend' && tttStyles.modeChipActive]}>
+              <ThemedText
+                type="smallBold"
+                style={[tttStyles.modeChipText, mode === 'friend' && tttStyles.modeChipTextActive]}>
+                vs Friend
+              </ThemedText>
+            </ThemedView>
+          </Pressable>
+        </ThemedView>
+      )}
       <ThemedText type="smallBold" style={tttStyles.subtitle}>
         {statusText}
       </ThemedText>
@@ -168,9 +236,7 @@ function TicTacToeGame() {
               key={i}
               style={({ pressed }) => [tttStyles.cell, isWinCell && tttStyles.cellWin, pressed && tttStyles.cellPressed]}
               onPress={() => handlePress(i)}>
-              <ThemedText style={[tttStyles.cellText, cell === 'X' ? tttStyles.cellX : tttStyles.cellO]}>
-                {cell ?? ''}
-              </ThemedText>
+              {cell === 'X' ? <HeartToken size={48} /> : cell === 'O' ? <StarToken size={48} /> : null}
             </Pressable>
           );
         })}
@@ -229,7 +295,8 @@ const tttStyles = StyleSheet.create({
 });
 
 // ─── Memory Cards ─────────────────────────────────────────────────────────────
-const EMOJI_PAIRS = ['🐶', '🐱', '🐻', '🦊', '🐼', '🦁', '🐸', '🦋'];
+// Each value is a cute-icon index (rendered with <MemoryIcon/>); 8 pairs.
+const EMOJI_PAIRS = Array.from({ length: MEMORY_ICON_COUNT }, (_, i) => String(i));
 type MemoryMode = 'ai' | 'friend';
 type MemoryPlayer = 'one' | 'two';
 
@@ -241,7 +308,7 @@ function initCards(): MemCard[] {
     .map((emoji, id) => ({ id, emoji, flipped: false, matched: false }));
 }
 
-const { width: SCREEN_W } = Dimensions.get('window');
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const CARD_SIZE = Math.max(60, Math.floor((Math.min(SCREEN_W, 400) - 48 - 18) / 4));
 
 function pickRandomCardId(ids: number[]): number | null {
@@ -283,7 +350,7 @@ function getAiMemoryChoices(cards: MemCard[], seenCards: Record<string, number[]
   return secondId === null ? null : [firstId, secondId];
 }
 
-function MemoryCardsGame() {
+function MemoryCardsGame({ online }: { online?: { room: string; isHost: boolean } } = {}) {
   const [cards, setCards] = useState<MemCard[]>(() => initCards());
   const [flippedIds, setFlippedIds] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
@@ -295,11 +362,31 @@ function MemoryCardsGame() {
   const timeoutIds = useRef<Array<ReturnType<typeof setTimeout>>>([]);
   const aiPlannedSecondId = useRef<number | null>(null);
 
+  // Online: host = player 'one' (goes first) and owns the shuffle.
+  const myPlayer: MemoryPlayer | null = online ? (online.isHost ? 'one' : 'two') : null;
+  const roomRef = useRef<GameRoom | null>(null);
+  const cardsRef = useRef(cards);
+  cardsRef.current = cards;
+  const [opponentPresent, setOpponentPresent] = useState(false);
+  const deckSent = useRef(false);
+  const handleRef = useRef<(id: number, fromAi?: boolean, fromRemote?: boolean) => void>(() => {});
+
   const matchedCount = cards.filter((c) => c.matched).length;
   const isComplete = matchedCount === 16;
   const pairCount = matchedCount / 2;
-  const playerOneLabel = mode === 'ai' ? 'You' : 'Player 1';
-  const playerTwoLabel = mode === 'ai' ? 'Companion' : 'Player 2';
+  const playerOneLabel = online ? (myPlayer === 'one' ? 'You' : 'Friend') : mode === 'ai' ? 'You' : 'Player 1';
+  const playerTwoLabel = online ? (myPlayer === 'two' ? 'You' : 'Friend') : mode === 'ai' ? 'Companion' : 'Player 2';
+
+  const applyDeck = (order: string[]) => {
+    clearPendingTimeouts();
+    checking.current = false;
+    setCards(order.map((emoji, id) => ({ id, emoji, flipped: false, matched: false })));
+    setFlippedIds([]);
+    setMoves(0);
+    setCurrentPlayer('one');
+    setScores({ one: 0, two: 0 });
+    setSeenCards({});
+  };
 
   const clearPendingTimeouts = () => {
     timeoutIds.current.forEach((id) => clearTimeout(id));
@@ -322,6 +409,16 @@ function MemoryCardsGame() {
   };
 
   const reset = () => {
+    if (online) {
+      if (online.isHost) {
+        const order = initCards().map((c) => c.emoji);
+        applyDeck(order);
+        roomRef.current?.send('deck', { order });
+      } else {
+        roomRef.current?.send('rematch');
+      }
+      return;
+    }
     clearPendingTimeouts();
     checking.current = false;
     aiPlannedSecondId.current = null;
@@ -339,11 +436,17 @@ function MemoryCardsGame() {
     reset();
   };
 
-  const handleCardPress = (id: number) => {
-    if (mode === 'ai' && currentPlayer === 'two') return;
+  const handleCardPress = (id: number, fromAi = false, fromRemote = false) => {
+    if (online) {
+      if (!fromRemote && (currentPlayer !== myPlayer || !opponentPresent)) return;
+    } else if (mode === 'ai' && currentPlayer === 'two' && !fromAi) {
+      return;
+    }
     if (checking.current) return;
     const card = cards[id];
     if (card.flipped || card.matched || flippedIds.length >= 2) return;
+
+    if (online && !fromRemote) roomRef.current?.send('flip', { id });
 
     rememberCard(id, card.emoji);
     const newFlipped = [...flippedIds, id];
@@ -382,13 +485,43 @@ function MemoryCardsGame() {
     }
   };
 
+  handleRef.current = handleCardPress;
+
   useEffect(() => {
     return () => {
       clearPendingTimeouts();
     };
   }, []);
 
+  // Online room: shared shuffle (host owns it) + synced flips.
   useEffect(() => {
+    if (!online) return;
+    roomRef.current = joinGameRoom(online.room, online.isHost, {
+      onMessage: (type, data) => {
+        if (type === 'flip') {
+          handleRef.current((data as { id: number }).id, false, true);
+        } else if (type === 'deck') {
+          applyDeck((data as { order: string[] }).order);
+        } else if (type === 'rematch' && online.isHost) {
+          const order = initCards().map((c) => c.emoji);
+          applyDeck(order);
+          roomRef.current?.send('deck', { order });
+        }
+      },
+      onPresence: (present) => {
+        setOpponentPresent(present);
+        if (present && online.isHost && !deckSent.current) {
+          deckSent.current = true;
+          roomRef.current?.send('deck', { order: cardsRef.current.map((c) => c.emoji) });
+        }
+      },
+    });
+    return () => roomRef.current?.leave();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (online) return;
     if (mode !== 'ai' || currentPlayer !== 'two' || checking.current || flippedIds.length > 0 || isComplete) {
       return;
     }
@@ -399,7 +532,7 @@ function MemoryCardsGame() {
     aiPlannedSecondId.current = secondId;
 
     const firstTimeout = setTimeout(() => {
-      handleCardPress(firstId);
+      handleCardPress(firstId, true);
     }, 450);
 
     timeoutIds.current.push(firstTimeout);
@@ -410,6 +543,7 @@ function MemoryCardsGame() {
   }, [cards, currentPlayer, flippedIds.length, isComplete, mode, seenCards]);
 
   useEffect(() => {
+    if (online) return;
     if (mode !== 'ai' || currentPlayer !== 'two' || checking.current || flippedIds.length !== 1 || isComplete) {
       return;
     }
@@ -418,7 +552,7 @@ function MemoryCardsGame() {
     if (secondId === null) return;
 
     const secondTimeout = setTimeout(() => {
-      handleCardPress(secondId);
+      handleCardPress(secondId, true);
       aiPlannedSecondId.current = null;
     }, 550);
 
@@ -429,46 +563,62 @@ function MemoryCardsGame() {
     };
   }, [currentPlayer, flippedIds.length, isComplete, mode]);
 
-  const statusText = isComplete
-    ? scores.one === scores.two
-      ? "It's a tie! 🎉"
+  const myScore = myPlayer ? scores[myPlayer] : 0;
+  const oppScore = myPlayer ? scores[myPlayer === 'one' ? 'two' : 'one'] : 0;
+  const statusText = online
+    ? !opponentPresent
+      ? 'Waiting for friend…'
+      : isComplete
+        ? myScore === oppScore
+          ? "It's a tie!"
+          : myScore > oppScore
+            ? 'You win! 🎉'
+            : 'Friend wins!'
+        : currentPlayer === myPlayer
+          ? 'Your turn'
+          : "Friend's turn"
+    : isComplete
+      ? scores.one === scores.two
+        ? "It's a tie!"
+        : mode === 'ai'
+          ? scores.one > scores.two
+            ? 'You win!'
+            : 'Companion wins!'
+          : scores.one > scores.two
+            ? 'Player 1 wins!'
+            : 'Player 2 wins!'
       : mode === 'ai'
-        ? scores.one > scores.two
-          ? 'You win! 🎉'
-          : 'Companion wins! 🎉'
-        : scores.one > scores.two
-          ? 'Player 1 wins! 🎉'
-          : 'Player 2 wins! 🎉'
-    : mode === 'ai'
-      ? currentPlayer === 'one'
-        ? 'Your turn'
-        : 'Companion turn'
-      : currentPlayer === 'one'
-        ? 'Player 1 turn'
-        : 'Player 2 turn';
+        ? currentPlayer === 'one'
+          ? 'Your turn'
+          : 'Companion turn'
+        : currentPlayer === 'one'
+          ? 'Player 1 turn'
+          : 'Player 2 turn';
 
   return (
     <ThemedView style={memStyles.container}>
-      <ThemedView style={tttStyles.modeRow}>
-        <Pressable onPress={() => handleModeChange('ai')}>
-          <ThemedView style={[tttStyles.modeChip, mode === 'ai' && tttStyles.modeChipActive]}>
-            <ThemedText
-              type="smallBold"
-              style={[tttStyles.modeChipText, mode === 'ai' && tttStyles.modeChipTextActive]}>
-              vs AI
-            </ThemedText>
-          </ThemedView>
-        </Pressable>
-        <Pressable onPress={() => handleModeChange('friend')}>
-          <ThemedView style={[tttStyles.modeChip, mode === 'friend' && tttStyles.modeChipActive]}>
-            <ThemedText
-              type="smallBold"
-              style={[tttStyles.modeChipText, mode === 'friend' && tttStyles.modeChipTextActive]}>
-              vs Friend
-            </ThemedText>
-          </ThemedView>
-        </Pressable>
-      </ThemedView>
+      {!online && (
+        <ThemedView style={tttStyles.modeRow}>
+          <Pressable onPress={() => handleModeChange('ai')}>
+            <ThemedView style={[tttStyles.modeChip, mode === 'ai' && tttStyles.modeChipActive]}>
+              <ThemedText
+                type="smallBold"
+                style={[tttStyles.modeChipText, mode === 'ai' && tttStyles.modeChipTextActive]}>
+                vs AI
+              </ThemedText>
+            </ThemedView>
+          </Pressable>
+          <Pressable onPress={() => handleModeChange('friend')}>
+            <ThemedView style={[tttStyles.modeChip, mode === 'friend' && tttStyles.modeChipActive]}>
+              <ThemedText
+                type="smallBold"
+                style={[tttStyles.modeChipText, mode === 'friend' && tttStyles.modeChipTextActive]}>
+                vs Friend
+              </ThemedText>
+            </ThemedView>
+          </Pressable>
+        </ThemedView>
+      )}
       <ThemedText type="smallBold" style={memStyles.statusText}>
         {statusText}
       </ThemedText>
@@ -499,9 +649,11 @@ function MemoryCardsGame() {
               pressed && memStyles.cardPressed,
             ]}
             onPress={() => handleCardPress(card.id)}>
-            <ThemedText style={memStyles.cardText}>
-              {card.flipped || card.matched ? card.emoji : '?'}
-            </ThemedText>
+            {card.flipped || card.matched ? (
+              <MemoryIcon index={Number(card.emoji)} size={CARD_SIZE * 0.62} />
+            ) : (
+              <View style={memStyles.cardCover} />
+            )}
           </Pressable>
         ))}
       </ThemedView>
@@ -535,26 +687,40 @@ const memStyles = StyleSheet.create({
   cardMatched: { backgroundColor: 'rgba(129,199,132,0.3)' },
   cardPressed: { opacity: 0.8 },
   cardText: { fontSize: CARD_SIZE * 0.45 },
+  cardCover: {
+    width: '60%', height: '60%', borderRadius: 999,
+    backgroundColor: '#F6C8C2', borderWidth: 2, borderColor: '#F2A0B5',
+  },
   completeRow: { alignItems: 'center', gap: Spacing.two },
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 const ALLOWED_BREAK_MINUTES = [5, 10, 15];
+const CONNECT4_BG = require('@/assets/images/connect4/background.png');
 
 export default function BreakGameScreen() {
-  const { breakMinutes, fromSession, browse } = useLocalSearchParams<{
+  const { breakMinutes, fromSession, browse, game, room, role } = useLocalSearchParams<{
     breakMinutes: string;
     fromSession?: string;
     browse?: string;
+    game?: string;
+    room?: string;
+    role?: string;
   }>();
   const { ownedShopItems, isPlus } = useApp();
 
+  // Online entry — opened from a friend invite straight into a networked game.
+  const onlineSession =
+    game && room && role && (game === 'connect4' || game === 'tictactoe' || game === 'memory')
+      ? { game: game as GameId, room, isHost: role === 'host' }
+      : null;
+
   // "browse" = opened from the Home game button (not a real study break): no
   // break timer, no study framing — just pick a game.
-  const isBrowse = browse === '1';
+  const isBrowse = browse === '1' || !!onlineSession;
   const parsedMinutes = parseInt(breakMinutes ?? '', 10);
   const validEntry =
-    isBrowse || (fromSession === '1' && ALLOWED_BREAK_MINUTES.includes(parsedMinutes));
+    !!onlineSession || isBrowse || (fromSession === '1' && ALLOWED_BREAK_MINUTES.includes(parsedMinutes));
 
   const returnToTabs = () => {
     if (router.canDismiss()) {
@@ -570,8 +736,8 @@ export default function BreakGameScreen() {
 
   const totalSeconds = validEntry ? parsedMinutes * 60 : 0;
   const [secondsLeft, setSecondsLeft] = useState(totalSeconds);
-  const [phase, setPhase] = useState<Phase>('select');
-  const [selectedGame, setSelectedGame] = useState<GameId | null>(null);
+  const [phase, setPhase] = useState<Phase>(onlineSession ? 'playing' : 'select');
+  const [selectedGame, setSelectedGame] = useState<GameId | null>(onlineSession?.game ?? null);
   const breakOverLine = useMemo(() => getCompanionLine('breakOver'), []);
 
   const startResting = () => {
@@ -606,12 +772,40 @@ export default function BreakGameScreen() {
   const ss = secondsLeft % 60;
   const pct = totalSeconds > 0 ? (secondsLeft / totalSeconds) * 100 : 0;
 
-  const GAMES: { id: GameId; name: string; emoji: string; free: boolean; shopItemId: string | null; route?: string; icon?: number }[] = [
-    { id: 'cakekitchen', name: 'BatterDash', emoji: '🎂', free: true, shopItemId: null, route: '/cake-game', icon: require('@/assets/images/cake/game-icon.png') },
-    { id: 'tictactoe', name: 'Tic-Tac-Toe', emoji: '⭕', free: true, shopItemId: null },
-    { id: 'memory', name: 'Memory Cards', emoji: '🃏', free: false, shopItemId: 'game_memory' },
-    { id: 'connect4', name: 'Connect 4', emoji: '🔴', free: false, shopItemId: 'game_words' },
+  const GAMES: { id: GameId; name: string; emoji: string; free: boolean; shopItemId: string | null; route?: string; icon?: number; tint: string; featured?: boolean }[] = [
+    { id: 'cakekitchen', name: 'BatterDash', emoji: '🎂', free: true, shopItemId: null, route: '/cake-game', icon: require('@/assets/images/cake/batterdash-banner.png'), tint: '#FBE0E6', featured: true },
+    { id: 'tictactoe', name: 'Tic-Tac-Toe', emoji: '⭕', free: true, shopItemId: null, icon: require('@/assets/images/games/placeholder.png'), tint: '#FBEAD2' },
+    { id: 'memory', name: 'Memory Cards', emoji: '🃏', free: true, shopItemId: null, icon: require('@/assets/images/games/placeholder.png'), tint: '#F6DCE4' },
+    { id: 'connect4', name: 'Connect 4', emoji: '🔴', free: true, shopItemId: null, icon: require('@/assets/images/games/connect4.png'), tint: '#DFEAF4' },
   ];
+  const featuredGame = GAMES.find((g) => g.featured);
+  const gridGames = GAMES.filter((g) => !g.featured);
+
+  // Connect 4 can always be opened — a friend who owns it (or has Plus) can host
+  // you online even if you don't own it yourself.
+  const gameState = (g: (typeof GAMES)[number]) => {
+    const unlocked = g.free || isPlus || (g.shopItemId ? ownedShopItems.includes(g.shopItemId) : false);
+    return { unlocked, canOpen: unlocked || g.id === 'connect4' };
+  };
+  const openGame = (g: (typeof GAMES)[number], canOpen: boolean) => {
+    if (!canOpen) return;
+    if (g.route) {
+      router.push(g.route as never);
+      return;
+    }
+    setSelectedGame(g.id);
+    setPhase('playing');
+  };
+  const subtitleFor = (g: (typeof GAMES)[number], unlocked: boolean) =>
+    unlocked
+      ? g.free
+        ? 'Free to play'
+        : isPlus
+          ? 'Included with Plus'
+          : 'Unlocked'
+      : g.id === 'connect4'
+        ? 'Play a friend free'
+        : 'Get Plus to unlock';
 
   if (!validEntry) return null;
 
@@ -640,8 +834,13 @@ export default function BreakGameScreen() {
     );
   }
 
+  const connect4Active = phase === 'playing' && selectedGame === 'connect4';
+
   return (
     <ThemedView style={styles.container}>
+      {connect4Active && (
+        <Image source={CONNECT4_BG} style={styles.connect4Bg} contentFit="cover" />
+      )}
       <SafeAreaView style={styles.safeArea}>
         {/* Break timer — only during a real study break, not when browsing */}
         {!isBrowse && (
@@ -673,60 +872,52 @@ export default function BreakGameScreen() {
                 </ThemedText>
               )}
 
-              <ThemedView style={styles.gameList}>
-                {GAMES.map((g) => {
-                  const unlocked =
-                    g.free ||
-                    isPlus ||
-                    (g.shopItemId ? ownedShopItems.includes(g.shopItemId) : false);
-                  // Connect 4 can always be opened — a friend who owns it (or has
-                  // Plus) can host you online even if you don't own it yourself.
-                  const canOpen = unlocked || g.id === 'connect4';
+              {/* Featured game — large hero banner */}
+              {featuredGame && (() => {
+                const g = featuredGame;
+                const { canOpen } = gameState(g);
+                return (
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.featuredCard,
+                      !canOpen && styles.gameCardLocked,
+                      pressed && canOpen && styles.pressed,
+                    ]}
+                    onPress={() => openGame(g, canOpen)}>
+                    <Image source={g.icon} style={styles.featuredArt} contentFit="cover" />
+                  </Pressable>
+                );
+              })()}
+
+              {/* Other games — card grid */}
+              <ThemedView style={styles.gameGrid}>
+                {gridGames.map((g) => {
+                  const { unlocked, canOpen } = gameState(g);
                   return (
                     <Pressable
                       key={g.id}
-                      style={({ pressed }) => [styles.gameCard, !canOpen && styles.gameCardLocked, pressed && canOpen && styles.pressed]}
-                      onPress={() => {
-                        if (!canOpen) return;
-                        if (g.route) {
-                          router.push(g.route as never);
-                          return;
-                        }
-                        setSelectedGame(g.id);
-                        setPhase('playing');
-                      }}>
-                      {g.icon ? (
-                        <Image source={g.icon} style={styles.gameIconImg} contentFit="cover" />
-                      ) : (
-                        <ThemedText style={styles.gameEmoji}>{g.emoji}</ThemedText>
-                      )}
-                      <ThemedView style={styles.gameInfo}>
-                        <ThemedText type="smallBold">{g.name}</ThemedText>
-                        <ThemedText type="small" themeColor="textSecondary">
-                          {unlocked
-                            ? g.free
-                              ? 'Free to play'
-                              : isPlus
-                                ? 'Included with Plus'
-                                : 'Unlocked'
-                            : g.id === 'connect4'
-                              ? '🌐 Play a friend free · unlock AI'
-                              : '🔒 Buy in Shop or get Plus'}
-                        </ThemedText>
-                      </ThemedView>
-                      {unlocked ? (
-                        g.free ? (
-                          <ThemedText style={styles.gameArrow}>→</ThemedText>
+                      style={({ pressed }) => [
+                        styles.gridCard,
+                        !canOpen && styles.gameCardLocked,
+                        pressed && canOpen && styles.pressed,
+                      ]}
+                      onPress={() => openGame(g, canOpen)}>
+                      <View style={styles.gridImageWrap}>
+                        {g.icon ? (
+                          <Image source={g.icon} style={styles.gridImage} contentFit="cover" />
                         ) : (
-                          <ThemedView style={styles.unlockedBadge}>
-                            <ThemedText style={styles.unlockedBadgeText}>
-                              {isPlus ? 'Plus' : 'Shop unlock'}
-                            </ThemedText>
+                          <ThemedText style={styles.gridEmoji}>{g.emoji}</ThemedText>
+                        )}
+                        {!g.free && (
+                          <ThemedView style={styles.plusBadge}>
+                            <ThemedText style={styles.plusBadgeText}>Plus</ThemedText>
                           </ThemedView>
-                        )
-                      ) : g.id === 'connect4' ? (
-                        <ThemedText style={styles.gameArrow}>→</ThemedText>
-                      ) : null}
+                        )}
+                      </View>
+                      <ThemedText type="smallBold" numberOfLines={1}>{g.name}</ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                        {subtitleFor(g, unlocked)}
+                      </ThemedText>
                     </Pressable>
                   );
                 })}
@@ -762,23 +953,37 @@ export default function BreakGameScreen() {
         ) : (
           <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollFlex}>
             <ThemedView style={styles.gameContainer}>
-              <Pressable onPress={showGames} style={styles.backGameBtn}>
-                <ThemedText type="small" themeColor="textSecondary">← Games</ThemedText>
+              <Pressable onPress={showGames} style={styles.closeBtn} hitSlop={8}>
+                <ThemedText style={styles.closeBtnText}>✕</ThemedText>
               </Pressable>
-              {selectedGame === 'tictactoe' && <TicTacToeGame />}
-              {selectedGame === 'memory' && <MemoryCardsGame />}
-              {selectedGame === 'connect4' && <Connect4Game />}
+              {selectedGame === 'tictactoe' && (
+                <TicTacToeGame
+                  online={onlineSession?.game === 'tictactoe' ? { room: onlineSession.room, isHost: onlineSession.isHost } : undefined}
+                />
+              )}
+              {selectedGame === 'memory' && (
+                <MemoryCardsGame
+                  online={onlineSession?.game === 'memory' ? { room: onlineSession.room, isHost: onlineSession.isHost } : undefined}
+                />
+              )}
+              {selectedGame === 'connect4' && (
+                <Connect4Game
+                  online={onlineSession?.game === 'connect4' ? { room: onlineSession.room, isHost: onlineSession.isHost } : undefined}
+                />
+              )}
             </ThemedView>
           </ScrollView>
         )}
 
-        <Pressable
-          style={({ pressed }) => [styles.endStudyBtn, pressed && styles.pressed]}
-          onPress={goHome}>
-          <ThemedText type="smallBold" style={styles.endStudyBtnText}>
-            {isBrowse ? '🏠 Home' : 'End study'}
-          </ThemedText>
-        </Pressable>
+        {phase !== 'playing' && (
+          <Pressable
+            style={({ pressed }) => [styles.endStudyBtn, pressed && styles.pressed]}
+            onPress={goHome}>
+            <ThemedText type="smallBold" style={styles.endStudyBtnText}>
+              {isBrowse ? '🏠 Home' : 'End study'}
+            </ThemedText>
+          </Pressable>
+        )}
       </SafeAreaView>
     </ThemedView>
   );
@@ -786,6 +991,7 @@ export default function BreakGameScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  connect4Bg: { position: 'absolute', top: -SCREEN_H * 0.06, left: 0, right: 0, height: SCREEN_H * 1.06 },
   safeArea: {
     flex: 1,
     paddingHorizontal: Spacing.four,
@@ -817,27 +1023,48 @@ const styles = StyleSheet.create({
   progressFill: { height: '100%', borderRadius: 3, backgroundColor: '#7C6F5A' },
   selectContent: { gap: Spacing.three, paddingBottom: Spacing.four },
   selectTitle: { fontSize: 22, lineHeight: 28 },
-  gameList: { gap: Spacing.two },
-  gameCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    backgroundColor: 'rgba(124,111,90,0.1)',
-    borderRadius: 16,
-    padding: Spacing.three,
-  },
   gameCardLocked: { opacity: 0.5 },
-  gameEmoji: { fontSize: 28, lineHeight: 34 },
-  gameIconImg: { width: 44, height: 44, borderRadius: 12 },
-  gameInfo: { flex: 1, gap: 2 },
-  gameArrow: { fontSize: 18, color: '#7C6F5A' },
-  unlockedBadge: {
+  // Featured hero banner (BatterDash)
+  featuredCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  featuredArt: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderRadius: 20,
+  },
+  // Card grid for the remaining games
+  gameGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  gridCard: {
+    width: '48%',
+    gap: 4,
+  },
+  gridImageWrap: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 18,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gridImage: { width: '100%', height: '100%' },
+  gridEmoji: { fontSize: 64, lineHeight: 72 },
+  plusBadge: {
+    position: 'absolute',
+    top: Spacing.two,
+    right: Spacing.two,
     backgroundColor: 'rgba(242,160,181,0.22)',
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
+    zIndex: 1,
   },
-  unlockedBadgeText: {
+  plusBadgeText: {
     color: '#C75A78',
     fontSize: 11,
     fontWeight: '700',
@@ -861,8 +1088,19 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     alignItems: 'center',
     paddingBottom: Spacing.four,
+    backgroundColor: 'transparent',
   },
   backGameBtn: { alignSelf: 'flex-start' },
+  closeBtn: {
+    alignSelf: 'flex-start',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 252, 248, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeBtnText: { fontSize: 18, fontWeight: '700', color: '#7C6F5A', lineHeight: 22 },
   endStudyBtn: {
     alignItems: 'center',
     justifyContent: 'center',

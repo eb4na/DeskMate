@@ -1,9 +1,11 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BakeryBellEmoji, BakeryLockEmoji, BakeryStarEmoji } from '@/components/bakery-emoji';
 import { TaskCalendar } from '@/components/task-calendar';
+import { formatTimeLabel } from '@/components/time-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
@@ -17,17 +19,33 @@ import {
   Spacing,
 } from '@/constants/theme';
 
+function daysUntil(dateISO: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  // Parse as local midnight so the day count doesn't shift in zones behind UTC.
+  const target = new Date(`${dateISO}T00:00:00`);
+  target.setHours(0, 0, 0, 0);
+  return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
 const STATUS_CYCLE: Record<TaskStatus, TaskStatus> = {
   not_started: 'in_progress',
   in_progress: 'done',
   done: 'not_started',
 };
 
-const PRIORITY_EMOJI: Record<string, string> = {
-  high: '🔴',
-  medium: '🟡',
-  low: '○',
+const PRIORITY_COLOR: Record<string, string> = {
+  high: '#E0584A',
+  medium: '#F2B33C',
+  low: '#CDBFAC',
 };
+
+function formatDueDate(dateISO: string): string {
+  return new Date(`${dateISO}T00:00:00`).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
+}
 
 const STATUS_ICON: Record<TaskStatus, string> = {
   not_started: '○',
@@ -55,6 +73,7 @@ function TaskRow({ task, onToggle, onEdit, onDelete, onPostpone }: {
   onDelete: () => void;
   onPostpone: () => void;
 }) {
+  const { use24HourTime } = useApp();
   const isDone = task.status === 'done';
 
   return (
@@ -74,19 +93,19 @@ function TaskRow({ task, onToggle, onEdit, onDelete, onPostpone }: {
             numberOfLines={2}>
             {task.title}
           </ThemedText>
-          <ThemedText style={styles.priorityEmoji}>{PRIORITY_EMOJI[task.priority]}</ThemedText>
+          <View style={[styles.priorityDot, { backgroundColor: PRIORITY_COLOR[task.priority] }]} />
         </ThemedView>
 
         <ThemedView style={styles.taskMeta}>
           <SubjectBadge subjectId={task.subjectId} />
           {task.dueDate && (
             <ThemedText type="small" themeColor="textSecondary" style={styles.metaText}>
-              📅 {task.dueDate}
+              {formatDueDate(task.dueDate)}{task.dueTime ? ` · ${formatTimeLabel(task.dueTime, use24HourTime)}` : ''}
             </ThemedText>
           )}
           {task.estimatedMinutes && (
             <ThemedText type="small" themeColor="textSecondary" style={styles.metaText}>
-              ⏱ {task.estimatedMinutes}m
+              {task.estimatedMinutes}m
             </ThemedText>
           )}
           {task.postponeCount > 0 && (
@@ -113,8 +132,21 @@ function TaskRow({ task, onToggle, onEdit, onDelete, onPostpone }: {
 }
 
 export default function TasksScreen() {
-  const { tasks, subjects, updateTask, deleteTask, completeTask, postponeTask } = useApp();
+  const {
+    tasks,
+    subjects,
+    updateTask,
+    deleteTask,
+    completeTask,
+    postponeTask,
+    examCountdowns,
+    removeExam,
+    isPlus,
+  } = useApp();
   const [showDone, setShowDone] = useState(false);
+
+  const canAddExam = isPlus || examCountdowns.length < 3;
+  const examLimitText = isPlus ? `${examCountdowns.length} exams` : `${examCountdowns.length}/3`;
 
   const notStarted = tasks.filter((t) => t.status === 'not_started');
   const inProgress = tasks.filter((t) => t.status === 'in_progress');
@@ -172,8 +204,6 @@ export default function TasksScreen() {
     );
   };
 
-  const hasAnyTask = tasks.length > 0;
-
   return (
     <ThemedView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -186,8 +216,8 @@ export default function TasksScreen() {
             <ThemedView style={styles.headerActions}>
               <Pressable
                 style={({ pressed }) => [styles.manageBtn, pressed && styles.pressed]}
-                onPress={() => router.push('/manage-subjects')}>
-                <ThemedText type="small" themeColor="textSecondary">Subjects</ThemedText>
+                onPress={() => router.push(canAddExam ? '/add-exam' : '/plus-upgrade')}>
+                <ThemedText type="small" themeColor="textSecondary">+ Exam</ThemedText>
               </Pressable>
               <Pressable
                 style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
@@ -200,22 +230,87 @@ export default function TasksScreen() {
           {/* Calendar with day notes + task peek */}
           <TaskCalendar />
 
-          {!hasAnyTask && (
-            <ThemedView type="backgroundElement" style={styles.welcomeCard}>
-              <ThemedText style={styles.welcomeEmoji}>📋</ThemedText>
-              <ThemedText type="smallBold" style={styles.welcomeTitle}>
-                No tasks yet
+          {/* ── Exam countdowns ───────────────────────────────────────────── */}
+          <ThemedView style={styles.section}>
+            <ThemedView style={styles.examHeader}>
+              <ThemedText type="smallBold" style={styles.sectionTitle}>
+                Exam Countdowns
               </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary" style={styles.welcomeText}>
-                Add your first task to stay organized and track what you need to study.
-              </ThemedText>
-              <Pressable
-                style={({ pressed }) => [styles.addBtn, styles.welcomeAddBtn, pressed && styles.pressed]}
-                onPress={() => router.push('/add-task')}>
-                <ThemedText style={styles.addBtnText}>Add first task</ThemedText>
-              </Pressable>
+              <View style={styles.examLimitRow}>
+                <ThemedText type="small" themeColor="textSecondary">{examLimitText}</ThemedText>
+                {isPlus && (
+                  <>
+                    <BakeryStarEmoji size={12} />
+                    <ThemedText style={styles.plusBadge}>Plus</ThemedText>
+                  </>
+                )}
+              </View>
             </ThemedView>
-          )}
+
+            {examCountdowns.length === 0 && (
+              <ThemedView type="backgroundElement" style={styles.examEmptyCard}>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
+                  No exams added yet.{isPlus ? ' Unlimited exams with Plus.' : ' Track up to 3 at a time.'}
+                </ThemedText>
+              </ThemedView>
+            )}
+
+            {examCountdowns.map((exam) => {
+              const days = daysUntil(exam.dateISO);
+              const isUrgent = days >= 0 && days <= 7;
+              const isPast = days < 0;
+              const isToday = days === 0;
+              return (
+                <ThemedView key={exam.id} type="backgroundElement" style={styles.examCard}>
+                  <ThemedView style={styles.examInfo}>
+                    <View style={styles.examNameRow}>
+                      {isToday && <BakeryStarEmoji size={14} />}
+                      <ThemedText type="smallBold">{exam.name}</ThemedText>
+                    </View>
+                    <View style={styles.examSubRow}>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {exam.subject ? `${exam.subject} · ` : ''}{exam.dateISO}
+                      </ThemedText>
+                      {exam.reminderEnabled && <BakeryBellEmoji size={11} />}
+                    </View>
+                  </ThemedView>
+                  <ThemedView style={styles.examRight}>
+                    <ThemedText
+                      style={[
+                        styles.examDays,
+                        isUrgent && styles.examDaysUrgent,
+                        isPast && styles.examDaysPast,
+                      ]}>
+                      {isPast ? 'Past' : isToday ? 'Today' : `${days}d`}
+                    </ThemedText>
+                    <Pressable onPress={() => removeExam(exam.id)} style={styles.removeBtn}>
+                      <ThemedText type="small" themeColor="textSecondary">✕</ThemedText>
+                    </Pressable>
+                  </ThemedView>
+                </ThemedView>
+              );
+            })}
+
+            {canAddExam ? (
+              <Pressable
+                style={({ pressed }) => [styles.addExamBtn, pressed && styles.pressed]}
+                onPress={() => router.push('/add-exam')}>
+                <ThemedText type="small" style={styles.addExamText}>
+                  + Add exam countdown
+                </ThemedText>
+              </Pressable>
+            ) : (
+              <Pressable onPress={() => router.push('/plus-upgrade')}>
+                <ThemedView type="backgroundElement" style={styles.upgradeExamCard}>
+                  <BakeryLockEmoji size={14} />
+                  <ThemedText type="small" style={styles.upgradeExamText}>
+                    Unlimited exam countdowns — upgrade to Plus
+                  </ThemedText>
+                </ThemedView>
+              </Pressable>
+            )}
+          </ThemedView>
+
 
           {/* Needs attention (avoidance tracker) */}
           {needsAttention.length > 0 && (
@@ -253,7 +348,7 @@ export default function TasksScreen() {
 
           {/* Task sections */}
           {renderSection('In progress', inProgress)}
-          {renderSection('Not started', notStarted, hasAnyTask ? undefined : undefined)}
+          {renderSection('Not started', notStarted)}
 
           {/* Done section (collapsible) */}
           {done.length > 0 && (
@@ -339,24 +434,24 @@ const styles = StyleSheet.create({
   taskList: { gap: Spacing.two },
   taskRow: {
     borderRadius: BakeryRadii.card,
-    padding: Spacing.two,
+    padding: Spacing.three,
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: Spacing.two,
     borderWidth: 1,
     borderColor: BakeryColors.shortbread,
     backgroundColor: BakeryColors.glass,
   },
   taskRowDone: { opacity: 0.55 },
-  statusBtn: { paddingTop: 2, paddingHorizontal: 4 },
-  statusIcon: { fontSize: 18, lineHeight: 22, color: BakeryColors.mocha },
+  statusBtn: { paddingHorizontal: 2 },
+  statusIcon: { fontSize: 20, lineHeight: 24, color: BakeryColors.mocha },
   statusIconDone: { color: BakeryColors.success },
-  taskContent: { flex: 1, gap: 4 },
-  taskTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4 },
-  taskTitle: { flex: 1, fontSize: 15, lineHeight: 20 },
+  taskContent: { flex: 1, gap: 5 },
+  taskTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  taskTitle: { flex: 1, fontSize: 15, lineHeight: 20, fontWeight: '600' },
   taskTitleDone: { textDecorationLine: 'line-through' },
-  priorityEmoji: { fontSize: 13, lineHeight: 18, marginTop: 2 },
-  taskMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, alignItems: 'center' },
+  priorityDot: { width: 9, height: 9, borderRadius: 5 },
+  taskMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
   metaText: { fontSize: 12 },
   badge: {
     flexDirection: 'row',
@@ -397,4 +492,58 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   nudgeBtnText: { color: BakeryColors.mocha, fontWeight: '700' },
+
+  // Exam countdowns
+  examHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  examLimitRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  examNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  examSubRow: { flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' },
+  plusBadge: { color: BakeryColors.berry, fontSize: 11 },
+  examEmptyCard: {
+    borderRadius: BakeryRadii.card,
+    padding: Spacing.four,
+    alignItems: 'center',
+    backgroundColor: BakeryColors.glass,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+  },
+  examCard: {
+    borderRadius: BakeryRadii.card,
+    padding: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    backgroundColor: BakeryColors.glass,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+  },
+  examInfo: { flex: 1, gap: 2 },
+  examRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  examDays: { fontSize: 22, fontWeight: '700', color: BakeryColors.mocha },
+  examDaysUrgent: { color: BakeryColors.danger },
+  examDaysPast: { color: '#999' },
+  removeBtn: { padding: 4 },
+  addExamBtn: {
+    borderRadius: BakeryRadii.button,
+    paddingVertical: Spacing.three,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.border,
+    alignItems: 'center',
+    borderStyle: 'dashed',
+    backgroundColor: BakeryColors.cream,
+  },
+  addExamText: { color: BakeryColors.mocha },
+  upgradeExamCard: {
+    borderRadius: 12,
+    paddingVertical: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: `${BakeryColors.honey}55`,
+    borderStyle: 'dashed',
+    backgroundColor: BakeryColors.cream,
+  },
+  upgradeExamText: { color: BakeryColors.mocha },
 });

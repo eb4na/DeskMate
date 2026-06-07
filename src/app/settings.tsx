@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BakeryGlobeEmoji } from '@/components/bakery-emoji';
 import { CoinIcon } from '@/components/coin-icon';
 import {
   BakerHatIcon,
@@ -79,14 +80,17 @@ export default function SettingsScreen() {
     language,
     reminderTime,
     setReminder,
+    use24HourTime,
+    setUse24HourTime,
     activeCompanionId,
     defaultCompanionId,
     companionSlots,
     bunSkinId,
+    companionSkins,
     setIsPlus,
   } = useApp();
 
-  const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId);
+  const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
 
   const handleSignOut = () => {
     Alert.alert(
@@ -246,6 +250,24 @@ export default function SettingsScreen() {
               value="Times, days, and extra reminders"
               onPress={() => router.push('/reminder-settings')}
             />
+            <View style={styles.divider} />
+            <View style={styles.row}>
+              <View style={styles.rowIconImage}>
+                <KitchenTimerIcon size={32} />
+              </View>
+              <View style={styles.rowBody}>
+                <ThemedText type="smallBold">24-hour time</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {use24HourTime ? 'On · 14:30' : 'Off · 2:30 PM'}
+                </ThemedText>
+              </View>
+              <Switch
+                value={use24HourTime}
+                onValueChange={setUse24HourTime}
+                trackColor={{ true: BakeryColors.honey, false: BakeryColors.shortbread }}
+                thumbColor="#FFF"
+              />
+            </View>
           </ThemedView>
 
           {/* Support & about */}
@@ -254,7 +276,7 @@ export default function SettingsScreen() {
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
             <SettingRow
-              icon="🌐"
+              icon={<BakeryGlobeEmoji size={30} />}
               label="Language"
               value={(() => {
                 const lang = LANGUAGES.find((l) => l.code === language);

@@ -4,6 +4,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Switch, TextInput, useColorSc
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlusGateCard } from '@/components/plus-gate';
+import { TimeWheelPicker, formatTimeLabel } from '@/components/time-wheel-picker';
 import { getReminderStyleEffect } from '@/constants/shop-effects';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -11,6 +12,17 @@ import { useApp } from '@/context/app-context';
 import { type ReminderEntry } from '@/context/app-context';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { syncStudyReminders } from '@/lib/notifications';
+import {
+  getCompanionReminderLine,
+  getCompanionReminderPool,
+} from '@/constants/companion-reminder-lines';
+import {
+  BUN_SKINS,
+  getCompanionSkins,
+  getEffectiveBunSkinId,
+  getEffectiveCompanionSkins,
+  resolveActiveCompanion,
+} from '@/lib/companion-utils';
 
 function isValidTime(t: string): boolean {
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(t.trim());
@@ -31,18 +43,52 @@ export default function ReminderSettingsScreen() {
     multipleReminders,
     setMultipleReminders,
     equippedShopItems,
+    use24HourTime,
+    activeCompanionId,
+    defaultCompanionId,
+    companionSlots,
+    bunSkinId,
+    companionSkins,
+    ownedShopItems,
   } = useApp();
   const [enabled, setEnabled] = useState(reminderEnabled);
   const [time, setTime] = useState(reminderTime);
   // Plus extra reminders editing state
   const [reminders, setReminders] = useState<ReminderEntry[]>(multipleReminders);
-  const [newTime, setNewTime] = useState('');
+  const [newTime, setNewTime] = useState('09:00');
   const [newLabel, setNewLabel] = useState('');
   const [newWeekdays, setNewWeekdays] = useState(false);
   const [saving, setSaving] = useState(false);
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
   const reminderStyle = getReminderStyleEffect(equippedShopItems);
+
+  // Reminder text comes from whoever is equipped: the active companion + the
+  // skin they're currently wearing. The Chirp/Bells style only affects the
+  // notification sound, so it doesn't drive the words.
+  const voice = (() => {
+    const resolved = resolveActiveCompanion(
+      activeCompanionId,
+      defaultCompanionId,
+      companionSlots,
+      bunSkinId,
+      companionSkins,
+    );
+    if (resolved.type === 'starter') {
+      const skinId = getEffectiveBunSkinId(bunSkinId, ownedShopItems);
+      const emoji = BUN_SKINS.find((s) => s.id === skinId)?.emoji ?? '🍓';
+      return { companionKey: 'bun', skinId, name: resolved.name, emoji };
+    }
+    if (resolved.type === 'shop') {
+      const skinId = getEffectiveCompanionSkins(companionSkins, ownedShopItems)[activeCompanionId] ?? 'classic';
+      const emoji = getCompanionSkins(activeCompanionId).find((s) => s.id === skinId)?.emoji ?? '🔔';
+      return { companionKey: resolved.id, skinId, name: resolved.name, emoji };
+    }
+    // Custom AI slot — no skins; fall back to the generic pool.
+    return { companionKey: null, skinId: null, name: resolved.name, emoji: resolved.slot.emoji || '🔔' };
+  })();
+  const reminderPool = getCompanionReminderPool(voice.companionKey, voice.skinId);
+  const previewLine = getCompanionReminderLine(voice.companionKey, voice.skinId);
 
   const handleSave = async () => {
     if (enabled && !isValidTime(time)) return;
@@ -60,8 +106,9 @@ export default function ReminderSettingsScreen() {
       enabled,
       time: trimmedTime,
       extraReminders: nextReminders,
-      reminderEmoji: reminderStyle?.emoji,
-      reminderLine: reminderStyle?.line,
+      reminderEmoji: voice.emoji,
+      reminderLines: reminderPool,
+      companionName: voice.name,
     });
 
     setSaving(false);
@@ -130,24 +177,24 @@ export default function ReminderSettingsScreen() {
     <ThemedView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <SafeAreaView style={styles.safeArea}>
-          {/* Companion quote */}
+          {/* Companion quote — a live sample in the equipped companion's voice + outfit */}
           <ThemedView type="backgroundElement" style={styles.quoteCard}>
-            <ThemedText style={styles.quoteEmoji}>{reminderStyle?.emoji ?? '🔔'}</ThemedText>
+            <ThemedText style={styles.quoteEmoji}>{voice.emoji}</ThemedText>
             <ThemedText type="default" style={styles.quoteText}>
-              {reminderStyle?.line ?? '"Study time. I saved your seat."'}
+              {`"${previewLine}"`}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              — your study companion
+              — {voice.name}
             </ThemedText>
           </ThemedView>
 
-          {reminderStyle ? (
-            <ThemedView type="backgroundElement" style={styles.noticeCard}>
-              <ThemedText type="small" themeColor="textSecondary" style={styles.noticeText}>
-                {reminderStyle.preview} is active from the shop.
-              </ThemedText>
-            </ThemedView>
-          ) : null}
+          <ThemedView type="backgroundElement" style={styles.noticeCard}>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.noticeText}>
+              Reminders are written by your active companion and the outfit they’re wearing — change
+              it anytime in the Companion Bakery.
+              {reminderStyle ? ` ${reminderStyle.preview} sets the sound.` : ''}
+            </ThemedText>
+          </ThemedView>
 
           {/* Daily reminder toggle */}
           <ThemedView type="backgroundElement" style={styles.toggleRow}>
@@ -164,26 +211,10 @@ export default function ReminderSettingsScreen() {
             />
           </ThemedView>
 
-          {/* Time input */}
-          <ThemedView style={styles.field}>
-            <ThemedText type="smallBold">Reminder time (24h)</ThemedText>
-            <TextInput
-              style={inputStyle}
-              value={time}
-              onChangeText={setTime}
-              placeholder="20:00"
-              placeholderTextColor={colors.textSecondary}
-              keyboardType="numbers-and-punctuation"
-              editable={enabled}
-              maxLength={5}
-              returnKeyType="done"
-              onSubmitEditing={handleSave}
-            />
-            {enabled && !isValidTime(time) && time.length > 0 && (
-              <ThemedText type="small" style={styles.error}>
-                Enter time as HH:MM (e.g. 20:00)
-              </ThemedText>
-            )}
+          {/* Time picker */}
+          <ThemedView style={[styles.field, !enabled && styles.disabledField]}>
+            <ThemedText type="smallBold">Reminder time</ThemedText>
+            <TimeWheelPicker value={time} onChange={setTime} use24Hour={use24HourTime} />
           </ThemedView>
 
           <ThemedView type="backgroundElement" style={styles.noticeCard}>
@@ -209,7 +240,7 @@ export default function ReminderSettingsScreen() {
               {reminders.map((r) => (
                 <ThemedView key={r.id} type="backgroundElement" style={styles.reminderRow}>
                   <ThemedView style={styles.reminderInfo}>
-                    <ThemedText type="smallBold">{r.time}</ThemedText>
+                    <ThemedText type="smallBold">{formatTimeLabel(r.time, use24HourTime)}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
                       {r.label}
                       {r.weekdaysOnly ? ' · Weekdays only' : ''}
@@ -230,24 +261,14 @@ export default function ReminderSettingsScreen() {
                   <ThemedText type="smallBold" style={styles.addReminderTitle}>
                     + Add reminder
                   </ThemedText>
-                  <ThemedView style={styles.addRow}>
-                    <TextInput
-                      style={[smallInputStyle, styles.timeInput]}
-                      value={newTime}
-                      onChangeText={setNewTime}
-                      placeholder="HH:MM"
-                      placeholderTextColor={colors.textSecondary}
-                      keyboardType="numbers-and-punctuation"
-                      maxLength={5}
-                    />
-                    <TextInput
-                      style={[smallInputStyle, styles.labelInput]}
-                      value={newLabel}
-                      onChangeText={setNewLabel}
-                      placeholder="Label (optional)"
-                      placeholderTextColor={colors.textSecondary}
-                    />
-                  </ThemedView>
+                  <TimeWheelPicker value={newTime} onChange={setNewTime} use24Hour={use24HourTime} />
+                  <TextInput
+                    style={[smallInputStyle, styles.labelInput]}
+                    value={newLabel}
+                    onChangeText={setNewLabel}
+                    placeholder="Label (optional)"
+                    placeholderTextColor={colors.textSecondary}
+                  />
                   <ThemedView style={styles.weekdaysRow}>
                     <Switch
                       value={newWeekdays}
@@ -317,6 +338,7 @@ const styles = StyleSheet.create({
   },
   toggleInfo: { flex: 1, gap: 2 },
   field: { gap: Spacing.two },
+  disabledField: { opacity: 0.4 },
   error: { color: '#E05C3A', textAlign: 'center' },
   noticeCard: { borderRadius: 14, padding: Spacing.three },
   noticeText: { textAlign: 'center', lineHeight: 20 },

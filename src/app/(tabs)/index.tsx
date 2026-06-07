@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Image as RNImage, ImageBackground, PanResponder, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Animated, Easing, Image as RNImage, ImageBackground, PanResponder, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/coin-icon';
@@ -13,6 +13,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { coinsForMinutes } from '@/constants/placeholder-data';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
+import { ROOM_PAIRS } from '@/constants/room-data';
 import { takePendingDragSession, setDragActive, type DragSessionData } from '@/lib/drag-session';
 import { getAmbienceEmoji, getAmbienceName } from '@/app/ambience-picker';
 import {
@@ -32,13 +33,16 @@ const DEFAULT_BREAK_MINUTES = 5;
 function daysUntil(dateISO: string): number {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const target = new Date(dateISO);
+  // Parse as local midnight so the day count doesn't shift in zones behind UTC.
+  const target = new Date(`${dateISO}T00:00:00`);
   target.setHours(0, 0, 0, 0);
   return Math.ceil((target.getTime() - today.getTime()) / 86400000);
 }
 
 function formatExamDate(dateISO: string): string {
-  return new Date(dateISO).toLocaleDateString('en-US', {
+  // Parse as local midnight (not UTC) so the displayed day doesn't shift back
+  // a day in timezones behind UTC.
+  return new Date(`${dateISO}T00:00:00`).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -54,6 +58,29 @@ function getExamCountdownLabel(days: number): string {
   if (days === 0) return 'Today';
   if (days === 1) return '1 day left';
   return `${days} days left`;
+}
+
+/** Exact moment the exam starts, from its date + optional "HH:MM" time. */
+function getExamTargetMs(dateISO: string, time?: string): number {
+  const [h, m] = (time ?? '09:00').split(':').map(Number);
+  const d = new Date(`${dateISO}T00:00:00`);
+  d.setHours(h || 0, m || 0, 0, 0);
+  return d.getTime();
+}
+
+/** Live countdown like "4d 03:21:45" (or "03:21:45" under a day). */
+function formatLiveCountdown(targetMs: number, nowMs: number): string {
+  let diff = Math.floor((targetMs - nowMs) / 1000);
+  if (diff <= 0) return 'Past due';
+  const days = Math.floor(diff / 86400);
+  diff -= days * 86400;
+  const h = Math.floor(diff / 3600);
+  diff -= h * 3600;
+  const min = Math.floor(diff / 60);
+  const sec = diff - min * 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const clock = `${pad(h)}:${pad(min)}:${pad(sec)}`;
+  return days > 0 ? `${days}d ${clock}` : clock;
 }
 
 function getSessionSecondsLeft(startedAt: string, durationMinutes: number, nowMs: number): number {
@@ -77,6 +104,7 @@ const DESK_OVERLAY = require('@/assets/images/home/desk-overlay.png');
 const DESK_HANDS = require('@/assets/images/home/desk-hands.png');
 const DESK_NEW = require('@/assets/images/home/desk-new.png');
 const DESK_MIXER = require('@/assets/images/home/desk-mixer.png');
+const SUNLIGHT = require('@/assets/images/home/sunlight.png');
 const DESK_STRAWBERRIES = require('@/assets/images/home/desk-strawberries.png');
 const DESK_EGGS = require('@/assets/images/home/desk-eggs.png');
 const DESK_BUTTER = require('@/assets/images/home/desk-butter.png');
@@ -93,6 +121,7 @@ const START_SESSION_BTN = require('@/assets/images/home/start-session-btn.png');
 const SWITCH_CHARACTER_BTN = require('@/assets/images/home/switch-character-btn.png');
 const FOOD_MENU_BTN = require('@/assets/images/home/food-menu-btn.png');
 const SETTINGS_BTN = require('@/assets/images/home/settings-scallop-btn.png');
+const EDIT_ROOM_BTN = require('@/assets/images/home/edit-room-btn.png');
 const STREAK_FIRE_ICON = require('@/assets/images/home/streak-fire-icon.png');
 const EXAM_BOOK_ICON = require('@/assets/images/home/exam-book-icon.png');
 const EXAM_CALENDAR_ICON = require('@/assets/images/home/exam-calendar-icon.png');
@@ -165,12 +194,16 @@ export default function HomeScreen() {
     ambienceId,
     equippedShopItems,
     examCountdowns,
+    subjects,
     activeSession,
     activeCompanionId,
     clearActiveSession,
     companionSlots,
     defaultCompanionId,
     bunSkinId,
+    companionSkins,
+    equippedBackgroundRoomId,
+    equippedDeskRoomId,
     addMoodEntry,
     startActiveSession,
   } = useApp();
@@ -180,6 +213,24 @@ export default function HomeScreen() {
   const [dragSession, setDragSession] = useState<DragSessionData | null>(null);
   const [droppedIds, setDroppedIds] = useState<Set<DragId>>(new Set());
   const fadeOverlay = useRef(new Animated.Value(0)).current;
+
+  // Idle home companion: a gentle, slow bounce with a tiny squash-and-stretch.
+  // 0 = resting/lowest (slightly squished), 1 = apex (slightly stretched).
+  const charBounce = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(charBounce, { toValue: 1, duration: 900, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(charBounce, { toValue: 0, duration: 900, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [charBounce]);
+  const charTranslateY = charBounce.interpolate({ inputRange: [0, 1], outputRange: [0, -7] });
+  const charScaleY = charBounce.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1.02] });
+  const charScaleX = charBounce.interpolate({ inputRange: [0, 1], outputRange: [1.02, 0.99] });
+
   // Mixer bowl centre (approx) — right:-30, bottom:30%, size 285×235
   // These are rough screen coords; close enough for the drop zone
   const MIXER_CX = 393 - 30 - 285 / 2 + 285 * 0.35;
@@ -216,12 +267,16 @@ export default function HomeScreen() {
     });
   };
   const activeSessionId = activeSession?.id ?? null;
-  const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId);
+  const bgRoom = ROOM_PAIRS.find((r) => r.id === equippedBackgroundRoomId) ?? ROOM_PAIRS[0];
+  const deskRoom = ROOM_PAIRS.find((r) => r.id === equippedDeskRoomId) ?? ROOM_PAIRS[0];
+  const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
   const homeCompanionSource =
     didHomeImageFail && activeCompanion.type === 'slot'
-      ? resolveActiveCompanion(`starter:${defaultCompanionId}`, defaultCompanionId, companionSlots, bunSkinId)
+      ? resolveActiveCompanion(`starter:${defaultCompanionId}`, defaultCompanionId, companionSlots, bunSkinId, companionSkins)
           .imageSource
       : activeCompanion.imageSource;
+  // Studying: Bun has a reading animation; other companions just stand for now.
+  const studyCharacterSource = activeCompanion.type === 'starter' ? BUN_STUDYING : homeCompanionSource;
   const reminderStyle = getReminderStyleEffect(equippedShopItems);
   const nextUpcomingExam = [...examCountdowns]
     .filter((exam) => daysUntil(exam.dateISO) >= 0)
@@ -231,6 +286,11 @@ export default function HomeScreen() {
   const examDays = featuredExam ? daysUntil(featuredExam.dateISO) : null;
   const examIsUrgent = examDays !== null && examDays >= 0 && examDays <= 7;
   const examIsPast = examDays !== null && examDays < 0;
+  const examTargetMs = featuredExam ? getExamTargetMs(featuredExam.dateISO, featuredExam.time) : null;
+  const examCountdownText =
+    examTargetMs === null ? '--' : formatLiveCountdown(examTargetMs, nowMs);
+  const examSubjectColor =
+    (featuredExam?.subject ? subjects.find((s) => s.name === featuredExam.subject)?.color : null) ?? '#C9A18A';
   const sessionNowMs = activeSession
     ? Math.max(nowMs, new Date(activeSession.startedAt).getTime())
     : nowMs;
@@ -263,6 +323,14 @@ export default function HomeScreen() {
 
     return () => clearInterval(intervalId);
   }, [activeSessionId]);
+
+  // Tick every second for the live exam countdown (when not already ticking
+  // for an active session).
+  useEffect(() => {
+    if (activeSessionId || examTargetMs === null) return;
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [activeSessionId, examTargetMs]);
 
   useEffect(() => {
     if (!activeSession) return;
@@ -358,11 +426,14 @@ export default function HomeScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.scene}>
           <Image
-            source={HOME_ROOM_IMAGE}
+            source={bgRoom.backgroundImage}
             style={styles.roomBackground}
             contentFit="cover"
             contentPosition="center"
           />
+
+          {/* Soft sunlight shining from the top — kept gentle so the room stays clear */}
+          <Image source={SUNLIGHT} style={styles.sunlight} contentFit="cover" pointerEvents="none" />
 
           {activeSession ? (
             <>
@@ -385,11 +456,13 @@ export default function HomeScreen() {
 
               {/* Studying cat reading at the desk */}
               <View style={styles.studyCharacterLayer} pointerEvents="none">
-                <RNImage source={BUN_STUDYING} style={styles.studyCharacterImage} resizeMode="contain" />
+                <RNImage source={studyCharacterSource} style={styles.studyCharacterImage} resizeMode="contain" />
               </View>
 
               {/* Desk */}
-              <RNImage source={DESK_NEW} style={styles.deskNewLayer} resizeMode="cover" pointerEvents="none" />
+              <RNImage source={deskRoom.deskImage} style={styles.deskNewLayer} resizeMode="cover" pointerEvents="none" />
+              {/* Thin line marking the table's front edge */}
+              <View style={styles.tableEdgeLine} pointerEvents="none" />
               {/* Oven on the desk */}
               <RNImage source={STUDY_OVEN} style={styles.deskOven} resizeMode="contain" pointerEvents="none" />
               {/* Radio playing study sounds */}
@@ -450,25 +523,36 @@ export default function HomeScreen() {
                       <View style={styles.metaCardHeader}>
                         <View style={styles.examTitleRow}>
                           <Image source={EXAM_BOOK_ICON} style={styles.examBookIcon} contentFit="contain" accessibilityLabel="" />
-                          <ThemedText style={styles.metaCardTitle}>Exam</ThemedText>
+                          <ThemedText style={styles.metaCardTitle}>Upcoming Exam</ThemedText>
                         </View>
                       </View>
                       <View style={styles.metaCardContent}>
                         <View style={styles.metaCardTextBlock}>
                           {featuredExam ? (
                             <>
-                              <ThemedText style={styles.metaHeadline} numberOfLines={2}>
+                              <ThemedText style={styles.metaHeadline} numberOfLines={1}>
                                 {featuredExam.name}
                               </ThemedText>
-                              <ThemedText style={styles.metaSubline}>{formatExamDate(featuredExam.dateISO)}</ThemedText>
-                              <ThemedText
-                                style={[
-                                  styles.metaAccentText,
-                                  examIsUrgent && styles.metaAccentTextUrgent,
-                                  examIsPast && styles.metaAccentTextPast,
-                                ]}>
-                                {examDays === null ? '--' : getExamCountdownLabel(examDays)}
-                              </ThemedText>
+                              <ThemedText style={styles.metaSubline} numberOfLines={1}>{formatExamDate(featuredExam.dateISO)}</ThemedText>
+                              <View style={styles.examCountdownRow}>
+                                <ThemedText
+                                  style={[
+                                    styles.metaAccentText,
+                                    examIsUrgent && styles.metaAccentTextUrgent,
+                                    examIsPast && styles.metaAccentTextPast,
+                                  ]}
+                                  numberOfLines={1}>
+                                  {examCountdownText}
+                                </ThemedText>
+                                {featuredExam.subject ? (
+                                  <View style={styles.examSubjectChip}>
+                                    <View style={[styles.examSubjectDot, { backgroundColor: examSubjectColor }]} />
+                                    <ThemedText style={styles.examSubjectText} numberOfLines={1}>
+                                      {featuredExam.subject}
+                                    </ThemedText>
+                                  </View>
+                                ) : null}
+                              </View>
                             </>
                           ) : (
                             <>
@@ -476,14 +560,6 @@ export default function HomeScreen() {
                               <ThemedText style={styles.metaSubline}>Tap to add</ThemedText>
                             </>
                           )}
-                        </View>
-                        <View style={styles.metaCardArt} pointerEvents="none">
-                          <Image source={EXAM_CALENDAR_ICON} style={styles.examCalendarIcon} contentFit="contain" accessibilityLabel="" />
-                          {featuredExam ? (
-                            <ThemedText style={styles.examCalendarDay}>
-                              {getExamDay(featuredExam.dateISO)}
-                            </ThemedText>
-                          ) : null}
                         </View>
                       </View>
                     </View>
@@ -508,9 +584,6 @@ export default function HomeScreen() {
                                 }`
                               : "Don't forget to take breaks!\nYou've got this!"}
                           </ThemedText>
-                        </View>
-                        <View style={styles.metaCardArt} pointerEvents="none">
-                          <Image source={REMINDER_BREAD_ICON} style={styles.reminderBreadIcon} contentFit="contain" accessibilityLabel="" />
                         </View>
                       </View>
                     </View>
@@ -538,6 +611,16 @@ export default function HomeScreen() {
                 </Pressable>
               )}
 
+              {/* Edit Room button — top left, above settings */}
+              {!dragSession && (
+                <Pressable
+                  style={({ pressed }) => [styles.editRoomBtn, pressed && styles.startButtonPressed]}
+                  onPress={() => router.push('/edit-room')}
+                  accessibilityLabel="Edit room">
+                  <Image source={EDIT_ROOM_BTN} style={styles.editRoomImg} contentFit="contain" />
+                </Pressable>
+              )}
+
               {/* Settings button — top left, below food menu */}
               {!dragSession && (
                 <Pressable
@@ -559,20 +642,25 @@ export default function HomeScreen() {
               )}
 
               <View style={styles.homeCharacterLayer} pointerEvents="none">
-                <RNImage
-                  source={homeCompanionSource}
-                  style={styles.homeCharacterImage}
-                  resizeMode="contain"
-                />
+                <Animated.View
+                  style={{ transform: [{ translateY: charTranslateY }, { scaleX: charScaleX }, { scaleY: charScaleY }] }}>
+                  <RNImage
+                    source={homeCompanionSource}
+                    style={styles.homeCharacterImage}
+                    resizeMode="contain"
+                  />
+                </Animated.View>
               </View>
 
               {/* Desk surface */}
               <RNImage
-                source={DESK_NEW}
+                source={deskRoom.deskImage}
                 style={styles.deskNewLayer}
                 resizeMode="cover"
                 pointerEvents="none"
               />
+              {/* Thin line marking the table's front edge */}
+              <View style={styles.tableEdgeLine} pointerEvents="none" />
               {/* Mixer on desk */}
               <RNImage source={DESK_MIXER} style={styles.deskMixer} resizeMode="contain" pointerEvents="none" />
 
@@ -684,12 +772,21 @@ const styles = StyleSheet.create({
   topSettingsBtn: {
     position: 'absolute',
     left: 4,
-    top: 374,
+    top: 452,
     zIndex: 5,
     width: 72,
     height: 72,
   },
   topSettingsImg: { width: 72, height: 72 },
+  editRoomBtn: {
+    position: 'absolute',
+    left: 4,
+    top: 376,
+    zIndex: 5,
+    width: 72,
+    height: 72,
+  },
+  editRoomImg: { width: 72, height: 72 },
   friendBtn: {
     position: 'absolute',
     right: 12,
@@ -742,24 +839,33 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  sunlight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '55%',
+    opacity: 0.8,
+    zIndex: 1,
+  },
   deskMixer: {
     position: 'absolute',
-    right: -30,
+    right: -48,
     bottom: '30%',
     width: 285,
     height: 235,
     zIndex: 3,
   },
-  deskEggs: {
-    position: 'absolute', left: 25, bottom: 258,
-    width: 82, height: 69, zIndex: 10,
-  },
   deskStrawberries: {
-    position: 'absolute', left: 115, bottom: 288,
+    position: 'absolute', left: 96, bottom: 250,
     width: 92, height: 76, zIndex: 10,
   },
+  deskEggs: {
+    position: 'absolute', left: 194, bottom: 250,
+    width: 82, height: 69, zIndex: 10,
+  },
   deskButter: {
-    position: 'absolute', left: 212, bottom: 258,
+    position: 'absolute', left: 284, bottom: 250,
     width: 82, height: 69, zIndex: 10,
   },
   deskNewLayer: {
@@ -769,6 +875,15 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: '47%',
     zIndex: 2,
+  },
+  tableEdgeLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: '47%',
+    height: 1,
+    backgroundColor: 'rgba(120, 90, 70, 0.22)',
+    zIndex: 3,
   },
   deskOverlay: {
     position: 'absolute',
@@ -1142,9 +1257,9 @@ const styles = StyleSheet.create({
     ...metaCardShadow,
   },
   metaCardTitle: {
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    lineHeight: 19,
+    fontWeight: '800',
     color: BakeryColors.cocoaDark,
   },
   metaSubline: {
@@ -1232,6 +1347,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#B87A5A',
   },
+  examCountdownRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  examSubjectChip: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  examSubjectDot: { width: 8, height: 8, borderRadius: 4 },
+  examSubjectText: { fontSize: 10.5, lineHeight: 13, fontWeight: '700', color: BakeryColors.mocha, flexShrink: 1 },
   metaAccentTextUrgent: {
     color: '#C45E4A',
   },

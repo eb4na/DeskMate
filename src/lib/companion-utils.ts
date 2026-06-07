@@ -14,7 +14,7 @@ export type BunSkin = { id: string; name: string; emoji: string; image: number; 
 export const BUN_SKINS: BunSkin[] = [
   { id: 'classic', name: 'Classic', emoji: '🍓', image: require('@/assets/images/bun/bun-home.png'), shopItemId: null },
   { id: 'angel', name: 'Angel', emoji: '👼', image: require('@/assets/images/bun/bun-angel.png'), shopItemId: 'outfit_bun_angel' },
-];
+  { id: 'angelkei', name: 'Angel Kei', emoji: '😇', image: require('@/assets/images/bun/bun-angelkei.png'), shopItemId: 'outfit_bun_angelkei' },];
 
 export function getBunSkinImage(skinId: string | null | undefined): number {
   return BUN_SKINS.find((s) => s.id === skinId)?.image ?? BUN_SKINS[0].image;
@@ -31,6 +31,54 @@ export function getEffectiveBunSkinId(
 ): string {
   const skin = BUN_SKINS.find((s) => s.id === skinId);
   return skin && isBunSkinUnlocked(skin, ownedShopItems) ? skin.id : 'classic';
+}
+
+// Alternate outfits ("skins") for purchasable companions, keyed by active
+// companion id (`shop:<itemId>`). The first entry is the default look.
+export const COMPANION_SKINS: Record<string, BunSkin[]> = {
+  'shop:companion_cocoa': [
+    { id: 'classic', name: 'Classic', emoji: '☕', image: require('@/assets/images/cocoa/cocoa.png'), shopItemId: null },    { id: 'relax', name: 'Relax', emoji: '🍁', image: require('@/assets/images/cocoa/cocoa-relax.png'), shopItemId: 'outfit_cocoa_relax' },
+  ],
+  'shop:companion_tira': [
+    { id: 'classic', name: 'Classic', emoji: '🍰', image: require('@/assets/images/tira/tira.png'), shopItemId: null },
+    { id: 'wolfsmeal', name: "Wolf's Meal", emoji: '🧺', image: require('@/assets/images/tira/tira-wolfsmeal.png'), shopItemId: 'outfit_tira_wolfsmeal' },
+    { id: 'chocomint', name: 'Choco Mint', emoji: '🍫', image: require('@/assets/images/tira/tira-chocomint.png'), shopItemId: 'outfit_tira_chocomint' },
+    { id: 'sleepover', name: 'Sleepover', emoji: '🌙', image: require('@/assets/images/tira/tira-sleepover.png'), shopItemId: 'outfit_tira_sleepover' },
+  ],
+  'shop:companion_honey': [
+    { id: 'classic', name: 'Classic', emoji: '🍯', image: require('@/assets/images/honey/honey.png'), shopItemId: null },
+    { id: 'champion', name: 'Champion', emoji: '🏆', image: require('@/assets/images/honey/honey-champion.png'), shopItemId: 'outfit_honey_champion' },
+    { id: 'zzz', name: 'ZZZ', emoji: '😴', image: require('@/assets/images/honey/honey-zzz.png'), shopItemId: 'outfit_honey_zzz' },
+  ],
+  'shop:companion_bunny': [
+    { id: 'classic', name: 'Classic', emoji: '👑', image: require('@/assets/images/bunny/bunny.png'), shopItemId: null },
+    { id: 'jiraikei', name: 'Jirai Kei', emoji: '🖤', image: require('@/assets/images/bunny/bunny-jiraikei.png'), shopItemId: 'outfit_bunny_jiraikei' },
+    { id: 'palace', name: 'Blue Peony', emoji: '🪷', image: require('@/assets/images/bunny/bunny-palace.png'), shopItemId: 'outfit_bunny_palace' },
+  ],
+};
+
+// Returns only the owned/wearable equipped skins; drops any skin the player no
+// longer owns so a locked outfit can never be worn.
+export function getEffectiveCompanionSkins(
+  companionSkins: Record<string, string> | undefined,
+  ownedShopItems: string[],
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [companionId, skinId] of Object.entries(companionSkins ?? {})) {
+    const skin = COMPANION_SKINS[companionId]?.find((s) => s.id === skinId);
+    if (skin && (!skin.shopItemId || ownedShopItems.includes(skin.shopItemId))) out[companionId] = skinId;
+  }
+  return out;
+}
+
+export function getCompanionSkins(companionId: string): BunSkin[] {
+  return COMPANION_SKINS[companionId] ?? [];
+}
+
+export function getCompanionSkinImage(companionId: string, skinId: string | null | undefined): number | null {
+  const skins = COMPANION_SKINS[companionId];
+  if (!skins) return null;
+  return (skins.find((s) => s.id === skinId) ?? skins[0]).image;
 }
 
 // Purchasable companions that have full-body art usable as the active character.
@@ -65,13 +113,16 @@ export function resolveActiveCompanion(
   defaultCompanionId: DefaultCompanionId,
   companionSlots: CompanionSlot[],
   bunSkinId?: string | null,
+  companionSkins?: Record<string, string>,
 ): ResolvedCompanion {
   // Purchased shop companion (id form `shop:<itemId>`).
   if (activeCompanionId && activeCompanionId.startsWith('shop:')) {
     const itemId = activeCompanionId.slice(5);
     const item = SHOP_COMPANIONS.find((i) => i.id === itemId);
     if (item?.image) {
-      return { type: 'shop', id: item.id, name: item.name, imageSource: item.image };
+      const skinId = companionSkins?.[activeCompanionId];
+      const skinImg = skinId ? getCompanionSkinImage(activeCompanionId, skinId) : null;
+      return { type: 'shop', id: item.id, name: item.name, imageSource: skinImg ?? item.image };
     }
   }
 
@@ -102,4 +153,51 @@ export function resolveActiveCompanion(
     name: 'Bun',
     imageSource: getBunSkinImage(bunSkinId),
   };
+}
+
+/** Resolve a character image straight from a companion id + skin id (e.g. a
+ * friend's synced profile). `companionId` empty/starter -> Bun. */
+export function getCompanionImage(
+  companionId: string | null | undefined,
+  skinId: string | null | undefined,
+): number {
+  if (companionId && companionId.startsWith('shop:')) {
+    return getCompanionSkinImage(companionId, skinId ?? 'classic') ?? getBunSkinImage('classic');
+  }
+  return getBunSkinImage(skinId ?? 'classic');
+}
+
+/**
+ * The figure shown on the profile card (and used as the avatar everywhere the
+ * player represents themselves). Uses the explicitly chosen profile character +
+ * outfit when set, otherwise falls back to the active companion.
+ */
+export function resolveProfileFigure(args: {
+  profileCompanionId: string;
+  profileSkinId: string;
+  activeCompanionId: ActiveCompanionId | null | undefined;
+  defaultCompanionId: DefaultCompanionId;
+  companionSlots: CompanionSlot[];
+  bunSkinId?: string | null;
+  companionSkins?: Record<string, string>;
+}): CompanionImageSource {
+  const {
+    profileCompanionId,
+    profileSkinId,
+    activeCompanionId,
+    defaultCompanionId,
+    companionSlots,
+    bunSkinId,
+    companionSkins,
+  } = args;
+
+  if (!profileCompanionId) {
+    return resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins)
+      .imageSource;
+  }
+  const skin = profileSkinId || 'classic';
+  if (profileCompanionId.startsWith('shop:')) {
+    return getCompanionSkinImage(profileCompanionId, skin) ?? getBunSkinImage('classic');
+  }
+  return getBunSkinImage(skin);
 }

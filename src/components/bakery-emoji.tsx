@@ -248,3 +248,135 @@ export function BakeryCakeEmoji({ size = 20 }: Sz) {
     </Svg>
   );
 }
+
+// ── 🧁 Cupcake (task / empty states) ──────────────────────────────────────────
+export function BakeryCupcakeEmoji({ size = 20 }: Sz) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 60 60">
+      {/* Liner */}
+      <Path d="M15 34 L45 34 L40 54 Q40 56 30 56 Q20 56 20 54 Z"
+        fill={B} stroke={S} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      <Line x1="24" y1="36" x2="22" y2="54" stroke={S} strokeWidth="1.2" strokeLinecap="round" opacity={0.3} />
+      <Line x1="30" y1="36" x2="30" y2="55" stroke={S} strokeWidth="1.2" strokeLinecap="round" opacity={0.3} />
+      <Line x1="36" y1="36" x2="38" y2="54" stroke={S} strokeWidth="1.2" strokeLinecap="round" opacity={0.3} />
+      {/* Frosting swirl */}
+      <Path d="M13 34 Q10 24 20 22 Q21 13 30 15 Q40 12 41 22 Q52 25 46 34 Z"
+        fill="#FFF6EC" stroke={S} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      <Path d="M18 30 Q24 24 30 27 Q36 23 42 30" stroke={S} strokeWidth="1.4" strokeLinecap="round" fill="none" opacity={0.3} />
+      {/* Cherry */}
+      <Circle cx="30" cy="11" r="4" fill={P} stroke={S} strokeWidth="2" />
+      <Path d="M30 7 Q33 3 36 4" stroke={G2} strokeWidth="2" strokeLinecap="round" fill="none" />
+      {/* Blush */}
+      <Ellipse cx="19" cy="30" rx="3.5" ry="2.2" fill={R} opacity={0.6} />
+      <Ellipse cx="41" cy="30" rx="3.5" ry="2.2" fill={R} opacity={0.6} />
+    </Svg>
+  );
+}
+
+// ── 📅 Calendar (date glyph) ──────────────────────────────────────────────────
+export function BakeryCalendarEmoji({ size = 18 }: Sz) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 60 60">
+      {/* Page */}
+      <Rect x="9" y="14" width="42" height="38" rx="7" fill="#FFF6EC" stroke={S} strokeWidth="2.5" />
+      {/* Header band */}
+      <Path d="M9 22 Q9 14 16 14 L44 14 Q51 14 51 22 L51 25 L9 25 Z"
+        fill={H} stroke={S} strokeWidth="2.5" strokeLinejoin="round" />
+      {/* Binding rings */}
+      <Line x1="20" y1="8" x2="20" y2="18" stroke={S} strokeWidth="3" strokeLinecap="round" />
+      <Line x1="40" y1="8" x2="40" y2="18" stroke={S} strokeWidth="3" strokeLinecap="round" />
+      {/* Day dots */}
+      <Circle cx="20" cy="34" r="2.4" fill={S} opacity={0.45} />
+      <Circle cx="30" cy="34" r="2.4" fill={P} opacity={0.85} />
+      <Circle cx="40" cy="34" r="2.4" fill={S} opacity={0.45} />
+      <Circle cx="20" cy="44" r="2.4" fill={S} opacity={0.45} />
+      <Circle cx="30" cy="44" r="2.4" fill={S} opacity={0.45} />
+      <Circle cx="40" cy="44" r="2.4" fill={S} opacity={0.45} />
+    </Svg>
+  );
+}
+
+// ── 🏆 Trophy (most studied) ──────────────────────────────────────────────────
+export function BakeryTrophyEmoji({ size = 18 }: Sz) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 60 60">
+      {/* Handles */}
+      <Path d="M18 16 Q6 16 9 28 Q11 33 19 30" fill="none" stroke={S} strokeWidth="2.5" strokeLinecap="round" />
+      <Path d="M42 16 Q54 16 51 28 Q49 33 41 30" fill="none" stroke={S} strokeWidth="2.5" strokeLinecap="round" />
+      {/* Cup bowl */}
+      <Path d="M16 13 L44 13 L42 30 Q40 39 30 39 Q20 39 18 30 Z"
+        fill={H} stroke={S} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      <Path d="M22 19 Q30 16 38 19" stroke={S} strokeWidth="1.4" strokeLinecap="round" fill="none" opacity={0.3} />
+      {/* Stem + base */}
+      <Rect x="27" y="39" width="6" height="7" fill="#C38F72" stroke={S} strokeWidth="2" />
+      <Rect x="19" y="46" width="22" height="6" rx="3" fill="#C38F72" stroke={S} strokeWidth="2.5" />
+      {/* Shine */}
+      <Path d="M22 16 Q24 22 23 27" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none" opacity={0.4} />
+    </Svg>
+  );
+}
+
+// ── 💤 Sleep / Zzz (least studied) ────────────────────────────────────────────
+export function BakerySleepEmoji({ size = 18 }: Sz) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 60 60">
+      <Path d="M14 40 H30 L14 56 H30" fill="none" stroke={P} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M30 24 H43 L30 38 H43" fill="none" stroke={H} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M44 10 H53 L44 20 H53" fill="none" stroke={B} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+// ── ♥ Heart (session-complete divider) ────────────────────────────────────────
+export function BakeryHeartEmoji({ size = 16 }: Sz) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 60 60">
+      {/* Clean filled heart, no outline */}
+      <Path d="M30 52 C8 37 7 19 21 16 Q30 14 30 26 Q30 14 39 16 C53 19 52 37 30 52 Z" fill="#F2748F" />
+      {/* Soft highlight (not a line) */}
+      <Ellipse cx="22" cy="26" rx="5" ry="3.4" fill="#fff" opacity={0.32} transform="rotate(-28 22 26)" />
+    </Svg>
+  );
+}
+
+// ── 🧾 Receipt / order ticket ─────────────────────────────────────────────────
+export function BakeryReceiptEmoji({ size = 16 }: Sz) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 60 60">
+      {/* Paper slip with a torn zigzag bottom */}
+      <Path
+        d="M15 9 Q15 7 17 7 L43 7 Q45 7 45 9 L45 47 L41 51 L37 47 L33 51 L29 47 L25 51 L21 47 L17 51 L15 47 Z"
+        fill="#FFFDF8"
+        stroke="#E7B7A6"
+        strokeWidth={2}
+        strokeLinejoin="round"
+      />
+      {/* Pink header band */}
+      <Rect x="19" y="13" width="22" height="5" rx="2.5" fill="#F7A7B8" />
+      {/* Order lines */}
+      <Rect x="19" y="23" width="22" height="3" rx="1.5" fill="#D9C4B5" />
+      <Rect x="19" y="30" width="16" height="3" rx="1.5" fill="#D9C4B5" />
+      <Rect x="19" y="37" width="19" height="3" rx="1.5" fill="#D9C4B5" />
+    </Svg>
+  );
+}
+
+// ── 🌐 Globe (language) ───────────────────────────────────────────────────────
+export function BakeryGlobeEmoji({ size = 20 }: Sz) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 60 60">
+      <Circle cx="30" cy="30" r="23" fill="#BFE3D2" stroke={S} strokeWidth="2.5" />
+      {/* Meridian */}
+      <Ellipse cx="30" cy="30" rx="10" ry="23" fill="none" stroke={S} strokeWidth="2" opacity={0.6} />
+      {/* Latitudes */}
+      <Line x1="9" y1="22" x2="51" y2="22" stroke={S} strokeWidth="2" opacity={0.5} strokeLinecap="round" />
+      <Line x1="7" y1="30" x2="53" y2="30" stroke={S} strokeWidth="2" opacity={0.5} strokeLinecap="round" />
+      <Line x1="9" y1="38" x2="51" y2="38" stroke={S} strokeWidth="2" opacity={0.5} strokeLinecap="round" />
+      {/* Little land blobs */}
+      <Path d="M20 24 Q26 22 24 28 Q20 30 20 24 Z" fill={G2} opacity={0.7} />
+      <Path d="M34 34 Q40 33 38 39 Q33 40 34 34 Z" fill={G2} opacity={0.7} />
+      {/* Shine */}
+      <Path d="M16 18 Q20 14 26 15" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" opacity={0.4} />
+    </Svg>
+  );
+}

@@ -87,9 +87,10 @@ export default function CompanionChatScreen() {
     defaultCompanionId,
     companionSlots,
     bunSkinId,
+    companionSkins,
   } = useApp();
 
-  const companion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId);
+  const companion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
   const vibe =
     companion.type === 'slot' ? companion.slot.personality || companion.slot.prompt || '' : '';
   const pfpFocus = companion.type === 'slot' ? companion.slot.pfp : undefined;

@@ -31,11 +31,11 @@ type Props = {
 };
 
 export function Companion({ pose, size = 'full' }: Props) {
-  const { activeCompanionId, companionSlots, defaultCompanionId, equippedShopItems, bunSkinId } = useApp();
+  const { activeCompanionId, companionSlots, defaultCompanionId, equippedShopItems, bunSkinId, companionSkins } = useApp();
   const config = POSE_CONFIG[pose];
   const isFull = size === 'full';
   const theme = useTheme();
-  const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId);
+  const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
   const [didImageFail, setDidImageFail] = useState(false);
   const activeTheme = getThemeEffect(equippedShopItems);
   const activeOutfit =

@@ -3,7 +3,9 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, TextInput, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BakeryLockEmoji, BakeryWrenchEmoji } from '@/components/bakery-emoji';
 import { DateWheelPicker, getTodayISO } from '@/components/date-wheel-picker';
+import { TimeWheelPicker } from '@/components/time-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
@@ -27,10 +29,12 @@ const CONFIDENCE_LABELS: Record<number, string> = {
 };
 
 export default function AddExamScreen() {
-  const { examCountdowns, addExam, isPlus, updateAdvancedExam } = useApp();
+  const { examCountdowns, addExam, isPlus, updateAdvancedExam, use24HourTime, subjects } = useApp();
+  const activeSubjects = subjects.filter((s) => !s.archived);
   const [name, setName] = useState('');
   const [subject, setSubject] = useState('');
   const [date, setDate] = useState(getTodayISO());
+  const [time, setTime] = useState('09:00');
   const [reminderEnabled, setReminderEnabled] = useState(false);
   // Plus advanced fields
   const [topics, setTopics] = useState('');
@@ -70,6 +74,7 @@ export default function AddExamScreen() {
       name: trimmedName,
       subject: subject.trim(),
       dateISO: trimmedDate,
+      time,
       reminderEnabled,
     });
 
@@ -131,19 +136,43 @@ export default function AddExamScreen() {
 
         <ThemedView style={styles.field}>
           <ThemedText type="smallBold">Subject (optional)</ThemedText>
-          <TextInput
-            style={inputStyle}
-            value={subject}
-            onChangeText={setSubject}
-            placeholder="e.g. Physics"
-            placeholderTextColor={colors.textSecondary}
-            returnKeyType="next"
-          />
+          <ThemedView style={styles.chipRow}>
+            <Pressable onPress={() => setSubject('')} style={({ pressed }) => [pressed && styles.pressed]}>
+              <ThemedView
+                type={subject === '' ? 'backgroundSelected' : 'backgroundElement'}
+                style={styles.chip}>
+                <ThemedText type="small">None</ThemedText>
+              </ThemedView>
+            </Pressable>
+            {activeSubjects.map((s) => (
+              <Pressable
+                key={s.id}
+                onPress={() => setSubject(s.name === subject ? '' : s.name)}
+                style={({ pressed }) => [pressed && styles.pressed]}>
+                <ThemedView
+                  type={subject === s.name ? 'backgroundSelected' : 'backgroundElement'}
+                  style={styles.chip}>
+                  <ThemedView style={[styles.subjectDot, { backgroundColor: s.color }]} />
+                  <ThemedText type="small">{s.name}</ThemedText>
+                </ThemedView>
+              </Pressable>
+            ))}
+            <Pressable onPress={() => router.push('/manage-subjects')} style={({ pressed }) => [pressed && styles.pressed]}>
+              <ThemedView type="backgroundElement" style={[styles.chip, styles.addSubjectChip]}>
+                <ThemedText type="smallBold" style={styles.addSubjectChipText}>+ New</ThemedText>
+              </ThemedView>
+            </Pressable>
+          </ThemedView>
         </ThemedView>
 
         <ThemedView style={styles.field}>
           <ThemedText type="smallBold">Exam date *</ThemedText>
           <DateWheelPicker value={date} onChange={setDate} minimumDateISO={getTodayISO()} />
+        </ThemedView>
+
+        <ThemedView style={styles.field}>
+          <ThemedText type="smallBold">Exam time</ThemedText>
+          <TimeWheelPicker value={time} onChange={setTime} use24Hour={use24HourTime} />
         </ThemedView>
 
         {/* Reminder toggle */}
@@ -161,9 +190,10 @@ export default function AddExamScreen() {
           />
         </ThemedView>
 
-        <ThemedView type="backgroundElement" style={styles.noticeCard}>
+        <ThemedView type="backgroundElement" style={[styles.noticeCard, styles.noticeRow]}>
+          <BakeryWrenchEmoji size={16} />
           <ThemedText type="small" themeColor="textSecondary" style={styles.noticeText}>
-            🛠 Push notifications will be wired to the device in a future update.
+            Push notifications will be wired to the device in a future update.
           </ThemedText>
         </ThemedView>
 
@@ -229,9 +259,10 @@ export default function AddExamScreen() {
           </ThemedView>
         ) : examCountdowns.length >= 3 ? (
           <Pressable onPress={() => router.push('/plus-upgrade')}>
-            <ThemedView type="backgroundElement" style={styles.upgradeCard}>
+            <ThemedView type="backgroundElement" style={[styles.upgradeCard, styles.noticeRow]}>
+              <BakeryLockEmoji size={14} />
               <ThemedText type="small" style={styles.upgradeText}>
-                🔒 Upgrade to Plus for unlimited exam countdowns and advanced planning
+                Upgrade to Plus for unlimited exam countdowns and advanced planning
               </ThemedText>
             </ThemedView>
           </Pressable>
@@ -273,6 +304,19 @@ const styles = StyleSheet.create({
   },
   hint: { lineHeight: 22 },
   field: { gap: Spacing.two },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  subjectDot: { width: 10, height: 10, borderRadius: 5 },
+  addSubjectChip: { borderWidth: 1, borderColor: '#D9C5B2', borderStyle: 'dashed' },
+  addSubjectChipText: { color: '#7A5240' },
+  pressed: { opacity: 0.8 },
   reminderRow: {
     borderRadius: 14,
     padding: Spacing.three,
@@ -282,7 +326,8 @@ const styles = StyleSheet.create({
   },
   reminderInfo: { flex: 1, gap: 2 },
   noticeCard: { borderRadius: 12, padding: Spacing.three },
-  noticeText: { textAlign: 'center', lineHeight: 20 },
+  noticeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  noticeText: { textAlign: 'center', lineHeight: 20, flexShrink: 1 },
   actions: { gap: Spacing.three, marginTop: Spacing.two },
   saveBtn: {
     backgroundColor: '#7C6F5A',

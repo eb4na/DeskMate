@@ -114,7 +114,7 @@ export default function SessionPickerScreen() {
           {/* Subject card */}
           <ImageBackground source={LONG_CARD} style={styles.subjectFrame} imageStyle={styles.subjectFrameImg} resizeMode="stretch">
             <Text style={styles.cardHeading}>Subject optional 🍓</Text>
-            <View style={styles.chipWrap}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
               {activeSubjects.map((s) => {
                 const isActive = selectedSubjectId === s.id;
                 return (
@@ -136,7 +136,7 @@ export default function SessionPickerScreen() {
                 onPress={() => router.push('/manage-subjects')}>
                 <Text style={[styles.chipText, { color: C.berry }]}>+ Add</Text>
               </Pressable>
-            </View>
+            </ScrollView>
           </ImageBackground>
 
           {/* Custom Duration */}
@@ -257,10 +257,10 @@ const styles = StyleSheet.create({
 
   // Subject notebook frame
   subjectFrame: {
-    paddingLeft: 54,
-    paddingRight: 20,
-    paddingVertical: 16,
-    gap: Spacing.two,
+    paddingLeft: 52,
+    paddingRight: 30,
+    paddingVertical: 14,
+    gap: 6,
     justifyContent: 'center',
   },
   subjectFrameImg: { borderRadius: 16 },
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     ...BakeryShadow,
   },
   cardHeading: { fontSize: 14.5, fontWeight: '800', color: C.cocoaDark },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chipRow: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingRight: 8 },
   chip: { borderRadius: BakeryRadii.pill, borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 7 },
   chipAdd: { borderColor: C.jam, borderStyle: 'dashed', backgroundColor: 'transparent' },
   chipText: { fontSize: 13.5, color: C.mocha, fontWeight: '600' },
@@ -287,12 +287,12 @@ const styles = StyleSheet.create({
   customCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: '14%',
-    paddingRight: '38%',
+    paddingLeft: '21%',
+    paddingRight: '35%',
   },
-  customText: { flex: 1, gap: 2, alignItems: 'center' },
-  customTitle: { fontSize: 17, fontWeight: '800', color: C.cocoaDark, textAlign: 'center' },
-  customSub: { fontSize: 11, color: C.mocha, lineHeight: 13.5, textAlign: 'center' },
+  customText: { flex: 1, gap: 1, alignItems: 'center' },
+  customTitle: { fontSize: 13.5, fontWeight: '800', color: C.cocoaDark, textAlign: 'center' },
+  customSub: { fontSize: 9.5, color: C.mocha, lineHeight: 12, textAlign: 'center' },
 
   // Start button (framed asset)
   startBtnWrap: { width: '100%' },

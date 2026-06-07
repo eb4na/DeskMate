@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,9 +11,21 @@ import {
   View,
 } from 'react-native';
 
+import { Image } from 'expo-image';
+import Svg, { Polygon } from 'react-native-svg';
+
+import {
+  BakeryBellEmoji,
+  BakeryCakeEmoji,
+  BakeryCalendarEmoji,
+  BakeryCheckEmoji,
+  BakeryCupcakeEmoji,
+} from '@/components/bakery-emoji';
 import { useApp } from '@/context/app-context';
 import type { Task } from '@/context/app-context';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
+
+const MAGNIFIER = require('@/assets/images/shop/magnifier.png');
 
 const C = BakeryColors;
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -36,19 +49,19 @@ function longLabel(iso: string) {
 function shortWeekday(iso: string) {
   return fromISO(iso).toLocaleDateString('en-US', { weekday: 'short' });
 }
-function formatTime(notifyAt: string | null) {
+function formatTime(notifyAt: string | null, use24Hour: boolean) {
   if (!notifyAt) return null;
   const d = new Date(notifyAt);
   if (isNaN(d.getTime())) return null;
-  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: !use24Hour });
 }
 
 // ─── shared task preview card ────────────────────────────────────────────────
 function TaskPreviewCard({ task }: { task: Task }) {
-  const { subjects, updateTask } = useApp();
+  const { subjects, updateTask, use24HourTime } = useApp();
   const subject = task.subjectId ? subjects.find((s) => s.id === task.subjectId) : null;
   const done = task.status === 'done';
-  const time = formatTime(task.notifyAt);
+  const time = formatTime(task.notifyAt, use24HourTime);
 
   return (
     <Pressable
@@ -59,10 +72,12 @@ function TaskPreviewCard({ task }: { task: Task }) {
         hitSlop={8}
         onPress={() => updateTask(task.id, { status: done ? 'not_started' : 'done' })}
         style={[styles.checkbox, done && styles.checkboxDone]}>
-        {done && <Text style={styles.checkboxTick}>✓</Text>}
+        {done && <BakeryCheckEmoji size={13} />}
       </Pressable>
 
-      <Text style={styles.taskIcon}>{task.notifyAt ? '🔔' : '🧁'}</Text>
+      <View style={styles.taskIcon}>
+        {task.notifyAt ? <BakeryBellEmoji size={20} /> : <BakeryCupcakeEmoji size={20} />}
+      </View>
 
       <View style={styles.taskCardBody}>
         <Text style={[styles.taskTitle, done && styles.taskTitleDone]} numberOfLines={2}>
@@ -77,8 +92,13 @@ function TaskPreviewCard({ task }: { task: Task }) {
               </Text>
             </View>
           )}
-          {time && <Text style={styles.taskMetaText}>🔔 {time}</Text>}
-          {task.estimatedMinutes ? <Text style={styles.taskMetaText}>⏱ {task.estimatedMinutes}m</Text> : null}
+          {time && (
+            <View style={styles.taskMetaTimeRow}>
+              <BakeryBellEmoji size={12} />
+              <Text style={styles.taskMetaText}>{time}</Text>
+            </View>
+          )}
+          {task.estimatedMinutes ? <Text style={styles.taskMetaText}>{task.estimatedMinutes}m</Text> : null}
         </View>
       </View>
     </Pressable>
@@ -89,20 +109,26 @@ function TaskPreviewCard({ task }: { task: Task }) {
 function CalendarMonthCard({
   monthOffset,
   setMonthOffset,
-  selected,
-  setSelected,
+  onPickDate,
   cellW,
-  onSearch,
 }: {
   monthOffset: number;
   setMonthOffset: (next: number) => void;
-  selected: string;
-  setSelected: (iso: string) => void;
+  onPickDate: (iso: string) => void;
   cellW: number;
-  onSearch: () => void;
 }) {
-  const { tasks, subjects, dayNotes } = useApp();
+  const { tasks, subjects, dayNotes, examCountdowns } = useApp();
   const today = todayISO();
+
+  // Map each exam day to its subject colour (falls back to pink).
+  const examColorByDay = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const e of examCountdowns) {
+      const subj = e.subject ? subjects.find((s) => s.name === e.subject) : null;
+      map[e.dateISO.slice(0, 10)] = subj?.color ?? '#F4A8C0';
+    }
+    return map;
+  }, [examCountdowns, subjects]);
 
   const base = new Date();
   const view = new Date(base.getFullYear(), base.getMonth() + monthOffset, 1);
@@ -122,21 +148,14 @@ function CalendarMonthCard({
     return map;
   }, [tasks]);
 
-  // Navigate a month and keep a sensible selected day.
-  const goMonth = (delta: number) => {
-    const next = monthOffset + delta;
-    const nv = new Date(base.getFullYear(), base.getMonth() + next, 1);
-    if (nv.getFullYear() === base.getFullYear() && nv.getMonth() === base.getMonth()) {
-      setSelected(today);
-    } else {
-      setSelected(toISO(nv.getFullYear(), nv.getMonth(), 1));
-    }
-    setMonthOffset(next);
-  };
+  const goMonth = (delta: number) => setMonthOffset(monthOffset + delta);
 
   const cells: (number | null)[] = [];
   for (let i = 0; i < firstWeekday; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  // Pad the final row with trailing blanks so the last days stay under the
+  // correct weekday (otherwise `justifyContent: center` centers a short row).
+  while (cells.length % 7 !== 0) cells.push(null);
 
   return (
     <View style={styles.card}>
@@ -158,39 +177,43 @@ function CalendarMonthCard({
 
       <View style={styles.grid}>
         {cells.map((d, i) => {
-          if (d === null) return <View key={i} style={{ width: cellW, height: cellW }} />;
+          if (d === null) return <View key={i} style={[styles.dayCell, { width: cellW, height: cellW }]} />;
           const iso = toISO(year, month, d);
           const isToday = iso === today;
-          const isSelected = iso === selected;
           const dayTasks = tasksByDay[iso] ?? [];
           const hasNote = !!dayNotes[iso];
+          const examColor = examColorByDay[iso];
+          const hasExam = !!examColor;
           return (
             <Pressable
               key={i}
-              onPress={() => setSelected(iso)}
+              onPress={() => onPickDate(iso)}
               style={[styles.dayCell, { width: cellW, height: cellW }]}>
-              <View
-                style={[
-                  styles.dayInner,
-                  isToday && styles.dayToday,
-                  isSelected && styles.daySelected,
-                ]}>
-                <Text style={[styles.dayNum, isSelected && styles.dayNumSelected]}>{d}</Text>
+              <View style={[styles.dayInner, isToday && styles.dayToday]}>
+                {hasExam && (
+                  <View style={styles.examStar} pointerEvents="none">
+                    <Svg width="92%" height="92%" viewBox="0 0 32 32">
+                      <Polygon
+                        points="16,4.5 19.17,11.63 26.94,12.45 21.14,17.67 22.76,25.3 16,21.4 9.24,25.3 10.86,17.67 5.06,12.45 12.83,11.63"
+                        fill={examColor}
+                        stroke={examColor}
+                        strokeWidth={5}
+                        strokeLinejoin="round"
+                      />
+                    </Svg>
+                  </View>
+                )}
+                <Text style={[styles.dayNum, hasExam && styles.dayNumExam]}>{d}</Text>
                 <View style={styles.dotRow}>
                   {dayTasks.slice(0, 3).map((t, di) => (
                     <View
                       key={t.id + di}
-                      style={[
-                        styles.dot,
-                        { backgroundColor: isSelected ? '#fff' : subjectColor(t.subjectId) },
-                      ]}
+                      style={[styles.dot, { backgroundColor: subjectColor(t.subjectId) }]}
                     />
                   ))}
-                  {dayTasks.length > 3 && (
-                    <Text style={[styles.dotMore, isSelected && { color: '#fff' }]}>+</Text>
-                  )}
+                  {dayTasks.length > 3 && <Text style={styles.dotMore}>+</Text>}
                   {hasNote && dayTasks.length === 0 && (
-                    <View style={[styles.dot, { backgroundColor: isSelected ? '#fff' : C.latte }]} />
+                    <View style={[styles.dot, { backgroundColor: C.latte }]} />
                   )}
                 </View>
               </View>
@@ -203,56 +226,81 @@ function CalendarMonthCard({
 }
 
 // ─── selected-day preview + note ─────────────────────────────────────────────
-function SelectedDayPreview({ iso }: { iso: string }) {
-  const { tasks, dayNotes, setDayNote } = useApp();
-  const [note, setNote] = useState(dayNotes[iso] ?? '');
-  const [savedNote, setSavedNote] = useState(false);
+// ─── compact horizontal slider of upcoming tasks ─────────────────────────────
+function TaskSlider() {
+  const { tasks, subjects } = useApp();
 
-  const dayTasks = tasks.filter((t) => t.dueDate?.slice(0, 10) === iso);
+  const open = useMemo(
+    () =>
+      tasks
+        .filter((t) => t.status !== 'done')
+        .sort((a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999')),
+    [tasks],
+  );
+
+  if (open.length === 0) return null;
 
   return (
-    <View style={styles.previewWrap}>
-      <View style={styles.previewDateStrip}>
-        <Text style={styles.previewDate}>📅 {longLabel(iso)}</Text>
-      </View>
-
-      {dayTasks.length > 0 ? (
-        <View style={styles.previewList}>
-          {dayTasks.map((t) => (
-            <TaskPreviewCard key={t.id} task={t} />
-          ))}
-        </View>
-      ) : (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyEmoji}>🧁</Text>
-          <Text style={styles.emptyTitle}>No tasks yet</Text>
-          <Text style={styles.emptyText}>Add your first task to stay organized.</Text>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sliderRow}>
+      {open.map((t) => {
+        const subject = t.subjectId ? subjects.find((s) => s.id === t.subjectId) : null;
+        return (
           <Pressable
-            style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
-            onPress={() => router.push({ pathname: '/add-task', params: { date: iso } })}>
-            <Text style={styles.addBtnText}>+ Add task</Text>
+            key={t.id}
+            style={({ pressed }) => [styles.sliderCard, pressed && styles.pressed]}
+            onPress={() => router.push({ pathname: '/add-task', params: { taskId: t.id } })}>
+            <Text style={styles.sliderTitle} numberOfLines={1}>
+              {t.title}
+            </Text>
+            <View style={styles.sliderMeta}>
+              {subject && <View style={[styles.subjectDot, { backgroundColor: subject.color }]} />}
+              <Text style={styles.sliderMetaText} numberOfLines={1}>
+                {t.dueDate ? shortWeekday(t.dueDate.slice(0, 10)) : 'No date'}
+              </Text>
+            </View>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
+// ─── tapped-day tasks modal ──────────────────────────────────────────────────
+function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => void }) {
+  const { tasks } = useApp();
+  const dayTasks = iso ? tasks.filter((t) => t.dueDate?.slice(0, 10) === iso) : [];
+
+  return (
+    <Modal visible={!!iso} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalRoot}>
+        <Pressable style={styles.modalBackdrop} onPress={onClose} />
+        <View style={styles.modalCard}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalDate}>{iso ? longLabel(iso) : ''}</Text>
+            <Pressable onPress={onClose} hitSlop={10} style={styles.modalClose}>
+              <Text style={styles.modalCloseText}>✕</Text>
+            </Pressable>
+          </View>
+
+          {dayTasks.length > 0 && (
+            <View style={styles.previewList}>
+              {dayTasks.map((t) => (
+                <TaskPreviewCard key={t.id} task={t} />
+              ))}
+            </View>
+          )}
+
+          <Pressable
+            style={({ pressed }) => [styles.modalAddBtn, pressed && styles.pressed]}
+            onPress={() => {
+              onClose();
+              if (iso) router.push({ pathname: '/add-task', params: { date: iso } });
+            }}>
+            <Text style={styles.modalAddText}>+ Add task for this day</Text>
           </Pressable>
         </View>
-      )}
-
-      {/* Day note */}
-      <View style={styles.noteBlock}>
-        <Text style={styles.noteLabel}>📝 Note for this day</Text>
-        <TextInput
-          style={styles.noteInput}
-          value={note}
-          onChangeText={(v) => { setNote(v); setSavedNote(false); }}
-          placeholder="Jot something down…"
-          placeholderTextColor={C.mocha}
-          multiline
-        />
-        <Pressable
-          style={({ pressed }) => [styles.noteSaveBtn, pressed && styles.pressed]}
-          onPress={() => { setDayNote(iso, note); setSavedNote(true); }}>
-          <Text style={styles.noteSaveText}>{savedNote ? '✓ Saved' : 'Save note'}</Text>
-        </Pressable>
       </View>
-    </View>
+    </Modal>
   );
 }
 
@@ -343,7 +391,7 @@ function HorizontalPreview({ onClose }: { onClose: () => void }) {
 export function TaskCalendar() {
   const { width } = useWindowDimensions();
   const [monthOffset, setMonthOffset] = useState(0);
-  const [selected, setSelected] = useState<string>(todayISO());
+  const [modalDate, setModalDate] = useState<string | null>(null);
   const [searchMode, setSearchMode] = useState(false);
 
   const gridW = Math.min(width, MaxContentWidth) - SCREEN_PAD * 2 - CARD_PAD * 2;
@@ -352,12 +400,15 @@ export function TaskCalendar() {
   return (
     <View style={styles.root}>
       <View style={styles.titleRow}>
-        <Text style={styles.title}>🍰 Calendar</Text>
+        <View style={styles.titleLeft}>
+          <BakeryCakeEmoji size={22} />
+          <Text style={styles.title}>Calendar</Text>
+        </View>
         <Pressable
           style={({ pressed }) => [styles.searchBtn, searchMode && styles.searchBtnActive, pressed && styles.pressed]}
           onPress={() => setSearchMode((v) => !v)}
           hitSlop={8}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Image source={MAGNIFIER} style={styles.searchIconImg} contentFit="contain" />
         </Pressable>
       </View>
 
@@ -368,14 +419,14 @@ export function TaskCalendar() {
           <CalendarMonthCard
             monthOffset={monthOffset}
             setMonthOffset={setMonthOffset}
-            selected={selected}
-            setSelected={setSelected}
+            onPickDate={setModalDate}
             cellW={cellW}
-            onSearch={() => setSearchMode(true)}
           />
-          <SelectedDayPreview key={selected} iso={selected} />
+          <TaskSlider />
         </>
       )}
+
+      <DayTasksModal iso={modalDate} onClose={() => setModalDate(null)} />
     </View>
   );
 }
@@ -383,6 +434,7 @@ export function TaskCalendar() {
 const styles = StyleSheet.create({
   root: { gap: Spacing.three },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  titleLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   title: { fontSize: 18, fontWeight: '800', color: C.cocoaDark },
   searchBtn: {
     width: 36,
@@ -395,7 +447,7 @@ const styles = StyleSheet.create({
     borderColor: C.jam,
   },
   searchBtnActive: { backgroundColor: C.jam },
-  searchIcon: { fontSize: 16 },
+  searchIconImg: { width: 18, height: 18 },
 
   // Card
   card: {
@@ -415,22 +467,37 @@ const styles = StyleSheet.create({
   weekRow: { flexDirection: 'row', justifyContent: 'center' },
   weekday: { textAlign: 'center', fontSize: 12, color: C.mocha, fontWeight: '700' },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' },
-  dayCell: { alignItems: 'center', justifyContent: 'center', padding: 2 },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: C.shortbread,
+  },
+  dayCell: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 2,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderColor: C.shortbread,
+  },
   dayInner: {
     flex: 1,
     alignSelf: 'stretch',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 14,
-    gap: 2,
   },
-  dayToday: { backgroundColor: C.rose },
+  dayToday: { backgroundColor: '#FAD4E0' },
   daySelected: { backgroundColor: C.jam },
+  examStar: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   dayNum: { fontSize: 14, color: C.cocoaDark, fontWeight: '600' },
+  dayNumExam: { color: '#fff', fontWeight: '800' },
   dayNumSelected: { color: '#fff', fontWeight: '800' },
-  dotRow: { flexDirection: 'row', gap: 2, alignItems: 'center', height: 6 },
-  dot: { width: 5, height: 5, borderRadius: 3 },
+  dotRow: { position: 'absolute', bottom: 2, flexDirection: 'row', gap: 1.5, alignItems: 'center', height: 4 },
+  dot: { width: 3, height: 3, borderRadius: 1.5 },
   dotMore: { fontSize: 10, lineHeight: 10, color: C.berry, fontWeight: '800' },
 
   // Selected day preview
@@ -468,7 +535,7 @@ const styles = StyleSheet.create({
   },
   checkboxDone: { backgroundColor: C.success, borderColor: C.success },
   checkboxTick: { color: '#fff', fontSize: 14, fontWeight: '800' },
-  taskIcon: { fontSize: 20 },
+  taskIcon: { width: 22, alignItems: 'center', justifyContent: 'center' },
   taskCardBody: { flex: 1, gap: 3 },
   taskTitle: { fontSize: 15, fontWeight: '700', color: C.cocoaDark, lineHeight: 19 },
   taskTitleDone: { textDecorationLine: 'line-through', color: C.mocha },
@@ -477,6 +544,7 @@ const styles = StyleSheet.create({
   subjectDot: { width: 6, height: 6, borderRadius: 3 },
   subjectText: { fontSize: 11, fontWeight: '700' },
   taskMetaText: { fontSize: 12, color: C.mocha, fontWeight: '500' },
+  taskMetaTimeRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
 
   // Empty state
   emptyCard: {
@@ -553,4 +621,54 @@ const styles = StyleSheet.create({
   searchEmpty: { fontSize: 13, color: C.mocha, fontStyle: 'italic', paddingVertical: Spacing.three, textAlign: 'center' },
 
   pressed: { opacity: 0.85 },
+
+  // Compact task slider
+  sliderRow: { gap: Spacing.two, paddingVertical: 2, paddingHorizontal: 2 },
+  sliderCard: {
+    width: 150,
+    backgroundColor: C.glass,
+    borderRadius: BakeryRadii.card,
+    borderWidth: 1.5,
+    borderColor: C.shortbread,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    gap: 4,
+  },
+  sliderTitle: { fontSize: 13, fontWeight: '700', color: C.cocoaDark },
+  sliderMeta: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  sliderMetaText: { fontSize: 11, color: C.mocha, fontWeight: '600', flexShrink: 1 },
+
+  // Tapped-day modal
+  modalRoot: { flex: 1, justifyContent: 'center', padding: Spacing.four },
+  modalBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(48, 32, 24, 0.35)' },
+  modalCard: {
+    backgroundColor: C.frosting,
+    borderRadius: BakeryRadii.panel,
+    borderWidth: 1.5,
+    borderColor: C.shortbread,
+    padding: Spacing.four,
+    gap: Spacing.three,
+    ...BakeryShadow,
+  },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two },
+  modalDate: { flex: 1, fontSize: 16, fontWeight: '800', color: C.cocoaDark },
+  modalClose: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: C.cream,
+    borderWidth: 1.5,
+    borderColor: C.shortbread,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCloseText: { fontSize: 14, fontWeight: '800', color: C.cocoaDark },
+  modalAddBtn: {
+    backgroundColor: C.honey,
+    borderRadius: BakeryRadii.button,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+    ...BakeryShadow,
+  },
+  modalAddText: { color: C.cocoaDark, fontSize: 14, fontWeight: '800' },
 });

@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, Share, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Dimensions, Pressable, Share, StyleSheet, TextInput, View } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -15,7 +16,6 @@ import {
   createBoard,
   getAIMove,
   isFull,
-  ROWS,
   type Board,
   type Player,
 } from '@/game/connect4/logic';
@@ -24,12 +24,42 @@ type Screen = 'mode' | 'lobby' | 'play';
 type Opp = 'ai' | 'online';
 type Result = Player | 'draw' | null;
 
-const CELL = 38;
-const GAP = 5;
-const P1_COLOR = '#E05C3A'; // red
-const P2_COLOR = '#F0B44A'; // yellow
+// ── Board art geometry ──────────────────────────────────────────────────────
+// The board PNG is 8 columns × 6 rows. Hole centers (as fractions of the board
+// image's width/height) were measured from the art so discs land in the holes.
+const BOARD_NATIVE_AR = 683 / 812; // height / width of board.png
+const SCREEN_W = Dimensions.get('window').width;
+const SCREEN_H = Dimensions.get('window').height;
+const BOARD_W = Math.min(SCREEN_W - 40, 360);
+const BOARD_H = BOARD_W * BOARD_NATIVE_AR;
+const COL_FX = [0.1808, 0.2772, 0.3733, 0.4697, 0.5664, 0.6634, 0.7606, 0.8579];
+const ROW_FY = [0.1968, 0.3103, 0.4231, 0.5361, 0.6486, 0.7605];
+const PIECE_D = BOARD_W * 0.08;
+const COL_ZONE_W = BOARD_W * 0.096;
 
-export function Connect4Game() {
+const BOARD_IMG = require('@/assets/images/connect4/board.png');
+const PIECE_IMG: Record<Player, number> = {
+  1: require('@/assets/images/connect4/piece-pink.png'),
+  2: require('@/assets/images/connect4/piece-choco.png'),
+};
+
+// A piece that drops in from above the board when it first appears, so both
+// players can see exactly where it is being placed.
+function FallingPiece({ player, left, top, row, win }: { player: Player; left: number; top: number; row: number; win: boolean }) {
+  const ty = useSharedValue(-(top + PIECE_D));
+  useEffect(() => {
+    ty.value = withTiming(0, { duration: 230 + row * 55, easing: Easing.bounce });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ translateY: ty.value }] }));
+  return (
+    <Animated.View style={[styles.piece, { left, top }, animStyle]}>
+      <Image source={PIECE_IMG[player]} style={[styles.pieceImg, win && styles.pieceWin]} contentFit="contain" />
+    </Animated.View>
+  );
+}
+
+export function Connect4Game({ online }: { online?: { room: string; isHost: boolean } } = {}) {
   const {
     activeCompanionId,
     defaultCompanionId,
@@ -37,14 +67,11 @@ export function Connect4Game() {
     bunSkinId,
     friendCode,
     addFriend,
-    isPlus,
-    ownedShopItems,
   } = useApp();
 
   const opponent = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId);
-  // Entitlement: you need Plus or to own Connect 4 to play the AI or host a game.
-  // Joining a friend's game is always allowed — the host's access covers the match.
-  const hasAccess = isPlus || ownedShopItems.includes('game_words');
+  // All games are free — anyone can play the AI or host a game.
+  const hasAccess = true;
 
   const [screen, setScreen] = useState<Screen>('mode');
   const [opp, setOpp] = useState<Opp>('ai');
@@ -174,6 +201,12 @@ export function Connect4Game() {
     connectRoom(friendCode, true);
   };
 
+  // Launched straight from a friend invite — join the room and skip the lobby UI.
+  useEffect(() => {
+    if (online) connectRoom(online.room, online.isHost);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const joinGame = () => {
     const code = joinInput.trim().toUpperCase();
     if (code.length < 4) return;
@@ -198,8 +231,8 @@ export function Connect4Game() {
   const isWinCell = (r: number, c: number) => winCells.some(([wr, wc]) => wr === r && wc === c);
 
   const statusText = (() => {
-    if (result === 'draw') return "It's a draw! 🤝";
-    if (result) return result === myPlayer ? 'You win! 🎉' : opp === 'ai' ? `${opponent.name} wins! 😺` : 'Friend wins!';
+    if (result === 'draw') return "It's a draw!";
+    if (result) return result === myPlayer ? 'You win!' : opp === 'ai' ? `${opponent.name} wins!` : 'Friend wins!';
     if (turn === myPlayer) return 'Your turn';
     return opp === 'ai' ? `${opponent.name} is thinking…` : "Friend's turn…";
   })();
@@ -216,12 +249,15 @@ export function Connect4Game() {
           <Pressable
             style={({ pressed }) => [styles.modeCard, !hasAccess && styles.modeCardLocked, pressed && styles.pressed]}
             onPress={hasAccess ? startAi : () => Alert.alert('Connect 4 locked', 'Unlock Connect 4 in the Shop or with Plus to play the AI — or join a friend who already has it!')}>
-            <ThemedText style={styles.modeEmoji}>{hasAccess ? '🤖' : '🔒'}</ThemedText>
+            <Image source={opponent.imageSource} style={styles.modeIcon} contentFit="contain" />
             <ThemedText type="smallBold">vs {opponent.name}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary" style={styles.center}>{hasAccess ? 'Play the AI' : 'Needs Plus'}</ThemedText>
           </Pressable>
           <Pressable style={({ pressed }) => [styles.modeCard, pressed && styles.pressed]} onPress={() => { setOpp('online'); setScreen('lobby'); }}>
-            <ThemedText style={styles.modeEmoji}>🌐</ThemedText>
+            <View style={styles.modeDiscPair}>
+              <Image source={PIECE_IMG[1]} style={styles.modePiece} contentFit="contain" />
+              <View style={{ marginLeft: -10 }}><Image source={PIECE_IMG[2]} style={styles.modePiece} contentFit="contain" /></View>
+            </View>
             <ThemedText type="smallBold">Online</ThemedText>
             <ThemedText type="small" themeColor="textSecondary" style={styles.center}>Play a friend</ThemedText>
           </Pressable>
@@ -299,66 +335,67 @@ export function Connect4Game() {
   }
 
   // ── Play screen ─────────────────────────────────────────────────────────
-  const myColor = myPlayer === 1 ? P1_COLOR : P2_COLOR;
-  const oppColor = myPlayer === 1 ? P2_COLOR : P1_COLOR;
+  const oppPiece: Player = myPlayer === 1 ? 2 : 1;
 
   return (
     <ThemedView style={styles.container}>
-      {/* Players bar */}
-      <View style={styles.playersRow}>
-        <View style={styles.playerTag}>
-          <View style={[styles.disc, styles.tagDisc, { backgroundColor: myColor }]} />
-          <ThemedText type="smallBold">You</ThemedText>
+      {/* Player info bar */}
+      <View style={styles.headerCard}>
+        <View style={styles.playersRow}>
+          <View style={styles.playerTag}>
+            <Image source={PIECE_IMG[myPlayer]} style={styles.tagPiece} contentFit="contain" />
+            <ThemedText type="smallBold">You</ThemedText>
+          </View>
+          <ThemedText type="small" themeColor="textSecondary">vs</ThemedText>
+          <View style={styles.playerTag}>
+            {opp === 'ai' ? (
+              <Image source={opponent.imageSource} style={styles.oppAvatar} contentFit="contain" />
+            ) : (
+              <Image source={PIECE_IMG[oppPiece]} style={styles.tagPiece} contentFit="contain" />
+            )}
+            <ThemedText type="smallBold">{opp === 'ai' ? opponent.name : 'Friend'}</ThemedText>
+          </View>
         </View>
-        <ThemedText type="small" themeColor="textSecondary">vs</ThemedText>
-        <View style={styles.playerTag}>
-          {opp === 'ai' ? (
-            <Image source={opponent.imageSource} style={styles.oppAvatar} contentFit="contain" />
-          ) : (
-            <View style={[styles.disc, styles.tagDisc, { backgroundColor: oppColor }]} />
-          )}
-          <ThemedText type="smallBold">{opp === 'ai' ? opponent.name : 'Friend'}</ThemedText>
-        </View>
+        <ThemedText type="smallBold" style={styles.status}>
+          {oppLeft ? 'Friend left the game 😢' : statusText}
+        </ThemedText>
       </View>
 
-      <ThemedText type="smallBold" style={styles.status}>
-        {oppLeft ? 'Friend left the game 😢' : statusText}
-      </ThemedText>
-
       {/* Board */}
-      <View style={styles.board}>
+      <View style={styles.boardWrap}>
+        <Image source={BOARD_IMG} style={styles.boardImg} contentFit="fill" />
+        {/* Placed pieces, positioned over the art's holes */}
+        {board.map((rowArr, r) =>
+          rowArr.map((v, c) =>
+            v !== 0 ? (
+              <FallingPiece
+                key={`${v}-${r}-${c}`}
+                player={v as Player}
+                left={COL_FX[c] * BOARD_W - PIECE_D / 2}
+                top={ROW_FY[r] * BOARD_H - PIECE_D / 2}
+                row={r}
+                win={isWinCell(r, c)}
+              />
+            ) : null,
+          ),
+        )}
+        {/* Tap zones — one per column */}
         {Array.from({ length: COLS }).map((_, c) => {
           const canDrop = !result && !oppLeft && turn === myPlayer && board[0][c] === 0 &&
             (opp === 'ai' || opponentPresent);
           return (
             <Pressable
               key={c}
-              style={styles.column}
+              style={[styles.colZone, { left: COL_FX[c] * BOARD_W - COL_ZONE_W / 2, width: COL_ZONE_W }]}
               onPress={() => onColumnPress(c)}
-              disabled={!canDrop}>
-              {Array.from({ length: ROWS }).map((__, r) => {
-                const v = board[r][c];
-                return (
-                  <View key={r} style={styles.hole}>
-                    {v !== 0 && (
-                      <View
-                        style={[
-                          styles.disc,
-                          { backgroundColor: v === 1 ? P1_COLOR : P2_COLOR },
-                          isWinCell(r, c) && styles.discWin,
-                        ]}
-                      />
-                    )}
-                  </View>
-                );
-              })}
-            </Pressable>
+              disabled={!canDrop}
+            />
           );
         })}
       </View>
 
       {/* Footer actions */}
-      {(result || oppLeft) ? (
+      {(result || oppLeft) && (
         <View style={styles.footerRow}>
           {opp === 'ai' && !oppLeft && (
             <Pressable style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]} onPress={() => resetGame(1)}>
@@ -372,21 +409,20 @@ export function Connect4Game() {
               <ThemedText type="smallBold" style={styles.primaryBtnText}>Rematch</ThemedText>
             </Pressable>
           )}
-          <Pressable style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]} onPress={backToModes}>
-            <ThemedText type="smallBold" style={styles.secondaryBtnText}>Change mode</ThemedText>
-          </Pressable>
         </View>
-      ) : (
-        <Pressable onPress={backToModes} style={styles.linkBtn}>
-          <ThemedText type="small" themeColor="textSecondary">Change mode</ThemedText>
-        </Pressable>
       )}
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { alignItems: 'center', gap: Spacing.three, width: '100%' },
+  container: {
+    alignItems: 'center',
+    gap: Spacing.three,
+    width: '100%',
+    paddingVertical: Spacing.three,
+    backgroundColor: 'transparent',
+  },
   heading: { fontSize: 20 },
   center: { textAlign: 'center' },
   pressed: { opacity: 0.85 },
@@ -402,7 +438,9 @@ const styles = StyleSheet.create({
     gap: 4,
     backgroundColor: 'rgba(124,111,90,0.10)',
   },
-  modeEmoji: { fontSize: 34, lineHeight: 40 },
+  modeIcon: { width: 44, height: 44 },
+  modeDiscPair: { flexDirection: 'row', alignItems: 'center', height: 44, justifyContent: 'center' },
+  modePiece: { width: 30, height: 30 },
   modeCardLocked: { opacity: 0.55 },
 
   // Lobby
@@ -431,31 +469,27 @@ const styles = StyleSheet.create({
   linkBtn: { paddingVertical: Spacing.two },
 
   // Players bar
+  headerCard: {
+    alignItems: 'center',
+    gap: Spacing.one,
+    backgroundColor: 'rgba(255, 252, 248, 0.88)',
+    borderRadius: 16,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
   playersRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.three },
   playerTag: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  tagDisc: { width: 18, height: 18 },
+  tagPiece: { width: 22, height: 22 },
   oppAvatar: { width: 30, height: 30 },
   status: { fontSize: 16 },
 
   // Board
-  board: {
-    flexDirection: 'row',
-    gap: GAP,
-    padding: GAP + 2,
-    borderRadius: 16,
-    backgroundColor: 'rgba(124,111,90,0.10)',
-  },
-  column: { gap: GAP },
-  hole: {
-    width: CELL,
-    height: CELL,
-    borderRadius: CELL / 2,
-    backgroundColor: '#FFFDF8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  disc: { width: CELL - 6, height: CELL - 6, borderRadius: (CELL - 6) / 2 },
-  discWin: { borderWidth: 2.5, borderColor: '#FFFFFF' },
+  boardWrap: { width: BOARD_W, height: BOARD_H, overflow: 'hidden', marginTop: SCREEN_H * 0.12 },
+  boardImg: { position: 'absolute', width: BOARD_W, height: BOARD_H },
+  piece: { position: 'absolute', width: PIECE_D, height: PIECE_D },
+  pieceImg: { width: '100%', height: '100%' },
+  pieceWin: { borderRadius: PIECE_D / 2, borderWidth: 3, borderColor: '#FFE08A' },
+  colZone: { position: 'absolute', top: 0, height: BOARD_H },
 
   footerRow: { flexDirection: 'row', gap: Spacing.two, alignItems: 'center' },
 });

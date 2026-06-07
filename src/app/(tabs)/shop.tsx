@@ -17,6 +17,7 @@ import {
   type ShopCategory,
 } from '@/constants/shop-data';
 import { outfitsForCharacter } from '@/constants/outfit-data';
+import { partnerItemId } from '@/constants/room-data';
 import { SHOP_COMPANIONS, STARTER_COMPANION_IMAGES, getStarterActiveId } from '@/lib/companion-utils';
 import { DAILY_EARN_CAP } from '@/constants/placeholder-data';
 import {
@@ -37,7 +38,23 @@ const CATEGORY_EMOJI: Partial<Record<ShopCategory, string>> = {
   sound: '🎧',
 };
 
+const CAT_ICON_IMG: Partial<Record<ShopCategory, number>> = {
+  companion: require('@/assets/images/shop/icon-buddy.png'),
+  outfits: require('@/assets/images/shop/icon-outfits.png'),
+  recipe: require('@/assets/images/shop/icon-recipe.png'),
+  background: require('@/assets/images/shop/icon-room.png'),
+  desk: require('@/assets/images/shop/icon-desk.png'),
+  sound: require('@/assets/images/shop/icon-sound.png'),
+  game: require('@/assets/images/shop/icon-game.png'),
+  reminder: require('@/assets/images/shop/icon-reminder.png'),
+};
+
 function CategoryIcon({ id, size }: { id: ShopCategory; size?: number }) {
+  const img = CAT_ICON_IMG[id];
+  if (img) {
+    const s = (size ?? 56) * 1.05;
+    return <RNImage source={img} style={{ width: s, height: s }} resizeMode="contain" />;
+  }
   if (id === 'game') return <GameIcon size={size} />;
   if (id === 'reminder') return <ReminderIcon size={size} />;
   const emoji = CATEGORY_EMOJI[id];
@@ -49,7 +66,7 @@ function CategoryIcon({ id, size }: { id: ShopCategory; size?: number }) {
 }
 
 const CATEGORY_SHORT: Record<ShopCategory, string> = {
-  companion: 'Buddy',
+  companion: 'Chef',
   outfits: 'Outfits',
   background: 'Room',
   desk: 'Desk',
@@ -62,6 +79,8 @@ const CATEGORY_SHORT: Record<ShopCategory, string> = {
   theme: 'Theme',
   pose: 'Pose',
 };
+
+const MAGNIFIER_ICON = require('@/assets/images/shop/magnifier.png');
 
 const WIN_W = Math.min(Dimensions.get('window').width, MaxContentWidth);
 const H_PAD = Spacing.three;
@@ -76,6 +95,7 @@ const COIN_PACKS: CoinPack[] = [
   { id: 'bag', name: 'Study Bag', coins: 600, price: '$2.49' },
   { id: 'chest', name: 'Coin Chest', coins: 1400, price: '$4.99', popular: true },
   { id: 'vault', name: 'Scholar Vault', coins: 3500, price: '$9.99' },
+  { id: 'treasury', name: 'Grand Treasury', coins: 50000, price: '$100.00' },
 ];
 
 
@@ -153,7 +173,9 @@ export default function ShopScreen() {
 
 
   const discount = isPlus ? 0.8 : 1;
-  const items = SHOP_ITEMS.filter((i) => i.category === activeCategory);
+  // Plus-exclusive items (e.g. Tira) are not sold in the shop — they're granted
+  // with Plus — but their data stays in SHOP_ITEMS for the gallery & wardrobe.
+  const items = SHOP_ITEMS.filter((i) => i.category === activeCategory && !i.plusOnly);
   const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
   const pages = Array.from({ length: totalPages }, (_, i) => items.slice(i * ITEMS_PER_PAGE, (i + 1) * ITEMS_PER_PAGE));
   const capRemaining = Math.max(0, DAILY_EARN_CAP - earnedToday);
@@ -193,6 +215,13 @@ export default function ShopScreen() {
         },
       },
     ]);
+  };
+
+  const goToPartner = (itemId: string) => {
+    const partner = partnerItemId(itemId);
+    if (!partner) return;
+    const pItem = SHOP_ITEMS.find((i) => i.id === partner);
+    if (pItem) setActiveCategory(pItem.category);
   };
 
   const handleEquip = (itemId: string, name: string) => {
@@ -324,7 +353,18 @@ export default function ShopScreen() {
                           }}>
                           <View style={[styles.itemCard, owned && styles.itemOwned, !owned && !canAfford && styles.itemDim]}>
                             {o.image ? (
-                              <RNImage source={o.image} style={styles.outfitItemImg} resizeMode="contain" />
+                              <>
+                                <RNImage source={o.image} style={styles.outfitItemImg} resizeMode="contain" />
+                                <Pressable
+                                  style={styles.zoomBtn}
+                                  hitSlop={8}
+                                  onPress={(e) => {
+                                    e.stopPropagation?.();
+                                    setZoomImage(o.image ?? null);
+                                  }}>
+                                  <RNImage source={MAGNIFIER_ICON} style={styles.zoomIcon} resizeMode="contain" />
+                                </Pressable>
+                              </>
                             ) : (
                               <ThemedText style={styles.itemEmoji}>{o.emoji}</ThemedText>
                             )}
@@ -389,7 +429,15 @@ export default function ShopScreen() {
                       style={({ pressed }) => pressed && styles.pressed}
                       onPress={() => {
                         if (owned) {
+                          // Owned companions are set active from the Companion gallery,
+                          // not by tapping them here.
+                          if (item.category === 'companion') return;
                           if (equipable && !isEquipped) handleEquip(item.id, item.name);
+                        } else if (item.plusOnly) {
+                          Alert.alert(
+                            `${item.name} is a Plus exclusive`,
+                            `Unlock Memobun Plus to get ${item.name} for free. Her outfits are still bought separately.`,
+                          );
                         } else {
                           handleBuy(item.id, item.name, item.price);
                         }
@@ -410,8 +458,19 @@ export default function ShopScreen() {
                                 e.stopPropagation?.();
                                 setZoomImage(item.image ?? null);
                               }}>
-                              <ThemedText style={styles.zoomBtnText}>🔍</ThemedText>
+                              <RNImage source={MAGNIFIER_ICON} style={styles.zoomIcon} resizeMode="contain" />
                             </Pressable>
+                            {partnerItemId(item.id) && (
+                              <Pressable
+                                style={styles.pairBtn}
+                                hitSlop={8}
+                                onPress={(e) => { e.stopPropagation?.(); goToPartner(item.id); }}>
+                                <View style={styles.pairGlyph}>
+                                  <View style={styles.pairRing} />
+                                  <View style={[styles.pairRing, styles.pairRing2]} />
+                                </View>
+                              </Pressable>
+                            )}
                           </>
                         ) : (
                           <ThemedText style={styles.itemEmoji}>{item.emoji}</ThemedText>
@@ -419,6 +478,10 @@ export default function ShopScreen() {
                         {owned ? (
                           <View style={[styles.priceBadge, isEquipped ? styles.badgeEquipped : styles.badgeOwned]}>
                             <ThemedText style={styles.badgeText}>{isEquipped ? '✓ Equipped' : '✓ Owned'}</ThemedText>
+                          </View>
+                        ) : item.plusOnly ? (
+                          <View style={[styles.priceBadge, styles.badgePlus]}>
+                            <ThemedText style={styles.badgePlusText}>✨ Plus</ThemedText>
                           </View>
                         ) : (
                           <CoinAmount
@@ -533,16 +596,39 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   zoomBtn: {
     position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: 'rgba(255,255,255,0.85)',
+    top: 2,
+    left: 2,
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },
   zoomBtnText: { fontSize: 13 },
+  zoomIcon: { width: 30, height: 30 },
+  pairBtn: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 30,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderWidth: 1.5,
+    borderColor: BakeryColors.jam,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pairGlyph: { width: 20, height: 12, justifyContent: 'center' },
+  pairRing: {
+    position: 'absolute',
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: BakeryColors.jam,
+    left: 0,
+  },
+  pairRing2: { left: 8 },
   zoomBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(60,40,30,0.6)',
@@ -751,6 +837,8 @@ const styles = StyleSheet.create({
   },
   badgeOwned: { backgroundColor: '#F2A0B525' },
   badgeEquipped: { backgroundColor: `${BakeryColors.honey}25` },
+  badgePlus: { backgroundColor: '#C75A7820' },
+  badgePlusText: { fontSize: 12, fontWeight: '700', color: '#C75A78', lineHeight: 16 },
   badgeText: { fontSize: 12, fontWeight: '700', color: BakeryColors.mocha, lineHeight: 16 },
   priceText: { fontSize: 14, fontWeight: '700', color: BakeryColors.cocoaDark, lineHeight: 18 },
   priceTextDim: { color: BakeryColors.latte },

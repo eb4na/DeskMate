@@ -5,7 +5,7 @@
 
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   GestureResponderEvent,
@@ -23,12 +23,27 @@ import Animated, {
   ZoomIn,
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
+  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedView } from '@/components/themed-view';
+import { BakeryCakeEmoji, BakeryHeartEmoji, BakeryReceiptEmoji } from '@/components/bakery-emoji';
+import { BaseIcon, CakeBuildIcon, CakeIngredientIcon, type IngredientKind } from '@/components/cake-ingredients';
 import { useApp } from '@/context/app-context';
+import { joinGameRoom, type GameRoom } from '@/lib/game-net';
+import {
+  NAV_DEBUG,
+  obstaclesPx,
+  walkBounds,
+  findPath,
+  resolveClick,
+  stationTarget,
+  type NavPt as NavPoint,
+  type Obstacle,
+} from '@/game/cake/nav';
 import { BakeryColors, BakeryRadii, BakeryShadow, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 import {
   BASES,
@@ -93,9 +108,115 @@ const SCORE_PER_COIN = 100;
 
 const KITCHEN_BG = require('@/assets/images/cake/kitchen-bg.png');
 const COUNTER_IMG = require('@/assets/images/cake/counter.png');
-const COUNTER_ASPECT = 1100 / 262;
+const COUNTER_ASPECT = 820 / 225;
+const LEFT_COUNTER_IMG = require('@/assets/images/cake/left-counter.png');
+const LEFT_COUNTER_ASPECT = 520 / 860;
+const MIXER_ASPECT = 300 / 422;
+const OVEN_TABLE_IMG = require('@/assets/images/cake/oven-table.png');
+const OVEN_TABLE_ASPECT = 520 / 213;
+const OVEN_APP_ASPECT = 260 / 280;
+const STATUS_BAR_IMG = require('@/assets/images/cake/status-bar.png');
+
+// Stations temporarily hidden while their art is redesigned (gameplay code kept).
+// 'ingredient' is hidden because the new left-counter art (with its own tap zone)
+// covers it.
+const HIDDEN_STATION_KINDS = new Set<Station['kind']>([
+  'ingredient',
+  'oven',
+  'mixer',
+  'assembly',
+  'decoration',
+  'trash',
+]);
 const SHELF_IMG = require('@/assets/images/cake/station-shelf.png');
 const CUSTOMER_IMG = require('@/assets/images/bunny/bunny.png');
+
+// ── Kitchen navigation geometry ───────────────────────────────────────────────
+// Kitchen geometry: where each table/machine sits and a "stand" point in front of
+// each station, so tapping a station walks the cat to its *visible* location. All
+// rects/points are PIXELS relative to the kitchen (w × h). Keep these literals in
+// sync with the render IIFEs (they consume kitchenLayout too).
+type NavRect = { x0: number; y0: number; x1: number; y1: number };
+type NavPt = { x: number; y: number };
+
+const WALK_SPEED = 0.2; // px per ms — constant walking pace (so it doesn't zoom)
+
+const pctToPx = (p: NavPt, w: number, h: number): NavPt => ({ x: (p.x / 100) * w, y: (p.y / 100) * h });
+const pxToPct = (p: NavPt, w: number, h: number): NavPt => ({ x: (p.x / w) * 100, y: (p.y / h) * 100 });
+
+// Visible tables/machines + a "stand" point in front of each station.
+function kitchenLayout(w: number, h: number) {
+  // Front serving counter across the top.
+  const counterTop = 0.11 * h;
+  const counterH = w / COUNTER_ASPECT;
+  const counterBottom = counterTop + counterH;
+
+  // Left counter (ingredients + 3 mixers). Container aspect == image aspect, so
+  // contentFit="contain" fills the rect exactly (no letterbox).
+  const lcLeft = -0.07 * w;
+  const lcTop = 0.35 * h;
+  const lcW = 0.54 * w;
+  const lcH = lcW / LEFT_COUNTER_ASPECT;
+  const leftCounter: NavRect = { x0: lcLeft, y0: lcTop, x1: lcLeft + lcW, y1: lcTop + lcH };
+  const mixerSlots = [0.24, 0.53, 0.82];
+  const mixerSlotY = 0.66;
+
+  // Oven table (right) with 3 ovens.
+  const ovenW = 0.6 * w;
+  const ovenH = ovenW / OVEN_TABLE_ASPECT;
+  const tableLeft = 1.06 * w - ovenW;
+  const tableTop = 0.38 * h - ovenH / 2;
+  const ovenTable: NavRect = { x0: tableLeft, y0: tableTop, x1: tableLeft + ovenW, y1: tableTop + ovenH };
+  const ovenSlots = [0.15, 0.44, 0.73];
+
+  // Right-side stacked tables: assembly / decorate / trash.
+  const rightCenterX = 0.87 * w;
+  const pieceW = 0.36 * w;
+  const rightDefs: Record<string, { cy: number; aspect: number }> = {
+    assembly: { cy: 0.55, aspect: 320 / 254 },
+    decoration: { cy: 0.71, aspect: 320 / 265 },
+    trash: { cy: 0.87, aspect: 320 / 250 },
+  };
+  const rightRects: Record<string, NavRect> = {};
+  for (const k of Object.keys(rightDefs)) {
+    const ph = pieceW / rightDefs[k].aspect;
+    const cy = rightDefs[k].cy * h;
+    rightRects[k] = { x0: rightCenterX - pieceW / 2, y0: cy - ph / 2, x1: rightCenterX + pieceW / 2, y1: cy + ph / 2 };
+  }
+
+  // Stand points: approach the left counter from the right, the oven table from
+  // Each station's center ON its table. Tapping a station targets this point; the
+  // edge-stop logic then walks the cat to the table edge facing its approach, so
+  // it ends up standing next to that station without climbing onto the table.
+  const rc = (r: NavRect): NavPt => ({ x: (r.x0 + r.x1) / 2, y: (r.y0 + r.y1) / 2 });
+  const centers: Record<string, NavPt> = {
+    ingredient: { x: lcLeft + 0.3 * lcW, y: lcTop + 0.21 * lcH },
+    mixer1: { x: lcLeft + mixerSlots[0] * lcW, y: lcTop + mixerSlotY * lcH },
+    mixer2: { x: lcLeft + mixerSlots[1] * lcW, y: lcTop + mixerSlotY * lcH },
+    mixer3: { x: lcLeft + mixerSlots[2] * lcW, y: lcTop + mixerSlotY * lcH },
+    oven1: { x: tableLeft + ovenSlots[0] * ovenW, y: tableTop + 0.5 * ovenH },
+    oven2: { x: tableLeft + ovenSlots[1] * ovenW, y: tableTop + 0.5 * ovenH },
+    oven3: { x: tableLeft + ovenSlots[2] * ovenW, y: tableTop + 0.5 * ovenH },
+    assembly: rc(rightRects.assembly),
+    decoration: rc(rightRects.decoration),
+    trash: rc(rightRects.trash),
+  };
+
+  return { counterTop, counterH, counterBottom, leftCounter, ovenTable, rightRects, centers };
+}
+
+// How long the cat takes to walk a path (percent waypoints) from a start, at a
+// constant pace — used so the station action fires when it actually arrives.
+function pathDurationMs(fromPct: NavPt, path: NavPt[], w: number, h: number): number {
+  let prev = pctToPx(fromPct, w, h);
+  let total = 0;
+  for (const wp of path) {
+    const p = pctToPx(wp, w, h);
+    total += Math.hypot(p.x - prev.x, p.y - prev.y);
+    prev = p;
+  }
+  return Math.max(150, total / WALK_SPEED);
+}
 
 // Bunny customers: arrive → greet countdown → (greeted) order countdown → serve
 // or leave angry. At most MAX_CUSTOMERS at a time.
@@ -106,7 +227,7 @@ type Customer = {
   spawnAt: number; // when the bunny arrived (greet countdown start)
   greetedAt: number; // when the order was taken (order countdown start)
 };
-const MAX_CUSTOMERS_SOLO = 4;
+const MAX_CUSTOMERS_SOLO = 2;
 const MAX_CUSTOMERS_MULTI = 10; // up to 3 players → up to 10 bunnies
 const GREET_MS = 18000; // time to greet a newly-arrived bunny before it leaves
 const ORDER_PATIENCE_MS = 48000; // time to fill an order before the bunny gets angry
@@ -208,11 +329,16 @@ const makeLineOrder = (elapsedSec: number): CakeOrder => ({
 });
 
 export default function CakeGameScreen() {
-  const params = useLocalSearchParams<{ mode?: string }>();
+  const params = useLocalSearchParams<{ mode?: string; room?: string; role?: string; netmode?: string }>();
   const initialMode: GameMode | null = params.mode === 'rush' || params.mode === 'line' ? params.mode : null;
   const navigation = useNavigation();
 
-  const [started, setStarted] = useState(false);
+  // Friend race — auto-start a timed match synced to the friend's game.
+  const online = params.netmode === 'race' && params.room
+    ? { room: params.room, isHost: params.role === 'host' }
+    : null;
+
+  const [started, setStarted] = useState(!!online);
   const [crew, setCrew] = useState<'solo' | 'multi'>('solo');
   const [timed, setTimed] = useState(true);
 
@@ -231,9 +357,10 @@ export default function CakeGameScreen() {
   if (started) {
     return (
       <KitchenView
-        mode={timed ? 'rush' : 'line'}
+        mode={online ? 'rush' : timed ? 'rush' : 'line'}
         multiplayer={crew === 'multi'}
-        onBack={() => setStarted(false)}
+        online={online ?? undefined}
+        onBack={() => (online ? goHome() : setStarted(false))}
         onHome={goHome}
       />
     );
@@ -396,16 +523,22 @@ function ChoiceCard({
 function KitchenView({
   mode,
   multiplayer,
+  online,
   onBack,
   onHome,
 }: {
   mode: GameMode;
   multiplayer: boolean;
+  online?: { room: string; isHost: boolean };
   onBack: () => void;
   onHome: () => void;
 }) {
   const { cakeBestRush, cakeBestLine, recordCakeBest, addCoins, cakeCharacter } = useApp();
+  const raceRoom = useRef<GameRoom | null>(null);
+  const [oppScore, setOppScore] = useState(0);
+  const [oppFinal, setOppFinal] = useState<number | null>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
+  const [navDebug, setNavDebug] = useState<{ click: NavPoint; dest: NavPoint; path: NavPoint[] } | null>(null);
   // Players are kept in an array even though there is one local player, so
   // multiplayer can be added later without reshaping the render.
   const [players, setPlayers] = useState<PlayerState[]>(() => [createInitialPlayer()]);
@@ -446,6 +579,27 @@ function KitchenView({
   comboRef.current = combo;
   const scoreRef = useRef(score);
   scoreRef.current = score;
+
+  // ── Friend race sync ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!online) return;
+    raceRoom.current = joinGameRoom(online.room, online.isHost, {
+      onMessage: (type, data) => {
+        if (type === 'score') setOppScore((data as { s: number }).s);
+        else if (type === 'final') setOppFinal((data as { s: number }).s);
+      },
+      onPresence: () => {},
+    });
+    return () => raceRoom.current?.leave();
+  }, [online]);
+
+  useEffect(() => {
+    if (online) raceRoom.current?.send('score', { s: score });
+  }, [online, score]);
+
+  useEffect(() => {
+    if (online && phase === 'results') raceRoom.current?.send('final', { s: scoreRef.current });
+  }, [online, phase]);
   const arriveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fbTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fbId = useRef(0);
@@ -623,6 +777,11 @@ function KitchenView({
       popup('Not ready yet!', 'warn');
       return;
     }
+    if (h.spoiled) {
+      popup('Wrong cake — toss it & redo! 🗑️', 'bad');
+      flashMood('sad');
+      return;
+    }
     const cake = { base: h.base, filling: h.filling, topping: h.topping, stage: 'readyToServe' as const };
     // Among greeted customers wanting this cake, serve the most urgent one
     // (least order time left).
@@ -677,17 +836,7 @@ function KitchenView({
         case 'oven': {
           const isMix = station.kind === 'mixer';
           const need = isMix ? 'base' : 'batter';
-          // Timed mode: no countdown — mixer/oven convert the item instantly.
-          if (isRush) {
-            if (h?.kind === need && h.base) {
-              setHeld({ kind: isMix ? 'batter' : 'sponge', base: h.base });
-              flashMood('happy');
-              popup(isMix ? 'Mixed! 🥣' : 'Baked! 🍞', 'ok');
-            } else {
-              popup(isMix ? 'Bring a base to mix 🧺' : 'Bring batter to bake 🥣', 'warn');
-            }
-            break;
-          }
+          // Both modes use the drop-in countdown (timed mode no longer instant).
           const cooker = cookersRef.current[station.id];
           if (cooker && cookerReady(cooker)) {
             if (h) { popup('Hands full!', 'warn'); break; }
@@ -732,43 +881,107 @@ function KitchenView({
     [popup, flashMood, serve, dropIntoCooker, collectFromCooker, isRush],
   );
 
-  // Tapping a station sends the active player walking, then triggers its action.
-  const moveTo = (station: Station) => {
-    if (phaseRef.current !== 'playing') return;
+  // Obstacle map + walkable bounds (px) for the current kitchen size.
+  const navData = useMemo(
+    () => (size.w > 0 ? { obstacles: obstaclesPx(size.w, size.h), bounds: walkBounds(size.w, size.h) } : null),
+    [size.w, size.h],
+  );
+
+  // Core move: A*-path the active cat's FEET to a destination (px), following the
+  // waypoints at a constant pace. If `station` is given, run its action on arrival.
+  const goTo = (destPx: NavPoint, station: Station | null, clickPx?: NavPoint) => {
+    if (!navData) return;
+    const w = size.w;
+    const h = size.h;
+    const fromPct = { x: active.targetX, y: active.targetY };
+    const fromPx = pctToPx(fromPct, w, h);
+    const wps = findPath(fromPx, destPx, navData.obstacles, navData.bounds);
+    const path = wps.map((p) => pxToPct(p, w, h));
+    const dest = path.length ? path[path.length - 1] : pxToPct(destPx, w, h);
     setPicker(null);
     setPlayers((prev) =>
       prev.map((p) =>
         p.id === active.id
-          ? { ...p, targetX: station.x, targetY: station.y, currentStation: station.id }
+          ? { ...p, targetX: dest.x, targetY: dest.y, path, currentStation: station ? station.id : null }
           : p,
       ),
     );
     if (arriveTimer.current) clearTimeout(arriveTimer.current);
-    arriveTimer.current = setTimeout(() => handleArrive(station), WALK_MS);
+    if (station) {
+      arriveTimer.current = setTimeout(() => handleArrive(station), pathDurationMs(fromPct, path, w, h));
+    }
+    if (NAV_DEBUG) {
+      setNavDebug({ click: clickPx ?? destPx, dest: destPx, path: wps });
+      // eslint-disable-next-line no-console
+      console.log('[nav]', { from: fromPx, click: clickPx, dest: destPx, waypoints: wps.length });
+    }
   };
 
-  // Tap an empty spot in the kitchen → just walk there (no station action).
+  // Tapping a station → walk to its accessible-side interaction point, then act.
+  const moveTo = (station: Station) => {
+    if (phaseRef.current !== 'playing' || !navData) return;
+    const fromPx = pctToPx({ x: active.targetX, y: active.targetY }, size.w, size.h);
+    const destPx = stationTarget(station.id, fromPx, navData.obstacles, navData.bounds);
+    goTo(destPx, station, destPx);
+  };
+
+  // Tap empty floor / a table body → resolve to a walkable spot (exact floor, or
+  // the near side of a table) and A*-path there.
   const moveFree = (e: GestureResponderEvent) => {
-    if (phaseRef.current !== 'playing' || size.w === 0) return;
-    const x = Math.max(0, Math.min(100, (e.nativeEvent.locationX / size.w) * 100));
-    const y = Math.max(0, Math.min(100, (e.nativeEvent.locationY / size.h) * 100));
-    setPicker(null);
-    if (arriveTimer.current) clearTimeout(arriveTimer.current);
-    setPlayers((prev) =>
-      prev.map((p) => (p.id === active.id ? { ...p, targetX: x, targetY: y, currentStation: null } : p)),
-    );
+    if (phaseRef.current !== 'playing' || !navData) return;
+    const click = { x: e.nativeEvent.locationX, y: e.nativeEvent.locationY };
+    const fromPx = pctToPx({ x: active.targetX, y: active.targetY }, size.w, size.h);
+    const { dest } = resolveClick(click, fromPx, navData.obstacles, navData.bounds);
+    goTo(dest, null, click);
+  };
+
+  // Tap the serving counter → walk to the floor in front of it at the tapped x,
+  // then serve. The counter Pressable is full-width (left:0), so locationX == kitchen x.
+  const tapCounter = (e: GestureResponderEvent) => {
+    if (phaseRef.current !== 'playing' || !navData) return;
+    const counter = STATIONS.find((s) => s.kind === 'counter');
+    if (!counter) return;
+    const click = { x: e.nativeEvent.locationX, y: -10 }; // above the band → counter-front
+    const fromPx = pctToPx({ x: active.targetX, y: active.targetY }, size.w, size.h);
+    const { dest } = resolveClick(click, fromPx, navData.obstacles, navData.bounds);
+    goTo(dest, counter, click);
   };
 
   const onPick = (id: CakeBase | CakeFilling | CakeTopping) => {
     if (picker === 'base') {
-      setHeld({ kind: 'base', base: id as CakeBase });
-      popup('Got a base 🧺', 'ok');
+      // Bind this cake to the order being worked on (oldest greeted) and check
+      // each ingredient against it. A wrong pick spoils the cake → must be tossed.
+      const target = customersRef.current.find((c) => c.greeted);
+      const wrong = !!target && (id as CakeBase) !== target.order.base;
+      setHeld({ kind: 'base', base: id as CakeBase, orderId: target?.id, spoiled: wrong });
+      if (wrong) {
+        popup('Wrong base! Toss it & redo 🗑️', 'bad');
+        flashMood('sad');
+      } else {
+        popup('Got a base 🧺', 'ok');
+      }
     } else if (picker === 'filling') {
-      setHeld((h) => (h ? { ...h, filling: id as CakeFilling } : h));
-      popup('Filling added 🍰', 'ok');
+      const h = heldRef.current;
+      const target = customersRef.current.find((c) => c.id === h?.orderId);
+      const wrong = !!target && (id as CakeFilling) !== target.order.filling;
+      setHeld((cur) => (cur ? { ...cur, filling: id as CakeFilling, spoiled: cur.spoiled || wrong } : cur));
+      if (wrong) {
+        popup('Wrong filling! Toss it 🗑️', 'bad');
+        flashMood('sad');
+      } else {
+        popup('Filling added 🍰', 'ok');
+      }
     } else if (picker === 'topping') {
-      setHeld((h) => (h ? { ...h, kind: 'cake', topping: id as CakeTopping } : h));
-      popup('Ready! Serve it 🔔', 'ok');
+      const h = heldRef.current;
+      const target = customersRef.current.find((c) => c.id === h?.orderId);
+      const wrong = !!target && (id as CakeTopping) !== target.order.topping;
+      setHeld((cur) => (cur ? { ...cur, kind: 'cake', topping: id as CakeTopping, spoiled: cur.spoiled || wrong } : cur));
+      if (wrong) {
+        popup('Wrong topping! Toss it 🗑️', 'bad');
+        flashMood('sad');
+      } else {
+        popup('Ready! Serve it 🔔', 'ok');
+      }
     }
     setPicker(null);
   };
@@ -851,51 +1064,50 @@ function KitchenView({
           <Pressable hitSlop={10} style={({ pressed }) => [styles.modesBtn, pressed && styles.pressed]} onPress={onBack}>
             <Text style={styles.modesBtnText}>‹ Modes</Text>
           </Pressable>
-          <Text style={styles.modeName} numberOfLines={1}>
-            {isRush ? formatTime(secondsLeft) : MODE_META[mode].label}
-          </Text>
+          {/* Hearts = lives, Customer Line only. Timed (Cake Rush) has no pill. */}
+          {!isRush && (
+            <View style={styles.topLife} pointerEvents="none">
+              <View style={styles.topLifePill}>
+                {Array.from({ length: START_HEARTS }).map((_, i) => (
+                  <View key={i} style={{ opacity: i < hearts ? 1 : 0.28 }}>
+                    <BakeryHeartEmoji size={22} />
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
           <View style={styles.topRight}>
-            <Pressable
-              hitSlop={10}
-              style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
-              onPress={restart}>
-              <Text style={styles.iconBtnText}>🔄</Text>
-            </Pressable>
-            <Pressable
-              hitSlop={10}
-              style={({ pressed }) => [styles.iconBtn, styles.homeIconBtn, pressed && styles.pressed]}
-              onPress={onHome}>
-              <Text style={styles.iconBtnText}>🏠</Text>
-            </Pressable>
+            {isRush && (
+              <View style={styles.timerPill}>
+                <Text style={styles.timerText}>{formatTime(secondsLeft)}</Text>
+              </View>
+            )}
           </View>
         </View>
 
-        {/* HUD */}
-        <View style={styles.hud}>
-          {isRush ? (
-            <View style={styles.hudPill}>
-              <Text style={styles.hudText}>🎂 {cakesMade}</Text>
-            </View>
-          ) : (
-            <View style={styles.hudPill}>
-              <Text style={styles.hudText}>
-                {'❤️'.repeat(hearts)}
-                {'🤍'.repeat(Math.max(0, START_HEARTS - hearts))}
-              </Text>
-            </View>
-          )}
-          <View style={styles.hudPill}>
-            <Text style={styles.hudText}>⭐ {score}</Text>
-          </View>
-          <View style={[styles.hudPill, combo >= 2 && styles.hudPillHot]}>
-            <Text style={styles.hudText}>🔥 x{combo}</Text>
-          </View>
-        </View>
 
         {/* Top-down kitchen map — tap empty space to walk there */}
         <Pressable style={styles.kitchen} onLayout={onLayout} onPress={moveFree}>
+          {/* Score + Highest score down the left */}
+          {/* box-only: the badges absorb taps so they don't leak to moveFree */}
+          <View style={[styles.leftStats, { top: 0.23 * size.h }]} pointerEvents="box-only">
+            <View style={styles.statBadge}>
+              <Text style={styles.statBadgeText}>Score {score}</Text>
+            </View>
+            <View style={styles.statBadge}>
+              <Text style={styles.statBadgeText}>
+                Highest score {Math.max(score, isRush ? cakeBestRush : cakeBestLine)}
+              </Text>
+            </View>
+            {online && (
+              <View style={styles.statBadge}>
+                <Text style={styles.statBadgeText}>👥 {oppScore}</Text>
+              </View>
+            )}
+          </View>
           {/* Counters the mixers / ovens sit on (decorative, behind the stations) */}
-          {size.w > 0 && (
+          {/* Hidden for now — being replaced with new art (keep code). */}
+          {false && size.w > 0 && (
             <>
               {/* Vertical shelf behind the left ovens */}
               <Image
@@ -927,26 +1139,191 @@ function KitchenView({
             </>
           )}
 
-          {/* Serving counter (decorative + tappable) across the top */}
-          {size.w > 0 && (
-            <Pressable
-              hitSlop={6}
-              onPress={() => moveTo(STATIONS.find((s) => s.kind === 'counter')!)}
-              style={[styles.counterBanner, { width: size.w, height: size.w / COUNTER_ASPECT }]}>
-              <Image source={COUNTER_IMG} style={styles.counterImg} contentFit="contain" pointerEvents="none" />
-              {nextStationId === 'counter' && <Text style={styles.counterPoint}>👇</Text>}
-            </Pressable>
-          )}
-
-          {/* Bunny customers fade in at the counter */}
-          <View style={styles.customerStrip} pointerEvents="box-none">
-            {customers.map((c) => (
+          {/* Bunny customers — render BEFORE the counter so they sit behind it */}
+          <View style={[styles.customerStrip, { top: 0.02 * size.h }]} pointerEvents="box-none">
+            {customers.slice(0, ACTIVE_ORDERS).map((c) => (
               <CustomerSprite key={c.id} customer={c} onGreet={() => greetCustomer(c.id)} />
             ))}
           </View>
 
+          {/* Serving counter: full art is decorative; only the UPPER surface is
+              tappable to serve, so the strip in front of it stays walkable. */}
           {size.w > 0 &&
-            STATIONS.filter((s) => s.kind !== 'counter').map((s) => {
+            (() => {
+              const cW = size.w;
+              const { counterTop: cTop, counterH: cH } = kitchenLayout(size.w, size.h);
+              return (
+                <>
+                  <Image
+                    source={COUNTER_IMG}
+                    pointerEvents="none"
+                    contentFit="contain"
+                    style={{ position: 'absolute', left: 0, top: cTop, width: cW, height: cH, zIndex: 8 }}
+                  />
+                  <Pressable
+                    hitSlop={6}
+                    onPress={tapCounter}
+                    style={{ position: 'absolute', left: 0, top: cTop, width: cW, height: 0.55 * cH, alignItems: 'center', zIndex: 8 }}>
+                    {nextStationId === 'counter' && <Text style={styles.counterPoint}>👇</Text>}
+                  </Pressable>
+                </>
+              );
+            })()}
+
+          {/* Invisible greet layer ON TOP of the counter, mirroring the bunny
+              strip so the hit boxes line up. Tapping an un-greeted bunny takes
+              its order even though the bunny renders behind the counter. Greeted
+              bunnies pass taps through so you can still serve at the counter. */}
+          <View style={[styles.customerStrip, { top: 0.02 * size.h, zIndex: 9 }]} pointerEvents="box-none">
+            {customers.slice(0, ACTIVE_ORDERS).map((c) =>
+              c.greeted ? (
+                <View key={c.id} style={styles.greetHit} pointerEvents="none" />
+              ) : (
+                <Pressable key={c.id} style={styles.greetHit} onPress={() => greetCustomer(c.id)} />
+              ),
+            )}
+          </View>
+
+          {/* Left counter — Ingredients (tappable) + the 3 mixers sitting on its
+              slots, positioned relative to the counter frame so they always line
+              up. Mixer art swaps empty/full from its cooker state. */}
+          {size.w > 0 &&
+            (() => {
+              const lc = kitchenLayout(size.w, size.h).leftCounter;
+              const lcLeft = lc.x0;
+              const lcTop = lc.y0;
+              const lcW = lc.x1 - lc.x0;
+              const lcH = lc.y1 - lc.y0;
+              const mixW = 0.28 * lcW;
+              const mixH = mixW / MIXER_ASPECT;
+              const slotsX = [0.24, 0.53, 0.82]; // fraction of lcW (slot centers)
+              const slotY = 0.66; // fraction of lcH (mixer vertical center)
+              const mixerStations = STATIONS.filter((s) => s.kind === 'mixer');
+              return (
+                <View
+                  style={{ position: 'absolute', left: lcLeft, top: lcTop, width: lcW, height: lcH }}
+                  pointerEvents="box-none">
+                  <Image source={LEFT_COUNTER_IMG} style={StyleSheet.absoluteFill} contentFit="contain" pointerEvents="none" />
+                  {/* Ingredient hit-area — only the top-left shelf, so the rest of
+                      the counter lets you tap-to-walk past it */}
+                  <Pressable
+                    onPress={() => moveTo(STATIONS.find((s) => s.kind === 'ingredient')!)}
+                    style={{ position: 'absolute', left: 0, top: 0, width: 0.6 * lcW, height: 0.42 * lcH }}>
+                    {nextStationId === 'ingredient' && <Text style={styles.counterPoint}>👇</Text>}
+                  </Pressable>
+                  {mixerStations.map((st, i) => {
+                    const cooker = cookers[st.id];
+                    const ready = cooker && cookerReady(cooker);
+                    return (
+                      <Pressable
+                        key={st.id}
+                        onPress={() => moveTo(st)}
+                        style={{
+                          position: 'absolute',
+                          left: (slotsX[i] ?? 0.5) * lcW - mixW / 2,
+                          top: slotY * lcH - mixH / 2,
+                          width: mixW,
+                          height: mixH,
+                        }}>
+                        <Image
+                          source={stationImage('mixer', !!cooker)}
+                          style={StyleSheet.absoluteFill}
+                          contentFit="contain"
+                          pointerEvents="none"
+                        />
+                        {cooker && !ready && (
+                          <View style={styles.cookTrack}>
+                            <View style={[styles.cookFill, { width: `${cookerProgress(cooker) * 100}%` }]} />
+                          </View>
+                        )}
+                        {nextStationId === st.id && <Text style={styles.counterPoint}>👇</Text>}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              );
+            })()}
+
+          {/* Oven table — wide counter above assembly, with 3 ovens on it that
+              swap empty/baking from their cooker state. */}
+          {size.w > 0 &&
+            (() => {
+              const ot = kitchenLayout(size.w, size.h).ovenTable;
+              const ovenW = ot.x1 - ot.x0;
+              const ovenH = ot.y1 - ot.y0;
+              const tableLeft = ot.x0;
+              const tableTop = ot.y0;
+              const appW = 0.27 * ovenW;
+              const appH = appW / OVEN_APP_ASPECT;
+              const slotsX = [0.15, 0.44, 0.73]; // fraction of table width
+              const ovenCenterY = tableTop + 0.1 * ovenH;
+              const ovens = STATIONS.filter((s) => s.kind === 'oven');
+              return (
+                <>
+                  <Image
+                    source={OVEN_TABLE_IMG}
+                    pointerEvents="none"
+                    contentFit="contain"
+                    style={{ position: 'absolute', left: tableLeft, top: tableTop, width: ovenW, height: ovenH }}
+                  />
+                  {ovens.map((st, i) => {
+                    const cooker = cookers[st.id];
+                    const ready = cooker && cookerReady(cooker);
+                    return (
+                      <Pressable
+                        key={st.id}
+                        onPress={() => moveTo(st)}
+                        style={{
+                          position: 'absolute',
+                          left: tableLeft + (slotsX[i] ?? 0.5) * ovenW - appW / 2,
+                          top: ovenCenterY - appH / 2,
+                          width: appW,
+                          height: appH,
+                        }}>
+                        <Image source={stationImage('oven', !!cooker)} style={StyleSheet.absoluteFill} contentFit="contain" pointerEvents="none" />
+                        {cooker && !ready && (
+                          <View style={styles.cookTrack}>
+                            <View style={[styles.cookFill, { width: `${cookerProgress(cooker) * 100}%` }]} />
+                          </View>
+                        )}
+                        {nextStationId === st.id && <Text style={styles.counterPoint}>👇</Text>}
+                      </Pressable>
+                    );
+                  })}
+                </>
+              );
+            })()}
+
+          {/* Right side — Assembly / Decorate / Trash stations, stacked. */}
+          {size.w > 0 &&
+            (() => {
+              const rightRects = kitchenLayout(size.w, size.h).rightRects;
+              return STATIONS.filter((s) => rightRects[s.kind]).map((s) => {
+                const r = rightRects[s.kind];
+                return (
+                  <Pressable
+                    key={s.id}
+                    onPress={() => moveTo(s)}
+                    style={{
+                      position: 'absolute',
+                      left: r.x0,
+                      top: r.y0,
+                      width: r.x1 - r.x0,
+                      height: r.y1 - r.y0,
+                    }}>
+                    <Image source={stationImage(s.kind, false)} style={StyleSheet.absoluteFill} contentFit="contain" pointerEvents="none" />
+                    {nextStationId === s.id && <Text style={styles.counterPoint}>👇</Text>}
+                  </Pressable>
+                );
+              });
+            })()}
+
+          {size.w > 0 &&
+            STATIONS.filter((s) => s.kind !== 'counter')
+              // Temporarily hidden — these stations are being replaced with new
+              // art. Gameplay/StationBox code stays; just not rendered for now.
+              .filter((s) => !HIDDEN_STATION_KINDS.has(s.kind))
+              .map((s) => {
               const cooker = cookers[s.id];
               const ready = cooker && cookerReady(cooker);
               return (
@@ -979,6 +1356,56 @@ function KitchenView({
               );
             })}
 
+          {/* Debug overlay (NAV_DEBUG): obstacles, bounds, path, click/dest. */}
+          {NAV_DEBUG && size.w > 0 && (
+            <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+              {(() => {
+                const b = walkBounds(size.w, size.h);
+                return (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      left: b.x0,
+                      top: b.y0,
+                      width: b.x1 - b.x0,
+                      height: b.y1 - b.y0,
+                      borderWidth: 1,
+                      borderColor: 'lime',
+                    }}
+                  />
+                );
+              })()}
+              {obstaclesPx(size.w, size.h).map((o: Obstacle) => (
+                <View
+                  key={o.id}
+                  style={{
+                    position: 'absolute',
+                    left: o.rect.x0,
+                    top: o.rect.y0,
+                    width: o.rect.x1 - o.rect.x0,
+                    height: o.rect.y1 - o.rect.y0,
+                    borderWidth: 1.5,
+                    borderColor: 'red',
+                    backgroundColor: 'rgba(255,0,0,0.12)',
+                  }}>
+                  <Text style={{ fontSize: 8, color: 'red' }}>{o.id}</Text>
+                </View>
+              ))}
+              {navDebug?.path.map((p, i) => (
+                <View
+                  key={`wp${i}`}
+                  style={{ position: 'absolute', left: p.x - 3, top: p.y - 3, width: 6, height: 6, borderRadius: 3, backgroundColor: 'blue' }}
+                />
+              ))}
+              {navDebug && (
+                <View style={{ position: 'absolute', left: navDebug.click.x - 4, top: navDebug.click.y - 4, width: 8, height: 8, borderRadius: 4, backgroundColor: 'yellow' }} />
+              )}
+              {navDebug && (
+                <View style={{ position: 'absolute', left: navDebug.dest.x - 5, top: navDebug.dest.y - 5, width: 10, height: 10, borderRadius: 5, borderWidth: 2, borderColor: 'magenta' }} />
+              )}
+            </View>
+          )}
+
           {/* Floating result popup */}
           {feedback && (
             <Animated.View
@@ -1002,8 +1429,12 @@ function KitchenView({
                     key={opt.id}
                     style={({ pressed }) => [styles.pickChip, pressed && styles.pressed]}
                     onPress={() => onPick(opt.id as CakeBase | CakeFilling | CakeTopping)}>
-                    <View style={[styles.pickSwatch, { backgroundColor: opt.color }]}>
-                      <Text style={styles.pickEmoji}>{opt.emoji}</Text>
+                    <View style={styles.pickSwatch}>
+                      <CakeIngredientIcon
+                        kind={picker === 'base' ? 'base' : picker === 'filling' ? 'filling' : 'topping'}
+                        id={opt.id as never}
+                        size={38}
+                      />
                     </View>
                     <Text style={styles.pickLabel} numberOfLines={1}>
                       {opt.label}
@@ -1015,17 +1446,39 @@ function KitchenView({
           )}
         </Pressable>
 
-        {/* Persistent current-step prompt */}
-        <View style={styles.statusBar}>
-          <Text style={styles.statusText}>{statusText}</Text>
+        {/* Current orders (max 2) along the bottom — only after greeting */}
+        <View style={styles.ordersBar} pointerEvents="box-none">
+          {customers
+            .filter((c) => c.greeted)
+            .slice(0, ACTIVE_ORDERS)
+            .map((c) => (
+              <OrderCard key={c.id} customer={c} held={held} onGreet={() => greetCustomer(c.id)} />
+            ))}
         </View>
 
         {/* Results */}
         {phase === 'results' && (
           <ResultsModal
-            title={isRush ? "Time's up! ⏰" : 'Out of hearts! 💔'}
+            title={
+              online
+                ? (oppFinal ?? oppScore) < score
+                  ? 'You win the race! 🎉'
+                  : (oppFinal ?? oppScore) > score
+                    ? 'Friend wins the race!'
+                    : "It's a tie!"
+                : isRush
+                  ? "Time's up! ⏰"
+                  : 'Out of hearts! 💔'
+            }
             rows={
-              isRush
+              online
+                ? [
+                    ['⭐ Your score', `${score}`],
+                    ['👥 Friend score', `${oppFinal ?? oppScore}`],
+                    ['🎂 Cakes made', `${cakesMade}`],
+                    ['🪙 Coins earned', `+${Math.floor(score / SCORE_PER_COIN)}`],
+                  ]
+                : isRush
                 ? [
                     ['🎂 Cakes made', `${cakesMade}`],
                     ['⭐ Score', `${score}`],
@@ -1053,10 +1506,10 @@ function KitchenView({
 function formatTime(total: number): string {
   // Quirky display: above 6:00 it reads as "6:70" and the 70 counts down; once
   // it reaches 6:00 it continues as a normal clock.
-  if (total > 360) return `⏱ 6:${String(total - 360).padStart(2, '0')}`;
+  if (total > 360) return `6:${String(total - 360).padStart(2, '0')}`;
   const m = Math.floor(total / 60);
   const s = total % 60;
-  return `⏱ ${m}:${String(s).padStart(2, '0')}`;
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 function ResultsModal({
@@ -1113,27 +1566,73 @@ function CustomerSprite({ customer, onGreet }: { customer: Customer; onGreet: ()
   const t = greeted ? custOrderLeft(customer) : custGreetLeft(customer);
 
   return (
-    <Animated.View entering={FadeIn.duration(450)} style={styles.custSprite}>
-      <View style={styles.custBubble}>
-        {greeted ? (
-          <View style={styles.custBubbleIcons}>
-            {items.map((it, i) => (
-              <View key={i} style={[styles.custDot, { backgroundColor: it.color }]}>
-                <Text style={styles.custDotEmoji}>{it.emoji}</Text>
-              </View>
-            ))}
+    <Animated.View
+      entering={FadeIn.duration(450)}
+      style={styles.custSprite}
+      pointerEvents={greeted ? 'none' : 'box-none'}
+    >
+      {/* Greet prompt — absolute (over the bunny) so the bunny never shifts on
+          greet and it sits below the heart at the top */}
+      {!greeted && (
+        <View style={styles.custBubbleWrap} pointerEvents="box-none">
+          <View style={styles.custReceiptRow} pointerEvents="box-none">
+            {/* The receipt IS the take-order button — it sits above the counter
+                so the counter never steals the tap (bunny stays behind it). */}
+            <Pressable onPress={onGreet} hitSlop={12} style={styles.custReceiptCard}>
+              <BakeryReceiptEmoji size={30} />
+            </Pressable>
+            {/* Vertical countdown to take the order, beside the receipt */}
+            <View style={styles.custGreetTrack} pointerEvents="none">
+              <View style={[styles.custGreetFill, { height: `${t * 100}%`, backgroundColor: barColorFor(t) }]} />
+            </View>
           </View>
-        ) : (
-          <Text style={styles.custGreetMark}>👋</Text>
-        )}
-      </View>
+        </View>
+      )}
       <Pressable onPress={greeted ? undefined : onGreet} hitSlop={6}>
         <Image source={CUSTOMER_IMG} style={styles.custBunny} contentFit="contain" />
       </Pressable>
-      <View style={styles.custBar}>
-        <View style={[styles.custBarFill, { width: `${t * 100}%`, backgroundColor: barColorFor(t) }]} />
-      </View>
+      {greeted && (
+        <View style={styles.custBar}>
+          <View style={[styles.custBarFill, { width: `${t * 100}%`, backgroundColor: barColorFor(t) }]} />
+        </View>
+      )}
     </Animated.View>
+  );
+}
+
+// One order shown in the top orders bar. Tap an un-taken order to greet it.
+function OrderCard({ customer, held, onGreet }: { customer: Customer; held: HeldItem | null; onGreet: () => void }) {
+  const { order, greeted } = customer;
+  const t = greeted ? custOrderLeft(customer) : custGreetLeft(customer);
+  // Live checklist only for the order this cake is being built for.
+  const isTarget = !!held && held.orderId === customer.id;
+  const slots: { kind: IngredientKind; want: string; got?: string }[] = [
+    { kind: 'base', want: order.base, got: isTarget ? held?.base : undefined },
+    { kind: 'filling', want: order.filling, got: isTarget ? held?.filling : undefined },
+    { kind: 'topping', want: order.topping, got: isTarget ? held?.topping : undefined },
+  ];
+  return (
+    <Pressable onPress={greeted ? undefined : onGreet} style={styles.orderCard}>
+      <View style={styles.orderCardIcons}>
+        {slots.map((s, i) => {
+          const status = s.got == null ? 'pending' : s.got === s.want ? 'ok' : 'bad';
+          return (
+            <View key={i} style={styles.orderSlot}>
+              <CakeIngredientIcon kind={s.kind} id={s.want as never} size={26} />
+              {greeted && status !== 'pending' && (
+                <View style={[styles.orderTick, status === 'ok' ? styles.orderTickOk : styles.orderTickBad]}>
+                  <Text style={styles.orderTickText}>{status === 'ok' ? '✓' : '✕'}</Text>
+                </View>
+              )}
+            </View>
+          );
+        })}
+      </View>
+      {!greeted && <Text style={styles.orderNew}>New! Tap to take</Text>}
+      <View style={styles.orderBar}>
+        <View style={[styles.orderBarFill, { width: `${t * 100}%`, backgroundColor: barColorFor(t) }]} />
+      </View>
+    </Pressable>
   );
 }
 
@@ -1141,8 +1640,9 @@ const BOX = 66;
 const STATION_W = 60;
 const STATION_H = 68;
 const SHELF_W = 82; // visual width of the vertical mixer/oven counter
-const PLAYER = 52;
-const WALK_MS = 550;
+const PLAYER = 52; // fallback emoji-circle diameter
+const SPRITE_W = 62; // character sprite art size
+const SPRITE_H = 96; // feet sit at the bottom-center of this box
 
 function StationBox({
   station,
@@ -1193,21 +1693,6 @@ function StationBox({
   );
 }
 
-// Emoji shown in the held-item bubble for the current cake form.
-function heldEmoji(held: HeldItem | null): string | null {
-  if (!held) return null;
-  switch (held.kind) {
-    case 'base':
-      return held.base ? findBase(held.base).emoji : '🥚';
-    case 'batter':
-      return '🥣';
-    case 'sponge':
-      return held.filling ? '🍰' : '🍞';
-    case 'cake':
-      return '🎂';
-  }
-}
-
 // The cat's face for the current mood (static emoji reactions for now).
 function moodFace(mood: Mood): string {
   switch (mood) {
@@ -1240,8 +1725,14 @@ function PlayerSprite({
   // Animated pixel position of the player's center.
   const px = useSharedValue(0);
   const py = useSharedValue(0);
+  const squish = useSharedValue(0);
   const placed = useRef(false);
   const prevTarget = useRef({ x: player.targetX, y: player.targetY });
+
+  // Placeholder "alive" animation: gently squish/unsquish forever.
+  useEffect(() => {
+    squish.value = withRepeat(withTiming(1, { duration: 420, easing: Easing.inOut(Easing.quad) }), -1, true);
+  }, [squish]);
 
   useEffect(() => {
     if (kw === 0 || kh === 0) return;
@@ -1254,18 +1745,39 @@ function PlayerSprite({
       py.value = ty;
       placed.current = true;
     } else {
-      const opts = { duration: WALK_MS, easing: Easing.inOut(Easing.quad) };
-      px.value = withTiming(tx, opts);
-      py.value = withTiming(ty, opts);
+      // Walk the waypoints in order at a CONSTANT pace (duration ∝ distance), so
+      // short hops and long treks move at the same speed instead of zooming.
+      const wps = player.path && player.path.length ? player.path : [{ x: player.targetX, y: player.targetY }];
+      let prevX = px.value;
+      let prevY = py.value;
+      const xs: number[] = [];
+      const ys: number[] = [];
+      for (const wp of wps) {
+        const wx = (wp.x / 100) * kw;
+        const wy = (wp.y / 100) * kh;
+        const dur = Math.max(80, Math.hypot(wx - prevX, wy - prevY) / WALK_SPEED);
+        const opts = { duration: dur, easing: Easing.linear };
+        xs.push(withTiming(wx, opts));
+        ys.push(withTiming(wy, opts));
+        prevX = wx;
+        prevY = wy;
+      }
+      px.value = xs.length === 1 ? xs[0] : (withSequence(...xs) as number);
+      py.value = ys.length === 1 ? ys[0] : (withSequence(...ys) as number);
     }
     prevTarget.current = { x: player.targetX, y: player.targetY };
-  }, [player.targetX, player.targetY, kw, kh, px, py]);
+  }, [player.targetX, player.targetY, player.path, kw, kh, px, py]);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: px.value - PLAYER / 2 }, { translateY: py.value - PLAYER / 2 }],
+    // (px,py) is the FEET point; place the sprite's bottom-center there.
+    transform: [
+      { translateX: px.value - SPRITE_W / 2 },
+      { translateY: py.value - SPRITE_H },
+      // Squash/stretch placeholder: oscillate tall-thin ↔ short-wide.
+      { scaleX: 0.95 + 0.12 * squish.value },
+      { scaleY: 1.05 - 0.12 * squish.value },
+    ],
   }));
-
-  const emoji = heldEmoji(held);
 
   return (
     <Animated.View style={[styles.playerWrap, animatedStyle]} pointerEvents="none">
@@ -1279,11 +1791,32 @@ function PlayerSprite({
           <Text style={styles.playerEmoji}>{face}</Text>
         </View>
       )}
-      <View style={[styles.heldBubble, emoji ? styles.heldBubbleFull : styles.heldBubbleEmpty]}>
-        <Text style={styles.heldEmoji}>{emoji ?? ''}</Text>
-      </View>
+      {held && (
+        <View style={[styles.heldBubble, styles.heldBubbleFull]}>
+          <HeldIcon held={held} />
+          {held.spoiled && (
+            <View style={styles.heldSpoiled}>
+              <Text style={styles.heldSpoiledText}>✕</Text>
+            </View>
+          )}
+        </View>
+      )}
     </Animated.View>
   );
+}
+
+// The icon shown in the held-item bubble — the cake as it's being built.
+function HeldIcon({ held }: { held: HeldItem }) {
+  switch (held.kind) {
+    case 'base':
+      return held.base ? <BaseIcon id={held.base} size={22} /> : <Text style={styles.heldEmoji}>🥚</Text>;
+    case 'batter':
+      return <Text style={styles.heldEmoji}>🥣</Text>;
+    case 'sponge':
+      return <CakeBuildIcon base={held.base} filling={held.filling} size={24} />;
+    case 'cake':
+      return <CakeBuildIcon base={held.base} filling={held.filling} topping={held.topping} size={24} />;
+  }
 }
 
 const styles = StyleSheet.create({
@@ -1496,6 +2029,28 @@ const styles = StyleSheet.create({
   homeIconBtn: { backgroundColor: BakeryColors.jam, borderColor: BakeryColors.berry },
   iconBtnText: { fontSize: 17 },
   modeName: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '900', color: BakeryColors.cocoaDark },
+  timerPill: {
+    backgroundColor: 'rgba(255,253,248,0.92)',
+    borderRadius: BakeryRadii.pill,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  timerText: { fontSize: 15, fontWeight: '900', color: BakeryColors.cocoaDark },
+  topLife: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
+  topLifePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(255,253,248,0.92)',
+    borderRadius: BakeryRadii.pill,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  topLifeText: { fontSize: 15, fontWeight: '800', color: BakeryColors.cocoaDark },
 
   // Cake Rush HUD
   hud: { flexDirection: 'row', gap: Spacing.two, justifyContent: 'center' },
@@ -1510,6 +2065,65 @@ const styles = StyleSheet.create({
   },
   hudPillHot: { backgroundColor: BakeryColors.butter, borderColor: BakeryColors.honey },
   hudText: { fontSize: 14, fontWeight: '900', color: BakeryColors.cocoaDark },
+
+  // Top orders bar (max 2)
+  ordersBar: { flexDirection: 'row', gap: Spacing.two, justifyContent: 'center', paddingHorizontal: Spacing.two },
+  orderCard: {
+    flex: 1,
+    maxWidth: 180,
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFFDF8',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+  },
+  orderCardIcons: { flexDirection: 'row', gap: 8 },
+  orderSlot: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#FFFDF8',
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orderTick: {
+    position: 'absolute',
+    right: -5,
+    top: -5,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  orderTickOk: { backgroundColor: BakeryColors.success },
+  orderTickBad: { backgroundColor: BakeryColors.danger },
+  orderTickText: { fontSize: 10, fontWeight: '900', color: '#fff' },
+  orderNew: { fontSize: 10, fontWeight: '800', color: BakeryColors.berry },
+  orderBar: { width: '100%', height: 5, borderRadius: 3, backgroundColor: 'rgba(0,0,0,0.08)', overflow: 'hidden' },
+  orderBarFill: { height: '100%', borderRadius: 3 },
+
+  // Left stat column (life / points / combo)
+  leftStats: { position: 'absolute', left: -10, top: 8, gap: 6, zIndex: 30 },
+  rightStats: { position: 'absolute', right: 6, top: 8, gap: 6, zIndex: 30, alignItems: 'flex-end' },
+  statBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,253,248,0.92)',
+    borderRadius: BakeryRadii.pill,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  statBadgeHot: { backgroundColor: BakeryColors.butter, borderColor: BakeryColors.honey },
+  statBadgeText: { fontSize: 13, fontWeight: '500', color: BakeryColors.cocoaDark },
 
   ordersRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, justifyContent: 'center' },
 
@@ -1573,21 +2187,21 @@ const styles = StyleSheet.create({
   // Mixer/oven cooking progress bar (floats just above the station)
   cookTrack: {
     position: 'absolute',
-    top: -6,
+    bottom: -10,
     alignSelf: 'center',
-    width: 50,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: BakeryColors.cream,
-    borderWidth: 1,
-    borderColor: BakeryColors.latte,
+    width: 56,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: '#FFF6E6',
+    borderWidth: 1.5,
+    borderColor: BakeryColors.cocoaDark,
     overflow: 'hidden',
-    zIndex: 3,
+    zIndex: 5,
   },
-  cookFill: { height: '100%', borderRadius: 3, backgroundColor: BakeryColors.honey },
+  cookFill: { height: '100%', borderRadius: 4, backgroundColor: BakeryColors.honey },
 
   // Serving counter banner across the top of the kitchen
-  counterBanner: { position: 'absolute', left: 0, top: 0, alignItems: 'center' },
+  counterBanner: { position: 'absolute', left: 0, top: 0, alignItems: 'center', zIndex: 8 },
   counterImg: { width: '100%', height: '100%' },
   counterPoint: { position: 'absolute', bottom: -14, fontSize: 16 },
 
@@ -1642,10 +2256,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     top: 0,
-    width: PLAYER,
-    height: PLAYER,
+    width: SPRITE_W,
+    height: SPRITE_H,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-end', // anchor by the FEET (bottom-center)
+    zIndex: 20, // character on top of tables/counter; UI text (leftStats z30 +
+    // the bottom status bar, which is outside the kitchen) still layers above.
   },
   player: {
     width: PLAYER,
@@ -1658,7 +2274,7 @@ const styles = StyleSheet.create({
     ...BakeryShadow,
   },
   playerEmoji: { fontSize: 26 },
-  playerCharImg: { width: 62, height: 96, marginTop: -8 },
+  playerCharImg: { width: SPRITE_W, height: SPRITE_H },
   nameTag: {
     position: 'absolute',
     top: -16,
@@ -1670,11 +2286,11 @@ const styles = StyleSheet.create({
   nameTagText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   heldBubble: {
     position: 'absolute',
-    right: -10,
-    bottom: -6,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    right: -14,
+    bottom: 4,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
@@ -1685,10 +2301,24 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   heldBubbleFull: {
-    backgroundColor: BakeryColors.frosting,
+    backgroundColor: '#FFFDF8',
     borderColor: BakeryColors.jam,
   },
-  heldEmoji: { fontSize: 13 },
+  heldSpoiled: {
+    position: 'absolute',
+    right: -4,
+    top: -4,
+    width: 15,
+    height: 15,
+    borderRadius: 8,
+    backgroundColor: BakeryColors.danger,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heldSpoiledText: { color: '#fff', fontSize: 9, fontWeight: '900' },
+  heldEmoji: { fontSize: 15 },
 
   // Order ticket (compact — 2 across, wraps to a 2nd row when busy)
   orderTicket: {
@@ -1722,13 +2352,13 @@ const styles = StyleSheet.create({
     left: 2,
     right: 2,
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'center',
     alignItems: 'flex-start',
-    gap: 2,
+    gap: 12,
     zIndex: 4,
   },
-  custSprite: { alignItems: 'center', width: 64 },
+  custSprite: { alignItems: 'center', width: 120 },
+  greetHit: { width: 120, height: 142 },
   custBubble: {
     minWidth: 22,
     minHeight: 20,
@@ -1753,7 +2383,32 @@ const styles = StyleSheet.create({
   },
   custDotEmoji: { fontSize: 9 },
   custGreetMark: { fontSize: 12 },
-  custBunny: { width: 60, height: 72 },
+  custBubbleWrap: { position: 'absolute', top: -16, left: 0, right: 0, alignItems: 'center', zIndex: 3 },
+  custReceiptRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  custReceiptCard: {
+    padding: 4,
+    borderRadius: 10,
+    backgroundColor: '#FFFDF8',
+    borderWidth: 2,
+    borderColor: BakeryColors.jam,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
+  },
+  custGreetTrack: {
+    width: 7,
+    height: 36,
+    borderRadius: 4,
+    backgroundColor: BakeryColors.cream,
+    borderWidth: 1.5,
+    borderColor: '#FFFDF8',
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+  },
+  custGreetFill: { width: '100%', borderRadius: 3 },
+  custBunny: { width: 118, height: 142 },
   custBar: {
     width: 52,
     height: 4,
@@ -1794,26 +2449,26 @@ const styles = StyleSheet.create({
   pickerRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.two },
   pickChip: { alignItems: 'center', width: 64, gap: 3 },
   pickSwatch: {
-    width: 46,
-    height: 46,
+    width: 50,
+    height: 50,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: '#fff',
+    backgroundColor: '#FFFDF8',
   },
   pickEmoji: { fontSize: 22 },
   pickLabel: { color: '#fff', fontSize: 10, fontWeight: '700', textAlign: 'center' },
 
   // Status / current-step bar
   statusBar: {
-    backgroundColor: BakeryColors.glass,
-    borderRadius: BakeryRadii.card,
-    borderWidth: 1.5,
-    borderColor: BakeryColors.shortbread,
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.three,
+    minHeight: 50,
+    justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 36,
+    overflow: 'hidden',
   },
   statusText: { fontSize: 13.5, color: BakeryColors.cocoa, fontWeight: '700', textAlign: 'center' },
 

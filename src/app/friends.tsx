@@ -1,11 +1,40 @@
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
+import type { Friend } from '@/context/app-context';
+import { useAuth } from '@/context/auth-context';
+import { getCompanionImage } from '@/lib/companion-utils';
+import { joinPresence, newRoomId, sendInvite, type OnlineGameId } from '@/lib/game-net';
+import {
+  acceptRequest,
+  declineRequest,
+  listAcceptedFriends,
+  listIncomingRequests,
+  removeFriendLink,
+  sendFriendRequest,
+  type IncomingRequest,
+} from '@/lib/friend-requests';
+import { fetchProfileByCode, type SyncedProfile } from '@/lib/profile-sync';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+
+function toFriendPatch(p: SyncedProfile): Partial<Friend> {
+  return {
+    displayName: p.displayName || undefined,
+    companionId: p.companionId,
+    skinId: p.skinId,
+    backgroundId: p.backgroundId,
+    description: p.description,
+    birthday: p.birthday,
+    currentStreak: p.currentStreak,
+    longestStreak: p.longestStreak,
+    totalMinutes: p.totalMinutes,
+  };
+}
 
 const P = {
   cream: '#FFF8EF',
@@ -18,17 +47,93 @@ const P = {
   button: '#8A7A60',
 } as const;
 
-export default function FriendsScreen() {
-  const { friendCode, friends, addFriend, removeFriend } = useApp();
-  const [input, setInput] = useState('');
+const INVITE_GAMES: { id: OnlineGameId; name: string; emoji: string }[] = [
+  { id: 'connect4', name: 'Connect 4', emoji: '🔴' },
+  { id: 'tictactoe', name: 'Tic-Tac-Toe', emoji: '⭕' },
+  { id: 'memory', name: 'Memory Cards', emoji: '🃏' },
+  { id: 'batterdash', name: 'BatterDash Race', emoji: '🎂' },
+];
 
-  const handleAdd = () => {
-    const res = addFriend(input);
+export default function FriendsScreen() {
+  const { friendCode, friends, addFriend, removeFriend, setFriendProfile, profileDisplayName } = useApp();
+  const { user } = useAuth();
+  const [input, setInput] = useState('');
+  const [incoming, setIncoming] = useState<IncomingRequest[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [playFor, setPlayFor] = useState<Friend | null>(null);
+  const [onlineCodes, setOnlineCodes] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!friendCode) return;
+    return joinPresence(friendCode, setOnlineCodes);
+  }, [friendCode]);
+
+  const startInvite = (friend: Friend, game: OnlineGameId) => {
+    const room = newRoomId();
+    sendInvite(friend.code, {
+      game,
+      room,
+      fromCode: friendCode,
+      fromName: profileDisplayName || `Friend ${friendCode}`,
+    });
+    setPlayFor(null);
+    if (game === 'batterdash') {
+      router.push({ pathname: '/cake-game', params: { room, role: 'host', netmode: 'race' } });
+    } else {
+      router.push({ pathname: '/break-game', params: { game, room, role: 'host' } });
+    }
+  };
+
+  // On open: pull accepted friends + incoming requests from the cloud, and
+  // refresh each friend's card.
+  const refresh = async () => {
+    if (!user?.id) return;
+    const [accepted, reqs] = await Promise.all([
+      listAcceptedFriends(user.id),
+      listIncomingRequests(user.id),
+    ]);
+    for (const a of accepted) {
+      addFriend(a.code); // no-op if already a friend
+      if (a.profile) setFriendProfile(a.code, toFriendPatch(a.profile));
+    }
+    setIncoming(reqs);
+  };
+
+  useEffect(() => {
+    refresh();
+    friends.forEach(async (f) => {
+      const p = await fetchProfileByCode(f.code);
+      if (p) setFriendProfile(f.code, toFriendPatch(p));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  const handleAdd = async () => {
+    if (!user?.id) {
+      Alert.alert('Sign in needed', 'Sign in to send friend requests.');
+      return;
+    }
+    setBusy(true);
+    const res = await sendFriendRequest({ fromUser: user.id, fromCode: friendCode, toCode: input });
+    setBusy(false);
     if (res.ok) {
       setInput('');
+      Alert.alert('Request sent! 💌', 'They’ll show up in your friends once they accept.');
     } else {
-      Alert.alert('Could not add friend', res.error ?? 'Try again.');
+      Alert.alert('Could not send request', res.error ?? 'Try again.');
     }
+  };
+
+  const handleAccept = async (req: IncomingRequest) => {
+    await acceptRequest(req.id);
+    addFriend(req.fromCode);
+    if (req.profile) setFriendProfile(req.fromCode, toFriendPatch(req.profile));
+    setIncoming((prev) => prev.filter((r) => r.id !== req.id));
+  };
+
+  const handleDecline = async (req: IncomingRequest) => {
+    await declineRequest(req.id);
+    setIncoming((prev) => prev.filter((r) => r.id !== req.id));
   };
 
   const shareCode = async () => {
@@ -42,7 +147,14 @@ export default function FriendsScreen() {
   const confirmRemove = (code: string, name: string) => {
     Alert.alert('Remove friend?', `Remove ${name}?`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => removeFriend(code) },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => {
+          removeFriend(code);
+          if (user?.id) removeFriendLink(user.id, code);
+        },
+      },
     ]);
   };
 
@@ -55,6 +167,14 @@ export default function FriendsScreen() {
             <Text style={styles.headerTitle}>🍓 Study Friends</Text>
             <Text style={styles.headerSubtitle}>Add friends and study together</Text>
           </View>
+
+          {/* My profile card */}
+          <Pressable
+            style={({ pressed }) => [styles.profileBtn, pressed && styles.pressed]}
+            onPress={() => router.push('/profile')}>
+            <Text style={styles.profileBtnText}>🪪  My Profile Card</Text>
+            <Text style={styles.profileBtnChevron}>›</Text>
+          </Pressable>
 
           {/* Your code */}
           <View style={styles.section}>
@@ -81,11 +201,49 @@ export default function FriendsScreen() {
                 autoCapitalize="characters"
                 maxLength={6}
               />
-              <Pressable style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]} onPress={handleAdd}>
-                <Text style={styles.addBtnText}>Add</Text>
+              <Pressable
+                style={({ pressed }) => [styles.addBtn, (pressed || busy) && styles.pressed]}
+                disabled={busy}
+                onPress={handleAdd}>
+                <Text style={styles.addBtnText}>{busy ? '…' : 'Send'}</Text>
               </Pressable>
             </View>
+            <Text style={styles.codeHint}>We’ll send a request — they choose to accept.</Text>
           </View>
+
+          {/* Incoming requests */}
+          {incoming.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Friend Requests ({incoming.length})</Text>
+              <View style={styles.friendList}>
+                {incoming.map((req) => (
+                  <View key={req.id} style={styles.friendRow}>
+                    <View style={styles.friendAvatar}>
+                      {req.profile?.companionId !== undefined ? (
+                        <Image
+                          source={getCompanionImage(req.profile.companionId, req.profile.skinId)}
+                          style={styles.friendAvatarImg}
+                          contentFit="contain"
+                        />
+                      ) : (
+                        <Text style={styles.friendAvatarText}>{(req.fromCode[0] ?? '?').toUpperCase()}</Text>
+                      )}
+                    </View>
+                    <View style={styles.friendInfo}>
+                      <Text style={styles.friendName}>{req.profile?.displayName || `Friend ${req.fromCode}`}</Text>
+                      <Text style={styles.friendCode}>{req.fromCode}</Text>
+                    </View>
+                    <Pressable style={({ pressed }) => [styles.acceptBtn, pressed && styles.pressed]} onPress={() => handleAccept(req)}>
+                      <Text style={styles.acceptBtnText}>Accept</Text>
+                    </Pressable>
+                    <Pressable hitSlop={8} onPress={() => handleDecline(req)} style={styles.friendRemove}>
+                      <Text style={styles.friendRemoveText}>✕</Text>
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
 
           {/* Friends list */}
           <View style={styles.section}>
@@ -100,13 +258,31 @@ export default function FriendsScreen() {
               <View style={styles.friendList}>
                 {friends.map((f) => (
                   <View key={f.code} style={styles.friendRow}>
-                    <View style={styles.friendAvatar}>
-                      <Text style={styles.friendAvatarText}>🐱</Text>
-                    </View>
-                    <View style={styles.friendInfo}>
-                      <Text style={styles.friendName}>{f.name}</Text>
-                      <Text style={styles.friendCode}>{f.code}</Text>
-                    </View>
+                    <Pressable
+                      style={({ pressed }) => [styles.friendTap, pressed && styles.pressed]}
+                      onPress={() => router.push({ pathname: '/friend-card', params: { code: f.code } })}>
+                      <View style={styles.avatarWrap}>
+                        <View style={styles.friendAvatar}>
+                          {f.companionId !== undefined ? (
+                            <Image
+                              source={getCompanionImage(f.companionId, f.skinId)}
+                              style={styles.friendAvatarImg}
+                              contentFit="contain"
+                            />
+                          ) : (
+                            <Text style={styles.friendAvatarText}>{(f.code[0] ?? '?').toUpperCase()}</Text>
+                          )}
+                        </View>
+                        <View style={[styles.statusDot, onlineCodes.has(f.code) ? styles.statusOnline : styles.statusOffline]} />
+                      </View>
+                      <View style={styles.friendInfo}>
+                        <Text style={styles.friendName}>{f.displayName || f.name}</Text>
+                        <Text style={styles.friendCode}>{onlineCodes.has(f.code) ? 'Online now' : f.code}</Text>
+                      </View>
+                    </Pressable>
+                    <Pressable style={({ pressed }) => [styles.playBtn, pressed && styles.pressed]} onPress={() => setPlayFor(f)}>
+                      <Text style={styles.playBtnText}>Play</Text>
+                    </Pressable>
                     <Pressable hitSlop={8} onPress={() => confirmRemove(f.code, f.name)} style={styles.friendRemove}>
                       <Text style={styles.friendRemoveText}>✕</Text>
                     </Pressable>
@@ -119,7 +295,7 @@ export default function FriendsScreen() {
           {/* Info note */}
           <View style={styles.infoCard}>
             <Text style={styles.infoText}>
-              🧁 Friends are saved on this device for now — cloud sync between phones is coming soon.
+              🧁 Send a request with a code; once they accept, you’ll see each other’s cards. Sign in so friends can find you.
             </Text>
           </View>
 
@@ -129,6 +305,29 @@ export default function FriendsScreen() {
           </Pressable>
         </SafeAreaView>
       </ScrollView>
+
+      {/* Game-picker sheet */}
+      <Modal visible={!!playFor} transparent animationType="fade" onRequestClose={() => setPlayFor(null)}>
+        <View style={styles.sheetRoot}>
+          <Pressable style={styles.sheetBackdrop} onPress={() => setPlayFor(null)} />
+          <View style={styles.sheetCard}>
+            <Text style={styles.sheetTitle}>Invite {playFor?.displayName || playFor?.name} to…</Text>
+            {INVITE_GAMES.map((g) => (
+              <Pressable
+                key={g.id}
+                style={({ pressed }) => [styles.sheetItem, pressed && styles.pressed]}
+                onPress={() => playFor && startInvite(playFor, g.id)}>
+                <Text style={styles.sheetEmoji}>{g.emoji}</Text>
+                <Text style={styles.sheetItemText}>{g.name}</Text>
+                <Text style={styles.sheetChevron}>›</Text>
+              </Pressable>
+            ))}
+            <Pressable style={({ pressed }) => [styles.sheetCancel, pressed && styles.pressed]} onPress={() => setPlayFor(null)}>
+              <Text style={styles.sheetCancelText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -160,6 +359,20 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 22, fontWeight: '800', color: P.brown, letterSpacing: 0.2 },
   headerSubtitle: { fontSize: 13, color: P.mutedBrown, fontWeight: '500' },
+
+  profileBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: P.pinkSoft,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: P.pink,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+  },
+  profileBtnText: { fontSize: 16, fontWeight: '800', color: P.brown },
+  profileBtnChevron: { fontSize: 22, fontWeight: '800', color: P.pink },
 
   section: { gap: Spacing.two },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: P.brown },
@@ -215,15 +428,58 @@ const styles = StyleSheet.create({
     padding: Spacing.two,
   },
   friendAvatar: {
-    width: 42, height: 42, borderRadius: 21,
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: P.pinkSoft, alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden',
   },
-  friendAvatarText: { fontSize: 22 },
+  friendAvatarText: { fontSize: 18, fontWeight: '900', color: P.brown },
+  friendAvatarImg: { position: 'absolute', width: 72, height: 72, left: -14, top: -3 },
+  friendTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  avatarWrap: { width: 44, height: 44 },
+  statusDot: {
+    position: 'absolute', right: -1, bottom: -1, width: 13, height: 13, borderRadius: 7,
+    borderWidth: 2, borderColor: '#fff',
+  },
+  statusOnline: { backgroundColor: '#5BC47B' },
+  statusOffline: { backgroundColor: '#C9BBA8' },
   friendInfo: { flex: 1 },
   friendName: { fontSize: 15, fontWeight: '800', color: P.brown },
   friendCode: { fontSize: 12, color: P.mutedBrown, letterSpacing: 1 },
   friendRemove: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   friendRemoveText: { fontSize: 14, color: P.mutedBrown, fontWeight: '700' },
+  acceptBtn: { backgroundColor: P.pink, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
+  acceptBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
+  playBtn: { backgroundColor: P.peach, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
+  playBtnText: { color: P.brown, fontWeight: '800', fontSize: 13 },
+
+  sheetRoot: { flex: 1, justifyContent: 'flex-end' },
+  sheetBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(48,32,24,0.4)' },
+  sheetCard: {
+    backgroundColor: P.card,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    padding: Spacing.four,
+    gap: Spacing.two,
+    borderWidth: 1.5,
+    borderColor: P.pinkSoft,
+  },
+  sheetTitle: { fontSize: 17, fontWeight: '900', color: P.brown, marginBottom: 4 },
+  sheetItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: P.cream,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: P.pinkSoft,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  sheetEmoji: { fontSize: 22 },
+  sheetItemText: { flex: 1, fontSize: 16, fontWeight: '800', color: P.brown },
+  sheetChevron: { fontSize: 22, fontWeight: '800', color: P.pink },
+  sheetCancel: { alignItems: 'center', paddingVertical: 12, marginTop: 4 },
+  sheetCancelText: { color: P.mutedBrown, fontWeight: '800', fontSize: 15 },
 
   emptyCard: {
     backgroundColor: P.card,

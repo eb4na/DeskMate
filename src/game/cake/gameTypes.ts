@@ -67,6 +67,8 @@ export type HeldItem = {
   base?: CakeBase;
   filling?: CakeFilling;
   topping?: CakeTopping;
+  orderId?: string; // the order this cake is being built for (checklist target)
+  spoiled?: boolean; // a wrong ingredient was added — must be tossed and redone
 };
 
 export type CakeInProgress = {
@@ -98,6 +100,10 @@ export type PlayerState = {
   y: number;
   targetX: number; // where the player is sliding toward (Wave 1)
   targetY: number;
+  // Optional waypoint path (percent coords) for obstacle-avoiding movement. When
+  // set, the sprite walks the points in order; otherwise it slides straight to
+  // targetX/targetY. Last point equals the final target.
+  path?: { x: number; y: number }[];
   currentStation: string | null;
   heldItem: HeldItem | null;
   currentAction: PlayerAction | null;

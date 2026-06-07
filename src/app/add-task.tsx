@@ -4,10 +4,12 @@
  */
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, TextInput, useColorScheme } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BakeryBellEmoji } from '@/components/bakery-emoji';
 import { DateWheelPicker, getTodayISO } from '@/components/date-wheel-picker';
+import { TimeWheelPicker } from '@/components/time-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
@@ -15,14 +17,10 @@ import type { TaskPriority, TaskStatus } from '@/context/app-context';
 import { cancelTaskNotification, scheduleTaskNotification } from '@/lib/notifications';
 import { BakeryColors, BakeryRadii, MaxContentWidth, Spacing } from '@/constants/theme';
 
-function isValidTime(v: string) {
-  return /^([01]\d|2[0-3]):([0-5]\d)$/.test(v.trim());
-}
-
-const PRIORITY_OPTIONS: { value: TaskPriority; label: string; emoji: string }[] = [
-  { value: 'low', label: 'Low', emoji: '○' },
-  { value: 'medium', label: 'Medium', emoji: '🟡' },
-  { value: 'high', label: 'High', emoji: '🔴' },
+const PRIORITY_OPTIONS: { value: TaskPriority; label: string; color: string }[] = [
+  { value: 'low', label: 'Low', color: '#CDBFAC' },
+  { value: 'medium', label: 'Medium', color: '#F2B33C' },
+  { value: 'high', label: 'High', color: '#E0584A' },
 ];
 
 const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
@@ -33,7 +31,7 @@ const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
 
 export default function AddTaskScreen() {
   const { taskId, date } = useLocalSearchParams<{ taskId?: string; date?: string }>();
-  const { tasks, subjects, addTask, updateTask } = useApp();
+  const { tasks, subjects, addTask, updateTask, use24HourTime } = useApp();
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
@@ -45,9 +43,7 @@ export default function AddTaskScreen() {
   const [subjectId, setSubjectId] = useState<string | null>(existingTask?.subjectId ?? null);
   const [dueDateEnabled, setDueDateEnabled] = useState(existingTask?.dueDate != null || !editing);
   const [dueDate, setDueDate] = useState(existingTask?.dueDate ?? date ?? todayISO);
-  const [estimatedMinutes, setEstimatedMinutes] = useState(
-    existingTask?.estimatedMinutes ? String(existingTask.estimatedMinutes) : '',
-  );
+  const [dueTime, setDueTime] = useState(existingTask?.dueTime ?? '09:00');
   const [priority, setPriority] = useState<TaskPriority>(existingTask?.priority ?? 'medium');
   const [status, setStatus] = useState<TaskStatus>(existingTask?.status ?? 'not_started');
 
@@ -76,16 +72,8 @@ export default function AddTaskScreen() {
       Alert.alert('Title required', 'Please enter a task title.');
       return;
     }
-    if (notifyEnabled && !isValidTime(notifyTime)) {
-      Alert.alert('Invalid time', 'Enter the reminder time as HH:MM (24-hour).');
-      return;
-    }
-
-    const estimatedNum = estimatedMinutes.trim()
-      ? parseInt(estimatedMinutes.trim(), 10)
-      : null;
-
     const dueDateValue = dueDateEnabled ? dueDate.trim() || todayISO : null;
+    const dueTimeValue = dueDateEnabled ? dueTime : null;
 
     // Build the notifyAt ISO from the picked date + time.
     let notifyAt: string | null = null;
@@ -104,7 +92,8 @@ export default function AddTaskScreen() {
       title: titleVal,
       subjectId,
       dueDate: dueDateValue,
-      estimatedMinutes: estimatedNum,
+      dueTime: dueTimeValue,
+      estimatedMinutes: existingTask?.estimatedMinutes ?? null,
       priority,
       status,
       notifyAt,
@@ -114,7 +103,7 @@ export default function AddTaskScreen() {
     const notifId = notifyAt ? await scheduleTaskNotification({ id, title: titleVal, notifyAt }) : null;
 
     if (editing) {
-      updateTask(taskId!, { title: titleVal, subjectId, dueDate: dueDateValue, estimatedMinutes: estimatedNum, priority, status, notifyAt, notifId });
+      updateTask(taskId!, { title: titleVal, subjectId, dueDate: dueDateValue, dueTime: dueTimeValue, priority, status, notifyAt, notifId });
     } else if (notifId) {
       updateTask(id, { notifId });
     }
@@ -205,7 +194,7 @@ export default function AddTaskScreen() {
                   <ThemedView
                     type={priority === opt.value ? 'backgroundSelected' : 'backgroundElement'}
                     style={styles.chip}>
-                    <ThemedText style={styles.chipEmoji}>{opt.emoji}</ThemedText>
+                    <View style={[styles.priorityDot, { backgroundColor: opt.color }]} />
                     <ThemedText type="small">{opt.label}</ThemedText>
                   </ThemedView>
                 </Pressable>
@@ -262,7 +251,10 @@ export default function AddTaskScreen() {
               </Pressable>
             </ThemedView>
             {dueDateEnabled ? (
-              <DateWheelPicker value={dueDate} onChange={setDueDate} />
+              <>
+                <DateWheelPicker value={dueDate} onChange={setDueDate} />
+                <TimeWheelPicker value={dueTime} onChange={setDueTime} use24Hour={use24HourTime} />
+              </>
             ) : (
               <ThemedView type="backgroundElement" style={styles.dateHintCard}>
                 <ThemedText type="small" themeColor="textSecondary">
@@ -280,7 +272,8 @@ export default function AddTaskScreen() {
             <ThemedView style={styles.chipRow}>
               <Pressable onPress={() => setNotifyEnabled(true)} style={({ pressed }) => [pressed && styles.pressed]}>
                 <ThemedView type={notifyEnabled ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
-                  <ThemedText type="small">🔔 Notify me</ThemedText>
+                  <BakeryBellEmoji size={14} />
+                  <ThemedText type="small">Notify me</ThemedText>
                 </ThemedView>
               </Pressable>
               <Pressable onPress={() => setNotifyEnabled(false)} style={({ pressed }) => [pressed && styles.pressed]}>
@@ -292,35 +285,9 @@ export default function AddTaskScreen() {
             {notifyEnabled && (
               <>
                 <DateWheelPicker value={notifyDate} onChange={setNotifyDate} />
-                <ThemedView style={styles.timeRow}>
-                  <ThemedText type="small" themeColor="textSecondary">Time</ThemedText>
-                  <TextInput
-                    style={[inputStyle, styles.timeInput]}
-                    value={notifyTime}
-                    onChangeText={setNotifyTime}
-                    placeholder="09:00"
-                    placeholderTextColor={isDark ? '#666' : '#AAA'}
-                    keyboardType="numbers-and-punctuation"
-                    maxLength={5}
-                  />
-                </ThemedView>
+                <TimeWheelPicker value={notifyTime} onChange={setNotifyTime} use24Hour={use24HourTime} />
               </>
             )}
-          </ThemedView>
-
-          {/* Estimated time */}
-          <ThemedView style={styles.fieldGroup}>
-            <ThemedText type="smallBold" style={styles.label}>
-              Estimated time (minutes, optional)
-            </ThemedText>
-            <TextInput
-              style={inputStyle}
-              placeholder="e.g. 30"
-              placeholderTextColor={isDark ? '#666' : '#AAA'}
-              value={estimatedMinutes}
-              onChangeText={setEstimatedMinutes}
-              keyboardType="numeric"
-            />
           </ThemedView>
 
           {/* Save */}
@@ -375,6 +342,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
   },
   chipEmoji: { fontSize: 14, lineHeight: 18 },
+  priorityDot: { width: 10, height: 10, borderRadius: 5 },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   timeInput: { flex: 1 },
   subjectDot: { width: 10, height: 10, borderRadius: 5 },

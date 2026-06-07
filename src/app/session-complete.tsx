@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BakeryHeartEmoji } from '@/components/bakery-emoji';
 import { CoinIcon } from '@/components/coin-icon';
 import { Companion } from '@/components/companion';
 import { ThemedText } from '@/components/themed-text';
@@ -193,7 +194,7 @@ export default function SessionCompleteScreen() {
             <Text style={styles.finishedTitle}>YOU FINISHED YOUR SESSION!</Text>
             <Text style={styles.finishedSubtitle}>Thank you for studying!</Text>
 
-            <Text style={styles.heartDivider}>♥</Text>
+            <View style={styles.heartDivider}><BakeryHeartEmoji size={16} /></View>
 
             {/* Receipt rows */}
             <View style={styles.receiptList}>
@@ -218,7 +219,7 @@ export default function SessionCompleteScreen() {
               )}
             </View>
 
-            <Text style={styles.heartDivider}>♥</Text>
+            <View style={styles.heartDivider}><BakeryHeartEmoji size={16} /></View>
 
             {/* Mood picker inline at the bottom of the receipt */}
             <Text style={styles.moodPrompt}>How do you feel after studying?</Text>

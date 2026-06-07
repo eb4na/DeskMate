@@ -3,8 +3,9 @@ import { router } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BakeryCalendarEmoji, BakerySleepEmoji, BakeryTrophyEmoji } from '@/components/bakery-emoji';
 import { PlusGateCard } from '@/components/plus-gate';
-import { MusicNoteIcon, PawIcon } from '@/components/settings-icons';
+import { ChartIcon, MusicNoteIcon, PawIcon } from '@/components/settings-icons';
 import { StreakFreezeIcon } from '@/components/streak-freeze-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -26,14 +27,6 @@ import {
 } from '@/constants/theme';
 
 const STREAK_FIRE_ICON = require('@/assets/images/home/streak-fire-icon.png');
-
-function daysUntil(dateISO: string): number {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const target = new Date(dateISO);
-  target.setHours(0, 0, 0, 0);
-  return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-}
 
 function getMondayISO(): string {
   const d = new Date();
@@ -61,8 +54,6 @@ export default function ProgressScreen() {
   const {
     sessionsCompleted,
     totalMinutes,
-    examCountdowns,
-    removeExam,
     streak,
     moodEntries,
     subjects,
@@ -73,10 +64,6 @@ export default function ProgressScreen() {
     useStreakFreeze: applyStreakFreeze,
   } = useApp();
 
-  const canAddExam = isPlus || examCountdowns.length < 3;
-  const examLimitText = isPlus
-    ? `${examCountdowns.length} exams`
-    : `${examCountdowns.length}/3`;
   const recentMoods = moodEntries.slice(0, 10);
 
   // ── Weekly summary for the "This week" card ───────────────────────────────
@@ -307,7 +294,14 @@ export default function ProgressScreen() {
 
           {/* ── Subject time breakdown ────────────────────────────────────── */}
           <ThemedView style={styles.section}>
-            <ThemedText type="smallBold">Time by subject</ThemedText>
+            <ThemedView style={styles.sectionHeader}>
+              <ThemedText type="smallBold">Time by subject</ThemedText>
+              <Pressable
+                style={({ pressed }) => [styles.manageSubjectsBtn, pressed && styles.pressed]}
+                onPress={() => router.push('/manage-subjects')}>
+                <ThemedText type="small" themeColor="textSecondary">Manage subjects</ThemedText>
+              </Pressable>
+            </ThemedView>
 
             {subjectEntries.length === 0 ? (
               <ThemedView type="backgroundElement" style={styles.emptyCard}>
@@ -345,13 +339,19 @@ export default function ProgressScreen() {
 
             {mostStudied && (
               <ThemedView style={styles.highlightRow}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  🏆 Most studied: <ThemedText type="smallBold">{mostStudied[0]}</ThemedText>
-                </ThemedText>
-                {leastStudied && (
+                <View style={styles.highlightItem}>
+                  <BakeryTrophyEmoji size={15} />
                   <ThemedText type="small" themeColor="textSecondary">
-                    💤 Least studied: <ThemedText type="smallBold">{leastStudied[0]}</ThemedText>
+                    Most studied: <ThemedText type="smallBold">{mostStudied[0]}</ThemedText>
                   </ThemedText>
+                </View>
+                {leastStudied && (
+                  <View style={styles.highlightItem}>
+                    <BakerySleepEmoji size={15} />
+                    <ThemedText type="small" themeColor="textSecondary">
+                      Least studied: <ThemedText type="smallBold">{leastStudied[0]}</ThemedText>
+                    </ThemedText>
+                  </View>
                 )}
               </ThemedView>
             )}
@@ -405,72 +405,27 @@ export default function ProgressScreen() {
             </ThemedView>
           )}
 
-          {/* ── Exam countdowns ───────────────────────────────────────────── */}
+          {/* ── Companion Gallery (everyone) ─────────────────────────────── */}
           <ThemedView style={styles.section}>
-            <ThemedView style={styles.sectionHeader}>
-              <ThemedText type="smallBold">Exam Countdowns</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {examLimitText}
-                {isPlus && <ThemedText style={styles.plusBadge}> ✨ Plus</ThemedText>}
-              </ThemedText>
-            </ThemedView>
-
-            {examCountdowns.length === 0 && (
-              <ThemedView type="backgroundElement" style={styles.emptyCard}>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                  No exams added yet.{isPlus ? ' Unlimited exams with Plus.' : ' Track up to 3 at a time.'}
-                </ThemedText>
-              </ThemedView>
-            )}
-
-            {examCountdowns.map((exam) => {
-              const days = daysUntil(exam.dateISO);
-              const isUrgent = days >= 0 && days <= 7;
-              const isPast = days < 0;
-              return (
-                <ThemedView key={exam.id} type="backgroundElement" style={styles.examCard}>
-                  <ThemedView style={styles.examInfo}>
-                    <ThemedText type="smallBold">{exam.name}</ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {exam.subject ? `${exam.subject} · ` : ''}{exam.dateISO}
-                      {exam.reminderEnabled ? ' · 🔔' : ''}
-                    </ThemedText>
-                  </ThemedView>
-                  <ThemedView style={styles.examRight}>
-                    <ThemedText
-                      style={[
-                        styles.examDays,
-                        isUrgent && styles.examDaysUrgent,
-                        isPast && styles.examDaysPast,
-                      ]}>
-                      {isPast ? 'Past' : `${days}d`}
-                    </ThemedText>
-                    <Pressable onPress={() => removeExam(exam.id)} style={styles.removeBtn}>
-                      <ThemedText type="small" themeColor="textSecondary">✕</ThemedText>
-                    </Pressable>
-                  </ThemedView>
-                </ThemedView>
-              );
-            })}
-
-            {canAddExam ? (
-              <Pressable
-                style={({ pressed }) => [styles.addExamBtn, pressed && styles.addExamBtnPressed]}
-                onPress={() => router.push('/add-exam')}>
-                <ThemedText type="small" style={styles.addExamText}>
-                  + Add exam countdown
-                </ThemedText>
-              </Pressable>
-            ) : (
-              <Pressable onPress={() => router.push('/plus-upgrade')}>
-                <ThemedView type="backgroundElement" style={styles.upgradeExamCard}>
-                  <ThemedText type="small" style={styles.upgradeExamText}>
-                    🔒 Unlimited exam countdowns — upgrade to Plus
+            <ThemedText type="smallBold">Companions</ThemedText>
+            <Pressable
+              style={({ pressed }) => [pressed && styles.pressed]}
+              onPress={() => router.push('/companion-gallery')}>
+              <ThemedView type="backgroundElement" style={styles.plusShortcut}>
+                <View style={styles.plusShortcutIcon}>
+                  <PawIcon size={32} />
+                </View>
+                <ThemedView style={styles.plusShortcutText}>
+                  <ThemedText type="smallBold">Companion Gallery</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Switch who studies with you
                   </ThemedText>
                 </ThemedView>
-              </Pressable>
-            )}
+                <ThemedText type="small" style={styles.arrowLink}>→</ThemedText>
+              </ThemedView>
+            </Pressable>
           </ThemedView>
+
           {/* ── Plus shortcuts (if Plus) ─────────────────────────────────── */}
           {isPlus && (
             <ThemedView style={styles.section}>
@@ -491,22 +446,6 @@ export default function ProgressScreen() {
                   <ThemedText type="small" style={styles.arrowLink}>→</ThemedText>
                 </ThemedView>
               </Pressable>
-              <Pressable
-                style={({ pressed }) => [pressed && styles.pressed]}
-                onPress={() => router.push('/companion-gallery')}>
-                <ThemedView type="backgroundElement" style={styles.plusShortcut}>
-                  <View style={styles.plusShortcutIcon}>
-                    <PawIcon size={32} />
-                  </View>
-                  <ThemedView style={styles.plusShortcutText}>
-                    <ThemedText type="smallBold">Companion Gallery</ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      Switch who studies with you
-                    </ThemedText>
-                  </ThemedView>
-                  <ThemedText type="small" style={styles.arrowLink}>→</ThemedText>
-                </ThemedView>
-              </Pressable>
             </ThemedView>
           )}
 
@@ -515,24 +454,19 @@ export default function ProgressScreen() {
             <ThemedView style={styles.section}>
               <ThemedText type="smallBold">Unlock more</ThemedText>
               <PlusGateCard
-                emoji="📈"
+                icon={<ChartIcon size={30} />}
                 title="Advanced Analytics"
                 description="Daily trends, mood-study correlation charts, and deep habit insights."
               />
               <PlusGateCard
-                emoji="📆"
+                icon={<BakeryCalendarEmoji size={30} />}
                 title="Exam Planner+"
                 description="Unlimited exam countdowns, smart study schedule suggestions, and deadline alerts."
               />
               <PlusGateCard
-                emoji="🎵"
+                icon={<MusicNoteIcon size={30} />}
                 title="Ambience Sounds"
                 description="Lo-fi beats, rain sounds, and focus music to play during study sessions."
-              />
-              <PlusGateCard
-                emoji="🐾"
-                title="Companion Gallery"
-                description="Free users get the starter girl and dude. Plus adds extra saved companion slots."
               />
             </ThemedView>
           )}
@@ -619,6 +553,14 @@ const styles = StyleSheet.create({
   },
   insightValue: { fontSize: 24, fontWeight: '700', lineHeight: 30 },
   insightLabel: { textAlign: 'center', fontSize: 12 },
+  manageSubjectsBtn: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 6,
+    borderRadius: BakeryRadii.pill,
+    backgroundColor: BakeryColors.cream,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+  },
   subjectList: { gap: Spacing.two },
   subjectRow: { borderRadius: BakeryRadii.card, padding: Spacing.two, gap: 6, backgroundColor: BakeryColors.glass, borderWidth: 1.5, borderColor: BakeryColors.shortbread },
   subjectRowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -629,6 +571,7 @@ const styles = StyleSheet.create({
   subjectBar: { height: 5, borderRadius: 3, backgroundColor: 'rgba(0,0,0,0.06)', overflow: 'hidden' },
   subjectBarFill: { height: '100%', borderRadius: 3 },
   highlightRow: { gap: 4, paddingTop: Spacing.one },
+  highlightItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   emptyCard: { borderRadius: BakeryRadii.card, padding: Spacing.four, alignItems: 'center', backgroundColor: BakeryColors.glass, borderWidth: 1.5, borderColor: BakeryColors.shortbread },
   emptyText: { textAlign: 'center', lineHeight: 20 },
   moodList: { gap: Spacing.two },

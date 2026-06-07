@@ -13,11 +13,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
-import { PlusGate } from '@/components/plus-gate';
 import { ThemedView } from '@/components/themed-view';
-import { useApp } from '@/context/app-context';
-import { getStarterActiveId, getBunSkinImage, BUN_SKINS, SHOP_COMPANIONS } from '@/lib/companion-utils';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useApp } from '@/context/app-context';
+import { BUN_SKINS, getBunSkinImage, getCompanionSkinImage, getCompanionSkins, getStarterActiveId, SHOP_COMPANIONS } from '@/lib/companion-utils';
+import { SHOP_ITEMS } from '@/constants/shop-data';
+
+const getShopItem = (id: string) => SHOP_ITEMS.find((s) => s.id === id);
 
 // Patisserie palette — soft strawberry-dessert theme.
 const P = {
@@ -59,6 +61,15 @@ function HangerIcon({ color = '#B06A50', size = 18 }: { color?: string; size?: n
   );
 }
 
+// Per-companion taglines shown under each name in the gallery.
+const TAGLINES: Record<string, string> = {
+  Bun: '"Bun study with you forever."',
+  Cocoa: '"Work hard now, treat later."',
+  Bunny: '"bunny know bunny the cutest thing ever"',
+  Miel: '"Nap now, study after…"',
+  Tira: '"Tira dropped out, you should study though."',
+};
+
 type ObtainedCharacter = {
   id: string;
   name: string;
@@ -81,9 +92,34 @@ function GalleryContent() {
     ownedShopItems,
     bunSkinId,
     setBunSkin,
+    companionSkins,
+    setCompanionSkin,
+    coins,
+    isPlus,
+    purchaseShopItem,
   } = useApp();
 
-  const [wardrobeOpen, setWardrobeOpen] = useState(false);
+  const [wardrobeFor, setWardrobeFor] = useState<{ id: string; name: string } | null>(null);
+  // In-place unlock popup for a coin-priced item (a locked companion or skin).
+  const [buyItem, setBuyItem] = useState<{ id: string; name: string; image: number | null; price: number } | null>(null);
+  const buyDiscount = isPlus ? 0.8 : 1;
+  const buyPrice = buyItem ? Math.floor(buyItem.price * buyDiscount) : 0;
+  const canAffordBuy = coins >= buyPrice;
+  const confirmBuy = () => {
+    if (!buyItem || !canAffordBuy) return;
+    purchaseShopItem(buyItem.id, buyPrice);
+    setBuyItem(null);
+  };
+  const wardrobeIsBun = wardrobeFor?.id === getStarterActiveId('girl');
+  // Skins for the open wardrobe (Bun uses its own list; shop companions use COMPANION_SKINS).
+  const wardrobeSkins = wardrobeFor ? (wardrobeIsBun ? BUN_SKINS : getCompanionSkins(wardrobeFor.id)) : [];
+  const wardrobeEquipped = wardrobeIsBun
+    ? (bunSkinId ?? 'classic')
+    : (wardrobeFor ? (companionSkins[wardrobeFor.id] ?? 'classic') : 'classic');
+  const equipWardrobeSkin = (skinId: string) => {
+    if (wardrobeIsBun) setBunSkin(skinId);
+    else if (wardrobeFor) setCompanionSkin(wardrobeFor.id, skinId);
+  };
 
   const handleUseSlot = (slotId: string, hasRenderableImage: boolean) => {
     if (!hasRenderableImage) {
@@ -119,7 +155,7 @@ function GalleryContent() {
     ...SHOP_COMPANIONS.filter((item) => ownedShopItems.includes(item.id)).map((item) => ({
       id: `shop:${item.id}`,
       name: item.name,
-      image: item.image as number,
+      image: getCompanionSkinImage(`shop:${item.id}`, companionSkins[`shop:${item.id}`]) ?? (item.image as number),
       emoji: item.emoji,
       isActive: activeCompanionId === `shop:${item.id}`,
       isGenerated: false,
@@ -138,6 +174,20 @@ function GalleryContent() {
       onDelete: () => confirmDelete(slot.id, slot.name),
     })),
   ];
+
+  // Shop companions you don't own yet — shown locked so you can preview them
+  // (and their wardrobes) and unlock right here instead of going to the Shop.
+  const lockedCharacters = SHOP_COMPANIONS
+    .filter((item) => !ownedShopItems.includes(item.id))
+    .map((item) => ({
+      id: `shop:${item.id}`,
+      itemId: item.id,
+      name: item.name,
+      image: getCompanionSkinImage(`shop:${item.id}`, 'classic') ?? (item.image as number),
+      emoji: item.emoji,
+      price: item.price,
+      plusOnly: !!item.plusOnly,
+    }));
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: P.cream }}>
@@ -164,14 +214,12 @@ function GalleryContent() {
                     <Text style={styles.cardDeleteText}>✕</Text>
                   </Pressable>
                 )}
-                {char.id === getStarterActiveId('girl') && (
-                  <Pressable
-                    style={({ pressed }) => [styles.hangerBtn, pressed && styles.pressed]}
-                    onPress={() => setWardrobeOpen(true)}
-                    hitSlop={8}>
-                    <HangerIcon color="#FFFFFF" size={22} />
-                  </Pressable>
-                )}
+                <Pressable
+                  style={({ pressed }) => [styles.hangerBtn, pressed && styles.pressed]}
+                  onPress={() => setWardrobeFor({ id: char.id, name: char.name })}
+                  hitSlop={8}>
+                  <HangerIcon color="#FFFFFF" size={22} />
+                </Pressable>
                 <View style={styles.companionImageWrap}>
                   {char.image ? (
                     <Image source={char.image} style={styles.companionImage} contentFit="contain" />
@@ -183,7 +231,7 @@ function GalleryContent() {
                   {char.name}
                   {char.isGenerated ? ' 🎨' : ''}
                 </Text>
-                <Text style={styles.companionSubtitle}>Your study buddy</Text>
+                <Text style={styles.companionSubtitle} numberOfLines={2}>{TAGLINES[char.name] ?? 'Your study buddy'}</Text>
                 {char.isActive ? (
                   <View style={styles.activePill}>
                     <Text style={styles.activePillText}>✦ Active</Text>
@@ -200,6 +248,50 @@ function GalleryContent() {
           </View>
         </View>
 
+        {/* Locked companions — preview & unlock */}
+        {lockedCharacters.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>More Companions</Text>
+            <View style={styles.companionGrid}>
+              {lockedCharacters.map((char) => (
+                <View key={char.id} style={[styles.companionCard, styles.companionCardLocked]}>
+                  <Pressable
+                    style={({ pressed }) => [styles.hangerBtn, pressed && styles.pressed]}
+                    onPress={() => setWardrobeFor({ id: char.id, name: char.name })}
+                    hitSlop={8}>
+                    <HangerIcon color="#FFFFFF" size={22} />
+                  </Pressable>
+                  <View style={styles.companionImageWrap}>
+                    {char.image ? (
+                      <Image source={char.image} style={[styles.companionImage, styles.companionImageLocked]} contentFit="contain" />
+                    ) : (
+                      <Text style={styles.companionEmoji}>{char.emoji ?? '🐾'}</Text>
+                    )}
+                    <View style={styles.cardLockBadge}>
+                      <Text style={styles.cardLockBadgeText}>🔒</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.companionName} numberOfLines={1}>{char.name}</Text>
+                  <Text style={styles.companionSubtitle} numberOfLines={2}>{TAGLINES[char.name] ?? 'Your study buddy'}</Text>
+                  {char.plusOnly ? (
+                    <Pressable
+                      style={({ pressed }) => [styles.unlockBtn, styles.plusBtn, pressed && styles.pressed]}
+                      onPress={() => router.push('/plus-upgrade')}>
+                      <Text style={styles.plusBtnText}>✨ Plus exclusive</Text>
+                    </Pressable>
+                  ) : (
+                    <Pressable
+                      style={({ pressed }) => [styles.unlockBtn, pressed && styles.pressed]}
+                      onPress={() => setBuyItem({ id: char.itemId, name: char.name, image: char.image, price: char.price })}>
+                      <Text style={styles.unlockBtnText}>🔓 {Math.floor(char.price * buyDiscount)} coins</Text>
+                    </Pressable>
+                  )}
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* Info note */}
         <View style={styles.infoCard}>
           <Text style={styles.infoText}>
@@ -215,67 +307,123 @@ function GalleryContent() {
         </Pressable>
       </SafeAreaView>
 
-      {/* Wardrobe — pick an outfit for Bun */}
+      {/* Wardrobe — per-companion outfit picker */}
       <Modal
-        visible={wardrobeOpen}
+        visible={!!wardrobeFor}
         animationType="slide"
         transparent
-        onRequestClose={() => setWardrobeOpen(false)}>
+        onRequestClose={() => setWardrobeFor(null)}>
         <View style={styles.wardrobeBackdrop}>
           <View style={styles.wardrobeSheet}>
-            <Text style={styles.wardrobeTitle}>👗 Bun&apos;s Wardrobe</Text>
-            <Text style={styles.wardrobeSubtitle}>Pick an outfit — Bun wears it everywhere</Text>
-            <View style={styles.skinGrid}>
-              {BUN_SKINS.map((skin) => {
-                const equipped = (bunSkinId ?? 'classic') === skin.id;
-                const locked = !!skin.shopItemId && !ownedShopItems.includes(skin.shopItemId);
-                return (
-                  <Pressable
-                    key={skin.id}
-                    style={[styles.skinCard, equipped && styles.skinCardActive, locked && styles.skinCardLocked]}
-                    onPress={() => {
-                      if (locked) {
-                        setWardrobeOpen(false);
-                        router.push('/shop');
-                      } else {
-                        setBunSkin(skin.id);
-                      }
-                    }}>
-                    <View style={styles.skinImageWrap}>
-                      <Image
-                        source={skin.image}
-                        style={[styles.skinImage, locked && styles.skinImageLocked]}
-                        contentFit="contain"
-                      />
-                      {locked && (
-                        <View style={styles.lockBadge}>
-                          <Text style={styles.lockBadgeText}>🔒</Text>
+            <Text style={styles.wardrobeTitle}>👗 {wardrobeFor?.name}&apos;s Wardrobe</Text>
+            {wardrobeSkins.length > 0 ? (
+              <>
+                <Text style={styles.wardrobeSubtitle}>Pick an outfit — {wardrobeFor?.name} wears it everywhere</Text>
+                <View style={styles.skinGrid}>
+                  {wardrobeSkins.map((skin) => {
+                    const equipped = wardrobeEquipped === skin.id;
+                    const locked = !!skin.shopItemId && !ownedShopItems.includes(skin.shopItemId);
+                    return (
+                      <Pressable
+                        key={skin.id}
+                        style={[styles.skinCard, equipped && styles.skinCardActive, locked && styles.skinCardLocked]}
+                        onPress={() => {
+                          if (locked) {
+                            const item = skin.shopItemId ? getShopItem(skin.shopItemId) : null;
+                            if (item) setBuyItem({ id: item.id, name: item.name, image: skin.image, price: item.price });
+                          } else {
+                            equipWardrobeSkin(skin.id);
+                          }
+                        }}>
+                        <View style={styles.skinImageWrap}>
+                          <Image
+                            source={skin.image}
+                            style={[styles.skinImage, locked && styles.skinImageLocked]}
+                            contentFit="contain"
+                          />
+                          {locked && (
+                            <View style={styles.lockBadge}>
+                              <Text style={styles.lockBadgeText}>🔒</Text>
+                            </View>
+                          )}
                         </View>
-                      )}
-                    </View>
-                    <Text style={styles.skinName} numberOfLines={1}>
-                      {skin.emoji} {skin.name}
-                    </Text>
-                    {locked ? (
-                      <Text style={styles.skinLockedText}>🛍️ Get in Shop</Text>
-                    ) : equipped ? (
-                      <View style={styles.skinPill}>
-                        <Text style={styles.skinPillText}>✦ Wearing</Text>
-                      </View>
-                    ) : (
-                      <Text style={styles.skinTap}>Tap to wear</Text>
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
+                        <Text style={styles.skinName} numberOfLines={1}>
+                          {skin.emoji} {skin.name}
+                        </Text>
+                        {locked ? (
+                          <Text style={styles.skinLockedText}>🔓 Tap to unlock</Text>
+                        ) : equipped ? (
+                          <View style={styles.skinPill}>
+                            <Text style={styles.skinPillText}>✦ Wearing</Text>
+                          </View>
+                        ) : (
+                          <Text style={styles.skinTap}>Tap to wear</Text>
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </>
+            ) : (
+              <View style={styles.wardrobeEmpty}>
+                <Text style={styles.wardrobeEmptyEmoji}>🧥</Text>
+                <Text style={styles.wardrobeEmptyTitle}>No outfits yet</Text>
+                <Text style={styles.wardrobeEmptyText}>
+                  {wardrobeFor?.name}&apos;s wardrobe is empty for now — more outfits coming soon!
+                </Text>
+              </View>
+            )}
             <Pressable
               style={({ pressed }) => [styles.doneButton, pressed && styles.pressed]}
-              onPress={() => setWardrobeOpen(false)}>
+              onPress={() => setWardrobeFor(null)}>
               <Text style={styles.doneButtonText}>Done</Text>
             </Pressable>
           </View>
         </View>
+      </Modal>
+
+      {/* Unlock popup — buy the exact locked companion / skin in place. */}
+      <Modal
+        visible={buyItem !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setBuyItem(null)}>
+        <Pressable style={styles.buyBackdrop} onPress={() => setBuyItem(null)}>
+          <Pressable style={styles.buyCard} onPress={(e) => e.stopPropagation?.()}>
+            {buyItem && (
+              <>
+                <Text style={styles.buyTitle}>Unlock {buyItem.name}</Text>
+                {buyItem.image && (
+                  <Image source={buyItem.image} style={styles.buyImage} contentFit="contain" />
+                )}
+                <View style={styles.buyBalanceRow}>
+                  <Text style={styles.buyBalanceLabel}>Your balance</Text>
+                  <Text style={styles.buyBalanceNum}>🪙 {coins}</Text>
+                </View>
+                {!canAffordBuy && (
+                  <Text style={styles.buyShortfall}>
+                    You need {buyPrice - coins} more coins. Earn coins by studying!
+                  </Text>
+                )}
+                <Pressable
+                  disabled={!canAffordBuy}
+                  style={({ pressed }) => [
+                    styles.buyBtn,
+                    !canAffordBuy && styles.buyBtnDisabled,
+                    pressed && canAffordBuy && styles.pressed,
+                  ]}
+                  onPress={confirmBuy}>
+                  <Text style={styles.buyBtnText}>
+                    {canAffordBuy ? `Unlock for ${buyPrice} coins` : 'Not enough coins'}
+                  </Text>
+                </Pressable>
+                <Pressable style={styles.buyCancel} onPress={() => setBuyItem(null)}>
+                  <Text style={styles.buyCancelText}>Maybe later</Text>
+                </Pressable>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
       </Modal>
     </ScrollView>
   );
@@ -284,12 +432,7 @@ function GalleryContent() {
 export default function CompanionGalleryScreen() {
   return (
     <ThemedView style={[styles.container, { backgroundColor: P.cream }]}>
-      <PlusGate
-        feature="Companion Bakery"
-        description="Keep your free starter Bun, then save up to 3 extra companions with Plus."
-        emoji="🐾">
-        <GalleryContent />
-      </PlusGate>
+      <GalleryContent />
     </ThemedView>
   );
 }
@@ -346,11 +489,11 @@ const styles = StyleSheet.create({
     color: P.brown,
   },
   slotCount: { fontSize: 13, color: P.mutedBrown, fontWeight: '600' },
-  // Hanger button on Bun's card — white hanger on a pink chip
+  // Hanger button on each companion card — white hanger on a pink chip
   hangerBtn: {
     position: 'absolute',
     top: 8,
-    right: 8,
+    left: 8,
     zIndex: 2,
     width: 34,
     height: 34,
@@ -380,6 +523,10 @@ const styles = StyleSheet.create({
   },
   wardrobeTitle: { fontSize: 20, fontWeight: '800', color: P.brown, textAlign: 'center' },
   wardrobeSubtitle: { fontSize: 13, color: P.mutedBrown, fontWeight: '500', textAlign: 'center', marginTop: -6 },
+  wardrobeEmpty: { alignItems: 'center', gap: 6, paddingVertical: Spacing.four },
+  wardrobeEmptyEmoji: { fontSize: 44 },
+  wardrobeEmptyTitle: { fontSize: 16, fontWeight: '800', color: P.brown },
+  wardrobeEmptyText: { fontSize: 13, color: P.mutedBrown, textAlign: 'center', lineHeight: 18, paddingHorizontal: Spacing.three },
   skinGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three, justifyContent: 'center' },
   skinCard: {
     width: '47%',
@@ -507,6 +654,63 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   setActiveBtnText: { fontSize: 12, color: '#FFF', fontWeight: '800' },
+
+  // Locked companion cards
+  companionCardLocked: { borderColor: P.pinkSoft, backgroundColor: '#FBF6F2' },
+  companionImageLocked: { opacity: 0.5 },
+  cardLockBadge: {
+    position: 'absolute',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderWidth: 1.5,
+    borderColor: P.pink,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardLockBadgeText: { fontSize: 16 },
+  unlockBtn: {
+    marginTop: 6,
+    backgroundColor: P.pink,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+  },
+  unlockBtnText: { fontSize: 12, color: '#FFF', fontWeight: '800' },
+  plusBtn: { backgroundColor: P.pinkActiveSoft, borderWidth: 1.5, borderColor: P.pinkActive },
+  plusBtnText: { fontSize: 12, color: P.pinkActiveText, fontWeight: '800' },
+
+  // Unlock popup
+  buyBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(91,58,46,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  buyCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: P.card,
+    borderRadius: 26,
+    padding: Spacing.four,
+    gap: Spacing.three,
+    borderWidth: 1.5,
+    borderColor: P.peach,
+    alignItems: 'center',
+  },
+  buyTitle: { fontSize: 19, fontWeight: '800', color: P.brown, textAlign: 'center' },
+  buyImage: { width: 120, height: 120 },
+  buyBalanceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', alignSelf: 'stretch' },
+  buyBalanceLabel: { fontSize: 13, fontWeight: '600', color: P.mutedBrown },
+  buyBalanceNum: { fontSize: 15, fontWeight: '800', color: P.brown },
+  buyShortfall: { fontSize: 12.5, color: P.pinkActiveText, fontWeight: '700', textAlign: 'center' },
+  buyBtn: { alignSelf: 'stretch', backgroundColor: P.pink, borderRadius: 18, paddingVertical: Spacing.three, alignItems: 'center' },
+  buyBtnDisabled: { backgroundColor: P.pinkSoft },
+  buyBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  buyCancel: { alignItems: 'center', paddingVertical: 2 },
+  buyCancelText: { fontSize: 13.5, color: P.mutedBrown, fontWeight: '700' },
 
   // Receipt card
   receiptCard: {
