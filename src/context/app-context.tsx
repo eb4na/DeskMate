@@ -341,6 +341,7 @@ function yesterdayISO(): string {
 
 const MAX_COMPANION_SLOTS = 3;
 const FREE_EXAM_LIMIT = 3;
+const STREAK_MAX = 200; // study-day streak caps here
 
 function daysBetween(a: string, b: string): number {
   const msA = new Date(a).setHours(0, 0, 0, 0);
@@ -525,6 +526,8 @@ type AppContextType = {
     subjectName: string | null;
     taskId: string | null;
     taskTitle: string | null;
+    /** Shared start instant for synced multiplayer study rooms (defaults to now). */
+    startedAt?: string;
   }) => void;
   clearActiveSession: () => void;
 
@@ -683,6 +686,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...(patch.skinId !== undefined ? { profileSkinId: patch.skinId } : {}),
     }));
 
+  // Streak counts STUDY days only (called from session-complete). Each study day
+  // rewards coins equal to the new streak number (1, 2, 3, … up to 200). Missing a
+  // day resets the streak — today becomes day 1 again.
   const updateStreak = (): { bonus: number; isComeback: boolean } => {
     let bonus = 0;
     let isComeback = false;
@@ -691,44 +697,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const today = todayISO();
       const { streak: st } = prev;
 
-      if (!st.lastStudyDate) {
-        return { ...prev, streak: { currentStreak: 1, longestStreak: 1, lastStudyDate: today } };
-      }
-
-      const diff = daysBetween(st.lastStudyDate, today);
-      if (diff === 0) return prev;
-
-      const applyBonus = (amount: number) => {
-        const isNewDay = prev.earnedDate !== today;
-        const basedToday = isNewDay ? 0 : prev.earnedToday;
-        const remaining = Math.max(0, DAILY_EARN_CAP - basedToday);
-        const actual = Math.min(amount, remaining);
-        return {
-          coins: prev.coins + actual,
-          earnedToday: basedToday + actual,
-          earnedDate: today,
-        };
-      };
-
-      if (diff === 1) {
-        const next = st.currentStreak + 1;
-        if (next === 3) bonus = 30;
-        else if (next === 7) bonus = 80;
+      // Advance to `next` day, award `next` coins (once per day, so not capped).
+      const advance = (next: number) => {
+        bonus = next;
         return {
           ...prev,
-          streak: { currentStreak: next, longestStreak: Math.max(st.longestStreak, next), lastStudyDate: today },
-          ...applyBonus(bonus),
+          streak: {
+            currentStreak: next,
+            longestStreak: Math.max(st.longestStreak, next),
+            lastStudyDate: today,
+          },
+          coins: prev.coins + next,
         };
-      }
-
-      isComeback = diff >= 3;
-      const comebackBonus = isComeback ? 50 : 0;
-      bonus = comebackBonus;
-      return {
-        ...prev,
-        streak: { currentStreak: 1, longestStreak: st.longestStreak, lastStudyDate: today },
-        ...applyBonus(comebackBonus),
       };
+
+      if (!st.lastStudyDate) return advance(1); // first study ever
+
+      const diff = daysBetween(st.lastStudyDate, today);
+      if (diff === 0) return prev; // already studied today
+
+      if (diff === 1) return advance(Math.min(STREAK_MAX, st.currentStreak + 1)); // consecutive day
+
+      // Missed a day → streak resets; today is day 1 of a fresh streak.
+      isComeback = true;
+      return advance(1);
     });
 
     return { bonus, isComeback };
@@ -862,11 +854,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     subjectName,
     taskId,
     taskTitle,
+    startedAt,
   }: {
     durationMinutes: number;
     subjectName: string | null;
     taskId: string | null;
     taskTitle: string | null;
+    startedAt?: string;
   }) => {
     setActiveSession({
       id: uid(),
@@ -874,7 +868,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       subjectName,
       taskId,
       taskTitle,
-      startedAt: new Date().toISOString(),
+      startedAt: startedAt ?? new Date().toISOString(),
     });
   };
 

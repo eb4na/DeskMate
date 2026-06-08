@@ -40,6 +40,40 @@ export const ROOM_PAIRS: RoomPair[] = [
     backgroundImage: require('@/assets/images/backgrounds/beach.png'),
     deskImage: require('@/assets/images/desks/wood.png'),
   },
+  {
+    id: 'tiras-room',
+    name: "Tira's Room",
+    backgroundId: 'bg_tiras_room',
+    deskId: 'desk_pale_wood',
+    backgroundImage: require('@/assets/images/backgrounds/tiras-room.png'),
+    deskImage: require('@/assets/images/desks/pale-wood.png'),
+  },
+  {
+    id: 'buns-room',
+    name: "Bun's Room",
+    backgroundId: 'bg_buns_room',
+    deskId: 'desk_pink',
+    backgroundImage: require('@/assets/images/backgrounds/buns-room.png'),
+    deskImage: require('@/assets/images/desks/pink.png'),
+  },
+  {
+    // Background-only room — no matching desk (mixes with any desk).
+    id: 'tiras-treehouse',
+    name: "Tira's Treehouse",
+    backgroundId: 'bg_tiras_treehouse',
+    deskId: null,
+    backgroundImage: require('@/assets/images/backgrounds/tiras-treehouse.png'),
+    deskImage: require('@/assets/images/home/desk-new.png'),
+  },
+  {
+    // Background-only room — no matching desk (mixes with any desk).
+    id: 'secret-hideout',
+    name: 'Secret Hideout',
+    backgroundId: 'bg_secret_hideout',
+    deskId: null,
+    backgroundImage: require('@/assets/images/backgrounds/secret-hideout.png'),
+    deskImage: require('@/assets/images/home/desk-new.png'),
+  },
 ];
 
 /** The pair that contains the given shop item id (background or desk), if any. */

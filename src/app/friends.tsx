@@ -51,7 +51,7 @@ const INVITE_GAMES: { id: OnlineGameId; name: string; emoji: string }[] = [
   { id: 'connect4', name: 'Connect 4', emoji: '🔴' },
   { id: 'tictactoe', name: 'Tic-Tac-Toe', emoji: '⭕' },
   { id: 'memory', name: 'Memory Cards', emoji: '🃏' },
-  { id: 'batterdash', name: 'BatterDash Race', emoji: '🎂' },
+  { id: 'batterdash', name: 'BatterDash', emoji: '🎂' },
 ];
 
 export default function FriendsScreen() {
@@ -78,7 +78,8 @@ export default function FriendsScreen() {
     });
     setPlayFor(null);
     if (game === 'batterdash') {
-      router.push({ pathname: '/cake-game', params: { room, role: 'host', netmode: 'race' } });
+      // Start a party as host; invite more friends from the lobby.
+      router.push({ pathname: '/cake-game', params: { room, role: 'host', netmode: 'party' } });
     } else {
       router.push({ pathname: '/break-game', params: { game, room, role: 'host' } });
     }

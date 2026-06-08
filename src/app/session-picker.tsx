@@ -6,6 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/coin-icon';
 import { useApp } from '@/context/app-context';
+import { newRoomId } from '@/lib/game-net';
+import { useStudyRoom } from '@/lib/use-study-room';
 import { SESSION_LENGTHS, coinsForMinutes } from '@/constants/placeholder-data';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -28,6 +30,7 @@ const CARD_IMG: Record<number, number> = {
 export default function SessionPickerScreen() {
   const { width, height } = useWindowDimensions();
   const { isPlus, subjects, coins } = useApp();
+  const studyRoom = useStudyRoom();
   const { t } = useTranslation();
   const [selected, setSelected] = useState(25);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
@@ -44,6 +47,11 @@ export default function SessionPickerScreen() {
         ...(selectedSubjectId ? { subjectId: selectedSubjectId } : {}),
       },
     });
+  }
+
+  function studyWithFriends() {
+    studyRoom.joinRoom(newRoomId(), true);
+    router.push('/study-lobby');
   }
 
   return (
@@ -165,6 +173,13 @@ export default function SessionPickerScreen() {
             <ImageBackground source={START_PILL} style={styles.startBtn} resizeMode="stretch">
               <Text style={styles.startBtnText}>{t('sessionPicker.startButton', { minutes: selected })}</Text>
             </ImageBackground>
+          </Pressable>
+
+          {/* Study with friends → create a room and open the lobby */}
+          <Pressable
+            style={({ pressed }) => [styles.studyTogetherBtn, pressed && styles.pressed]}
+            onPress={studyWithFriends}>
+            <Text style={styles.studyTogetherText}>👯 Study with friends</Text>
           </Pressable>
 
           {/* Back */}
@@ -312,6 +327,17 @@ const styles = StyleSheet.create({
     color: '#fff', fontSize: 19, fontWeight: '800', letterSpacing: 0.3,
     textShadowColor: 'rgba(193,90,110,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
   },
+
+  studyTogetherBtn: {
+    width: '100%',
+    paddingVertical: 13,
+    borderRadius: BakeryRadii.button,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,252,247,0.92)',
+    borderWidth: 1.5,
+    borderColor: C.shortbread,
+  },
+  studyTogetherText: { fontSize: 15, fontWeight: '800', color: C.cocoaDark },
 
   // Back (cat button asset)
   backBtn: { alignSelf: 'center' },

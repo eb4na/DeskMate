@@ -10,7 +10,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase';
 
-export type OnlineGameId = 'connect4' | 'tictactoe' | 'memory' | 'batterdash';
+export type OnlineGameId = 'connect4' | 'tictactoe' | 'memory' | 'batterdash' | 'study';
 
 export type GameInvite = {
   game: OnlineGameId;
@@ -105,9 +105,20 @@ export type GameRoomHandlers = {
   onMessage: (type: string, data: unknown) => void;
   onPresence: (opponentPresent: boolean) => void;
   onStatus?: (status: string) => void;
+  // Party games use these for an N-player roster: the live participant count and
+  // the set of present player codes (from each client's tracked `meta.code`).
+  onPresenceCount?: (count: number) => void;
+  onPresenceCodes?: (codes: string[]) => void;
 };
 
-export function joinGameRoom(roomId: string, isHost: boolean, handlers: GameRoomHandlers): GameRoom {
+// `meta` is merged into this client's presence payload (e.g. `{ code }`) so other
+// players can map a present participant back to a friend code.
+export function joinGameRoom(
+  roomId: string,
+  isHost: boolean,
+  handlers: GameRoomHandlers,
+  meta?: Record<string, unknown>,
+): GameRoom {
   const selfId = `${isHost ? 'host' : 'guest'}-${Math.random().toString(36).slice(2, 10)}`;
   const channel: RealtimeChannel = supabase.channel(`game:${roomId}`, {
     config: { broadcast: { self: false }, presence: { key: selfId } },
@@ -118,12 +129,21 @@ export function joinGameRoom(roomId: string, isHost: boolean, handlers: GameRoom
       if (payload && typeof payload.type === 'string') handlers.onMessage(payload.type, payload.data);
     })
     .on('presence', { event: 'sync' }, () => {
-      const participants = Object.keys(channel.presenceState()).length;
-      handlers.onPresence(participants >= 2);
+      const state = channel.presenceState() as Record<string, { code?: string }[]>;
+      const keys = Object.keys(state);
+      handlers.onPresence(keys.length >= 2);
+      handlers.onPresenceCount?.(keys.length);
+      if (handlers.onPresenceCodes) {
+        const codes = Object.values(state)
+          .flat()
+          .map((m) => m?.code)
+          .filter((c): c is string => typeof c === 'string');
+        handlers.onPresenceCodes(codes);
+      }
     })
     .subscribe((status) => {
       handlers.onStatus?.(status);
-      if (status === 'SUBSCRIBED') channel.track({ role: isHost ? 'host' : 'guest', at: Date.now() });
+      if (status === 'SUBSCRIBED') channel.track({ role: isHost ? 'host' : 'guest', at: Date.now(), ...(meta ?? {}) });
     });
 
   return {

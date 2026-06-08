@@ -5,6 +5,7 @@ import { Alert, Animated, Easing, Image as RNImage, ImageBackground, PanResponde
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/coin-icon';
+import { StudyRoomView } from '@/components/study-room-view';
 import { BakeryGearEmoji } from '@/components/bakery-emoji';
 import { CookieChatIcon } from '@/components/settings-icons';
 import { getReminderStyleEffect } from '@/constants/shop-effects';
@@ -436,54 +437,13 @@ export default function HomeScreen() {
           <Image source={SUNLIGHT} style={styles.sunlight} contentFit="cover" pointerEvents="none" />
 
           {activeSession ? (
-            <>
-              {/* Timer inside the bow frame */}
-              <View style={[styles.focusTopArea, { paddingTop: insets.top + 4 }]}>
-                <ImageBackground source={STUDY_FRAME} style={styles.studyFrame} resizeMode="contain">
-                  <View style={styles.studyFrameInner}>
-                    <ThemedText style={styles.studyFrameSubject} numberOfLines={1}>
-                      {activeSession.subjectName ?? 'General Study'}
-                    </ThemedText>
-                    <ThemedText style={styles.studyFrameTimer}>
-                      {formatTimerLabel(sessionSecondsLeft)}
-                    </ThemedText>
-                    <ThemedText style={styles.studyFrameMeta}>
-                      {activeSession.durationMinutes} minute session
-                    </ThemedText>
-                  </View>
-                </ImageBackground>
-              </View>
-
-              {/* Studying cat reading at the desk */}
-              <View style={styles.studyCharacterLayer} pointerEvents="none">
-                <RNImage source={studyCharacterSource} style={styles.studyCharacterImage} resizeMode="contain" />
-              </View>
-
-              {/* Desk */}
-              <RNImage source={deskRoom.deskImage} style={styles.deskNewLayer} resizeMode="cover" pointerEvents="none" />
-              {/* Thin line marking the table's front edge */}
-              <View style={styles.tableEdgeLine} pointerEvents="none" />
-              {/* Oven on the desk */}
-              <RNImage source={STUDY_OVEN} style={styles.deskOven} resizeMode="contain" pointerEvents="none" />
-              {/* Radio playing study sounds */}
-              <RNImage source={STUDY_RADIO} style={styles.deskRadio} resizeMode="contain" pointerEvents="none" />
-
-              {/* Controls */}
-              <View style={[styles.focusActions, { bottom: insets.bottom + 120 }]}>
-                <Pressable
-                  style={({ pressed }) => [styles.imgButton, pressed && styles.startButtonPressed]}
-                  onPress={handleStopSession}>
-                  <Image source={STOP_STUDYING_BTN} style={styles.stopBtnImg} contentFit="contain" />
-                </Pressable>
-                {Math.floor(activeSession.durationMinutes / 12) > 1 && (
-                  <Pressable
-                    style={({ pressed }) => [styles.imgButton, pressed && styles.startButtonPressed]}
-                    onPress={handleBreakGame}>
-                    <Image source={BREAK_GAME_BTN} style={styles.breakBtnImg} contentFit="contain" />
-                  </Pressable>
-                )}
-              </View>
-            </>
+            <View style={[styles.studyRoomWrap, { paddingTop: insets.top + 4, paddingBottom: insets.bottom + 8 }]}>
+              <StudyRoomView
+                secondsLeft={sessionSecondsLeft}
+                onStop={handleStopSession}
+                onBreakGame={handleBreakGame}
+              />
+            </View>
           ) : (
             <>
               {!dragSession && <View style={styles.topHud}>
@@ -706,7 +666,8 @@ export default function HomeScreen() {
                   style={({ pressed }) => [styles.startSessionInner, pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/session-picker')}
                   accessibilityLabel="Start session">
-                  <Image source={START_SESSION_BTN} style={styles.startSessionBtn} contentFit="contain" />
+                  <Image source={START_SESSION_BTN} style={styles.startSessionBg} contentFit="fill" />
+                  <ThemedText style={styles.startSessionLabel}>Start Session</ThemedText>
                 </Pressable>
                 <Pressable
                   style={({ pressed }) => [styles.settingsFloating, styles.gameFloating, pressed && styles.startButtonPressed]}
@@ -832,6 +793,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: 'transparent',
   },
+  studyRoomWrap: { flex: 1, zIndex: 2 },
   roomBackground: {
     position: 'absolute',
     top: 0,
@@ -1377,11 +1339,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   startSessionInner: {
-    marginRight: 8,
-  },
-  startSessionBtn: {
+    marginRight: 10,
+    width: 262,
     height: 68,
-    aspectRatio: 1013 / 261,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  startSessionBg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+  },
+  startSessionLabel: {
+    fontSize: 21,
+    lineHeight: 25,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.4,
+    textShadowColor: '#C97A12',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+    transform: [{ translateY: -2 }],
   },
   settingsFloating: {
     width: 72,

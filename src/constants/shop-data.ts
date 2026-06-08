@@ -203,6 +203,42 @@ export const SHOP_ITEMS: ShopItem[] = [
     category: 'background',
     image: require('@/assets/images/backgrounds/beach.png'),
   },
+  {
+    id: 'bg_tiras_room',
+    name: "Tira's Room",
+    emoji: '🛏️',
+    description: "Tira's cozy blue bedroom — soft quilts, lace curtains, and morning light.",
+    price: 600,
+    category: 'background',
+    image: require('@/assets/images/backgrounds/tiras-room.png'),
+  },
+  {
+    id: 'bg_buns_room',
+    name: "Bun's Room",
+    emoji: '🍓',
+    description: "Bun's pink strawberry bedroom — frills, bows, and cozy pastel sweetness. Pairs with the Pink desk.",
+    price: 600,
+    category: 'background',
+    image: require('@/assets/images/backgrounds/buns-room.png'),
+  },
+  {
+    id: 'bg_tiras_treehouse',
+    name: "Tira's Treehouse",
+    emoji: '🌙',
+    description: "Tira's cozy treehouse nook — moonlit window, twinkle lights, and a snug blue bed.",
+    price: 600,
+    category: 'background',
+    image: require('@/assets/images/backgrounds/tiras-treehouse.png'),
+  },
+  {
+    id: 'bg_secret_hideout',
+    name: 'Secret Hideout',
+    emoji: '🌳',
+    description: 'A hidden treehouse hideout — a sunlit window seat, soft cushions, and a little tea table.',
+    price: 600,
+    category: 'background',
+    image: require('@/assets/images/backgrounds/secret-hideout.png'),
+  },
 
   // ─── Desks / study surfaces (400–700 coins) ─────────────────────────────
   {
@@ -222,6 +258,24 @@ export const SHOP_ITEMS: ShopItem[] = [
     price: 500,
     category: 'desk',
     image: require('@/assets/images/desks/wood.png'),
+  },
+  {
+    id: 'desk_pink',
+    name: 'Pink Desk',
+    emoji: '🌸',
+    description: "A soft pink study surface — pairs with Bun's Room.",
+    price: 500,
+    category: 'desk',
+    image: require('@/assets/images/desks/pink.png'),
+  },
+  {
+    id: 'desk_pale_wood',
+    name: 'Pale Wood Desk',
+    emoji: '🪵',
+    description: "A soft cream-wood study surface — pairs with Tira's Room.",
+    price: 500,
+    category: 'desk',
+    image: require('@/assets/images/desks/pale-wood.png'),
   },
 
   // ─── Break games are all free to play — nothing to buy here. ──────────────

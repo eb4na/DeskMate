@@ -9,6 +9,7 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { InviteListener } from '@/components/invite-listener';
 import { AppProvider } from '@/context/app-context';
 import { useApp } from '@/context/app-context';
+import { StudyRoomProvider } from '@/lib/use-study-room';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { Spacing } from '@/constants/theme';
 import '@/lib/notifications';
@@ -145,6 +146,8 @@ function RootNavigator() {
         <Stack.Screen name="weekly-report" options={{ presentation: 'modal', title: 'Weekly Report' }} />
         <Stack.Screen name="break-game" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="cake-game" options={{ headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="party-invite" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="study-lobby" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         {/* Wave 4 */}
         <Stack.Screen name="plus-upgrade" options={{ presentation: 'modal', title: 'DeskMate Plus' }} />
         <Stack.Screen name="custom-timer" options={{ headerShown: false, presentation: 'transparentModal', animation: 'slide_from_bottom' }} />
@@ -174,10 +177,10 @@ function RootNavigator() {
 
 function AppShell() {
   return (
-    <>
+    <StudyRoomProvider>
       <RootNavigator />
       <InviteListener />
-    </>
+    </StudyRoomProvider>
   );
 }
 

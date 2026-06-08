@@ -7,12 +7,10 @@ import { Image } from 'expo-image';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   GestureResponderEvent,
   LayoutChangeEvent,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   View,
@@ -33,7 +31,7 @@ import { ThemedView } from '@/components/themed-view';
 import { BakeryCakeEmoji, BakeryHeartEmoji, BakeryReceiptEmoji } from '@/components/bakery-emoji';
 import { BaseIcon, CakeBuildIcon, CakeIngredientIcon, type IngredientKind } from '@/components/cake-ingredients';
 import { useApp } from '@/context/app-context';
-import { joinGameRoom, type GameRoom } from '@/lib/game-net';
+import { joinGameRoom, newRoomId, type GameRoom } from '@/lib/game-net';
 import {
   NAV_DEBUG,
   obstaclesPx,
@@ -73,7 +71,7 @@ import type {
 type FeedbackKind = 'ok' | 'warn' | 'bad';
 type Feedback = { text: string; kind: FeedbackKind; id: number };
 type PickerKind = 'base' | 'filling' | 'topping';
-type RoundPhase = 'playing' | 'results';
+type RoundPhase = 'lobby' | 'playing' | 'results';
 type Mood = 'idle' | 'happy' | 'excited' | 'sad';
 
 // True once a mixer/oven job has finished and is waiting to be collected.
@@ -88,6 +86,7 @@ const BAKE_MS = 3800;
 const ROUND_SECONDS = 430; // "6:70" timed round (6 min + 70 sec)
 const FAST_SERVE_MS = 16000; // serve within 16s of the order for a speed bonus
 const ACTIVE_ORDERS = 2; // orders on screen at once
+const PARTY_ORDERS = 3; // shared bunnies visible/claimable at once in a party
 const SCORE_CORRECT = 100;
 const SCORE_FAST = 25;
 const SCORE_COMBO = 50; // every 3rd correct serve in a row
@@ -226,9 +225,17 @@ type Customer = {
   greeted: boolean;
   spawnAt: number; // when the bunny arrived (greet countdown start)
   greetedAt: number; // when the order was taken (order countdown start)
+  // Party mode: a bunny is claimed exclusively by the player who took its order.
+  claimedBy?: string; // claimer's friend code
+  claimedName?: string; // claimer's display name (for the "Taken by …" label)
 };
 const MAX_CUSTOMERS_SOLO = 2;
-const MAX_CUSTOMERS_MULTI = 10; // up to 3 players → up to 10 bunnies
+
+// ─── Party multiplayer ───────────────────────────────────────────────────────
+type PartyMode = 'competitive' | 'cooperative';
+type RosterEntry = { code: string; name: string; ready: boolean; isHost: boolean };
+// Per-client party context, derived from the invite + the player's own identity.
+type Party = { room: string; isHost: boolean; myCode: string; myName: string };
 const GREET_MS = 18000; // time to greet a newly-arrived bunny before it leaves
 const ORDER_PATIENCE_MS = 48000; // time to fill an order before the bunny gets angry
 const SPAWN_GAP_MS = 5000; // minimum gap between bunnies arriving
@@ -297,30 +304,6 @@ function stationImage(kind: Station['kind'], hasContent: boolean) {
 
 const makeOrder = (): CakeOrder => ({ ...generateStarterOrder(), createdAt: Date.now() });
 
-// Fake helper characters (local-only, for testing the multiplayer-ready render).
-// Real players would come from a synced array later; the rendering already
-// supports any number of players.
-// Multiplayer is up to 3 players → two helper bakers.
-const HELPER_DEFS = [
-  { id: 'h1', name: 'Mochi', color: '#7FA7E6', face: '🐻', x: 32, y: 50 },
-  { id: 'h2', name: 'Pudding', color: '#86C28B', face: '🐰', x: 68, y: 50 },
-] as const;
-
-function makeHelpers(): PlayerState[] {
-  return HELPER_DEFS.map((d) => ({
-    id: d.id,
-    name: d.name,
-    x: d.x,
-    y: d.y,
-    targetX: d.x,
-    targetY: d.y,
-    currentStation: null,
-    heldItem: null,
-    currentAction: null,
-    color: d.color,
-  }));
-}
-
 // A Customer Line order whose patience shortens the longer the round runs.
 const makeLineOrder = (elapsedSec: number): CakeOrder => ({
   ...generateStarterOrder(),
@@ -328,19 +311,160 @@ const makeLineOrder = (elapsedSec: number): CakeOrder => ({
   patienceMs: Math.max(PATIENCE_FLOOR_MS, PATIENCE_START_MS - elapsedSec * PATIENCE_DECAY_PER_SEC),
 });
 
+// A bouncing arrow that points at the station you should head to next, based on
+// what you're currently holding.
+function NextArrow({ x, y }: { x: number; y: number }) {
+  const t = useSharedValue(0);
+  useEffect(() => {
+    t.value = withRepeat(withTiming(1, { duration: 600, easing: Easing.inOut(Easing.quad) }), -1, true);
+  }, [t]);
+  const st = useAnimatedStyle(() => ({ transform: [{ translateY: -10 * t.value }] }));
+  return (
+    <Animated.View pointerEvents="none" style={[styles.nextArrow, { left: x - 18, top: y - 66 }, st]}>
+      <Text style={styles.nextArrowText}>⬇️</Text>
+    </Animated.View>
+  );
+}
+
+// ── Party lobby ───────────────────────────────────────────────────────────────
+function CakeLobby({
+  roster,
+  partyMode,
+  isHost,
+  myCode,
+  presentCount,
+  netStatus,
+  roomCode,
+  onToggleReady,
+  onSetMode,
+  onStart,
+  onCancel,
+}: {
+  roster: RosterEntry[];
+  partyMode: PartyMode;
+  isHost: boolean;
+  myCode: string;
+  presentCount: number;
+  netStatus: string;
+  roomCode: string;
+  onToggleReady: () => void;
+  onSetMode: (m: PartyMode) => void;
+  onStart: () => void;
+  onCancel: () => void;
+}) {
+  const me = roster.find((e) => e.code === myCode);
+  const allReady = roster.length >= 2 && roster.every((e) => e.ready);
+  const connecting = netStatus !== 'SUBSCRIBED';
+  return (
+    <View style={styles.lobbyOverlay}>
+      <View style={styles.lobbyCard}>
+        <Text style={styles.lobbyTitle}>BatterDash Party 🎂</Text>
+        <Text style={styles.lobbyStatus}>
+          {connecting
+            ? `Connecting… (${netStatus || 'starting'})`
+            : `${roster.length} in the kitchen · ${presentCount} connected`}
+        </Text>
+
+        {/* Game mode — only the host can pick it. */}
+        {isHost ? (
+          <View style={styles.lobbyModeRow}>
+            {(['competitive', 'cooperative'] as PartyMode[]).map((m) => (
+              <Pressable
+                key={m}
+                onPress={() => onSetMode(m)}
+                style={[styles.lobbyModeBtn, partyMode === m && styles.lobbyModeBtnActive]}>
+                <Text style={[styles.lobbyModeText, partyMode === m && styles.lobbyModeTextActive]}>
+                  {m === 'competitive' ? '🏆 Competitive' : '🤝 Co-op'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : (
+          <View style={[styles.lobbyModeBtn, styles.lobbyModeBtnActive, styles.lobbyModeReadonly]}>
+            <Text style={[styles.lobbyModeText, styles.lobbyModeTextActive]}>
+              {partyMode === 'competitive' ? '🏆 Competitive' : '🤝 Co-op'}
+            </Text>
+          </View>
+        )}
+        {!isHost && <Text style={styles.lobbyHint}>The host picks the mode.</Text>}
+
+        {/* Roster */}
+        <View style={styles.lobbyRoster}>
+          {roster.map((e) => (
+            <View key={e.code} style={styles.lobbyRow}>
+              <Text style={styles.lobbyName} numberOfLines={1}>
+                {e.name}
+                {e.isHost ? ' 👑' : ''}
+                {e.code === myCode ? ' (you)' : ''}
+              </Text>
+              <Text style={[styles.lobbyReady, e.ready && styles.lobbyReadyOn]}>
+                {e.ready ? 'Ready ✓' : '…'}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* My ready toggle */}
+        <Pressable
+          onPress={onToggleReady}
+          style={({ pressed }) => [styles.lobbyReadyBtn, me?.ready && styles.lobbyReadyBtnOn, pressed && styles.pressed]}>
+          <Text style={[styles.lobbyReadyBtnText, me?.ready && styles.lobbyReadyBtnTextOn]}>
+            {me?.ready ? "I'm ready ✓" : 'Ready up'}
+          </Text>
+        </Pressable>
+
+        {isHost ? (
+          <>
+            <Pressable
+              onPress={() => router.push({ pathname: '/party-invite', params: { room: roomCode } })}
+              style={({ pressed }) => [styles.lobbyInviteBtn, pressed && styles.pressed]}>
+              <Text style={styles.lobbyInviteText}>＋ Invite friend</Text>
+            </Pressable>
+            <Pressable
+              disabled={!allReady}
+              onPress={onStart}
+              style={({ pressed }) => [styles.lobbyStartBtn, !allReady && styles.lobbyStartBtnOff, pressed && styles.pressed]}>
+              <Text style={styles.lobbyStartText}>{allReady ? 'Start! 🎉' : 'Waiting for everyone…'}</Text>
+            </Pressable>
+          </>
+        ) : (
+          <Text style={styles.lobbyHint}>Waiting for the host to start…</Text>
+        )}
+
+        <Pressable onPress={onCancel} style={styles.lobbyCancel}>
+          <Text style={styles.lobbyCancelText}>Leave</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 export default function CakeGameScreen() {
   const params = useLocalSearchParams<{ mode?: string; room?: string; role?: string; netmode?: string }>();
-  const initialMode: GameMode | null = params.mode === 'rush' || params.mode === 'line' ? params.mode : null;
   const navigation = useNavigation();
+  const { friendCode, profileDisplayName } = useApp();
 
-  // Friend race — auto-start a timed match synced to the friend's game.
-  const online = params.netmode === 'race' && params.room
-    ? { room: params.room, isHost: params.role === 'host' }
-    : null;
+  const myCode = friendCode;
+  const myName = profileDisplayName || `Player ${friendCode}`;
 
-  const [started, setStarted] = useState(!!online);
+  // Party multiplayer is reached two ways: a friend invite (deep link with
+  // netmode=party) or picking "Multiplayer" here, which creates a host lobby.
+  const isParty = params.netmode === 'party' && !!params.room;
   const [crew, setCrew] = useState<'solo' | 'multi'>('solo');
   const [timed, setTimed] = useState(true);
+  const [hostRoom, setHostRoom] = useState<string | null>(null);
+  const [started, setStarted] = useState(isParty);
+
+  const party: Party | null = isParty
+    ? { room: params.room as string, isHost: params.role === 'host', myCode, myName }
+    : hostRoom
+      ? { room: hostRoom, isHost: true, myCode, myName }
+      : null;
+
+  // Deep-linked party games skip the setup screen even if params arrive a frame late.
+  useEffect(() => {
+    if (isParty) setStarted(true);
+  }, [isParty]);
 
   // Exit all the way back to Home, no matter how the game was reached
   // (Home → break-game → cake-game, or a direct deep link). First clear any
@@ -353,14 +477,29 @@ export default function CakeGameScreen() {
     router.replace('/');
   };
 
-  // Flow: one setup screen (players + timed/untimed) → play.
+  const startMultiplayer = () => {
+    setHostRoom(newRoomId());
+    setStarted(true);
+  };
+
+  // Leaving the game/lobby: invited guests go home; a host lobby or solo round
+  // returns to the setup screen.
+  const exitGame = () => {
+    if (isParty) {
+      goHome();
+    } else {
+      setHostRoom(null);
+      setStarted(false);
+    }
+  };
+
+  // Flow: solo → setup → play; multiplayer → lobby (inside KitchenView) → play.
   if (started) {
     return (
       <KitchenView
-        mode={online ? 'rush' : timed ? 'rush' : 'line'}
-        multiplayer={crew === 'multi'}
-        online={online ?? undefined}
-        onBack={() => (online ? goHome() : setStarted(false))}
+        mode={party ? 'rush' : timed ? 'rush' : 'line'}
+        party={party ?? undefined}
+        onBack={exitGame}
         onHome={goHome}
       />
     );
@@ -373,6 +512,7 @@ export default function CakeGameScreen() {
       timed={timed}
       setTimed={setTimed}
       onStart={() => setStarted(true)}
+      onMultiplayer={startMultiplayer}
       onHome={goHome}
     />
   );
@@ -384,6 +524,7 @@ function SetupScreen({
   timed,
   setTimed,
   onStart,
+  onMultiplayer,
   onHome,
 }: {
   crew: 'solo' | 'multi';
@@ -391,25 +532,16 @@ function SetupScreen({
   timed: boolean;
   setTimed: (t: boolean) => void;
   onStart: () => void;
+  onMultiplayer: () => void;
   onHome: () => void;
 }) {
-  const { friendCode, cakeCharacter, setCakeCharacter, ownedShopItems } = useApp();
+  const { cakeCharacter, setCakeCharacter, ownedShopItems } = useApp();
   const myCharacters = CHARACTERS.filter((c) => c.ownedItem === null || ownedShopItems.includes(c.ownedItem));
 
   // Back to the game list if possible, otherwise straight home.
   const goBack = () => {
     if (router.canGoBack()) router.back();
     else onHome();
-  };
-
-  const invite = async () => {
-    try {
-      await Share.share({
-        message: `Come bake with me on Memobun! 🎂 Add me with friend code ${friendCode} and join my Cake Kitchen.`,
-      });
-    } catch {
-      Alert.alert('Your friend code', friendCode);
-    }
   };
 
   return (
@@ -456,24 +588,25 @@ function SetupScreen({
         {/* Players */}
         <Text style={styles.setupLabel}>Players</Text>
         <View style={styles.choiceRow}>
-          <ChoiceCard imgs={[PLAYER_AVATAR]} title="Solo" sub="Just you" active={crew === 'solo'} onPress={() => setCrew('solo')} />
-          <ChoiceCard imgs={[TOGETHER_IMG]} wideImg title="Together" sub="With a friend" active={crew === 'multi'} onPress={() => setCrew('multi')} />
+          <ChoiceCard imgs={[PLAYER_AVATAR]} title="Single Player" sub="Just you" active={crew === 'solo'} onPress={() => setCrew('solo')} />
+          <ChoiceCard imgs={[TOGETHER_IMG]} wideImg title="Multiplayer" sub="With friends" active={crew === 'multi'} onPress={() => setCrew('multi')} />
         </View>
-        {crew === 'multi' && (
-          <Pressable style={({ pressed }) => [styles.inviteBtn, pressed && styles.pressed]} onPress={invite}>
-            <Text style={styles.inviteBtnText}>＋ Invite a friend</Text>
-          </Pressable>
+
+        {/* Mode — solo only (parties are always a timed race) */}
+        {crew === 'solo' && (
+          <>
+            <Text style={styles.setupLabel}>Mode</Text>
+            <View style={styles.choiceRow}>
+              <ChoiceCard imgs={[TIMER_ICON]} iconFit title="Timed" sub="6:70 · instant cook" active={timed} onPress={() => setTimed(true)} />
+              <ChoiceCard imgs={[INFINITY_ICON]} iconFit title="Untimed" sub="Endless · 3 hearts" active={!timed} onPress={() => setTimed(false)} />
+            </View>
+          </>
         )}
 
-        {/* Mode */}
-        <Text style={styles.setupLabel}>Mode</Text>
-        <View style={styles.choiceRow}>
-          <ChoiceCard imgs={[TIMER_ICON]} iconFit title="Timed" sub="6:70 · instant cook" active={timed} onPress={() => setTimed(true)} />
-          <ChoiceCard imgs={[INFINITY_ICON]} iconFit title="Untimed" sub="Endless · 3 hearts" active={!timed} onPress={() => setTimed(false)} />
-        </View>
-
-        <Pressable style={({ pressed }) => [styles.doneBtn, styles.secondaryBtnWide, pressed && styles.pressed]} onPress={onStart}>
-          <Text style={styles.doneBtnText}>Start baking 🎂</Text>
+        <Pressable
+          style={({ pressed }) => [styles.doneBtn, styles.secondaryBtnWide, pressed && styles.pressed]}
+          onPress={crew === 'multi' ? onMultiplayer : onStart}>
+          <Text style={styles.doneBtnText}>{crew === 'multi' ? 'Create lobby 🎉' : 'Start baking 🎂'}</Text>
         </Pressable>
         </ScrollView>
       </SafeAreaView>
@@ -522,31 +655,28 @@ function ChoiceCard({
 
 function KitchenView({
   mode,
-  multiplayer,
-  online,
+  party,
   onBack,
   onHome,
 }: {
   mode: GameMode;
-  multiplayer: boolean;
-  online?: { room: string; isHost: boolean };
+  party?: Party;
   onBack: () => void;
   onHome: () => void;
 }) {
   const { cakeBestRush, cakeBestLine, recordCakeBest, addCoins, cakeCharacter } = useApp();
-  const raceRoom = useRef<GameRoom | null>(null);
-  const [oppScore, setOppScore] = useState(0);
-  const [oppFinal, setOppFinal] = useState<number | null>(null);
+  // `online` aliases the party context for the many in-game checks below.
+  const online = party ?? null;
+  const room = useRef<GameRoom | null>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [navDebug, setNavDebug] = useState<{ click: NavPoint; dest: NavPoint; path: NavPoint[] } | null>(null);
-  // Players are kept in an array even though there is one local player, so
-  // multiplayer can be added later without reshaping the render.
+  // Each player only ever renders their own baker — separate kitchens.
   const [players, setPlayers] = useState<PlayerState[]>(() => [createInitialPlayer()]);
-  const [helpers, setHelpers] = useState<PlayerState[]>(() => (multiplayer ? makeHelpers() : []));
   const [held, setHeld] = useState<HeldItem | null>(null);
   const isRush = mode === 'rush';
   const isLine = mode === 'line';
-  const [customers, setCustomers] = useState<Customer[]>(() => [makeCustomer()]);
+  // Party guests start empty and mirror the host's shared queue.
+  const [customers, setCustomers] = useState<Customer[]>(() => (party ? [] : [makeCustomer()]));
   const lastSpawn = useRef(Date.now());
   const [picker, setPicker] = useState<PickerKind | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
@@ -556,8 +686,8 @@ function KitchenView({
   const [mood, setMood] = useState<Mood>('idle');
   const active = players[0];
 
-  // Round state (shared by both modes)
-  const [phase, setPhase] = useState<RoundPhase>('playing');
+  // Round state. Party games begin in a 'lobby' phase until the host starts.
+  const [phase, setPhase] = useState<RoundPhase>(party ? 'lobby' : 'playing');
   const [secondsLeft, setSecondsLeft] = useState(ROUND_SECONDS); // Cake Rush
   const [hearts, setHearts] = useState(START_HEARTS); // Customer Line
   const [tick, setTick] = useState(0); // drives patience bars / expiry checks
@@ -566,7 +696,21 @@ function KitchenView({
   const [combo, setCombo] = useState(0);
   const [bestCombo, setBestCombo] = useState(0);
 
-  // Refs let the (timed) arrival handler read the latest state synchronously.
+  // ── Party / lobby state ──
+  const [roster, setRoster] = useState<RosterEntry[]>(
+    party ? [{ code: party.myCode, name: party.myName, ready: false, isHost: party.isHost }] : [],
+  );
+  const [partyMode, setPartyMode] = useState<PartyMode>('competitive');
+  const [scores, setScores] = useState<Record<string, number>>({}); // others' scores (revealed at the end)
+  const [finals, setFinals] = useState<Record<string, number>>({}); // per-player final scores
+  // Other players' baker positions, so you can see their sprites in your kitchen.
+  const [remotePlayers, setRemotePlayers] = useState<
+    Record<string, { code: string; char: string; x: number; y: number; tx: number; ty: number }>
+  >({});
+  const [presentCount, setPresentCount] = useState(1);
+  const [netStatus, setNetStatus] = useState(''); // realtime channel status (diagnostic)
+
+  // Refs let async handlers read the latest state synchronously.
   const heldRef = useRef(held);
   heldRef.current = held;
   const customersRef = useRef(customers);
@@ -579,52 +723,234 @@ function KitchenView({
   comboRef.current = combo;
   const scoreRef = useRef(score);
   scoreRef.current = score;
+  const partyModeRef = useRef(partyMode);
+  partyModeRef.current = partyMode;
+  const rosterRef = useRef(roster);
+  rosterRef.current = roster;
+  // popup / flashMood are defined further down; refs let the realtime handler
+  // reach the latest versions without a definition-order problem.
+  const popupRef = useRef<(text: string, kind: FeedbackKind) => void>(() => {});
+  const flashMoodRef = useRef<(m: Mood) => void>(() => {});
 
-  // ── Friend race sync ────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!online) return;
-    raceRoom.current = joinGameRoom(online.room, online.isHost, {
-      onMessage: (type, data) => {
-        if (type === 'score') setOppScore((data as { s: number }).s);
-        else if (type === 'final') setOppFinal((data as { s: number }).s);
-      },
-      onPresence: () => {},
-    });
-    return () => raceRoom.current?.leave();
-  }, [online]);
-
-  useEffect(() => {
-    if (online) raceRoom.current?.send('score', { s: score });
-  }, [online, score]);
-
-  useEffect(() => {
-    if (online && phase === 'results') raceRoom.current?.send('final', { s: scoreRef.current });
-  }, [online, phase]);
   const arriveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fbTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fbId = useRef(0);
   const moodTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gameStart = useRef(Date.now());
   const timedOutIds = useRef<Set<string>>(new Set());
-  // Which player (if any) currently holds each station — prevents two players
-  // from starting the same mixer/oven job at once (multiplayer-ready).
+  const beginTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Which player (if any) currently holds each station.
   const lockedStations = useRef<Record<string, string>>({});
   const elapsedSec = () => (Date.now() - gameStart.current) / 1000;
 
-  // Fake helpers wander between stations (skipping ones a player has locked).
+  // Begin the timed round at a shared start instant so every player's clock matches.
+  const beginRound = (startAt?: number) => {
+    if (arriveTimer.current) clearTimeout(arriveTimer.current);
+    lockedStations.current = {};
+    timedOutIds.current = new Set();
+    gameStart.current = startAt ?? Date.now();
+    lastSpawn.current = Date.now();
+    setCookers({});
+    setHeld(null);
+    setPicker(null);
+    setFeedback(null);
+    setMood('idle');
+    setPlayers([createInitialPlayer()]);
+    // Solo seeds its own first bunny; party guests mirror the host's queue.
+    setCustomers(online ? [] : [makeCustomer()]);
+    setScore(0);
+    setCombo(0);
+    setBestCombo(0);
+    setCakesMade(0);
+    setScores({});
+    setFinals({});
+    setSecondsLeft(ROUND_SECONDS);
+    setHearts(START_HEARTS);
+    setPhase('playing');
+  };
+  const beginRef = useRef(beginRound);
+  beginRef.current = beginRound;
+
+  // Host-only helper: broadcast the authoritative roster (+ chosen mode).
+  const broadcastRoster = (next: RosterEntry[]) => {
+    room.current?.send('roster', { players: next, mode: partyModeRef.current });
+  };
+
+  // ── Lobby actions ──
+  const toggleReady = () => {
+    if (!online) return;
+    setRoster((prev) => {
+      const next = prev.map((e) => (e.code === online.myCode ? { ...e, ready: !e.ready } : e));
+      if (online.isHost) broadcastRoster(next);
+      else {
+        const me = next.find((e) => e.code === online.myCode);
+        room.current?.send('ready', { code: online.myCode, ready: me?.ready ?? false });
+      }
+      return next;
+    });
+  };
+
+  const setHostMode = (m: PartyMode) => {
+    if (!online?.isHost) return;
+    partyModeRef.current = m;
+    setPartyMode(m);
+    room.current?.send('mode', { mode: m });
+    broadcastRoster(rosterRef.current);
+  };
+
+  const startMatch = () => {
+    if (!online?.isHost) return;
+    const startAt = Date.now() + 800;
+    room.current?.send('begin', { startAt, mode: partyModeRef.current, players: rosterRef.current });
+    if (beginTimer.current) clearTimeout(beginTimer.current);
+    beginTimer.current = setTimeout(() => beginRef.current(startAt), 800);
+  };
+
+  // ── Party realtime: one connection used by both the lobby and the match ──
   useEffect(() => {
-    if (helpers.length === 0 || phase !== 'playing') return;
-    const id = setInterval(() => {
-      setHelpers((prev) =>
-        prev.map((h) => {
-          const open = STATIONS.filter((s) => !lockedStations.current[s.id] || lockedStations.current[s.id] === h.id);
-          const s = open[Math.floor(Math.random() * open.length)] ?? STATIONS[0];
-          return { ...h, targetX: s.x, targetY: s.y, currentStation: s.id };
-        }),
-      );
-    }, 2200);
-    return () => clearInterval(id);
-  }, [helpers.length, phase]);
+    if (!party) return;
+    const isHost = party.isHost;
+    const myCode = party.myCode;
+    room.current = joinGameRoom(
+      party.room,
+      isHost,
+      {
+        onStatus: (s) => {
+          setNetStatus(s);
+          if (s === 'SUBSCRIBED') room.current?.send('hello', { code: myCode, name: party.myName });
+        },
+        onPresence: () => {},
+        onPresenceCount: (n) => setPresentCount(n),
+        onPresenceCodes: (codes) => {
+          if (!isHost) return;
+          // Drop guests who are no longer present (host authoritative).
+          setRoster((prev) => {
+            const next = prev.filter((e) => e.code === myCode || codes.includes(e.code));
+            if (next.length !== prev.length) {
+              broadcastRoster(next);
+              return next;
+            }
+            return prev;
+          });
+        },
+        onMessage: (type, data) => {
+          if (type === 'hello') {
+            if (!isHost) return;
+            const { code, name } = data as { code: string; name: string };
+            setRoster((prev) => {
+              const exists = prev.some((e) => e.code === code);
+              const next = exists
+                ? prev.map((e) => (e.code === code ? { ...e, name } : e))
+                : [...prev, { code, name, ready: false, isHost: false }];
+              broadcastRoster(next);
+              setTimeout(() => broadcastRoster(next), 400); // beat the subscribe race
+              return next;
+            });
+          } else if (type === 'roster') {
+            const d = data as { players: RosterEntry[]; mode: PartyMode };
+            setRoster(d.players);
+            setPartyMode(d.mode);
+          } else if (type === 'ready') {
+            if (!isHost) return;
+            const { code, ready } = data as { code: string; ready: boolean };
+            setRoster((prev) => {
+              const next = prev.map((e) => (e.code === code ? { ...e, ready } : e));
+              broadcastRoster(next);
+              return next;
+            });
+          } else if (type === 'mode') {
+            setPartyMode((data as { mode: PartyMode }).mode);
+          } else if (type === 'begin') {
+            const d = data as { startAt: number; mode: PartyMode; players: RosterEntry[] };
+            setRoster(d.players);
+            setPartyMode(d.mode);
+            const delay = Math.max(0, d.startAt - Date.now());
+            if (beginTimer.current) clearTimeout(beginTimer.current);
+            beginTimer.current = setTimeout(() => beginRef.current(d.startAt), delay);
+          } else if (type === 'customers') {
+            setCustomers((data as { c: Customer[] }).c);
+          } else if (type === 'claim') {
+            if (!isHost) return; // host arbitrates first-claim-wins
+            const { id, code, name } = data as { id: string; code: string; name: string };
+            setCustomers((prev) =>
+              prev.map((c) =>
+                c.id === id && !c.claimedBy
+                  ? { ...c, greeted: true, greetedAt: Date.now(), claimedBy: code, claimedName: name }
+                  : c,
+              ),
+            );
+          } else if (type === 'served') {
+            const { id } = data as { id: string };
+            timedOutIds.current.add(id);
+            setCustomers((prev) => prev.filter((c) => c.id !== id));
+          } else if (type === 'score') {
+            const { code, s } = data as { code: string; s: number };
+            setScores((prev) => ({ ...prev, [code]: s }));
+          } else if (type === 'final') {
+            const { code, s } = data as { code: string; s: number };
+            setFinals((prev) => ({ ...prev, [code]: s }));
+          } else if (type === 'penalty') {
+            // My claimed bunny left angry (host runs the timeout, attributes it to me).
+            if ((data as { code: string }).code === myCode) {
+              setCombo(0);
+              flashMoodRef.current('sad');
+              popupRef.current('Bunny left angry! 😾💔', 'bad');
+            }
+          } else if (type === 'pos') {
+            // A friend moved — slide their sprite to the new spot in my kitchen.
+            const d = data as { code: string; char: string; x: number; y: number };
+            if (d.code === myCode) return;
+            setRemotePlayers((prev) => {
+              const ex = prev[d.code];
+              return {
+                ...prev,
+                [d.code]: { code: d.code, char: d.char, x: ex ? ex.x : d.x, y: ex ? ex.y : d.y, tx: d.x, ty: d.y },
+              };
+            });
+          }
+        },
+      },
+      { code: myCode },
+    );
+    return () => {
+      room.current?.send('leave', { code: myCode });
+      room.current?.leave();
+      if (beginTimer.current) clearTimeout(beginTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [party?.room, party?.isHost]);
+
+  // Broadcast my running score (kept hidden from others until the results screen).
+  useEffect(() => {
+    if (party && phase === 'playing') room.current?.send('score', { code: party.myCode, s: score });
+  }, [party, phase, score]);
+
+  // Broadcast my baker's position so friends can see my sprite move in their kitchen.
+  useEffect(() => {
+    if (party && phase === 'playing') {
+      room.current?.send('pos', { code: party.myCode, char: cakeCharacter, x: active.targetX, y: active.targetY });
+    }
+  }, [party, phase, active.targetX, active.targetY, cakeCharacter]);
+
+  // Drop the sprites of players who have left.
+  useEffect(() => {
+    if (!party) return;
+    setRemotePlayers((prev) => {
+      const codes = new Set(roster.map((e) => e.code));
+      const entries = Object.entries(prev).filter(([c]) => codes.has(c));
+      return entries.length === Object.keys(prev).length ? prev : Object.fromEntries(entries);
+    });
+  }, [party, roster]);
+
+  // Broadcast my final score for the results leaderboard.
+  useEffect(() => {
+    if (party && phase === 'results') room.current?.send('final', { code: party.myCode, s: scoreRef.current });
+  }, [party, phase]);
+
+  // Host owns the shared customer queue and streams it so everyone sees the same bunnies.
+  useEffect(() => {
+    if (party?.isHost && phase === 'playing') room.current?.send('customers', { c: customers });
+  }, [party, phase, customers]);
 
   // End-of-round payout: save the best score and credit coins (the app's
   // addCoins enforces a daily cap, so rounds can't be farmed for infinite coins).
@@ -667,12 +993,15 @@ function KitchenView({
   // new ones up to MAX_CUSTOMERS.
   useEffect(() => {
     if (phase !== 'playing') return;
+    if (online && !online.isHost) return; // guest mirrors the host's shared queue
     const now = Date.now();
-    let leftAngry = 0; // greeted bunnies whose order timed out (a real miss)
+    const angryClaimers: string[] = []; // party: claimer codes whose bunny timed out
+    let leftAngrySolo = 0;
     const keep = customersRef.current.filter((c) => {
       if (timedOutIds.current.has(c.id)) return false;
-      if (!c.greeted) {
-        // not greeted in time → leaves quietly (you missed them)
+      const claimed = online ? !!c.claimedBy : c.greeted;
+      if (!claimed) {
+        // not greeted/claimed in time → leaves quietly (nobody took it)
         if (now - c.spawnAt >= GREET_MS) {
           timedOutIds.current.add(c.id);
           return false;
@@ -680,24 +1009,37 @@ function KitchenView({
       } else if (now - c.greetedAt >= ORDER_PATIENCE_MS) {
         // order took too long → bunny gets angry and leaves
         timedOutIds.current.add(c.id);
-        leftAngry += 1;
+        if (online) {
+          if (c.claimedBy) angryClaimers.push(c.claimedBy);
+        } else {
+          leftAngrySolo += 1;
+        }
         return false;
       }
       return true;
     });
 
     let next = keep;
-    if (next.length !== customersRef.current.length) {
-      // someone left
-      if (leftAngry > 0) {
-        flashMood('sad');
-        popup('Bunny left angry! 😾💔', 'bad');
-        if (isLine) setHearts((h) => Math.max(0, h - leftAngry));
-        else setCombo(0);
+    if (online) {
+      // Penalize each claimer whose claimed bunny left angry.
+      for (const code of angryClaimers) {
+        if (code === online.myCode) {
+          setCombo(0);
+          flashMood('sad');
+          popup('Bunny left angry! 😾💔', 'bad');
+        } else {
+          room.current?.send('penalty', { code });
+        }
       }
+    } else if (leftAngrySolo > 0) {
+      flashMood('sad');
+      popup('Bunny left angry! 😾💔', 'bad');
+      if (isLine) setHearts((h) => Math.max(0, h - leftAngrySolo));
+      else setCombo(0);
     }
+
     // Spawn a new bunny if there's room and enough time has passed.
-    const maxCustomers = multiplayer ? MAX_CUSTOMERS_MULTI : MAX_CUSTOMERS_SOLO;
+    const maxCustomers = online ? PARTY_ORDERS : MAX_CUSTOMERS_SOLO;
     if (next.length < maxCustomers && now - lastSpawn.current >= SPAWN_GAP_MS) {
       lastSpawn.current = now;
       next = [...next, makeCustomer()];
@@ -719,9 +1061,28 @@ function KitchenView({
   }, [hearts, isLine, phase]);
 
   // Greet a newly-arrived bunny → take their order (starts the order countdown).
+  // In party mode this CLAIMS the bunny exclusively for me.
   const greetCustomer = (id: string) => {
     if (phaseRef.current !== 'playing') return;
-    setCustomers((prev) => prev.map((c) => (c.id === id && !c.greeted ? { ...c, greeted: true, greetedAt: Date.now() } : c)));
+    if (online) {
+      const c = customersRef.current.find((x) => x.id === id);
+      if (!c || c.claimedBy) return; // already taken by someone
+      if (online.isHost) {
+        // Host claims locally; the `customers` broadcast effect syncs it out.
+        setCustomers((prev) =>
+          prev.map((x) =>
+            x.id === id && !x.claimedBy
+              ? { ...x, greeted: true, greetedAt: Date.now(), claimedBy: online.myCode, claimedName: online.myName }
+              : x,
+          ),
+        );
+      } else {
+        // Guest asks the host to claim it (first-claim-wins, arbitrated by host).
+        room.current?.send('claim', { id, code: online.myCode, name: online.myName });
+      }
+    } else {
+      setCustomers((prev) => prev.map((c) => (c.id === id && !c.greeted ? { ...c, greeted: true, greetedAt: Date.now() } : c)));
+    }
     popup('Order taken! 📝', 'ok');
     // Slide the cat over to the counter to take the order.
     const counter = STATIONS.find((s) => s.kind === 'counter');
@@ -752,6 +1113,10 @@ function KitchenView({
     if (moodTimer.current) clearTimeout(moodTimer.current);
     moodTimer.current = setTimeout(() => setMood('idle'), 1200);
   }, []);
+
+  // Keep the refs the realtime handler uses pointed at the latest callbacks.
+  popupRef.current = popup;
+  flashMoodRef.current = flashMood;
 
   // Drop an item into the mixer/oven and walk away — it cooks on its own and
   // is collected later. The station "holds" the item (lockedStations) so other
@@ -786,13 +1151,15 @@ function KitchenView({
     // Among greeted customers wanting this cake, serve the most urgent one
     // (least order time left).
     const matched = customersRef.current
-      .filter((c) => c.greeted && cakeMatchesOrder(cake, c.order))
+      // In party mode you can only serve bunnies you claimed.
+      .filter((c) => c.greeted && cakeMatchesOrder(cake, c.order) && (!online || c.claimedBy === online.myCode))
       .sort((a, b) => custOrderLeft(a) - custOrderLeft(b))[0];
 
     if (matched) {
       timedOutIds.current.add(matched.id); // served — never time it out
       setHeld(null);
       setCustomers((prev) => prev.filter((c) => c.id !== matched.id)); // bunny leaves happy
+      if (online) room.current?.send('served', { id: matched.id, code: online.myCode }); // shared room: tell everyone
 
       const newCombo = comboRef.current + 1;
       let pts = SCORE_CORRECT;
@@ -822,7 +1189,7 @@ function KitchenView({
         popup('Wrong order! ❌', 'bad');
       }
     }
-  }, [popup, flashMood, isRush, isLine]);
+  }, [popup, flashMood, isRush, isLine, online]);
 
   // Runs when the cat arrives at a station (after the walk animation time).
   const handleArrive = useCallback(
@@ -987,26 +1354,12 @@ function KitchenView({
   };
 
   const restart = () => {
-    if (arriveTimer.current) clearTimeout(arriveTimer.current);
-    lockedStations.current = {};
-    gameStart.current = Date.now();
-    timedOutIds.current = new Set();
-    setCookers({});
-    setHeld(null);
-    setPicker(null);
-    setFeedback(null);
-    setMood('idle');
-    lastSpawn.current = Date.now();
-    setCustomers([makeCustomer()]);
-    setPlayers([createInitialPlayer()]);
-    // Reset the round
-    setScore(0);
-    setCakesMade(0);
-    setCombo(0);
-    setBestCombo(0);
-    setSecondsLeft(ROUND_SECONDS);
-    setHearts(START_HEARTS);
-    setPhase('playing');
+    // Party: only the host can restart (re-broadcasts a synced begin); guests wait.
+    if (online) {
+      if (online.isHost) startMatch();
+      return;
+    }
+    beginRound();
   };
 
   const pickerOptions: IngredientDef[] =
@@ -1055,6 +1408,23 @@ function KitchenView({
     return 'Tap Ingredients 🧺 to start a cake';
   })();
 
+  // Where the "go here next" arrow should hover, based on what you're holding.
+  const arrowPt: NavPt | null = (() => {
+    if (!nextStationId || size.w === 0 || phase !== 'playing') return null;
+    const L = kitchenLayout(size.w, size.h);
+    if (nextStationId === 'counter') return { x: size.w * 0.5, y: L.counterTop + L.counterH * 0.45 };
+    return L.centers[nextStationId] ?? null;
+  })();
+
+  // Final leaderboard (my own live score is authoritative for me).
+  const leaderboard = online
+    ? roster
+        .map((e) => ({ ...e, s: e.code === online.myCode ? score : finals[e.code] ?? scores[e.code] ?? 0 }))
+        .sort((a, b) => b.s - a.s)
+    : [];
+  const teamTotal = leaderboard.reduce((sum, r) => sum + r.s, 0);
+  const MEDALS = ['🥇', '🥈', '🥉', '🎀'];
+
   return (
     <ThemedView style={styles.container}>
       <Image source={KITCHEN_BG} style={StyleSheet.absoluteFill} contentFit="cover" pointerEvents="none" />
@@ -1101,7 +1471,9 @@ function KitchenView({
             </View>
             {online && (
               <View style={styles.statBadge}>
-                <Text style={styles.statBadgeText}>👥 {oppScore}</Text>
+                <Text style={styles.statBadgeText} numberOfLines={1}>
+                  {partyMode === 'cooperative' ? '🤝 Co-op' : '🏆 Race'} · {roster.length} players
+                </Text>
               </View>
             )}
           </View>
@@ -1141,8 +1513,8 @@ function KitchenView({
 
           {/* Bunny customers — render BEFORE the counter so they sit behind it */}
           <View style={[styles.customerStrip, { top: 0.02 * size.h }]} pointerEvents="box-none">
-            {customers.slice(0, ACTIVE_ORDERS).map((c) => (
-              <CustomerSprite key={c.id} customer={c} onGreet={() => greetCustomer(c.id)} />
+            {customers.slice(0, online ? PARTY_ORDERS : ACTIVE_ORDERS).map((c) => (
+              <CustomerSprite key={c.id} customer={c} myCode={online?.myCode} onGreet={() => greetCustomer(c.id)} />
             ))}
           </View>
 
@@ -1175,7 +1547,7 @@ function KitchenView({
               its order even though the bunny renders behind the counter. Greeted
               bunnies pass taps through so you can still serve at the counter. */}
           <View style={[styles.customerStrip, { top: 0.02 * size.h, zIndex: 9 }]} pointerEvents="box-none">
-            {customers.slice(0, ACTIVE_ORDERS).map((c) =>
+            {customers.slice(0, online ? PARTY_ORDERS : ACTIVE_ORDERS).map((c) =>
               c.greeted ? (
                 <View key={c.id} style={styles.greetHit} pointerEvents="none" />
               ) : (
@@ -1351,20 +1723,49 @@ function KitchenView({
             })}
 
           {size.w > 0 &&
-            [...players, ...helpers].map((p) => {
-              const isMe = p.id === active.id;
+            players.map((p) => (
+              <PlayerSprite
+                key={p.id}
+                player={p}
+                held={held}
+                image={characterImg(cakeCharacter)}
+                face={moodFace(mood)}
+                kw={size.w}
+                kh={size.h}
+              />
+            ))}
+
+          {/* Other players' bakers, synced from their positions */}
+          {size.w > 0 &&
+            Object.values(remotePlayers).map((r) => {
+              const name = roster.find((e) => e.code === r.code)?.name ?? 'Friend';
+              const sprite: PlayerState = {
+                id: `remote-${r.code}`,
+                name,
+                x: r.x,
+                y: r.y,
+                targetX: r.tx,
+                targetY: r.ty,
+                currentStation: null,
+                heldItem: null,
+                currentAction: null,
+                color: '#F2A0B5',
+              };
               return (
                 <PlayerSprite
-                  key={p.id}
-                  player={p}
-                  held={isMe ? held : null}
-                  image={isMe ? characterImg(cakeCharacter) : null}
-                  face={isMe ? moodFace(mood) : HELPER_DEFS.find((d) => d.id === p.id)?.face ?? '🐱'}
+                  key={sprite.id}
+                  player={sprite}
+                  held={null}
+                  image={characterImg(r.char)}
+                  face="🐱"
                   kw={size.w}
                   kh={size.h}
                 />
               );
             })}
+
+          {/* Bouncing arrow over your next station (based on what you hold) */}
+          {arrowPt && <NextArrow x={arrowPt.x} y={arrowPt.y} />}
 
           {/* Debug overlay (NAV_DEBUG): obstacles, bounds, path, click/dest. */}
           {NAV_DEBUG && size.w > 0 && (
@@ -1456,38 +1857,64 @@ function KitchenView({
           )}
         </Pressable>
 
-        {/* Current orders (max 2) along the bottom — only after greeting */}
+        {/* Current orders along the bottom — your taken orders (your claims in party) */}
         <View style={styles.ordersBar} pointerEvents="box-none">
           {customers
-            .filter((c) => c.greeted)
+            .filter((c) => c.greeted && (!online || c.claimedBy === online.myCode))
             .slice(0, ACTIVE_ORDERS)
             .map((c) => (
               <OrderCard key={c.id} customer={c} held={held} onGreet={() => greetCustomer(c.id)} />
             ))}
         </View>
 
+        {/* Party lobby — players ready up, host starts */}
+        {phase === 'lobby' && online && (
+          <CakeLobby
+            roster={roster}
+            partyMode={partyMode}
+            isHost={online.isHost}
+            myCode={online.myCode}
+            presentCount={presentCount}
+            netStatus={netStatus}
+            roomCode={online.room}
+            onToggleReady={toggleReady}
+            onSetMode={setHostMode}
+            onStart={startMatch}
+            onCancel={onBack}
+          />
+        )}
+
         {/* Results */}
         {phase === 'results' && (
           <ResultsModal
             title={
               online
-                ? (oppFinal ?? oppScore) < score
-                  ? 'You win the race! 🎉'
-                  : (oppFinal ?? oppScore) > score
-                    ? 'Friend wins the race!'
-                    : "It's a tie!"
+                ? partyMode === 'cooperative'
+                  ? '🤝 Team result!'
+                  : leaderboard.length > 1 && leaderboard[0].s === leaderboard[1].s
+                    ? "It's a tie!"
+                    : leaderboard[0]?.code === online.myCode
+                      ? 'You win! 🎉'
+                      : `${leaderboard[0]?.name ?? 'Someone'} wins!`
                 : isRush
                   ? "Time's up! ⏰"
                   : 'Out of hearts! 💔'
             }
             rows={
               online
-                ? [
-                    ['⭐ Your score', `${score}`],
-                    ['👥 Friend score', `${oppFinal ?? oppScore}`],
-                    ['🎂 Cakes made', `${cakesMade}`],
-                    ['🪙 Coins earned', `+${Math.floor(score / SCORE_PER_COIN)}`],
-                  ]
+                ? partyMode === 'cooperative'
+                  ? [
+                      ['🤝 Team score', `${teamTotal}`],
+                      ['🍰 Your cakes', `${cakesMade}`],
+                      ['🪙 Coins earned', `+${Math.floor(score / SCORE_PER_COIN)}`],
+                    ]
+                  : [
+                      ...leaderboard.map((r, i): [string, string] => [
+                        `${MEDALS[i] ?? '🎀'} ${r.name}${r.code === online.myCode ? ' (you)' : ''}`,
+                        `${r.s}`,
+                      ]),
+                      ['🪙 Coins earned', `+${Math.floor(score / SCORE_PER_COIN)}`],
+                    ]
                 : isRush
                 ? [
                     ['🎂 Cakes made', `${cakesMade}`],
@@ -1570,9 +1997,9 @@ const barColorFor = (t: number) =>
   t > 0.5 ? BakeryColors.success : t > 0.25 ? BakeryColors.honey : BakeryColors.danger;
 
 // A bunny customer standing at the counter: order bubble, bunny, countdown bar.
-function CustomerSprite({ customer, onGreet }: { customer: Customer; onGreet: () => void }) {
-  const { order, greeted } = customer;
-  const items = [findBase(order.base), findFilling(order.filling), findTopping(order.topping)];
+function CustomerSprite({ customer, myCode, onGreet }: { customer: Customer; myCode?: string; onGreet: () => void }) {
+  const { greeted, claimedBy, claimedName } = customer;
+  const claimedByOther = !!claimedBy && claimedBy !== myCode;
   const t = greeted ? custOrderLeft(customer) : custGreetLeft(customer);
 
   return (
@@ -1581,6 +2008,12 @@ function CustomerSprite({ customer, onGreet }: { customer: Customer; onGreet: ()
       style={styles.custSprite}
       pointerEvents={greeted ? 'none' : 'box-none'}
     >
+      {/* Party: this bunny was claimed by another player. */}
+      {claimedByOther && (
+        <View style={styles.takenBadge} pointerEvents="none">
+          <Text style={styles.takenText} numberOfLines={1}>🔒 {claimedName}</Text>
+        </View>
+      )}
       {/* Greet prompt — absolute (over the bunny) so the bunny never shifts on
           greet and it sits below the heart at the top */}
       {!greeted && (
@@ -2228,6 +2661,8 @@ const styles = StyleSheet.create({
   counterBanner: { position: 'absolute', left: 0, top: 0, alignItems: 'center', zIndex: 8 },
   counterImg: { width: '100%', height: '100%' },
   counterPoint: { position: 'absolute', bottom: -14, fontSize: 16 },
+  nextArrow: { position: 'absolute', zIndex: 40, alignItems: 'center', justifyContent: 'center' },
+  nextArrowText: { fontSize: 34 },
 
   // Fake-helper toggle (top-left of the kitchen)
   helperToggle: {
@@ -2442,6 +2877,18 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   custBarFill: { height: '100%', borderRadius: 2 },
+  takenBadge: {
+    position: 'absolute',
+    top: -2,
+    alignSelf: 'center',
+    zIndex: 5,
+    backgroundColor: 'rgba(78,53,40,0.85)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    maxWidth: 110,
+  },
+  takenText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   orderIcons: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   orderIconWrap: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   orderSwatch: {
@@ -2497,6 +2944,104 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 13.5, color: BakeryColors.cocoa, fontWeight: '700', textAlign: 'center' },
 
   // Results modal
+  waitOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(78, 53, 40, 0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.four,
+    gap: Spacing.two,
+    zIndex: 50,
+  },
+  waitTitle: { color: '#fff', fontSize: 22, fontWeight: '800', textAlign: 'center' },
+  waitSub: { color: '#fff', fontSize: 14, textAlign: 'center', opacity: 0.9 },
+  waitStatus: { color: '#FFE9C7', fontSize: 12, textAlign: 'center', marginTop: Spacing.two, fontWeight: '700' },
+  waitCancel: {
+    marginTop: Spacing.three,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: BakeryRadii.button,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.two,
+  },
+  waitCancelText: { color: BakeryColors.cocoaDark, fontWeight: '800', fontSize: 15 },
+
+  // ── Party lobby ──
+  lobbyOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(78, 53, 40, 0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.three,
+    zIndex: 60,
+  },
+  lobbyCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: BakeryColors.frosting,
+    borderRadius: BakeryRadii.panel,
+    borderWidth: 2,
+    borderColor: BakeryColors.shortbread,
+    padding: Spacing.four,
+    gap: Spacing.two,
+    ...BakeryShadow,
+  },
+  lobbyTitle: { fontSize: 22, fontWeight: '900', color: BakeryColors.cocoaDark, textAlign: 'center' },
+  lobbyStatus: { fontSize: 12, color: BakeryColors.mocha, textAlign: 'center' },
+  lobbyModeRow: { flexDirection: 'row', gap: Spacing.two, marginTop: Spacing.one },
+  lobbyModeBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: BakeryRadii.button,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+    backgroundColor: BakeryColors.glass,
+    alignItems: 'center',
+  },
+  lobbyModeBtnActive: { borderColor: BakeryColors.honey, backgroundColor: BakeryColors.cream },
+  lobbyModeReadonly: { alignSelf: 'stretch', marginTop: Spacing.one },
+  lobbyModeText: { fontSize: 13, fontWeight: '800', color: BakeryColors.mocha },
+  lobbyModeTextActive: { color: BakeryColors.cocoaDark },
+  lobbyHint: { fontSize: 11, color: BakeryColors.mocha, textAlign: 'center' },
+  lobbyRoster: { gap: 6, marginTop: Spacing.one },
+  lobbyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: BakeryColors.glass,
+    borderRadius: BakeryRadii.chip,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 8,
+  },
+  lobbyName: { flex: 1, fontSize: 14, fontWeight: '700', color: BakeryColors.cocoaDark },
+  lobbyReady: { fontSize: 12, fontWeight: '800', color: BakeryColors.latte },
+  lobbyReadyOn: { color: BakeryColors.success },
+  lobbyReadyBtn: {
+    marginTop: Spacing.one,
+    paddingVertical: 12,
+    borderRadius: BakeryRadii.button,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: BakeryColors.honey,
+    backgroundColor: BakeryColors.cream,
+  },
+  lobbyReadyBtnOn: { backgroundColor: BakeryColors.success, borderColor: BakeryColors.success },
+  lobbyReadyBtnText: { fontSize: 15, fontWeight: '900', color: BakeryColors.cocoaDark },
+  lobbyReadyBtnTextOn: { color: '#fff' },
+  lobbyInviteBtn: { paddingVertical: 10, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: BakeryColors.glass, borderWidth: 1.5, borderColor: BakeryColors.shortbread },
+  lobbyInviteText: { fontSize: 14, fontWeight: '800', color: BakeryColors.mocha },
+  lobbyStartBtn: { paddingVertical: 13, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: BakeryColors.honey },
+  lobbyStartBtnOff: { backgroundColor: BakeryColors.shortbread, opacity: 0.7 },
+  lobbyStartText: { fontSize: 16, fontWeight: '900', color: BakeryColors.cocoaDark },
+  lobbyCancel: { alignItems: 'center', paddingVertical: Spacing.one },
+  lobbyCancelText: { fontSize: 13, fontWeight: '700', color: BakeryColors.mocha },
   resultsBackdrop: {
     position: 'absolute',
     top: 0,

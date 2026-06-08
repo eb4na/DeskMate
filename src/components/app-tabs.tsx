@@ -4,6 +4,7 @@ import { router, Tabs } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { subscribeDragActive } from '@/lib/drag-session';
+import { useApp } from '@/context/app-context';
 
 import {
   BottomTabInset,
@@ -104,12 +105,16 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 
 export default function AppTabs() {
   const [dragActive, setDragActive] = useState(false);
+  const { activeSession } = useApp();
 
   useEffect(() => subscribeDragActive(setDragActive), []);
 
+  // Hide the bottom tab bar while studying — the study room is full-screen.
+  const hideBar = dragActive || !!activeSession;
+
   return (
     <Tabs
-      tabBar={(props) => dragActive ? null : <CustomTabBar {...props} />}
+      tabBar={(props) => hideBar ? null : <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         tabBarStyle: {

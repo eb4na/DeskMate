@@ -132,7 +132,9 @@ export default function EditRoomScreen() {
   );
 
   // Only rooms with a distinct desk show in the Desk list (others share the default).
-  const deskRooms = ROOM_PAIRS.filter((r) => r.id === 'cozy' || r.deskId);
+  // Only show rooms the player owns — locked items live in the Shop, not here.
+  const backgroundRooms = ROOM_PAIRS.filter((r) => backgroundOwned(r, ownedShopItems));
+  const deskRooms = ROOM_PAIRS.filter((r) => (r.id === 'cozy' || r.deskId) && deskOwned(r, ownedShopItems));
 
   return (
     <ThemedView style={[styles.container, { backgroundColor: P.cream }]}>
@@ -145,7 +147,7 @@ export default function EditRoomScreen() {
 
           <Text style={styles.sectionTitle}>🖼️ Background</Text>
           <View style={styles.row}>
-            {ROOM_PAIRS.map((room) => (
+            {backgroundRooms.map((room) => (
               <Card
                 key={room.id}
                 room={room}

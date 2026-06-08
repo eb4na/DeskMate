@@ -175,20 +175,6 @@ function GalleryContent() {
     })),
   ];
 
-  // Shop companions you don't own yet — shown locked so you can preview them
-  // (and their wardrobes) and unlock right here instead of going to the Shop.
-  const lockedCharacters = SHOP_COMPANIONS
-    .filter((item) => !ownedShopItems.includes(item.id))
-    .map((item) => ({
-      id: `shop:${item.id}`,
-      itemId: item.id,
-      name: item.name,
-      image: getCompanionSkinImage(`shop:${item.id}`, 'classic') ?? (item.image as number),
-      emoji: item.emoji,
-      price: item.price,
-      plusOnly: !!item.plusOnly,
-    }));
-
   return (
     <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: P.cream }}>
       <SafeAreaView style={styles.safeArea}>
@@ -247,50 +233,6 @@ function GalleryContent() {
             ))}
           </View>
         </View>
-
-        {/* Locked companions — preview & unlock */}
-        {lockedCharacters.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>More Companions</Text>
-            <View style={styles.companionGrid}>
-              {lockedCharacters.map((char) => (
-                <View key={char.id} style={[styles.companionCard, styles.companionCardLocked]}>
-                  <Pressable
-                    style={({ pressed }) => [styles.hangerBtn, pressed && styles.pressed]}
-                    onPress={() => setWardrobeFor({ id: char.id, name: char.name })}
-                    hitSlop={8}>
-                    <HangerIcon color="#FFFFFF" size={22} />
-                  </Pressable>
-                  <View style={styles.companionImageWrap}>
-                    {char.image ? (
-                      <Image source={char.image} style={[styles.companionImage, styles.companionImageLocked]} contentFit="contain" />
-                    ) : (
-                      <Text style={styles.companionEmoji}>{char.emoji ?? '🐾'}</Text>
-                    )}
-                    <View style={styles.cardLockBadge}>
-                      <Text style={styles.cardLockBadgeText}>🔒</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.companionName} numberOfLines={1}>{char.name}</Text>
-                  <Text style={styles.companionSubtitle} numberOfLines={2}>{TAGLINES[char.name] ?? 'Your study buddy'}</Text>
-                  {char.plusOnly ? (
-                    <Pressable
-                      style={({ pressed }) => [styles.unlockBtn, styles.plusBtn, pressed && styles.pressed]}
-                      onPress={() => router.push('/plus-upgrade')}>
-                      <Text style={styles.plusBtnText}>✨ Plus exclusive</Text>
-                    </Pressable>
-                  ) : (
-                    <Pressable
-                      style={({ pressed }) => [styles.unlockBtn, pressed && styles.pressed]}
-                      onPress={() => setBuyItem({ id: char.itemId, name: char.name, image: char.image, price: char.price })}>
-                      <Text style={styles.unlockBtnText}>🔓 {Math.floor(char.price * buyDiscount)} coins</Text>
-                    </Pressable>
-                  )}
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
 
         {/* Info note */}
         <View style={styles.infoCard}>

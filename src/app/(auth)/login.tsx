@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
   Image as RNImage,
-  ImageBackground,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -21,7 +21,6 @@ import { supabase } from '@/lib/supabase';
 import { useTranslation } from '@/i18n';
 
 const LOGIN_BG = require('@/assets/images/auth/login-bg.png');
-const FIELD_EMAIL = require('@/assets/images/auth/field-email.png');
 
 export default function LoginScreen() {
   const { email: emailParam, notice } = useLocalSearchParams<{ email?: string; notice?: string }>();
@@ -85,11 +84,15 @@ export default function LoginScreen() {
       // Non-fatal — the local session is still valid.
     }
 
+    // Blur any focused field so iOS tears down the keyboard/input views
+    // before this screen unmounts (prevents stranded input artifacts).
+    Keyboard.dismiss();
     router.replace('/');
     setSubmitting(false);
   };
 
   const handleGuest = () => {
+    Keyboard.dismiss();
     continueAsGuest();
     router.replace('/');
   };
@@ -113,20 +116,19 @@ export default function LoginScreen() {
             </ThemedView>
 
             <ThemedView type="backgroundElement" style={styles.card}>
-              <ImageBackground source={FIELD_EMAIL} style={styles.fieldBg} imageStyle={styles.fieldBgImg} resizeMode="stretch">
-                <TextInput
-                  style={styles.fieldInput}
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="email-address"
-                  textContentType="emailAddress"
-                  placeholder=""
-                  placeholderTextColor={colors.textSecondary}
-                  returnKeyType="next"
-                />
-              </ImageBackground>
+              <ThemedText type="smallBold">Email</ThemedText>
+              <TextInput
+                style={inputStyle}
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                textContentType="emailAddress"
+                placeholder="you@example.com"
+                placeholderTextColor={colors.textSecondary}
+                returnKeyType="next"
+              />
 
               <ThemedText type="smallBold">Password</ThemedText>
               <TextInput
@@ -210,15 +212,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   screenBackground: { backgroundColor: BakeryColors.frosting },
   bg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
-  fieldBg: { width: '100%', aspectRatio: 5.833, justifyContent: 'center' },
-  fieldBgImg: { borderRadius: 16 },
-  fieldInput: {
-    marginLeft: '32%',
-    marginRight: '11%',
-    fontSize: 16,
-    color: BakeryColors.cocoaDark,
-    paddingVertical: 0,
-  },
   scrollContent: { flexGrow: 1 },
   safeArea: {
     flex: 1,

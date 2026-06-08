@@ -4,6 +4,7 @@ import { ImageBackground, Pressable, StyleSheet, Text, useWindowDimensions, View
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useApp } from '@/context/app-context';
+import { BakeryColors, BakeryRadii, BakeryShadow } from '@/constants/theme';
 import { LANGUAGES, type SupportedLanguage, useTranslation } from '@/i18n';
 
 const SESSION_FRAME = require('@/assets/images/home/session-frame.png');
@@ -98,12 +99,12 @@ export default function LanguagePickerScreen() {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: '#FCEAE8',
+    backgroundColor: BakeryColors.frosting,
     alignItems: 'center',
     justifyContent: 'center',
   },
   card: {
-    borderRadius: 28,
+    borderRadius: BakeryRadii.panel,
     overflow: 'hidden',
     paddingBottom: 28,
     paddingHorizontal: 32,
@@ -112,53 +113,47 @@ const styles = StyleSheet.create({
   },
 
   header: { alignItems: 'center', gap: 4 },
-  title: { fontSize: 20, fontWeight: '700', fontStyle: 'italic', color: '#E05878', textAlign: 'center' },
-  subtitle: { fontSize: 11, color: '#C4607A', textAlign: 'center', opacity: 0.8 },
+  title: { fontSize: 22, fontWeight: '800', color: BakeryColors.cocoaDark, textAlign: 'center' },
+  subtitle: { fontSize: 12, color: BakeryColors.mocha, textAlign: 'center' },
 
   langList: { gap: 8 },
   langBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.8)',
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#F4C2C8',
+    backgroundColor: BakeryColors.glass,
+    borderRadius: BakeryRadii.chip,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   langBtnActive: {
-    borderColor: '#E05878',
-    backgroundColor: 'rgba(255,240,245,0.95)',
+    borderColor: BakeryColors.honey,
+    backgroundColor: BakeryColors.cream,
   },
   langFlag: { fontSize: 22 },
   langTextWrap: { flex: 1 },
-  langNative: { fontSize: 16, fontWeight: '600', color: '#C4607A' },
-  langNativeActive: { color: '#E05878' },
-  langEnglish: { fontSize: 11, color: '#C4607A', opacity: 0.65 },
+  langNative: { fontSize: 16, fontWeight: '700', color: BakeryColors.mocha },
+  langNativeActive: { color: BakeryColors.cocoaDark },
+  langEnglish: { fontSize: 11, color: BakeryColors.latte },
   checkCircle: {
     width: 22, height: 22, borderRadius: 11,
-    backgroundColor: '#E05878',
+    backgroundColor: BakeryColors.honey,
     alignItems: 'center', justifyContent: 'center',
   },
-  checkMark: { fontSize: 12, color: '#fff', fontWeight: '700' },
+  checkMark: { fontSize: 12, color: '#fff', fontWeight: '800' },
 
   continueBtn: {
-    backgroundColor: '#E8607A',
-    borderRadius: 24,
-    paddingVertical: 12,
+    backgroundColor: BakeryColors.honey,
+    borderRadius: BakeryRadii.button,
+    paddingVertical: 14,
     alignItems: 'center',
-    shadowColor: '#C0405A',
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    ...BakeryShadow,
   },
   continueBtnText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#fff',
-    fontStyle: 'italic',
-    fontFamily: 'Georgia',
+    fontSize: 16,
+    fontWeight: '800',
+    color: BakeryColors.cocoaDark,
   },
 });

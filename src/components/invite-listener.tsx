@@ -10,16 +10,19 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useApp } from '@/context/app-context';
 import { getCompanionImage } from '@/lib/companion-utils';
 import { joinPresence, subscribeToInvites, type GameInvite, type OnlineGameId } from '@/lib/game-net';
+import { useStudyRoom } from '@/lib/use-study-room';
 
 const GAME_LABEL: Record<OnlineGameId, string> = {
   connect4: 'Connect 4',
   tictactoe: 'Tic-Tac-Toe',
   memory: 'Memory Cards',
-  batterdash: 'a BatterDash race',
+  batterdash: 'a BatterDash party',
+  study: 'a study room',
 };
 
 export function InviteListener() {
   const { friendCode, friends } = useApp();
+  const studyRoom = useStudyRoom();
   const [invite, setInvite] = useState<GameInvite | null>(null);
 
   useEffect(() => {
@@ -39,8 +42,11 @@ export function InviteListener() {
     if (!invite) return;
     const inv = invite;
     setInvite(null);
-    if (inv.game === 'batterdash') {
-      router.push({ pathname: '/cake-game', params: { room: inv.room, role: 'guest', netmode: 'race' } });
+    if (inv.game === 'study') {
+      studyRoom.joinRoom(inv.room, false);
+      router.push('/study-lobby');
+    } else if (inv.game === 'batterdash') {
+      router.push({ pathname: '/cake-game', params: { room: inv.room, role: 'guest', netmode: 'party' } });
     } else {
       router.push({ pathname: '/break-game', params: { game: inv.game, room: inv.room, role: 'guest' } });
     }
