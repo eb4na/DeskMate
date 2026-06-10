@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { subscribeDragActive } from '@/lib/drag-session';
 import { useApp } from '@/context/app-context';
+import { useTranslation } from '@/i18n';
 
 import {
   BottomTabInset,
@@ -32,11 +33,11 @@ const ICONS: Record<string, ReturnType<typeof require>> = {
   shop: require('@/assets/images/tabIcons/gen-shop.png'),
 };
 
-const LABELS: Record<string, string> = {
-  index: 'Home',
-  tasks: 'Tasks',
-  progress: 'Progress',
-  shop: 'Shop',
+const LABEL_KEYS: Record<string, string> = {
+  index: 'nav.home',
+  tasks: 'nav.tasks',
+  progress: 'nav.progress',
+  shop: 'nav.shop',
 };
 
 const LEFT_ROUTES = ['index', 'tasks'];
@@ -44,6 +45,7 @@ const RIGHT_ROUTES = ['progress', 'shop'];
 const ROUTE_INDEX: Record<string, number> = { index: 0, tasks: 1, progress: 2, shop: 3 };
 
 function TabItem({ name, isFocused, onPress }: { name: string; isFocused: boolean; onPress: () => void }) {
+  const { t } = useTranslation();
   return (
     <Pressable
       style={[
@@ -68,7 +70,7 @@ function TabItem({ name, isFocused, onPress }: { name: string; isFocused: boolea
           contentFit="contain"
         />
       </View>
-      <Text style={[styles.label, isFocused && styles.labelActive]}>{LABELS[name]}</Text>
+      <Text style={[styles.label, isFocused && styles.labelActive]}>{t(LABEL_KEYS[name])}</Text>
     </Pressable>
   );
 }
@@ -104,6 +106,7 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 }
 
 export default function AppTabs() {
+  const { t } = useTranslation();
   const [dragActive, setDragActive] = useState(false);
   const { activeSession } = useApp();
 
@@ -129,10 +132,10 @@ export default function AppTabs() {
         },
         tabBarSafeAreaInsets: { bottom: 0 },
       }}>
-      <Tabs.Screen name="index" options={{ title: 'Home' }} />
-      <Tabs.Screen name="tasks" options={{ title: 'Tasks' }} />
-      <Tabs.Screen name="progress" options={{ title: 'Progress' }} />
-      <Tabs.Screen name="shop" options={{ title: 'Shop' }} />
+      <Tabs.Screen name="index" options={{ title: t('nav.home') }} />
+      <Tabs.Screen name="tasks" options={{ title: t('nav.tasks') }} />
+      <Tabs.Screen name="progress" options={{ title: t('nav.progress') }} />
+      <Tabs.Screen name="shop" options={{ title: t('nav.shop') }} />
     </Tabs>
   );
 }

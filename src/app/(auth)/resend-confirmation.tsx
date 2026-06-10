@@ -16,9 +16,11 @@ import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/context/auth-context';
 import { BakeryColors, BakeryRadii, BakeryShadow, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
+import { useTranslation } from '@/i18n';
 
 export default function ResendConfirmationScreen() {
   const { continueAsGuest } = useAuth();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -39,7 +41,7 @@ export default function ResendConfirmationScreen() {
   const handleResend = async () => {
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) {
-      setErrorMessage('Enter the email you used to sign up.');
+      setErrorMessage(t('errors.enterSignupEmail'));
       return;
     }
 
@@ -58,7 +60,7 @@ export default function ResendConfirmationScreen() {
       return;
     }
 
-    setSuccessMessage('Verification code sent again. Enter it on the verification screen.');
+    setSuccessMessage(t('auth.codeResent'));
     setSubmitting(false);
     router.push({ pathname: '/verify-code', params: { email: normalizedEmail, mode: 'signup' } });
   };
@@ -78,15 +80,15 @@ export default function ResendConfirmationScreen() {
             <ThemedView style={styles.hero}>
               <ThemedText style={styles.heroEmoji}>🍓</ThemedText>
               <ThemedText type="subtitle" style={styles.title}>
-                Resend confirmation
+                {t('auth.resendConfirmation')}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
-                If your verification code expired or got buried, we can send a fresh one.
+                {t('auth.resendSubtitle')}
               </ThemedText>
             </ThemedView>
 
             <ThemedView type="backgroundElement" style={styles.card}>
-              <ThemedText type="smallBold">Email</ThemedText>
+              <ThemedText type="smallBold">{t('auth.email')}</ThemedText>
               <TextInput
                 style={inputStyle}
                 value={email}
@@ -95,7 +97,7 @@ export default function ResendConfirmationScreen() {
                 autoCorrect={false}
                 keyboardType="email-address"
                 textContentType="emailAddress"
-                placeholder="you@example.com"
+                placeholder={t('auth.emailPlaceholder')}
                 placeholderTextColor={colors.textSecondary}
                 returnKeyType="done"
                 onSubmitEditing={handleResend}
@@ -121,7 +123,7 @@ export default function ResendConfirmationScreen() {
                 onPress={handleResend}
                 disabled={submitting}>
                 <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                  {submitting ? 'Sending...' : 'Resend verification'}
+                  {submitting ? t('auth.sending') : t('auth.resendVerification')}
                 </ThemedText>
               </Pressable>
             </ThemedView>
@@ -129,12 +131,12 @@ export default function ResendConfirmationScreen() {
             <ThemedView style={styles.linkActions}>
               <Pressable onPress={() => router.replace('/login')} style={styles.linkRow}>
                 <ThemedText type="smallBold" style={styles.linkText}>
-                  Back to login
+                  {t('auth.backToLogin')}
                 </ThemedText>
               </Pressable>
               <Pressable onPress={handleGuest} style={styles.linkRow}>
                 <ThemedText type="smallBold" style={styles.linkText}>
-                  Continue as guest
+                  {t('auth.continueAsGuest')}
                 </ThemedText>
               </Pressable>
             </ThemedView>

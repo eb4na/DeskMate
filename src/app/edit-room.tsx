@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CoinAmount, CoinIcon } from '@/components/coin-icon';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
+import { useTranslation } from '@/i18n';
 import {
   ROOM_PAIRS,
   backgroundOwned,
@@ -35,6 +36,7 @@ const P = {
 } as const;
 
 export default function EditRoomScreen() {
+  const { t } = useTranslation();
   const {
     equippedBackgroundRoomId,
     equippedDeskRoomId,
@@ -122,11 +124,11 @@ export default function EditRoomScreen() {
       {!owned && <View style={styles.lockBadge}><Text style={styles.lockText}>🔒</Text></View>}
       <Text style={styles.thumbName} numberOfLines={1}>{room.name}</Text>
       {active ? (
-        <View style={styles.activePill}><Text style={styles.activePillText}>✦ In use</Text></View>
+        <View style={styles.activePill}><Text style={styles.activePillText}>{t('editRoom.inUse')}</Text></View>
       ) : owned ? (
-        <Text style={styles.tapText}>Tap to use</Text>
+        <Text style={styles.tapText}>{t('editRoom.tapToUse')}</Text>
       ) : (
-        <Text style={styles.lockedText}>🔓 Tap to unlock</Text>
+        <Text style={styles.lockedText}>{t('editRoom.tapToUnlock')}</Text>
       )}
     </Pressable>
   );
@@ -141,11 +143,11 @@ export default function EditRoomScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <SafeAreaView style={styles.safe}>
           <View style={styles.header}>
-            <Text style={styles.title}>🎨 Edit Room</Text>
-            <Text style={styles.subtitle}>Mix any background with any desk. The 🔗 button sets a matching pair.</Text>
+            <Text style={styles.title}>{t('editRoom.editRoom')}</Text>
+            <Text style={styles.subtitle}>{t('editRoom.subtitle')}</Text>
           </View>
 
-          <Text style={styles.sectionTitle}>🖼️ Background</Text>
+          <Text style={styles.sectionTitle}>{t('editRoom.background')}</Text>
           <View style={styles.row}>
             {backgroundRooms.map((room) => (
               <Card
@@ -160,7 +162,7 @@ export default function EditRoomScreen() {
             ))}
           </View>
 
-          <Text style={styles.sectionTitle}>🪵 Desk</Text>
+          <Text style={styles.sectionTitle}>{t('editRoom.desk')}</Text>
           <View style={styles.row}>
             {deskRooms.map((room) => (
               <Card
@@ -175,17 +177,17 @@ export default function EditRoomScreen() {
             ))}
           </View>
 
-          <Text style={styles.sectionTitle}>✨ Effect</Text>
+          <Text style={styles.sectionTitle}>{t('editRoom.effect')}</Text>
           <View style={styles.comingSoon}>
             <Text style={styles.comingSoonEmoji}>✨</Text>
-            <Text style={styles.comingSoonTitle}>No effects yet</Text>
-            <Text style={styles.comingSoonText}>Room effects are coming soon!</Text>
+            <Text style={styles.comingSoonTitle}>{t('editRoom.noEffects')}</Text>
+            <Text style={styles.comingSoonText}>{t('editRoom.effectsSoon')}</Text>
           </View>
 
           <Pressable
             style={({ pressed }) => [styles.doneBtn, pressed && { opacity: 0.85 }]}
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
-            <Text style={styles.doneText}>Done</Text>
+            <Text style={styles.doneText}>{t('common.done')}</Text>
           </Pressable>
         </SafeAreaView>
       </ScrollView>
@@ -202,8 +204,8 @@ export default function EditRoomScreen() {
               <>
                 <Text style={styles.modalTitle}>
                   {buyTarget.kind === 'pair'
-                    ? `Unlock ${buyTarget.room.name}`
-                    : `Unlock this ${buyTarget.kind === 'desk' ? 'desk' : 'background'}`}
+                    ? t('editRoom.unlockPair', { name: buyTarget.room.name })
+                    : buyTarget.kind === 'desk' ? t('editRoom.unlockDesk') : t('editRoom.unlockBackground')}
                 </Text>
 
                 <View style={styles.modalItems}>
@@ -226,7 +228,7 @@ export default function EditRoomScreen() {
                 </View>
 
                 <View style={styles.modalBalanceRow}>
-                  <Text style={styles.modalBalanceLabel}>Your balance</Text>
+                  <Text style={styles.modalBalanceLabel}>{t('editRoom.yourBalance')}</Text>
                   <View style={styles.modalBalance}>
                     <CoinIcon size={20} />
                     <Text style={styles.modalBalanceNum}>{coins}</Text>
@@ -235,7 +237,7 @@ export default function EditRoomScreen() {
 
                 {!canAffordTarget && (
                   <Text style={styles.modalShortfall}>
-                    You need {targetTotal - coins} more coins. Earn coins by studying!
+                    {t('gallery.shortfall', { count: targetTotal - coins })}
                   </Text>
                 )}
 
@@ -248,11 +250,11 @@ export default function EditRoomScreen() {
                   ]}
                   onPress={confirmBuy}>
                   <Text style={styles.buyBtnText}>
-                    {canAffordTarget ? `Unlock for ${targetTotal} coins` : 'Not enough coins'}
+                    {canAffordTarget ? t('gallery.unlockForCoins', { price: targetTotal }) : t('gallery.notEnoughCoins')}
                   </Text>
                 </Pressable>
                 <Pressable style={styles.cancelBtn} onPress={() => setBuyTarget(null)}>
-                  <Text style={styles.cancelText}>Maybe later</Text>
+                  <Text style={styles.cancelText}>{t('gallery.maybeLater')}</Text>
                 </Pressable>
               </>
             )}

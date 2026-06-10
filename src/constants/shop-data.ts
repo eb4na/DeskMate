@@ -230,16 +230,6 @@ export const SHOP_ITEMS: ShopItem[] = [
     category: 'background',
     image: require('@/assets/images/backgrounds/tiras-treehouse.png'),
   },
-  {
-    id: 'bg_secret_hideout',
-    name: 'Secret Hideout',
-    emoji: '🌳',
-    description: 'A hidden treehouse hideout — a sunlit window seat, soft cushions, and a little tea table.',
-    price: 600,
-    category: 'background',
-    image: require('@/assets/images/backgrounds/secret-hideout.png'),
-  },
-
   // ─── Desks / study surfaces (400–700 coins) ─────────────────────────────
   {
     id: 'desk_marble',

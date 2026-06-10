@@ -10,11 +10,12 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import type { Task, TaskStatus } from '@/context/app-context';
+import i18n, { useTranslation } from '@/i18n';
 import {
   BakeryColors,
   BakeryRadii,
   BakeryShadow,
-  BottomTabInset,
+  BottomTabClearance,
   MaxContentWidth,
   Spacing,
 } from '@/constants/theme';
@@ -41,7 +42,7 @@ const PRIORITY_COLOR: Record<string, string> = {
 };
 
 function formatDueDate(dateISO: string): string {
-  return new Date(`${dateISO}T00:00:00`).toLocaleDateString('en-US', {
+  return new Date(`${dateISO}T00:00:00`).toLocaleDateString(i18n.language || 'en-US', {
     month: 'short',
     day: 'numeric',
   });
@@ -132,6 +133,7 @@ function TaskRow({ task, onToggle, onEdit, onDelete, onPostpone }: {
 }
 
 export default function TasksScreen() {
+  const { t } = useTranslation();
   const {
     tasks,
     subjects,
@@ -146,7 +148,7 @@ export default function TasksScreen() {
   const [showDone, setShowDone] = useState(false);
 
   const canAddExam = isPlus || examCountdowns.length < 3;
-  const examLimitText = isPlus ? `${examCountdowns.length} exams` : `${examCountdowns.length}/3`;
+  const examLimitText = isPlus ? t('tasks.examsCount', { count: examCountdowns.length }) : `${examCountdowns.length}/3`;
 
   const notStarted = tasks.filter((t) => t.status === 'not_started');
   const inProgress = tasks.filter((t) => t.status === 'in_progress');
@@ -167,9 +169,9 @@ export default function TasksScreen() {
   };
 
   const handleDelete = (task: Task) => {
-    Alert.alert('Delete task?', `"${task.title}" will be removed.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteTask(task.id) },
+    Alert.alert(t('tasks.deleteTask'), t('tasks.deleteTaskMsg', { title: task.title }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => deleteTask(task.id) },
     ]);
   };
 
@@ -206,23 +208,23 @@ export default function TasksScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollBox}>
         <SafeAreaView style={styles.safeArea}>
           {/* Header */}
           <ThemedView style={styles.header}>
             <ThemedText type="subtitle" style={styles.title}>
-              Tasks
+              {t('tasks.title')}
             </ThemedText>
             <ThemedView style={styles.headerActions}>
               <Pressable
                 style={({ pressed }) => [styles.manageBtn, pressed && styles.pressed]}
                 onPress={() => router.push(canAddExam ? '/add-exam' : '/plus-upgrade')}>
-                <ThemedText type="small" themeColor="textSecondary">+ Exam</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">{t('tasks.addExamShort')}</ThemedText>
               </Pressable>
               <Pressable
                 style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
                 onPress={() => router.push('/add-task')}>
-                <ThemedText style={styles.addBtnText}>+ Task</ThemedText>
+                <ThemedText style={styles.addBtnText}>{t('tasks.addTaskShort')}</ThemedText>
               </Pressable>
             </ThemedView>
           </ThemedView>
@@ -234,14 +236,14 @@ export default function TasksScreen() {
           <ThemedView style={styles.section}>
             <ThemedView style={styles.examHeader}>
               <ThemedText type="smallBold" style={styles.sectionTitle}>
-                Exam Countdowns
+                {t('tasks.examCountdowns')}
               </ThemedText>
               <View style={styles.examLimitRow}>
                 <ThemedText type="small" themeColor="textSecondary">{examLimitText}</ThemedText>
                 {isPlus && (
                   <>
                     <BakeryStarEmoji size={12} />
-                    <ThemedText style={styles.plusBadge}>Plus</ThemedText>
+                    <ThemedText style={styles.plusBadge}>{t('tasks.plusBadge')}</ThemedText>
                   </>
                 )}
               </View>
@@ -250,7 +252,7 @@ export default function TasksScreen() {
             {examCountdowns.length === 0 && (
               <ThemedView type="backgroundElement" style={styles.examEmptyCard}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                  No exams added yet.{isPlus ? ' Unlimited exams with Plus.' : ' Track up to 3 at a time.'}
+                  {t('tasks.noExamsYet')}{isPlus ? t('tasks.unlimitedWithPlus') : t('tasks.trackUpTo3')}
                 </ThemedText>
               </ThemedView>
             )}
@@ -281,7 +283,7 @@ export default function TasksScreen() {
                         isUrgent && styles.examDaysUrgent,
                         isPast && styles.examDaysPast,
                       ]}>
-                      {isPast ? 'Past' : isToday ? 'Today' : `${days}d`}
+                      {isPast ? t('tasks.past') : isToday ? t('tasks.today') : `${days}d`}
                     </ThemedText>
                     <Pressable onPress={() => removeExam(exam.id)} style={styles.removeBtn}>
                       <ThemedText type="small" themeColor="textSecondary">✕</ThemedText>
@@ -296,7 +298,7 @@ export default function TasksScreen() {
                 style={({ pressed }) => [styles.addExamBtn, pressed && styles.pressed]}
                 onPress={() => router.push('/add-exam')}>
                 <ThemedText type="small" style={styles.addExamText}>
-                  + Add exam countdown
+                  {t('tasks.addExamCountdown')}
                 </ThemedText>
               </Pressable>
             ) : (
@@ -304,7 +306,7 @@ export default function TasksScreen() {
                 <ThemedView type="backgroundElement" style={styles.upgradeExamCard}>
                   <BakeryLockEmoji size={14} />
                   <ThemedText type="small" style={styles.upgradeExamText}>
-                    Unlimited exam countdowns — upgrade to Plus
+                    {t('tasks.unlimitedUpgrade')}
                   </ThemedText>
                 </ThemedView>
               </Pressable>
@@ -316,15 +318,15 @@ export default function TasksScreen() {
           {needsAttention.length > 0 && (
             <ThemedView style={styles.section}>
               <ThemedText type="smallBold" style={styles.sectionTitle}>
-                Needs attention
+                {t('tasks.needsAttention')}
               </ThemedText>
               {needsAttention.map((task) => {
                 const subjectName = task.subjectId
                   ? subjects.find((s) => s.id === task.subjectId)?.name
                   : null;
                 const nudge = subjectName
-                  ? `${subjectName} has been sitting here for a while. Want to try just 10 minutes?`
-                  : `This task has been waiting. Want to give it just 10 minutes today?`;
+                  ? t('tasks.nudgeSubject', { subject: subjectName })
+                  : t('tasks.nudgeGeneric');
                 return (
                   <ThemedView key={task.id} type="backgroundElement" style={styles.nudgeCard}>
                     <ThemedText type="smallBold" style={styles.nudgeTitle} numberOfLines={1}>
@@ -337,7 +339,7 @@ export default function TasksScreen() {
                       style={({ pressed }) => [styles.nudgeBtn, pressed && styles.pressed]}
                       onPress={() => router.push('/')}>
                       <ThemedText type="small" style={styles.nudgeBtnText}>
-                        Start a session →
+                        {t('tasks.startSessionArrow')}
                       </ThemedText>
                     </Pressable>
                   </ThemedView>
@@ -347,15 +349,15 @@ export default function TasksScreen() {
           )}
 
           {/* Task sections */}
-          {renderSection('In progress', inProgress)}
-          {renderSection('Not started', notStarted)}
+          {renderSection(t('tasks.inProgress'), inProgress)}
+          {renderSection(t('tasks.notStarted'), notStarted)}
 
           {/* Done section (collapsible) */}
           {done.length > 0 && (
             <ThemedView style={styles.section}>
               <Pressable onPress={() => setShowDone((v) => !v)} style={styles.doneToggle}>
                 <ThemedText type="smallBold" style={styles.sectionTitle}>
-                  {showDone ? '▾' : '▸'} Done ({done.length})
+                  {showDone ? '▾' : '▸'} {t('tasks.doneCount', { count: done.length })}
                 </ThemedText>
               </Pressable>
               {showDone && (
@@ -382,10 +384,13 @@ export default function TasksScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BakeryColors.frosting },
+  // Keep the whole scroll above the floating menu bar so it stays fully visible
+  // and content never scrolls underneath it.
+  scrollBox: { flex: 1, marginBottom: BottomTabClearance },
   safeArea: {
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.four,
-    paddingBottom: BottomTabInset + Spacing.four,
+    paddingBottom: Spacing.four,
     maxWidth: MaxContentWidth,
     width: '100%',
     alignSelf: 'center',
@@ -403,7 +408,7 @@ const styles = StyleSheet.create({
     borderColor: BakeryColors.shortbread,
   },
   addBtn: {
-    backgroundColor: BakeryColors.honey,
+    backgroundColor: BakeryColors.jam,
     borderRadius: BakeryRadii.pill,
     paddingHorizontal: Spacing.three,
     paddingVertical: 8,
@@ -411,7 +416,7 @@ const styles = StyleSheet.create({
     borderColor: '#E0A33C',
     ...BakeryShadow,
   },
-  addBtnText: { color: BakeryColors.cocoaDark, fontSize: 14, fontWeight: '800' },
+  addBtnText: { color: '#fff', fontSize: 14, fontWeight: '800' },
   pressed: { opacity: 0.8 },
   welcomeCard: {
     borderRadius: BakeryRadii.panel,

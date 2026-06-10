@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, Colors, Spacing } from '@/constants/theme';
 
 type TimeWheelPickerProps = {
@@ -40,6 +41,7 @@ export function formatTimeLabel(value: string, use24Hour: boolean) {
 }
 
 export function TimeWheelPicker({ value, onChange, use24Hour = false }: TimeWheelPickerProps) {
+  const { t } = useTranslation();
   const scheme = useColorScheme();
   const theme = Colors[scheme === 'dark' ? 'dark' : 'light'];
   const [isOpen, setIsOpen] = useState(false);
@@ -84,13 +86,13 @@ export function TimeWheelPicker({ value, onChange, use24Hour = false }: TimeWhee
             { backgroundColor: theme.backgroundElement, borderColor: BakeryColors.border },
           ]}>
           <View style={styles.triggerTextWrap}>
-            <ThemedText type="smallBold">Time</ThemedText>
+            <ThemedText type="smallBold">{t('pickers.time')}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               {formatTimeLabel(value, use24Hour)}
             </ThemedText>
           </View>
           <ThemedText type="smallBold" style={styles.triggerChevron}>
-            Select
+            {t('pickers.select')}
           </ThemedText>
         </View>
       </Pressable>
@@ -104,16 +106,16 @@ export function TimeWheelPicker({ value, onChange, use24Hour = false }: TimeWhee
               { backgroundColor: theme.background, borderColor: BakeryColors.border },
             ]}>
             <View style={styles.modalHeader}>
-              <ThemedText type="smallBold">Pick a time</ThemedText>
+              <ThemedText type="smallBold">{t('pickers.pickTime')}</ThemedText>
               <Pressable onPress={() => setIsOpen(false)} style={({ pressed }) => [pressed && styles.pressed]}>
-                <ThemedText type="linkPrimary">Done</ThemedText>
+                <ThemedText type="linkPrimary">{t('common.done')}</ThemedText>
               </Pressable>
             </View>
 
             <View style={styles.container}>
               <View style={styles.column}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.pickerLabel}>
-                  Hour
+                  {t('pickers.hour')}
                 </ThemedText>
                 <View
                   style={[
@@ -137,7 +139,7 @@ export function TimeWheelPicker({ value, onChange, use24Hour = false }: TimeWhee
 
               <View style={styles.column}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.pickerLabel}>
-                  Minute
+                  {t('pickers.minute')}
                 </ThemedText>
                 <View
                   style={[
@@ -163,7 +165,7 @@ export function TimeWheelPicker({ value, onChange, use24Hour = false }: TimeWhee
               {!use24Hour && (
                 <View style={styles.column}>
                   <ThemedText type="small" themeColor="textSecondary" style={styles.pickerLabel}>
-                    AM/PM
+                    {t('pickers.ampm')}
                   </ThemedText>
                   <View
                     style={[
@@ -183,7 +185,7 @@ export function TimeWheelPicker({ value, onChange, use24Hour = false }: TimeWhee
             </View>
 
             <ThemedText type="small" themeColor="textSecondary">
-              Selected: {formatTimeLabel(value, use24Hour)}
+              {t('pickers.selected', { value: formatTimeLabel(value, use24Hour) })}
             </ThemedText>
           </View>
         </View>

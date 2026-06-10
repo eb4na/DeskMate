@@ -2,6 +2,7 @@ import { Image, type ImageStyle } from 'expo-image';
 import { StyleSheet, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import i18n from '@/i18n';
 
 export const COIN_ICON = require('@/assets/images/home/coin-icon.png');
 
@@ -16,7 +17,7 @@ export function CoinIcon({ size = 32, style }: CoinIconProps) {
       source={COIN_ICON}
       style={[{ width: size, height: size }, style]}
       contentFit="contain"
-      accessibilityLabel="Focus coin"
+      accessibilityLabel={i18n.t('a11y.focusCoin')}
     />
   );
 }

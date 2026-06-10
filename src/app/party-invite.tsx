@@ -8,12 +8,14 @@ import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { getCompanionImage } from '@/lib/companion-utils';
 import { joinPresence, sendInvite, type OnlineGameId } from '@/lib/game-net';
+import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
 // Dedicated screen for inviting friends into a BatterDash party lobby. Opened
 // from the lobby's "Invite friend" button with the room id, so every invite
 // drops the friend into the same room.
 export default function PartyInviteScreen() {
+  const { t } = useTranslation();
   const { room, game } = useLocalSearchParams<{ room?: string; game?: string }>();
   const inviteGame = (game as OnlineGameId) || 'batterdash';
   const { friends, friendCode, profileDisplayName } = useApp();
@@ -31,7 +33,7 @@ export default function PartyInviteScreen() {
       game: inviteGame,
       room,
       fromCode: friendCode,
-      fromName: profileDisplayName || `Player ${friendCode}`,
+      fromName: profileDisplayName || t('party.playerName', { code: friendCode }),
     });
     setInvited((prev) => new Set(prev).add(code));
   };
@@ -48,15 +50,15 @@ export default function PartyInviteScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.header}>
-          <Text style={styles.title}>{inviteGame === 'study' ? 'Invite to study 📚' : 'Invite to your party 🎂'}</Text>
-          <Text style={styles.subtitle}>Friends you invite drop right into your lobby.</Text>
+          <Text style={styles.title}>{inviteGame === 'study' ? t('party.inviteToStudy') : t('party.inviteToParty')}</Text>
+          <Text style={styles.subtitle}>{t('party.inviteSubtitle')}</Text>
         </View>
 
         <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
           {sorted.length === 0 ? (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>No friends yet</Text>
-              <Text style={styles.emptyText}>Add friends from the Friends screen, then invite them here.</Text>
+              <Text style={styles.emptyTitle}>{t('party.noFriendsYet')}</Text>
+              <Text style={styles.emptyText}>{t('party.noFriendsHint')}</Text>
             </View>
           ) : (
             sorted.map((f) => {
@@ -76,7 +78,7 @@ export default function PartyInviteScreen() {
                   </View>
                   <View style={styles.info}>
                     <Text style={styles.name} numberOfLines={1}>{f.displayName || f.name}</Text>
-                    <Text style={styles.code}>{online ? 'Online now' : f.code}</Text>
+                    <Text style={styles.code}>{online ? t('party.onlineNow') : f.code}</Text>
                   </View>
                   <Pressable
                     onPress={() => invite(f.code)}
@@ -86,7 +88,7 @@ export default function PartyInviteScreen() {
                       pressed && styles.pressed,
                     ]}>
                     <Text style={[styles.inviteText, isInvited && styles.inviteTextDone]}>
-                      {isInvited ? 'Invited ✓' : 'Invite'}
+                      {isInvited ? t('party.invited') : t('party.invite')}
                     </Text>
                   </Pressable>
                 </View>
@@ -96,7 +98,7 @@ export default function PartyInviteScreen() {
         </ScrollView>
 
         <Pressable style={({ pressed }) => [styles.doneBtn, pressed && styles.pressed]} onPress={() => router.back()}>
-          <Text style={styles.doneText}>Back to lobby</Text>
+          <Text style={styles.doneText}>{t('party.backToLobby')}</Text>
         </Pressable>
       </SafeAreaView>
     </ThemedView>

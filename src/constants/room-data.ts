@@ -65,15 +65,6 @@ export const ROOM_PAIRS: RoomPair[] = [
     backgroundImage: require('@/assets/images/backgrounds/tiras-treehouse.png'),
     deskImage: require('@/assets/images/home/desk-new.png'),
   },
-  {
-    // Background-only room — no matching desk (mixes with any desk).
-    id: 'secret-hideout',
-    name: 'Secret Hideout',
-    backgroundId: 'bg_secret_hideout',
-    deskId: null,
-    backgroundImage: require('@/assets/images/backgrounds/secret-hideout.png'),
-    deskImage: require('@/assets/images/home/desk-new.png'),
-  },
 ];
 
 /** The pair that contains the given shop item id (background or desk), if any. */

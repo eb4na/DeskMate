@@ -12,17 +12,18 @@ import { Colors } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { useTheme } from '@/hooks/use-theme';
 import { getBunSkinImage, resolveActiveCompanion } from '@/lib/companion-utils';
+import { useTranslation } from '@/i18n';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
 export type CompanionPose = 'idle' | 'studying' | 'proud' | 'cheering' | 'break';
 
-const POSE_CONFIG: Record<CompanionPose, { label: string }> = {
-  idle: { label: 'Ready to study with you' },
-  studying: { label: 'Studying alongside you' },
-  proud: { label: 'Session complete!' },
-  cheering: { label: 'Amazing work!' },
-  break: { label: 'Enjoy your break' },
+const POSE_LABEL_KEY: Record<CompanionPose, string> = {
+  idle: 'a11y.pose_idle',
+  studying: 'a11y.pose_studying',
+  proud: 'a11y.pose_proud',
+  cheering: 'a11y.pose_cheering',
+  break: 'a11y.pose_break',
 };
 
 type Props = {
@@ -31,8 +32,9 @@ type Props = {
 };
 
 export function Companion({ pose, size = 'full' }: Props) {
+  const { t } = useTranslation();
   const { activeCompanionId, companionSlots, defaultCompanionId, equippedShopItems, bunSkinId, companionSkins } = useApp();
-  const config = POSE_CONFIG[pose];
+  const poseLabel = t(POSE_LABEL_KEY[pose]);
   const isFull = size === 'full';
   const theme = useTheme();
   const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
@@ -52,7 +54,7 @@ export function Companion({ pose, size = 'full' }: Props) {
     : undefined;
   const roomColor =
     activeTheme?.[isLightTheme ? 'lightRoom' : 'darkRoom'] ?? undefined;
-  const labelText = [activeCompanion.name, config.label, activeTheme?.label, activeDecoration?.label]
+  const labelText = [activeCompanion.name, poseLabel, activeTheme?.label, activeDecoration?.label]
     .filter(Boolean)
     .join(' · ');
   const resolvedImageSource =
@@ -104,7 +106,7 @@ export function Companion({ pose, size = 'full' }: Props) {
             setDidImageFail(true);
           }
         }}
-        accessibilityLabel={`${activeCompanion.name} companion — ${config.label}`}
+        accessibilityLabel={t('a11y.companionLabel', { name: activeCompanion.name, pose: poseLabel })}
       />
 
       {activeOutfit ? (

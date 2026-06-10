@@ -11,6 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
+import i18n, { useTranslation } from '@/i18n';
 import { AFTER_SESSION_MOODS, BEFORE_SESSION_MOODS } from '@/constants/placeholder-data';
 
 const MOOD_IMAGE: Record<string, number> = {};
@@ -21,7 +22,7 @@ import {
   BakeryColors,
   BakeryRadii,
   BakeryShadow,
-  BottomTabInset,
+  BottomTabClearance,
   MaxContentWidth,
   Spacing,
 } from '@/constants/theme';
@@ -38,7 +39,7 @@ function getMondayISO(): string {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return new Date(iso).toLocaleDateString(i18n.language || 'en-US', { month: 'short', day: 'numeric' });
 }
 
 function daysSince(dateISO: string): number {
@@ -50,6 +51,7 @@ function daysSince(dateISO: string): number {
 }
 
 export default function ProgressScreen() {
+  const { t } = useTranslation();
   const { isGuest, user, signOut } = useAuth();
   const {
     sessionsCompleted,
@@ -108,12 +110,12 @@ export default function ProgressScreen() {
   const daysThisWeek = new Set(sessionHistory.filter((r) => r.dateISO >= mondayISO).map((r) => r.dateISO)).size;
 
   const handleSignOut = () => {
-    Alert.alert(isGuest ? 'Leave guest mode?' : 'Sign out?', isGuest
-      ? 'You can come back to the login screen anytime.'
-      : 'You can sign back in anytime with the same account.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(isGuest ? t('settings.leaveGuestQ') : t('settings.signOutQ'), isGuest
+      ? t('settings.leaveGuestMsg')
+      : t('settings.signOutMsg'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: isGuest ? 'Leave guest mode' : 'Sign out',
+        text: isGuest ? t('settings.leaveGuestMode') : t('settings.signOut'),
         style: 'destructive',
         onPress: async () => {
           try {
@@ -121,8 +123,8 @@ export default function ProgressScreen() {
             router.replace('/login');
           } catch (error) {
             Alert.alert(
-              'Sign-out failed',
-              error instanceof Error ? error.message : 'Please try again.',
+              t('settings.signOutFailed'),
+              error instanceof Error ? error.message : t('settings.tryAgain'),
             );
           }
         },
@@ -132,24 +134,24 @@ export default function ProgressScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollBox}>
         <SafeAreaView style={styles.safeArea}>
           <ThemedText type="subtitle" style={styles.title}>
-            Progress
+            {t('progress.title')}
           </ThemedText>
 
           <ThemedView type="backgroundElement" style={styles.accountCard}>
             <ThemedView style={styles.accountInfo}>
-              <ThemedText type="smallBold">Account</ThemedText>
+              <ThemedText type="smallBold">{t('settings.account')}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                {isGuest ? 'Guest mode' : user?.email ?? 'Signed in'}
+                {isGuest ? t('settings.guestMode') : user?.email ?? t('settings.signedIn')}
               </ThemedText>
             </ThemedView>
             <Pressable
               style={({ pressed }) => [styles.signOutBtn, pressed && styles.pressed]}
               onPress={handleSignOut}>
               <ThemedText type="smallBold" style={styles.signOutText}>
-                {isGuest ? 'Leave guest mode' : 'Sign out'}
+                {isGuest ? t('settings.leaveGuestMode') : t('settings.signOut')}
               </ThemedText>
             </Pressable>
           </ThemedView>
@@ -160,14 +162,14 @@ export default function ProgressScreen() {
             onPress={() => router.push('/weekly-report')}>
             <ThemedView type="backgroundElement" style={styles.weekCardInner}>
               <ThemedView style={styles.weekLeft}>
-                <ThemedText type="smallBold">This week</ThemedText>
+                <ThemedText type="smallBold">{t('progress.thisWeek')}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {weekSessions.length} sessions · {weekMinutes}m · {weekDays} day{weekDays !== 1 ? 's' : ''}
+                  {t('progress.weekSummary', { sessions: weekSessions.length, minutes: weekMinutes, days: weekDays })}
                 </ThemedText>
               </ThemedView>
               <ThemedView style={styles.weekRight}>
                 <ThemedText type="small" style={styles.weekReportLink}>
-                  Full report →
+                  {t('progress.fullReport')}
                 </ThemedText>
               </ThemedView>
             </ThemedView>
@@ -183,24 +185,24 @@ export default function ProgressScreen() {
             />
             <ThemedText style={styles.streakNumber}>{streak.currentStreak}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              day streak
+              {t('home.dayStreak')}
             </ThemedText>
             {streak.longestStreak > 0 && (
               <ThemedText type="small" themeColor="textSecondary">
-                Best: {streak.longestStreak} days
+                {t('progress.best', { count: streak.longestStreak })}
               </ThemedText>
             )}
           </ThemedView>
 
           {/* ── Streak Freeze ─────────────────────────────────────────────── */}
-          {isPlus ? (
+          {(
             <ThemedView type="backgroundElement" style={styles.freezeCard}>
               <ThemedView style={styles.freezeRow}>
                 <StreakFreezeIcon size={72} style={styles.freezeIcon} />
                 <ThemedView style={styles.freezeInfo}>
-                  <ThemedText type="smallBold">Streak Freeze</ThemedText>
+                  <ThemedText type="smallBold">{t('progress.streakFreeze')}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
-                    {streakFreezes}/3 freezes remaining this month
+                    {t('progress.freezesRemaining', { count: streakFreezes })}
                   </ThemedText>
                 </ThemedView>
                 {streak.lastStudyDate &&
@@ -210,41 +212,35 @@ export default function ProgressScreen() {
                     style={({ pressed }) => [styles.freezeBtn, pressed && styles.pressed]}
                     onPress={() => {
                       Alert.alert(
-                        'Use Streak Freeze?',
-                        'This fills in yesterday so your streak can continue when you study today. No coins are awarded.',
+                        t('progress.useFreezeQ'),
+                        t('progress.useFreezeMsg'),
                         [
-                          { text: 'Cancel', style: 'cancel' },
+                          { text: t('common.cancel'), style: 'cancel' },
                           {
-                            text: 'Use Freeze',
+                            text: t('progress.useFreeze'),
                             onPress: () => {
                               const used = applyStreakFreeze();
-                              if (used) Alert.alert('Streak protected!', 'Your streak is safe.');
+                              if (used) Alert.alert(t('progress.streakProtected'), t('progress.streakSafe'));
                             },
                           },
                         ],
                       );
                     }}>
-                    <ThemedText style={styles.freezeBtnText}>Use</ThemedText>
+                    <ThemedText style={styles.freezeBtnText}>{t('progress.use')}</ThemedText>
                   </Pressable>
                 )}
               </ThemedView>
               {streak.lastStudyDate && daysSince(streak.lastStudyDate) === 2 && streakFreezes <= 0 && (
                 <ThemedText type="small" themeColor="textSecondary">
-                  No freezes left this month. They reset on the 1st.
+                  {t('progress.noFreezesLeft')}
                 </ThemedText>
               )}
               {streak.lastStudyDate && daysSince(streak.lastStudyDate) > 2 && (
                 <ThemedText type="small" themeColor="textSecondary">
-                  Streak freeze covers one missed day. Complete a session to start a new streak.
+                  {t('progress.freezeCoversOne')}
                 </ThemedText>
               )}
             </ThemedView>
-          ) : (
-            <PlusGateCard
-              icon={<StreakFreezeIcon size={52} />}
-              title="Streak Freeze"
-              description="3 per month — protect your streak from missed days without earning coins."
-            />
           )}
 
           {/* ── Stats row ─────────────────────────────────────────────────── */}
@@ -252,19 +248,19 @@ export default function ProgressScreen() {
             <ThemedView type="backgroundElement" style={styles.statCard}>
               <ThemedText style={styles.statValue}>{sessionsCompleted}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.statLabel}>
-                Sessions
+                {t('progress.sessions')}
               </ThemedText>
             </ThemedView>
             <ThemedView type="backgroundElement" style={styles.statCard}>
               <ThemedText style={styles.statValue}>{totalMinutes}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.statLabel}>
-                Minutes
+                {t('progress.minutesLabel')}
               </ThemedText>
             </ThemedView>
             <ThemedView type="backgroundElement" style={styles.statCard}>
               <ThemedText style={styles.statValue}>{daysThisWeek}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.statLabel}>
-                Days this week
+                {t('progress.daysThisWeek')}
               </ThemedText>
             </ThemedView>
           </ThemedView>
@@ -272,19 +268,19 @@ export default function ProgressScreen() {
           {/* ── Session insights ──────────────────────────────────────────── */}
           {sessionHistory.length > 0 && (
             <ThemedView style={styles.section}>
-              <ThemedText type="smallBold">Session insights</ThemedText>
+              <ThemedText type="smallBold">{t('progress.sessionInsights')}</ThemedText>
               <ThemedView style={styles.insightRow}>
                 <ThemedView type="backgroundElement" style={styles.insightCard}>
                   <ThemedText style={styles.insightValue}>{avgMinutes}m</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary" style={styles.insightLabel}>
-                    Avg session
+                    {t('progress.avgSession')}
                   </ThemedText>
                 </ThemedView>
                 {bestDayEntry && (
                   <ThemedView type="backgroundElement" style={styles.insightCard}>
                     <ThemedText style={styles.insightValue}>{bestDayEntry[1]}m</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary" style={styles.insightLabel}>
-                      Best day {formatDate(bestDayEntry[0])}
+                      {t('progress.bestDay', { date: formatDate(bestDayEntry[0]) })}
                     </ThemedText>
                   </ThemedView>
                 )}
@@ -295,18 +291,18 @@ export default function ProgressScreen() {
           {/* ── Subject time breakdown ────────────────────────────────────── */}
           <ThemedView style={styles.section}>
             <ThemedView style={styles.sectionHeader}>
-              <ThemedText type="smallBold">Time by subject</ThemedText>
+              <ThemedText type="smallBold">{t('progress.timeBySubject')}</ThemedText>
               <Pressable
                 style={({ pressed }) => [styles.manageSubjectsBtn, pressed && styles.pressed]}
                 onPress={() => router.push('/manage-subjects')}>
-                <ThemedText type="small" themeColor="textSecondary">Manage subjects</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">{t('settings.manageSubjects')}</ThemedText>
               </Pressable>
             </ThemedView>
 
             {subjectEntries.length === 0 ? (
               <ThemedView type="backgroundElement" style={styles.emptyCard}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                  Tag sessions with a subject to see your breakdown here.
+                  {t('progress.tagSessionsHint')}
                 </ThemedText>
               </ThemedView>
             ) : (
@@ -342,14 +338,14 @@ export default function ProgressScreen() {
                 <View style={styles.highlightItem}>
                   <BakeryTrophyEmoji size={15} />
                   <ThemedText type="small" themeColor="textSecondary">
-                    Most studied: <ThemedText type="smallBold">{mostStudied[0]}</ThemedText>
+                    {t('progress.mostStudied')}<ThemedText type="smallBold">{mostStudied[0]}</ThemedText>
                   </ThemedText>
                 </View>
                 {leastStudied && (
                   <View style={styles.highlightItem}>
                     <BakerySleepEmoji size={15} />
                     <ThemedText type="small" themeColor="textSecondary">
-                      Least studied: <ThemedText type="smallBold">{leastStudied[0]}</ThemedText>
+                      {t('progress.leastStudied')}<ThemedText type="smallBold">{leastStudied[0]}</ThemedText>
                     </ThemedText>
                   </View>
                 )}
@@ -359,30 +355,30 @@ export default function ProgressScreen() {
 
           {/* ── Mood tracker ──────────────────────────────────────────────── */}
           <ThemedView style={styles.section}>
-            <ThemedText type="smallBold">Mood tracker</ThemedText>
+            <ThemedText type="smallBold">{t('progress.moodTracker')}</ThemedText>
             {recentMoods.length === 0 ? (
               <ThemedView type="backgroundElement" style={styles.emptyCard}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                  Your mood check-ins will appear here after sessions.
+                  {t('progress.moodEmptyHint')}
                 </ThemedText>
               </ThemedView>
             ) : (
               <ThemedView style={styles.moodList}>
                 {recentMoods.map((entry) => {
-                  const dateStr = new Date(entry.timestamp).toLocaleDateString('en-US', {
+                  const dateStr = new Date(entry.timestamp).toLocaleDateString(i18n.language || 'en-US', {
                     month: 'short',
                     day: 'numeric',
                   });
                   return (
                     <ThemedView key={entry.id} type="backgroundElement" style={styles.moodRow}>
                       <ThemedText type="small" themeColor="textSecondary" style={styles.moodType}>
-                        {entry.type === 'before' ? 'Before' : 'After'}
+                        {entry.type === 'before' ? t('progress.before') : t('progress.after')}
                       </ThemedText>
                       {MOOD_IMAGE[entry.value] && (
                         <Image source={MOOD_IMAGE[entry.value]} style={styles.moodImage} contentFit="contain" />
                       )}
                       <ThemedText type="smallBold" style={styles.moodLabel}>
-                        {entry.label}
+                        {t(`moods.${entry.value}`, { defaultValue: entry.label })}
                       </ThemedText>
                       <ThemedText type="small" themeColor="textSecondary" style={styles.moodMeta}>
                         {entry.sessionMinutes}m · {dateStr}
@@ -399,75 +395,8 @@ export default function ProgressScreen() {
             <ThemedView type="backgroundElement" style={styles.moodInsightCard}>
               <ThemedText style={styles.moodInsightEmoji}>😊</ThemedText>
               <ThemedText type="small" style={styles.moodInsightText}>
-                You selected a more positive mood after{' '}
-                <ThemedText type="smallBold">{moodInsightPct}%</ThemedText> of logged sessions.
+                {t('progress.moodInsightText', { pct: moodInsightPct })}
               </ThemedText>
-            </ThemedView>
-          )}
-
-          {/* ── Companion Gallery (everyone) ─────────────────────────────── */}
-          <ThemedView style={styles.section}>
-            <ThemedText type="smallBold">Companions</ThemedText>
-            <Pressable
-              style={({ pressed }) => [pressed && styles.pressed]}
-              onPress={() => router.push('/companion-gallery')}>
-              <ThemedView type="backgroundElement" style={styles.plusShortcut}>
-                <View style={styles.plusShortcutIcon}>
-                  <PawIcon size={32} />
-                </View>
-                <ThemedView style={styles.plusShortcutText}>
-                  <ThemedText type="smallBold">Companion Gallery</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    Switch who studies with you
-                  </ThemedText>
-                </ThemedView>
-                <ThemedText type="small" style={styles.arrowLink}>→</ThemedText>
-              </ThemedView>
-            </Pressable>
-          </ThemedView>
-
-          {/* ── Plus shortcuts (if Plus) ─────────────────────────────────── */}
-          {isPlus && (
-            <ThemedView style={styles.section}>
-              <ThemedText type="smallBold">Plus features</ThemedText>
-              <Pressable
-                style={({ pressed }) => [pressed && styles.pressed]}
-                onPress={() => router.push('/ambience-picker')}>
-                <ThemedView type="backgroundElement" style={styles.plusShortcut}>
-                  <View style={styles.plusShortcutIcon}>
-                    <MusicNoteIcon size={32} />
-                  </View>
-                  <ThemedView style={styles.plusShortcutText}>
-                    <ThemedText type="smallBold">Ambience Sounds</ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      Set your focus atmosphere
-                    </ThemedText>
-                  </ThemedView>
-                  <ThemedText type="small" style={styles.arrowLink}>→</ThemedText>
-                </ThemedView>
-              </Pressable>
-            </ThemedView>
-          )}
-
-          {/* ── Plus placeholder cards (non-Plus users) ──────────────────── */}
-          {!isPlus && (
-            <ThemedView style={styles.section}>
-              <ThemedText type="smallBold">Unlock more</ThemedText>
-              <PlusGateCard
-                icon={<ChartIcon size={30} />}
-                title="Advanced Analytics"
-                description="Daily trends, mood-study correlation charts, and deep habit insights."
-              />
-              <PlusGateCard
-                icon={<BakeryCalendarEmoji size={30} />}
-                title="Exam Planner+"
-                description="Unlimited exam countdowns, smart study schedule suggestions, and deadline alerts."
-              />
-              <PlusGateCard
-                icon={<MusicNoteIcon size={30} />}
-                title="Ambience Sounds"
-                description="Lo-fi beats, rain sounds, and focus music to play during study sessions."
-              />
             </ThemedView>
           )}
 
@@ -479,10 +408,13 @@ export default function ProgressScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BakeryColors.frosting },
+  // Keep the whole scroll above the floating menu bar so it stays fully visible
+  // and content never scrolls underneath it.
+  scrollBox: { flex: 1, marginBottom: BottomTabClearance },
   safeArea: {
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.four,
-    paddingBottom: BottomTabInset + Spacing.four,
+    paddingBottom: Spacing.four,
     maxWidth: MaxContentWidth,
     width: '100%',
     alignSelf: 'center',

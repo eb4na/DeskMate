@@ -15,21 +15,26 @@ import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import type { TaskPriority, TaskStatus } from '@/context/app-context';
 import { cancelTaskNotification, scheduleTaskNotification } from '@/lib/notifications';
+import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, MaxContentWidth, Spacing } from '@/constants/theme';
 
-const PRIORITY_OPTIONS: { value: TaskPriority; label: string; color: string }[] = [
-  { value: 'low', label: 'Low', color: '#CDBFAC' },
-  { value: 'medium', label: 'Medium', color: '#F2B33C' },
-  { value: 'high', label: 'High', color: '#E0584A' },
+const PRIORITY_OPTIONS: { value: TaskPriority; labelKey: string; color: string }[] = [
+  { value: 'low', labelKey: 'addTask.prioLow', color: '#CDBFAC' },
+  { value: 'medium', labelKey: 'addTask.prioMedium', color: '#F2B33C' },
+  { value: 'high', labelKey: 'addTask.prioHigh', color: '#E0584A' },
 ];
 
-const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
-  { value: 'not_started', label: 'Not started' },
-  { value: 'in_progress', label: 'In progress' },
-  { value: 'done', label: 'Done' },
+const STATUS_OPTIONS: { value: TaskStatus; labelKey: string }[] = [
+  { value: 'not_started', labelKey: 'addTask.statusNotStarted' },
+  { value: 'in_progress', labelKey: 'addTask.statusInProgress' },
+  { value: 'done', labelKey: 'addTask.statusDone' },
 ];
+
+// Reminder fires this many minutes before the task's due time.
+const REMINDER_OFFSETS = [5, 15, 30];
 
 export default function AddTaskScreen() {
+  const { t } = useTranslation();
   const { taskId, date } = useLocalSearchParams<{ taskId?: string; date?: string }>();
   const { tasks, subjects, addTask, updateTask, use24HourTime } = useApp();
   const scheme = useColorScheme();
@@ -47,17 +52,19 @@ export default function AddTaskScreen() {
   const [priority, setPriority] = useState<TaskPriority>(existingTask?.priority ?? 'medium');
   const [status, setStatus] = useState<TaskStatus>(existingTask?.status ?? 'not_started');
 
-  // Notification reminder
-  const existingNotify = existingTask?.notifyAt ? new Date(existingTask.notifyAt) : null;
-  const [notifyEnabled, setNotifyEnabled] = useState(!!existingTask?.notifyAt);
-  const [notifyDate, setNotifyDate] = useState(
-    existingNotify ? existingTask!.notifyAt!.slice(0, 10) : todayISO,
-  );
-  const [notifyTime, setNotifyTime] = useState(
-    existingNotify
-      ? `${String(existingNotify.getHours()).padStart(2, '0')}:${String(existingNotify.getMinutes()).padStart(2, '0')}`
-      : '09:00',
-  );
+  // Notification reminder — fires N minutes before the task's due time (or off).
+  const deriveOffset = (): number | null => {
+    if (!existingTask?.notifyAt) return null;
+    if (existingTask.dueDate && existingTask.dueTime) {
+      const [h, m] = existingTask.dueTime.split(':').map(Number);
+      const due = new Date(`${existingTask.dueDate}T00:00:00`);
+      due.setHours(h, m, 0, 0);
+      const off = Math.round((due.getTime() - new Date(existingTask.notifyAt).getTime()) / 60000);
+      if (REMINDER_OFFSETS.includes(off)) return off;
+    }
+    return 15;
+  };
+  const [notifyOffset, setNotifyOffset] = useState<number | null>(deriveOffset());
 
   useEffect(() => {
     if (editing && !existingTask) {
@@ -69,19 +76,19 @@ export default function AddTaskScreen() {
 
   const handleSave = async () => {
     if (!title.trim()) {
-      Alert.alert('Title required', 'Please enter a task title.');
+      Alert.alert(t('addTask.titleRequired'), t('addTask.enterTaskTitle'));
       return;
     }
     const dueDateValue = dueDateEnabled ? dueDate.trim() || todayISO : null;
     const dueTimeValue = dueDateEnabled ? dueTime : null;
 
-    // Build the notifyAt ISO from the picked date + time.
+    // Reminder fires `notifyOffset` minutes before the due date+time.
     let notifyAt: string | null = null;
-    if (notifyEnabled) {
-      const [h, m] = notifyTime.split(':').map(Number);
-      const dt = new Date(`${notifyDate}T00:00:00`);
-      dt.setHours(h, m, 0, 0);
-      notifyAt = dt.toISOString();
+    if (notifyOffset != null && dueDateValue && dueTimeValue) {
+      const [h, m] = dueTimeValue.split(':').map(Number);
+      const due = new Date(`${dueDateValue}T00:00:00`);
+      due.setHours(h, m, 0, 0);
+      notifyAt = new Date(due.getTime() - notifyOffset * 60000).toISOString();
     }
 
     // Cancel any previously scheduled reminder for this task.
@@ -121,17 +128,17 @@ export default function AddTaskScreen() {
       <ScrollView keyboardShouldPersistTaps="handled">
         <SafeAreaView style={styles.safeArea}>
           <ThemedText type="subtitle" style={styles.title}>
-            {editing ? 'Edit task' : 'Add task'}
+            {editing ? t('addTask.editTask') : t('addTask.addTaskTitle')}
           </ThemedText>
 
           {/* Title */}
           <ThemedView style={styles.fieldGroup}>
             <ThemedText type="smallBold" style={styles.label}>
-              Task title *
+              {t('addTask.taskTitleReq')}
             </ThemedText>
             <TextInput
               style={inputStyle}
-              placeholder="What do you need to do?"
+              placeholder={t('addTask.titlePlaceholder')}
               placeholderTextColor={isDark ? '#666' : '#AAA'}
               value={title}
               onChangeText={setTitle}
@@ -143,7 +150,7 @@ export default function AddTaskScreen() {
           {/* Subject */}
           <ThemedView style={styles.fieldGroup}>
             <ThemedText type="smallBold" style={styles.label}>
-              Subject (optional)
+              {t('addTask.subjectOptional')}
             </ThemedText>
             <ThemedView style={styles.chipRow}>
               <Pressable
@@ -152,7 +159,7 @@ export default function AddTaskScreen() {
                 <ThemedView
                   type={subjectId === null ? 'backgroundSelected' : 'backgroundElement'}
                   style={styles.chip}>
-                  <ThemedText type="small">None</ThemedText>
+                  <ThemedText type="small">{t('addTask.none')}</ThemedText>
                 </ThemedView>
               </Pressable>
               {activeSubjects.map((s) => (
@@ -173,7 +180,7 @@ export default function AddTaskScreen() {
                 style={({ pressed }) => [pressed && styles.pressed]}>
                 <ThemedView type="backgroundElement" style={[styles.chip, styles.addSubjectChip]}>
                   <ThemedText type="smallBold" style={styles.addSubjectChipText}>
-                    + Add subject
+                    {t('addTask.addSubject')}
                   </ThemedText>
                 </ThemedView>
               </Pressable>
@@ -183,7 +190,7 @@ export default function AddTaskScreen() {
           {/* Priority */}
           <ThemedView style={styles.fieldGroup}>
             <ThemedText type="smallBold" style={styles.label}>
-              Priority
+              {t('addTask.priority')}
             </ThemedText>
             <ThemedView style={styles.chipRow}>
               {PRIORITY_OPTIONS.map((opt) => (
@@ -195,7 +202,7 @@ export default function AddTaskScreen() {
                     type={priority === opt.value ? 'backgroundSelected' : 'backgroundElement'}
                     style={styles.chip}>
                     <View style={[styles.priorityDot, { backgroundColor: opt.color }]} />
-                    <ThemedText type="small">{opt.label}</ThemedText>
+                    <ThemedText type="small">{t(opt.labelKey)}</ThemedText>
                   </ThemedView>
                 </Pressable>
               ))}
@@ -206,7 +213,7 @@ export default function AddTaskScreen() {
           {editing && (
             <ThemedView style={styles.fieldGroup}>
               <ThemedText type="smallBold" style={styles.label}>
-                Status
+                {t('addTask.status')}
               </ThemedText>
               <ThemedView style={styles.chipRow}>
                 {STATUS_OPTIONS.map((opt) => (
@@ -217,7 +224,7 @@ export default function AddTaskScreen() {
                     <ThemedView
                       type={status === opt.value ? 'backgroundSelected' : 'backgroundElement'}
                       style={styles.chip}>
-                      <ThemedText type="small">{opt.label}</ThemedText>
+                      <ThemedText type="small">{t(opt.labelKey)}</ThemedText>
                     </ThemedView>
                   </Pressable>
                 ))}
@@ -228,7 +235,7 @@ export default function AddTaskScreen() {
           {/* Due date */}
           <ThemedView style={styles.fieldGroup}>
             <ThemedText type="smallBold" style={styles.label}>
-              Due date (optional)
+              {t('addTask.dueDateOptional')}
             </ThemedText>
             <ThemedView style={styles.chipRow}>
               <Pressable
@@ -237,7 +244,7 @@ export default function AddTaskScreen() {
                 <ThemedView
                   type={dueDateEnabled ? 'backgroundSelected' : 'backgroundElement'}
                   style={styles.chip}>
-                  <ThemedText type="small">Pick date</ThemedText>
+                  <ThemedText type="small">{t('addTask.pickDate')}</ThemedText>
                 </ThemedView>
               </Pressable>
               <Pressable
@@ -246,7 +253,7 @@ export default function AddTaskScreen() {
                 <ThemedView
                   type={!dueDateEnabled ? 'backgroundSelected' : 'backgroundElement'}
                   style={styles.chip}>
-                  <ThemedText type="small">No due date</ThemedText>
+                  <ThemedText type="small">{t('addTask.noDueDate')}</ThemedText>
                 </ThemedView>
               </Pressable>
             </ThemedView>
@@ -258,35 +265,37 @@ export default function AddTaskScreen() {
             ) : (
               <ThemedView type="backgroundElement" style={styles.dateHintCard}>
                 <ThemedText type="small" themeColor="textSecondary">
-                  No due date selected.
+                  {t('addTask.noDueDateSelected')}
                 </ThemedText>
               </ThemedView>
             )}
           </ThemedView>
 
-          {/* Reminder notification */}
+          {/* Reminder notification — N minutes before the due time */}
           <ThemedView style={styles.fieldGroup}>
             <ThemedText type="smallBold" style={styles.label}>
-              Reminder (optional)
+              {t('addTask.reminderOptional')}
             </ThemedText>
-            <ThemedView style={styles.chipRow}>
-              <Pressable onPress={() => setNotifyEnabled(true)} style={({ pressed }) => [pressed && styles.pressed]}>
-                <ThemedView type={notifyEnabled ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
-                  <BakeryBellEmoji size={14} />
-                  <ThemedText type="small">Notify me</ThemedText>
-                </ThemedView>
-              </Pressable>
-              <Pressable onPress={() => setNotifyEnabled(false)} style={({ pressed }) => [pressed && styles.pressed]}>
-                <ThemedView type={!notifyEnabled ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
-                  <ThemedText type="small">No reminder</ThemedText>
-                </ThemedView>
-              </Pressable>
-            </ThemedView>
-            {notifyEnabled && (
-              <>
-                <DateWheelPicker value={notifyDate} onChange={setNotifyDate} />
-                <TimeWheelPicker value={notifyTime} onChange={setNotifyTime} use24Hour={use24HourTime} />
-              </>
+            {dueDateEnabled ? (
+              <ThemedView style={styles.chipRow}>
+                <Pressable onPress={() => setNotifyOffset(null)} style={({ pressed }) => [pressed && styles.pressed]}>
+                  <ThemedView type={notifyOffset == null ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
+                    <ThemedText type="small">{t('addTask.noReminder')}</ThemedText>
+                  </ThemedView>
+                </Pressable>
+                {REMINDER_OFFSETS.map((off) => (
+                  <Pressable key={off} onPress={() => setNotifyOffset(off)} style={({ pressed }) => [pressed && styles.pressed]}>
+                    <ThemedView type={notifyOffset === off ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
+                      <BakeryBellEmoji size={14} />
+                      <ThemedText type="small">{off} min before</ThemedText>
+                    </ThemedView>
+                  </Pressable>
+                ))}
+              </ThemedView>
+            ) : (
+              <ThemedText type="small" themeColor="textSecondary">
+                Turn on a due date & time to add a reminder.
+              </ThemedText>
             )}
           </ThemedView>
 
@@ -295,12 +304,12 @@ export default function AddTaskScreen() {
             style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
             onPress={handleSave}>
             <ThemedText type="smallBold" style={styles.saveBtnText}>
-              {editing ? 'Save changes' : 'Add task'}
+              {editing ? t('addTask.saveChanges') : t('addTask.addTaskTitle')}
             </ThemedText>
           </Pressable>
 
           <Pressable onPress={() => router.back()} style={styles.cancelBtn}>
-            <ThemedText type="linkPrimary">Cancel</ThemedText>
+            <ThemedText type="linkPrimary">{t('common.cancel')}</ThemedText>
           </Pressable>
         </SafeAreaView>
       </ScrollView>

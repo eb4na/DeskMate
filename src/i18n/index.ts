@@ -1,5 +1,6 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import { NativeModules, Platform } from 'react-native';
 
 import en from './en.json';
 import zh from './zh.json';
@@ -19,6 +20,34 @@ export const LANGUAGES: { code: SupportedLanguage; flag: string; native: string;
   { code: 'fr', flag: '🇫🇷', native: 'Français', english: 'French' },
 ];
 
+// Read the device's preferred locale. Hermes' `Intl` reflects the OS locale on
+// both iOS and Android; native modules are a fallback if `Intl` is unavailable.
+function rawDeviceLocale(): string {
+  try {
+    const intlLocale = Intl?.DateTimeFormat?.().resolvedOptions?.().locale;
+    if (intlLocale) return intlLocale;
+  } catch {
+    // ignore — fall through to native modules
+  }
+  try {
+    if (Platform.OS === 'ios') {
+      const settings = NativeModules.SettingsManager?.settings;
+      return settings?.AppleLocale || settings?.AppleLanguages?.[0] || 'en';
+    }
+    return NativeModules.I18nManager?.localeIdentifier || 'en';
+  } catch {
+    return 'en';
+  }
+}
+
+// Map the device locale (e.g. "ja-JP", "zh-Hans-CN") to one of our supported
+// languages, falling back to English when the device language isn't supported.
+export function detectDeviceLanguage(): SupportedLanguage {
+  const base = rawDeviceLocale().toLowerCase().replace(/_/g, '-').split('-')[0];
+  const codes = LANGUAGES.map((l) => l.code) as string[];
+  return (codes.includes(base) ? base : 'en') as SupportedLanguage;
+}
+
 i18n
   .use(initReactI18next)
   .init({
@@ -30,7 +59,7 @@ i18n
       es: { translation: es },
       fr: { translation: fr },
     },
-    lng: 'en',
+    lng: detectDeviceLanguage(),
     fallbackLng: 'en',
     interpolation: { escapeValue: false },
     compatibilityJSON: 'v4',

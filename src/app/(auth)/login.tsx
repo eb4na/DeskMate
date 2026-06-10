@@ -16,9 +16,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BakeryColors, BakeryRadii, BakeryShadow, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
 import { supabase } from '@/lib/supabase';
-import { useTranslation } from '@/i18n';
+import { LANGUAGES, type SupportedLanguage, useTranslation } from '@/i18n';
 
 const LOGIN_BG = require('@/assets/images/auth/login-bg.png');
 
@@ -26,6 +27,14 @@ export default function LoginScreen() {
   const { email: emailParam, notice } = useLocalSearchParams<{ email?: string; notice?: string }>();
   const { continueAsGuest } = useAuth();
   const { t } = useTranslation();
+  const { language, setLanguage, markLanguageSelected } = useApp();
+
+  // Choosing a language here applies it live and counts as the user's choice, so
+  // the first-launch language prompt won't appear again after sign-in.
+  const handlePickLanguage = (code: SupportedLanguage) => {
+    setLanguage(code);
+    markLanguageSelected();
+  };
   const [email, setEmail] = useState(typeof emailParam === 'string' ? emailParam : '');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -47,7 +56,7 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail || !password) {
-      setErrorMessage('Enter your email and password to continue.');
+      setErrorMessage(t('errors.enterEmailPassword'));
       return;
     }
 
@@ -113,10 +122,29 @@ export default function LoginScreen() {
               <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
                 {t('auth.tagline')} {t('auth.guestNote')}
               </ThemedText>
+
+              <ThemedView style={styles.langRow}>
+                {LANGUAGES.map((lang) => {
+                  const isActive = language === lang.code;
+                  return (
+                    <Pressable
+                      key={lang.code}
+                      onPress={() => handlePickLanguage(lang.code)}
+                      style={[styles.langChip, isActive && styles.langChipActive]}>
+                      <ThemedText style={styles.langChipFlag}>{lang.flag}</ThemedText>
+                      <ThemedText
+                        type="smallBold"
+                        style={[styles.langChipText, isActive && styles.langChipTextActive]}>
+                        {lang.native}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </ThemedView>
             </ThemedView>
 
             <ThemedView type="backgroundElement" style={styles.card}>
-              <ThemedText type="smallBold">Email</ThemedText>
+              <ThemedText type="smallBold">{t('auth.email')}</ThemedText>
               <TextInput
                 style={inputStyle}
                 value={email}
@@ -125,19 +153,19 @@ export default function LoginScreen() {
                 autoCorrect={false}
                 keyboardType="email-address"
                 textContentType="emailAddress"
-                placeholder="you@example.com"
+                placeholder={t('auth.emailPlaceholder')}
                 placeholderTextColor={colors.textSecondary}
                 returnKeyType="next"
               />
 
-              <ThemedText type="smallBold">Password</ThemedText>
+              <ThemedText type="smallBold">{t('auth.password')}</ThemedText>
               <TextInput
                 style={inputStyle}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
                 textContentType="password"
-                placeholder="Enter your password"
+                placeholder={t('auth.passwordPlaceholder')}
                 placeholderTextColor={colors.textSecondary}
                 returnKeyType="done"
                 onSubmitEditing={handleLogin}
@@ -163,7 +191,7 @@ export default function LoginScreen() {
                 onPress={handleLogin}
                 disabled={submitting}>
                 <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                  {submitting ? 'Signing in...' : 'Sign In'}
+                  {submitting ? t('auth.signingIn') : t('auth.signIn')}
                 </ThemedText>
               </Pressable>
 
@@ -171,23 +199,23 @@ export default function LoginScreen() {
                 style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
                 onPress={handleGuest}>
                 <ThemedText type="smallBold" style={styles.secondaryButtonText}>
-                  Continue as guest
+                  {t('auth.continueAsGuest')}
                 </ThemedText>
               </Pressable>
 
               <ThemedText type="small" themeColor="textSecondary" style={styles.guestNote}>
-                Guest mode keeps your progress on this device so you can start studying right away.
+                {t('auth.guestModeNote')}
               </ThemedText>
 
               <ThemedView style={styles.supportLinks}>
                 <Pressable onPress={() => router.push('/forgot-password')}>
                   <ThemedText type="smallBold" style={styles.linkText}>
-                    Forgot password?
+                    {t('auth.forgotPassword')}
                   </ThemedText>
                 </Pressable>
                 <Pressable onPress={() => router.push('/resend-confirmation')}>
                   <ThemedText type="smallBold" style={styles.linkText}>
-                    Resend verification
+                    {t('auth.resendVerification')}
                   </ThemedText>
                 </Pressable>
               </ThemedView>
@@ -195,10 +223,10 @@ export default function LoginScreen() {
 
             <Pressable onPress={() => router.push('/signup')} style={styles.linkRow}>
               <ThemedText type="small" themeColor="textSecondary">
-                Need an account?
+                {t('auth.needAccount')}
               </ThemedText>
               <ThemedText type="smallBold" style={styles.linkText}>
-                Create one
+                {t('auth.createOne')}
               </ThemedText>
             </Pressable>
           </SafeAreaView>
@@ -223,6 +251,32 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   hero: { gap: Spacing.two, backgroundColor: 'transparent' },
+  langRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: Spacing.one,
+    backgroundColor: 'transparent',
+    marginTop: Spacing.one,
+  },
+  langChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 6,
+    borderRadius: BakeryRadii.chip,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.border,
+    backgroundColor: BakeryColors.glass,
+  },
+  langChipActive: {
+    borderColor: BakeryColors.honey,
+    backgroundColor: BakeryColors.cream,
+  },
+  langChipFlag: { fontSize: 14 },
+  langChipText: { fontSize: 12, color: BakeryColors.mocha },
+  langChipTextActive: { color: BakeryColors.cocoaDark },
   heroEmoji: { textAlign: 'center', fontSize: 48, lineHeight: 56 },
   title: { textAlign: 'center' },
   subtitle: { textAlign: 'center', lineHeight: 20 },

@@ -21,6 +21,7 @@ import { DateWheelPicker } from '@/components/date-wheel-picker';
 import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
 import { uploadProfile } from '@/lib/profile-sync';
+import i18n, { useTranslation } from '@/i18n';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import {
   BUN_SKINS,
@@ -51,10 +52,11 @@ function formatBirthday(iso: string): string {
   if (!iso) return '—';
   const d = new Date(`${iso}T00:00:00`);
   if (isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  return d.toLocaleDateString(i18n.language || 'en-US', { month: 'long', day: 'numeric' });
 }
 
 export default function ProfileScreen() {
+  const { t } = useTranslation();
   const {
     profileDisplayName,
     profileDescription,
@@ -81,7 +83,7 @@ export default function ProfileScreen() {
   // Sync this card to the cloud (debounced) so friends see the real character.
   useEffect(() => {
     if (!user?.id || !friendCode) return;
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       uploadProfile(user.id, {
         friendCode,
         displayName: profileDisplayName,
@@ -95,7 +97,7 @@ export default function ProfileScreen() {
         totalMinutes,
       });
     }, 700);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [
     user?.id,
     friendCode,
@@ -140,18 +142,18 @@ export default function ProfileScreen() {
   const hours = Math.floor(totalMinutes / 60);
   const mins = totalMinutes % 60;
   const hoursLabel = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-  const name = profileDisplayName.trim() || 'Study Buddy';
+  const name = profileDisplayName.trim() || t('profileCard.studyBuddy');
 
   const shareCard = async () => {
     try {
       const uri = await captureRef(cardRef, { format: 'png', quality: 1 });
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share your card' });
+        await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: t('profileCard.shareDialogTitle') });
       } else {
         await Share.share({ url: uri });
       }
     } catch {
-      Alert.alert('Share', "Couldn't capture the card. If you just added sharing, the app needs a rebuild first.");
+      Alert.alert(t('profileCard.shareFailTitle'), t('profileCard.shareFailMsg'));
     }
   };
 
@@ -159,7 +161,7 @@ export default function ProfileScreen() {
     <View style={[styles.container, { backgroundColor: P.cream }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <SafeAreaView style={styles.safeArea}>
-          <Text style={styles.screenTitle}>My Card</Text>
+          <Text style={styles.screenTitle}>{t('profileCard.myCard')}</Text>
 
           {/* ── The ID card (captured for sharing) ───────────────────────── */}
           <View ref={cardRef} collapsable={false} style={styles.card}>
@@ -177,22 +179,22 @@ export default function ProfileScreen() {
 
                 <View style={styles.statRow}>
                   <BakeryFlameEmoji size={16} />
-                  <Text style={styles.statLabel}>Current streak</Text>
+                  <Text style={styles.statLabel}>{t('profileCard.currentStreak')}</Text>
                   <Text style={styles.statValue}>{streak.currentStreak}d</Text>
                 </View>
                 <View style={styles.statRow}>
                   <BakeryCakeEmoji size={16} />
-                  <Text style={styles.statLabel}>Best streak</Text>
+                  <Text style={styles.statLabel}>{t('profileCard.bestStreak')}</Text>
                   <Text style={styles.statValue}>{streak.longestStreak}d</Text>
                 </View>
                 <View style={styles.statRow}>
                   <BakeryBellEmoji size={16} />
-                  <Text style={styles.statLabel}>Studied</Text>
+                  <Text style={styles.statLabel}>{t('profileCard.studied')}</Text>
                   <Text style={styles.statValue}>{hoursLabel}</Text>
                 </View>
                 <View style={styles.statRow}>
                   <Text style={styles.statEmojiFallback}>🎂</Text>
-                  <Text style={styles.statLabel}>Birthday</Text>
+                  <Text style={styles.statLabel}>{t('profileCard.birthday')}</Text>
                   <Text style={styles.statValue}>{formatBirthday(profileBirthday)}</Text>
                 </View>
 
@@ -204,38 +206,38 @@ export default function ProfileScreen() {
 
             {/* Bottom: friend code */}
             <View style={styles.codeStrip}>
-              <Text style={styles.codeStripLabel}>FRIEND CODE</Text>
+              <Text style={styles.codeStripLabel}>{t('friendCard.friendCodeLabel')}</Text>
               <Text style={styles.codeStripValue}>{friendCode}</Text>
             </View>
           </View>
 
           {/* Share */}
           <Pressable style={({ pressed }) => [styles.shareBtn, pressed && styles.pressed]} onPress={shareCard}>
-            <Text style={styles.shareBtnText}>Share my card</Text>
+            <Text style={styles.shareBtnText}>{t('profileCard.shareMyCard')}</Text>
           </Pressable>
 
           {/* ── Editor ────────────────────────────────────────────────────── */}
-          <Text style={styles.editTitle}>Edit profile</Text>
+          <Text style={styles.editTitle}>{t('profileCard.editProfile')}</Text>
 
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Display name</Text>
+            <Text style={styles.fieldLabel}>{t('profileCard.displayName')}</Text>
             <TextInput
               style={styles.input}
               value={profileDisplayName}
               onChangeText={(v) => updateProfile({ displayName: v })}
-              placeholder="Your name"
+              placeholder={t('profileCard.yourName')}
               placeholderTextColor={P.muted}
               maxLength={20}
             />
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Description</Text>
+            <Text style={styles.fieldLabel}>{t('profileCard.description')}</Text>
             <TextInput
               style={[styles.input, styles.inputMultiline]}
               value={profileDescription}
               onChangeText={(v) => updateProfile({ description: v })}
-              placeholder="Say something about you…"
+              placeholder={t('profileCard.descPlaceholder')}
               placeholderTextColor={P.muted}
               multiline
               maxLength={120}
@@ -243,7 +245,7 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Birthday</Text>
+            <Text style={styles.fieldLabel}>{t('profileCard.birthday')}</Text>
             {editingBirthday ? (
               <DateWheelPicker
                 value={profileBirthday || '2008-01-01'}
@@ -254,13 +256,13 @@ export default function ProfileScreen() {
               <Pressable
                 style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
                 onPress={() => setEditingBirthday(true)}>
-                <Text style={styles.addBtnText}>+ Add birthday</Text>
+                <Text style={styles.addBtnText}>{t('profileCard.addBirthday')}</Text>
               </Pressable>
             )}
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Character</Text>
+            <Text style={styles.fieldLabel}>{t('profileCard.character')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bgRow}>
               {characters.map((c) => {
                 const selected = c.id === selectedCharId;
@@ -283,7 +285,7 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Outfit</Text>
+            <Text style={styles.fieldLabel}>{t('profileCard.outfit')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bgRow}>
               {ownedSkins.map((s) => {
                 const selected = s.id === skinId;
@@ -301,11 +303,11 @@ export default function ProfileScreen() {
                 );
               })}
             </ScrollView>
-            <Text style={styles.bgHint}>Only outfits you own show here. Get more in the Shop.</Text>
+            <Text style={styles.bgHint}>{t('profileCard.ownedOutfitsHint')}</Text>
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Card background</Text>
+            <Text style={styles.fieldLabel}>{t('profileCard.cardBackground')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bgRow}>
               {ROOM_PAIRS.map((r) => {
                 const selected = r.id === profileBackgroundId;
@@ -323,7 +325,7 @@ export default function ProfileScreen() {
           </View>
 
           <Pressable style={({ pressed }) => [styles.doneBtn, pressed && styles.pressed]} onPress={() => router.back()}>
-            <Text style={styles.doneBtnText}>Done</Text>
+            <Text style={styles.doneBtnText}>{t('common.done')}</Text>
           </Pressable>
         </SafeAreaView>
       </ScrollView>

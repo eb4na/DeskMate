@@ -26,7 +26,7 @@ import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { getAmbienceName } from '@/app/ambience-picker';
-import { LANGUAGES } from '@/i18n';
+import { LANGUAGES, useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, MaxContentWidth, Spacing } from '@/constants/theme';
 
 type RowProps = {
@@ -71,6 +71,7 @@ function SettingRow({ icon, label, value, onPress, badge }: RowProps) {
 }
 
 export default function SettingsScreen() {
+  const { t } = useTranslation();
   const { user, isGuest, signOut } = useAuth();
   const {
     coins,
@@ -94,21 +95,19 @@ export default function SettingsScreen() {
 
   const handleSignOut = () => {
     Alert.alert(
-      isGuest ? 'Leave guest mode?' : 'Sign out?',
-      isGuest
-        ? 'You can come back to the login screen anytime.'
-        : 'You can sign back in anytime with the same account.',
+      isGuest ? t('settings.leaveGuestQ') : t('settings.signOutQ'),
+      isGuest ? t('settings.leaveGuestMsg') : t('settings.signOutMsg'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: isGuest ? 'Leave guest mode' : 'Sign out',
+          text: isGuest ? t('settings.leaveGuestMode') : t('settings.signOut'),
           style: 'destructive',
           onPress: async () => {
             try {
               await signOut();
               router.replace('/login');
             } catch (error) {
-              Alert.alert('Sign-out failed', error instanceof Error ? error.message : 'Please try again.');
+              Alert.alert(t('settings.signOutFailed'), error instanceof Error ? error.message : t('settings.tryAgain'));
             }
           },
         },
@@ -121,23 +120,23 @@ export default function SettingsScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.header}>
-            <ThemedText type="subtitle">Settings</ThemedText>
+            <ThemedText type="subtitle">{t('settings.title')}</ThemedText>
             <Pressable onPress={() => router.back()} style={styles.closeBtn}>
               <ThemedText type="smallBold" style={styles.closeText}>
-                Done
+                {t('common.done')}
               </ThemedText>
             </Pressable>
           </View>
 
           {/* Account */}
           <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-            ACCOUNT
+            {t('settings.secAccount')}
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
             <SettingRow
               icon={<BakerHatIcon size={32} />}
-              label={isGuest ? 'Guest mode' : 'Signed in'}
-              value={isGuest ? 'Progress saved on this device' : user?.email ?? 'Account'}
+              label={isGuest ? t('settings.guestMode') : t('settings.signedIn')}
+              value={isGuest ? t('settings.guestProgressNote') : user?.email ?? t('settings.accountFallback')}
             />
             <View style={styles.divider} />
             <Pressable
@@ -148,7 +147,7 @@ export default function SettingsScreen() {
               </View>
               <View style={styles.rowBody}>
                 <ThemedText type="smallBold" style={styles.dangerText}>
-                  {isGuest ? 'Leave guest mode' : 'Sign out'}
+                  {isGuest ? t('settings.leaveGuestMode') : t('settings.signOut')}
                 </ThemedText>
               </View>
             </Pressable>
@@ -156,13 +155,13 @@ export default function SettingsScreen() {
 
           {/* Membership */}
           <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-            MEMBERSHIP
+            {t('settings.secMembership')}
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
             <SettingRow
               icon={<SparkleStarIcon size={32} />}
-              label="DeskMate Plus"
-              value={isPlus ? 'Active — all features unlocked' : 'Free plan'}
+              label={t('settings.plus')}
+              value={isPlus ? t('settings.plusActive') : t('settings.freePlan')}
               badge={isPlus ? 'PLUS' : undefined}
               onPress={() => router.push('/plus-upgrade')}
             />
@@ -172,9 +171,9 @@ export default function SettingsScreen() {
                 <MeasuringCupIcon size={32} />
               </View>
               <View style={styles.rowBody}>
-                <ThemedText type="smallBold">Plus (test toggle)</ThemedText>
+                <ThemedText type="smallBold">{t('settings.plusTestToggle')}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  Mock unlock for testing AI generation
+                  {t('settings.plusTestNote')}
                 </ThemedText>
               </View>
               <Switch
@@ -188,42 +187,42 @@ export default function SettingsScreen() {
 
           {/* Balances */}
           <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-            BALANCES
+            {t('settings.secBalances')}
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
-            <SettingRow icon={<CoinIcon size={40} />} label="Focus Coins" value={`${coins} coins`} />
+            <SettingRow icon={<CoinIcon size={40} />} label={t('settings.focusCoins')} value={t('settings.coinsValue', { count: coins })} />
           </ThemedView>
 
           {/* Focus & study */}
           <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-            FOCUS & STUDY
+            {t('settings.secFocusStudy')}
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
             <SettingRow
               icon={<KitchenTimerIcon size={32} />}
-              label="Custom timer & presets"
-              value={isPlus ? 'Set your own session lengths' : 'Plus feature'}
+              label={t('settings.customTimer')}
+              value={isPlus ? t('settings.customTimerOn') : t('settings.plusFeature')}
               onPress={() => router.push('/custom-timer')}
             />
             <View style={styles.divider} />
             <SettingRow
               icon={<RecipeBooksIcon size={32} />}
-              label="Manage subjects"
-              value="Add, rename, reorder subjects"
+              label={t('settings.manageSubjects')}
+              value={t('settings.manageSubjectsNote')}
               onPress={() => router.push('/manage-subjects')}
             />
             <View style={styles.divider} />
             <SettingRow
               icon={<MusicNoteIcon size={32} />}
-              label="Ambience sounds"
-              value={ambienceId ? getAmbienceName(ambienceId) : isPlus ? 'None selected' : 'Plus feature'}
+              label={t('settings.ambienceSounds')}
+              value={ambienceId ? getAmbienceName(ambienceId) : isPlus ? t('settings.noneSelected') : t('settings.plusFeature')}
               onPress={() => router.push('/ambience-picker')}
             />
           </ThemedView>
 
           {/* Reminders */}
           <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-            REMINDERS
+            {t('settings.secReminders')}
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
             <View style={styles.row}>
@@ -231,9 +230,9 @@ export default function SettingsScreen() {
                 <BellIcon size={32} />
               </View>
               <View style={styles.rowBody}>
-                <ThemedText type="smallBold">Daily study reminder</ThemedText>
+                <ThemedText type="smallBold">{t('settings.dailyStudyReminder')}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {reminderEnabled ? `On · ${reminderTime}` : 'Off'}
+                  {reminderEnabled ? t('settings.reminderOn', { time: reminderTime }) : t('settings.off')}
                 </ThemedText>
               </View>
               <Switch
@@ -246,8 +245,8 @@ export default function SettingsScreen() {
             <View style={styles.divider} />
             <SettingRow
               icon={<GearIcon size={32} />}
-              label="Reminder settings"
-              value="Times, days, and extra reminders"
+              label={t('settings.reminderSettings')}
+              value={t('settings.reminderSettingsNote')}
               onPress={() => router.push('/reminder-settings')}
             />
             <View style={styles.divider} />
@@ -256,9 +255,9 @@ export default function SettingsScreen() {
                 <KitchenTimerIcon size={32} />
               </View>
               <View style={styles.rowBody}>
-                <ThemedText type="smallBold">24-hour time</ThemedText>
+                <ThemedText type="smallBold">{t('settings.hour24')}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {use24HourTime ? 'On · 14:30' : 'Off · 2:30 PM'}
+                  {use24HourTime ? t('settings.hour24On') : t('settings.hour24Off')}
                 </ThemedText>
               </View>
               <Switch
@@ -272,12 +271,12 @@ export default function SettingsScreen() {
 
           {/* Support & about */}
           <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-            ABOUT
+            {t('settings.secAbout')}
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
             <SettingRow
               icon={<BakeryGlobeEmoji size={30} />}
-              label="Language"
+              label={t('settings.language')}
               value={(() => {
                 const lang = LANGUAGES.find((l) => l.code === language);
                 return lang ? `${lang.flag} ${lang.native}` : 'English';
@@ -287,19 +286,19 @@ export default function SettingsScreen() {
             <View style={styles.divider} />
             <SettingRow
               icon={<ChartIcon size={32} />}
-              label="Progress & stats"
-              value="Streaks, weekly report, mood"
+              label={t('settings.progressStats')}
+              value={t('settings.progressStatsNote')}
               onPress={() => router.push('/progress')}
             />
             <View style={styles.divider} />
             <SettingRow
               icon={<ChatBubbleIcon size={32} />}
-              label="Send feedback"
-              value="Tell us what to improve"
+              label={t('settings.sendFeedback')}
+              value={t('settings.sendFeedbackNote')}
               onPress={() => Linking.openURL('mailto:hello@deskmate.app?subject=DeskMate%20Feedback')}
             />
             <View style={styles.divider} />
-            <SettingRow icon={<InfoIcon size={32} />} label="Version" value="DeskMate 1.0.0" />
+            <SettingRow icon={<InfoIcon size={32} />} label={t('settings.version')} value={t('settings.versionValue')} />
           </ThemedView>
 
           <View style={styles.footer} />

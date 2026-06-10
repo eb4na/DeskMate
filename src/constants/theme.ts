@@ -120,4 +120,7 @@ export const TabBarBowWidth = 114;
 export const TabBarBottomOffset = Platform.select({ ios: -16, android: -12 }) ?? -16;
 export const TabBarTotalHeight = TabBarHeight + TabBarBowHeight;
 export const BottomTabInset = TabBarTotalHeight + 6 + Math.abs(TabBarBottomOffset);
+// Clearance for tab screens: the floating menu bar's top sits ~144px from the
+// screen bottom, so reserve just above it (not the whole bar's tall lace area).
+export const BottomTabClearance = 152;
 export const MaxContentWidth = 800;

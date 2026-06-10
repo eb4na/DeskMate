@@ -7,6 +7,7 @@ import { CompanionAvatar } from '@/components/companion-avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { DEFAULT_PFP_FOCUS, type PfpFocus, useApp } from '@/context/app-context';
+import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, MaxContentWidth, Spacing } from '@/constants/theme';
 
 const PREVIEW = Math.min(Dimensions.get('window').width - 96, 280);
@@ -17,6 +18,7 @@ const PAN_LIMIT = 0.6;
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 export default function CompanionPfpScreen() {
+  const { t } = useTranslation();
   const { companionSlots, setCompanionPfp } = useApp();
   const params = useLocalSearchParams<{ slotId?: string }>();
   const slot = useMemo(
@@ -59,24 +61,24 @@ export default function CompanionPfpScreen() {
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} hitSlop={8}>
-            <ThemedText type="smallBold" style={styles.cancel}>Cancel</ThemedText>
+            <ThemedText type="smallBold" style={styles.cancel}>{t('common.cancel')}</ThemedText>
           </Pressable>
-          <ThemedText type="smallBold">Profile picture</ThemedText>
+          <ThemedText type="smallBold">{t('pfp.profilePicture')}</ThemedText>
           <Pressable onPress={handleSave} hitSlop={8}>
-            <ThemedText type="smallBold" style={styles.save}>Save</ThemedText>
+            <ThemedText type="smallBold" style={styles.save}>{t('common.save')}</ThemedText>
           </Pressable>
         </View>
 
         {!slot || !slot.imageUri ? (
           <View style={styles.center}>
             <ThemedText type="small" themeColor="textSecondary">
-              This companion has no image to crop yet.
+              {t('pfp.noImageYet')}
             </ThemedText>
           </View>
         ) : (
           <View style={styles.center}>
             <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-              Drag to position {slot.name}&apos;s face · use − / + to zoom
+              {t('pfp.dragHint', { name: slot.name })}
             </ThemedText>
 
             <View style={styles.previewWrap} {...pan.panHandlers}>
@@ -92,7 +94,7 @@ export default function CompanionPfpScreen() {
               <Pressable
                 onPress={() => setFocus(DEFAULT_PFP_FOCUS)}
                 style={({ pressed }) => [styles.resetBtn, pressed && styles.pressed]}>
-                <ThemedText type="small" style={styles.resetText}>Reset</ThemedText>
+                <ThemedText type="small" style={styles.resetText}>{t('pfp.reset')}</ThemedText>
               </Pressable>
               <Pressable onPress={() => zoom(0.1)} style={({ pressed }) => [styles.zoomBtn, pressed && styles.pressed]}>
                 <ThemedText style={styles.zoomText}>+</ThemedText>
@@ -100,7 +102,7 @@ export default function CompanionPfpScreen() {
             </View>
 
             <Pressable onPress={handleSave} style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}>
-              <ThemedText type="smallBold" style={styles.saveBtnText}>Save profile picture</ThemedText>
+              <ThemedText type="smallBold" style={styles.saveBtnText}>{t('pfp.saveProfilePicture')}</ThemedText>
             </Pressable>
           </View>
         )}

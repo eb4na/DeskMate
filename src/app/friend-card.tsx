@@ -13,6 +13,7 @@ import { useApp } from '@/context/app-context';
 import { getCompanionImage } from '@/lib/companion-utils';
 import { fetchProfileByCode } from '@/lib/profile-sync';
 import { ROOM_PAIRS } from '@/constants/room-data';
+import i18n, { useTranslation } from '@/i18n';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 const P = {
@@ -29,10 +30,11 @@ function formatBirthday(iso?: string): string {
   if (!iso) return '—';
   const d = new Date(`${iso}T00:00:00`);
   if (isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  return d.toLocaleDateString(i18n.language || 'en-US', { month: 'long', day: 'numeric' });
 }
 
 export default function FriendCardScreen() {
+  const { t } = useTranslation();
   const { code } = useLocalSearchParams<{ code: string }>();
   const { friends, setFriendProfile } = useApp();
   const friend = friends.find((f) => f.code === code);
@@ -60,7 +62,7 @@ export default function FriendCardScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
 
-  const name = friend?.displayName || friend?.name || `Friend ${code}`;
+  const name = friend?.displayName || friend?.name || t('friendCard.friendFallback', { code });
   const bgRoom = ROOM_PAIRS.find((r) => r.id === friend?.backgroundId) ?? ROOM_PAIRS[0];
   const figure = getCompanionImage(friend?.companionId, friend?.skinId);
   const totalMinutes = friend?.totalMinutes ?? 0;
@@ -71,7 +73,7 @@ export default function FriendCardScreen() {
     <View style={[styles.container, { backgroundColor: P.cream }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <SafeAreaView style={styles.safeArea}>
-          <Text style={styles.screenTitle}>{name}’s Card</Text>
+          <Text style={styles.screenTitle}>{t('friendCard.cardTitle', { name })}</Text>
 
           <View style={styles.card}>
             <View style={styles.cardInner}>
@@ -81,23 +83,23 @@ export default function FriendCardScreen() {
               </View>
               <View style={styles.infoPanel}>
                 <Text style={styles.name} numberOfLines={2}>{name}</Text>
-                <Row label="🔥 Current streak" value={`${friend?.currentStreak ?? 0}d`} />
-                <Row label="🏆 Best streak" value={`${friend?.longestStreak ?? 0}d`} />
-                <Row label="⏱ Studied" value={hoursLabel} />
-                <Row label="🎂 Birthday" value={formatBirthday(friend?.birthday)} />
+                <Row label={t('friendCard.currentStreak')} value={`${friend?.currentStreak ?? 0}d`} />
+                <Row label={t('friendCard.bestStreak')} value={`${friend?.longestStreak ?? 0}d`} />
+                <Row label={t('friendCard.studied')} value={hoursLabel} />
+                <Row label={t('friendCard.birthday')} value={formatBirthday(friend?.birthday)} />
                 {friend?.description ? (
                   <Text style={styles.desc} numberOfLines={3}>“{friend.description}”</Text>
                 ) : null}
               </View>
             </View>
             <View style={styles.codeStrip}>
-              <Text style={styles.codeStripLabel}>FRIEND CODE</Text>
+              <Text style={styles.codeStripLabel}>{t('friendCard.friendCodeLabel')}</Text>
               <Text style={styles.codeStripValue}>{code}</Text>
             </View>
           </View>
 
           <Pressable style={({ pressed }) => [styles.doneBtn, pressed && styles.pressed]} onPress={() => router.back()}>
-            <Text style={styles.doneBtnText}>Close</Text>
+            <Text style={styles.doneBtnText}>{t('common.close')}</Text>
           </Pressable>
         </SafeAreaView>
       </ScrollView>

@@ -16,12 +16,14 @@ import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/context/auth-context';
 import { BakeryColors, BakeryRadii, BakeryShadow, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
+import { useTranslation } from '@/i18n';
 
 type VerifyMode = 'login' | 'signup';
 
 export default function VerifyCodeScreen() {
   const { email, mode } = useLocalSearchParams<{ email?: string; mode?: VerifyMode }>();
   const { continueAsGuest } = useAuth();
+  const { t } = useTranslation();
   const [code, setCode] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -47,12 +49,12 @@ export default function VerifyCodeScreen() {
 
   const sendCode = async () => {
     if (!normalizedEmail) {
-      setErrorMessage('Missing email address. Go back and try again.');
+      setErrorMessage(t('errors.missingEmail'));
       return false;
     }
 
     if (verifyMode !== 'signup') {
-      setErrorMessage('Login uses your password now. Go back and sign in there.');
+      setErrorMessage(t('errors.loginUsesPassword'));
       return false;
     }
 
@@ -71,13 +73,13 @@ export default function VerifyCodeScreen() {
 
   const handleVerify = async () => {
     if (!normalizedEmail) {
-      setErrorMessage('Missing email address. Go back and try again.');
+      setErrorMessage(t('errors.missingEmail'));
       return;
     }
 
     const token = code.trim();
     if (!token) {
-      setErrorMessage('Enter the verification code from your email.');
+      setErrorMessage(t('errors.enterCode'));
       return;
     }
 
@@ -109,7 +111,7 @@ export default function VerifyCodeScreen() {
       }
     }
 
-    setSuccessMessage(session ? 'You are in. Opening DeskMate...' : 'Code verified.');
+    setSuccessMessage(session ? t('auth.verifiedOpening') : t('auth.codeVerified'));
     setSubmitting(false);
     router.replace('/');
   };
@@ -120,7 +122,7 @@ export default function VerifyCodeScreen() {
     setSuccessMessage('');
     const ok = await sendCode();
     if (ok) {
-      setSuccessMessage('A fresh code is on the way.');
+      setSuccessMessage(t('auth.freshCodeSent'));
     }
     setResending(false);
   };
@@ -140,15 +142,15 @@ export default function VerifyCodeScreen() {
             <ThemedView style={styles.hero}>
               <ThemedText style={styles.heroEmoji}>🧁</ThemedText>
               <ThemedText type="subtitle" style={styles.title}>
-                Verify your email
+                {t('auth.verifyEmail')}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
-                Enter the verification code sent to {normalizedEmail || 'your email'}.
+                {t('auth.verifySubtitle', { email: normalizedEmail || t('auth.yourEmail') })}
               </ThemedText>
             </ThemedView>
 
             <ThemedView type="backgroundElement" style={styles.card}>
-              <ThemedText type="smallBold">Verification code</ThemedText>
+              <ThemedText type="smallBold">{t('auth.verificationCode')}</ThemedText>
               <TextInput
                 style={inputStyle}
                 value={code}
@@ -156,7 +158,7 @@ export default function VerifyCodeScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="number-pad"
-                placeholder="123456"
+                placeholder={t('auth.codePlaceholder')}
                 placeholderTextColor={colors.textSecondary}
                 returnKeyType="done"
                 onSubmitEditing={handleVerify}
@@ -182,7 +184,7 @@ export default function VerifyCodeScreen() {
                 onPress={handleVerify}
                 disabled={submitting}>
                 <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                  {submitting ? 'Verifying...' : 'Verify code'}
+                  {submitting ? t('auth.verifying') : t('auth.verifyCodeBtn')}
                 </ThemedText>
               </Pressable>
 
@@ -191,7 +193,7 @@ export default function VerifyCodeScreen() {
                 onPress={handleResend}
                 disabled={resending}>
                 <ThemedText type="smallBold" style={styles.secondaryButtonText}>
-                  {resending ? 'Sending...' : 'Resend verification code'}
+                  {resending ? t('auth.sending') : t('auth.resendVerificationCode')}
                 </ThemedText>
               </Pressable>
             </ThemedView>
@@ -199,12 +201,12 @@ export default function VerifyCodeScreen() {
             <ThemedView style={styles.linkActions}>
               <Pressable onPress={() => router.back()} style={styles.linkRow}>
                 <ThemedText type="smallBold" style={styles.linkText}>
-                  Back
+                  {t('common.back')}
                 </ThemedText>
               </Pressable>
               <Pressable onPress={handleGuest} style={styles.linkRow}>
                 <ThemedText type="smallBold" style={styles.linkText}>
-                  Continue as guest
+                  {t('auth.continueAsGuest')}
                 </ThemedText>
               </Pressable>
             </ThemedView>

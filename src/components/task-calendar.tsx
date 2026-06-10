@@ -23,12 +23,13 @@ import {
 } from '@/components/bakery-emoji';
 import { useApp } from '@/context/app-context';
 import type { Task } from '@/context/app-context';
+import i18n from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
 const MAGNIFIER = require('@/assets/images/shop/magnifier.png');
 
 const C = BakeryColors;
-const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const weekdayLetters = () => [0, 1, 2, 3, 4, 5, 6].map((i) => i18n.t(`calendar.wd_${i}`));
 const SCREEN_PAD = Spacing.four;
 const CARD_PAD = 14;
 
@@ -44,16 +45,16 @@ function fromISO(iso: string) {
   return new Date(iso + 'T00:00:00');
 }
 function longLabel(iso: string) {
-  return fromISO(iso).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  return fromISO(iso).toLocaleDateString(i18n.language || 'en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 }
 function shortWeekday(iso: string) {
-  return fromISO(iso).toLocaleDateString('en-US', { weekday: 'short' });
+  return fromISO(iso).toLocaleDateString(i18n.language || 'en-US', { weekday: 'short' });
 }
 function formatTime(notifyAt: string | null, use24Hour: boolean) {
   if (!notifyAt) return null;
   const d = new Date(notifyAt);
   if (isNaN(d.getTime())) return null;
-  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: !use24Hour });
+  return d.toLocaleTimeString(i18n.language || 'en-US', { hour: 'numeric', minute: '2-digit', hour12: !use24Hour });
 }
 
 // ─── shared task preview card ────────────────────────────────────────────────
@@ -136,7 +137,7 @@ function CalendarMonthCard({
   const month = view.getMonth();
   const firstWeekday = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const monthLabel = view.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const monthLabel = view.toLocaleDateString(i18n.language || 'en-US', { month: 'long', year: 'numeric' });
 
   const subjectColor = (id: string | null) => (id ? subjects.find((s) => s.id === id)?.color : null) ?? C.jam;
 
@@ -170,7 +171,7 @@ function CalendarMonthCard({
       </View>
 
       <View style={styles.weekRow}>
-        {WEEKDAYS.map((w, i) => (
+        {weekdayLetters().map((w, i) => (
           <Text key={i} style={[styles.weekday, { width: cellW }]}>{w}</Text>
         ))}
       </View>
@@ -296,7 +297,7 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
               onClose();
               if (iso) router.push({ pathname: '/add-task', params: { date: iso } });
             }}>
-            <Text style={styles.modalAddText}>+ Add task for this day</Text>
+            <Text style={styles.modalAddText}>{i18n.t('calendar.addTaskForDay')}</Text>
           </Pressable>
         </View>
       </View>
@@ -333,7 +334,7 @@ function HorizontalPreview({ onClose }: { onClose: () => void }) {
         <Pressable onPress={onClose} hitSlop={10} style={styles.arrowBtn}>
           <Text style={styles.arrow}>‹</Text>
         </Pressable>
-        <Text style={styles.monthLabel}>Search & preview</Text>
+        <Text style={styles.monthLabel}>{i18n.t('calendar.searchPreview')}</Text>
         <View style={styles.arrowBtn} />
       </View>
 
@@ -341,7 +342,7 @@ function HorizontalPreview({ onClose }: { onClose: () => void }) {
         style={styles.searchInput}
         value={query}
         onChangeText={setQuery}
-        placeholder="Search tasks…"
+        placeholder={i18n.t('calendar.searchTasks')}
         placeholderTextColor={C.mocha}
         autoCapitalize="none"
       />
@@ -358,7 +359,7 @@ function HorizontalPreview({ onClose }: { onClose: () => void }) {
             ))}
           </View>
         ) : (
-          <Text style={styles.searchEmpty}>No tasks match “{query.trim()}”.</Text>
+          <Text style={styles.searchEmpty}>{i18n.t('calendar.noMatch', { query: query.trim() })}</Text>
         )
       ) : upcoming.length > 0 ? (
         // Horizontal upcoming day cards
@@ -370,7 +371,7 @@ function HorizontalPreview({ onClose }: { onClose: () => void }) {
             <View key={iso} style={styles.hCard}>
               <Text style={styles.hCardWeekday}>{shortWeekday(iso)}</Text>
               <Text style={styles.hCardDate}>
-                {fromISO(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                {fromISO(iso).toLocaleDateString(i18n.language || 'en-US', { month: 'short', day: 'numeric' })}
               </Text>
               <View style={styles.hCardTasks}>
                 {dayTasks.map((t) => (
@@ -381,7 +382,7 @@ function HorizontalPreview({ onClose }: { onClose: () => void }) {
           ))}
         </ScrollView>
       ) : (
-        <Text style={styles.searchEmpty}>No upcoming tasks. Add one to see it here. 🧁</Text>
+        <Text style={styles.searchEmpty}>{i18n.t('calendar.noUpcoming')}</Text>
       )}
     </View>
   );
@@ -401,8 +402,7 @@ export function TaskCalendar() {
     <View style={styles.root}>
       <View style={styles.titleRow}>
         <View style={styles.titleLeft}>
-          <BakeryCakeEmoji size={22} />
-          <Text style={styles.title}>Calendar</Text>
+          <Text style={styles.title}>{i18n.t('calendar.calendar')}</Text>
         </View>
         <Pressable
           style={({ pressed }) => [styles.searchBtn, searchMode && styles.searchBtnActive, pressed && styles.pressed]}

@@ -12,6 +12,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { AFTER_SESSION_MOODS, BREAK_LENGTHS, DAILY_EARN_CAP } from '@/constants/placeholder-data';
 import { getCompanionLine } from '@/constants/companion-lines';
+import { showLoadingScreen } from '@/lib/loading-signal';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
@@ -162,6 +163,8 @@ export default function SessionCompleteScreen() {
   };
 
   const goHome = () => {
+    // Re-show the loading screen as a transition back from studying.
+    showLoadingScreen();
     if (router.canDismiss()) {
       router.dismissAll();
       return;
@@ -254,7 +257,7 @@ export default function SessionCompleteScreen() {
                       )}
                     </View>
                     <Text style={[styles.moodLabel, isSelected && styles.moodLabelActive]} numberOfLines={1}>
-                      {opt.label}
+                      {t(`moods.${opt.value}`, { defaultValue: opt.label })}
                     </Text>
                   </Pressable>
                 );

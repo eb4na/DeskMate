@@ -6,16 +6,19 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { CoinIcon } from '@/components/coin-icon';
 import { StudyRoomView } from '@/components/study-room-view';
+import { useStudyRoom } from '@/lib/use-study-room';
 import { BakeryGearEmoji } from '@/components/bakery-emoji';
 import { CookieChatIcon } from '@/components/settings-icons';
 import { getReminderStyleEffect } from '@/constants/shop-effects';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
+import i18n, { useTranslation } from '@/i18n';
 import { coinsForMinutes } from '@/constants/placeholder-data';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { takePendingDragSession, setDragActive, type DragSessionData } from '@/lib/drag-session';
+import { showLoadingScreen } from '@/lib/loading-signal';
 import { getAmbienceEmoji, getAmbienceName } from '@/app/ambience-picker';
 import {
   BakeryColors,
@@ -43,7 +46,7 @@ function daysUntil(dateISO: string): number {
 function formatExamDate(dateISO: string): string {
   // Parse as local midnight (not UTC) so the displayed day doesn't shift back
   // a day in timezones behind UTC.
-  return new Date(`${dateISO}T00:00:00`).toLocaleDateString('en-US', {
+  return new Date(`${dateISO}T00:00:00`).toLocaleDateString(i18n.language || 'en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -72,7 +75,7 @@ function getExamTargetMs(dateISO: string, time?: string): number {
 /** Live countdown like "4d 03:21:45" (or "03:21:45" under a day). */
 function formatLiveCountdown(targetMs: number, nowMs: number): string {
   let diff = Math.floor((targetMs - nowMs) / 1000);
-  if (diff <= 0) return 'Past due';
+  if (diff <= 0) return i18n.t('home.pastDue');
   const days = Math.floor(diff / 86400);
   diff -= days * 86400;
   const h = Math.floor(diff / 3600);
@@ -155,18 +158,21 @@ function DraggableIngredient({
     onPanResponderGrant: () => {
       pan.setOffset({ x: (pan.x as any)._value, y: (pan.y as any)._value });
       pan.setValue({ x: 0, y: 0 });
-      Animated.spring(scale, { toValue: 1.2, useNativeDriver: true }).start();
+      // All animations here must share the JS driver, because `pan` is driven by
+      // Animated.event with useNativeDriver:false. Mixing native + JS on the same
+      // view promotes `pan` to native and crashes the spring-back on release.
+      Animated.spring(scale, { toValue: 1.2, useNativeDriver: false }).start();
     },
     onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
     onPanResponderRelease: (_, g) => {
       pan.flattenOffset();
-      Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start();
+      Animated.spring(scale, { toValue: 1, useNativeDriver: false }).start();
       const dist = Math.hypot(g.moveX - mixerCenterX, g.moveY - mixerCenterY);
       if (dist < 100) {
         dropped.current = true;
         Animated.parallel([
-          Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }),
-          Animated.spring(scale, { toValue: 0.5, useNativeDriver: true }),
+          Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: false }),
+          Animated.spring(scale, { toValue: 0.5, useNativeDriver: false }),
         ]).start(onDropped);
       } else {
         Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: false }).start();
@@ -186,6 +192,7 @@ function DraggableIngredient({
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const {
     coins,
     reminderEnabled,
@@ -208,6 +215,7 @@ export default function HomeScreen() {
     addMoodEntry,
     startActiveSession,
   } = useApp();
+  const studyRoom = useStudyRoom();
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [didHomeImageFail, setDidHomeImageFail] = useState(false);
   const handledCompletionId = useRef<string | null>(null);
@@ -258,7 +266,7 @@ export default function HomeScreen() {
               if (dragSession.moodValue && dragSession.moodLabel) {
                 addMoodEntry({ value: dragSession.moodValue, label: dragSession.moodLabel, type: 'before', sessionMinutes: dragSession.durationMinutes, timestamp: new Date().toISOString() });
               }
-              startActiveSession({ durationMinutes: dragSession.durationMinutes, subjectName: dragSession.subjectName, taskId: dragSession.taskId, taskTitle: dragSession.taskTitle });
+              startActiveSession({ durationMinutes: dragSession.durationMinutes, subjectName: dragSession.subjectName, taskId: dragSession.taskId, taskTitle: dragSession.taskTitle, breakMinutes: dragSession.breakMinutes });
             }
             setDragSession(null);
           });
@@ -268,7 +276,10 @@ export default function HomeScreen() {
     });
   };
   const activeSessionId = activeSession?.id ?? null;
-  const bgRoom = ROOM_PAIRS.find((r) => r.id === equippedBackgroundRoomId) ?? ROOM_PAIRS[0];
+  const myBgRoom = ROOM_PAIRS.find((r) => r.id === equippedBackgroundRoomId) ?? ROOM_PAIRS[0];
+  // In a multiplayer study session, everyone studies in the host's room.
+  const hostBgRoom = studyRoom.hostBackgroundId ? ROOM_PAIRS.find((r) => r.id === studyRoom.hostBackgroundId) : undefined;
+  const bgRoom = activeSession?.isMultiplayer && hostBgRoom ? hostBgRoom : myBgRoom;
   const deskRoom = ROOM_PAIRS.find((r) => r.id === equippedDeskRoomId) ?? ROOM_PAIRS[0];
   const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
   const homeCompanionSource =
@@ -342,6 +353,10 @@ export default function HomeScreen() {
     const endMs = new Date(activeSession.startedAt).getTime() + activeSession.durationMinutes * 60000;
     if (Date.now() < endMs) return;
 
+    // Multiplayer sessions don't show the cake completion screen — the studying
+    // view shows a coins-earned + continue/break/exit menu instead.
+    if (activeSession.isMultiplayer) return;
+
     handledCompletionId.current = activeSession.id;
     clearActiveSession();
     router.push({
@@ -372,13 +387,13 @@ export default function HomeScreen() {
       sessionElapsedMinutes >= MIN_MINUTES_FOR_COINS ? coinsForMinutes(sessionElapsedMinutes) : 0;
     const message =
       cancelCoins > 0
-        ? `You studied ${sessionElapsedMinutes} min and will earn ${cancelCoins} coins.`
-        : `Less than ${MIN_MINUTES_FOR_COINS} min studied, so no coins this time.`;
+        ? t('home.studiedEarn', { minutes: sessionElapsedMinutes, coins: cancelCoins })
+        : t('home.lessThanMin', { min: MIN_MINUTES_FOR_COINS });
 
-    Alert.alert('Stop session?', message, [
-      { text: 'Keep studying', style: 'cancel' },
+    Alert.alert(t('home.stopSessionQ'), message, [
+      { text: t('home.keepStudying'), style: 'cancel' },
       {
-        text: 'Stop',
+        text: t('common.stop'),
         style: 'destructive',
         onPress: () => {
           const endedSession = activeSession;
@@ -395,6 +410,9 @@ export default function HomeScreen() {
                 taskTitle: endedSession.taskTitle ?? '',
               },
             });
+          } else {
+            // Back to home — show the loading transition.
+            showLoadingScreen();
           }
         },
       },
@@ -404,10 +422,10 @@ export default function HomeScreen() {
   const handleBreakGame = () => {
     if (!activeSession) return;
 
-    Alert.alert('Open break game?', 'This will end the current session and open a break game.', [
-      { text: 'Keep studying', style: 'cancel' },
+    Alert.alert(t('home.openBreakGameQ'), t('home.openBreakGameMsg'), [
+      { text: t('home.keepStudying'), style: 'cancel' },
       {
-        text: 'Break game',
+        text: t('home.breakGameBtn'),
         onPress: () => {
           clearActiveSession();
           router.push({
@@ -457,7 +475,7 @@ export default function HomeScreen() {
                   <Pressable
                     onPress={() => router.push('/coin-shop')}
                     style={({ pressed }) => pressed && styles.cardPressed}
-                    accessibilityLabel="Add coins">
+                    accessibilityLabel={t('home.a11yAddCoins')}>
                     <View style={[styles.statusChip, styles.coinChip]}>
                       <CoinIcon size={26} />
                       <ThemedText type="smallBold" style={styles.coinChipText}>
@@ -483,7 +501,7 @@ export default function HomeScreen() {
                       <View style={styles.metaCardHeader}>
                         <View style={styles.examTitleRow}>
                           <Image source={EXAM_BOOK_ICON} style={styles.examBookIcon} contentFit="contain" accessibilityLabel="" />
-                          <ThemedText style={styles.metaCardTitle}>Upcoming Exam</ThemedText>
+                          <ThemedText style={styles.metaCardTitle}>{t('home.upcomingExam')}</ThemedText>
                         </View>
                       </View>
                       <View style={styles.metaCardContent}>
@@ -516,8 +534,8 @@ export default function HomeScreen() {
                             </>
                           ) : (
                             <>
-                              <ThemedText style={styles.metaHeadline}>No exam yet</ThemedText>
-                              <ThemedText style={styles.metaSubline}>Tap to add</ThemedText>
+                              <ThemedText style={styles.metaHeadline}>{t('home.noExamYet')}</ThemedText>
+                              <ThemedText style={styles.metaSubline}>{t('home.tapToAdd')}</ThemedText>
                             </>
                           )}
                         </View>
@@ -532,19 +550,19 @@ export default function HomeScreen() {
                       <View style={styles.metaCardHeader}>
                         <View style={styles.reminderTitleRow}>
                           <Image source={REMINDER_BELL_ICON} style={styles.reminderBellIcon} contentFit="contain" accessibilityLabel="" />
-                          <ThemedText style={styles.metaCardTitle}>Reminder</ThemedText>
+                          <ThemedText style={styles.metaCardTitle}>{t('home.reminder')}</ThemedText>
                         </View>
                       </View>
                       <View style={styles.metaCardContent}>
                         <View style={styles.metaCardTextBlock}>
                           <ThemedText style={styles.reminderCopy}>
                             {reminderEnabled
-                              ? `Daily ping at ${reminderTime}. ${
+                              ? `${t('home.dailyPing', { time: reminderTime })} ${
                                   isPlus && ambienceId
                                     ? `${getAmbienceEmoji(ambienceId)} ${getAmbienceName(ambienceId)}`
-                                    : "You've got this!"
+                                    : t('home.youGotThis')
                                 }`
-                              : "Tap to set up reminders"}
+                              : t('home.tapToSetReminders')}
                           </ThemedText>
                         </View>
                       </View>
@@ -558,7 +576,7 @@ export default function HomeScreen() {
                 <Pressable
                   style={({ pressed }) => [styles.switchCharBtn, pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/companion-gallery')}
-                  accessibilityLabel="Switch character">
+                  accessibilityLabel={t('home.a11ySwitchCharacter')}>
                   <Image source={SWITCH_CHARACTER_BTN} style={styles.switchCharImg} contentFit="contain" />
                 </Pressable>
               )}
@@ -568,7 +586,7 @@ export default function HomeScreen() {
                 <Pressable
                   style={({ pressed }) => [styles.foodMenuBtn, pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/food-gallery')}
-                  accessibilityLabel="Food menu">
+                  accessibilityLabel={t('home.a11yFoodMenu')}>
                   <Image source={FOOD_MENU_BTN} style={styles.foodMenuImg} contentFit="contain" />
                 </Pressable>
               )}
@@ -578,7 +596,7 @@ export default function HomeScreen() {
                 <Pressable
                   style={({ pressed }) => [styles.editRoomBtn, pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/edit-room')}
-                  accessibilityLabel="Edit room">
+                  accessibilityLabel={t('home.a11yEditRoom')}>
                   <Image source={EDIT_ROOM_BTN} style={styles.editRoomImg} contentFit="contain" />
                 </Pressable>
               )}
@@ -588,7 +606,7 @@ export default function HomeScreen() {
                 <Pressable
                   style={({ pressed }) => [styles.topSettingsBtn, pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/settings')}
-                  accessibilityLabel="Open settings">
+                  accessibilityLabel={t('home.a11yOpenSettings')}>
                   <Image source={SETTINGS_BTN} style={styles.topSettingsImg} contentFit="contain" />
                 </Pressable>
               )}
@@ -598,7 +616,7 @@ export default function HomeScreen() {
                 <Pressable
                   style={({ pressed }) => [styles.friendBtn, pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/friends')}
-                  accessibilityLabel="Friends">
+                  accessibilityLabel={t('home.a11yFriends')}>
                   <Image source={FRIEND_BTN} style={styles.friendBtnImg} contentFit="contain" />
                 </Pressable>
               )}
@@ -646,7 +664,7 @@ export default function HomeScreen() {
                   <View style={[styles.dragPrompt, { top: insets.top + 16 }]}>
                     <View style={styles.dragPromptBubble}>
                       <ThemedText style={styles.dragPromptText}>
-                        {droppedIds.size === 3 ? '🍰 Let\'s study!' : 'Drag all ingredients into the mixer!'}
+                        {droppedIds.size === 3 ? t('home.letsStudy') : t('home.dragAllIngredients')}
                       </ThemedText>
                     </View>
                   </View>
@@ -665,14 +683,14 @@ export default function HomeScreen() {
                 <Pressable
                   style={({ pressed }) => [styles.startSessionInner, pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/session-picker')}
-                  accessibilityLabel="Start session">
+                  accessibilityLabel={t('home.a11yStartSession')}>
                   <Image source={START_SESSION_BTN} style={styles.startSessionBg} contentFit="fill" />
-                  <ThemedText style={styles.startSessionLabel}>Start Session</ThemedText>
+                  <ThemedText style={styles.startSessionLabel}>{t('home.startSession')}</ThemedText>
                 </Pressable>
                 <Pressable
                   style={({ pressed }) => [styles.settingsFloating, styles.gameFloating, pressed && styles.startButtonPressed]}
                   onPress={() => router.push({ pathname: '/break-game', params: { browse: '1' } })}
-                  accessibilityLabel="Play a game">
+                  accessibilityLabel={t('home.a11yPlayGame')}>
                   <Image source={GAME_BTN} style={styles.gameFloatingImg} contentFit="contain" />
                 </Pressable>
               </View>}

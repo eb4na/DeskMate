@@ -10,10 +10,11 @@ import { InviteListener } from '@/components/invite-listener';
 import { AppProvider } from '@/context/app-context';
 import { useApp } from '@/context/app-context';
 import { StudyRoomProvider } from '@/lib/use-study-room';
+import { subscribeLoadingScreen } from '@/lib/loading-signal';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { Spacing } from '@/constants/theme';
 import '@/lib/notifications';
-import i18n from '@/i18n';
+import i18n, { useTranslation } from '@/i18n';
 
 const LOADING_IMGS = [
   require('@/assets/images/home/loading.png'),
@@ -91,6 +92,7 @@ const PRELOAD_ASSETS = [
 function RootNavigator() {
   const { initialized, isGuest, session } = useAuth();
   const { loaded, languageSelected } = useApp();
+  const { t } = useTranslation();
   const [assetsReady, setAssetsReady] = useState(false);
   // Loading overlay is shown on first launch and re-shown on every login/sign-in.
   const [loadingVisible, setLoadingVisible] = useState(true);
@@ -111,6 +113,9 @@ function RootNavigator() {
     if (authed && !wasAuthed.current) setLoadingVisible(true);
     wasAuthed.current = authed;
   }, [authed]);
+
+  // Re-show the loading screen on demand (e.g. after finishing a study session).
+  useEffect(() => subscribeLoadingScreen(() => setLoadingVisible(true)), []);
 
   useEffect(() => {
     if (initialized && loaded && (session || isGuest) && !languageSelected) {
@@ -133,25 +138,26 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         {/* Session flow */}
         <Stack.Screen name="session-picker" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
-        <Stack.Screen name="subject-picker" options={{ presentation: 'modal', title: 'Subject & mood' }} />
+        <Stack.Screen name="subject-picker" options={{ presentation: 'modal', title: t('screens.subjectMood') }} />
         <Stack.Screen name="session" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="session-complete" options={{ headerShown: false }} />
         {/* Wave 1 modals */}
-        <Stack.Screen name="add-exam" options={{ presentation: 'modal', title: 'Add exam countdown' }} />
-        <Stack.Screen name="reminder-settings" options={{ presentation: 'modal', title: 'Daily reminder' }} />
+        <Stack.Screen name="add-exam" options={{ presentation: 'modal', title: t('screens.addExamCountdown') }} />
+        <Stack.Screen name="reminder-settings" options={{ presentation: 'modal', title: t('screens.dailyReminder') }} />
         {/* Wave 2 modals */}
-        <Stack.Screen name="add-task" options={{ presentation: 'modal', title: 'Task' }} />
-        <Stack.Screen name="manage-subjects" options={{ presentation: 'modal', title: 'Subjects' }} />
+        <Stack.Screen name="add-task" options={{ presentation: 'modal', title: t('screens.task') }} />
+        <Stack.Screen name="manage-subjects" options={{ presentation: 'modal', title: t('screens.subjects') }} />
         {/* Wave 3 */}
-        <Stack.Screen name="weekly-report" options={{ presentation: 'modal', title: 'Weekly Report' }} />
+        <Stack.Screen name="weekly-report" options={{ presentation: 'modal', title: t('screens.weeklyReport') }} />
         <Stack.Screen name="break-game" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="cake-game" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="party-invite" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="study-lobby" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="study-desk" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         {/* Wave 4 */}
-        <Stack.Screen name="plus-upgrade" options={{ presentation: 'modal', title: 'DeskMate Plus' }} />
-        <Stack.Screen name="custom-timer" options={{ headerShown: false, presentation: 'transparentModal', animation: 'slide_from_bottom' }} />
-        <Stack.Screen name="ambience-picker" options={{ presentation: 'modal', title: 'Ambience' }} />
+        <Stack.Screen name="plus-upgrade" options={{ presentation: 'modal', title: t('screens.deskmatePlus') }} />
+        <Stack.Screen name="custom-timer" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="ambience-picker" options={{ presentation: 'modal', title: t('screens.ambience') }} />
         <Stack.Screen name="companion-gallery" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="edit-room" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="food-gallery" options={{ presentation: 'modal', headerShown: false }} />
@@ -160,8 +166,8 @@ function RootNavigator() {
         <Stack.Screen name="friend-card" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="companion-chat" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="companion-pfp" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="settings" options={{ presentation: 'modal', title: 'Settings' }} />
-        <Stack.Screen name="coin-shop" options={{ presentation: 'modal', title: 'Get Coins' }} />
+        <Stack.Screen name="settings" options={{ presentation: 'modal', title: t('screens.settings') }} />
+        <Stack.Screen name="coin-shop" options={{ presentation: 'modal', title: t('screens.getCoins') }} />
       </Stack.Protected>
     </Stack>
     {loadingVisible && (

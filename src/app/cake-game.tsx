@@ -31,6 +31,7 @@ import { ThemedView } from '@/components/themed-view';
 import { BakeryCakeEmoji, BakeryHeartEmoji, BakeryReceiptEmoji } from '@/components/bakery-emoji';
 import { BaseIcon, CakeBuildIcon, CakeIngredientIcon, type IngredientKind } from '@/components/cake-ingredients';
 import { useApp } from '@/context/app-context';
+import { useTranslation } from '@/i18n';
 import { joinGameRoom, newRoomId, type GameRoom } from '@/lib/game-net';
 import {
   NAV_DEBUG,
@@ -352,17 +353,18 @@ function CakeLobby({
   onStart: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   const me = roster.find((e) => e.code === myCode);
   const allReady = roster.length >= 2 && roster.every((e) => e.ready);
   const connecting = netStatus !== 'SUBSCRIBED';
   return (
     <View style={styles.lobbyOverlay}>
       <View style={styles.lobbyCard}>
-        <Text style={styles.lobbyTitle}>BatterDash Party 🎂</Text>
+        <Text style={styles.lobbyTitle}>{t('cake.partyTitle')}</Text>
         <Text style={styles.lobbyStatus}>
           {connecting
-            ? `Connecting… (${netStatus || 'starting'})`
-            : `${roster.length} in the kitchen · ${presentCount} connected`}
+            ? t('cake.connecting', { status: netStatus || t('cake.starting') })
+            : t('cake.kitchenStatus', { count: roster.length, connected: presentCount })}
         </Text>
 
         {/* Game mode — only the host can pick it. */}
@@ -374,7 +376,7 @@ function CakeLobby({
                 onPress={() => onSetMode(m)}
                 style={[styles.lobbyModeBtn, partyMode === m && styles.lobbyModeBtnActive]}>
                 <Text style={[styles.lobbyModeText, partyMode === m && styles.lobbyModeTextActive]}>
-                  {m === 'competitive' ? '🏆 Competitive' : '🤝 Co-op'}
+                  {m === 'competitive' ? t('cake.competitive') : t('cake.coop')}
                 </Text>
               </Pressable>
             ))}
@@ -382,11 +384,11 @@ function CakeLobby({
         ) : (
           <View style={[styles.lobbyModeBtn, styles.lobbyModeBtnActive, styles.lobbyModeReadonly]}>
             <Text style={[styles.lobbyModeText, styles.lobbyModeTextActive]}>
-              {partyMode === 'competitive' ? '🏆 Competitive' : '🤝 Co-op'}
+              {partyMode === 'competitive' ? t('cake.competitive') : t('cake.coop')}
             </Text>
           </View>
         )}
-        {!isHost && <Text style={styles.lobbyHint}>The host picks the mode.</Text>}
+        {!isHost && <Text style={styles.lobbyHint}>{t('cake.hostPicksMode')}</Text>}
 
         {/* Roster */}
         <View style={styles.lobbyRoster}>
@@ -395,10 +397,10 @@ function CakeLobby({
               <Text style={styles.lobbyName} numberOfLines={1}>
                 {e.name}
                 {e.isHost ? ' 👑' : ''}
-                {e.code === myCode ? ' (you)' : ''}
+                {e.code === myCode ? t('cake.you') : ''}
               </Text>
               <Text style={[styles.lobbyReady, e.ready && styles.lobbyReadyOn]}>
-                {e.ready ? 'Ready ✓' : '…'}
+                {e.ready ? t('cake.ready') : '…'}
               </Text>
             </View>
           ))}
@@ -409,7 +411,7 @@ function CakeLobby({
           onPress={onToggleReady}
           style={({ pressed }) => [styles.lobbyReadyBtn, me?.ready && styles.lobbyReadyBtnOn, pressed && styles.pressed]}>
           <Text style={[styles.lobbyReadyBtnText, me?.ready && styles.lobbyReadyBtnTextOn]}>
-            {me?.ready ? "I'm ready ✓" : 'Ready up'}
+            {me?.ready ? t('cake.imReady') : t('cake.readyUp')}
           </Text>
         </Pressable>
 
@@ -418,21 +420,21 @@ function CakeLobby({
             <Pressable
               onPress={() => router.push({ pathname: '/party-invite', params: { room: roomCode } })}
               style={({ pressed }) => [styles.lobbyInviteBtn, pressed && styles.pressed]}>
-              <Text style={styles.lobbyInviteText}>＋ Invite friend</Text>
+              <Text style={styles.lobbyInviteText}>{t('cake.inviteFriend')}</Text>
             </Pressable>
             <Pressable
               disabled={!allReady}
               onPress={onStart}
               style={({ pressed }) => [styles.lobbyStartBtn, !allReady && styles.lobbyStartBtnOff, pressed && styles.pressed]}>
-              <Text style={styles.lobbyStartText}>{allReady ? 'Start! 🎉' : 'Waiting for everyone…'}</Text>
+              <Text style={styles.lobbyStartText}>{allReady ? t('cake.startBang') : t('cake.waitingEveryone')}</Text>
             </Pressable>
           </>
         ) : (
-          <Text style={styles.lobbyHint}>Waiting for the host to start…</Text>
+          <Text style={styles.lobbyHint}>{t('cake.waitingHost')}</Text>
         )}
 
         <Pressable onPress={onCancel} style={styles.lobbyCancel}>
-          <Text style={styles.lobbyCancelText}>Leave</Text>
+          <Text style={styles.lobbyCancelText}>{t('cake.leave')}</Text>
         </Pressable>
       </View>
     </View>
@@ -442,6 +444,7 @@ function CakeLobby({
 export default function CakeGameScreen() {
   const params = useLocalSearchParams<{ mode?: string; room?: string; role?: string; netmode?: string }>();
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const { friendCode, profileDisplayName } = useApp();
 
   const myCode = friendCode;
@@ -535,6 +538,7 @@ function SetupScreen({
   onMultiplayer: () => void;
   onHome: () => void;
 }) {
+  const { t } = useTranslation();
   const { cakeCharacter, setCakeCharacter, ownedShopItems } = useApp();
   const myCharacters = CHARACTERS.filter((c) => c.ownedItem === null || ownedShopItems.includes(c.ownedItem));
 
@@ -553,7 +557,7 @@ function SetupScreen({
             hitSlop={14}
             onPress={goBack}
             style={({ pressed }) => [styles.setupBackBtn, pressed && styles.pressed]}>
-            <Text style={styles.setupBackText}>‹ Back</Text>
+            <Text style={styles.setupBackText}>{t('cake.back')}</Text>
           </Pressable>
         </View>
         <View style={styles.header}>
@@ -568,11 +572,11 @@ function SetupScreen({
               <Text style={styles.logoDash}>Dash</Text>
             </Text>
           </View>
-          <Text style={styles.subtitle}>Set up your game</Text>
+          <Text style={styles.subtitle}>{t('cake.setupSubtitle')}</Text>
         </View>
 
         {/* Character */}
-        <Text style={styles.setupLabel}>Character</Text>
+        <Text style={styles.setupLabel}>{t('cake.character')}</Text>
         <View style={styles.charRow}>
           {myCharacters.map((c) => (
             <Pressable
@@ -586,19 +590,19 @@ function SetupScreen({
         </View>
 
         {/* Players */}
-        <Text style={styles.setupLabel}>Players</Text>
+        <Text style={styles.setupLabel}>{t('cake.players')}</Text>
         <View style={styles.choiceRow}>
-          <ChoiceCard imgs={[PLAYER_AVATAR]} title="Single Player" sub="Just you" active={crew === 'solo'} onPress={() => setCrew('solo')} />
-          <ChoiceCard imgs={[TOGETHER_IMG]} wideImg title="Multiplayer" sub="With friends" active={crew === 'multi'} onPress={() => setCrew('multi')} />
+          <ChoiceCard imgs={[PLAYER_AVATAR]} title={t('cake.singlePlayer')} sub={t('cake.justYou')} active={crew === 'solo'} onPress={() => setCrew('solo')} />
+          <ChoiceCard imgs={[TOGETHER_IMG]} wideImg title={t('cake.multiplayer')} sub={t('cake.withFriends')} active={crew === 'multi'} onPress={() => setCrew('multi')} />
         </View>
 
         {/* Mode — solo only (parties are always a timed race) */}
         {crew === 'solo' && (
           <>
-            <Text style={styles.setupLabel}>Mode</Text>
+            <Text style={styles.setupLabel}>{t('cake.mode')}</Text>
             <View style={styles.choiceRow}>
-              <ChoiceCard imgs={[TIMER_ICON]} iconFit title="Timed" sub="6:70 · instant cook" active={timed} onPress={() => setTimed(true)} />
-              <ChoiceCard imgs={[INFINITY_ICON]} iconFit title="Untimed" sub="Endless · 3 hearts" active={!timed} onPress={() => setTimed(false)} />
+              <ChoiceCard imgs={[TIMER_ICON]} iconFit title={t('cake.timed')} sub={t('cake.timedSub')} active={timed} onPress={() => setTimed(true)} />
+              <ChoiceCard imgs={[INFINITY_ICON]} iconFit title={t('cake.untimed')} sub={t('cake.untimedSub')} active={!timed} onPress={() => setTimed(false)} />
             </View>
           </>
         )}
@@ -606,7 +610,7 @@ function SetupScreen({
         <Pressable
           style={({ pressed }) => [styles.doneBtn, styles.secondaryBtnWide, pressed && styles.pressed]}
           onPress={crew === 'multi' ? onMultiplayer : onStart}>
-          <Text style={styles.doneBtnText}>{crew === 'multi' ? 'Create lobby 🎉' : 'Start baking 🎂'}</Text>
+          <Text style={styles.doneBtnText}>{crew === 'multi' ? t('cake.createLobby') : t('cake.startBaking')}</Text>
         </Pressable>
         </ScrollView>
       </SafeAreaView>
@@ -664,6 +668,7 @@ function KitchenView({
   onBack: () => void;
   onHome: () => void;
 }) {
+  const { t } = useTranslation();
   const { cakeBestRush, cakeBestLine, recordCakeBest, addCoins, cakeCharacter } = useApp();
   // `online` aliases the party context for the many in-game checks below.
   const online = party ?? null;
@@ -894,7 +899,7 @@ function KitchenView({
             if ((data as { code: string }).code === myCode) {
               setCombo(0);
               flashMoodRef.current('sad');
-              popupRef.current('Bunny left angry! 😾💔', 'bad');
+              popupRef.current(t('cake.p_bunnyLeft'), 'bad');
             }
           } else if (type === 'pos') {
             // A friend moved — slide their sprite to the new spot in my kitchen.
@@ -1026,14 +1031,14 @@ function KitchenView({
         if (code === online.myCode) {
           setCombo(0);
           flashMood('sad');
-          popup('Bunny left angry! 😾💔', 'bad');
+          popup(t('cake.p_bunnyLeft'), 'bad');
         } else {
           room.current?.send('penalty', { code });
         }
       }
     } else if (leftAngrySolo > 0) {
       flashMood('sad');
-      popup('Bunny left angry! 😾💔', 'bad');
+      popup(t('cake.p_bunnyLeft'), 'bad');
       if (isLine) setHearts((h) => Math.max(0, h - leftAngrySolo));
       else setCombo(0);
     }
@@ -1083,7 +1088,7 @@ function KitchenView({
     } else {
       setCustomers((prev) => prev.map((c) => (c.id === id && !c.greeted ? { ...c, greeted: true, greetedAt: Date.now() } : c)));
     }
-    popup('Order taken! 📝', 'ok');
+    popup(t('cake.p_orderTaken'), 'ok');
     // Slide the cat over to the counter to take the order.
     const counter = STATIONS.find((s) => s.kind === 'counter');
     if (counter) {
@@ -1139,11 +1144,11 @@ function KitchenView({
   const serve = useCallback(() => {
     const h = heldRef.current;
     if (!h || h.kind !== 'cake' || !h.base || !h.filling || !h.topping) {
-      popup('Not ready yet!', 'warn');
+      popup(t('cake.p_notReady'), 'warn');
       return;
     }
     if (h.spoiled) {
-      popup('Wrong cake — toss it & redo! 🗑️', 'bad');
+      popup(t('cake.p_wrongCake'), 'bad');
       flashMood('sad');
       return;
     }
@@ -1166,7 +1171,7 @@ function KitchenView({
       const tags: string[] = [];
       if (isRush && Date.now() - matched.greetedAt < FAST_SERVE_MS) {
         pts += SCORE_FAST;
-        tags.push('Fast');
+        tags.push(t('cake.tag_fast'));
       }
       if (newCombo % 3 === 0) {
         pts += SCORE_COMBO;
@@ -1186,7 +1191,7 @@ function KitchenView({
         setScore((s) => Math.max(0, s + SCORE_WRONG));
         popup(`Wrong order! ${SCORE_WRONG} ❌`, 'bad');
       } else {
-        popup('Wrong order! ❌', 'bad');
+        popup(t('cake.p_wrongOrder'), 'bad');
       }
     }
   }, [popup, flashMood, isRush, isLine, online]);
@@ -1206,31 +1211,31 @@ function KitchenView({
           // Both modes use the drop-in countdown (timed mode no longer instant).
           const cooker = cookersRef.current[station.id];
           if (cooker && cookerReady(cooker)) {
-            if (h) { popup('Hands full!', 'warn'); break; }
+            if (h) { popup(t('cake.p_handsFull'), 'warn'); break; }
             setHeld({ kind: isMix ? 'batter' : 'sponge', base: cooker.base });
             collectFromCooker(station.id);
             flashMood('happy');
-            popup(isMix ? 'Batter ready! 🥣' : 'Sponge baked! 🍞', 'ok');
+            popup(isMix ? t('cake.p_batterReady') : t('cake.p_spongeBaked'), 'ok');
           } else if (cooker) {
-            popup(isMix ? 'Still mixing… ⏳' : 'Still baking… ⏳', 'warn');
+            popup(isMix ? t('cake.p_stillMixing') : t('cake.p_stillBaking'), 'warn');
           } else if (h?.kind === need && h.base) {
             setHeld(null);
             dropIntoCooker(station.id, h.base, isMix ? MIX_MS : BAKE_MS);
-            popup(isMix ? 'Mixing — you can go! 🥣' : 'Baking — you can go! 🔥', 'ok');
+            popup(isMix ? t('cake.p_mixingGo') : t('cake.p_bakingGo'), 'ok');
           } else {
-            popup(isMix ? 'Bring a base to mix 🧺' : 'Bring batter to bake 🥣', 'warn');
+            popup(isMix ? t('cake.p_bringBaseMix') : t('cake.p_bringBatterBake'), 'warn');
           }
           break;
         }
         case 'assembly':
           if (h?.kind === 'sponge' && !h.filling) setPicker('filling');
-          else if (h?.kind === 'sponge' && h.filling) popup('Filling already added', 'warn');
-          else popup('Bake a sponge first 🔥', 'warn');
+          else if (h?.kind === 'sponge' && h.filling) popup(t('cake.p_fillingAlready'), 'warn');
+          else popup(t('cake.p_bakeSponge'), 'warn');
           break;
         case 'decoration':
           if (h?.kind === 'sponge' && h.filling && !h.topping) setPicker('topping');
-          else if (!h || h.kind !== 'sponge' || !h.filling) popup('Add a filling first 🍰', 'warn');
-          else popup('Already decorated', 'warn');
+          else if (!h || h.kind !== 'sponge' || !h.filling) popup(t('cake.p_addFilling'), 'warn');
+          else popup(t('cake.p_alreadyDecorated'), 'warn');
           break;
         case 'counter':
           serve();
@@ -1238,9 +1243,9 @@ function KitchenView({
         case 'trash':
           if (h) {
             setHeld(null);
-            popup('Tossed it 🗑️', 'warn');
+            popup(t('cake.p_tossedIt'), 'warn');
           } else {
-            popup('Nothing to toss', 'warn');
+            popup(t('cake.p_nothingToss'), 'warn');
           }
           break;
       }
@@ -1322,10 +1327,10 @@ function KitchenView({
       const wrong = !!target && (id as CakeBase) !== target.order.base;
       setHeld({ kind: 'base', base: id as CakeBase, orderId: target?.id, spoiled: wrong });
       if (wrong) {
-        popup('Wrong base! Toss it & redo 🗑️', 'bad');
+        popup(t('cake.p_wrongBase'), 'bad');
         flashMood('sad');
       } else {
-        popup('Got a base 🧺', 'ok');
+        popup(t('cake.p_gotBase'), 'ok');
       }
     } else if (picker === 'filling') {
       const h = heldRef.current;
@@ -1333,10 +1338,10 @@ function KitchenView({
       const wrong = !!target && (id as CakeFilling) !== target.order.filling;
       setHeld((cur) => (cur ? { ...cur, filling: id as CakeFilling, spoiled: cur.spoiled || wrong } : cur));
       if (wrong) {
-        popup('Wrong filling! Toss it 🗑️', 'bad');
+        popup(t('cake.p_wrongFilling'), 'bad');
         flashMood('sad');
       } else {
-        popup('Filling added 🍰', 'ok');
+        popup(t('cake.p_fillingAdded'), 'ok');
       }
     } else if (picker === 'topping') {
       const h = heldRef.current;
@@ -1344,10 +1349,10 @@ function KitchenView({
       const wrong = !!target && (id as CakeTopping) !== target.order.topping;
       setHeld((cur) => (cur ? { ...cur, kind: 'cake', topping: id as CakeTopping, spoiled: cur.spoiled || wrong } : cur));
       if (wrong) {
-        popup('Wrong topping! Toss it 🗑️', 'bad');
+        popup(t('cake.p_wrongTopping'), 'bad');
         flashMood('sad');
       } else {
-        popup('Ready! Serve it 🔔', 'ok');
+        popup(t('cake.p_readyServe'), 'ok');
       }
     }
     setPicker(null);
@@ -1394,18 +1399,18 @@ function KitchenView({
     if (held) {
       switch (held.kind) {
         case 'base':
-          return 'Drop it in a Mixer 🥣';
+          return t('cake.hint_dropMixer');
         case 'batter':
-          return 'Drop it in an Oven 🔥';
+          return t('cake.hint_dropOven');
         case 'sponge':
-          return held.filling ? 'Decorate at the Decoration table 🎀' : 'Add filling at the Assembly table 🍰';
+          return held.filling ? t('cake.hint_decorate') : t('cake.hint_addFilling');
         case 'cake':
-          return 'Serve it at the Counter 🔔';
+          return t('cake.hint_serve');
       }
     }
-    if (readyCookerId()) return 'Collect your cooked item ✨';
-    if (Object.keys(cookers).length > 0) return 'Cooking… grab a base to get ahead 🧺';
-    return 'Tap Ingredients 🧺 to start a cake';
+    if (readyCookerId()) return t('cake.hint_collect');
+    if (Object.keys(cookers).length > 0) return t('cake.hint_cooking');
+    return t('cake.hint_tapIngredients');
   })();
 
   // Where the "go here next" arrow should hover, based on what you're holding.
@@ -1832,7 +1837,7 @@ function KitchenView({
           {picker && (
             <View style={styles.pickerOverlay}>
               <Text style={styles.pickerTitle}>
-                {picker === 'base' ? 'Choose a base' : picker === 'filling' ? 'Choose a filling' : 'Choose a topping'}
+                {picker === 'base' ? t('cake.pick_base') : picker === 'filling' ? t('cake.pick_filling') : t('cake.pick_topping')}
               </Text>
               <View style={styles.pickerRow}>
                 {pickerOptions.map((opt) => (
@@ -1890,45 +1895,45 @@ function KitchenView({
             title={
               online
                 ? partyMode === 'cooperative'
-                  ? '🤝 Team result!'
+                  ? t('cake.r_teamResult')
                   : leaderboard.length > 1 && leaderboard[0].s === leaderboard[1].s
-                    ? "It's a tie!"
+                    ? t('cake.r_tie')
                     : leaderboard[0]?.code === online.myCode
-                      ? 'You win! 🎉'
-                      : `${leaderboard[0]?.name ?? 'Someone'} wins!`
+                      ? t('cake.r_youWin')
+                      : t('cake.r_someoneWins', { name: leaderboard[0]?.name ?? t('cake.r_someone') })
                 : isRush
-                  ? "Time's up! ⏰"
-                  : 'Out of hearts! 💔'
+                  ? t('cake.r_timesUp')
+                  : t('cake.r_outOfHearts')
             }
             rows={
               online
                 ? partyMode === 'cooperative'
                   ? [
-                      ['🤝 Team score', `${teamTotal}`],
-                      ['🍰 Your cakes', `${cakesMade}`],
-                      ['🪙 Coins earned', `+${Math.floor(score / SCORE_PER_COIN)}`],
+                      [t('cake.r_teamScore'), `${teamTotal}`],
+                      [t('cake.r_yourCakes'), `${cakesMade}`],
+                      [t('cake.r_coinsEarned'), `+${Math.floor(score / SCORE_PER_COIN)}`],
                     ]
                   : [
                       ...leaderboard.map((r, i): [string, string] => [
-                        `${MEDALS[i] ?? '🎀'} ${r.name}${r.code === online.myCode ? ' (you)' : ''}`,
+                        `${MEDALS[i] ?? '🎀'} ${r.name}${r.code === online.myCode ? t('cake.you') : ''}`,
                         `${r.s}`,
                       ]),
-                      ['🪙 Coins earned', `+${Math.floor(score / SCORE_PER_COIN)}`],
+                      [t('cake.r_coinsEarned'), `+${Math.floor(score / SCORE_PER_COIN)}`],
                     ]
                 : isRush
                 ? [
-                    ['🎂 Cakes made', `${cakesMade}`],
-                    ['⭐ Score', `${score}`],
-                    ['🔥 Best combo', `x${bestCombo}`],
-                    ['🪙 Coins earned', `+${Math.floor(score / SCORE_PER_COIN)}`],
-                    ['🏆 Best score', `${cakeBestRush}`],
+                    [t('cake.r_cakesMade'), `${cakesMade}`],
+                    [t('cake.r_score'), `${score}`],
+                    [t('cake.r_bestCombo'), `x${bestCombo}`],
+                    [t('cake.r_coinsEarned'), `+${Math.floor(score / SCORE_PER_COIN)}`],
+                    [t('cake.r_bestScore'), `${cakeBestRush}`],
                   ]
                 : [
-                    ['⭐ Score', `${score}`],
-                    ['🍰 Cakes served', `${cakesMade}`],
-                    ['🔥 Best combo', `x${bestCombo}`],
-                    ['🪙 Coins earned', `+${Math.floor(score / SCORE_PER_COIN)}`],
-                    ['🏆 Best score', `${cakeBestLine}`],
+                    [t('cake.r_score'), `${score}`],
+                    [t('cake.r_cakesServed'), `${cakesMade}`],
+                    [t('cake.r_bestCombo'), `x${bestCombo}`],
+                    [t('cake.r_coinsEarned'), `+${Math.floor(score / SCORE_PER_COIN)}`],
+                    [t('cake.r_bestScore'), `${cakeBestLine}`],
                   ]
             }
             onPlayAgain={restart}
@@ -1960,6 +1965,7 @@ function ResultsModal({
   onPlayAgain: () => void;
   onModes: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.resultsBackdrop}>
       <Animated.View entering={ZoomIn.duration(200)} style={styles.resultsCard}>
@@ -1975,12 +1981,12 @@ function ResultsModal({
         <Pressable
           style={({ pressed }) => [styles.resultsPrimary, pressed && styles.pressed]}
           onPress={onPlayAgain}>
-          <Text style={styles.resultsPrimaryText}>Play Again 🎮</Text>
+          <Text style={styles.resultsPrimaryText}>{t('cake.playAgain')}</Text>
         </Pressable>
         <Pressable
           style={({ pressed }) => [styles.resultsSecondary, pressed && styles.pressed]}
           onPress={onModes}>
-          <Text style={styles.resultsSecondaryText}>Back to Modes</Text>
+          <Text style={styles.resultsSecondaryText}>{t('cake.backToModes')}</Text>
         </Pressable>
       </Animated.View>
     </View>

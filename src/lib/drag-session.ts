@@ -5,6 +5,8 @@ export type DragSessionData = {
   taskTitle: string | null;
   moodValue: string | null;
   moodLabel: string | null;
+  /** Optional custom break length (minutes) chosen on the custom timer. */
+  breakMinutes?: number;
 };
 
 let _pending: DragSessionData | null = null;

@@ -20,6 +20,7 @@ import {
   type IncomingRequest,
 } from '@/lib/friend-requests';
 import { fetchProfileByCode, type SyncedProfile } from '@/lib/profile-sync';
+import { useTranslation } from '@/i18n';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 function toFriendPatch(p: SyncedProfile): Partial<Friend> {
@@ -47,14 +48,15 @@ const P = {
   button: '#8A7A60',
 } as const;
 
-const INVITE_GAMES: { id: OnlineGameId; name: string; emoji: string }[] = [
-  { id: 'connect4', name: 'Connect 4', emoji: '🔴' },
-  { id: 'tictactoe', name: 'Tic-Tac-Toe', emoji: '⭕' },
-  { id: 'memory', name: 'Memory Cards', emoji: '🃏' },
-  { id: 'batterdash', name: 'BatterDash', emoji: '🎂' },
+const INVITE_GAMES: { id: OnlineGameId; nameKey: string; emoji: string }[] = [
+  { id: 'connect4', nameKey: 'friends.game_connect4', emoji: '🔴' },
+  { id: 'tictactoe', nameKey: 'friends.game_tictactoe', emoji: '⭕' },
+  { id: 'memory', nameKey: 'friends.game_memory', emoji: '🃏' },
+  { id: 'batterdash', nameKey: 'friends.game_batterdash', emoji: '🎂' },
 ];
 
 export default function FriendsScreen() {
+  const { t } = useTranslation();
   const { friendCode, friends, addFriend, removeFriend, setFriendProfile, profileDisplayName } = useApp();
   const { user } = useAuth();
   const [input, setInput] = useState('');
@@ -74,7 +76,7 @@ export default function FriendsScreen() {
       game,
       room,
       fromCode: friendCode,
-      fromName: profileDisplayName || `Friend ${friendCode}`,
+      fromName: profileDisplayName || t('friendCard.friendFallback', { code: friendCode }),
     });
     setPlayFor(null);
     if (game === 'batterdash') {
@@ -111,7 +113,7 @@ export default function FriendsScreen() {
 
   const handleAdd = async () => {
     if (!user?.id) {
-      Alert.alert('Sign in needed', 'Sign in to send friend requests.');
+      Alert.alert(t('friends.signInNeeded'), t('friends.signInToSend'));
       return;
     }
     setBusy(true);
@@ -119,9 +121,9 @@ export default function FriendsScreen() {
     setBusy(false);
     if (res.ok) {
       setInput('');
-      Alert.alert('Request sent! 💌', 'They’ll show up in your friends once they accept.');
+      Alert.alert(t('friends.requestSent'), t('friends.requestSentMsg'));
     } else {
-      Alert.alert('Could not send request', res.error ?? 'Try again.');
+      Alert.alert(t('friends.couldNotSend'), res.error ?? t('friends.tryAgain'));
     }
   };
 
@@ -139,17 +141,17 @@ export default function FriendsScreen() {
 
   const shareCode = async () => {
     try {
-      await Share.share({ message: `Add me on Memobun! My friend code is ${friendCode} 🍓` });
+      await Share.share({ message: t('friends.shareMessage', { code: friendCode }) });
     } catch {
-      Alert.alert('Your friend code', friendCode);
+      Alert.alert(t('friends.yourFriendCodeTitle'), friendCode);
     }
   };
 
   const confirmRemove = (code: string, name: string) => {
-    Alert.alert('Remove friend?', `Remove ${name}?`, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('friends.removeFriendQ'), t('friends.removeFriendMsg', { name }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Remove',
+        text: t('friends.remove'),
         style: 'destructive',
         onPress: () => {
           removeFriend(code);
@@ -165,39 +167,39 @@ export default function FriendsScreen() {
         <SafeAreaView style={styles.safeArea}>
           {/* Header */}
           <View style={styles.headerPanel}>
-            <Text style={styles.headerTitle}>🍓 Study Friends</Text>
-            <Text style={styles.headerSubtitle}>Add friends and study together</Text>
+            <Text style={styles.headerTitle}>{t('friends.studyFriends')}</Text>
+            <Text style={styles.headerSubtitle}>{t('friends.addAndStudy')}</Text>
           </View>
 
           {/* My profile card */}
           <Pressable
             style={({ pressed }) => [styles.profileBtn, pressed && styles.pressed]}
             onPress={() => router.push('/profile')}>
-            <Text style={styles.profileBtnText}>🪪  My Profile Card</Text>
+            <Text style={styles.profileBtnText}>{t('friends.myProfileCard')}</Text>
             <Text style={styles.profileBtnChevron}>›</Text>
           </Pressable>
 
           {/* Your code */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Your Friend Code</Text>
+            <Text style={styles.sectionTitle}>{t('friends.yourFriendCode')}</Text>
             <Pressable style={({ pressed }) => [styles.codeCard, pressed && styles.pressed]} onPress={shareCode}>
               <Text style={styles.codeText}>{friendCode}</Text>
               <View style={styles.copyBtn}>
-                <Text style={styles.copyBtnText}>Share</Text>
+                <Text style={styles.copyBtnText}>{t('friends.share')}</Text>
               </View>
             </Pressable>
-            <Text style={styles.codeHint}>Share this code so friends can add you.</Text>
+            <Text style={styles.codeHint}>{t('friends.shareCodeHint')}</Text>
           </View>
 
           {/* Add a friend */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Add a Friend</Text>
+            <Text style={styles.sectionTitle}>{t('friends.addFriend')}</Text>
             <View style={styles.addRow}>
               <TextInput
                 style={styles.addInput}
                 value={input}
                 onChangeText={(v) => setInput(v.toUpperCase())}
-                placeholder="Enter friend code"
+                placeholder={t('friends.enterFriendCode')}
                 placeholderTextColor={P.mutedBrown}
                 autoCapitalize="characters"
                 maxLength={6}
@@ -206,16 +208,16 @@ export default function FriendsScreen() {
                 style={({ pressed }) => [styles.addBtn, (pressed || busy) && styles.pressed]}
                 disabled={busy}
                 onPress={handleAdd}>
-                <Text style={styles.addBtnText}>{busy ? '…' : 'Send'}</Text>
+                <Text style={styles.addBtnText}>{busy ? '…' : t('friends.send')}</Text>
               </Pressable>
             </View>
-            <Text style={styles.codeHint}>We’ll send a request — they choose to accept.</Text>
+            <Text style={styles.codeHint}>{t('friends.requestHint')}</Text>
           </View>
 
           {/* Incoming requests */}
           {incoming.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Friend Requests ({incoming.length})</Text>
+              <Text style={styles.sectionTitle}>{t('friends.friendRequests', { count: incoming.length })}</Text>
               <View style={styles.friendList}>
                 {incoming.map((req) => (
                   <View key={req.id} style={styles.friendRow}>
@@ -231,11 +233,11 @@ export default function FriendsScreen() {
                       )}
                     </View>
                     <View style={styles.friendInfo}>
-                      <Text style={styles.friendName}>{req.profile?.displayName || `Friend ${req.fromCode}`}</Text>
+                      <Text style={styles.friendName}>{req.profile?.displayName || t('friendCard.friendFallback', { code: req.fromCode })}</Text>
                       <Text style={styles.friendCode}>{req.fromCode}</Text>
                     </View>
                     <Pressable style={({ pressed }) => [styles.acceptBtn, pressed && styles.pressed]} onPress={() => handleAccept(req)}>
-                      <Text style={styles.acceptBtnText}>Accept</Text>
+                      <Text style={styles.acceptBtnText}>{t('friends.accept')}</Text>
                     </Pressable>
                     <Pressable hitSlop={8} onPress={() => handleDecline(req)} style={styles.friendRemove}>
                       <Text style={styles.friendRemoveText}>✕</Text>
@@ -248,12 +250,12 @@ export default function FriendsScreen() {
 
           {/* Friends list */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>My Friends ({friends.length})</Text>
+            <Text style={styles.sectionTitle}>{t('friends.myFriends', { count: friends.length })}</Text>
             {friends.length === 0 ? (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyEmoji}>🧁</Text>
-                <Text style={styles.emptyTitle}>No friends yet</Text>
-                <Text style={styles.emptyText}>Add a friend with their code to get started.</Text>
+                <Text style={styles.emptyTitle}>{t('friends.noFriendsYet')}</Text>
+                <Text style={styles.emptyText}>{t('friends.noFriendsHint')}</Text>
               </View>
             ) : (
               <View style={styles.friendList}>
@@ -278,11 +280,11 @@ export default function FriendsScreen() {
                       </View>
                       <View style={styles.friendInfo}>
                         <Text style={styles.friendName}>{f.displayName || f.name}</Text>
-                        <Text style={styles.friendCode}>{onlineCodes.has(f.code) ? 'Online now' : f.code}</Text>
+                        <Text style={styles.friendCode}>{onlineCodes.has(f.code) ? t('friends.onlineNow') : f.code}</Text>
                       </View>
                     </Pressable>
                     <Pressable style={({ pressed }) => [styles.playBtn, pressed && styles.pressed]} onPress={() => setPlayFor(f)}>
-                      <Text style={styles.playBtnText}>Play</Text>
+                      <Text style={styles.playBtnText}>{t('friends.play')}</Text>
                     </Pressable>
                     <Pressable hitSlop={8} onPress={() => confirmRemove(f.code, f.name)} style={styles.friendRemove}>
                       <Text style={styles.friendRemoveText}>✕</Text>
@@ -296,13 +298,13 @@ export default function FriendsScreen() {
           {/* Info note */}
           <View style={styles.infoCard}>
             <Text style={styles.infoText}>
-              🧁 Send a request with a code; once they accept, you’ll see each other’s cards. Sign in so friends can find you.
+              {t('friends.infoNote')}
             </Text>
           </View>
 
           {/* Done */}
           <Pressable style={({ pressed }) => [styles.doneButton, pressed && styles.pressed]} onPress={() => router.back()}>
-            <Text style={styles.doneButtonText}>Done</Text>
+            <Text style={styles.doneButtonText}>{t('common.done')}</Text>
           </Pressable>
         </SafeAreaView>
       </ScrollView>
@@ -312,19 +314,19 @@ export default function FriendsScreen() {
         <View style={styles.sheetRoot}>
           <Pressable style={styles.sheetBackdrop} onPress={() => setPlayFor(null)} />
           <View style={styles.sheetCard}>
-            <Text style={styles.sheetTitle}>Invite {playFor?.displayName || playFor?.name} to…</Text>
+            <Text style={styles.sheetTitle}>{t('friends.inviteTo', { name: playFor?.displayName || playFor?.name || '' })}</Text>
             {INVITE_GAMES.map((g) => (
               <Pressable
                 key={g.id}
                 style={({ pressed }) => [styles.sheetItem, pressed && styles.pressed]}
                 onPress={() => playFor && startInvite(playFor, g.id)}>
                 <Text style={styles.sheetEmoji}>{g.emoji}</Text>
-                <Text style={styles.sheetItemText}>{g.name}</Text>
+                <Text style={styles.sheetItemText}>{t(g.nameKey)}</Text>
                 <Text style={styles.sheetChevron}>›</Text>
               </Pressable>
             ))}
             <Pressable style={({ pressed }) => [styles.sheetCancel, pressed && styles.pressed]} onPress={() => setPlayFor(null)}>
-              <Text style={styles.sheetCancelText}>Cancel</Text>
+              <Text style={styles.sheetCancelText}>{t('common.cancel')}</Text>
             </Pressable>
           </View>
         </View>

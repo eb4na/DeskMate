@@ -8,12 +8,14 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { COIN_REWARDS } from '@/constants/placeholder-data';
 import { getCompanionLine } from '@/constants/companion-lines';
+import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
 const MAX_PAUSES = 2;
 const MIN_MINUTES_FOR_COINS = 10;
 
 export default function SessionScreen() {
+  const { t } = useTranslation();
   const { sessionLength, subject, taskId, taskTitle } = useLocalSearchParams<{
     sessionLength: string;
     subject?: string;
@@ -66,7 +68,7 @@ export default function SessionScreen() {
 
   const handlePause = () => {
     if (!isPaused && pausesUsed >= MAX_PAUSES) {
-      Alert.alert('No pauses left', 'You can only pause twice per session. Keep going!');
+      Alert.alert(t('session.noPausesLeft'), t('session.noPausesMsg'));
       return;
     }
     if (!isPaused) setPausesUsed((p) => p + 1);
@@ -86,13 +88,13 @@ export default function SessionScreen() {
 
     const coinMsg =
       cancelCoins > 0
-        ? `You studied ${minutesElapsed} min and will earn ${cancelCoins} coins.`
-        : `Less than ${MIN_MINUTES_FOR_COINS} min studied — no coins this time.`;
+        ? t('home.studiedEarn', { minutes: minutesElapsed, coins: cancelCoins })
+        : t('home.lessThanMin', { min: MIN_MINUTES_FOR_COINS });
 
-    Alert.alert('End session early?', coinMsg, [
-      { text: 'Keep going', style: 'cancel' },
+    Alert.alert(t('session.endSessionEarlyQ'), coinMsg, [
+      { text: t('session.keepGoing'), style: 'cancel' },
       {
-        text: 'End session',
+        text: t('session.endSession'),
         style: 'destructive',
         onPress: () => {
           hasCompleted.current = true;
@@ -124,7 +126,7 @@ export default function SessionScreen() {
       <SafeAreaView style={styles.safeArea}>
         {/* Subject / task label + companion line */}
         <ThemedText type="small" themeColor="textSecondary" style={styles.subjectLabel}>
-          {subject && subject.length > 0 ? subject : 'General Study'}
+          {subject && subject.length > 0 ? subject : t('home.generalStudy')}
           {taskTitle && taskTitle.length > 0 ? ` · ${taskTitle}` : ''}
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.companionLine}>
@@ -141,8 +143,8 @@ export default function SessionScreen() {
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             {isPaused
-              ? `Paused · ${MAX_PAUSES - pausesUsed} pause${MAX_PAUSES - pausesUsed !== 1 ? 's' : ''} left`
-              : 'Focus time'}
+              ? t('session.pausedLeft', { count: MAX_PAUSES - pausesUsed })
+              : t('session.focusTime')}
           </ThemedText>
           <ThemedView style={styles.progressTrack}>
             <ThemedView
@@ -157,13 +159,13 @@ export default function SessionScreen() {
             style={({ pressed }) => [styles.pauseBtn, pressed && styles.btnPressed]}
             onPress={handlePause}>
             <ThemedText type="smallBold" style={styles.pauseBtnText}>
-              {isPaused ? 'Resume' : 'Pause'}
+              {isPaused ? t('session.resume') : t('session.pause')}
             </ThemedText>
           </Pressable>
 
           <Pressable onPress={handleCancel} style={styles.cancelBtn}>
             <ThemedText type="small" themeColor="textSecondary">
-              End session
+              {t('session.endSession')}
             </ThemedText>
           </Pressable>
         </ThemedView>

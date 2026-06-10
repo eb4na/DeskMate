@@ -15,8 +15,10 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BakeryColors, BakeryRadii, BakeryShadow, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
+import { useTranslation } from '@/i18n';
 
 export default function ResetPasswordScreen() {
+  const { t } = useTranslation();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -37,17 +39,17 @@ export default function ResetPasswordScreen() {
 
   const handleUpdatePassword = async () => {
     if (!password) {
-      setErrorMessage('Enter a new password.');
+      setErrorMessage(t('errors.enterNewPassword'));
       return;
     }
 
     if (password.length < 6) {
-      setErrorMessage('Use at least 6 characters for your new password.');
+      setErrorMessage(t('errors.newPasswordTooShort'));
       return;
     }
 
     if (password !== confirmPassword) {
-      setErrorMessage('Those passwords do not match yet.');
+      setErrorMessage(t('errors.passwordsNoMatch'));
       return;
     }
 
@@ -63,7 +65,7 @@ export default function ResetPasswordScreen() {
       return;
     }
 
-    setSuccessMessage('Password updated. You can keep using DeskMate now.');
+    setSuccessMessage(t('auth.passwordUpdated'));
     setSubmitting(false);
     setTimeout(() => router.replace('/'), 700);
   };
@@ -78,34 +80,34 @@ export default function ResetPasswordScreen() {
             <ThemedView style={styles.hero}>
               <ThemedText style={styles.heroEmoji}>🍪</ThemedText>
               <ThemedText type="subtitle" style={styles.title}>
-                Choose a new password
+                {t('auth.chooseNewPassword')}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
-                This screen works after you open a DeskMate password reset link from your email.
+                {t('auth.resetSubtitle')}
               </ThemedText>
             </ThemedView>
 
             <ThemedView type="backgroundElement" style={styles.card}>
-              <ThemedText type="smallBold">New password</ThemedText>
+              <ThemedText type="smallBold">{t('auth.newPassword')}</ThemedText>
               <TextInput
                 style={inputStyle}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
                 textContentType="newPassword"
-                placeholder="At least 6 characters"
+                placeholder={t('auth.passwordMinPlaceholder')}
                 placeholderTextColor={colors.textSecondary}
                 returnKeyType="next"
               />
 
-              <ThemedText type="smallBold">Confirm password</ThemedText>
+              <ThemedText type="smallBold">{t('auth.confirmPassword2')}</ThemedText>
               <TextInput
                 style={inputStyle}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
                 textContentType="newPassword"
-                placeholder="Type it again"
+                placeholder={t('auth.typeAgain')}
                 placeholderTextColor={colors.textSecondary}
                 returnKeyType="done"
                 onSubmitEditing={handleUpdatePassword}
@@ -131,7 +133,7 @@ export default function ResetPasswordScreen() {
                 onPress={handleUpdatePassword}
                 disabled={submitting}>
                 <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                  {submitting ? 'Saving...' : 'Update password'}
+                  {submitting ? t('auth.saving') : t('auth.updatePassword')}
                 </ThemedText>
               </Pressable>
             </ThemedView>

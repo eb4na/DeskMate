@@ -11,16 +11,18 @@ import { useApp } from '@/context/app-context';
 import { getCompanionImage } from '@/lib/companion-utils';
 import { joinPresence, subscribeToInvites, type GameInvite, type OnlineGameId } from '@/lib/game-net';
 import { useStudyRoom } from '@/lib/use-study-room';
+import { useTranslation } from '@/i18n';
 
-const GAME_LABEL: Record<OnlineGameId, string> = {
-  connect4: 'Connect 4',
-  tictactoe: 'Tic-Tac-Toe',
-  memory: 'Memory Cards',
-  batterdash: 'a BatterDash party',
-  study: 'a study room',
+const GAME_LABEL_KEY: Record<OnlineGameId, string> = {
+  connect4: 'invite.game_connect4',
+  tictactoe: 'invite.game_tictactoe',
+  memory: 'invite.game_memory',
+  batterdash: 'invite.game_batterdash',
+  study: 'invite.game_study',
 };
 
 export function InviteListener() {
+  const { t } = useTranslation();
   const { friendCode, friends } = useApp();
   const studyRoom = useStudyRoom();
   const [invite, setInvite] = useState<GameInvite | null>(null);
@@ -68,16 +70,16 @@ export function InviteListener() {
               <Text style={styles.avatarText}>{(invite?.fromName?.[0] ?? '?').toUpperCase()}</Text>
             )}
           </View>
-          <Text style={styles.title}>{invite?.fromName || 'A friend'} invited you!</Text>
+          <Text style={styles.title}>{t('invite.invitedYou', { name: invite?.fromName || t('invite.aFriend') })}</Text>
           <Text style={styles.subtitle}>
-            Play {invite ? GAME_LABEL[invite.game] : 'a game'} together?
+            {t('invite.playTogether', { game: invite ? t(GAME_LABEL_KEY[invite.game]) : t('invite.aGame') })}
           </Text>
           <View style={styles.actions}>
             <Pressable style={({ pressed }) => [styles.declineBtn, pressed && styles.pressed]} onPress={() => setInvite(null)}>
-              <Text style={styles.declineText}>Later</Text>
+              <Text style={styles.declineText}>{t('invite.later')}</Text>
             </Pressable>
             <Pressable style={({ pressed }) => [styles.acceptBtn, pressed && styles.pressed]} onPress={accept}>
-              <Text style={styles.acceptText}>Join</Text>
+              <Text style={styles.acceptText}>{t('invite.join')}</Text>
             </Pressable>
           </View>
         </View>

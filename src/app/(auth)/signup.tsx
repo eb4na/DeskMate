@@ -15,8 +15,10 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BakeryColors, BakeryRadii, BakeryShadow, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { authCallbackUrl, supabase } from '@/lib/supabase';
+import { useTranslation } from '@/i18n';
 
 export default function SignupScreen() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -39,13 +41,13 @@ export default function SignupScreen() {
   const handleSignup = async () => {
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail || !password) {
-      setErrorMessage('Enter an email and password to create your account.');
+      setErrorMessage(t('errors.enterEmailPasswordSignup'));
       setExistingAccountMessage('');
       return;
     }
 
     if (password.length < 6) {
-      setErrorMessage('Use at least 6 characters for your password.');
+      setErrorMessage(t('errors.passwordTooShort'));
       setExistingAccountMessage('');
       return;
     }
@@ -62,7 +64,7 @@ export default function SignupScreen() {
 
     if (error) {
       if (/user already registered/i.test(error.message)) {
-        setExistingAccountMessage('That email already has a DeskMate account. Sign in instead.');
+        setExistingAccountMessage(t('errors.emailAlreadyRegistered'));
       } else {
         setErrorMessage(error.message);
       }
@@ -76,9 +78,7 @@ export default function SignupScreen() {
     setSubmitting(false);
 
     if (looksLikeExistingAccount || data.user?.email_confirmed_at) {
-      setExistingAccountMessage(
-        'That email already has a DeskMate account. Sign in instead. If you still need a code, use Resend verification from the login screen.',
-      );
+      setExistingAccountMessage(t('errors.emailAlreadyRegisteredLong'));
       return;
     }
 
@@ -95,16 +95,15 @@ export default function SignupScreen() {
             <ThemedView style={styles.hero}>
               <ThemedText style={styles.heroEmoji}>🍰</ThemedText>
               <ThemedText type="subtitle" style={styles.title}>
-                Create account
+                {t('auth.signupTitle')}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
-                Open your own study bakery corner. Your focus data still stays local in the app for
-                now.
+                {t('auth.signupSubtitle')}
               </ThemedText>
             </ThemedView>
 
             <ThemedView type="backgroundElement" style={styles.card}>
-              <ThemedText type="smallBold">Email</ThemedText>
+              <ThemedText type="smallBold">{t('auth.email')}</ThemedText>
               <TextInput
                 style={inputStyle}
                 value={email}
@@ -113,19 +112,19 @@ export default function SignupScreen() {
                 autoCorrect={false}
                 keyboardType="email-address"
                 textContentType="emailAddress"
-                placeholder="you@example.com"
+                placeholder={t('auth.emailPlaceholder')}
                 placeholderTextColor={colors.textSecondary}
                 returnKeyType="next"
               />
 
-              <ThemedText type="smallBold">Password</ThemedText>
+              <ThemedText type="smallBold">{t('auth.password')}</ThemedText>
               <TextInput
                 style={inputStyle}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
                 textContentType="newPassword"
-                placeholder="At least 6 characters"
+                placeholder={t('auth.passwordMinPlaceholder')}
                 placeholderTextColor={colors.textSecondary}
                 returnKeyType="done"
                 onSubmitEditing={handleSignup}
@@ -151,7 +150,7 @@ export default function SignupScreen() {
                 onPress={handleSignup}
                 disabled={submitting}>
                 <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                  {submitting ? 'Creating account...' : 'Create account'}
+                  {submitting ? t('auth.creatingAccount') : t('auth.createAccount')}
                 </ThemedText>
               </Pressable>
 
@@ -163,27 +162,27 @@ export default function SignupScreen() {
                       pathname: '/login',
                       params: {
                         email: normalizedEmail,
-                        notice: 'This email already has an account. Sign in with your password instead.',
+                        notice: t('errors.emailExistsNotice'),
                       },
                     })
                   }>
                   <ThemedText type="smallBold" style={styles.secondaryButtonText}>
-                    Go to sign in
+                    {t('auth.goToSignIn')}
                   </ThemedText>
                 </Pressable>
               ) : null}
 
               <ThemedText type="small" themeColor="textSecondary" style={styles.helperText}>
-                We&apos;ll create your account, then send an email verification step before first login.
+                {t('auth.signupHelper')}
               </ThemedText>
             </ThemedView>
 
             <Pressable onPress={() => router.replace('/login')} style={styles.linkRow}>
               <ThemedText type="small" themeColor="textSecondary">
-                Already have an account?
+                {t('auth.alreadyHaveAccount')}
               </ThemedText>
               <ThemedText type="smallBold" style={styles.linkText}>
-                Sign in
+                {t('auth.signInLink')}
               </ThemedText>
             </Pressable>
           </SafeAreaView>

@@ -10,6 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { isEquipableCategory } from '@/constants/shop-effects';
 import { useApp } from '@/context/app-context';
+import { useTranslation } from '@/i18n';
 import {
   SHOP_ITEMS,
   CATEGORIES,
@@ -23,7 +24,7 @@ import {
   BakeryColors,
   BakeryRadii,
   BakeryShadow,
-  BottomTabInset,
+  BottomTabClearance,
   MaxContentWidth,
   Spacing,
 } from '@/constants/theme';
@@ -63,21 +64,6 @@ function CategoryIcon({ id, size }: { id: ShopCategory; size?: number }) {
   if (id === 'theme') return <ThemeIcon size={size} />;
   return <PoseIcon size={size} />;
 }
-
-const CATEGORY_SHORT: Record<ShopCategory, string> = {
-  companion: 'Chef',
-  outfits: 'Outfits',
-  background: 'Room',
-  desk: 'Desk',
-  recipe: 'Recipe',
-  sound: 'Sound',
-  game: 'Game',
-  reminder: 'Alert',
-  decoration: 'Deco',
-  outfit: 'Outfit',
-  theme: 'Theme',
-  pose: 'Pose',
-};
 
 const MAGNIFIER_ICON = require('@/assets/images/shop/magnifier.png');
 
@@ -138,6 +124,7 @@ const USE_HINTS: Partial<Record<ShopCategory, string>> = {
 const ITEMS_PER_PAGE = 6;
 
 export default function ShopScreen() {
+  const { t } = useTranslation();
   const {
     coins,
     earnedToday,
@@ -201,15 +188,15 @@ export default function ShopScreen() {
 
   const handleCoinPack = (pack: CoinPack) => {
     Alert.alert(
-      `Buy ${pack.name}?`,
-      `${pack.coins} coins for ${pack.price}. Purchased coins never expire.\n\n🛠 Mock purchase — real payments coming soon.`,
+      t('shop.buyPackQ', { name: pack.name }),
+      t('shop.packDetail', { coins: pack.coins, price: pack.price }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: `Buy for ${pack.price} (Mock)`,
+          text: t('shop.buyForMock', { price: pack.price }),
           onPress: () => {
             addPurchasedCoins(pack.coins);
-            Alert.alert(`+${pack.coins} coins added!`, 'Mock purchase complete.');
+            Alert.alert(t('shop.coinsAdded', { coins: pack.coins }), t('shop.mockComplete'));
           },
         },
       ],
@@ -221,16 +208,16 @@ export default function ShopScreen() {
     const price = Math.floor(basePrice * discount);
     if (ownedShopItems.includes(itemId)) return;
     if (coins < price) {
-      Alert.alert('Not enough coins', `You need ${price} coins but only have ${coins}.`);
+      Alert.alert(t('shop.notEnoughCoins'), t('shop.notEnoughCoinsMsg', { price, coins }));
       return;
     }
-    Alert.alert(`Buy "${name}"?`, `Spend ${price} coins${isPlus ? ' (20% Plus discount)' : ''}.`, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('shop.buyItemQ', { name }), isPlus ? t('shop.spendCoinsPlus', { price }) : t('shop.spendCoins', { price }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: `Buy for ${price} coins`,
+        text: t('shop.buyForCoins', { price }),
         onPress: () => {
           if (!purchaseShopItem(itemId, price))
-            Alert.alert('Purchase failed', 'Something went wrong. Please try again.');
+            Alert.alert(t('shop.purchaseFailed'), t('errors.generic'));
         },
       },
     ]);
@@ -245,25 +232,25 @@ export default function ShopScreen() {
 
   const handleEquip = (itemId: string, name: string) => {
     const ok = equipShopItem(itemId);
-    if (!ok) { Alert.alert("Can't equip yet", 'Unlock this item first.'); return; }
-    Alert.alert('Equipped', `${name} is now active.`);
+    if (!ok) { Alert.alert(t('shop.cantEquip'), t('shop.unlockFirst')); return; }
+    Alert.alert(t('shop.equippedTitle'), t('shop.nowActive', { name }));
   };
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} stickyHeaderIndices={[0]}>
+      <ScrollView showsVerticalScrollIndicator={false} stickyHeaderIndices={[0]} style={styles.scrollBox}>
 
         {/* ── Sticky header: balance + daily cap ── */}
         <ThemedView style={styles.header}>
           <ThemedView style={styles.headerInner}>
-            <ThemedText type="subtitle" style={styles.title}>Shop</ThemedText>
+            <ThemedText type="subtitle" style={styles.title}>{t('shop.title')}</ThemedText>
             <View style={styles.headerRight}>
               {!isPlus && (
                 <Pressable onPress={() => router.push('/plus-upgrade')}>
                   <ThemedView style={styles.plusPill}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                       <BakeryStarEmoji size={14} />
-                      <ThemedText style={styles.plusPillText}>Plus −20%</ThemedText>
+                      <ThemedText style={styles.plusPillText}>{t('shop.plusDiscount')}</ThemedText>
                     </View>
                   </ThemedView>
                 </Pressable>
@@ -277,12 +264,12 @@ export default function ShopScreen() {
 
           {/* Earn progress bar */}
           <ThemedView style={styles.capRow}>
-            <ThemedText style={styles.capLabel}>Daily earn  {earnedToday}/{DAILY_EARN_CAP}</ThemedText>
+            <ThemedText style={styles.capLabel}>{t('shop.dailyEarn', { earned: earnedToday, cap: DAILY_EARN_CAP })}</ThemedText>
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${Math.min(100, (earnedToday / DAILY_EARN_CAP) * 100)}%` }]} />
             </View>
             <ThemedText style={styles.capLabel}>
-              {capRemaining > 0 ? `+${capRemaining} left` : 'Full!'}
+              {capRemaining > 0 ? t('shop.leftAmount', { count: capRemaining }) : t('shop.full')}
             </ThemedText>
           </ThemedView>
         </ThemedView>
@@ -305,7 +292,7 @@ export default function ShopScreen() {
                   <View style={[styles.catSquare, active && styles.catSquareActive]}>
                     <CategoryIcon id={cat} size={36} />
                     <ThemedText style={[styles.catLabel, active && styles.catLabelActive]}>
-                      {CATEGORY_SHORT[cat]}
+                      {t(`shop.cat_${cat}`)}
                     </ThemedText>
                   </View>
                 </Pressable>
@@ -319,7 +306,7 @@ export default function ShopScreen() {
           {activeCategory === 'outfit' && (
             <View style={styles.noteCard}>
               <ThemedText style={styles.noteText}>
-                Outfits in v1 are for the free default girl and default dude only.
+                {t('shop.outfitsV1Note')}
               </ThemedText>
             </View>
           )}
@@ -329,7 +316,7 @@ export default function ShopScreen() {
             <View style={styles.outfitsWrap}>
               {!outfitChar ? (
                 <>
-                  <ThemedText style={styles.outfitsHint}>Pick a character to dress up</ThemedText>
+                  <ThemedText style={styles.outfitsHint}>{t('shop.pickCharacter')}</ThemedText>
                   <View style={styles.outfitCharGrid}>
                     {allOutfitCharacters.map((c) => (
                       <Pressable
@@ -337,7 +324,7 @@ export default function ShopScreen() {
                         style={styles.outfitCharCard}
                         onPress={() => {
                           if (c.owned) setOutfitCharId(c.id);
-                          else Alert.alert(`${c.name} locked`, `Unlock ${c.name} first to dress them up.`);
+                          else Alert.alert(t('shop.charLocked', { name: c.name }), t('shop.charLockedMsg', { name: c.name }));
                         }}>
                         {c.image ? (
                           <RNImage source={c.image} style={[styles.outfitCharImg, !c.owned && styles.lockedImg]} resizeMode="contain" />
@@ -347,7 +334,7 @@ export default function ShopScreen() {
                         <ThemedText style={styles.itemName} numberOfLines={1}>{c.name}</ThemedText>
                         <View style={[styles.charBadge, c.owned ? styles.badgeOwned : styles.charLockedBadge]}>
                           <ThemedText style={c.owned ? styles.badgeText : styles.charLockedText}>
-                            {c.owned ? '✓ Owned' : '🔒 Locked'}
+                            {c.owned ? t('shop.ownedBadge') : t('shop.lockedBadge')}
                           </ThemedText>
                         </View>
                       </Pressable>
@@ -357,13 +344,13 @@ export default function ShopScreen() {
               ) : (
                 <>
                   <Pressable style={styles.outfitBack} onPress={() => setOutfitCharId(null)}>
-                    <ThemedText style={styles.outfitBackText}>‹ {outfitChar.name}'s outfits</ThemedText>
+                    <ThemedText style={styles.outfitBackText}>{t('shop.charOutfits', { name: outfitChar.name })}</ThemedText>
                   </Pressable>
                   {outfitsForCharacter(outfitChar.id).length === 0 && (
                     <View style={styles.emptyCard}>
                       <ThemedText style={styles.emptyEmoji}>👗</ThemedText>
-                      <ThemedText style={styles.emptyTitle}>No outfits yet</ThemedText>
-                      <ThemedText style={styles.emptyText}>{outfitChar.name}'s wardrobe is empty for now.</ThemedText>
+                      <ThemedText style={styles.emptyTitle}>{t('shop.noOutfitsYet')}</ThemedText>
+                      <ThemedText style={styles.emptyText}>{t('shop.wardrobeEmpty', { name: outfitChar.name })}</ThemedText>
                     </View>
                   )}
                   <View style={styles.outfitGrid}>
@@ -376,9 +363,9 @@ export default function ShopScreen() {
                           disabled={owned || !canAfford}
                           onPress={() => {
                             if (purchaseShopItem(o.id, o.price)) {
-                              Alert.alert('Outfit unlocked!', `${o.name} is now in ${outfitChar.name}'s wardrobe.`);
+                              Alert.alert(t('shop.outfitUnlocked'), t('shop.outfitUnlockedMsg', { name: o.name, char: outfitChar.name }));
                             } else {
-                              Alert.alert('Not enough coins', `You need ${o.price} coins for ${o.name}.`);
+                              Alert.alert(t('shop.notEnoughCoins'), t('shop.needCoinsFor', { price: o.price, name: o.name }));
                             }
                           }}>
                           <View style={[styles.itemCard, owned && styles.itemOwned, !owned && !canAfford && styles.itemDim]}>
@@ -400,7 +387,7 @@ export default function ShopScreen() {
                             )}
                             {owned ? (
                               <View style={[styles.priceBadge, styles.badgeOwned]}>
-                                <ThemedText style={styles.badgeText}>{o.price === 0 ? 'Default' : '✓ Owned'}</ThemedText>
+                                <ThemedText style={styles.badgeText}>{o.price === 0 ? t('shop.defaultBadge') : t('shop.ownedBadge')}</ThemedText>
                               </View>
                             ) : (
                               <CoinAmount amount={o.price} size={22} textStyle={[styles.priceText, !canAfford && styles.priceTextDim]} />
@@ -420,8 +407,8 @@ export default function ShopScreen() {
           {activeCategory !== 'outfits' && items.length === 0 && (
             <View style={styles.emptyCard}>
               <ThemedText style={styles.emptyEmoji}>🧁</ThemedText>
-              <ThemedText style={styles.emptyTitle}>Nothing here yet</ThemedText>
-              <ThemedText style={styles.emptyText}>New treats are coming to this shelf soon!</ThemedText>
+              <ThemedText style={styles.emptyTitle}>{t('shop.nothingHereYet')}</ThemedText>
+              <ThemedText style={styles.emptyText}>{t('shop.newTreatsSoon')}</ThemedText>
             </View>
           )}
 
@@ -465,8 +452,8 @@ export default function ShopScreen() {
                           if (equipable && !isEquipped) handleEquip(item.id, item.name);
                         } else if (item.plusOnly) {
                           Alert.alert(
-                            `${item.name} is a Plus exclusive`,
-                            `Unlock Memobun Plus to get ${item.name} for free. Her outfits are still bought separately.`,
+                            t('shop.plusExclusive', { name: item.name }),
+                            t('shop.plusExclusiveMsg', { name: item.name }),
                           );
                         } else {
                           handleBuy(item.id, item.name, item.price);
@@ -507,11 +494,11 @@ export default function ShopScreen() {
                         )}
                         {owned ? (
                           <View style={[styles.priceBadge, isEquipped ? styles.badgeEquipped : styles.badgeOwned]}>
-                            <ThemedText style={styles.badgeText}>{isEquipped ? '✓ Equipped' : '✓ Owned'}</ThemedText>
+                            <ThemedText style={styles.badgeText}>{isEquipped ? t('shop.equippedBadge') : t('shop.ownedBadge')}</ThemedText>
                           </View>
                         ) : item.plusOnly ? (
                           <View style={[styles.priceBadge, styles.badgePlus]}>
-                            <ThemedText style={styles.badgePlusText}>✨ Plus</ThemedText>
+                            <ThemedText style={styles.badgePlusText}>{t('shop.plusBadge')}</ThemedText>
                           </View>
                         ) : (
                           <CoinAmount
@@ -522,7 +509,7 @@ export default function ShopScreen() {
                         )}
                         <ThemedText style={styles.itemName} numberOfLines={1}>{item.name}</ThemedText>
                         {USE_HINTS[item.category] && (
-                          <ThemedText style={styles.useHint} numberOfLines={1}>{USE_HINTS[item.category]}</ThemedText>
+                          <ThemedText style={styles.useHint} numberOfLines={1}>{t('shop.setActiveInGallery')}</ThemedText>
                         )}
                       </View>
                     </Pressable>
@@ -539,7 +526,7 @@ export default function ShopScreen() {
                 <View style={[styles.indicatorPill, { left: `${(itemPage / totalPages) * 100}%`, width: `${(1 / totalPages) * 100}%` }]} />
               </View>
               <ThemedText style={styles.indicatorLabel}>
-                {itemPage + 1} / {totalPages}  ·  {items.length} items
+                {t('shop.pageIndicator', { page: itemPage + 1, total: totalPages, count: items.length })}
               </ThemedText>
             </View>
           )}
@@ -549,8 +536,8 @@ export default function ShopScreen() {
           {/* ── Coin Packs (bakery menu) ── */}
           <View style={styles.menuCard}>
             <View style={styles.menuHeader}>
-              <ThemedText style={styles.menuTitle}>♡ Bakery Menu ♡</ThemedText>
-              <ThemedText style={styles.menuSubtitle}>Coins never expire · not capped</ThemedText>
+              <ThemedText style={styles.menuTitle}>{t('shop.bakeryMenu')}</ThemedText>
+              <ThemedText style={styles.menuSubtitle}>{t('shop.coinsNeverExpire')}</ThemedText>
             </View>
             {COIN_PACKS.map((pack, i) => (
               <Pressable key={pack.id} onPress={() => handleCoinPack(pack)} style={({ pressed }) => pressed && styles.pressed}>
@@ -565,7 +552,7 @@ export default function ShopScreen() {
                     <View style={styles.menuSubLine}>
                       <CoinAmount amount={pack.coins} size={20} textStyle={styles.menuCoinText} />
                       {pack.popular && (
-                        <View style={styles.chefBadge}><ThemedText style={styles.chefText}>Chef's pick</ThemedText></View>
+                        <View style={styles.chefBadge}><ThemedText style={styles.chefText}>{t('shop.chefsPick')}</ThemedText></View>
                       )}
                     </View>
                   </View>
@@ -579,7 +566,7 @@ export default function ShopScreen() {
             <View style={styles.disclaimerRow}>
               <BakeryWrenchEmoji size={16} />
               <ThemedText style={styles.disclaimerText}>
-                Real payment processing coming in a future update. Packs are mock purchases for now.
+                {t('shop.realPaymentNote')}
               </ThemedText>
             </View>
           </View>
@@ -594,7 +581,7 @@ export default function ShopScreen() {
           {zoomImage !== null && (
             <View style={styles.zoomCard}>
               <RNImage source={zoomImage} style={styles.zoomImage} resizeMode="contain" />
-              <ThemedText style={styles.zoomHint}>Tap anywhere to close</ThemedText>
+              <ThemedText style={styles.zoomHint}>{t('shop.tapToClose')}</ThemedText>
             </View>
           )}
         </Pressable>
@@ -605,6 +592,9 @@ export default function ShopScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  // Keep the whole shop scroll just above the floating menu bar (its top sits
+  // ~144px from the screen bottom; reserve a touch more so nothing is clipped).
+  scrollBox: { flex: 1, marginBottom: BottomTabClearance },
   zoomBtn: {
     position: 'absolute',
     top: 2,
@@ -707,7 +697,7 @@ const styles = StyleSheet.create({
   body: {
     paddingHorizontal: H_PAD,
     paddingTop: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.four,
+    paddingBottom: Spacing.four,
     gap: Spacing.three,
   },
 

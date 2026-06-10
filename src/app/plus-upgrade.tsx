@@ -15,30 +15,32 @@ import { ShopTabIcon } from '@/components/tab-icons';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
+import { useTranslation } from '@/i18n';
 import { BakeryColors, MaxContentWidth, Spacing } from '@/constants/theme';
 
-const FEATURES: { title: string; desc: string; renderIcon: (size: number) => React.ReactNode }[] = [
-  { title: 'Custom timers', desc: 'Any duration, saved presets', renderIcon: (s) => <KitchenTimerIcon size={s} /> },
-  { title: 'Multiple reminders', desc: 'Weekday/weekend schedules, custom messages', renderIcon: (s) => <BellIcon size={s} /> },
-  { title: 'Unlimited exam countdowns', desc: 'Plus advanced exam planning fields', renderIcon: (s) => <ExamCalendarIcon size={s} /> },
-  { title: 'Streak freezes', desc: '3 per month — protect your streak from missed days', renderIcon: (s) => <StreakFreezeIcon size={s} /> },
-  { title: 'Advanced reports', desc: 'Monthly trends, best study hours, mood insights', renderIcon: (s) => <ChartIcon size={s} /> },
-  { title: 'Ambience sounds', desc: 'Rain, cafe, library, fireplace, and more', renderIcon: (s) => <MusicNoteIcon size={s} /> },
-  { title: 'All break games', desc: 'Unlock Memory Cards, Word Puzzle, and future games', renderIcon: (s) => <GameIcon size={s} /> },
-  { title: 'Plus shop discount', desc: '20% off all shop items', renderIcon: (s) => <ShopTabIcon size={s} color={BakeryColors.honey} /> },
+const FEATURES: { titleKey: string; descKey: string; renderIcon: (size: number) => React.ReactNode }[] = [
+  { titleKey: 'plus.f_customTimers', descKey: 'plus.f_customTimersDesc', renderIcon: (s) => <KitchenTimerIcon size={s} /> },
+  { titleKey: 'plus.f_multiReminders', descKey: 'plus.f_multiRemindersDesc', renderIcon: (s) => <BellIcon size={s} /> },
+  { titleKey: 'plus.f_unlimitedExams', descKey: 'plus.f_unlimitedExamsDesc', renderIcon: (s) => <ExamCalendarIcon size={s} /> },
+  { titleKey: 'plus.f_streakFreezes', descKey: 'plus.f_streakFreezesDesc', renderIcon: (s) => <StreakFreezeIcon size={s} /> },
+  { titleKey: 'plus.f_advancedReports', descKey: 'plus.f_advancedReportsDesc', renderIcon: (s) => <ChartIcon size={s} /> },
+  { titleKey: 'plus.f_ambience', descKey: 'plus.f_ambienceDesc', renderIcon: (s) => <MusicNoteIcon size={s} /> },
+  { titleKey: 'plus.f_allGames', descKey: 'plus.f_allGamesDesc', renderIcon: (s) => <GameIcon size={s} /> },
+  { titleKey: 'plus.f_shopDiscount', descKey: 'plus.f_shopDiscountDesc', renderIcon: (s) => <ShopTabIcon size={s} color={BakeryColors.honey} /> },
 ];
 
 export default function PlusUpgradeScreen() {
+  const { t } = useTranslation();
   const { isPlus, setIsPlus } = useApp();
 
   const handleMockUpgrade = () => {
     Alert.alert(
-      'Mock Upgrade',
-      'This activates DeskMate Plus in demo mode. No real payment is processed.',
+      t('plus.mockUpgrade'),
+      t('plus.mockUpgradeMsg'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Activate Plus (Mock)',
+          text: t('plus.activatePlus'),
           onPress: () => {
             setIsPlus(true);
             router.back();
@@ -50,16 +52,16 @@ export default function PlusUpgradeScreen() {
 
   const handleRestore = () => {
     Alert.alert(
-      'Restore Purchases',
-      'Real payment restoration will be connected in a future update.',
+      t('plus.restorePurchases'),
+      t('plus.restoreMsg'),
     );
   };
 
   const handleDeactivate = () => {
-    Alert.alert('Deactivate Plus?', 'This will return you to the free tier.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('plus.deactivateQ'), t('plus.deactivateMsg'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Deactivate',
+        text: t('plus.deactivate'),
         style: 'destructive',
         onPress: () => {
           setIsPlus(false);
@@ -80,7 +82,7 @@ export default function PlusUpgradeScreen() {
               DeskMate Plus
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary" style={styles.heroSub}>
-              Premium features for serious students
+              {t('plus.heroSub')}
             </ThemedText>
           </ThemedView>
 
@@ -88,9 +90,9 @@ export default function PlusUpgradeScreen() {
           {isPlus && (
             <ThemedView type="backgroundElement" style={styles.activeBanner}>
               <ThemedText style={styles.activeEmoji}>🎉</ThemedText>
-              <ThemedText type="smallBold">You're a Plus member!</ThemedText>
+              <ThemedText type="smallBold">{t('plus.plusMember')}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                All features unlocked. Keep studying!
+                {t('plus.allUnlocked')}
               </ThemedText>
             </ThemedView>
           )}
@@ -98,12 +100,12 @@ export default function PlusUpgradeScreen() {
           {/* Feature list */}
           <ThemedView style={styles.featureList}>
             {FEATURES.map((f) => (
-              <ThemedView key={f.title} style={styles.featureRow}>
+              <ThemedView key={f.titleKey} style={styles.featureRow}>
                 <ThemedView style={styles.featureIcon}>{f.renderIcon(40)}</ThemedView>
                 <ThemedView style={styles.featureText}>
-                  <ThemedText type="smallBold">{f.title}</ThemedText>
+                  <ThemedText type="smallBold">{t(f.titleKey)}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
-                    {f.desc}
+                    {t(f.descKey)}
                   </ThemedText>
                 </ThemedView>
                 <ThemedText style={styles.checkmark}>✓</ThemedText>
@@ -117,23 +119,23 @@ export default function PlusUpgradeScreen() {
               <ThemedView style={styles.priceRow}>
                 <ThemedView>
                   <ThemedText type="smallBold" style={styles.priceTitle}>
-                    Monthly
+                    {t('plus.monthly')}
                   </ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
-                    Flexible, cancel anytime
+                    {t('plus.cancelAnytime')}
                   </ThemedText>
                 </ThemedView>
-                <ThemedText style={styles.priceValue}>$8.00</ThemedText>
+                <ThemedText style={styles.priceValue}>$6.70</ThemedText>
               </ThemedView>
               <ThemedView style={styles.divider} />
               <ThemedView style={styles.priceRow}>
                 <ThemedView>
                   <ThemedText type="smallBold" style={styles.priceTitle}>
-                    Yearly{' '}
-                    <ThemedText style={styles.saveBadge}>Save 48%</ThemedText>
+                    {t('plus.yearly')}{' '}
+                    <ThemedText style={styles.saveBadge}>{t('plus.save48')}</ThemedText>
                   </ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
-                    $49.99/year · Best value
+                    {t('plus.yearlyDetail')}
                   </ThemedText>
                 </ThemedView>
                 <ThemedText style={styles.priceValue}>$4.17/mo</ThemedText>
@@ -145,12 +147,10 @@ export default function PlusUpgradeScreen() {
           {!isPlus && (
             <ThemedView type="backgroundElement" style={styles.freeCard}>
               <ThemedText type="smallBold" style={styles.freeTitle}>
-                Free plan stays free forever
+                {t('plus.freeForever')}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.freeText}>
-                Two starter companions · Sessions · Focus Coins · Coin Shop · Mood tracker ·
-                Streaks · Basic tasks · Subject manager · 3 exam countdowns · Break timer · Free
-                presets
+                {t('plus.freeText')}
               </ThemedText>
             </ThemedView>
           )}
@@ -162,27 +162,26 @@ export default function PlusUpgradeScreen() {
                 style={({ pressed }) => [styles.upgradeBtn, pressed && styles.pressed]}
                 onPress={handleMockUpgrade}>
                 <ThemedText type="smallBold" style={styles.upgradeBtnText}>
-                  Start Plus (Mock — no real payment)
+                  {t('plus.startPlus')}
                 </ThemedText>
               </Pressable>
 
               <Pressable onPress={handleRestore} style={styles.restoreBtn}>
                 <ThemedText type="small" themeColor="textSecondary">
-                  Restore Purchases
+                  {t('plus.restorePurchases')}
                 </ThemedText>
               </Pressable>
             </>
           ) : (
             <Pressable onPress={handleDeactivate} style={styles.deactivateBtn}>
               <ThemedText type="small" themeColor="textSecondary">
-                Deactivate Plus (demo)
+                {t('plus.deactivatePlus')}
               </ThemedText>
             </Pressable>
           )}
 
           <ThemedText type="small" themeColor="textSecondary" style={styles.disclaimer}>
-            🛠 Real payment processing will be connected in a future update. This is a mock
-            subscription for testing.
+            {t('plus.disclaimer')}
           </ThemedText>
         </SafeAreaView>
       </ScrollView>

@@ -1,5 +1,5 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
-import i18n from '@/i18n';
+import i18n, { detectDeviceLanguage } from '@/i18n';
 import { DAILY_EARN_CAP, STATIC_SUBJECTS } from '@/constants/placeholder-data';
 import { SHOP_ITEMS, type ShopCategory } from '@/constants/shop-data';
 import { useAuth } from '@/context/auth-context';
@@ -78,6 +78,9 @@ export type ActiveSession = {
   taskId: string | null;
   taskTitle: string | null;
   startedAt: string;
+  isMultiplayer?: boolean;
+  /** Custom break length (minutes); falls back to floor(duration/12) when unset. */
+  breakMinutes?: number;
 };
 
 // ─── Wave 4 types ─────────────────────────────────────────────────────────────
@@ -359,7 +362,8 @@ function getShopItem(itemId: string) {
 
 function normalizePersistedState(saved?: Partial<PersistedState> | null): PersistedState {
   if (!saved) {
-    return { ...DEFAULTS, friendCode: generateFriendCode() };
+    // Brand-new user: default to the device language if we support it.
+    return { ...DEFAULTS, friendCode: generateFriendCode(), language: detectDeviceLanguage() };
   }
 
   const month = new Date().toISOString().slice(0, 7);
@@ -409,7 +413,9 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
   // Give every user a stable friend code the first time.
   if (!merged.friendCode) merged.friendCode = generateFriendCode();
 
-  return { ...DEFAULTS, ...merged };
+  // Users from before the language feature have no saved language — fall back to
+  // their device language rather than forcing English.
+  return { ...DEFAULTS, ...merged, language: merged.language ?? detectDeviceLanguage() };
 }
 
 // ─── Context type ─────────────────────────────────────────────────────────────
@@ -528,8 +534,14 @@ type AppContextType = {
     taskTitle: string | null;
     /** Shared start instant for synced multiplayer study rooms (defaults to now). */
     startedAt?: string;
+    /** Marks the session as a multiplayer study-room session. */
+    isMultiplayer?: boolean;
+    /** Custom break length (minutes) for the single-player break. */
+    breakMinutes?: number;
   }) => void;
   clearActiveSession: () => void;
+  /** Pushes the active session's start forward by `seconds` (pause-for-break). */
+  shiftSessionStart: (seconds: number) => void;
 
   // Wave 2 skip nudge
   incrementSkipSubjectCount: () => void;
@@ -553,6 +565,8 @@ type AppContextType = {
   setCompanionSkin: (companionId: string, skinId: string) => void;
   setEquippedBackground: (roomId: string) => void;
   setEquippedDesk: (roomId: string) => void;
+  /** Equip a bought sound (or null to turn it off). */
+  setEquippedSound: (soundId: string | null) => void;
   saveCompanionSlot: (slot: Omit<CompanionSlot, 'id'>) => string | null;
   deleteCompanionSlot: (id: string) => void;
   setCompanionPfp: (id: string, pfp: PfpFocus) => void;
@@ -855,12 +869,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     taskId,
     taskTitle,
     startedAt,
+    isMultiplayer,
+    breakMinutes,
   }: {
     durationMinutes: number;
     subjectName: string | null;
     taskId: string | null;
     taskTitle: string | null;
     startedAt?: string;
+    isMultiplayer?: boolean;
+    breakMinutes?: number;
   }) => {
     setActiveSession({
       id: uid(),
@@ -869,11 +887,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       taskId,
       taskTitle,
       startedAt: startedAt ?? new Date().toISOString(),
+      isMultiplayer,
+      breakMinutes,
     });
   };
 
   const clearActiveSession = () => {
     setActiveSession(null);
+  };
+
+  // Push the session's start time forward by `seconds` — used to pause the timer
+  // during a break (the displayed countdown is frozen meanwhile).
+  const shiftSessionStart = (seconds: number) => {
+    setActiveSession((prev) =>
+      prev ? { ...prev, startedAt: new Date(new Date(prev.startedAt).getTime() + seconds * 1000).toISOString() } : prev,
+    );
   };
 
   // ─── Wave 2 skip nudge ────────────────────────────────────────────────────
@@ -961,6 +989,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const setEquippedBackground = (roomId: string) => setS((prev) => ({ ...prev, equippedBackgroundRoomId: roomId }));
   const setEquippedDesk = (roomId: string) => setS((prev) => ({ ...prev, equippedDeskRoomId: roomId }));
+  const setEquippedSound = (soundId: string | null) =>
+    setS((prev) => ({ ...prev, equippedShopItems: { ...prev.equippedShopItems, sound: soundId } }));
 
   const setActiveCompanion = (id: ActiveCompanionId) =>
     setS((prev) => {
@@ -1226,6 +1256,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addSubjectTime,
         startActiveSession,
         clearActiveSession,
+        shiftSessionStart,
         incrementSkipSubjectCount,
         resetSkipSubjectCount,
         purchaseShopItem,
@@ -1289,6 +1320,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setCompanionSkin,
         setEquippedBackground,
         setEquippedDesk,
+        setEquippedSound,
         saveCompanionSlot,
         deleteCompanionSlot,
         setCompanionPfp,

@@ -6,35 +6,36 @@ import { PlusGate } from '@/components/plus-gate';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
+import i18n, { useTranslation } from '@/i18n';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 export const AMBIENCE_OPTIONS = [
-  { id: 'rain', name: 'Rainy Day', emoji: '🌧️', desc: 'Soft rain outside the window' },
-  { id: 'cafe', name: 'Cozy Cafe', emoji: '☕', desc: 'Murmur of a quiet coffee shop' },
-  { id: 'library', name: 'Library', emoji: '📚', desc: 'Quiet turning of pages' },
-  { id: 'fireplace', name: 'Fireplace', emoji: '🔥', desc: 'Crackling warm fire' },
-  { id: 'keyboard', name: 'Keyboard', emoji: '⌨️', desc: 'Gentle mechanical keys' },
-  { id: 'night', name: 'Night Sounds', emoji: '🌙', desc: 'Crickets and cool evening air' },
+  { id: 'rain', emoji: '🌧️' },
+  { id: 'cafe', emoji: '☕' },
+  { id: 'library', emoji: '📚' },
+  { id: 'fireplace', emoji: '🔥' },
+  { id: 'keyboard', emoji: '⌨️' },
+  { id: 'night', emoji: '🌙' },
 ] as const;
 
 export type AmbienceId = (typeof AMBIENCE_OPTIONS)[number]['id'];
 
 export function getAmbienceName(id: string): string {
-  return AMBIENCE_OPTIONS.find((a) => a.id === id)?.name ?? id;
+  return AMBIENCE_OPTIONS.some((a) => a.id === id) ? i18n.t(`ambience.name_${id}`) : id;
 }
 export function getAmbienceEmoji(id: string): string {
   return AMBIENCE_OPTIONS.find((a) => a.id === id)?.emoji ?? '🎵';
 }
 
 function AmbienceContent() {
+  const { t } = useTranslation();
   const { ambienceId, setAmbience } = useApp();
 
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
       <SafeAreaView style={styles.safeArea}>
         <ThemedText type="default" themeColor="textSecondary" style={styles.hint}>
-          Choose a background sound for your study sessions.
-          Audio will be added in a future update — for now, set your preference.
+          {t('ambience.hint')}
         </ThemedText>
 
         <ThemedView style={styles.grid}>
@@ -50,14 +51,14 @@ function AmbienceContent() {
                   style={[styles.card, selected && styles.cardSelected]}>
                   <ThemedText style={styles.cardEmoji}>{opt.emoji}</ThemedText>
                   <ThemedText type="smallBold" style={styles.cardName}>
-                    {opt.name}
+                    {t(`ambience.name_${opt.id}`)}
                   </ThemedText>
                   <ThemedText type="small" themeColor="textSecondary" style={styles.cardDesc}>
-                    {opt.desc}
+                    {t(`ambience.desc_${opt.id}`)}
                   </ThemedText>
                   {selected && (
                     <ThemedView style={styles.selectedBadge}>
-                      <ThemedText style={styles.selectedBadgeText}>✓ Active</ThemedText>
+                      <ThemedText style={styles.selectedBadgeText}>{t('ambience.active')}</ThemedText>
                     </ThemedView>
                   )}
                 </ThemedView>
@@ -69,20 +70,20 @@ function AmbienceContent() {
         {ambienceId && (
           <Pressable onPress={() => setAmbience(null)} style={styles.clearBtn}>
             <ThemedText type="small" themeColor="textSecondary">
-              Clear ambience
+              {t('ambience.clearAmbience')}
             </ThemedText>
           </Pressable>
         )}
 
         <ThemedView type="backgroundElement" style={styles.noticeCard}>
           <ThemedText type="small" themeColor="textSecondary" style={styles.noticeText}>
-            🛠 Real audio playback will be wired in a future update. Your preference is saved!
+            {t('ambience.audioNotice')}
           </ThemedText>
         </ThemedView>
 
         <Pressable onPress={() => router.back()} style={styles.doneBtn}>
           <ThemedText type="smallBold" style={styles.doneBtnText}>
-            Done
+            {t('common.done')}
           </ThemedText>
         </Pressable>
       </SafeAreaView>
@@ -91,11 +92,12 @@ function AmbienceContent() {
 }
 
 export default function AmbiencePickerScreen() {
+  const { t } = useTranslation();
   return (
     <ThemedView style={styles.container}>
       <PlusGate
-        feature="Ambience Sounds"
-        description="Study with rain, cafe chatter, library sounds, and more. Calming audio for deep focus."
+        feature={t('ambience.plusFeatureName')}
+        description={t('ambience.plusFeatureDesc')}
         emoji="🎵">
         <AmbienceContent />
       </PlusGate>

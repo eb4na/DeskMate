@@ -16,7 +16,7 @@ type Step = 'subject' | 'mood';
 
 export default function SubjectPickerScreen() {
   const insets = useSafeAreaInsets();
-  const { sessionLength, subjectId } = useLocalSearchParams<{ sessionLength: string; subjectId?: string }>();
+  const { sessionLength, subjectId, breakMinutes } = useLocalSearchParams<{ sessionLength: string; subjectId?: string; breakMinutes?: string }>();
   const { subjects } = useApp();
 
   const { t } = useTranslation();
@@ -38,6 +38,7 @@ export default function SubjectPickerScreen() {
       taskTitle: null,
       moodValue,
       moodLabel,
+      ...(breakMinutes ? { breakMinutes: parseInt(breakMinutes, 10) } : {}),
     });
     if (router.canDismiss()) {
       router.dismissAll();
@@ -77,7 +78,7 @@ export default function SubjectPickerScreen() {
                     onPress={() => handleMoodSelect(m.value, m.label)}>
                     <ThemedView type="backgroundElement" style={styles.moodBtnInner}>
                       <Image source={m.image} style={styles.moodFace} contentFit="contain" />
-                      <ThemedText type="small">{m.label}</ThemedText>
+                      <ThemedText type="small">{t(`moods.${m.value}`, { defaultValue: m.label })}</ThemedText>
                     </ThemedView>
                   </Pressable>
                 ))}

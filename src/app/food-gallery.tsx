@@ -4,20 +4,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
+import { useTranslation } from '@/i18n';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 export type FoodItem = {
   id: string;
-  name: string;
-  description: string;
   image: number;
 };
 
 export const FOOD_ITEMS: FoodItem[] = [
   {
     id: 'strawberry-shortcake',
-    name: 'Strawberry Shortcake',
-    description: 'A classic layered cake with fresh strawberries and cream.',
     image: require('@/assets/images/cake/strawberry-shortcake.png'),
   },
 ];
@@ -39,6 +36,7 @@ const P = {
 } as const;
 
 export default function FoodGalleryScreen() {
+  const { t } = useTranslation();
   const { selectedFoodId, madeFoods, setSelectedFood } = useApp();
 
   return (
@@ -47,13 +45,13 @@ export default function FoodGalleryScreen() {
         <SafeAreaView style={styles.safeArea}>
           {/* Header panel */}
           <View style={styles.headerPanel}>
-            <Text style={styles.headerTitle}>🍰 Bakery Menu</Text>
-            <Text style={styles.headerSubtitle}>Choose what Bun bakes next</Text>
+            <Text style={styles.headerTitle}>{t('foodGallery.bakeryMenu')}</Text>
+            <Text style={styles.headerSubtitle}>{t('foodGallery.chooseBunBakes')}</Text>
           </View>
 
           {/* My Recipes */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>My Recipes</Text>
+            <Text style={styles.sectionTitle}>{t('foodGallery.myRecipes')}</Text>
             <View style={styles.grid}>
               {FOOD_ITEMS.map((food) => {
                 const isSelected = selectedFoodId === food.id;
@@ -66,21 +64,21 @@ export default function FoodGalleryScreen() {
                       <Image source={food.image} style={styles.foodImg} resizeMode="contain" />
                       {isMade && (
                         <View style={styles.madeBadge}>
-                          <Text style={styles.madeBadgeText}>✓ Made</Text>
+                          <Text style={styles.madeBadgeText}>{t('foodGallery.made')}</Text>
                         </View>
                       )}
                     </View>
-                    <Text style={styles.foodName} numberOfLines={1}>{food.name}</Text>
-                    <Text style={styles.foodDesc} numberOfLines={2}>{food.description}</Text>
+                    <Text style={styles.foodName} numberOfLines={1}>{t(`foodGallery.food_${food.id}`)}</Text>
+                    <Text style={styles.foodDesc} numberOfLines={2}>{t(`foodGallery.food_${food.id}_desc`)}</Text>
                     {isSelected ? (
                       <View style={styles.activePill}>
-                        <Text style={styles.activePillText}>✦ Baking</Text>
+                        <Text style={styles.activePillText}>{t('foodGallery.baking')}</Text>
                       </View>
                     ) : (
                       <Pressable
                         style={({ pressed }) => [styles.selectBtn, pressed && styles.pressed]}
                         onPress={() => { setSelectedFood(food.id); if (router.canGoBack()) router.back(); else router.replace('/'); }}>
-                        <Text style={styles.selectBtnText}>Bake this</Text>
+                        <Text style={styles.selectBtnText}>{t('foodGallery.bakeThis')}</Text>
                       </Pressable>
                     )}
                   </View>
@@ -92,7 +90,7 @@ export default function FoodGalleryScreen() {
           {/* Info note */}
           <View style={styles.infoCard}>
             <Text style={styles.infoText}>
-              🧁 The recipe you pick is what Bun bakes during your next study session.
+              {t('foodGallery.infoNote')}
             </Text>
           </View>
 
@@ -100,7 +98,7 @@ export default function FoodGalleryScreen() {
           <Pressable
             style={({ pressed }) => [styles.doneButton, pressed && styles.pressed]}
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
-            <Text style={styles.doneButtonText}>Done</Text>
+            <Text style={styles.doneButtonText}>{t('common.done')}</Text>
           </Pressable>
         </SafeAreaView>
       </ScrollView>

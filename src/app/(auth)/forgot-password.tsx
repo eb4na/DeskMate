@@ -15,8 +15,10 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BakeryColors, BakeryRadii, BakeryShadow, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { authCallbackUrl, supabase } from '@/lib/supabase';
+import { useTranslation } from '@/i18n';
 
 export default function ForgotPasswordScreen() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -37,7 +39,7 @@ export default function ForgotPasswordScreen() {
   const handleSend = async () => {
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) {
-      setErrorMessage('Enter the email tied to your account.');
+      setErrorMessage(t('errors.enterEmailForReset'));
       return;
     }
 
@@ -55,7 +57,7 @@ export default function ForgotPasswordScreen() {
       return;
     }
 
-    setSuccessMessage('Reset email sent. Open the link on this device to choose a new password.');
+    setSuccessMessage(t('auth.resetEmailSent'));
     setSubmitting(false);
   };
 
@@ -69,15 +71,15 @@ export default function ForgotPasswordScreen() {
             <ThemedView style={styles.hero}>
               <ThemedText style={styles.heroEmoji}>🍞</ThemedText>
               <ThemedText type="subtitle" style={styles.title}>
-                Reset password
+                {t('auth.resetPassword')}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
-                We&apos;ll email you a secure link that opens back into DeskMate.
+                {t('auth.forgotSubtitle')}
               </ThemedText>
             </ThemedView>
 
             <ThemedView type="backgroundElement" style={styles.card}>
-              <ThemedText type="smallBold">Email</ThemedText>
+              <ThemedText type="smallBold">{t('auth.email')}</ThemedText>
               <TextInput
                 style={inputStyle}
                 value={email}
@@ -86,7 +88,7 @@ export default function ForgotPasswordScreen() {
                 autoCorrect={false}
                 keyboardType="email-address"
                 textContentType="emailAddress"
-                placeholder="you@example.com"
+                placeholder={t('auth.emailPlaceholder')}
                 placeholderTextColor={colors.textSecondary}
                 returnKeyType="done"
                 onSubmitEditing={handleSend}
@@ -112,14 +114,14 @@ export default function ForgotPasswordScreen() {
                 onPress={handleSend}
                 disabled={submitting}>
                 <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                  {submitting ? 'Sending...' : 'Send reset email'}
+                  {submitting ? t('auth.sending') : t('auth.sendResetEmail')}
                 </ThemedText>
               </Pressable>
             </ThemedView>
 
             <Pressable onPress={() => router.replace('/login')} style={styles.linkRow}>
               <ThemedText type="smallBold" style={styles.linkText}>
-                Back to login
+                {t('auth.backToLogin')}
               </ThemedText>
             </Pressable>
           </SafeAreaView>

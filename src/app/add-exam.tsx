@@ -10,6 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { type AdvancedExamFields } from '@/context/app-context';
+import { useTranslation } from '@/i18n';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 
 function isValidDateISO(dateStr: string): boolean {
@@ -20,15 +21,16 @@ function isValidDateISO(dateStr: string): boolean {
   return true;
 }
 
-const CONFIDENCE_LABELS: Record<number, string> = {
-  1: '😰 Very low',
-  2: '😟 Low',
-  3: '😐 Okay',
-  4: '😊 Confident',
-  5: '🚀 Very confident',
+const CONFIDENCE_LABEL_KEYS: Record<number, string> = {
+  1: 'addExam.conf1',
+  2: 'addExam.conf2',
+  3: 'addExam.conf3',
+  4: 'addExam.conf4',
+  5: 'addExam.conf5',
 };
 
 export default function AddExamScreen() {
+  const { t } = useTranslation();
   const { examCountdowns, addExam, isPlus, updateAdvancedExam, use24HourTime, subjects } = useApp();
   const activeSubjects = subjects.filter((s) => !s.archived);
   const [name, setName] = useState('');
@@ -51,20 +53,20 @@ export default function AddExamScreen() {
     const trimmedDate = date.trim();
 
     if (!trimmedName) {
-      Alert.alert('Missing name', 'Please enter an exam name.');
+      Alert.alert(t('addExam.missingName'), t('addExam.enterExamName'));
       return;
     }
     if (!isValidDateISO(trimmedDate)) {
-      Alert.alert('Invalid date', 'Please choose a valid exam date.');
+      Alert.alert(t('addExam.invalidDate'), t('addExam.chooseValidDate'));
       return;
     }
     if (!canAdd) {
       Alert.alert(
-        'Limit reached',
-        'Free users can track up to 3 exams. Upgrade to Plus for unlimited exam countdowns.',
+        t('addExam.limitReached'),
+        t('addExam.limitMsgFree'),
         [
-          { text: 'Not now', style: 'cancel' },
-          { text: 'See Plus features', onPress: () => router.push('/plus-upgrade') },
+          { text: t('addExam.notNow'), style: 'cancel' },
+          { text: t('addExam.seePlusFeatures'), onPress: () => router.push('/plus-upgrade') },
         ],
       );
       return;
@@ -80,11 +82,11 @@ export default function AddExamScreen() {
 
     if (!examId) {
       Alert.alert(
-        'Limit reached',
-        'You can track up to 3 exams on the free tier. Upgrade to Plus for unlimited exams.',
+        t('addExam.limitReached'),
+        t('addExam.limitMsgTier'),
         [
-          { text: 'Not now', style: 'cancel' },
-          { text: 'See Plus features', onPress: () => router.push('/plus-upgrade') },
+          { text: t('addExam.notNow'), style: 'cancel' },
+          { text: t('addExam.seePlusFeatures'), onPress: () => router.push('/plus-upgrade') },
         ],
       );
       return;
@@ -117,17 +119,17 @@ export default function AddExamScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <SafeAreaView style={styles.safeArea}>
           <ThemedText type="default" themeColor="textSecondary" style={styles.hint}>
-            Track an upcoming exam with a countdown.
-            {isPlus && ' Plus: unlimited exams + advanced planning fields.'}
+            {t('addExam.hint')}
+            {isPlus && t('addExam.hintPlus')}
           </ThemedText>
 
         <ThemedView style={styles.field}>
-          <ThemedText type="smallBold">Exam name *</ThemedText>
+          <ThemedText type="smallBold">{t('addExam.examNameReq')}</ThemedText>
           <TextInput
             style={inputStyle}
             value={name}
             onChangeText={setName}
-            placeholder="e.g. Physics Final"
+            placeholder={t('addExam.examNamePlaceholder')}
             placeholderTextColor={colors.textSecondary}
             returnKeyType="next"
             autoFocus
@@ -135,13 +137,13 @@ export default function AddExamScreen() {
         </ThemedView>
 
         <ThemedView style={styles.field}>
-          <ThemedText type="smallBold">Subject (optional)</ThemedText>
+          <ThemedText type="smallBold">{t('addExam.subjectOptional')}</ThemedText>
           <ThemedView style={styles.chipRow}>
             <Pressable onPress={() => setSubject('')} style={({ pressed }) => [pressed && styles.pressed]}>
               <ThemedView
                 type={subject === '' ? 'backgroundSelected' : 'backgroundElement'}
                 style={styles.chip}>
-                <ThemedText type="small">None</ThemedText>
+                <ThemedText type="small">{t('addExam.none')}</ThemedText>
               </ThemedView>
             </Pressable>
             {activeSubjects.map((s) => (
@@ -159,28 +161,28 @@ export default function AddExamScreen() {
             ))}
             <Pressable onPress={() => router.push('/manage-subjects')} style={({ pressed }) => [pressed && styles.pressed]}>
               <ThemedView type="backgroundElement" style={[styles.chip, styles.addSubjectChip]}>
-                <ThemedText type="smallBold" style={styles.addSubjectChipText}>+ New</ThemedText>
+                <ThemedText type="smallBold" style={styles.addSubjectChipText}>{t('addExam.newSubject')}</ThemedText>
               </ThemedView>
             </Pressable>
           </ThemedView>
         </ThemedView>
 
         <ThemedView style={styles.field}>
-          <ThemedText type="smallBold">Exam date *</ThemedText>
+          <ThemedText type="smallBold">{t('addExam.examDateReq')}</ThemedText>
           <DateWheelPicker value={date} onChange={setDate} minimumDateISO={getTodayISO()} />
         </ThemedView>
 
         <ThemedView style={styles.field}>
-          <ThemedText type="smallBold">Exam time</ThemedText>
+          <ThemedText type="smallBold">{t('addExam.examTime')}</ThemedText>
           <TimeWheelPicker value={time} onChange={setTime} use24Hour={use24HourTime} />
         </ThemedView>
 
         {/* Reminder toggle */}
         <ThemedView type="backgroundElement" style={styles.reminderRow}>
           <ThemedView style={styles.reminderInfo}>
-            <ThemedText type="smallBold">Reminder</ThemedText>
+            <ThemedText type="smallBold">{t('addExam.reminder')}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              Get a nudge when this exam is close
+              {t('addExam.reminderHint')}
             </ThemedText>
           </ThemedView>
           <Switch
@@ -193,7 +195,7 @@ export default function AddExamScreen() {
         <ThemedView type="backgroundElement" style={[styles.noticeCard, styles.noticeRow]}>
           <BakeryWrenchEmoji size={16} />
           <ThemedText type="small" themeColor="textSecondary" style={styles.noticeText}>
-            Push notifications will be wired to the device in a future update.
+            {t('addExam.pushNotice')}
           </ThemedText>
         </ThemedView>
 
@@ -203,40 +205,40 @@ export default function AddExamScreen() {
             <Pressable
               onPress={() => setShowAdvanced((v) => !v)}
               style={styles.advancedToggle}>
-              <ThemedText type="smallBold">Advanced planning (Plus)</ThemedText>
+              <ThemedText type="smallBold">{t('addExam.advancedPlanning')}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                {showAdvanced ? 'Hide ▲' : 'Show ▼'}
+                {showAdvanced ? t('addExam.hide') : t('addExam.show')}
               </ThemedText>
             </Pressable>
 
             {showAdvanced && (
               <ThemedView style={styles.advancedFields}>
                 <ThemedView style={styles.field}>
-                  <ThemedText type="smallBold">Topics to cover</ThemedText>
+                  <ThemedText type="smallBold">{t('addExam.topicsToCover')}</ThemedText>
                   <TextInput
                     style={inputStyle}
                     value={topics}
                     onChangeText={setTopics}
-                    placeholder="e.g. Thermodynamics, Waves, Optics"
+                    placeholder={t('addExam.topicsPlaceholder')}
                     placeholderTextColor={colors.textSecondary}
                     multiline
                   />
                 </ThemedView>
 
                 <ThemedView style={styles.field}>
-                  <ThemedText type="smallBold">Target study hours</ThemedText>
+                  <ThemedText type="smallBold">{t('addExam.targetHours')}</ThemedText>
                   <TextInput
                     style={inputStyle}
                     value={targetHours}
                     onChangeText={setTargetHours}
-                    placeholder="e.g. 20"
+                    placeholder={t('addExam.targetHoursPlaceholder')}
                     placeholderTextColor={colors.textSecondary}
                     keyboardType="number-pad"
                   />
                 </ThemedView>
 
                 <ThemedView style={styles.field}>
-                  <ThemedText type="smallBold">Confidence level</ThemedText>
+                  <ThemedText type="smallBold">{t('addExam.confidenceLevel')}</ThemedText>
                   <ThemedView style={styles.confidenceRow}>
                     {([1, 2, 3, 4, 5] as const).map((level) => (
                       <Pressable
@@ -251,7 +253,7 @@ export default function AddExamScreen() {
                     ))}
                   </ThemedView>
                   <ThemedText type="small" themeColor="textSecondary">
-                    {CONFIDENCE_LABELS[confidence]}
+                    {t(CONFIDENCE_LABEL_KEYS[confidence])}
                   </ThemedText>
                 </ThemedView>
               </ThemedView>
@@ -262,7 +264,7 @@ export default function AddExamScreen() {
             <ThemedView type="backgroundElement" style={[styles.upgradeCard, styles.noticeRow]}>
               <BakeryLockEmoji size={14} />
               <ThemedText type="small" style={styles.upgradeText}>
-                Upgrade to Plus for unlimited exam countdowns and advanced planning
+                {t('addExam.upgradeUnlimited')}
               </ThemedText>
             </ThemedView>
           </Pressable>
@@ -273,18 +275,18 @@ export default function AddExamScreen() {
             style={({ pressed }) => [styles.saveBtn, pressed && styles.saveBtnPressed]}
             onPress={handleSave}>
             <ThemedText type="smallBold" style={styles.saveBtnText}>
-              Add countdown
+              {t('addExam.addCountdown')}
             </ThemedText>
           </Pressable>
           <Pressable onPress={() => router.back()} style={styles.cancelBtn}>
-            <ThemedText type="linkPrimary">Cancel</ThemedText>
+            <ThemedText type="linkPrimary">{t('common.cancel')}</ThemedText>
           </Pressable>
         </ThemedView>
 
           <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
             {isPlus
-              ? `${examCountdowns.length} exam${examCountdowns.length !== 1 ? 's' : ''} tracked ✨ Plus — unlimited`
-              : `${examCountdowns.length}/3 exam countdowns used`}
+              ? t('addExam.examsTrackedPlus', { count: examCountdowns.length })
+              : t('addExam.countdownsUsed', { count: examCountdowns.length })}
           </ThemedText>
         </SafeAreaView>
       </ScrollView>

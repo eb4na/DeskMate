@@ -35,6 +35,7 @@ type StudyRoomValue = {
   presentCodes: string[];
   netStatus: string;
   roomId: string | null;
+  hostBackgroundId: string | null;
   joinRoom: (roomId: string, isHost: boolean) => void;
   leaveRoom: () => void;
   start: (opts: StudyStartOpts) => void;
@@ -51,6 +52,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     companionSkins,
     bunSkinId,
     startActiveSession,
+    equippedBackgroundRoomId,
   } = useApp();
 
   const myCode = friendCode;
@@ -68,13 +70,15 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
   const [statusMap, setStatusMap] = useState<Record<string, StudyStatus>>({});
   const [presentCodes, setPresentCodes] = useState<string[]>([]);
   const [netStatus, setNetStatus] = useState('');
+  // Host's room background — everyone in the room studies in the host's room.
+  const [hostBackgroundId, setHostBackgroundId] = useState<string | null>(null);
 
   const isHostRef = useRef(isHost);
   isHostRef.current = isHost;
   const beginTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Latest identity, so the realtime closure (created on join) reads current values.
-  const meRef = useRef({ myCode, myName, myCompanionId, mySkinId });
-  meRef.current = { myCode, myName, myCompanionId, mySkinId };
+  const meRef = useRef({ myCode, myName, myCompanionId, mySkinId, bgRoomId: equippedBackgroundRoomId });
+  meRef.current = { myCode, myName, myCompanionId, mySkinId, bgRoomId: equippedBackgroundRoomId };
   const startRef = useRef(startActiveSession);
   startRef.current = startActiveSession;
 
@@ -90,10 +94,12 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     beginTimer.current = setTimeout(() => {
       startRef.current({
         durationMinutes: opts.durationMinutes,
-        subjectName: opts.subjectName,
+        // Subject is chosen per-player on the studying screen, not dictated by the host.
+        subjectName: null,
         taskId: opts.taskId,
         taskTitle: opts.taskTitle,
         startedAt: new Date(startAt).toISOString(),
+        isMultiplayer: true,
       });
       router.replace('/');
     }, delay);
@@ -110,6 +116,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     setBegun(false);
     setStatusMap({});
     setPresentCodes([]);
+    setHostBackgroundId(host ? meRef.current.bgRoomId : null);
     const me = meRef.current;
     setRoster([{ code: me.myCode, name: me.myName, isHost: host, companionId: me.myCompanionId, skinId: me.mySkinId }]);
 
@@ -156,7 +163,8 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
             const d = data as { code: string; status: StudyStatus };
             setStatusMap((prev) => ({ ...prev, [d.code]: d.status }));
           } else if (type === 'begin') {
-            const d = data as { startAt: number; durationMinutes: number; subjectName: string | null; taskId: string | null; taskTitle: string | null };
+            const d = data as { startAt: number; durationMinutes: number; subjectName: string | null; taskId: string | null; taskTitle: string | null; bgRoomId?: string | null };
+            if (d.bgRoomId !== undefined) setHostBackgroundId(d.bgRoomId);
             applyBeginRef.current(d.startAt, {
               durationMinutes: d.durationMinutes,
               subjectName: d.subjectName,
@@ -190,12 +198,15 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     setRoster([]);
     setStatusMap({});
     setPresentCodes([]);
+    setHostBackgroundId(null);
   };
 
   const start = (opts: StudyStartOpts) => {
     if (!isHostRef.current) return;
     const startAt = Date.now() + 800;
-    room.current?.send('begin', { startAt, ...opts });
+    const bgRoomId = meRef.current.bgRoomId;
+    setHostBackgroundId(bgRoomId);
+    room.current?.send('begin', { startAt, ...opts, bgRoomId });
     applyBeginRef.current(startAt, opts);
   };
 
@@ -223,6 +234,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
       presentCodes,
       netStatus,
       roomId,
+      hostBackgroundId,
       joinRoom,
       leaveRoom,
       start,
@@ -230,7 +242,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     }),
     // joinRoom/leaveRoom/start/setStatus are stable enough (read refs); deps are the state they expose.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [roomId, begun, isHost, myCode, roster, statusMap, presentCodes, netStatus],
+    [roomId, begun, isHost, myCode, roster, statusMap, presentCodes, netStatus, hostBackgroundId],
   );
 
   return <StudyRoomContext.Provider value={value}>{children}</StudyRoomContext.Provider>;

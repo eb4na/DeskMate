@@ -7,6 +7,7 @@ import { PlusGateCard } from '@/components/plus-gate';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
+import i18n, { useTranslation } from '@/i18n';
 import { COIN_REWARDS } from '@/constants/placeholder-data';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
@@ -22,11 +23,12 @@ function formatDateRange(): string {
   const end = new Date();
   const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
   const fmt = (d: Date) =>
-    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    d.toLocaleDateString(i18n.language || 'en-US', { month: 'short', day: 'numeric' });
   return `${fmt(start)} – ${fmt(end)}`;
 }
 
 export default function WeeklyReportScreen() {
+  const { t } = useTranslation();
   const { sessionHistory, tasks, moodEntries, streak, subjects, isPlus } = useApp();
 
   const sevenDaysAgo = new Date();
@@ -39,7 +41,7 @@ export default function WeeklyReportScreen() {
   const weekDays = new Set(weekSessions.map((r) => r.dateISO)).size;
 
   const weekTasks = tasks.filter(
-    (t) => t.completedAt && t.completedAt.split('T')[0] >= weekStartISO,
+    (task) => task.completedAt && task.completedAt.split('T')[0] >= weekStartISO,
   );
 
   const weekMoods = moodEntries.filter(
@@ -75,39 +77,36 @@ export default function WeeklyReportScreen() {
       : null;
 
   // Summary sentence
-  const parts = [
-    weekMinutes > 0 ? `you studied ${formatMinutes(weekMinutes)}` : null,
-    weekSessionCount > 0
-      ? `completed ${weekSessionCount} session${weekSessionCount !== 1 ? 's' : ''}`
-      : null,
-    weekTasks.length > 0
-      ? `${weekTasks.length} task${weekTasks.length !== 1 ? 's' : ''}`
-      : null,
-    weekDays > 0 ? `and showed up ${weekDays} day${weekDays !== 1 ? 's' : ''}` : null,
-  ].filter(Boolean);
-  const summaryText =
-    parts.length > 0
-      ? `This week ${parts.join(', ')}.${topSubject ? ` Your most studied subject was ${topSubject[0]}.` : ''}${estimatedCoins > 0 ? ` You earned about ${estimatedCoins} Focus Coins.` : ''}`
-      : null;
+  const hasSummary = weekMinutes > 0 || weekSessionCount > 0 || weekTasks.length > 0 || weekDays > 0;
+  const summaryText = hasSummary
+    ? t('weeklyReport.summaryFull', {
+        time: weekMinutes > 0 ? formatMinutes(weekMinutes) : '0m',
+        sessions: weekSessionCount,
+        tasks: weekTasks.length,
+        days: weekDays,
+      }) +
+      (topSubject ? t('weeklyReport.topSubjectClause', { subject: topSubject[0] }) : '') +
+      (estimatedCoins > 0 ? t('weeklyReport.coinsClause', { coins: estimatedCoins }) : '')
+    : null;
 
   // Suggested goal
   let suggestedGoal = '';
   if (weekSessionCount === 0)
-    suggestedGoal = 'Try to complete at least 1 session next week. Every start counts!';
+    suggestedGoal = t('weeklyReport.goal0');
   else if (weekSessionCount < 3)
-    suggestedGoal = `You did ${weekSessionCount} session${weekSessionCount !== 1 ? 's' : ''}. Try for 3 next week!`;
+    suggestedGoal = t('weeklyReport.goalFew', { count: weekSessionCount });
   else if (weekSessionCount < 7)
-    suggestedGoal = `${weekSessionCount} sessions this week! Aim for ${weekSessionCount + 1} next week.`;
+    suggestedGoal = t('weeklyReport.goalMid', { count: weekSessionCount, next: weekSessionCount + 1 });
   else
-    suggestedGoal = `${weekSessionCount} sessions — incredible! You're building an amazing habit 🔥`;
+    suggestedGoal = t('weeklyReport.goalHigh', { count: weekSessionCount });
 
   const stats = [
-    { label: 'Sessions', value: String(weekSessionCount), emoji: '📚' },
-    { label: 'Study time', value: weekMinutes > 0 ? formatMinutes(weekMinutes) : '—', emoji: '⏱' },
-    { label: 'Days showed up', value: String(weekDays), emoji: '📅' },
-    { label: 'Tasks done', value: String(weekTasks.length), emoji: '✅' },
-    { label: 'Streak now', value: `${streak.currentStreak}d`, emoji: '🔥' },
-    { label: 'Est. coins', value: estimatedCoins > 0 ? String(estimatedCoins) : '—', coinIcon: true },
+    { label: t('weeklyReport.statSessions'), value: String(weekSessionCount), emoji: '📚' },
+    { label: t('weeklyReport.statStudyTime'), value: weekMinutes > 0 ? formatMinutes(weekMinutes) : '—', emoji: '⏱' },
+    { label: t('weeklyReport.statDaysShowedUp'), value: String(weekDays), emoji: '📅' },
+    { label: t('weeklyReport.statTasksDone'), value: String(weekTasks.length), emoji: '✅' },
+    { label: t('weeklyReport.statStreakNow'), value: `${streak.currentStreak}d`, emoji: '🔥' },
+    { label: t('weeklyReport.statEstCoins'), value: estimatedCoins > 0 ? String(estimatedCoins) : '—', coinIcon: true },
   ];
 
   const hasData = weekSessionCount > 0 || weekTasks.length > 0;
@@ -119,7 +118,7 @@ export default function WeeklyReportScreen() {
           {/* Header */}
           <ThemedView style={styles.header}>
             <ThemedText type="subtitle" style={styles.title}>
-              Weekly Report
+              {t('screens.weeklyReport')}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               {formatDateRange()}
@@ -133,7 +132,7 @@ export default function WeeklyReportScreen() {
               <ThemedText style={styles.summaryText}>{summaryText}</ThemedText>
             ) : (
               <ThemedText type="small" themeColor="textSecondary" style={styles.summaryText}>
-                No study sessions recorded this week yet. Start a session to see your report!
+                {t('weeklyReport.noSessionsYet')}
               </ThemedText>
             )}
           </ThemedView>
@@ -158,7 +157,7 @@ export default function WeeklyReportScreen() {
           {/* Subject breakdown */}
           {subjectEntries.length > 0 && (
             <ThemedView style={styles.section}>
-              <ThemedText type="smallBold">Subject breakdown</ThemedText>
+              <ThemedText type="smallBold">{t('weeklyReport.subjectBreakdown')}</ThemedText>
               <ThemedView style={styles.subjectList}>
                 {subjectEntries.map(([name, minutes]) => {
                   const subject = subjects.find((s) => s.name === name);
@@ -193,12 +192,11 @@ export default function WeeklyReportScreen() {
           {/* Mood insight */}
           {moodPct !== null && (
             <ThemedView style={styles.section}>
-              <ThemedText type="smallBold">Mood insight</ThemedText>
+              <ThemedText type="smallBold">{t('weeklyReport.moodInsight')}</ThemedText>
               <ThemedView type="backgroundElement" style={styles.moodInsightCard}>
                 <ThemedText style={styles.moodInsightEmoji}>😊</ThemedText>
                 <ThemedText type="small" style={styles.moodInsightText}>
-                  You selected a more positive mood after{' '}
-                  <ThemedText type="smallBold">{moodPct}%</ThemedText> of logged sessions this week.
+                  {t('weeklyReport.moodInsightText', { pct: moodPct })}
                 </ThemedText>
               </ThemedView>
             </ThemedView>
@@ -206,7 +204,7 @@ export default function WeeklyReportScreen() {
 
           {/* Suggested goal */}
           <ThemedView style={styles.section}>
-            <ThemedText type="smallBold">Goal for next week</ThemedText>
+            <ThemedText type="smallBold">{t('weeklyReport.goalNextWeek')}</ThemedText>
             <ThemedView type="backgroundElement" style={styles.goalCard}>
               <ThemedText style={styles.goalEmoji}>💡</ThemedText>
               <ThemedText type="small" style={styles.goalText}>
@@ -218,7 +216,7 @@ export default function WeeklyReportScreen() {
           {/* ── Plus advanced report sections ───────────────────────────── */}
           <ThemedView style={styles.section}>
             <ThemedText type="smallBold">
-              Advanced insights
+              {t('weeklyReport.advancedInsights')}
               {!isPlus && <ThemedText style={styles.plusTag}> — Plus</ThemedText>}
             </ThemedText>
             {isPlus ? (
@@ -226,27 +224,27 @@ export default function WeeklyReportScreen() {
                 <ThemedView type="backgroundElement" style={styles.advancedCard}>
                   <ThemedText style={styles.advancedEmoji}>⏰</ThemedText>
                   <ThemedView style={styles.advancedText}>
-                    <ThemedText type="smallBold">Best Study Hours</ThemedText>
+                    <ThemedText type="smallBold">{t('weeklyReport.bestStudyHours')}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
-                      Hour-by-hour analysis coming soon. Session time data will be used.
+                      {t('weeklyReport.bestStudyHoursPlus')}
                     </ThemedText>
                   </ThemedView>
                 </ThemedView>
                 <ThemedView type="backgroundElement" style={styles.advancedCard}>
                   <ThemedText style={styles.advancedEmoji}>📉</ThemedText>
                   <ThemedView style={styles.advancedText}>
-                    <ThemedText type="smallBold">Avoidance Insights</ThemedText>
+                    <ThemedText type="smallBold">{t('weeklyReport.avoidanceInsights')}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
-                      Patterns in postponed tasks and avoided subjects will surface here.
+                      {t('weeklyReport.avoidancePlus')}
                     </ThemedText>
                   </ThemedView>
                 </ThemedView>
                 <ThemedView type="backgroundElement" style={styles.advancedCard}>
                   <ThemedText style={styles.advancedEmoji}>📅</ThemedText>
                   <ThemedView style={styles.advancedText}>
-                    <ThemedText type="smallBold">Monthly Overview</ThemedText>
+                    <ThemedText type="smallBold">{t('weeklyReport.monthlyOverview')}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
-                      30-day rolling summary with trends will be added in the next update.
+                      {t('weeklyReport.monthlyPlus')}
                     </ThemedText>
                   </ThemedView>
                 </ThemedView>
@@ -255,25 +253,25 @@ export default function WeeklyReportScreen() {
               <>
                 <PlusGateCard
                   emoji="⏰"
-                  title="Best Study Hours"
-                  description="Discover which hours you focus best — personalized to your sessions."
+                  title={t('weeklyReport.bestStudyHours')}
+                  description={t('weeklyReport.bestStudyHoursDesc')}
                 />
                 <PlusGateCard
                   emoji="📉"
-                  title="Avoidance Insights"
-                  description="See which tasks and subjects you avoid most, with gentle suggestions."
+                  title={t('weeklyReport.avoidanceInsights')}
+                  description={t('weeklyReport.avoidanceDesc')}
                 />
                 <PlusGateCard
                   emoji="📅"
-                  title="Monthly Report"
-                  description="30-day overview with trends, streaks, and productivity patterns."
+                  title={t('weeklyReport.monthlyReport')}
+                  description={t('weeklyReport.monthlyDesc')}
                 />
               </>
             )}
           </ThemedView>
 
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <ThemedText type="linkPrimary">← Back to Progress</ThemedText>
+            <ThemedText type="linkPrimary">{t('weeklyReport.backToProgress')}</ThemedText>
           </Pressable>
         </SafeAreaView>
       </ScrollView>

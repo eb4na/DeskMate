@@ -7,17 +7,18 @@ import { BakeryStarEmoji, BakeryLockEmoji, BakeryWrenchEmoji } from '@/component
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
+import { useTranslation } from '@/i18n';
 import { DAILY_EARN_CAP } from '@/constants/placeholder-data';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
-type CoinPack = { id: string; name: string; coins: number; price: string; popular?: boolean };
+type CoinPack = { id: string; nameKey: string; coins: number; price: string; popular?: boolean };
 
 const COIN_PACKS: CoinPack[] = [
-  { id: 'pouch', name: 'Strawberry Cupcake', coins: 200, price: '$1.00' },
-  { id: 'bag', name: 'Lemon Slice', coins: 600, price: '$3.00' },
-  { id: 'chest', name: 'Chocolate Cake', coins: 1444, price: '$6.70', popular: true },
-  { id: 'vault', name: 'Red Velvet', coins: 5000, price: '$20.00' },
-  { id: 'treasury', name: 'Together With You', coins: 50000, price: '$100.00' },
+  { id: 'pouch', nameKey: 'coinShop.pack_pouch', coins: 200, price: '$1.00' },
+  { id: 'bag', nameKey: 'coinShop.pack_bag', coins: 600, price: '$3.00' },
+  { id: 'chest', nameKey: 'coinShop.pack_chest', coins: 1444, price: '$6.70', popular: true },
+  { id: 'vault', nameKey: 'coinShop.pack_vault', coins: 5000, price: '$20.00' },
+  { id: 'treasury', nameKey: 'coinShop.pack_treasury', coins: 50000, price: '$100.00' },
 ];
 
 // Coin packs are tiered desserts — bigger pack, bigger cake.
@@ -30,20 +31,22 @@ const PACK_IMAGES: Record<string, number> = {
 };
 
 export default function CoinShopScreen() {
+  const { t } = useTranslation();
   const { coins, earnedToday, addPurchasedCoins, isPlus } = useApp();
   const capRemaining = Math.max(0, DAILY_EARN_CAP - earnedToday);
 
   const handleCoinPack = (pack: CoinPack) => {
+    const name = t(pack.nameKey);
     Alert.alert(
-      `Buy ${pack.name}?`,
-      `${pack.coins} coins for ${pack.price}. Purchased coins never expire and do not count toward the daily free earn cap.\n\n🛠 Real payment processing coming in a future update.`,
+      t('coinShop.buyPackQ', { name }),
+      t('coinShop.packDetail', { coins: pack.coins, price: pack.price }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: `Buy for ${pack.price} (Mock)`,
+          text: t('coinShop.buyForMock', { price: pack.price }),
           onPress: () => {
             addPurchasedCoins(pack.coins);
-            Alert.alert(`+${pack.coins} coins added!`, 'Mock purchase complete.');
+            Alert.alert(t('shop.coinsAdded', { coins: pack.coins }), t('shop.mockComplete'));
           },
         },
       ],
@@ -57,7 +60,7 @@ export default function CoinShopScreen() {
 
           {/* Balance */}
           <ThemedView type="backgroundElement" style={styles.balanceCard}>
-            <ThemedText type="small" themeColor="textSecondary">Your balance</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">{t('coinShop.yourBalance')}</ThemedText>
             <View style={styles.balanceRow}>
               <CoinIcon size={40} />
               <ThemedText style={styles.balanceAmount}>{coins}</ThemedText>
@@ -67,7 +70,7 @@ export default function CoinShopScreen() {
           {/* Daily earn progress */}
           <ThemedView type="backgroundElement" style={styles.capCard}>
             <ThemedView style={styles.capRow}>
-              <ThemedText type="small" themeColor="textSecondary">Daily free earn</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">{t('coinShop.dailyFreeEarn')}</ThemedText>
               <View style={styles.capCoins}>
                 <ThemedText type="smallBold">{earnedToday}/{DAILY_EARN_CAP}</ThemedText>
                 <CoinIcon size={28} />
@@ -80,8 +83,8 @@ export default function CoinShopScreen() {
             </ThemedView>
             <ThemedText type="small" themeColor="textSecondary" style={styles.capNote}>
               {capRemaining > 0
-                ? `${capRemaining} more free coins available today`
-                : 'Daily cap reached — resets tomorrow!'}
+                ? t('coinShop.moreFreeCoins', { count: capRemaining })
+                : t('coinShop.dailyCapReached')}
             </ThemedText>
           </ThemedView>
 
@@ -89,8 +92,8 @@ export default function CoinShopScreen() {
           {/* Bakery menu of coin packs */}
           <View style={styles.menuCard}>
             <View style={styles.menuHeader}>
-              <ThemedText style={styles.menuTitle}>♡ Bakery Menu ♡</ThemedText>
-              <ThemedText style={styles.menuSubtitle}>Coins never expire · not capped</ThemedText>
+              <ThemedText style={styles.menuTitle}>{t('shop.bakeryMenu')}</ThemedText>
+              <ThemedText style={styles.menuSubtitle}>{t('shop.coinsNeverExpire')}</ThemedText>
             </View>
             {COIN_PACKS.map((pack, i) => (
               <Pressable
@@ -101,7 +104,7 @@ export default function CoinShopScreen() {
                   <Image source={PACK_IMAGES[pack.id] ?? PACK_IMAGES.pouch} style={styles.menuIcon} resizeMode="contain" />
                   <View style={styles.menuBody}>
                     <View style={styles.menuTopLine}>
-                      <ThemedText style={styles.menuName} numberOfLines={1}>{pack.name}</ThemedText>
+                      <ThemedText style={styles.menuName} numberOfLines={1}>{t(pack.nameKey)}</ThemedText>
                       <View style={styles.menuLeader} />
                       <ThemedText style={styles.menuPrice}>{pack.price}</ThemedText>
                     </View>
@@ -109,7 +112,7 @@ export default function CoinShopScreen() {
                       <CoinAmount amount={pack.coins} size={18} textStyle={styles.menuCoinText} />
                       {pack.popular && (
                         <View style={styles.chefBadge}>
-                          <ThemedText style={styles.chefText}>Chef's pick</ThemedText>
+                          <ThemedText style={styles.chefText}>{t('shop.chefsPick')}</ThemedText>
                         </View>
                       )}
                     </View>
@@ -123,7 +126,7 @@ export default function CoinShopScreen() {
           {/* Mock disclaimer */}
           <ThemedView type="backgroundElement" style={styles.disclaimerCard}>
             <ThemedText type="small" themeColor="textSecondary" style={styles.disclaimerText}>
-              🛠 Real payment processing will be connected in a future update. Packs are mock purchases for now.
+              {t('coinShop.realPaymentNote')}
             </ThemedText>
           </ThemedView>
 
@@ -132,8 +135,8 @@ export default function CoinShopScreen() {
             <ThemedView type="backgroundElement" style={[styles.plusBanner, styles.plusBannerActive]}>
               <BakeryStarEmoji size={28} />
               <ThemedView style={styles.plusBannerText}>
-                <ThemedText type="smallBold">20% Plus discount active</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">Applied to all shop items</ThemedText>
+                <ThemedText type="smallBold">{t('coinShop.discountActive')}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">{t('coinShop.appliedAllItems')}</ThemedText>
               </ThemedView>
             </ThemedView>
           ) : (
@@ -143,8 +146,8 @@ export default function CoinShopScreen() {
               <ThemedView type="backgroundElement" style={styles.plusBanner}>
                 <BakeryStarEmoji size={28} />
                 <ThemedView style={styles.plusBannerText}>
-                  <ThemedText type="smallBold">Plus members save 20% in shop</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">Tap to upgrade</ThemedText>
+                  <ThemedText type="smallBold">{t('coinShop.plusSave20')}</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">{t('coinShop.tapToUpgrade')}</ThemedText>
                 </ThemedView>
                 <ThemedView style={styles.plusBadge}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -158,17 +161,17 @@ export default function CoinShopScreen() {
 
           {/* How to earn */}
           <ThemedView type="backgroundElement" style={styles.tipCard}>
-            <ThemedText type="smallBold" style={styles.tipTitle}>How to earn free coins</ThemedText>
+            <ThemedText type="smallBold" style={styles.tipTitle}>{t('coinShop.howToEarn')}</ThemedText>
             {[
-              { label: 'Complete a 10 min session', coins: 5 },
-              { label: 'Complete a 25 min session', coins: 15 },
-              { label: 'Complete a 50 min session', coins: 35 },
-              { label: 'Complete a 90 min session', coins: 70 },
-              { label: '3-day streak bonus', coins: 30 },
-              { label: '7-day streak bonus', coins: 80 },
+              { labelKey: 'coinShop.earn_10min', coins: 5 },
+              { labelKey: 'coinShop.earn_25min', coins: 15 },
+              { labelKey: 'coinShop.earn_50min', coins: 35 },
+              { labelKey: 'coinShop.earn_90min', coins: 70 },
+              { labelKey: 'coinShop.earn_3day', coins: 30 },
+              { labelKey: 'coinShop.earn_7day', coins: 80 },
             ].map((row) => (
-              <ThemedView key={row.label} style={styles.tipRow}>
-                <ThemedText type="small" themeColor="textSecondary">{row.label}</ThemedText>
+              <ThemedView key={row.labelKey} style={styles.tipRow}>
+                <ThemedText type="small" themeColor="textSecondary">{t(row.labelKey)}</ThemedText>
                 <CoinAmount amount={row.coins} prefix="+" size={26} textStyle={styles.tipCoins} />
               </ThemedView>
             ))}

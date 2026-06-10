@@ -10,6 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { type ReminderEntry } from '@/context/app-context';
+import i18n, { useTranslation } from '@/i18n';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { syncStudyReminders } from '@/lib/notifications';
 import {
@@ -49,11 +50,16 @@ function buildUpcomingTaskLine(tasks: Task[]): string | null {
     .filter(({ days }) => days >= 0 && days <= UPCOMING_TASK_DAYS)
     .sort((a, b) => a.days - b.days)[0];
   if (!upcoming) return null;
-  const when = upcoming.days === 0 ? 'today' : upcoming.days === 1 ? 'tomorrow' : `in ${upcoming.days} days`;
-  return `📚 "${upcoming.t.title}" is due ${when} — let's get a head start!`;
+  const when = upcoming.days === 0
+    ? i18n.t('reminder.when_today')
+    : upcoming.days === 1
+      ? i18n.t('reminder.when_tomorrow')
+      : i18n.t('reminder.when_inDays', { days: upcoming.days });
+  return i18n.t('reminder.taskDueLine', { title: upcoming.t.title, when });
 }
 
 export default function ReminderSettingsScreen() {
+  const { t } = useTranslation();
   const {
     reminderEnabled,
     reminderTime,
@@ -124,8 +130,8 @@ export default function ReminderSettingsScreen() {
 
     if (!syncResult.granted) {
       Alert.alert(
-        'Notifications are off',
-        'Your reminder settings were saved, but this device has not granted notification permission yet.',
+        t('reminder.notifsOff'),
+        t('reminder.notifsOffMsg'),
       );
     }
 
@@ -134,11 +140,11 @@ export default function ReminderSettingsScreen() {
 
   const handleAddReminder = () => {
     if (!isValidTime(newTime)) {
-      Alert.alert('Invalid time', 'Please enter HH:MM format.');
+      Alert.alert(t('reminder.invalidTime'), t('reminder.enterHHMM'));
       return;
     }
     if (reminders.length >= MAX_EXTRA_REMINDERS) {
-      Alert.alert('Limit', `You can add up to ${MAX_EXTRA_REMINDERS} extra reminders.`);
+      Alert.alert(t('reminder.limit'), t('reminder.limitMsg', { max: MAX_EXTRA_REMINDERS }));
       return;
     }
     setReminders((prev) => [
@@ -201,18 +207,17 @@ export default function ReminderSettingsScreen() {
 
           <ThemedView type="backgroundElement" style={styles.noticeCard}>
             <ThemedText type="small" themeColor="textSecondary" style={styles.noticeText}>
-              Reminders are written by your active companion ({voice.name}) — switch companions in the
-              Companion Bakery. If a task is due soon, the reminder names it instead.
-              {reminderStyle ? ` ${reminderStyle.preview} sets the sound.` : ''}
+              {t('reminder.writtenBy', { name: voice.name })}
+              {reminderStyle ? t('reminder.soundSet', { preview: reminderStyle.preview }) : ''}
             </ThemedText>
           </ThemedView>
 
           {/* Daily reminder toggle */}
           <ThemedView type="backgroundElement" style={styles.toggleRow}>
             <ThemedView style={styles.toggleInfo}>
-              <ThemedText type="smallBold">Daily reminder</ThemedText>
+              <ThemedText type="smallBold">{t('reminder.dailyReminder')}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                Get a nudge to study each day
+                {t('reminder.dailyReminderHint')}
               </ThemedText>
             </ThemedView>
             <Switch
@@ -224,14 +229,13 @@ export default function ReminderSettingsScreen() {
 
           {/* Time picker */}
           <ThemedView style={[styles.field, !enabled && styles.disabledField]}>
-            <ThemedText type="smallBold">Reminder time</ThemedText>
+            <ThemedText type="smallBold">{t('reminder.reminderTime')}</ThemedText>
             <TimeWheelPicker value={time} onChange={setTime} use24Hour={use24HourTime} />
           </ThemedView>
 
           <ThemedView type="backgroundElement" style={styles.noticeCard}>
             <ThemedText type="small" themeColor="textSecondary" style={styles.noticeText}>
-              Local study reminders can now be scheduled on this device. Keep notifications enabled
-              if you want the nudges to appear.
+              {t('reminder.localNotice')}
             </ThemedText>
           </ThemedView>
 
@@ -240,7 +244,7 @@ export default function ReminderSettingsScreen() {
             <ThemedView style={styles.section}>
               <ThemedView style={styles.sectionHeader}>
                 <ThemedText type="smallBold">
-                  Extra reminders
+                  {t('reminder.extraReminders')}
                   <ThemedText style={styles.plusTag}> ✨ Plus</ThemedText>
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
@@ -253,8 +257,8 @@ export default function ReminderSettingsScreen() {
                   <ThemedView style={styles.reminderInfo}>
                     <ThemedText type="smallBold">{formatTimeLabel(r.time, use24HourTime)}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
-                      {r.label?.trim() ? r.label : `${voice.name}’s voice`}
-                      {r.weekdaysOnly ? ' · Weekdays only' : ''}
+                      {r.label?.trim() ? r.label : t('reminder.companionVoice', { name: voice.name })}
+                      {r.weekdaysOnly ? t('reminder.weekdaysOnlySuffix') : ''}
                     </ThemedText>
                   </ThemedView>
                   <Pressable
@@ -270,7 +274,7 @@ export default function ReminderSettingsScreen() {
               {reminders.length < MAX_EXTRA_REMINDERS && (
                 <ThemedView type="backgroundElement" style={styles.addReminderCard}>
                   <ThemedText type="smallBold" style={styles.addReminderTitle}>
-                    + Add reminder
+                    {t('reminder.addReminder')}
                   </ThemedText>
                   <TimeWheelPicker value={newTime} onChange={setNewTime} use24Hour={use24HourTime} />
                   <TextInput
@@ -287,14 +291,14 @@ export default function ReminderSettingsScreen() {
                       trackColor={{ true: '#7C6F5A', false: undefined }}
                     />
                     <ThemedText type="small" themeColor="textSecondary">
-                      Weekdays only
+                      {t('reminder.weekdaysOnly')}
                     </ThemedText>
                   </ThemedView>
                   <Pressable
                     style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
                     onPress={handleAddReminder}>
                     <ThemedText type="smallBold" style={styles.addBtnText}>
-                      Add
+                      {t('common.add')}
                     </ThemedText>
                   </Pressable>
                 </ThemedView>
@@ -303,8 +307,8 @@ export default function ReminderSettingsScreen() {
           ) : (
             <PlusGateCard
               emoji="🔔"
-              title="Multiple reminders"
-              description="Set different reminders for weekdays vs weekends, or add a morning planning reminder."
+              title={t('reminder.multipleReminders')}
+              description={t('reminder.multipleRemindersDesc')}
             />
           )}
 
@@ -313,7 +317,7 @@ export default function ReminderSettingsScreen() {
             onPress={handleSave}
             disabled={saving}>
             <ThemedText type="smallBold" style={styles.saveBtnText}>
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? t('reminder.saving') : t('common.save')}
             </ThemedText>
           </Pressable>
         </SafeAreaView>

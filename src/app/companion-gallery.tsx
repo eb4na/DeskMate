@@ -16,6 +16,7 @@ import Svg, { Path } from 'react-native-svg';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
+import { useTranslation } from '@/i18n';
 import { BUN_SKINS, getBunSkinImage, getCompanionSkinImage, getCompanionSkins, getStarterActiveId, SHOP_COMPANIONS } from '@/lib/companion-utils';
 import { SHOP_ITEMS } from '@/constants/shop-data';
 
@@ -61,13 +62,13 @@ function HangerIcon({ color = '#B06A50', size = 18 }: { color?: string; size?: n
   );
 }
 
-// Per-companion taglines shown under each name in the gallery.
-const TAGLINES: Record<string, string> = {
-  Bun: 'Trip a lot but still help.',
-  Cocoa: 'Work first, fun later.',
-  Bunny: 'Bunny too cute to care.',
-  Miel: 'Sleep now, study maybe.',
-  Tira: 'Dropped out but still smart.',
+// Per-companion taglines shown under each name in the gallery (i18n keys).
+const TAGLINE_KEYS: Record<string, string> = {
+  Bun: 'gallery.tagline_Bun',
+  Cocoa: 'gallery.tagline_Cocoa',
+  Bunny: 'gallery.tagline_Bunny',
+  Miel: 'gallery.tagline_Miel',
+  Tira: 'gallery.tagline_Tira',
 };
 
 type ObtainedCharacter = {
@@ -83,6 +84,7 @@ type ObtainedCharacter = {
 };
 
 function GalleryContent() {
+  const { t } = useTranslation();
   const {
     activeCompanionId,
     companionSlots,
@@ -124,8 +126,8 @@ function GalleryContent() {
   const handleUseSlot = (slotId: string, hasRenderableImage: boolean) => {
     if (!hasRenderableImage) {
       Alert.alert(
-        'No art to show yet',
-        'This custom slot does not have character art yet. Generate a companion to use it across Home and study screens.',
+        t('gallery.noArtTitle'),
+        t('gallery.noArtMsg'),
       );
       return;
     }
@@ -133,9 +135,9 @@ function GalleryContent() {
   };
 
   const confirmDelete = (slotId: string, name: string) => {
-    Alert.alert('Remove companion?', `Remove "${name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => deleteCompanionSlot(slotId) },
+    Alert.alert(t('gallery.removeCompanionQ'), t('gallery.removeCompanionMsg', { name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('gallery.remove'), style: 'destructive', onPress: () => deleteCompanionSlot(slotId) },
     ]);
   };
 
@@ -180,13 +182,13 @@ function GalleryContent() {
       <SafeAreaView style={styles.safeArea}>
         {/* Header panel */}
         <View style={styles.headerPanel}>
-          <Text style={styles.headerTitle}>🍓 Companion Bakery</Text>
-          <Text style={styles.headerSubtitle}>Choose who studies with you today</Text>
+          <Text style={styles.headerTitle}>{t('gallery.companionBakery')}</Text>
+          <Text style={styles.headerSubtitle}>{t('gallery.chooseToday')}</Text>
         </View>
 
         {/* My Companions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>My Companions</Text>
+          <Text style={styles.sectionTitle}>{t('gallery.myCompanions')}</Text>
           <View style={styles.companionGrid}>
             {obtainedCharacters.map((char) => (
               <View
@@ -217,16 +219,16 @@ function GalleryContent() {
                   {char.name}
                   {char.isGenerated ? ' 🎨' : ''}
                 </Text>
-                <Text style={styles.companionSubtitle} numberOfLines={2}>{TAGLINES[char.name] ?? 'Your study buddy'}</Text>
+                <Text style={styles.companionSubtitle} numberOfLines={2}>{TAGLINE_KEYS[char.name] ? t(TAGLINE_KEYS[char.name]) : t('gallery.defaultTagline')}</Text>
                 {char.isActive ? (
                   <View style={styles.activePill}>
-                    <Text style={styles.activePillText}>✦ Active</Text>
+                    <Text style={styles.activePillText}>{t('gallery.active')}</Text>
                   </View>
                 ) : (
                   <Pressable
                     style={({ pressed }) => [styles.setActiveBtn, pressed && styles.pressed]}
                     onPress={char.onSelect}>
-                    <Text style={styles.setActiveBtnText}>Set Active</Text>
+                    <Text style={styles.setActiveBtnText}>{t('gallery.setActive')}</Text>
                   </Pressable>
                 )}
               </View>
@@ -237,7 +239,7 @@ function GalleryContent() {
         {/* Info note */}
         <View style={styles.infoCard}>
           <Text style={styles.infoText}>
-            🧁 Your active companion appears across Home, sessions, breaks, and completion screens.
+            {t('gallery.infoNote')}
           </Text>
         </View>
 
@@ -245,7 +247,7 @@ function GalleryContent() {
         <Pressable
           style={({ pressed }) => [styles.doneButton, pressed && styles.pressed]}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
-          <Text style={styles.doneButtonText}>Done</Text>
+          <Text style={styles.doneButtonText}>{t('common.done')}</Text>
         </Pressable>
       </SafeAreaView>
 
@@ -257,10 +259,10 @@ function GalleryContent() {
         onRequestClose={() => setWardrobeFor(null)}>
         <View style={styles.wardrobeBackdrop}>
           <View style={styles.wardrobeSheet}>
-            <Text style={styles.wardrobeTitle}>👗 {wardrobeFor?.name}&apos;s Wardrobe</Text>
+            <Text style={styles.wardrobeTitle}>{t('gallery.wardrobeTitle', { name: wardrobeFor?.name ?? '' })}</Text>
             {wardrobeSkins.length > 0 ? (
               <>
-                <Text style={styles.wardrobeSubtitle}>Pick an outfit — {wardrobeFor?.name} wears it everywhere</Text>
+                <Text style={styles.wardrobeSubtitle}>{t('gallery.pickOutfit', { name: wardrobeFor?.name ?? '' })}</Text>
                 <View style={styles.skinGrid}>
                   {wardrobeSkins.map((skin) => {
                     const equipped = wardrobeEquipped === skin.id;
@@ -293,13 +295,13 @@ function GalleryContent() {
                           {skin.emoji} {skin.name}
                         </Text>
                         {locked ? (
-                          <Text style={styles.skinLockedText}>🔓 Tap to unlock</Text>
+                          <Text style={styles.skinLockedText}>{t('gallery.tapToUnlock')}</Text>
                         ) : equipped ? (
                           <View style={styles.skinPill}>
-                            <Text style={styles.skinPillText}>✦ Wearing</Text>
+                            <Text style={styles.skinPillText}>{t('gallery.wearing')}</Text>
                           </View>
                         ) : (
-                          <Text style={styles.skinTap}>Tap to wear</Text>
+                          <Text style={styles.skinTap}>{t('gallery.tapToWear')}</Text>
                         )}
                       </Pressable>
                     );
@@ -309,16 +311,16 @@ function GalleryContent() {
             ) : (
               <View style={styles.wardrobeEmpty}>
                 <Text style={styles.wardrobeEmptyEmoji}>🧥</Text>
-                <Text style={styles.wardrobeEmptyTitle}>No outfits yet</Text>
+                <Text style={styles.wardrobeEmptyTitle}>{t('gallery.noOutfitsYet')}</Text>
                 <Text style={styles.wardrobeEmptyText}>
-                  {wardrobeFor?.name}&apos;s wardrobe is empty for now — more outfits coming soon!
+                  {t('gallery.wardrobeEmpty', { name: wardrobeFor?.name ?? '' })}
                 </Text>
               </View>
             )}
             <Pressable
               style={({ pressed }) => [styles.doneButton, pressed && styles.pressed]}
               onPress={() => setWardrobeFor(null)}>
-              <Text style={styles.doneButtonText}>Done</Text>
+              <Text style={styles.doneButtonText}>{t('common.done')}</Text>
             </Pressable>
           </View>
         </View>
@@ -334,17 +336,17 @@ function GalleryContent() {
           <Pressable style={styles.buyCard} onPress={(e) => e.stopPropagation?.()}>
             {buyItem && (
               <>
-                <Text style={styles.buyTitle}>Unlock {buyItem.name}</Text>
+                <Text style={styles.buyTitle}>{t('gallery.unlockTitle', { name: buyItem.name })}</Text>
                 {buyItem.image && (
                   <Image source={buyItem.image} style={styles.buyImage} contentFit="contain" />
                 )}
                 <View style={styles.buyBalanceRow}>
-                  <Text style={styles.buyBalanceLabel}>Your balance</Text>
+                  <Text style={styles.buyBalanceLabel}>{t('gallery.yourBalance')}</Text>
                   <Text style={styles.buyBalanceNum}>🪙 {coins}</Text>
                 </View>
                 {!canAffordBuy && (
                   <Text style={styles.buyShortfall}>
-                    You need {buyPrice - coins} more coins. Earn coins by studying!
+                    {t('gallery.shortfall', { count: buyPrice - coins })}
                   </Text>
                 )}
                 <Pressable
@@ -356,11 +358,11 @@ function GalleryContent() {
                   ]}
                   onPress={confirmBuy}>
                   <Text style={styles.buyBtnText}>
-                    {canAffordBuy ? `Unlock for ${buyPrice} coins` : 'Not enough coins'}
+                    {canAffordBuy ? t('gallery.unlockForCoins', { price: buyPrice }) : t('gallery.notEnoughCoins')}
                   </Text>
                 </Pressable>
                 <Pressable style={styles.buyCancel} onPress={() => setBuyItem(null)}>
-                  <Text style={styles.buyCancelText}>Maybe later</Text>
+                  <Text style={styles.buyCancelText}>{t('gallery.maybeLater')}</Text>
                 </Pressable>
               </>
             )}

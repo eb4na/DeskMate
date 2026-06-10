@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import i18n, { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, Colors, Spacing } from '@/constants/theme';
 
 type DateParts = {
@@ -20,7 +21,7 @@ type DateWheelPickerProps = {
   maxYear?: number;
 };
 
-const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const monthLabel = (m: number) => i18n.t(`pickers.month_${m}`);
 
 export function getTodayISO() {
   const today = new Date();
@@ -32,8 +33,8 @@ export function getTodayISO() {
 
 export function formatDateLabel(value?: string | null) {
   const parts = parseISODate(value);
-  if (!parts) return 'Select date';
-  return `${MONTH_LABELS[parts.month - 1]} ${parts.day}, ${parts.year}`;
+  if (!parts) return i18n.t('pickers.selectDate');
+  return i18n.t('pickers.dateLabel', { month: monthLabel(parts.month), day: parts.day, year: parts.year });
 }
 
 function parseISODate(value?: string | null): DateParts | null {
@@ -90,6 +91,7 @@ export function DateWheelPicker({
   minYear,
   maxYear,
 }: DateWheelPickerProps) {
+  const { t } = useTranslation();
   const scheme = useColorScheme();
   const theme = Colors[scheme === 'dark' ? 'dark' : 'light'];
   const todayParts = parseISODate(getTodayISO())!;
@@ -157,13 +159,13 @@ export function DateWheelPicker({
             { backgroundColor: theme.backgroundElement, borderColor: BakeryColors.border },
           ]}>
           <View style={styles.triggerTextWrap}>
-            <ThemedText type="smallBold">Date</ThemedText>
+            <ThemedText type="smallBold">{t('pickers.date')}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               {formatDateLabel(normalizedSelectedISO)}
             </ThemedText>
           </View>
           <ThemedText type="smallBold" style={styles.triggerChevron}>
-            Select
+            {t('pickers.select')}
           </ThemedText>
         </View>
       </Pressable>
@@ -177,16 +179,16 @@ export function DateWheelPicker({
               { backgroundColor: theme.background, borderColor: BakeryColors.border },
             ]}>
             <View style={styles.modalHeader}>
-              <ThemedText type="smallBold">Pick a date</ThemedText>
+              <ThemedText type="smallBold">{t('pickers.pickDate')}</ThemedText>
               <Pressable onPress={() => setIsOpen(false)} style={({ pressed }) => [pressed && styles.pressed]}>
-                <ThemedText type="linkPrimary">Done</ThemedText>
+                <ThemedText type="linkPrimary">{t('common.done')}</ThemedText>
               </Pressable>
             </View>
 
             <View style={styles.container}>
               <View style={styles.column}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.pickerLabel}>
-                  Month
+                  {t('pickers.month')}
                 </ThemedText>
                 <View
                   style={[
@@ -200,7 +202,7 @@ export function DateWheelPicker({
                     {months.map((month) => (
                       <Picker.Item
                         key={month}
-                        label={MONTH_LABELS[month - 1]}
+                        label={monthLabel(month)}
                         value={String(month)}
                         style={pickerItemStyle}
                       />
@@ -211,7 +213,7 @@ export function DateWheelPicker({
 
               <View style={styles.column}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.pickerLabel}>
-                  Day
+                  {t('pickers.day')}
                 </ThemedText>
                 <View
                   style={[
@@ -236,7 +238,7 @@ export function DateWheelPicker({
 
               <View style={styles.column}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.pickerLabel}>
-                  Year
+                  {t('pickers.year')}
                 </ThemedText>
                 <View
                   style={[

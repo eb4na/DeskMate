@@ -29,6 +29,7 @@ import {
 } from '@/context/app-context';
 import { sendCompanionChat } from '@/lib/companion-chat';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
+import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 
 function BackIcon() {
@@ -75,6 +76,7 @@ function formatTime(at?: number) {
 }
 
 export default function CompanionChatScreen() {
+  const { t } = useTranslation();
   const {
     isPlus,
     coins,
@@ -118,11 +120,11 @@ export default function CompanionChatScreen() {
   const handleClear = () => {
     if (messages.length === 0) return;
     Alert.alert(
-      'Clear chat?',
-      `This permanently deletes your saved conversation with ${companion.name}.`,
+      t('chat.clearChatQ'),
+      t('chat.clearChatMsg', { name: companion.name }),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Clear', style: 'destructive', onPress: () => setMessages([]) },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('chat.clear'), style: 'destructive', onPress: () => setMessages([]) },
       ],
     );
   };
@@ -131,7 +133,7 @@ export default function CompanionChatScreen() {
     const text = input.trim();
     if (!text || isSending) return;
     if (chatTotal <= 0) {
-      Alert.alert('Out of chats', 'You have used your daily companion chats. They reset tomorrow 💬');
+      Alert.alert(t('chat.outOfChats'), t('chat.outOfChatsMsg'));
       return;
     }
 
@@ -148,8 +150,8 @@ export default function CompanionChatScreen() {
       setMessages((prev) => [...prev, { role: 'assistant', content: reply, at: Date.now() }]);
       scrollToEnd();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'The companion could not reply.';
-      Alert.alert('Chat hiccup', `${message}\n\nNo message was used — try again.`);
+      const message = error instanceof Error ? error.message : t('chat.couldNotReply');
+      Alert.alert(t('chat.chatHiccup'), t('chat.chatHiccupMsg', { message }));
       setMessages((prev) => prev.slice(0, -1));
       setInput(text);
     } finally {
@@ -231,9 +233,9 @@ export default function CompanionChatScreen() {
               </View>
               <View style={styles.onlineRow}>
                 <View style={styles.onlineDot} />
-                <ThemedText style={styles.onlineText}>Online</ThemedText>
+                <ThemedText style={styles.onlineText}>{t('chat.online')}</ThemedText>
               </View>
-              <ThemedText style={styles.profileSub}>Your cozy study buddy is here to help!</ThemedText>
+              <ThemedText style={styles.profileSub}>{t('chat.studyBuddy')}</ThemedText>
             </View>
             <BakeryBreadEmoji size={40} />
           </View>
@@ -241,13 +243,13 @@ export default function CompanionChatScreen() {
           {/* Allowance + history + clear */}
           <View style={styles.utilBar}>
             <ThemedText style={styles.utilText} numberOfLines={1}>
-              💬 {dailyChatRemaining}/{PLUS_DAILY_CHAT} free today
+              {t('chat.freeToday', { remaining: dailyChatRemaining, total: PLUS_DAILY_CHAT })}
               {chatMessages > 0 ? ` · +${chatMessages}` : ''}
-              {messages.length > 0 ? ` · ${messages.length}/${CHAT_HISTORY_CAP} saved` : ''}
+              {messages.length > 0 ? t('chat.savedSuffix', { count: messages.length, cap: CHAT_HISTORY_CAP }) : ''}
             </ThemedText>
             {messages.length > 0 && (
               <Pressable onPress={handleClear} hitSlop={8} style={({ pressed }) => pressed && styles.pressed}>
-                <ThemedText style={styles.clearText}>Clear</ThemedText>
+                <ThemedText style={styles.clearText}>{t('chat.clear')}</ThemedText>
               </Pressable>
             )}
           </View>
@@ -264,7 +266,7 @@ export default function CompanionChatScreen() {
                 <View style={styles.msgCol}>
                   <View style={[styles.bubble, styles.bubbleAssistant]}>
                     <ThemedText style={styles.bubbleAssistantText}>
-                      Hi! Ready to study together? 🍞
+                      {t('chat.greeting')}
                     </ThemedText>
                   </View>
                 </View>
@@ -304,7 +306,7 @@ export default function CompanionChatScreen() {
           {outOfMessages && (
             <View style={styles.exchangeCta}>
               <ThemedText style={styles.exchangeCtaText}>
-                Daily chats used — they reset tomorrow 💬
+                {t('chat.dailyUsedReset')}
               </ThemedText>
             </View>
           )}
@@ -317,7 +319,7 @@ export default function CompanionChatScreen() {
                 style={[styles.input, { color: colors.text }]}
                 value={input}
                 onChangeText={setInput}
-                placeholder={outOfMessages ? 'Chats reset tomorrow…' : 'Type a message...'}
+                placeholder={outOfMessages ? t('chat.chatsResetTomorrow') : t('chat.typeMessage')}
                 placeholderTextColor={BakeryColors.latte}
                 multiline
                 editable={!outOfMessages}
@@ -339,16 +341,16 @@ export default function CompanionChatScreen() {
 
         {/* Bottom tab bar (matches the app shell) */}
         <View style={styles.tabBar}>
-          {TAB_ITEMS.map((t, i) => {
+          {TAB_ITEMS.map((item, i) => {
             const active = i === 0;
             const tint = active ? BakeryColors.cocoa : BakeryColors.latte;
             return (
               <Pressable
-                key={t.label}
-                onPress={() => router.navigate(t.route)}
+                key={item.labelKey}
+                onPress={() => router.navigate(item.route)}
                 style={[styles.tabItem, active && styles.tabItemActive]}>
-                <t.Icon color={tint} size={24} />
-                <ThemedText style={[styles.tabLabel, { color: tint }]}>{t.label}</ThemedText>
+                <item.Icon color={tint} size={24} />
+                <ThemedText style={[styles.tabLabel, { color: tint }]}>{t(item.labelKey)}</ThemedText>
               </Pressable>
             );
           })}
@@ -359,10 +361,10 @@ export default function CompanionChatScreen() {
 }
 
 const TAB_ITEMS = [
-  { label: 'Home', Icon: HomeTabIcon, route: '/' as const },
-  { label: 'Tasks', Icon: TasksTabIcon, route: '/tasks' as const },
-  { label: 'Progress', Icon: ProgressTabIcon, route: '/progress' as const },
-  { label: 'Shop', Icon: ShopTabIcon, route: '/shop' as const },
+  { labelKey: 'nav.home', Icon: HomeTabIcon, route: '/' as const },
+  { labelKey: 'nav.tasks', Icon: TasksTabIcon, route: '/tasks' as const },
+  { labelKey: 'nav.progress', Icon: ProgressTabIcon, route: '/progress' as const },
+  { labelKey: 'nav.shop', Icon: ShopTabIcon, route: '/shop' as const },
 ];
 
 const AVATAR = 34;

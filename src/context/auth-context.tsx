@@ -1,7 +1,12 @@
 import type { Session, User } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 
 import { supabase } from '@/lib/supabase';
+
+// Guest mode lives only in app state (no Supabase session), so it must be
+// persisted ourselves — otherwise every relaunch/reload drops guests to login.
+const GUEST_KEY = 'deskmate.guestMode';
 
 type AuthContextType = {
   continueAsGuest: () => void;
@@ -22,12 +27,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
+    (async () => {
+      const { data } = await supabase.auth.getSession();
       if (!mounted) return;
-      setSession(data.session ?? null);
-      setIsGuest(false);
+      if (data.session) {
+        setSession(data.session);
+        setIsGuest(false);
+        AsyncStorage.removeItem(GUEST_KEY).catch(() => {});
+      } else {
+        // No Supabase session — restore guest mode if it was chosen before.
+        const guest = await AsyncStorage.getItem(GUEST_KEY).catch(() => null);
+        if (!mounted) return;
+        setSession(null);
+        setIsGuest(guest === 'true');
+      }
       setInitialized(true);
-    });
+    })();
 
     const {
       data: { subscription },
@@ -35,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(nextSession);
       if (nextSession) {
         setIsGuest(false);
+        AsyncStorage.removeItem(GUEST_KEY).catch(() => {});
       }
       setInitialized(true);
     });
@@ -51,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(null);
         setIsGuest(true);
         setInitialized(true);
+        AsyncStorage.setItem(GUEST_KEY, 'true').catch(() => {});
       },
       isGuest,
       initialized,
@@ -58,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       signOut: async () => {
         setIsGuest(false);
+        AsyncStorage.removeItem(GUEST_KEY).catch(() => {});
 
         if (!session) {
           return;

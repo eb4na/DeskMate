@@ -7,9 +7,11 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp, MAX_SUBJECTS_FREE, MAX_SUBJECTS_PLUS } from '@/context/app-context';
 import { SUBJECT_COLORS } from '@/constants/placeholder-data';
+import { useTranslation } from '@/i18n';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 export default function ManageSubjectsScreen() {
+  const { t } = useTranslation();
   const { subjects, addSubject, renameSubject, archiveSubject, deleteSubject, reorderSubjects, isPlus } =
     useApp();
   const subjectLimit = isPlus ? MAX_SUBJECTS_PLUS : MAX_SUBJECTS_FREE;
@@ -38,10 +40,10 @@ export default function ManageSubjectsScreen() {
     const added = addSubject(newName.trim(), selectedColor, newEmoji.trim());
     if (!added) {
       Alert.alert(
-        'Subject limit reached',
+        t('manageSubjects.subjectLimitReached'),
         isPlus
-          ? `You can have up to ${MAX_SUBJECTS_PLUS} subjects.`
-          : `Free accounts can have up to ${MAX_SUBJECTS_FREE} subjects. Upgrade to Plus for up to ${MAX_SUBJECTS_PLUS}.`,
+          ? t('manageSubjects.limitMsgPlus', { max: MAX_SUBJECTS_PLUS })
+          : t('manageSubjects.limitMsgFree', { free: MAX_SUBJECTS_FREE, plus: MAX_SUBJECTS_PLUS }),
       );
       return;
     }
@@ -80,16 +82,16 @@ export default function ManageSubjectsScreen() {
   };
 
   const handleArchive = (id: string, name: string) => {
-    Alert.alert('Archive subject?', `"${name}" will be hidden from pickers but your study time is kept.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Archive', onPress: () => archiveSubject(id) },
+    Alert.alert(t('manageSubjects.archiveSubjectQ'), t('manageSubjects.archiveMsg', { name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('manageSubjects.archive'), onPress: () => archiveSubject(id) },
     ]);
   };
 
   const handleDelete = (id: string, name: string) => {
-    Alert.alert('Delete subject?', `"${name}" will be removed. Tasks linked to it won't be deleted but will lose the subject tag.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteSubject(id) },
+    Alert.alert(t('manageSubjects.deleteSubjectQ'), t('manageSubjects.deleteMsg', { name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => deleteSubject(id) },
     ]);
   };
 
@@ -103,19 +105,19 @@ export default function ManageSubjectsScreen() {
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 48 }}>
         <SafeAreaView style={styles.safeArea}>
           <ThemedText type="subtitle" style={styles.title}>
-            Subjects
+            {t('manageSubjects.title')}
           </ThemedText>
 
           {/* Active subjects list */}
           <ThemedView style={styles.section}>
             <ThemedText type="smallBold" style={styles.sectionLabel}>
-              Your subjects ({activeSubjects.length}/{subjectLimit})
+              {t('manageSubjects.yourSubjects', { count: activeSubjects.length, limit: subjectLimit })}
             </ThemedText>
 
             {activeSubjects.length === 0 && (
               <ThemedView type="backgroundElement" style={styles.emptyCard}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                  No subjects yet. Add one below!
+                  {t('manageSubjects.noSubjectsBelow')}
                 </ThemedText>
               </ThemedView>
             )}
@@ -137,7 +139,7 @@ export default function ManageSubjectsScreen() {
                     {sub.emoji ? <ThemedText style={styles.subjectEmoji}>{sub.emoji}</ThemedText> : null}
                     <ThemedText style={styles.subjectName}>{sub.name}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary" style={styles.editHint}>
-                      tap to rename
+                      {t('manageSubjects.tapToRename')}
                     </ThemedText>
                   </Pressable>
                 )}
@@ -168,12 +170,12 @@ export default function ManageSubjectsScreen() {
           {/* Add new subject */}
           <ThemedView style={styles.section}>
             <ThemedText type="smallBold" style={styles.sectionLabel}>
-              Add new subject
+              {t('manageSubjects.addNewSubject')}
             </ThemedText>
 
             <TextInput
               style={inputStyle}
-              placeholder="Subject name"
+              placeholder={t('manageSubjects.subjectNamePlaceholder')}
               placeholderTextColor={isDark ? '#666' : '#AAA'}
               value={newName}
               onChangeText={setNewName}
@@ -183,7 +185,7 @@ export default function ManageSubjectsScreen() {
 
             <TextInput
               style={inputStyle}
-              placeholder="Emoji (optional, e.g. 📐)"
+              placeholder={t('manageSubjects.emojiPlaceholder')}
               placeholderTextColor={isDark ? '#666' : '#AAA'}
               value={newEmoji}
               onChangeText={setNewEmoji}
@@ -209,7 +211,7 @@ export default function ManageSubjectsScreen() {
               onPress={handleAdd}
               disabled={!newName.trim() || activeSubjects.length >= subjectLimit}>
               <ThemedText type="smallBold" style={styles.addBtnText}>
-                {activeSubjects.length >= subjectLimit ? `Limit reached (${subjectLimit})` : '+ Add subject'}
+                {activeSubjects.length >= subjectLimit ? t('manageSubjects.limitReachedN', { limit: subjectLimit }) : t('manageSubjects.addSubjectBtn')}
               </ThemedText>
             </Pressable>
           </ThemedView>
@@ -219,7 +221,7 @@ export default function ManageSubjectsScreen() {
             <ThemedView style={styles.section}>
               <Pressable onPress={() => setShowArchived((v) => !v)} style={styles.archivedToggle}>
                 <ThemedText type="smallBold" themeColor="textSecondary">
-                  {showArchived ? '▾' : '▸'} Archived ({archivedSubjects.length})
+                  {showArchived ? '▾' : '▸'} {t('manageSubjects.archivedCount', { count: archivedSubjects.length })}
                 </ThemedText>
               </Pressable>
 
@@ -242,7 +244,7 @@ export default function ManageSubjectsScreen() {
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
             style={styles.doneBtn}
             hitSlop={12}>
-            <ThemedText type="linkPrimary">Done</ThemedText>
+            <ThemedText type="linkPrimary">{t('common.done')}</ThemedText>
           </Pressable>
         </SafeAreaView>
       </ScrollView>

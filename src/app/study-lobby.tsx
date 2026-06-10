@@ -2,18 +2,21 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedView } from '@/components/themed-view';
 import { SESSION_LENGTHS } from '@/constants/placeholder-data';
 import { getCompanionImage } from '@/lib/companion-utils';
 import { useStudyRoom } from '@/lib/use-study-room';
+import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
 // Lobby for a synced multiplayer study room: players gather, the host picks a
 // duration and starts. The realtime connection lives in StudyRoomProvider, so
 // it survives the transition to the home screen once the session begins.
 export default function StudyLobbyScreen() {
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const { active, isHost, myCode, roster, presentCodes, netStatus, roomId, start, leaveRoom } = useStudyRoom();
   const [minutes, setMinutes] = useState(25);
 
@@ -33,12 +36,14 @@ export default function StudyLobbyScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <SafeAreaView style={styles.safe} edges={['bottom']}>
+        <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: insets.top + Spacing.three }]} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
-            <Text style={styles.title}>Study Room 📚</Text>
+            <Text style={styles.title}>{t('lobby.studyRoom')}</Text>
             <Text style={styles.subtitle}>
-              {connecting ? `Connecting… (${netStatus || 'starting'})` : `${roster.length} in the room · ${presentCodes.length} connected`}
+              {connecting
+                ? t('lobby.connecting', { status: netStatus || t('lobby.starting') })
+                : t('lobby.roomStatus', { inRoom: roster.length, connected: presentCodes.length })}
             </Text>
           </View>
 
@@ -61,7 +66,7 @@ export default function StudyLobbyScreen() {
                   <Text style={styles.name} numberOfLines={1}>
                     {e.name}
                     {e.isHost ? ' 👑' : ''}
-                    {e.code === myCode ? ' (you)' : ''}
+                    {e.code === myCode ? t('lobby.you') : ''}
                   </Text>
                 </View>
               );
@@ -71,7 +76,7 @@ export default function StudyLobbyScreen() {
           {/* Duration (host picks) */}
           {isHost ? (
             <>
-              <Text style={styles.label}>Session length</Text>
+              <Text style={styles.label}>{t('lobby.sessionLength')}</Text>
               <View style={styles.lenGrid}>
                 {SESSION_LENGTHS.map((opt) => (
                   <Pressable
@@ -79,13 +84,13 @@ export default function StudyLobbyScreen() {
                     onPress={() => setMinutes(opt.minutes)}
                     style={[styles.lenCard, minutes === opt.minutes && styles.lenCardActive]}>
                     <Text style={[styles.lenNum, minutes === opt.minutes && styles.lenNumActive]}>{opt.minutes}</Text>
-                    <Text style={styles.lenLabel}>min</Text>
+                    <Text style={styles.lenLabel}>{t('lobby.min')}</Text>
                   </Pressable>
                 ))}
               </View>
             </>
           ) : (
-            <Text style={styles.hint}>The host picks the session length and starts.</Text>
+            <Text style={styles.hint}>{t('lobby.hostPicks')}</Text>
           )}
         </ScrollView>
 
@@ -95,19 +100,19 @@ export default function StudyLobbyScreen() {
               <Pressable
                 onPress={() => router.push({ pathname: '/party-invite', params: { room: roomId ?? '', game: 'study' } })}
                 style={({ pressed }) => [styles.inviteBtn, pressed && styles.pressed]}>
-                <Text style={styles.inviteText}>＋ Invite friend</Text>
+                <Text style={styles.inviteText}>{t('lobby.inviteFriend')}</Text>
               </Pressable>
               <Pressable
-                onPress={() => start({ durationMinutes: minutes, subjectName: 'Study Room', taskId: null, taskTitle: null })}
+                onPress={() => start({ durationMinutes: minutes, subjectName: t('lobby.studyRoomName'), taskId: null, taskTitle: null })}
                 style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]}>
-                <Text style={styles.startText}>Start studying 📖</Text>
+                <Text style={styles.startText}>{t('lobby.startStudying')}</Text>
               </Pressable>
             </>
           ) : (
-            <Text style={styles.hint}>Waiting for the host to start…</Text>
+            <Text style={styles.hint}>{t('lobby.waitingHost')}</Text>
           )}
           <Pressable onPress={leave} style={styles.cancel}>
-            <Text style={styles.cancelText}>Leave</Text>
+            <Text style={styles.cancelText}>{t('lobby.leave')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
