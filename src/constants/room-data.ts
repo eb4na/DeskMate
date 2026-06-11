@@ -57,13 +57,31 @@ export const ROOM_PAIRS: RoomPair[] = [
     deskImage: require('@/assets/images/desks/pink.png'),
   },
   {
-    // Background-only room — no matching desk (mixes with any desk).
-    id: 'tiras-treehouse',
-    name: "Tira's Treehouse",
-    backgroundId: 'bg_tiras_treehouse',
-    deskId: null,
-    backgroundImage: require('@/assets/images/backgrounds/tiras-treehouse.png'),
-    deskImage: require('@/assets/images/home/desk-new.png'),
+    // Matched set — Tranquil kitchen background + Maplewood desk.
+    id: 'tranquil',
+    name: 'Tranquil',
+    backgroundId: 'bg_tranquil',
+    deskId: 'desk_maple',
+    backgroundImage: require('@/assets/images/backgrounds/tranquil.png'),
+    deskImage: require('@/assets/images/desks/maple.png'),
+  },
+  {
+    // Matched set — Landmine jirai kei bedroom + Noir (black) desk.
+    id: 'landmine',
+    name: 'Landmine',
+    backgroundId: 'bg_landmine',
+    deskId: 'desk_landmine',
+    backgroundImage: require('@/assets/images/backgrounds/landmine.png'),
+    deskImage: require('@/assets/images/desks/landmine.png'),
+  },
+  {
+    // Matched set — Lavender Palace background + its own pale-wood floor as the desk.
+    id: 'lavender-palace',
+    name: 'Lavender Palace',
+    backgroundId: 'bg_lavender_palace',
+    deskId: 'desk_lavender',
+    backgroundImage: require('@/assets/images/backgrounds/lavender-palace.png'),
+    deskImage: require('@/assets/images/desks/lavender.png'),
   },
 ];
 

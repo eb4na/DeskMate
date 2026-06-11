@@ -19,6 +19,8 @@ import i18n, { useTranslation } from '@/i18n';
 const LOADING_IMGS = [
   require('@/assets/images/home/loading.png'),
   require('@/assets/images/home/loading2.png'),
+  require('@/assets/images/home/loading3.png'),
+  require('@/assets/images/home/loading4.png'),
 ];
 
 // Full-screen loading splash shown OVER the app — the home screen mounts behind
@@ -29,6 +31,7 @@ function LoadingScreen({ ready, onDone }: { ready: boolean; onDone: () => void }
   const fade = useRef(new Animated.Value(1)).current;
   // Pick one of the loading artworks at random each time it shows.
   const img = useRef(LOADING_IMGS[Math.floor(Math.random() * LOADING_IMGS.length)]).current;
+  const { t } = useTranslation();
   const [slow, setSlow] = useState(false);
   const [minDone, setMinDone] = useState(false);
 
@@ -40,11 +43,11 @@ function LoadingScreen({ ready, onDone }: { ready: boolean; onDone: () => void }
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
-    const t = setTimeout(() => setMinDone(true), 3000);
-    const s = setTimeout(() => setSlow(true), 3000);
+    const minTimer = setTimeout(() => setMinDone(true), 3000);
+    const slowTimer = setTimeout(() => setSlow(true), 3000);
     return () => {
-      clearTimeout(t);
-      clearTimeout(s);
+      clearTimeout(minTimer);
+      clearTimeout(slowTimer);
     };
   }, [progress]);
 
@@ -64,10 +67,11 @@ function LoadingScreen({ ready, onDone }: { ready: boolean; onDone: () => void }
     <Animated.View style={[styles.loadingRoot, { opacity: fade }]} pointerEvents="auto">
       <ExpoImage source={img} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="center" />
       <View style={styles.loadingBarWrap}>
+        <Text style={styles.loadingLabel}>{t('common.loading')}</Text>
         <View style={styles.loadingTrack}>
           <Animated.View style={[styles.loadingFill, { width }]} />
         </View>
-        {slow && !ready && <Text style={styles.loadingSlow}>Just a moment longer…</Text>}
+        {slow && !ready && <Text style={styles.loadingSlow}>{t('common.loadingSlow')}</Text>}
       </View>
     </Animated.View>
   );
@@ -164,6 +168,7 @@ function RootNavigator() {
         <Stack.Screen name="friends" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="profile" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="friend-card" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="dm-chat" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="companion-chat" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="companion-pfp" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="settings" options={{ presentation: 'modal', title: t('screens.settings') }} />
@@ -235,5 +240,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   loadingFill: { height: '100%', borderRadius: 8, backgroundColor: '#F2A0B5' },
+  loadingLabel: { fontSize: 18, fontWeight: '800', color: '#F2A0B5', letterSpacing: 0.5, textShadowColor: 'rgba(255,255,255,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
   loadingSlow: { fontSize: 12, fontWeight: '700', color: '#fff', textShadowColor: 'rgba(0,0,0,0.25)', textShadowRadius: 3 },
 });

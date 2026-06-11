@@ -14,7 +14,9 @@
     "stop": "Stop",
     "manage": "Manage →",
     "addOne": "Add one →",
-    "close": "Close"
+    "close": "Close",
+    "loadingSlow": "Just a moment longer…",
+    "addChip": "＋ Add"
   },
   "auth": {
     "welcomeBack": "Welcome back",
@@ -26,6 +28,7 @@
     "passwordPlaceholder": "Enter your password",
     "signIn": "Sign In",
     "signingIn": "Signing in...",
+    "signedOutOtherDevice": "You were signed out because your account was used on another device.",
     "continueAsGuest": "Continue as guest",
     "guestModeNote": "Guest mode keeps your progress on this device so you can start studying right away.",
     "forgotPassword": "Forgot password?",
@@ -76,7 +79,15 @@
     "passwordUpdated": "Password updated. You can keep using DeskMate now.",
     "resendConfirmation": "Resend confirmation",
     "resendSubtitle": "If your verification code expired or got buried, we can send a fresh one.",
-    "codeResent": "Verification code sent again. Enter it on the verification screen."
+    "codeResent": "Verification code sent again. Enter it on the verification screen.",
+    "or": "or",
+    "continueWithGoogle": "Continue with Google",
+    "continueWithApple": "Continue with Apple",
+    "connectedAccounts": "Connected accounts",
+    "connectGoogle": "Connect Google",
+    "connectApple": "Connect Apple",
+    "connected": "Connected",
+    "connectFailed": "Couldn't connect. Please try again."
   },
   "lang": {
     "title": "Choose Your Language",
@@ -111,7 +122,7 @@
     "daysLeftN": "{{count}} days left",
     "upcomingExam": "Upcoming Exam",
     "dragAllIngredients": "Drag all ingredients into the mixer!",
-    "letsStudy": "🍰 Let's study!",
+    "letsStudy": "Let's study!",
     "dailyPing": "Daily ping at {{time}}.",
     "youGotThis": "You've got this!",
     "tapToSetReminders": "Tap to set up reminders",
@@ -146,7 +157,21 @@
     "customDuration": "Custom duration 👑",
     "anyLength": "Any length, save as preset",
     "anyLengthFree": "Any length, no preset",
-    "startButton": "Start {{minutes}} min Session"
+    "startButton": "Start {{minutes}} min Session",
+    "chooseDuration": "CHOOSE DURATION",
+    "len_15": "Quick Warm-up",
+    "len_30": "Focus Boost",
+    "len_60": "Deep Focus",
+    "len_90": "Long Session",
+    "subjectHeader": "SUBJECT (OPTIONAL)",
+    "customTitle": "Custom Duration",
+    "customSub": "Set your own focus time",
+    "customSet": "Set ▾",
+    "singlePlayer": "Single Player",
+    "multiplayer": "Multiplayer",
+    "breakInfoSingle": "Includes one {{min}} min break  ·  break = ⌊focus ÷ 12⌋",
+    "breakInfoNone": "No break — short warm-up session",
+    "breakInfoMulti": "Take breaks anytime in multiplayer"
   },
   "customTimer": {
     "title": "✦ Custom Timer ✦",
@@ -160,7 +185,14 @@
     "customMin": "Custom min...",
     "pickDurationFirst": "Pick a duration first",
     "between1And300": "Enter between 1–300 minutes",
-    "min": "min"
+    "min": "min",
+    "focusDuration": "FOCUS DURATION",
+    "breakDuration": "BREAK DURATION",
+    "optionalBreak": "Optional break time",
+    "presetNamePlaceholder": "Preset name...",
+    "subjectHeader": "SUBJECT (OPTIONAL)",
+    "savePresetTitle": "SAVE AS PRESET",
+    "savePresetSub": "Save your session for next time"
   },
   "subjectPicker": {
     "title": "Pick a subject (optional)",
@@ -223,7 +255,16 @@
     "min": "min",
     "savedPresetsIncluded": "Saved break presets are included above.",
     "customBreak": "Custom break →",
-    "backToHome": "Back to home"
+    "backToHome": "Back to home",
+    "finishedTitle": "YOU FINISHED YOUR SESSION!",
+    "thankYou": "Thank you for studying!",
+    "sessionNumber": "Session Number",
+    "studyTimeLabel": "Study Time",
+    "coinsEarnedLabel": "Coins Earned",
+    "dailyCapReached": "Daily cap reached ({{cap}}/day)",
+    "welcomeBackBonus": "Welcome Back Bonus",
+    "streakBonusLabel": "Streak Bonus",
+    "moodPrompt": "How do you feel after studying?"
   },
   "tasks": {
     "title": "Tasks",
@@ -738,7 +779,11 @@
     "online": "Online",
     "studyBuddy": "Your cozy study buddy is here to help!",
     "freeToday": "💬 {{remaining}}/{{total}} free today",
-    "savedSuffix": " · {{count}}/{{cap}} saved"
+    "savedSuffix": " · {{count}}/{{cap}} saved",
+    "chatCompanion": "Chat Companion",
+    "plusFeatureTitle": "Companion chat is a Plus feature 🔒",
+    "plusUpgradeMsg": "Upgrade to DeskMate Plus to chat with your companion. Plus members get {{count}} free chats every day.",
+    "seePlus": "See Plus"
   },
   "nav": {
     "home": "Home",
@@ -798,7 +843,14 @@
     "tagline_Cocoa": "Work first, fun later.",
     "tagline_Bunny": "Bunny too cute to care.",
     "tagline_Miel": "Sleep now, study maybe.",
-    "tagline_Tira": "Dropped out but still smart."
+    "tagline_Tira": "Dropped out but still smart.",
+    "name_Hanji": "Hanji",
+    "tagline_Hanji": "Quiet grace in lavender silk.",
+    "name_Bun": "Bun",
+    "name_Cocoa": "Cocoa",
+    "name_Bunny": "Bunny",
+    "name_Miel": "Miel",
+    "name_Tira": "Tira"
   },
   "friends": {
     "studyFriends": "🍓 Study Friends",
@@ -834,7 +886,9 @@
     "game_connect4": "Connect 4",
     "game_tictactoe": "Tic-Tac-Toe",
     "game_memory": "Memory Cards",
-    "game_batterdash": "BatterDash"
+    "game_batterdash": "BatterDash",
+    "chat": "Chat",
+    "game_study": "Study Room"
   },
   "screens": {
     "subjectMood": "Subject & mood",
@@ -850,6 +904,7 @@
   },
   "studyRoom": {
     "friend": "Friend",
+    "full": "Full",
     "cakeBaking": "Cake is baking…",
     "oneStudying": "1 studying",
     "studyingTogether": "{{count}} studying together",
@@ -864,9 +919,9 @@
     "leaveRoom": "Leave room",
     "whatStudying": "What are you studying?",
     "studyDifferent": "Study a different subject",
-    "sessionComplete": "Session complete! 🎉",
-    "differentSubject": "📚 Different subject",
-    "takeBreak": "☕ Take a break",
+    "sessionComplete": "Session complete!",
+    "differentSubject": "Different subject",
+    "takeBreak": "Take a break",
     "exit": "Exit",
     "defaultName": "You",
     "justFocus": "Just focus 💪"
@@ -894,8 +949,7 @@
     "monthly": "Monthly",
     "cancelAnytime": "Flexible, cancel anytime",
     "yearly": "Yearly",
-    "save48": "Save 48%",
-    "yearlyDetail": "$49.99/year · Best value",
+    "yearlyDetail": "$60/year · Best value",
     "freeForever": "Free plan stays free forever",
     "freeText": "Two starter companions · Sessions · Focus Coins · Coin Shop · Mood tracker · Streaks · Basic tasks · Subject manager · 3 exam countdowns · Break timer · Free presets",
     "startPlus": "Start Plus (Mock — no real payment)",
@@ -908,7 +962,12 @@
     "restoreMsg": "Real payment restoration will be connected in a future update.",
     "deactivateQ": "Deactivate Plus?",
     "deactivateMsg": "This will return you to the free tier.",
-    "deactivate": "Deactivate"
+    "deactivate": "Deactivate",
+    "f_tira": "Tira, the companion",
+    "f_tiraDesc": "Unlock the exclusive tiramisu bunny — yours free with Plus",
+    "monthlyPrice": "$6.70",
+    "yearlyPrice": "$5/mo",
+    "saveYearly": "Save 25%"
   },
   "coinShop": {
     "pack_pouch": "Strawberry Cupcake",
@@ -937,22 +996,31 @@
     "earn_7day": "7-day streak bonus"
   },
   "foodGallery": {
-    "bakeryMenu": "🍰 Bakery Menu",
+    "bakeryMenu": "Bakery Menu",
     "chooseBunBakes": "Choose what Bun bakes next",
     "myRecipes": "My Recipes",
-    "made": "✓ Made",
-    "baking": "✦ Baking",
+    "made": "Made",
+    "baking": "Baking",
     "bakeThis": "Bake this",
-    "infoNote": "🧁 The recipe you pick is what Bun bakes during your next study session.",
+    "infoNote": "The recipe you pick is what Bun bakes during your next study session.",
     "food_strawberry-shortcake": "Strawberry Shortcake",
-    "food_strawberry-shortcake_desc": "A classic layered cake with fresh strawberries and cream."
+    "food_strawberry-shortcake_desc": "A classic layered cake with fresh strawberries and cream.",
+    "food_pudding": "Pudding",
+    "food_pudding_desc": "A silky custard pudding topped with golden caramel.",
+    "food_sakura-mochi": "Sakura Mochi",
+    "food_sakura-mochi_desc": "A pink rice-flour mochi wrapped in a salted sakura leaf.",
+    "food_matcha-crepe": "Matcha Mille Crêpe",
+    "food_matcha-crepe_desc": "A thousand-layer matcha crepe cake, soft and creamy.",
+    "food_berry-croissant": "Berry Croissant",
+    "food_berry-croissant_desc": "A buttery, flaky croissant piled with fresh berries and cream.",
+    "lockedBuy": "{{price}} coins — buy in Shop"
   },
   "editRoom": {
     "inUse": "✦ In use",
     "tapToUse": "Tap to use",
     "tapToUnlock": "🔓 Tap to unlock",
     "editRoom": "🎨 Edit Room",
-    "subtitle": "Mix any background with any desk. The 🔗 button sets a matching pair.",
+    "subtitle": "Mix any background with any desk. The {link} button sets a matching pair.",
     "background": "🖼️ Background",
     "desk": "🪵 Desk",
     "effect": "✨ Effect",
@@ -1002,7 +1070,9 @@
     "hour": "Hour",
     "minute": "Minute",
     "ampm": "AM/PM",
-    "selected": "Selected: {{value}}"
+    "selected": "Selected: {{value}}",
+    "am": "AM",
+    "pm": "PM"
   },
   "a11y": {
     "focusCoin": "Focus coin",
@@ -1011,7 +1081,9 @@
     "pose_studying": "Studying alongside you",
     "pose_proud": "Session complete!",
     "pose_cheering": "Amazing work!",
-    "pose_break": "Enjoy your break"
+    "pose_break": "Enjoy your break",
+    "aiTicket": "AI generation ticket",
+    "streakFreeze": "Streak freeze"
   },
   "calendar": {
     "calendar": "Calendar",
@@ -1075,7 +1147,8 @@
     "unlocked": "Unlocked",
     "playFriendFree": "Play a friend free",
     "getPlusUnlock": "Get Plus to unlock",
-    "plus": "Plus"
+    "plus": "Plus",
+    "sameDevice": "Same device"
   },
   "cake": {
     "back": "‹ Back",
@@ -1163,7 +1236,8 @@
     "pick_topping": "Choose a topping",
     "hint_dropMixer": "Drop it in a Mixer 🥣",
     "hint_dropOven": "Drop it in an Oven 🔥",
-    "hint_tapIngredients": "Tap Ingredients 🧺 to start a cake"
+    "hint_tapIngredients": "Tap Ingredients 🧺 to start a cake",
+    "orderNew": "New! Tap to take"
   },
   "connect4": {
     "title": "Connect 4",
@@ -1218,5 +1292,43 @@
     "better": "Better",
     "relieved": "Relieved",
     "exhausted": "Exhausted"
+  },
+  "outfitNames": {
+    "classic": "Classic",
+    "angel": "Angel",
+    "angelKei": "Angel Kei",
+    "relax": "Relax",
+    "demon": "Demon",
+    "wolfsMeal": "Wolf's Meal",
+    "chocoMint": "Choco Mint",
+    "sleepover": "Sleepover",
+    "champion": "Champion",
+    "zzz": "ZZZ",
+    "jiraiKei": "Jirai Kei",
+    "bluePeony": "Blue Peony"
+  },
+  "studyDesk": {
+    "title": "Taking a break",
+    "subtitle": "Relax for a bit — start again whenever you're ready.",
+    "pickWhenReady": "Pick subject when ready",
+    "readyToStudy": "Ready to study?"
+  },
+  "soundPicker": {
+    "title": "Study sounds",
+    "empty": "No sounds yet — buy some in the Shop's Sounds and they'll show up here to play while you study.",
+    "off": "Off"
+  },
+  "dm": {
+    "online": "Online",
+    "offline": "Offline",
+    "empty": "Say hi to {{name}}! 👋",
+    "placeholder": "Message {{name}}...",
+    "invitePrompt": "Invite {{name}} to play",
+    "sentInvite": "You sent a {{game}} invite",
+    "invitedYou": "Invited you to {{game}}",
+    "join": "Join",
+    "sendFailed": "Couldn't send",
+    "signInNeeded": "You need to be signed in to send messages.",
+    "friendNotReachable": "Can't reach {{name}} yet — they need to open the app once so their profile syncs."
   }
 }

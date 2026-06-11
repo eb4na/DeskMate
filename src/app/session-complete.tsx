@@ -18,6 +18,16 @@ import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } fro
 
 const BUN_FINISHED = require('@/assets/images/bun/bun-finished.png');
 
+// Per-recipe finishing badge — the companion enjoying the baked recipe, shown on
+// the completion screen and the food gallery once that recipe has been baked.
+const FINISH_IMG: Record<string, number> = {
+  'strawberry-shortcake': require('@/assets/images/cake/strawberry-badge.png'),
+  'sakura-mochi': require('@/assets/images/cake/sakura-badge.png'),
+  pudding: require('@/assets/images/cake/pudding-finished.png'),
+  'matcha-crepe': require('@/assets/images/cake/matcha-badge.png'),
+  'berry-croissant': require('@/assets/images/cake/croissant-badge.png'),
+};
+
 // Patisserie palette for the finished-session card.
 const FP = {
   cream: '#FFF8EF',
@@ -189,33 +199,38 @@ export default function SessionCompleteScreen() {
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.receiptScroll}>
-            {/* Circular badge with Bun holding the cake */}
+            {/* Circular badge — the companion enjoying the baked recipe (or the
+                default Bun-with-cake art). */}
             <View style={styles.badgeCircle}>
-              <Image source={BUN_FINISHED} style={styles.badgeImage} contentFit="contain" />
+              {FINISH_IMG[selectedFoodId ?? ''] ? (
+                <Image source={FINISH_IMG[selectedFoodId]} style={styles.badgeImageFill} contentFit="cover" />
+              ) : (
+                <Image source={BUN_FINISHED} style={styles.badgeImage} contentFit="contain" />
+              )}
             </View>
 
-            <Text style={styles.finishedTitle}>YOU FINISHED YOUR SESSION!</Text>
-            <Text style={styles.finishedSubtitle}>Thank you for studying!</Text>
+            <Text style={styles.finishedTitle}>{t('sessionComplete.finishedTitle')}</Text>
+            <Text style={styles.finishedSubtitle}>{t('sessionComplete.thankYou')}</Text>
 
             <View style={styles.heartDivider}><BakeryHeartEmoji size={16} /></View>
 
             {/* Receipt rows */}
             <View style={styles.receiptList}>
-              <ReceiptRow label="Session Number" value={receipt.sessionNo} />
-              <ReceiptRow label="Date" value={receipt.date} />
-              <ReceiptRow label="Time" value={receipt.time} />
-              <ReceiptRow label="Study Time" value={`${minutes} min`} />
+              <ReceiptRow label={t('sessionComplete.sessionNumber')} value={receipt.sessionNo} />
+              <ReceiptRow label={t('pickers.date')} value={receipt.date} />
+              <ReceiptRow label={t('pickers.time')} value={receipt.time} />
+              <ReceiptRow label={t('sessionComplete.studyTimeLabel')} value={`${minutes} ${t('sessionComplete.min')}`} />
               <ReceiptRow
-                label="Coins Earned"
+                label={t('sessionComplete.coinsEarnedLabel')}
                 value={`+${actualEarned}`}
                 valueIcon={<CoinIcon size={16} />}
               />
               {actualEarned < earned && (
-                <Text style={styles.capNote}>Daily cap reached ({DAILY_EARN_CAP}/day)</Text>
+                <Text style={styles.capNote}>{t('sessionComplete.dailyCapReached', { cap: DAILY_EARN_CAP })}</Text>
               )}
               {streakBonus > 0 && (
                 <ReceiptRow
-                  label={isComeback ? 'Welcome Back Bonus' : 'Streak Bonus'}
+                  label={isComeback ? t('sessionComplete.welcomeBackBonus') : t('sessionComplete.streakBonusLabel')}
                   value={`+${streakBonus}`}
                   valueIcon={<CoinIcon size={16} />}
                 />
@@ -225,7 +240,7 @@ export default function SessionCompleteScreen() {
             <View style={styles.heartDivider}><BakeryHeartEmoji size={16} /></View>
 
             {/* Mood picker inline at the bottom of the receipt */}
-            <Text style={styles.moodPrompt}>How do you feel after studying?</Text>
+            <Text style={styles.moodPrompt}>{t('sessionComplete.moodPrompt')}</Text>
             <View style={styles.moodRow}>
               {AFTER_SESSION_MOODS.map((opt) => {
                 const isSelected = selectedMood === opt.value;
@@ -267,7 +282,7 @@ export default function SessionCompleteScreen() {
             <Pressable
               style={({ pressed }) => [styles.doneBtn, pressed && styles.btnPressed]}
               onPress={commitMoodAndContinue}>
-              <Text style={styles.doneBtnText}>Done</Text>
+              <Text style={styles.doneBtnText}>{t('common.done')}</Text>
             </Pressable>
           </ScrollView>
         )}
@@ -351,6 +366,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.two,
   },
   badgeImage: { width: '92%', height: '92%' },
+  badgeImageFill: { width: '100%', height: '100%' },
   finishedTitle: {
     fontSize: 22,
     fontWeight: '800',

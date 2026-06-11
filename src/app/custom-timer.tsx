@@ -18,16 +18,31 @@ type TimerMode = 'focus' | 'break';
 
 const range = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 const HR_VALUES = range(0, 5);
-const MIN_VALUES = range(0, 59); // 1-minute steps
+const MIN_VALUES = range(1, 59); // 1-minute steps, never 0
 const ITEM_H = 40;
+const LOOP_REPEAT = 7; // copies stacked to fake an endless (wrapping) wheel
+const LOOP_CENTER = Math.floor(LOOP_REPEAT / 2);
 
 // A flick-scrollable wheel column — snaps to whole values (no 5-min jumps).
-function WheelColumn({ values, value, unit, onChange }: { values: number[]; value: number; unit: string; onChange: (v: number) => void }) {
+// When `loop` is set, the values wrap: scrolling past the last lands on the first (59 → 1).
+function WheelColumn({ values, value, unit, onChange, loop = false }: { values: number[]; value: number; unit: string; onChange: (v: number) => void; loop?: boolean }) {
   const ref = useRef<ScrollView>(null);
-  const idx = Math.max(0, values.indexOf(value));
+  const len = values.length;
+  // For a looping wheel we stack the values many times and keep the user parked
+  // in the middle copy, recentering after each scroll so they never hit an edge.
+  const data = loop ? Array.from({ length: len * LOOP_REPEAT }, (_, i) => values[i % len]) : values;
+  const mid = loop ? LOOP_CENTER * len : 0;
+  const base = Math.max(0, values.indexOf(value));
+  const idx = mid + base;
   const commit = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const i = Math.max(0, Math.min(values.length - 1, Math.round(e.nativeEvent.contentOffset.y / ITEM_H)));
-    if (values[i] !== value) onChange(values[i]);
+    const i = Math.max(0, Math.min(data.length - 1, Math.round(e.nativeEvent.contentOffset.y / ITEM_H)));
+    const v = data[i];
+    if (v !== value) onChange(v);
+    if (loop) {
+      // Snap back to the middle copy (same number, no visible jump) so we keep room to scroll.
+      const target = mid + (i % len);
+      if (target !== i) ref.current?.scrollTo({ y: target * ITEM_H, animated: false });
+    }
   };
   // Keep the wheel aligned when the value is set elsewhere (e.g. quick picks).
   useEffect(() => {
@@ -47,8 +62,8 @@ function WheelColumn({ values, value, unit, onChange }: { values: number[]; valu
         contentOffset={{ x: 0, y: idx * ITEM_H }}
         onMomentumScrollEnd={commit}
         onScrollEndDrag={commit}>
-        {values.map((v) => (
-          <View key={v} style={styles.wheelItem}>
+        {data.map((v, i) => (
+          <View key={i} style={styles.wheelItem}>
             <Text style={[styles.wheelNum, v === value && styles.wheelNumActive]}>{String(v).padStart(2, '0')}</Text>
           </View>
         ))}
@@ -124,11 +139,11 @@ export default function CustomTimerScreen() {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           {/* Focus (or break) duration */}
-          <Text style={styles.sectionLabel}>{isBreakMode ? 'BREAK DURATION' : 'FOCUS DURATION'}</Text>
+          <Text style={styles.sectionLabel}>{t(isBreakMode ? 'customTimer.breakDuration' : 'customTimer.focusDuration')}</Text>
           <View style={styles.durCard}>
             <WheelColumn values={HR_VALUES} value={focusHr} unit="hr" onChange={setFocusHr} />
             <View style={styles.durDivider} />
-            <WheelColumn values={MIN_VALUES} value={focusMin} unit="min" onChange={setFocusMin} />
+            <WheelColumn values={MIN_VALUES} value={focusMin} unit="min" onChange={setFocusMin} loop />
           </View>
           <View style={styles.pickRow}>
             {(isBreakMode ? BREAK_PICKS : FOCUS_PICKS).map((m) => (
@@ -141,12 +156,12 @@ export default function CustomTimerScreen() {
           {!isBreakMode && (
             <>
               {/* Break duration */}
-              <Text style={styles.sectionLabel}>BREAK DURATION</Text>
-              <Text style={styles.sectionSub}>Optional break time</Text>
+              <Text style={styles.sectionLabel}>{t('customTimer.breakDuration')}</Text>
+              <Text style={styles.sectionSub}>{t('customTimer.optionalBreak')}</Text>
               <View style={styles.durCard}>
                 <WheelColumn values={HR_VALUES} value={breakHr} unit="hr" onChange={setBreakHr} />
                 <View style={styles.durDivider} />
-                <WheelColumn values={MIN_VALUES} value={breakMin} unit="min" onChange={setBreakMin} />
+                <WheelColumn values={MIN_VALUES} value={breakMin} unit="min" onChange={setBreakMin} loop />
               </View>
               <View style={styles.pickRow}>
                 {BREAK_PICKS.map((m) => (
@@ -157,7 +172,7 @@ export default function CustomTimerScreen() {
               </View>
 
               {/* Subject */}
-              <Text style={styles.sectionLabel}>SUBJECT (OPTIONAL)</Text>
+              <Text style={styles.sectionLabel}>{t('customTimer.subjectHeader')}</Text>
               <View style={styles.softCard}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
                   {activeSubjects.map((s) => {
@@ -172,7 +187,7 @@ export default function CustomTimerScreen() {
                     );
                   })}
                   <Pressable style={[styles.chip, styles.chipAdd]} onPress={() => router.push('/manage-subjects')}>
-                    <Text style={[styles.chipText, { color: C.berry }]}>＋ Add</Text>
+                    <Text style={[styles.chipText, { color: C.berry }]}>{t('common.addChip')}</Text>
                   </Pressable>
                 </ScrollView>
               </View>
@@ -181,8 +196,8 @@ export default function CustomTimerScreen() {
               <View style={styles.presetCard}>
                 <View style={styles.presetTop}>
                   <View style={styles.presetTextWrap}>
-                    <Text style={styles.presetTitle}>SAVE AS PRESET</Text>
-                    <Text style={styles.presetSub}>Save your session for next time</Text>
+                    <Text style={styles.presetTitle}>{t('customTimer.savePresetTitle')}</Text>
+                    <Text style={styles.presetSub}>{t('customTimer.savePresetSub')}</Text>
                   </View>
                   <Switch
                     value={savePreset}
@@ -196,7 +211,7 @@ export default function CustomTimerScreen() {
                     style={styles.presetInput}
                     value={presetName}
                     onChangeText={setPresetName}
-                    placeholder="Preset name..."
+                    placeholder={t('customTimer.presetNamePlaceholder')}
                     placeholderTextColor={C.latte}
                     returnKeyType="done"
                   />
@@ -300,10 +315,10 @@ const styles = StyleSheet.create({
 
   // Start
   startBtn: {
-    backgroundColor: C.honey, borderRadius: BakeryRadii.pill,
+    backgroundColor: '#F2A9BC', borderRadius: BakeryRadii.pill,
     paddingVertical: 16, alignItems: 'center', marginTop: Spacing.three, ...BakeryShadow,
   },
-  startBtnText: { fontSize: 17, fontWeight: '900', color: C.cocoaDark, letterSpacing: 0.3 },
+  startBtnText: { fontSize: 17, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.3 },
 
   pressed: { opacity: 0.85 },
 });

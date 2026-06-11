@@ -14,7 +14,9 @@
     "stop": "停止",
     "manage": "管理 →",
     "addOne": "添加 →",
-    "close": "关闭"
+    "close": "关闭",
+    "loadingSlow": "再稍等一下…",
+    "addChip": "＋ 添加"
   },
   "auth": {
     "welcomeBack": "欢迎回来",
@@ -26,6 +28,7 @@
     "passwordPlaceholder": "输入密码",
     "signIn": "登录",
     "signingIn": "登录中...",
+    "signedOutOtherDevice": "您的账号在另一台设备上登录，因此已退出登录。",
     "continueAsGuest": "游客模式",
     "guestModeNote": "游客模式可保存您在本设备上的学习进度，随时开始学习。",
     "forgotPassword": "忘记密码？",
@@ -76,7 +79,15 @@
     "passwordUpdated": "密码已更新。你可以继续使用 DeskMate 了。",
     "resendConfirmation": "重新发送确认邮件",
     "resendSubtitle": "如果验证码已过期或被淹没，我们可以再发一个新的。",
-    "codeResent": "验证码已重新发送。请在验证页面输入。"
+    "codeResent": "验证码已重新发送。请在验证页面输入。",
+    "or": "或",
+    "continueWithGoogle": "使用 Google 继续",
+    "continueWithApple": "使用 Apple 继续",
+    "connectedAccounts": "已连接账户",
+    "connectGoogle": "连接 Google",
+    "connectApple": "连接 Apple",
+    "connected": "已连接",
+    "connectFailed": "连接失败，请重试。"
   },
   "lang": {
     "title": "选择语言",
@@ -111,7 +122,7 @@
     "daysLeftN": "还剩 {{count}} 天",
     "upcomingExam": "即将到来的考试",
     "dragAllIngredients": "把所有食材都拖进搅拌机！",
-    "letsStudy": "🍰 开始学习吧！",
+    "letsStudy": "开始学习吧！",
     "dailyPing": "每天 {{time}} 提醒。",
     "youGotThis": "你一定可以的！",
     "tapToSetReminders": "点击设置提醒",
@@ -146,7 +157,21 @@
     "customDuration": "自定义时长 👑",
     "anyLength": "任意时长，可保存预设",
     "anyLengthFree": "任意时长，不可保存",
-    "startButton": "开始 {{minutes}} 分钟"
+    "startButton": "开始 {{minutes}} 分钟",
+    "chooseDuration": "选择时长",
+    "len_15": "快速热身",
+    "len_30": "专注加速",
+    "len_60": "深度专注",
+    "len_90": "长时段",
+    "subjectHeader": "科目（可选）",
+    "customTitle": "自定义时长",
+    "customSub": "设定你自己的专注时间",
+    "customSet": "设置 ▾",
+    "singlePlayer": "单人",
+    "multiplayer": "多人",
+    "breakInfoSingle": "包含一次 {{min}} 分钟休息  ·  休息 = ⌊专注 ÷ 12⌋",
+    "breakInfoNone": "无休息 — 短时热身",
+    "breakInfoMulti": "多人模式可随时休息"
   },
   "customTimer": {
     "title": "✦ 自定义计时器 ✦",
@@ -160,7 +185,14 @@
     "customMin": "自定义分钟...",
     "pickDurationFirst": "请先选择时长",
     "between1And300": "请输入1至300分钟",
-    "min": "分钟"
+    "min": "分钟",
+    "focusDuration": "专注时长",
+    "breakDuration": "休息时长",
+    "optionalBreak": "可选的休息时间",
+    "presetNamePlaceholder": "预设名称...",
+    "subjectHeader": "科目（可选）",
+    "savePresetTitle": "保存为预设",
+    "savePresetSub": "保存本次会话以便下次使用"
   },
   "subjectPicker": {
     "title": "选择科目（可选）",
@@ -223,7 +255,16 @@
     "min": "分钟",
     "savedPresetsIncluded": "已保存的休息预设包含在上方。",
     "customBreak": "自定义休息 →",
-    "backToHome": "返回主页"
+    "backToHome": "返回主页",
+    "finishedTitle": "你完成了本次会话！",
+    "thankYou": "感谢你的学习！",
+    "sessionNumber": "会话编号",
+    "studyTimeLabel": "学习时间",
+    "coinsEarnedLabel": "获得金币",
+    "dailyCapReached": "已达每日上限（{{cap}}/天）",
+    "welcomeBackBonus": "回归奖励",
+    "streakBonusLabel": "连续奖励",
+    "moodPrompt": "学习后感觉如何？"
   },
   "tasks": {
     "title": "任务",
@@ -738,7 +779,11 @@
     "online": "在线",
     "studyBuddy": "你贴心的学习伙伴随时为你提供帮助！",
     "freeToday": "💬 今日免费 {{remaining}}/{{total}}",
-    "savedSuffix": " · 已保存 {{count}}/{{cap}}"
+    "savedSuffix": " · 已保存 {{count}}/{{cap}}",
+    "chatCompanion": "聊天伙伴",
+    "plusFeatureTitle": "伙伴聊天是 Plus 功能 🔒",
+    "plusUpgradeMsg": "升级到 DeskMate Plus 即可与你的伙伴聊天。Plus 会员每天可获得 {{count}} 次免费聊天。",
+    "seePlus": "查看 Plus"
   },
   "nav": {
     "home": "主页",
@@ -794,11 +839,18 @@
     "unlockForCoins": "{{price}} 枚金币解锁",
     "notEnoughCoins": "金币不足",
     "maybeLater": "以后再说",
-    "tagline_Bun": "经常摔跤，但还是会帮你。",
-    "tagline_Cocoa": "先工作，后玩乐。",
-    "tagline_Bunny": "可爱到无所谓的小兔子。",
-    "tagline_Miel": "现在睡觉，学习也许吧。",
-    "tagline_Tira": "退学了，但还是很聪明。"
+    "tagline_Bun": "经常摔倒，但还是会好好帮忙。",
+    "tagline_Cocoa": "先学习，之后再玩。",
+    "tagline_Bunny": "可爱到不行。",
+    "tagline_Miel": "现在先睡觉。学习嘛……也许之后再说。",
+    "tagline_Tira": "虽然辍学了，但很努力。",
+    "name_Hanji": "韩姬",
+    "tagline_Hanji": "紫藤罗裙，静雅如兰。",
+    "name_Bun": "布布",
+    "name_Cocoa": "可可",
+    "name_Bunny": "兔子",
+    "name_Miel": "米艾尔",
+    "name_Tira": "蒂拉"
   },
   "friends": {
     "studyFriends": "🍓 学习好友",
@@ -834,7 +886,9 @@
     "game_connect4": "四子连珠",
     "game_tictactoe": "井字棋",
     "game_memory": "记忆翻牌",
-    "game_batterdash": "BatterDash"
+    "game_batterdash": "BatterDash",
+    "chat": "聊天",
+    "game_study": "自习室"
   },
   "screens": {
     "subjectMood": "科目与心情",
@@ -850,6 +904,7 @@
   },
   "studyRoom": {
     "friend": "好友",
+    "full": "已满",
     "cakeBaking": "蛋糕烘焙中…",
     "oneStudying": "1 人学习中",
     "studyingTogether": "{{count}} 人一起学习中",
@@ -864,9 +919,9 @@
     "leaveRoom": "离开房间",
     "whatStudying": "你在学习什么？",
     "studyDifferent": "学习其他科目",
-    "sessionComplete": "专注完成！🎉",
-    "differentSubject": "📚 其他科目",
-    "takeBreak": "☕ 休息一下",
+    "sessionComplete": "专注完成！",
+    "differentSubject": "其他科目",
+    "takeBreak": "休息一下",
     "exit": "退出",
     "defaultName": "你",
     "justFocus": "专心就好 💪"
@@ -894,8 +949,7 @@
     "monthly": "按月",
     "cancelAnytime": "灵活，可随时取消",
     "yearly": "按年",
-    "save48": "省 48%",
-    "yearlyDetail": "$49.99/年 · 最划算",
+    "yearlyDetail": "¥432/年 · 最划算",
     "freeForever": "免费计划永久免费",
     "freeText": "两个初始伙伴 · 专注 · 专注币 · 金币商店 · 心情追踪 · 连续记录 · 基础任务 · 科目管理 · 3 个考试倒计时 · 休息计时器 · 免费预设",
     "startPlus": "开始 Plus（模拟 — 无真实支付）",
@@ -908,7 +962,12 @@
     "restoreMsg": "真实购买恢复将在未来更新中接入。",
     "deactivateQ": "停用 Plus？",
     "deactivateMsg": "这将使你返回免费版。",
-    "deactivate": "停用"
+    "deactivate": "停用",
+    "f_tira": "伙伴提拉",
+    "f_tiraDesc": "解锁专属提拉米苏兔——Plus 会员免费获得",
+    "monthlyPrice": "¥48",
+    "yearlyPrice": "¥36/月",
+    "saveYearly": "省 25%"
   },
   "coinShop": {
     "pack_pouch": "草莓杯子蛋糕",
@@ -937,22 +996,31 @@
     "earn_7day": "7 天连续奖励"
   },
   "foodGallery": {
-    "bakeryMenu": "🍰 甜点菜单",
+    "bakeryMenu": "甜点菜单",
     "chooseBunBakes": "选择 Bun 接下来烘焙什么",
     "myRecipes": "我的食谱",
-    "made": "✓ 已制作",
-    "baking": "✦ 烘焙中",
+    "made": "已制作",
+    "baking": "烘焙中",
     "bakeThis": "烘焙这个",
-    "infoNote": "🧁 你选择的食谱就是 Bun 在你下次学习时烘焙的甜点。",
+    "infoNote": "你选择的食谱就是 Bun 在你下次学习时烘焙的甜点。",
     "food_strawberry-shortcake": "草莓奶油蛋糕",
-    "food_strawberry-shortcake_desc": "一款经典的分层蛋糕，搭配新鲜草莓和奶油。"
+    "food_strawberry-shortcake_desc": "一款经典的分层蛋糕，搭配新鲜草莓和奶油。",
+    "food_pudding": "布丁",
+    "food_pudding_desc": "丝滑的卡仕达布丁，淋上金黄色焦糖。",
+    "food_sakura-mochi": "樱花麻糬",
+    "food_sakura-mochi_desc": "用盐渍樱叶包裹的粉色麻糬。",
+    "food_matcha-crepe": "抹茶千层可丽饼",
+    "food_matcha-crepe_desc": "绵软香滑的抹茶千层可丽饼蛋糕。",
+    "food_berry-croissant": "莓果可颂",
+    "food_berry-croissant_desc": "酥脆的黄油可颂，铺满新鲜莓果与奶油。",
+    "lockedBuy": "{{price}} 金币 — 在商店购买"
   },
   "editRoom": {
     "inUse": "✦ 使用中",
     "tapToUse": "点击使用",
     "tapToUnlock": "🔓 点击解锁",
     "editRoom": "🎨 编辑房间",
-    "subtitle": "任意搭配背景与桌子。🔗 按钮可设为配套的一组。",
+    "subtitle": "任意搭配背景与桌子。{link} 按钮可设为配套的一组。",
     "background": "🖼️ 背景",
     "desk": "🪵 桌子",
     "effect": "✨ 特效",
@@ -1002,7 +1070,9 @@
     "hour": "时",
     "minute": "分",
     "ampm": "上午/下午",
-    "selected": "已选择：{{value}}"
+    "selected": "已选择：{{value}}",
+    "am": "上午",
+    "pm": "下午"
   },
   "a11y": {
     "focusCoin": "专注币",
@@ -1011,7 +1081,9 @@
     "pose_studying": "正在陪你学习",
     "pose_proud": "专注完成！",
     "pose_cheering": "干得漂亮！",
-    "pose_break": "好好休息"
+    "pose_break": "好好休息",
+    "aiTicket": "AI 生成券",
+    "streakFreeze": "连续冻结"
   },
   "calendar": {
     "calendar": "日历",
@@ -1075,7 +1147,8 @@
     "unlocked": "已解锁",
     "playFriendFree": "免费与好友对战",
     "getPlusUnlock": "获取 Plus 解锁",
-    "plus": "Plus"
+    "plus": "Plus",
+    "sameDevice": "同一设备"
   },
   "cake": {
     "back": "‹ 返回",
@@ -1163,7 +1236,8 @@
     "pick_topping": "选择一种顶饰",
     "hint_dropMixer": "放进搅拌机 🥣",
     "hint_dropOven": "放进烤箱 🔥",
-    "hint_tapIngredients": "点击食材 🧺 开始做蛋糕"
+    "hint_tapIngredients": "点击食材 🧺 开始做蛋糕",
+    "orderNew": "新订单！点击接单"
   },
   "connect4": {
     "title": "四子连珠",
@@ -1218,5 +1292,43 @@
     "better": "轻松多了",
     "relieved": "松了口气",
     "exhausted": "精疲力尽"
+  },
+  "outfitNames": {
+    "classic": "经典",
+    "angel": "天使",
+    "angelKei": "天使系",
+    "relax": "放松",
+    "demon": "恶魔",
+    "wolfsMeal": "狼之餐",
+    "chocoMint": "巧克力薄荷",
+    "sleepover": "过夜派对",
+    "champion": "冠军",
+    "zzz": "ZZZ",
+    "jiraiKei": "地雷系",
+    "bluePeony": "蓝牡丹"
+  },
+  "studyDesk": {
+    "title": "正在休息",
+    "subtitle": "放松一下——准备好了随时再开始。",
+    "pickWhenReady": "准备好后选择科目",
+    "readyToStudy": "准备好学习了吗？"
+  },
+  "soundPicker": {
+    "title": "学习音效",
+    "empty": "还没有音效——在商店的音效中购买后，它们会显示在这里，供你学习时播放。",
+    "off": "关闭"
+  },
+  "dm": {
+    "online": "在线",
+    "offline": "离线",
+    "empty": "和 {{name}} 打个招呼吧！👋",
+    "placeholder": "给 {{name}} 发消息...",
+    "invitePrompt": "邀请 {{name}}",
+    "sentInvite": "你发送了 {{game}} 邀请",
+    "invitedYou": "邀请你玩 {{game}}",
+    "join": "加入",
+    "sendFailed": "发送失败",
+    "signInNeeded": "需要登录后才能发送消息。",
+    "friendNotReachable": "暂时无法联系到 {{name}}——对方需要打开一次应用以同步资料。"
   }
 }

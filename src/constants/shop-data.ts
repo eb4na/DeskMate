@@ -91,6 +91,15 @@ export const SHOP_ITEMS: ShopItem[] = [
     image: require('@/assets/images/tira/tira.png'),
     plusOnly: true,
   },
+  {
+    id: 'companion_hanji',
+    name: 'Hanji',
+    emoji: '🐈‍⬛',
+    description: 'An elegant black cat in a lavender hanfu with wisteria charms.',
+    price: 550,
+    category: 'companion',
+    image: require('@/assets/images/hanji/hanji.png'),
+  },
 
   // ─── Outfits / wardrobe skins (300–600 coins) ───────────────────────────
   {
@@ -119,6 +128,15 @@ export const SHOP_ITEMS: ShopItem[] = [
     price: 450,
     category: 'outfits',
     image: require('@/assets/images/cocoa/cocoa-relax.png'),
+  },
+  {
+    id: 'outfit_cocoa_demon',
+    name: 'Demon Cocoa',
+    emoji: '😈',
+    description: "A gothic demon-lord coat with horns, bat wings & a spade tail. Wear it from Cocoa's Wardrobe.",
+    price: 450,
+    category: 'outfits',
+    image: require('@/assets/images/cocoa/cocoa-demon.png'),
   },
   {
     id: 'outfit_tira_wolfsmeal',
@@ -222,13 +240,31 @@ export const SHOP_ITEMS: ShopItem[] = [
     image: require('@/assets/images/backgrounds/buns-room.png'),
   },
   {
-    id: 'bg_tiras_treehouse',
-    name: "Tira's Treehouse",
-    emoji: '🌙',
-    description: "Tira's cozy treehouse nook — moonlit window, twinkle lights, and a snug blue bed.",
+    id: 'bg_tranquil',
+    name: 'Tranquil',
+    emoji: '🍵',
+    description: 'A serene Japanese kitchen — warm wood, pottery shelves, and a sunlit sakura window. Pairs with the Maplewood desk.',
     price: 600,
     category: 'background',
-    image: require('@/assets/images/backgrounds/tiras-treehouse.png'),
+    image: require('@/assets/images/backgrounds/tranquil.png'),
+  },
+  {
+    id: 'bg_landmine',
+    name: 'Landmine',
+    emoji: '🎀',
+    description: 'A pink-and-black jirai kei bedroom — bows, a lit vanity mirror, and a moonlit window.',
+    price: 600,
+    category: 'background',
+    image: require('@/assets/images/backgrounds/landmine.png'),
+  },
+  {
+    id: 'bg_lavender_palace',
+    name: 'Lavender Palace',
+    emoji: '💜',
+    description: 'A serene wisteria palace — moon gate, lavender blooms, and warm wood. Pairs with the Lavender desk.',
+    price: 600,
+    category: 'background',
+    image: require('@/assets/images/backgrounds/lavender-palace.png'),
   },
   // ─── Desks / study surfaces (400–700 coins) ─────────────────────────────
   {
@@ -267,8 +303,73 @@ export const SHOP_ITEMS: ShopItem[] = [
     category: 'desk',
     image: require('@/assets/images/desks/pale-wood.png'),
   },
+  {
+    id: 'desk_maple',
+    name: 'Maplewood Desk',
+    emoji: '🍁',
+    description: 'A bright maplewood study surface — pairs with the Tranquil room.',
+    price: 500,
+    category: 'desk',
+    image: require('@/assets/images/desks/maple.png'),
+  },
+  {
+    id: 'desk_landmine',
+    name: 'Noir Desk',
+    emoji: '🖤',
+    description: 'A matte black study surface — pairs with the Landmine room.',
+    price: 500,
+    category: 'desk',
+    image: require('@/assets/images/desks/landmine.png'),
+  },
+  {
+    id: 'desk_lavender',
+    name: 'Lavender Desk',
+    emoji: '💜',
+    description: 'A soft pale-wood study surface — pairs with the Lavender Palace room.',
+    price: 500,
+    category: 'desk',
+    image: require('@/assets/images/desks/lavender.png'),
+  },
 
   // ─── Break games are all free to play — nothing to buy here. ──────────────
+
+  // ─── Recipes (cake-game desserts, 400–600 coins) ─────────────────────────
+  {
+    id: 'recipe_pudding',
+    name: 'Pudding',
+    emoji: '🍮',
+    description: 'A silky caramel custard pudding. Pick it in the Bakery Menu to bake it in the kitchen!',
+    price: 400,
+    category: 'recipe',
+    image: require('@/assets/images/cake/pudding.png'),
+  },
+  {
+    id: 'recipe_sakura',
+    name: 'Sakura Mochi',
+    emoji: '🌸',
+    description: 'A pink mochi wrapped in a salted sakura leaf. Pick it in the Bakery Menu to bake it in the kitchen!',
+    price: 400,
+    category: 'recipe',
+    image: require('@/assets/images/cake/sakura-mochi.png'),
+  },
+  {
+    id: 'recipe_matcha',
+    name: 'Matcha Mille Crêpe',
+    emoji: '🍵',
+    description: 'A thousand-layer matcha crepe cake. Pick it in the Bakery Menu to bake it in the kitchen!',
+    price: 400,
+    category: 'recipe',
+    image: require('@/assets/images/cake/matcha-crepe.png'),
+  },
+  {
+    id: 'recipe_croissant',
+    name: 'Berry Croissant',
+    emoji: '🥐',
+    description: 'A flaky croissant piled with fresh berries and cream. Pick it in the Bakery Menu to bake it in the kitchen!',
+    price: 400,
+    category: 'recipe',
+    image: require('@/assets/images/cake/croissant.png'),
+  },
 
   // ─── Reminder styles (150–300 coins) ─────────────────────────────────────
   {

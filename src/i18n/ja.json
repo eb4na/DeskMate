@@ -14,7 +14,9 @@
     "stop": "停止",
     "manage": "管理 →",
     "addOne": "追加 →",
-    "close": "閉じる"
+    "close": "閉じる",
+    "loadingSlow": "もう少しお待ちください…",
+    "addChip": "＋ 追加"
   },
   "auth": {
     "welcomeBack": "おかえりなさい",
@@ -26,6 +28,7 @@
     "passwordPlaceholder": "パスワードを入力",
     "signIn": "ログイン",
     "signingIn": "ログイン中...",
+    "signedOutOtherDevice": "アカウントが別のデバイスで使用されたため、ログアウトされました。",
     "continueAsGuest": "ゲストで続ける",
     "guestModeNote": "ゲストモードでは進捗がこのデバイスに保存され、すぐに学習を始められます。",
     "forgotPassword": "パスワードを忘れた？",
@@ -76,7 +79,15 @@
     "passwordUpdated": "パスワードを更新しました。引き続き DeskMate をご利用いただけます。",
     "resendConfirmation": "確認コードを再送",
     "resendSubtitle": "認証コードの期限が切れたり見失った場合は、新しいコードを送信できます。",
-    "codeResent": "認証コードを再送しました。認証画面で入力してください。"
+    "codeResent": "認証コードを再送しました。認証画面で入力してください。",
+    "or": "または",
+    "continueWithGoogle": "Googleで続ける",
+    "continueWithApple": "Appleで続ける",
+    "connectedAccounts": "連携アカウント",
+    "connectGoogle": "Googleを連携",
+    "connectApple": "Appleを連携",
+    "connected": "連携済み",
+    "connectFailed": "連携できませんでした。もう一度お試しください。"
   },
   "lang": {
     "title": "言語を選んでください",
@@ -111,7 +122,7 @@
     "daysLeftN": "残り{{count}}日",
     "upcomingExam": "今後の試験",
     "dragAllIngredients": "材料をすべてミキサーに入れよう！",
-    "letsStudy": "🍰 勉強しよう！",
+    "letsStudy": "勉強しよう！",
     "dailyPing": "毎日 {{time}} に通知。",
     "youGotThis": "あなたならできる！",
     "tapToSetReminders": "タップしてリマインダーを設定",
@@ -146,7 +157,21 @@
     "customDuration": "カスタム時間 👑",
     "anyLength": "任意の長さ、プリセット保存可",
     "anyLengthFree": "任意の長さ、保存不可",
-    "startButton": "{{minutes}}分セッション開始"
+    "startButton": "{{minutes}}分セッション開始",
+    "chooseDuration": "時間を選ぶ",
+    "len_15": "クイックウォームアップ",
+    "len_30": "集中ブースト",
+    "len_60": "ディープフォーカス",
+    "len_90": "ロングセッション",
+    "subjectHeader": "科目（任意）",
+    "customTitle": "カスタム時間",
+    "customSub": "自分の集中時間を設定",
+    "customSet": "設定 ▾",
+    "singlePlayer": "ひとりプレイ",
+    "multiplayer": "マルチプレイ",
+    "breakInfoSingle": "{{min}}分の休憩を1回含む  ·  休憩 = ⌊集中 ÷ 12⌋",
+    "breakInfoNone": "休憩なし — 短いウォームアップ",
+    "breakInfoMulti": "マルチプレイではいつでも休憩できます"
   },
   "customTimer": {
     "title": "✦ カスタムタイマー ✦",
@@ -160,7 +185,14 @@
     "customMin": "カスタム分数...",
     "pickDurationFirst": "先に時間を選んでください",
     "between1And300": "1〜300分を入力してください",
-    "min": "分"
+    "min": "分",
+    "focusDuration": "集中時間",
+    "breakDuration": "休憩時間",
+    "optionalBreak": "休憩時間（任意）",
+    "presetNamePlaceholder": "プリセット名...",
+    "subjectHeader": "科目（任意）",
+    "savePresetTitle": "プリセットとして保存",
+    "savePresetSub": "次回のためにセッションを保存"
   },
   "subjectPicker": {
     "title": "科目を選ぶ（任意）",
@@ -223,7 +255,16 @@
     "min": "分",
     "savedPresetsIncluded": "保存した休憩プリセットも含まれています。",
     "customBreak": "カスタム休憩 →",
-    "backToHome": "ホームへ戻る"
+    "backToHome": "ホームへ戻る",
+    "finishedTitle": "セッション完了！",
+    "thankYou": "勉強おつかれさま！",
+    "sessionNumber": "セッション番号",
+    "studyTimeLabel": "勉強時間",
+    "coinsEarnedLabel": "獲得コイン",
+    "dailyCapReached": "1日の上限に到達（{{cap}}/日）",
+    "welcomeBackBonus": "おかえりボーナス",
+    "streakBonusLabel": "連続ボーナス",
+    "moodPrompt": "勉強した後の気分は？"
   },
   "tasks": {
     "title": "タスク",
@@ -738,7 +779,11 @@
     "online": "オンライン",
     "studyBuddy": "あなたのほっこり勉強仲間がサポートします！",
     "freeToday": "💬 本日無料 {{remaining}}/{{total}}",
-    "savedSuffix": " · {{count}}/{{cap}} 保存済み"
+    "savedSuffix": " · {{count}}/{{cap}} 保存済み",
+    "chatCompanion": "チャットコンパニオン",
+    "plusFeatureTitle": "コンパニオンチャットはPlus機能です 🔒",
+    "plusUpgradeMsg": "DeskMate Plusにアップグレードするとコンパニオンとチャットできます。Plusメンバーは毎日{{count}}回無料でチャットできます。",
+    "seePlus": "Plusを見る"
   },
   "nav": {
     "home": "ホーム",
@@ -795,10 +840,17 @@
     "notEnoughCoins": "コインが足りません",
     "maybeLater": "後で",
     "tagline_Bun": "よく転ぶけど、ちゃんと助けてくれる。",
-    "tagline_Cocoa": "まず仕事、楽しみは後で。",
-    "tagline_Bunny": "可愛すぎて気にしないバニー。",
-    "tagline_Miel": "今は寝る、勉強はたぶん。",
-    "tagline_Tira": "中退したけど、やっぱり賢い。"
+    "tagline_Cocoa": "まずは勉強、楽しむのはそのあと。",
+    "tagline_Bunny": "可愛いからどうでもいい。",
+    "tagline_Miel": "今は寝る。勉強は……たぶんあとで。",
+    "tagline_Tira": "中退したけど、努力家。",
+    "name_Hanji": "ハンジ",
+    "tagline_Hanji": "藤色の絹に静かな気品。",
+    "name_Bun": "パン",
+    "name_Cocoa": "ココア",
+    "name_Bunny": "バニー",
+    "name_Miel": "ミエル",
+    "name_Tira": "ティラ"
   },
   "friends": {
     "studyFriends": "🍓 スタディフレンド",
@@ -834,7 +886,9 @@
     "game_connect4": "コネクトフォー",
     "game_tictactoe": "三目並べ",
     "game_memory": "メモリーカード",
-    "game_batterdash": "バターダッシュ"
+    "game_batterdash": "バターダッシュ",
+    "chat": "チャット",
+    "game_study": "勉強ルーム"
   },
   "screens": {
     "subjectMood": "科目と気分",
@@ -850,6 +904,7 @@
   },
   "studyRoom": {
     "friend": "フレンド",
+    "full": "満員",
     "cakeBaking": "ケーキを焼いています…",
     "oneStudying": "1人が勉強中",
     "studyingTogether": "{{count}}人が一緒に勉強中",
@@ -864,9 +919,9 @@
     "leaveRoom": "ルームを退出",
     "whatStudying": "何を勉強していますか？",
     "studyDifferent": "別の科目を勉強する",
-    "sessionComplete": "セッション完了！🎉",
-    "differentSubject": "📚 別の科目",
-    "takeBreak": "☕ 休憩する",
+    "sessionComplete": "セッション完了！",
+    "differentSubject": "別の科目",
+    "takeBreak": "休憩する",
     "exit": "退出",
     "defaultName": "あなた",
     "justFocus": "ただ集中 💪"
@@ -894,8 +949,7 @@
     "monthly": "月額",
     "cancelAnytime": "柔軟、いつでも解約可能",
     "yearly": "年額",
-    "save48": "48%お得",
-    "yearlyDetail": "$49.99/年 · 最もお得",
+    "yearlyDetail": "¥9,000/年 · 最もお得",
     "freeForever": "無料プランはずっと無料",
     "freeText": "スターターコンパニオン2体 · セッション · フォーカスコイン · コインショップ · 気分トラッカー · ストリーク · 基本タスク · 科目管理 · 試験カウントダウン3件 · 休憩タイマー · 無料プリセット",
     "startPlus": "Plusを開始（モック — 実際の決済なし）",
@@ -908,7 +962,12 @@
     "restoreMsg": "実際の購入の復元は今後のアップデートで対応します。",
     "deactivateQ": "Plusを無効化しますか？",
     "deactivateMsg": "無料プランに戻ります。",
-    "deactivate": "無効化"
+    "deactivate": "無効化",
+    "f_tira": "コンパニオン「ティラ」",
+    "f_tiraDesc": "限定のティラミスバニーを解放 — Plusで無料",
+    "monthlyPrice": "¥1,000",
+    "yearlyPrice": "¥750/月",
+    "saveYearly": "25%お得"
   },
   "coinShop": {
     "pack_pouch": "ストロベリーカップケーキ",
@@ -937,22 +996,31 @@
     "earn_7day": "7日連続ボーナス"
   },
   "foodGallery": {
-    "bakeryMenu": "🍰 ベーカリーメニュー",
+    "bakeryMenu": "ベーカリーメニュー",
     "chooseBunBakes": "次にBunが焼くものを選ぼう",
     "myRecipes": "マイレシピ",
-    "made": "✓ 作成済み",
-    "baking": "✦ 焼いています",
+    "made": "作成済み",
+    "baking": "焼いています",
     "bakeThis": "これを焼く",
-    "infoNote": "🧁 選んだレシピは次の学習セッションでBunが焼きます。",
+    "infoNote": "選んだレシピは次の学習セッションでBunが焼きます。",
     "food_strawberry-shortcake": "ストロベリーショートケーキ",
-    "food_strawberry-shortcake_desc": "新鮮ないちごとクリームの定番レイヤーケーキ。"
+    "food_strawberry-shortcake_desc": "新鮮ないちごとクリームの定番レイヤーケーキ。",
+    "food_pudding": "プリン",
+    "food_pudding_desc": "なめらかなカスタードに黄金色のカラメルをかけたプリン。",
+    "food_sakura-mochi": "桜餅",
+    "food_sakura-mochi_desc": "塩漬けの桜の葉で包んだピンクのお餅。",
+    "food_matcha-crepe": "抹茶ミルクレープ",
+    "food_matcha-crepe_desc": "ふんわりクリーミーな抹茶の千層クレープケーキ。",
+    "food_berry-croissant": "ベリークロワッサン",
+    "food_berry-croissant_desc": "サクサクのバタークロワッサンに、新鮮なベリーとクリームをたっぷり。",
+    "lockedBuy": "{{price}}コイン — ショップで購入"
   },
   "editRoom": {
     "inUse": "✦ 使用中",
     "tapToUse": "タップで使用",
     "tapToUnlock": "🔓 タップで解除",
     "editRoom": "🎨 部屋を編集",
-    "subtitle": "好きな背景と机を組み合わせよう。🔗 ボタンでセットを揃えられます。",
+    "subtitle": "好きな背景と机を組み合わせよう。{link} ボタンでセットを揃えられます。",
     "background": "🖼️ 背景",
     "desk": "🪵 机",
     "effect": "✨ エフェクト",
@@ -1002,7 +1070,9 @@
     "hour": "時",
     "minute": "分",
     "ampm": "午前/午後",
-    "selected": "選択中: {{value}}"
+    "selected": "選択中: {{value}}",
+    "am": "午前",
+    "pm": "午後"
   },
   "a11y": {
     "focusCoin": "フォーカスコイン",
@@ -1011,7 +1081,9 @@
     "pose_studying": "あなたと一緒に勉強中",
     "pose_proud": "セッション完了！",
     "pose_cheering": "お見事！",
-    "pose_break": "休憩を楽しんで"
+    "pose_break": "休憩を楽しんで",
+    "aiTicket": "AI生成チケット",
+    "streakFreeze": "ストリーク凍結"
   },
   "calendar": {
     "calendar": "カレンダー",
@@ -1075,7 +1147,8 @@
     "unlocked": "解除済み",
     "playFriendFree": "フレンドと無料でプレイ",
     "getPlusUnlock": "Plusで解除",
-    "plus": "Plus"
+    "plus": "Plus",
+    "sameDevice": "同じ端末で"
   },
   "cake": {
     "back": "‹ 戻る",
@@ -1163,7 +1236,8 @@
     "pick_topping": "トッピングを選ぶ",
     "hint_dropMixer": "ミキサーに入れよう 🥣",
     "hint_dropOven": "オーブンに入れよう 🔥",
-    "hint_tapIngredients": "材料 🧺 をタップしてケーキを始めよう"
+    "hint_tapIngredients": "材料 🧺 をタップしてケーキを始めよう",
+    "orderNew": "新着！タップして受ける"
   },
   "connect4": {
     "title": "コネクトフォー",
@@ -1218,5 +1292,43 @@
     "better": "スッキリ",
     "relieved": "ほっとした",
     "exhausted": "ヘトヘト"
+  },
+  "outfitNames": {
+    "classic": "クラシック",
+    "angel": "エンジェル",
+    "angelKei": "エンジェル系",
+    "relax": "リラックス",
+    "demon": "デーモン",
+    "wolfsMeal": "オオカミの食事",
+    "chocoMint": "チョコミント",
+    "sleepover": "お泊まり",
+    "champion": "チャンピオン",
+    "zzz": "ZZZ",
+    "jiraiKei": "地雷系",
+    "bluePeony": "青い牡丹"
+  },
+  "studyDesk": {
+    "title": "休憩中",
+    "subtitle": "少しリラックスして、準備ができたらまた始めよう。",
+    "pickWhenReady": "準備ができたら科目を選ぶ",
+    "readyToStudy": "勉強の準備はいい？"
+  },
+  "soundPicker": {
+    "title": "勉強用サウンド",
+    "empty": "まだサウンドがありません。ショップのサウンドで購入すると、ここに表示され、勉強中に再生できます。",
+    "off": "オフ"
+  },
+  "dm": {
+    "online": "オンライン",
+    "offline": "オフライン",
+    "empty": "{{name}}に挨拶しよう！👋",
+    "placeholder": "{{name}}にメッセージ...",
+    "invitePrompt": "{{name}}を誘う",
+    "sentInvite": "{{game}}の招待を送りました",
+    "invitedYou": "{{game}}に招待されました",
+    "join": "参加",
+    "sendFailed": "送信できませんでした",
+    "signInNeeded": "メッセージを送るにはサインインが必要です。",
+    "friendNotReachable": "{{name}}にまだ接続できません。プロフィールを同期するため、相手が一度アプリを開く必要があります。"
   }
 }

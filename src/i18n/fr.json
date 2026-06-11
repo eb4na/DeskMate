@@ -14,7 +14,9 @@
     "stop": "Arrêter",
     "manage": "Gérer →",
     "addOne": "Ajouter →",
-    "close": "Fermer"
+    "close": "Fermer",
+    "loadingSlow": "Juste un instant de plus…",
+    "addChip": "＋ Ajouter"
   },
   "auth": {
     "welcomeBack": "Bon retour",
@@ -26,6 +28,7 @@
     "passwordPlaceholder": "Entrez votre mot de passe",
     "signIn": "Se connecter",
     "signingIn": "Connexion...",
+    "signedOutOtherDevice": "Vous avez été déconnecté car votre compte a été utilisé sur un autre appareil.",
     "continueAsGuest": "Continuer en invité",
     "guestModeNote": "Le mode invité sauvegarde votre progression sur cet appareil pour commencer à étudier immédiatement.",
     "forgotPassword": "Mot de passe oublié ?",
@@ -76,7 +79,15 @@
     "passwordUpdated": "Mot de passe mis à jour. Tu peux continuer à utiliser DeskMate.",
     "resendConfirmation": "Renvoyer la confirmation",
     "resendSubtitle": "Si ton code de vérification a expiré ou s'est perdu, nous pouvons en envoyer un nouveau.",
-    "codeResent": "Code de vérification renvoyé. Saisis-le sur l'écran de vérification."
+    "codeResent": "Code de vérification renvoyé. Saisis-le sur l'écran de vérification.",
+    "or": "ou",
+    "continueWithGoogle": "Continuer avec Google",
+    "continueWithApple": "Continuer avec Apple",
+    "connectedAccounts": "Comptes connectés",
+    "connectGoogle": "Connecter Google",
+    "connectApple": "Connecter Apple",
+    "connected": "Connecté",
+    "connectFailed": "Connexion impossible. Réessayez."
   },
   "lang": {
     "title": "Choisissez votre langue",
@@ -111,7 +122,7 @@
     "daysLeftN": "{{count}} jours restants",
     "upcomingExam": "Examen à venir",
     "dragAllIngredients": "Glisse tous les ingrédients dans le mixeur !",
-    "letsStudy": "🍰 On étudie !",
+    "letsStudy": "On étudie !",
     "dailyPing": "Rappel quotidien à {{time}}.",
     "youGotThis": "Tu vas y arriver !",
     "tapToSetReminders": "Touche pour configurer des rappels",
@@ -146,7 +157,21 @@
     "customDuration": "Durée personnalisée 👑",
     "anyLength": "Durée libre, enregistrement possible",
     "anyLengthFree": "Durée libre, sans enregistrement",
-    "startButton": "Démarrer {{minutes}} min"
+    "startButton": "Démarrer {{minutes}} min",
+    "chooseDuration": "CHOISIR LA DURÉE",
+    "len_15": "Échauffement rapide",
+    "len_30": "Coup de focus",
+    "len_60": "Focus profond",
+    "len_90": "Longue session",
+    "subjectHeader": "MATIÈRE (OPTIONNEL)",
+    "customTitle": "Durée personnalisée",
+    "customSub": "Définis ton propre temps de focus",
+    "customSet": "Définir ▾",
+    "singlePlayer": "Solo",
+    "multiplayer": "Multijoueur",
+    "breakInfoSingle": "Inclut une pause de {{min}} min  ·  pause = ⌊focus ÷ 12⌋",
+    "breakInfoNone": "Pas de pause — courte session d'échauffement",
+    "breakInfoMulti": "Fais des pauses quand tu veux en multijoueur"
   },
   "customTimer": {
     "title": "✦ Minuteur personnalisé ✦",
@@ -160,7 +185,14 @@
     "customMin": "Minutes personnalisées...",
     "pickDurationFirst": "Choisissez d'abord une durée",
     "between1And300": "Entrez entre 1 et 300 minutes",
-    "min": "min"
+    "min": "min",
+    "focusDuration": "DURÉE DE FOCUS",
+    "breakDuration": "DURÉE DE PAUSE",
+    "optionalBreak": "Temps de pause optionnel",
+    "presetNamePlaceholder": "Nom du préréglage...",
+    "subjectHeader": "MATIÈRE (OPTIONNEL)",
+    "savePresetTitle": "ENREGISTRER COMME PRÉRÉGLAGE",
+    "savePresetSub": "Enregistre ta session pour la prochaine fois"
   },
   "subjectPicker": {
     "title": "Choisir une matière (optionnel)",
@@ -223,7 +255,16 @@
     "min": "min",
     "savedPresetsIncluded": "Les préréglages de pause enregistrés sont inclus ci-dessus.",
     "customBreak": "Pause personnalisée →",
-    "backToHome": "Retour à l'accueil"
+    "backToHome": "Retour à l'accueil",
+    "finishedTitle": "TU AS TERMINÉ TA SESSION !",
+    "thankYou": "Merci d'avoir étudié !",
+    "sessionNumber": "Numéro de session",
+    "studyTimeLabel": "Temps d'étude",
+    "coinsEarnedLabel": "Pièces gagnées",
+    "dailyCapReached": "Plafond quotidien atteint ({{cap}}/jour)",
+    "welcomeBackBonus": "Bonus de retour",
+    "streakBonusLabel": "Bonus de série",
+    "moodPrompt": "Comment te sens-tu après avoir étudié ?"
   },
   "tasks": {
     "title": "Tâches",
@@ -738,7 +779,11 @@
     "online": "En ligne",
     "studyBuddy": "Ton compagnon d'étude tout doux est là pour t'aider !",
     "freeToday": "💬 {{remaining}}/{{total}} gratuits aujourd'hui",
-    "savedSuffix": " · {{count}}/{{cap}} enregistrés"
+    "savedSuffix": " · {{count}}/{{cap}} enregistrés",
+    "chatCompanion": "Compagnon de chat",
+    "plusFeatureTitle": "Le chat avec ton compagnon est une fonction Plus 🔒",
+    "plusUpgradeMsg": "Passe à DeskMate Plus pour discuter avec ton compagnon. Les membres Plus reçoivent {{count}} chats gratuits chaque jour.",
+    "seePlus": "Voir Plus"
   },
   "nav": {
     "home": "Accueil",
@@ -794,11 +839,18 @@
     "unlockForCoins": "Débloquer pour {{price}} pièces",
     "notEnoughCoins": "Pièces insuffisantes",
     "maybeLater": "Peut-être plus tard",
-    "tagline_Bun": "Trébuche souvent mais aide quand même.",
-    "tagline_Cocoa": "Le travail d'abord, le plaisir ensuite.",
-    "tagline_Bunny": "Une lapine trop mignonne pour s'en soucier.",
+    "tagline_Bun": "Trébuche souvent, mais aide quand même.",
+    "tagline_Cocoa": "Le travail d'abord, le plaisir après.",
+    "tagline_Bunny": "Trop mignonne pour s'en faire.",
     "tagline_Miel": "Dormir maintenant, étudier peut-être.",
-    "tagline_Tira": "A décroché mais reste maligne."
+    "tagline_Tira": "A quitté l'école, mais reste brillante.",
+    "name_Hanji": "Hanji",
+    "tagline_Hanji": "Grâce paisible en soie lavande.",
+    "name_Bun": "Bun",
+    "name_Cocoa": "Cocoa",
+    "name_Bunny": "Bunny",
+    "name_Miel": "Miel",
+    "name_Tira": "Tira"
   },
   "friends": {
     "studyFriends": "🍓 Amis d'étude",
@@ -834,7 +886,9 @@
     "game_connect4": "Puissance 4",
     "game_tictactoe": "Morpion",
     "game_memory": "Cartes mémoire",
-    "game_batterdash": "BatterDash"
+    "game_batterdash": "BatterDash",
+    "chat": "Chat",
+    "game_study": "Salle d'étude"
   },
   "screens": {
     "subjectMood": "Matière et humeur",
@@ -850,6 +904,7 @@
   },
   "studyRoom": {
     "friend": "Ami",
+    "full": "Complet",
     "cakeBaking": "Le gâteau cuit…",
     "oneStudying": "1 personne étudie",
     "studyingTogether": "{{count}} personnes étudient ensemble",
@@ -864,9 +919,9 @@
     "leaveRoom": "Quitter la salle",
     "whatStudying": "Qu'est-ce que tu étudies ?",
     "studyDifferent": "Étudier une autre matière",
-    "sessionComplete": "Session terminée ! 🎉",
-    "differentSubject": "📚 Autre matière",
-    "takeBreak": "☕ Faire une pause",
+    "sessionComplete": "Session terminée !",
+    "differentSubject": "Autre matière",
+    "takeBreak": "Faire une pause",
     "exit": "Quitter",
     "defaultName": "Toi",
     "justFocus": "Concentre-toi 💪"
@@ -894,8 +949,7 @@
     "monthly": "Mensuel",
     "cancelAnytime": "Flexible, annule quand tu veux",
     "yearly": "Annuel",
-    "save48": "Économise 48%",
-    "yearlyDetail": "49,99 $/an · Meilleur rapport qualité-prix",
+    "yearlyDetail": "60 €/an · Meilleur rapport qualité-prix",
     "freeForever": "La formule gratuite reste gratuite pour toujours",
     "freeText": "Deux compagnons de départ · Sessions · Pièces de concentration · Boutique de pièces · Suivi de l'humeur · Séries · Tâches de base · Gestionnaire de matières · 3 comptes à rebours d'examens · Minuteur de pause · Préréglages gratuits",
     "startPlus": "Démarrer Plus (simulé — sans paiement réel)",
@@ -908,7 +962,12 @@
     "restoreMsg": "La restauration des achats réels sera reliée dans une future mise à jour.",
     "deactivateQ": "Désactiver Plus ?",
     "deactivateMsg": "Cela te ramènera à la formule gratuite.",
-    "deactivate": "Désactiver"
+    "deactivate": "Désactiver",
+    "f_tira": "Tira, la compagne",
+    "f_tiraDesc": "Débloquez la lapine tiramisu exclusive — gratuite avec Plus",
+    "monthlyPrice": "6,50 €",
+    "yearlyPrice": "5 €/mois",
+    "saveYearly": "Économise 25%"
   },
   "coinShop": {
     "pack_pouch": "Cupcake à la fraise",
@@ -937,22 +996,31 @@
     "earn_7day": "Bonus série de 7 jours"
   },
   "foodGallery": {
-    "bakeryMenu": "🍰 Menu de la pâtisserie",
+    "bakeryMenu": "Menu de la pâtisserie",
     "chooseBunBakes": "Choisis ce que Bun cuisine ensuite",
     "myRecipes": "Mes recettes",
-    "made": "✓ Fait",
-    "baking": "✦ En cuisson",
+    "made": "Fait",
+    "baking": "En cuisson",
     "bakeThis": "Cuisiner ceci",
-    "infoNote": "🧁 La recette que tu choisis est celle que Bun cuisine pendant ta prochaine session d'étude.",
+    "infoNote": "La recette que tu choisis est celle que Bun cuisine pendant ta prochaine session d'étude.",
     "food_strawberry-shortcake": "Shortcake aux fraises",
-    "food_strawberry-shortcake_desc": "Un gâteau à étages classique avec des fraises fraîches et de la crème."
+    "food_strawberry-shortcake_desc": "Un gâteau à étages classique avec des fraises fraîches et de la crème.",
+    "food_pudding": "Pudding",
+    "food_pudding_desc": "Un flan onctueux nappé de caramel doré.",
+    "food_sakura-mochi": "Sakura Mochi",
+    "food_sakura-mochi_desc": "Un mochi rose à la farine de riz enveloppé d'une feuille de sakura salée.",
+    "food_matcha-crepe": "Mille Crêpe au Matcha",
+    "food_matcha-crepe_desc": "Un gâteau de crêpes au matcha aux mille couches, doux et crémeux.",
+    "food_berry-croissant": "Croissant aux Fruits Rouges",
+    "food_berry-croissant_desc": "Un croissant feuilleté et beurré garni de fruits rouges frais et de crème.",
+    "lockedBuy": "{{price}} pièces — acheter en boutique"
   },
   "editRoom": {
     "inUse": "✦ Utilisé",
     "tapToUse": "Touche pour utiliser",
     "tapToUnlock": "🔓 Touche pour débloquer",
     "editRoom": "🎨 Modifier la pièce",
-    "subtitle": "Associe n'importe quel fond à n'importe quel bureau. Le bouton 🔗 définit une paire assortie.",
+    "subtitle": "Associe n'importe quel fond à n'importe quel bureau. Le bouton {link} définit une paire assortie.",
     "background": "🖼️ Fond",
     "desk": "🪵 Bureau",
     "effect": "✨ Effet",
@@ -1002,7 +1070,9 @@
     "hour": "Heure",
     "minute": "Minute",
     "ampm": "AM/PM",
-    "selected": "Sélectionné : {{value}}"
+    "selected": "Sélectionné : {{value}}",
+    "am": "AM",
+    "pm": "PM"
   },
   "a11y": {
     "focusCoin": "Pièce de concentration",
@@ -1011,7 +1081,9 @@
     "pose_studying": "Étudie à tes côtés",
     "pose_proud": "Session terminée !",
     "pose_cheering": "Excellent travail !",
-    "pose_break": "Profite de ta pause"
+    "pose_break": "Profite de ta pause",
+    "aiTicket": "Ticket de génération IA",
+    "streakFreeze": "Gel de série"
   },
   "calendar": {
     "calendar": "Calendrier",
@@ -1075,7 +1147,8 @@
     "unlocked": "Débloqué",
     "playFriendFree": "Joue gratuitement avec un ami",
     "getPlusUnlock": "Obtiens Plus pour débloquer",
-    "plus": "Plus"
+    "plus": "Plus",
+    "sameDevice": "Même appareil"
   },
   "cake": {
     "back": "‹ Retour",
@@ -1163,7 +1236,8 @@
     "pick_topping": "Choisis un nappage",
     "hint_dropMixer": "Mets-le dans un mixeur 🥣",
     "hint_dropOven": "Mets-le dans un four 🔥",
-    "hint_tapIngredients": "Touche Ingrédients 🧺 pour commencer un gâteau"
+    "hint_tapIngredients": "Touche Ingrédients 🧺 pour commencer un gâteau",
+    "orderNew": "Nouveau ! Touche pour prendre"
   },
   "connect4": {
     "title": "Puissance 4",
@@ -1218,5 +1292,43 @@
     "better": "Mieux",
     "relieved": "Soulagé",
     "exhausted": "Épuisé"
+  },
+  "outfitNames": {
+    "classic": "Classique",
+    "angel": "Ange",
+    "angelKei": "Angel Kei",
+    "relax": "Détente",
+    "demon": "Démon",
+    "wolfsMeal": "Repas du Loup",
+    "chocoMint": "Choco Menthe",
+    "sleepover": "Soirée Pyjama",
+    "champion": "Champion",
+    "zzz": "ZZZ",
+    "jiraiKei": "Jirai Kei",
+    "bluePeony": "Pivoine Bleue"
+  },
+  "studyDesk": {
+    "title": "Petite pause",
+    "subtitle": "Détends-toi un peu — recommence quand tu es prêt.",
+    "pickWhenReady": "Choisis une matière quand tu es prêt",
+    "readyToStudy": "Prêt à étudier ?"
+  },
+  "soundPicker": {
+    "title": "Sons d'étude",
+    "empty": "Pas encore de sons — achètes-en dans les Sons de la Boutique et ils apparaîtront ici pour les écouter pendant que tu étudies.",
+    "off": "Désactivé"
+  },
+  "dm": {
+    "online": "En ligne",
+    "offline": "Hors ligne",
+    "empty": "Dis bonjour à {{name}} ! 👋",
+    "placeholder": "Message à {{name}}...",
+    "invitePrompt": "Inviter {{name}} à jouer",
+    "sentInvite": "Tu as envoyé une invitation à {{game}}",
+    "invitedYou": "T'a invité à {{game}}",
+    "join": "Rejoindre",
+    "sendFailed": "Échec de l'envoi",
+    "signInNeeded": "Tu dois être connecté pour envoyer des messages.",
+    "friendNotReachable": "Impossible de joindre {{name}} pour l'instant — il doit ouvrir l'app une fois pour synchroniser son profil."
   }
 }

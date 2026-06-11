@@ -1,16 +1,22 @@
 export const SESSION_LENGTHS = [
-  { minutes: 10, label: 'Quick Warm-up' },
-  { minutes: 25, label: 'Focus Boost' },
-  { minutes: 50, label: 'Deep Focus' },
+  { minutes: 15, label: 'Quick Warm-up' },
+  { minutes: 30, label: 'Focus Boost' },
+  { minutes: 60, label: 'Deep Focus' },
   { minutes: 90, label: 'Long Session' },
 ] as const;
 
 export type SessionLengthOption = (typeof SESSION_LENGTHS)[number];
 
+// Auto-break length for a solo session: one break of ⌊focus ÷ 12⌋ minutes, but
+// short warm-ups (15 min or less) run straight through with no break.
+export function autoBreakMinutes(focusMinutes: number): number {
+  return focusMinutes > 15 ? Math.floor(focusMinutes / 12) : 0;
+}
+
 export const COIN_REWARDS: Record<number, number> = {
-  10: 10,
-  25: 25,
-  50: 50,
+  15: 15,
+  30: 30,
+  60: 60,
   90: 90,
 };
 

@@ -28,7 +28,7 @@ import {
   type ChatTurn,
 } from '@/context/app-context';
 import { sendCompanionChat } from '@/lib/companion-chat';
-import { resolveActiveCompanion } from '@/lib/companion-utils';
+import { localizeCompanionName, resolveActiveCompanion } from '@/lib/companion-utils';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 
@@ -121,7 +121,7 @@ export default function CompanionChatScreen() {
     if (messages.length === 0) return;
     Alert.alert(
       t('chat.clearChatQ'),
-      t('chat.clearChatMsg', { name: companion.name }),
+      t('chat.clearChatMsg', { name: localizeCompanionName(companion.name, t) }),
       [
         { text: t('common.cancel'), style: 'cancel' },
         { text: t('chat.clear'), style: 'destructive', onPress: () => setMessages([]) },
@@ -168,20 +168,19 @@ export default function CompanionChatScreen() {
             <Pressable onPress={() => router.back()} hitSlop={8} style={styles.headerBtn}>
               <BackIcon />
             </Pressable>
-            <ThemedText style={styles.headerTitle}>Chat Companion</ThemedText>
+            <ThemedText style={styles.headerTitle}>{t('chat.chatCompanion')}</ThemedText>
             <View style={styles.headerBtn} />
           </View>
           <View style={styles.lockedWrap}>
             <View style={styles.lockedCard}>
-              <ThemedText type="subtitle">Companion chat is a Plus feature 🔒</ThemedText>
+              <ThemedText type="subtitle">{t('chat.plusFeatureTitle')}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.lockedText}>
-                Upgrade to DeskMate Plus to chat with your companion. Plus members get{' '}
-                {PLUS_DAILY_CHAT} free chats every day.
+                {t('chat.plusUpgradeMsg', { count: PLUS_DAILY_CHAT })}
               </ThemedText>
               <Pressable
                 onPress={() => router.push('/plus-upgrade')}
                 style={({ pressed }) => [styles.upgradeBtn, pressed && styles.pressed]}>
-                <ThemedText style={styles.upgradeBtnText}>See Plus</ThemedText>
+                <ThemedText style={styles.upgradeBtnText}>{t('chat.seePlus')}</ThemedText>
               </Pressable>
             </View>
           </View>
@@ -200,7 +199,7 @@ export default function CompanionChatScreen() {
           <Pressable onPress={() => router.back()} hitSlop={8} style={styles.headerBtn}>
             <BackIcon />
           </Pressable>
-          <ThemedText style={styles.headerTitle}>Chat Companion</ThemedText>
+          <ThemedText style={styles.headerTitle}>{t('chat.chatCompanion')}</ThemedText>
           <View style={styles.coinPill}>
             <CoinIcon size={18} />
             <ThemedText style={styles.coinText}>{coins}</ThemedText>

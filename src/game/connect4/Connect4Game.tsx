@@ -22,7 +22,7 @@ import {
 } from '@/game/connect4/logic';
 
 type Screen = 'mode' | 'lobby' | 'play';
-type Opp = 'ai' | 'online';
+type Opp = 'ai' | 'online' | 'local';
 type Result = Player | 'draw' | null;
 
 // ── Board art geometry ──────────────────────────────────────────────────────
@@ -214,7 +214,13 @@ export function Connect4Game({
   }, [opp, screen, result, turn, doMove]);
 
   const onColumnPress = (col: number) => {
-    if (result || turn !== myPlayer) return;
+    if (result) return;
+    // Pass & play: whoever's turn it is drops on this same device.
+    if (opp === 'local') {
+      doMove(col, turn);
+      return;
+    }
+    if (turn !== myPlayer) return;
     if (opp === 'online' && (!roomRef.current || !opponentPresent)) return;
     const applied = doMove(col, myPlayer);
     if (applied && opp === 'online') roomRef.current?.sendMove(col);
@@ -224,6 +230,16 @@ export function Connect4Game({
   const startAi = () => {
     leaveRoom();
     setOpp('ai');
+    setMyPlayer(1);
+    myPlayerRef.current = 1;
+    resetGame(1);
+    setScreen('play');
+  };
+
+  // Pass & play — two players share the device, taking turns by hand.
+  const startLocal = () => {
+    leaveRoom();
+    setOpp('local');
     setMyPlayer(1);
     myPlayerRef.current = 1;
     resetGame(1);
@@ -292,8 +308,14 @@ export function Connect4Game({
   // ── Render helpers ──────────────────────────────────────────────────────
   const isWinCell = (r: number, c: number) => winCells.some(([wr, wc]) => wr === r && wc === c);
 
+  const localMode = opp === 'local';
+
   const statusText = (() => {
     if (result === 'draw') return t('connect4.draw');
+    if (localMode) {
+      if (result) return result === 1 ? t('games.p1Wins') : t('games.p2Wins');
+      return turn === 1 ? t('games.p1Turn') : t('games.p2Turn');
+    }
     if (result) return result === myPlayer ? t('connect4.youWin') : opp === 'ai' ? t('connect4.nameWins', { name: opponent.name }) : t('connect4.friendWins');
     if (turn === myPlayer) return t('connect4.yourTurn');
     return opp === 'ai' ? t('connect4.nameThinking', { name: opponent.name }) : t('connect4.friendsTurn');
@@ -317,6 +339,14 @@ export function Connect4Game({
             <Image source={opponent.imageSource} style={styles.modeIcon} contentFit="contain" />
             <ThemedText type="smallBold" style={styles.modeTitle}>{t('connect4.vsName', { name: opponent.name })}</ThemedText>
             <ThemedText type="small" style={styles.modeSub}>{t('connect4.playTheAI')}</ThemedText>
+          </Pressable>
+          <Pressable style={({ pressed }) => [styles.modeCard, pressed && styles.pressed]} onPress={startLocal}>
+            <View style={styles.modeDiscRow}>
+              <Image source={PIECE_IMG[1]} style={styles.modePiece} contentFit="contain" />
+              <Image source={PIECE_IMG[2]} style={styles.modePiece} contentFit="contain" />
+            </View>
+            <ThemedText type="smallBold" style={styles.modeTitle}>{t('games.passAndPlay')}</ThemedText>
+            <ThemedText type="small" style={styles.modeSub}>{t('games.sameDevice')}</ThemedText>
           </Pressable>
           <Pressable style={({ pressed }) => [styles.modeCard, pressed && styles.pressed]} onPress={() => { setOpp('online'); setScreen('lobby'); }}>
             <View style={styles.modeDiscPair}>
@@ -401,7 +431,9 @@ export function Connect4Game({
 
   // ── Play screen ─────────────────────────────────────────────────────────
   const oppPiece: Player = myPlayer === 1 ? 2 : 1;
-  const myTurn = !result && !oppLeft && turn === myPlayer;
+  // Pass & play: every turn is "your" turn on this device, so the board is always
+  // tappable until the game ends.
+  const myTurn = !result && !oppLeft && (localMode || turn === myPlayer);
   const gameOver = !!result || oppLeft;
   const rematch = () => {
     resetGame(1);
@@ -415,9 +447,11 @@ export function Connect4Game({
   //    friend-profile character + skin (looked up by the room/friend code).
   const friendRec = opp === 'online' && online ? friends.find((f) => f.code === online.room) : undefined;
   const friendChar = friendRec?.companionId ? getCompanionImage(friendRec.companionId, friendRec.skinId) : null;
-  const leftAvatar = opp === 'ai' ? null : playerFigure;
-  const rightAvatar = opp === 'ai' ? opponent.imageSource : friendChar;
-  const rightName = opp === 'ai' ? opponent.name : friendRec?.name || t('connect4.friend');
+  // Pass & play shows two neutral silhouettes labelled Player 1 / Player 2.
+  const leftAvatar = localMode || opp === 'ai' ? null : playerFigure;
+  const rightAvatar = localMode ? null : opp === 'ai' ? opponent.imageSource : friendChar;
+  const leftName = localMode ? t('games.player1') : t('connect4.you');
+  const rightName = localMode ? t('games.player2') : opp === 'ai' ? opponent.name : friendRec?.name || t('connect4.friend');
 
   // One player card: framed avatar (top-half face in the cut-out centre) + name.
   const playerCard = (avatar: number | { uri: string } | null, name: string, piece: Player) => {
@@ -474,7 +508,7 @@ export function Connect4Game({
 
       {/* Players — the "VS" badge is baked into the background between them. */}
       <View style={styles.playersRow}>
-        {playerCard(leftAvatar, t('connect4.you'), myPlayer)}
+        {playerCard(leftAvatar, leftName, myPlayer)}
         <View style={styles.vsGap} />
         {playerCard(rightAvatar, rightName, oppPiece)}
       </View>
@@ -507,7 +541,7 @@ export function Connect4Game({
         )}
         {/* Tap zones — one per column */}
         {Array.from({ length: COLS }).map((_, c) => {
-          const canDrop = myTurn && board[0][c] === 0 && (opp === 'ai' || opponentPresent);
+          const canDrop = myTurn && board[0][c] === 0 && (opp !== 'online' || opponentPresent);
           return (
             <Pressable
               key={c}
@@ -573,21 +607,29 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   subPillText: { color: BakeryColors.cocoaDark, fontSize: 13 },
-  modeRow: { flexDirection: 'row', gap: Spacing.three, marginTop: Spacing.three },
+  modeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    marginTop: Spacing.three,
+    paddingHorizontal: Spacing.two,
+  },
   modeCard: {
-    width: 140,
+    width: 110,
     borderRadius: 20,
     paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.two,
+    paddingHorizontal: Spacing.one,
     alignItems: 'center',
     gap: 6,
     backgroundColor: '#FFFCF8',
     borderWidth: 1.5,
     borderColor: '#F4D7DE',
   },
-  modeIcon: { width: 56, height: 56 },
-  modeDiscPair: { flexDirection: 'row', alignItems: 'center', height: 56, justifyContent: 'center' },
-  modePiece: { width: 34, height: 34 },
+  modeIcon: { width: 52, height: 52 },
+  modeDiscPair: { flexDirection: 'row', alignItems: 'center', height: 52, justifyContent: 'center' },
+  modeDiscRow: { flexDirection: 'row', alignItems: 'center', height: 52, justifyContent: 'center', gap: 4 },
+  modePiece: { width: 32, height: 32 },
   modeTitle: { color: BakeryColors.cocoaDark, fontSize: 15, textAlign: 'center' },
   modeSub: { color: '#9A8978', textAlign: 'center' },
 

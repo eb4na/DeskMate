@@ -7,6 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { SubjectPickerModal } from '@/components/subject-picker-modal';
 import { useApp } from '@/context/app-context';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
+import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
 
 const BUN_STUDYING = require('@/assets/images/bun/bun-studying.png');
@@ -30,6 +31,7 @@ export default function StudyDeskScreen() {
     startActiveSession,
   } = useApp();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const me = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
@@ -54,8 +56,8 @@ export default function StudyDeskScreen() {
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         <View style={[styles.header, { paddingTop: insets.top + Spacing.three }]}>
-          <Text style={styles.title}>Taking a break</Text>
-          <Text style={styles.sub}>Relax for a bit — start again whenever you're ready.</Text>
+          <Text style={styles.title}>{t('studyDesk.title')}</Text>
+          <Text style={styles.sub}>{t('studyDesk.subtitle')}</Text>
         </View>
 
         <View style={styles.scene}>
@@ -65,14 +67,14 @@ export default function StudyDeskScreen() {
         </View>
 
         <Pressable onPress={() => setPickerOpen(true)} style={({ pressed }) => [styles.cta, pressed && styles.pressed]}>
-          <Text style={styles.ctaText}>Pick subject when ready</Text>
+          <Text style={styles.ctaText}>{t('studyDesk.pickWhenReady')}</Text>
         </Pressable>
         <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} style={styles.backLink} hitSlop={8}>
-          <Text style={styles.backText}>Back</Text>
+          <Text style={styles.backText}>{t('common.back')}</Text>
         </Pressable>
       </SafeAreaView>
 
-      <SubjectPickerModal visible={pickerOpen} title="Ready to study?" onPick={start} onClose={() => setPickerOpen(false)} />
+      <SubjectPickerModal visible={pickerOpen} title={t('studyDesk.readyToStudy')} onPick={start} onClose={() => setPickerOpen(false)} />
     </View>
   );
 }

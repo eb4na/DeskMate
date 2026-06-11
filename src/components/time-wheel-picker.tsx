@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { useTranslation } from '@/i18n';
+import i18n, { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, Colors, Spacing } from '@/constants/theme';
 
 type TimeWheelPickerProps = {
@@ -35,7 +35,7 @@ export function formatTimeLabel(value: string, use24Hour: boolean) {
   const { hour, minute } = parse(value);
   const mm = String(minute).padStart(2, '0');
   if (use24Hour) return `${String(hour).padStart(2, '0')}:${mm}`;
-  const period = hour < 12 ? 'AM' : 'PM';
+  const period = hour < 12 ? i18n.t('pickers.am') : i18n.t('pickers.pm');
   const h12 = hour % 12 === 0 ? 12 : hour % 12;
   return `${h12}:${mm} ${period}`;
 }
@@ -176,8 +176,8 @@ export function TimeWheelPicker({ value, onChange, use24Hour = false }: TimeWhee
                       selectedValue={period}
                       onValueChange={(nextValue) => commit({ period: nextValue as 'AM' | 'PM' })}
                       style={styles.picker}>
-                      <Picker.Item label="AM" value="AM" style={pickerItemStyle} />
-                      <Picker.Item label="PM" value="PM" style={pickerItemStyle} />
+                      <Picker.Item label={t('pickers.am')} value="AM" style={pickerItemStyle} />
+                      <Picker.Item label={t('pickers.pm')} value="PM" style={pickerItemStyle} />
                     </Picker>
                   </View>
                 </View>

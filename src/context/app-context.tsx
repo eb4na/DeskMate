@@ -4,7 +4,10 @@ import { DAILY_EARN_CAP, STATIC_SUBJECTS } from '@/constants/placeholder-data';
 import { SHOP_ITEMS, type ShopCategory } from '@/constants/shop-data';
 import { useAuth } from '@/context/auth-context';
 import { getAppStateScope, loadScopedAppState, saveScopedAppState } from '@/lib/app-state-repository';
+import { fetchCloudState, pushCloudStateDebounced } from '@/lib/cloud-sync';
 import { getEffectiveBunSkinId, getEffectiveCompanionSkins } from '@/lib/companion-utils';
+import { maskProfanity } from '@/lib/profanity';
+import { uploadProfile } from '@/lib/profile-sync';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -258,7 +261,8 @@ export const MAX_SUBJECTS_FREE = 10;
 export const MAX_SUBJECTS_PLUS = 20;
 
 const DEFAULTS: PersistedState = {
-  coins: 0,
+  // New accounts start with a small coin gift.
+  coins: 500,
   sessionsCompleted: 0,
   totalMinutes: 0,
   moodEntries: [],
@@ -479,6 +483,11 @@ type AppContextType = {
   addFriend: (code: string) => { ok: boolean; error?: string };
   removeFriend: (code: string) => void;
   setFriendProfile: (code: string, data: Partial<Friend>) => void;
+  // Unread DM counts by friend code, with setters used by the chat + inbox listener.
+  dmUnread: Record<string, number>;
+  setDmUnreadCounts: (counts: Record<string, number>) => void;
+  bumpDmUnread: (code: string) => void;
+  clearDmUnread: (code: string) => void;
   profileDisplayName: string;
   profileDescription: string;
   profileBirthday: string;
@@ -591,7 +600,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [loadedScopeKey, setLoadedScopeKey] = useState<string | null>(null);
-  const appStateScope = useMemo(() => getAppStateScope(session), [session]);
+  // Unread DM counts keyed by the sender's friend code. In-memory only — it's
+  // derived from the server (fetched on focus, bumped by live inbox pings).
+  const [dmUnread, setDmUnreadState] = useState<Record<string, number>>({});
+  // Key the persistence scope on the *stable* identity (user id, or guest) — NOT
+  // the session object. Supabase (autoRefreshToken) hands back a brand-new session
+  // object on every token refresh; memoizing on the object would re-run the loader
+  // each refresh, abort the active study session, and reload state from disk —
+  // silently dropping progress. Keying on the id makes the scope stable for the
+  // lifetime of a login.
+  const scopeIdentity = session?.user.id ?? 'guest';
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed on the stable identity, not the session object
+  const appStateScope = useMemo(() => getAppStateScope(session), [scopeIdentity]);
 
   useEffect(() => {
     if (!authInitialized) return;
@@ -601,18 +621,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLoadedScopeKey(null);
     setActiveSession(null);
 
-    loadScopedAppState<Partial<PersistedState>>(appStateScope)
-      .then((saved) => {
-        if (!mounted) return;
-        const normalized = normalizePersistedState(saved);
-        setS(normalized);
-        if (normalized.language) i18n.changeLanguage(normalized.language);
-        setLoadedScopeKey(appStateScope.storageKey);
+    (async () => {
+      // 1) Local copy (may throw on corruption — handled below).
+      let saved: Partial<PersistedState> | null = null;
+      let localFailed = false;
+      try {
+        saved = await loadScopedAppState<Partial<PersistedState>>(appStateScope);
+      } catch {
+        localFailed = true;
+      }
+
+      // 2) For signed-in users, reconcile with the cloud copy (newer wins).
+      if (appStateScope.kind === 'user') {
+        const cloud = await fetchCloudState(appStateScope.userId);
+        const localAt = (saved as { updatedAt?: number } | null)?.updatedAt ?? 0;
+        if (cloud && (cloud.updatedAt >= localAt || localFailed)) {
+          saved = cloud.data as Partial<PersistedState>;
+          localFailed = false; // recovered from the cloud
+        } else if (saved) {
+          // Local is newer (or the cloud has nothing yet) → seed the cloud now.
+          pushCloudStateDebounced(appStateScope.userId, saved as Record<string, unknown>, 0);
+        }
+      }
+
+      if (!mounted) return;
+
+      // Couldn't read local AND no usable cloud copy → leave saving disabled
+      // (loadedScopeKey unset) so we never overwrite recoverable data.
+      if (localFailed && !saved) {
+        console.warn('[persist] could not load saved state; saving paused to protect existing data');
+        return;
+      }
+
+      const normalized = normalizePersistedState(saved);
+      setS(normalized);
+      if (normalized.language) i18n.changeLanguage(normalized.language);
+      // Marking the scope loaded is what lets the save effect run.
+      setLoadedScopeKey(appStateScope.storageKey);
+    })()
+      .catch(() => {
+        if (mounted) console.warn('[persist] load error; saving paused');
       })
       .finally(() => {
-        if (mounted) {
-          setLoaded(true);
-        }
+        if (mounted) setLoaded(true);
       });
 
     return () => {
@@ -622,8 +673,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!loaded || loadedScopeKey !== appStateScope.storageKey) return;
-    saveScopedAppState(appStateScope, s);
+    // Stamp the save time so local & cloud copies can be compared on next login.
+    const stamped = { ...s, updatedAt: Date.now() };
+    saveScopedAppState(appStateScope, stamped);
+    // Signed-in users also mirror to the cloud (debounced) so progress follows
+    // the account to any device.
+    if (appStateScope.kind === 'user') {
+      pushCloudStateDebounced(appStateScope.userId, stamped as Record<string, unknown>);
+    }
   }, [appStateScope, loaded, loadedScopeKey, s]);
+
+  // Publish my public profile (name + current character + stats) to the cloud so
+  // friends always see the character I'm actually using — even if I never open the
+  // Profile-card screen. The shared character is my profile-card pick when I've set
+  // one, otherwise my currently-equipped companion ('' companionId = the starter Bun).
+  useEffect(() => {
+    if (!loaded || !session?.user.id || !s.friendCode) return;
+    const isShop = s.activeCompanionId.startsWith('shop:');
+    const equippedCompanionId = isShop ? s.activeCompanionId : '';
+    const equippedSkinId = isShop ? (s.companionSkins[s.activeCompanionId] ?? 'classic') : s.bunSkinId;
+    const companionId = s.profileCompanionId || equippedCompanionId;
+    const skinId = s.profileCompanionId ? s.profileSkinId : equippedSkinId;
+    const userId = session.user.id;
+    const timer = setTimeout(() => {
+      uploadProfile(userId, {
+        friendCode: s.friendCode,
+        displayName: s.profileDisplayName,
+        description: s.profileDescription,
+        birthday: s.profileBirthday,
+        companionId,
+        skinId,
+        backgroundId: s.profileBackgroundId,
+        currentStreak: s.streak.currentStreak,
+        longestStreak: s.streak.longestStreak,
+        totalMinutes: s.totalMinutes,
+      });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [
+    loaded, session?.user.id, s.friendCode,
+    s.profileDisplayName, s.profileDescription, s.profileBirthday, s.profileBackgroundId,
+    s.profileCompanionId, s.profileSkinId, s.activeCompanionId, s.bunSkinId, s.companionSkins,
+    s.streak.currentStreak, s.streak.longestStreak, s.totalMinutes,
+  ]);
 
   // ─── Wave 1 actions ──────────────────────────────────────────────────────
 
@@ -692,8 +784,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }>) =>
     setS((prev) => ({
       ...prev,
-      ...(patch.displayName !== undefined ? { profileDisplayName: patch.displayName } : {}),
-      ...(patch.description !== undefined ? { profileDescription: patch.description } : {}),
+      ...(patch.displayName !== undefined ? { profileDisplayName: maskProfanity(patch.displayName) } : {}),
+      ...(patch.description !== undefined ? { profileDescription: maskProfanity(patch.description) } : {}),
       ...(patch.birthday !== undefined ? { profileBirthday: patch.birthday } : {}),
       ...(patch.backgroundId !== undefined ? { profileBackgroundId: patch.backgroundId } : {}),
       ...(patch.companionId !== undefined ? { profileCompanionId: patch.companionId } : {}),
@@ -742,7 +834,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ─── Wave 2 subject actions ───────────────────────────────────────────────
 
-  const addSubject = (name: string, color: string, emoji = ''): boolean => {
+  const addSubject = (rawName: string, color: string, emoji = ''): boolean => {
+    const name = maskProfanity(rawName);
     const limit = s.isPlus ? MAX_SUBJECTS_PLUS : MAX_SUBJECTS_FREE;
     if (s.subjects.filter((sub) => !sub.archived).length >= limit) return false;
     setS((prev) => {
@@ -762,7 +855,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const renameSubject = (id: string, name: string) =>
     setS((prev) => ({
       ...prev,
-      subjects: prev.subjects.map((s) => (s.id === id ? { ...s, name } : s)),
+      subjects: prev.subjects.map((s) => (s.id === id ? { ...s, name: maskProfanity(name) } : s)),
     }));
 
   const archiveSubject = (id: string) =>
@@ -955,7 +1048,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const saveTimerPreset = (preset: Omit<TimerPreset, 'id'>) =>
     setS((prev) => ({
       ...prev,
-      savedTimerPresets: [{ ...preset, id: uid() }, ...prev.savedTimerPresets].slice(0, MAX_TIMER_PRESETS),
+      savedTimerPresets: [{ ...preset, label: maskProfanity(preset.label), id: uid() }, ...prev.savedTimerPresets].slice(0, MAX_TIMER_PRESETS),
     }));
 
   const deleteTimerPreset = (id: string) =>
@@ -967,7 +1060,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const saveBreakPreset = (preset: Omit<TimerPreset, 'id'>) =>
     setS((prev) => ({
       ...prev,
-      savedBreakPresets: [{ ...preset, id: uid() }, ...prev.savedBreakPresets].slice(0, MAX_TIMER_PRESETS),
+      savedBreakPresets: [{ ...preset, label: maskProfanity(preset.label), id: uid() }, ...prev.savedBreakPresets].slice(0, MAX_TIMER_PRESETS),
     }));
 
   const deleteBreakPreset = (id: string) =>
@@ -1151,6 +1244,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       friends: prev.friends.map((f) => (f.code === code ? { ...f, ...data } : f)),
     }));
 
+  // ─── Direct-message unread counts (in-memory, by friend code) ─────────────
+  const setDmUnreadCounts = (counts: Record<string, number>) => setDmUnreadState(counts);
+  const bumpDmUnread = (code: string) =>
+    setDmUnreadState((prev) => ({ ...prev, [code]: (prev[code] ?? 0) + 1 }));
+  const clearDmUnread = (code: string) =>
+    setDmUnreadState((prev) => {
+      if (!prev[code]) return prev;
+      const next = { ...prev };
+      delete next[code];
+      return next;
+    });
+
   const setCakeCharacter = (id: string) => setS((prev) => ({ ...prev, cakeCharacter: id }));
 
   const recordCakeBest = (mode: 'rush' | 'line', score: number) =>
@@ -1295,6 +1400,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addFriend,
         removeFriend,
         setFriendProfile,
+        dmUnread,
+        setDmUnreadCounts,
+        bumpDmUnread,
+        clearDmUnread,
         profileDisplayName: s.profileDisplayName ?? '',
         profileDescription: s.profileDescription ?? '',
         profileBirthday: s.profileBirthday ?? '',

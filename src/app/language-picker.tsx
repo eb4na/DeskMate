@@ -1,159 +1,227 @@
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { ImageBackground, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useApp } from '@/context/app-context';
+import { showLoadingScreen } from '@/lib/loading-signal';
 import { BakeryColors, BakeryRadii, BakeryShadow } from '@/constants/theme';
 import { LANGUAGES, type SupportedLanguage, useTranslation } from '@/i18n';
 
-const SESSION_FRAME = require('@/assets/images/home/session-frame.png');
+const CARD_FRAME = require('@/assets/images/home/language-frame.png');
+
+// Flag art. Codes without a PNG yet fall back to the emoji in LANGUAGES.
+const FLAGS: Partial<Record<SupportedLanguage, number>> = {
+  en: require('@/assets/images/flags/en.png'),
+  ja: require('@/assets/images/flags/ja.png'),
+};
+
+const FRAME_RATIO = 971 / 1619; // width / height of the card-frame art
 
 export default function LanguagePickerScreen() {
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const { setLanguage, markLanguageSelected, language } = useApp();
+  const { setLanguage, markLanguageSelected, language, languageSelected } = useApp();
   const { t } = useTranslation();
+
+  // Opened from Settings (language already chosen) vs. first-launch onboarding.
+  const fromSettings = languageSelected;
 
   const [selected, setSelected] = useState<SupportedLanguage>((language as SupportedLanguage) || 'en');
 
   const handleSelect = (code: SupportedLanguage) => {
     setSelected(code);
-    setLanguage(code);
+    // Live-preview the language during onboarding. From Settings we defer the
+    // actual switch to Continue so the loading screen can cover the re-render.
+    if (!fromSettings) setLanguage(code);
   };
 
   const handleContinue = () => {
     setLanguage(selected);
     markLanguageSelected();
-    if (router.canGoBack()) {
+    if (fromSettings) {
+      // Cover the language re-render with the app's loading screen and dismiss
+      // both this picker and the Settings modal — land on home behind the loader.
+      showLoadingScreen();
+      if (router.canDismiss()) router.dismissAll();
+      else router.replace('/');
+    } else if (router.canGoBack()) {
       router.back();
     } else {
       router.replace('/');
     }
   };
 
-  return (
-    <View style={styles.backdrop}>
-      <ImageBackground
-        source={SESSION_FRAME}
-        style={[styles.card, { width: width * 0.9, paddingTop: 56 + insets.top * 0.2 }]}
-        resizeMode="stretch"
-        imageStyle={{ borderRadius: 28 }}>
+  const cardWidth = Math.min(width * 0.92, 430);
+  const cardHeight = cardWidth / FRAME_RATIO;
 
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>{t('lang.title')}</Text>
-          <Text style={styles.subtitle}>{t('lang.subtitle')}</Text>
-        </View>
+  const card = (
+    <ImageBackground
+        source={CARD_FRAME}
+        style={[styles.card, { width: cardWidth, height: cardHeight }]}
+        resizeMode="contain">
+        <View
+          style={[
+            styles.content,
+            {
+              paddingTop: cardHeight * 0.14 + insets.top * 0.1,
+              paddingHorizontal: cardWidth * 0.1,
+              paddingBottom: cardHeight * 0.05,
+            },
+          ]}>
 
-        {/* Language options */}
-        <View style={styles.langList}>
-          {LANGUAGES.map((lang) => {
-            const isActive = selected === lang.code;
-            return (
-              <Pressable
-                key={lang.code}
-                style={[styles.langBtn, isActive && styles.langBtnActive]}
-                onPress={() => handleSelect(lang.code)}>
-                <Text style={styles.langFlag}>{lang.flag}</Text>
-                <View style={styles.langTextWrap}>
-                  <Text
-                    style={[styles.langNative, isActive && styles.langNativeActive]}
-                    adjustsFontSizeToFit
-                    numberOfLines={1}
-                    minimumFontScale={0.75}>
-                    {lang.native}
-                  </Text>
-                  {lang.native !== lang.english && (
-                    <Text style={styles.langEnglish}>{lang.english}</Text>
-                  )}
-                </View>
-                {isActive && (
-                  <View style={styles.checkCircle}>
-                    <Text style={styles.checkMark}>✓</Text>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>{t('lang.title')}</Text>
+            <Text style={styles.subtitle}>{t('lang.subtitle')}</Text>
+          </View>
+
+          {/* Language options */}
+          <View style={styles.langList}>
+            {LANGUAGES.map((lang) => {
+              const isActive = selected === lang.code;
+              const flagSrc = FLAGS[lang.code];
+              return (
+                <Pressable
+                  key={lang.code}
+                  style={[styles.langBtn, isActive && styles.langBtnActive]}
+                  onPress={() => handleSelect(lang.code)}>
+                  <View style={styles.flagWrap}>
+                    {flagSrc ? (
+                      <Image source={flagSrc} style={styles.flagImg} contentFit="contain" />
+                    ) : (
+                      <Text style={styles.flagEmoji}>{lang.flag}</Text>
+                    )}
                   </View>
-                )}
-              </Pressable>
-            );
-          })}
+                  <View style={styles.langTextWrap}>
+                    <Text
+                      style={[styles.langNative, isActive && styles.langNativeActive]}
+                      adjustsFontSizeToFit
+                      numberOfLines={1}
+                      minimumFontScale={0.75}>
+                      {lang.native}
+                    </Text>
+                    {lang.native !== lang.english && (
+                      <Text style={styles.langEnglish}>{lang.english}</Text>
+                    )}
+                  </View>
+                  <View style={[styles.radio, isActive && styles.radioActive]}>
+                    {isActive && <Text style={styles.radioCheck}>✓</Text>}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Continue button */}
+          <Pressable
+            style={({ pressed }) => [styles.continueBtn, pressed && { opacity: 0.88 }]}
+            onPress={handleContinue}>
+            <Text style={styles.continueSparkle}>✦</Text>
+            <Text
+              style={styles.continueBtnText}
+              adjustsFontSizeToFit
+              numberOfLines={1}
+              minimumFontScale={0.75}>
+              {t('lang.confirm')}
+            </Text>
+            <Text style={styles.continueSparkle}>✦</Text>
+          </Pressable>
+
         </View>
-
-        {/* Continue button */}
-        <Pressable
-          style={({ pressed }) => [styles.continueBtn, pressed && { opacity: 0.85 }]}
-          onPress={handleContinue}>
-          <Text
-            style={styles.continueBtnText}
-            adjustsFontSizeToFit
-            numberOfLines={1}
-            minimumFontScale={0.75}>
-            {t('lang.confirm')}
-          </Text>
-        </Pressable>
-
       </ImageBackground>
-    </View>
   );
+
+  // Always use the plain/normal backdrop — never swap in the login-room art (so
+  // an accidental/transient picker doesn't jarringly replace the app background).
+  return <View style={[styles.room, styles.plainBackdrop]}>{card}</View>;
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
+  room: {
     flex: 1,
-    backgroundColor: BakeryColors.frosting,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  plainBackdrop: {
+    backgroundColor: BakeryColors.frosting,
+  },
   card: {
-    borderRadius: BakeryRadii.panel,
-    overflow: 'hidden',
-    paddingBottom: 28,
-    paddingHorizontal: 32,
     alignItems: 'stretch',
-    gap: 12,
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'space-between',
   },
 
   header: { alignItems: 'center', gap: 4 },
   title: { fontSize: 22, fontWeight: '800', color: BakeryColors.cocoaDark, textAlign: 'center' },
-  subtitle: { fontSize: 12, color: BakeryColors.mocha, textAlign: 'center' },
+  subtitle: { fontSize: 12, color: BakeryColors.berry, textAlign: 'center' },
 
-  langList: { gap: 8 },
+  langList: { gap: 8, flexShrink: 1, justifyContent: 'center' },
   langBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: BakeryColors.glass,
+    backgroundColor: 'rgba(255,255,255,0.66)',
     borderRadius: BakeryRadii.chip,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
   },
   langBtnActive: {
-    borderColor: BakeryColors.honey,
-    backgroundColor: BakeryColors.cream,
+    borderColor: BakeryColors.jam,
+    backgroundColor: 'rgba(246,200,194,0.38)',
   },
-  langFlag: { fontSize: 22 },
+
+  flagWrap: {
+    width: 40,
+    height: 30,
+    borderRadius: 7,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  flagImg: { width: '100%', height: '100%' },
+  flagEmoji: { fontSize: 28, lineHeight: 30, textAlign: 'center' },
+
   langTextWrap: { flex: 1 },
   langNative: { fontSize: 16, fontWeight: '700', color: BakeryColors.mocha },
   langNativeActive: { color: BakeryColors.cocoaDark },
   langEnglish: { fontSize: 11, color: BakeryColors.latte },
-  checkCircle: {
-    width: 22, height: 22, borderRadius: 11,
-    backgroundColor: BakeryColors.honey,
-    alignItems: 'center', justifyContent: 'center',
+
+  radio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  checkMark: { fontSize: 12, color: '#fff', fontWeight: '800' },
+  radioActive: {
+    backgroundColor: BakeryColors.jam,
+    borderColor: BakeryColors.jam,
+  },
+  radioCheck: { fontSize: 12, color: '#fff', fontWeight: '800' },
 
   continueBtn: {
-    backgroundColor: BakeryColors.honey,
-    borderRadius: BakeryRadii.button,
-    paddingVertical: 14,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: BakeryColors.jam,
+    borderRadius: BakeryRadii.pill,
+    paddingVertical: 14,
     ...BakeryShadow,
   },
+  continueSparkle: { fontSize: 13, color: 'rgba(255,255,255,0.85)' },
   continueBtnText: {
     fontSize: 16,
     fontWeight: '800',
-    color: BakeryColors.cocoaDark,
+    color: '#fff',
   },
 });

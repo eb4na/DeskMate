@@ -21,7 +21,9 @@ export const CHARACTER_OUTFITS: Record<string, Outfit[]> = {
   'starter:girl': [
     { id: 'outfit_bun_angel', name: 'Angel', emoji: '👼', price: 450, characterId: 'starter:girl', image: require('@/assets/images/bun/bun-angel.png') },
     { id: 'outfit_bun_angelkei', name: 'Angel Kei', emoji: '😇', price: 450, characterId: 'starter:girl', image: require('@/assets/images/bun/bun-angelkei.png') },  ],
-  'shop:companion_cocoa': [    { id: 'outfit_cocoa_relax', name: 'Relax', emoji: '🍁', price: 450, characterId: 'shop:companion_cocoa', image: require('@/assets/images/cocoa/cocoa-relax.png') },
+  'shop:companion_cocoa': [
+    { id: 'outfit_cocoa_relax', name: 'Relax', emoji: '🍁', price: 450, characterId: 'shop:companion_cocoa', image: require('@/assets/images/cocoa/cocoa-relax.png') },
+    { id: 'outfit_cocoa_demon', name: 'Demon', emoji: '😈', price: 450, characterId: 'shop:companion_cocoa', image: require('@/assets/images/cocoa/cocoa-demon.png') },
   ],
   'shop:companion_tira': [
     { id: 'outfit_tira_wolfsmeal', name: "Wolf's Meal", emoji: '🧺', price: 450, characterId: 'shop:companion_tira', image: require('@/assets/images/tira/tira-wolfsmeal.png') },

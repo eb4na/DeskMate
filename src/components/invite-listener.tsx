@@ -3,13 +3,15 @@
  * Mounted once in the root navigator so it works on any screen.
  */
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useApp } from '@/context/app-context';
+import { useAuth } from '@/context/auth-context';
 import { getCompanionImage } from '@/lib/companion-utils';
 import { joinPresence, subscribeToInvites, type GameInvite, type OnlineGameId } from '@/lib/game-net';
+import { acceptGameInvite } from '@/lib/invite-actions';
+import { fetchUnreadCounts, subscribeInbox } from '@/lib/direct-messages';
 import { useStudyRoom } from '@/lib/use-study-room';
 import { useTranslation } from '@/i18n';
 
@@ -23,7 +25,8 @@ const GAME_LABEL_KEY: Record<OnlineGameId, string> = {
 
 export function InviteListener() {
   const { t } = useTranslation();
-  const { friendCode, friends } = useApp();
+  const { friendCode, friends, setDmUnreadCounts, bumpDmUnread } = useApp();
+  const { user } = useAuth();
   const studyRoom = useStudyRoom();
   const [invite, setInvite] = useState<GameInvite | null>(null);
 
@@ -38,20 +41,26 @@ export function InviteListener() {
     return joinPresence(friendCode);
   }, [friendCode]);
 
+  // Seed unread DM counts once, then keep them live via inbox pings.
+  useEffect(() => {
+    if (!user?.id) return;
+    fetchUnreadCounts(user.id).then(setDmUnreadCounts);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!friendCode) return;
+    return subscribeInbox(friendCode, (fromCode) => bumpDmUnread(fromCode));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [friendCode]);
+
   const fromFriend = friends.find((f) => f.code === invite?.fromCode);
 
   const accept = () => {
     if (!invite) return;
     const inv = invite;
     setInvite(null);
-    if (inv.game === 'study') {
-      studyRoom.joinRoom(inv.room, false);
-      router.push('/study-lobby');
-    } else if (inv.game === 'batterdash') {
-      router.push({ pathname: '/cake-game', params: { room: inv.room, role: 'guest', netmode: 'party' } });
-    } else {
-      router.push({ pathname: '/break-game', params: { game: inv.game, room: inv.room, role: 'guest' } });
-    }
+    acceptGameInvite(inv, studyRoom);
   };
 
   return (

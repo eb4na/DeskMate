@@ -24,6 +24,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
+import { supabase } from '@/lib/supabase';
+import { linkProvider } from '@/lib/oauth';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { getAmbienceName } from '@/app/ambience-picker';
 import { LANGUAGES, useTranslation } from '@/i18n';
@@ -93,6 +95,23 @@ export default function SettingsScreen() {
 
   const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
 
+  // Providers already linked to this account (e.g. ['email','google']).
+  const connectedProviders = (user?.identities ?? []).map((i) => i.provider);
+
+  const handleConnect = async (provider: 'google' | 'apple') => {
+    try {
+      const res = await linkProvider(provider);
+      if (res.ok) {
+        await supabase.auth.refreshSession().catch(() => {});
+        Alert.alert(t('auth.connected'));
+      } else if (!res.cancelled) {
+        Alert.alert(t('auth.connectFailed'), res.error ?? '');
+      }
+    } catch (e) {
+      Alert.alert(t('auth.connectFailed'), e instanceof Error ? e.message : String(e));
+    }
+  };
+
   const handleSignOut = () => {
     Alert.alert(
       isGuest ? t('settings.leaveGuestQ') : t('settings.signOutQ'),
@@ -152,6 +171,38 @@ export default function SettingsScreen() {
               </View>
             </Pressable>
           </ThemedView>
+
+          {/* Connected accounts — link Google / Apple to this account */}
+          {!isGuest && user && (
+            <>
+              <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
+                {t('auth.connectedAccounts')}
+              </ThemedText>
+              <ThemedView type="backgroundElement" style={styles.group}>
+                {(['google'] as const).map((provider, idx) => {
+                  const connected = connectedProviders.includes(provider);
+                  return (
+                    <View key={provider}>
+                      {idx > 0 && <View style={styles.divider} />}
+                      <Pressable
+                        disabled={connected}
+                        onPress={() => handleConnect(provider)}
+                        style={({ pressed }) => [styles.row, !connected && pressed && styles.rowPressed]}>
+                        <View style={styles.rowBody}>
+                          <ThemedText type="smallBold">
+                            {provider === 'google' ? t('auth.connectGoogle') : t('auth.connectApple')}
+                          </ThemedText>
+                        </View>
+                        <ThemedText type="small" themeColor="textSecondary">
+                          {connected ? t('auth.connected') : '＋'}
+                        </ThemedText>
+                      </Pressable>
+                    </View>
+                  );
+                })}
+              </ThemedView>
+            </>
+          )}
 
           {/* Membership */}
           <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>

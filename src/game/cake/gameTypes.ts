@@ -2,9 +2,14 @@
 // Wave 0: types are shaped so later waves (movement, cooking loop, modes,
 // multiplayer) slot in without rewrites. Keep this file logic-free.
 
-export type CakeBase = 'vanilla' | 'chocolate' | 'strawberry' | 'redVelvet';
-export type CakeFilling = 'cream' | 'chocCream' | 'strawJam' | 'redVelvet';
-export type CakeTopping = 'strawberry' | 'cherry' | 'blueberry' | 'choco' | 'sprinkles';
+export type CakeBase = 'vanilla' | 'chocolate' | 'strawberry' | 'redVelvet' | 'milk' | 'riceFlour' | 'matcha' | 'flour';
+export type CakeFilling = 'cream' | 'chocCream' | 'strawJam' | 'redVelvet' | 'sugar' | 'redBean' | 'milk' | 'butter';
+export type CakeTopping = 'strawberry' | 'cherry' | 'blueberry' | 'choco' | 'sprinkles' | 'cornstarch' | 'sakuraLeaf' | 'eggFlour' | 'berries';
+
+// A recipe = which dessert the kitchen is currently making. Each recipe owns its
+// own ingredient pool (see recipePools in gameData). 'cake' is the original
+// strawberry-shortcake/cake flow; the others are single fixed recipes.
+export type RecipeId = 'cake' | 'pudding' | 'sakura' | 'matcha' | 'croissant';
 
 // A pickable ingredient with placeholder art (emoji + color) for now.
 export type IngredientDef<Id extends string = string> = {

@@ -8,7 +8,7 @@ import { CoinIcon } from '@/components/coin-icon';
 import { useApp } from '@/context/app-context';
 import { newRoomId } from '@/lib/game-net';
 import { useStudyRoom } from '@/lib/use-study-room';
-import { SESSION_LENGTHS, coinsForMinutes } from '@/constants/placeholder-data';
+import { SESSION_LENGTHS, autoBreakMinutes, coinsForMinutes } from '@/constants/placeholder-data';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
@@ -16,9 +16,9 @@ const C = BakeryColors;
 const SCREEN_BG = require('@/assets/images/home/session-bg.png');
 
 const CARD_IMG: Record<number, number> = {
-  10: require('@/assets/images/cake/dessert-10.png'),
-  25: require('@/assets/images/cake/dessert-25.png'),
-  50: require('@/assets/images/cake/dessert-50.png'),
+  15: require('@/assets/images/cake/dessert-10.png'),
+  30: require('@/assets/images/cake/dessert-25.png'),
+  60: require('@/assets/images/cake/dessert-50.png'),
   90: require('@/assets/images/cake/dessert-90.png'),
 };
 
@@ -30,15 +30,16 @@ export default function SessionPickerScreen() {
   const { subjects, coins } = useApp();
   const studyRoom = useStudyRoom();
   const { t } = useTranslation();
-  const [selected, setSelected] = useState(25);
+  const [selected, setSelected] = useState(30);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>('single');
 
   const activeSubjects = subjects.filter((s) => !s.archived).sort((a, b) => a.order - b.order);
   const contentW = Math.min(width, MaxContentWidth) - Spacing.four * 2;
   const cardW = (contentW - Spacing.two) / 2;
-  // Single-player break: one break of floor(focus / 12) minutes (min 1).
-  const breakForSelected = Math.max(1, Math.floor(selected / 12));
+  // Single-player break: one break of floor(focus / 12) minutes; short warm-ups
+  // (≤15 min) get no break.
+  const breakForSelected = autoBreakMinutes(selected);
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
@@ -82,7 +83,7 @@ export default function SessionPickerScreen() {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
           {/* Duration cards */}
-          <Text style={styles.sectionLabel}>CHOOSE DURATION</Text>
+          <Text style={styles.sectionLabel}>{t('sessionPicker.chooseDuration')}</Text>
           <View style={styles.grid}>
             {SESSION_LENGTHS.map((opt) => {
               const isActive = selected === opt.minutes;
@@ -100,10 +101,10 @@ export default function SessionPickerScreen() {
                     <Image source={CARD_IMG[opt.minutes]} style={styles.lenImg} contentFit="contain" />
                     <View style={styles.lenNumWrap}>
                       <Text style={[styles.lenNum, isActive && styles.lenNumActive]}>{opt.minutes}</Text>
-                      <Text style={styles.lenMin}>min</Text>
+                      <Text style={styles.lenMin}>{t('customTimer.min')}</Text>
                     </View>
                   </View>
-                  <Text style={styles.lenLabel} numberOfLines={1}>{opt.label}</Text>
+                  <Text style={styles.lenLabel} numberOfLines={1}>{t(`sessionPicker.len_${opt.minutes}`)}</Text>
                   <View style={styles.lenReward}>
                     <CoinIcon size={14} />
                     <Text style={styles.lenRewardText}>+{coinsForMinutes(opt.minutes)}</Text>
@@ -114,7 +115,7 @@ export default function SessionPickerScreen() {
           </View>
 
           {/* Subject */}
-          <Text style={styles.sectionLabel}>SUBJECT (OPTIONAL)</Text>
+          <Text style={styles.sectionLabel}>{t('sessionPicker.subjectHeader')}</Text>
           <View style={styles.softCard}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
               {activeSubjects.map((s) => {
@@ -134,7 +135,7 @@ export default function SessionPickerScreen() {
                 );
               })}
               <Pressable style={[styles.chip, styles.chipAdd]} onPress={() => router.push('/manage-subjects')}>
-                <Text style={[styles.chipText, { color: C.berry }]}>＋ Add</Text>
+                <Text style={[styles.chipText, { color: C.berry }]}>{t('common.addChip')}</Text>
               </Pressable>
             </ScrollView>
           </View>
@@ -144,21 +145,21 @@ export default function SessionPickerScreen() {
             style={({ pressed }) => [styles.customRow, pressed && styles.pressed]}
             onPress={() => router.push({ pathname: '/custom-timer', params: { mode: 'focus' } })}>
             <View style={styles.customTextWrap}>
-              <Text style={styles.customTitle}>Custom Duration</Text>
-              <Text style={styles.customSub}>Set your own focus time</Text>
+              <Text style={styles.customTitle}>{t('sessionPicker.customTitle')}</Text>
+              <Text style={styles.customSub}>{t('sessionPicker.customSub')}</Text>
             </View>
             <View style={styles.customPill}>
-              <Text style={styles.customPillText}>Set ▾</Text>
+              <Text style={styles.customPillText}>{t('sessionPicker.customSet')}</Text>
             </View>
           </Pressable>
 
           {/* Mode toggle */}
           <View style={styles.modeToggle}>
             <Pressable style={[styles.modeSeg, mode === 'single' && styles.modeSegActive]} onPress={() => setMode('single')}>
-              <Text style={[styles.modeText, mode === 'single' && styles.modeTextActive]}>Single Player</Text>
+              <Text style={[styles.modeText, mode === 'single' && styles.modeTextActive]}>{t('sessionPicker.singlePlayer')}</Text>
             </Pressable>
             <Pressable style={[styles.modeSeg, mode === 'multi' && styles.modeSegActive]} onPress={() => setMode('multi')}>
-              <Text style={[styles.modeText, mode === 'multi' && styles.modeTextActive]}>Multiplayer</Text>
+              <Text style={[styles.modeText, mode === 'multi' && styles.modeTextActive]}>{t('sessionPicker.multiplayer')}</Text>
             </Pressable>
           </View>
 
@@ -166,17 +167,18 @@ export default function SessionPickerScreen() {
           <View style={styles.breakInfo}>
             {mode === 'single' ? (
               <Text style={styles.breakInfoText}>
-                Includes one <Text style={styles.breakInfoBold}>{breakForSelected} min</Text> break
-                {'  ·  '}break = ⌊focus ÷ 12⌋
+                {breakForSelected > 0
+                  ? t('sessionPicker.breakInfoSingle', { min: breakForSelected })
+                  : t('sessionPicker.breakInfoNone')}
               </Text>
             ) : (
-              <Text style={styles.breakInfoText}>Take breaks anytime in multiplayer</Text>
+              <Text style={styles.breakInfoText}>{t('sessionPicker.breakInfoMulti')}</Text>
             )}
           </View>
 
           {/* Start */}
           <Pressable style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]} onPress={onStart}>
-            <Text style={styles.startBtnText}>Start Session  →</Text>
+            <Text style={styles.startBtnText}>{t('customTimer.startSession')}  →</Text>
           </Pressable>
         </ScrollView>
       </SafeAreaView>

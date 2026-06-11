@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -144,7 +144,23 @@ export default function EditRoomScreen() {
         <SafeAreaView style={styles.safe}>
           <View style={styles.header}>
             <Text style={styles.title}>{t('editRoom.editRoom')}</Text>
-            <Text style={styles.subtitle}>{t('editRoom.subtitle')}</Text>
+            {/* Render the subtitle with the actual pair button glyph spliced in
+                where the {link} marker sits (instead of a link emoji). */}
+            <View style={styles.subtitleRow}>
+              {t('editRoom.subtitle').split('{link}').map((part, i) => (
+                <Fragment key={i}>
+                  {i > 0 && (
+                    <View style={styles.subtitleBtn}>
+                      <View style={styles.subtitleGlyph}>
+                        <View style={styles.subtitleRing} />
+                        <View style={[styles.subtitleRing, styles.subtitleRing2]} />
+                      </View>
+                    </View>
+                  )}
+                  {part !== '' && <Text style={styles.subtitle}>{part}</Text>}
+                </Fragment>
+              ))}
+            </View>
           </View>
 
           <Text style={styles.sectionTitle}>{t('editRoom.background')}</Text>
@@ -285,6 +301,20 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 22, fontWeight: '800', color: P.brown },
   subtitle: { fontSize: 12.5, color: P.mutedBrown, fontWeight: '500', textAlign: 'center', lineHeight: 17 },
+  // Subtitle laid out as a wrapping row so the real pair button can sit inline.
+  subtitleRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' },
+  // A mini copy of `pairBtn` rendered inline within the subtitle text.
+  subtitleBtn: {
+    width: 26, height: 20, borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.92)', borderWidth: 1.5, borderColor: P.jam,
+    alignItems: 'center', justifyContent: 'center', marginHorizontal: 3,
+  },
+  subtitleGlyph: { width: 16, height: 9, justifyContent: 'center' },
+  subtitleRing: {
+    position: 'absolute', width: 9, height: 9, borderRadius: 5,
+    borderWidth: 1.6, borderColor: P.jam, left: 0,
+  },
+  subtitleRing2: { left: 7 },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: P.brown, marginTop: Spacing.one },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three },
   thumbCard: {

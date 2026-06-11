@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -17,8 +17,20 @@ import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } fro
 export default function StudyLobbyScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { active, isHost, myCode, roster, presentCodes, netStatus, roomId, start, leaveRoom } = useStudyRoom();
-  const [minutes, setMinutes] = useState(25);
+  const { active, isHost, canStartSelf, myCode, roster, presentCodes, netStatus, roomId, start, startSelf, leaveRoom, setPreferredMinutes } = useStudyRoom();
+  const [minutes, setMinutes] = useState(30);
+
+  // Everyone picks their own session length up front; remember this player's
+  // choice so their session runs for their chosen duration (not the host's).
+  const pickMinutes = (m: number) => {
+    setMinutes(m);
+    setPreferredMinutes(m);
+  };
+  useEffect(() => {
+    setPreferredMinutes(minutes);
+    // Run once on mount so the default is recorded even if untouched.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // If we somehow landed here without a room, bail home.
   if (!active) {
@@ -73,25 +85,19 @@ export default function StudyLobbyScreen() {
             })}
           </View>
 
-          {/* Duration (host picks) */}
-          {isHost ? (
-            <>
-              <Text style={styles.label}>{t('lobby.sessionLength')}</Text>
-              <View style={styles.lenGrid}>
-                {SESSION_LENGTHS.map((opt) => (
-                  <Pressable
-                    key={opt.minutes}
-                    onPress={() => setMinutes(opt.minutes)}
-                    style={[styles.lenCard, minutes === opt.minutes && styles.lenCardActive]}>
-                    <Text style={[styles.lenNum, minutes === opt.minutes && styles.lenNumActive]}>{opt.minutes}</Text>
-                    <Text style={styles.lenLabel}>{t('lobby.min')}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </>
-          ) : (
-            <Text style={styles.hint}>{t('lobby.hostPicks')}</Text>
-          )}
+          {/* Duration — everyone picks their own session length. */}
+          <Text style={styles.label}>{t('lobby.sessionLength')}</Text>
+          <View style={styles.lenGrid}>
+            {SESSION_LENGTHS.map((opt) => (
+              <Pressable
+                key={opt.minutes}
+                onPress={() => pickMinutes(opt.minutes)}
+                style={[styles.lenCard, minutes === opt.minutes && styles.lenCardActive]}>
+                <Text style={[styles.lenNum, minutes === opt.minutes && styles.lenNumActive]}>{opt.minutes}</Text>
+                <Text style={styles.lenLabel}>{t('lobby.min')}</Text>
+              </Pressable>
+            ))}
+          </View>
         </ScrollView>
 
         <View style={styles.actions}>
@@ -108,6 +114,14 @@ export default function StudyLobbyScreen() {
                 <Text style={styles.startText}>{t('lobby.startStudying')}</Text>
               </Pressable>
             </>
+          ) : canStartSelf ? (
+            // The room is already running — this is a late joiner. They start their
+            // own session (their own clock + chosen length) whenever ready.
+            <Pressable
+              onPress={() => startSelf({ durationMinutes: minutes, subjectName: t('lobby.studyRoomName'), taskId: null, taskTitle: null })}
+              style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]}>
+              <Text style={styles.startText}>{t('lobby.startStudying')}</Text>
+            </Pressable>
           ) : (
             <Text style={styles.hint}>{t('lobby.waitingHost')}</Text>
           )}

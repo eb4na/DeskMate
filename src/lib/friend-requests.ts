@@ -86,6 +86,23 @@ export async function listAcceptedFriends(myUserId: string): Promise<AcceptedFri
   );
 }
 
+/**
+ * The friend's auth user id, read from our accepted friend link. Works even if
+ * the friend has never synced a profile (so it's more reliable than looking them
+ * up in the public `profiles` table).
+ */
+export async function lookupFriendUserId(myUserId: string, friendCode: string): Promise<string | null> {
+  const code = friendCode.trim().toUpperCase();
+  const { data, error } = await supabase
+    .from('friend_requests')
+    .select('from_user, from_code, to_user, to_code')
+    .or(`and(from_user.eq.${myUserId},to_code.eq.${code}),and(to_user.eq.${myUserId},from_code.eq.${code})`)
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data.from_user === myUserId ? data.to_user : data.from_user;
+}
+
 export async function removeFriendLink(myUserId: string, otherCode: string): Promise<void> {
   await supabase
     .from('friend_requests')

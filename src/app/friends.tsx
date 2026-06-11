@@ -10,6 +10,8 @@ import type { Friend } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
 import { getCompanionImage } from '@/lib/companion-utils';
 import { joinPresence, newRoomId, sendInvite, type OnlineGameId } from '@/lib/game-net';
+import { hostGameInvite } from '@/lib/invite-actions';
+import { useStudyRoom } from '@/lib/use-study-room';
 import {
   acceptRequest,
   declineRequest,
@@ -57,8 +59,9 @@ const INVITE_GAMES: { id: OnlineGameId; nameKey: string; emoji: string }[] = [
 
 export default function FriendsScreen() {
   const { t } = useTranslation();
-  const { friendCode, friends, addFriend, removeFriend, setFriendProfile, profileDisplayName } = useApp();
+  const { friendCode, friends, addFriend, removeFriend, setFriendProfile, profileDisplayName, dmUnread } = useApp();
   const { user } = useAuth();
+  const studyRoom = useStudyRoom();
   const [input, setInput] = useState('');
   const [incoming, setIncoming] = useState<IncomingRequest[]>([]);
   const [busy, setBusy] = useState(false);
@@ -79,12 +82,7 @@ export default function FriendsScreen() {
       fromName: profileDisplayName || t('friendCard.friendFallback', { code: friendCode }),
     });
     setPlayFor(null);
-    if (game === 'batterdash') {
-      // Start a party as host; invite more friends from the lobby.
-      router.push({ pathname: '/cake-game', params: { room, role: 'host', netmode: 'party' } });
-    } else {
-      router.push({ pathname: '/break-game', params: { game, room, role: 'host' } });
-    }
+    hostGameInvite(game, room, studyRoom);
   };
 
   // On open: pull accepted friends + incoming requests from the cloud, and
@@ -222,15 +220,11 @@ export default function FriendsScreen() {
                 {incoming.map((req) => (
                   <View key={req.id} style={styles.friendRow}>
                     <View style={styles.friendAvatar}>
-                      {req.profile?.companionId !== undefined ? (
-                        <Image
-                          source={getCompanionImage(req.profile.companionId, req.profile.skinId)}
-                          style={styles.friendAvatarImg}
-                          contentFit="contain"
-                        />
-                      ) : (
-                        <Text style={styles.friendAvatarText}>{(req.fromCode[0] ?? '?').toUpperCase()}</Text>
-                      )}
+                      <Image
+                        source={getCompanionImage(req.profile?.companionId, req.profile?.skinId)}
+                        style={styles.friendAvatarImg}
+                        contentFit="contain"
+                      />
                     </View>
                     <View style={styles.friendInfo}>
                       <Text style={styles.friendName}>{req.profile?.displayName || t('friendCard.friendFallback', { code: req.fromCode })}</Text>
@@ -266,15 +260,11 @@ export default function FriendsScreen() {
                       onPress={() => router.push({ pathname: '/friend-card', params: { code: f.code } })}>
                       <View style={styles.avatarWrap}>
                         <View style={styles.friendAvatar}>
-                          {f.companionId !== undefined ? (
-                            <Image
-                              source={getCompanionImage(f.companionId, f.skinId)}
-                              style={styles.friendAvatarImg}
-                              contentFit="contain"
-                            />
-                          ) : (
-                            <Text style={styles.friendAvatarText}>{(f.code[0] ?? '?').toUpperCase()}</Text>
-                          )}
+                          <Image
+                            source={getCompanionImage(f.companionId, f.skinId)}
+                            style={styles.friendAvatarImg}
+                            contentFit="contain"
+                          />
                         </View>
                         <View style={[styles.statusDot, onlineCodes.has(f.code) ? styles.statusOnline : styles.statusOffline]} />
                       </View>
@@ -282,6 +272,18 @@ export default function FriendsScreen() {
                         <Text style={styles.friendName}>{f.displayName || f.name}</Text>
                         <Text style={styles.friendCode}>{onlineCodes.has(f.code) ? t('friends.onlineNow') : f.code}</Text>
                       </View>
+                    </Pressable>
+                    <Pressable
+                      style={({ pressed }) => [styles.chatBtn, pressed && styles.pressed]}
+                      onPress={() => router.push({ pathname: '/dm-chat', params: { code: f.code } })}>
+                      <Text style={styles.chatBtnText}>{t('friends.chat')}</Text>
+                      {(dmUnread[f.code] ?? dmUnread[f.code.toUpperCase()] ?? 0) > 0 && (
+                        <View style={styles.unreadBadge}>
+                          <Text style={styles.unreadBadgeText}>
+                            {dmUnread[f.code] ?? dmUnread[f.code.toUpperCase()]}
+                          </Text>
+                        </View>
+                      )}
                     </Pressable>
                     <Pressable style={({ pressed }) => [styles.playBtn, pressed && styles.pressed]} onPress={() => setPlayFor(f)}>
                       <Text style={styles.playBtnText}>{t('friends.play')}</Text>
@@ -454,6 +456,14 @@ const styles = StyleSheet.create({
   acceptBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
   playBtn: { backgroundColor: P.peach, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
   playBtnText: { color: P.brown, fontWeight: '800', fontSize: 13 },
+  chatBtn: { backgroundColor: P.pink, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
+  chatBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 13 },
+  unreadBadge: {
+    position: 'absolute', top: -5, right: -5, minWidth: 18, height: 18, borderRadius: 9,
+    backgroundColor: P.brown, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4,
+    borderWidth: 1.5, borderColor: '#FFFFFF',
+  },
+  unreadBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '900' },
 
   sheetRoot: { flex: 1, justifyContent: 'flex-end' },
   sheetBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(48,32,24,0.4)' },

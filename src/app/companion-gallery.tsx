@@ -11,13 +11,13 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Rect } from 'react-native-svg';
 
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
-import { BUN_SKINS, getBunSkinImage, getCompanionSkinImage, getCompanionSkins, getStarterActiveId, SHOP_COMPANIONS } from '@/lib/companion-utils';
+import { BUN_SKINS, getBunSkinImage, getCompanionSkinImage, getCompanionSkins, getStarterActiveId, localizeCompanionName, localizeOutfitName, SHOP_COMPANIONS } from '@/lib/companion-utils';
 import { SHOP_ITEMS } from '@/constants/shop-data';
 
 const getShopItem = (id: string) => SHOP_ITEMS.find((s) => s.id === id);
@@ -62,6 +62,26 @@ function HangerIcon({ color = '#B06A50', size = 18 }: { color?: string; size?: n
   );
 }
 
+// Solid pink padlock — shown on locked outfits (no text needed).
+function PinkLock({ size = 16 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      {/* shackle */}
+      <Path
+        d="M8 11V8.5a4 4 0 0 1 8 0V11"
+        stroke="#F2A0B5"
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* body */}
+      <Rect x="5.5" y="10.5" width="13" height="9.5" rx="2.6" fill="#F2A0B5" />
+      {/* keyhole */}
+      <Path d="M12 14v3" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 // Per-companion taglines shown under each name in the gallery (i18n keys).
 const TAGLINE_KEYS: Record<string, string> = {
   Bun: 'gallery.tagline_Bun',
@@ -69,6 +89,7 @@ const TAGLINE_KEYS: Record<string, string> = {
   Bunny: 'gallery.tagline_Bunny',
   Miel: 'gallery.tagline_Miel',
   Tira: 'gallery.tagline_Tira',
+  Hanji: 'gallery.tagline_Hanji',
 };
 
 type ObtainedCharacter = {
@@ -123,6 +144,9 @@ function GalleryContent() {
     else if (wardrobeFor) setCompanionSkin(wardrobeFor.id, skinId);
   };
 
+  // Equipping a character drops you straight back to the home screen.
+  const goHome = () => (router.canGoBack() ? router.back() : router.replace('/'));
+
   const handleUseSlot = (slotId: string, hasRenderableImage: boolean) => {
     if (!hasRenderableImage) {
       Alert.alert(
@@ -132,6 +156,7 @@ function GalleryContent() {
       return;
     }
     setActiveCompanion(slotId);
+    goHome();
   };
 
   const confirmDelete = (slotId: string, name: string) => {
@@ -151,7 +176,7 @@ function GalleryContent() {
       isActive: activeCompanionId === getStarterActiveId('girl'),
       isGenerated: false,
       deletable: false,
-      onSelect: () => setDefaultCompanion('girl'),
+      onSelect: () => { setDefaultCompanion('girl'); goHome(); },
     },
     // Purchased shop companions you own.
     ...SHOP_COMPANIONS.filter((item) => ownedShopItems.includes(item.id)).map((item) => ({
@@ -162,7 +187,7 @@ function GalleryContent() {
       isActive: activeCompanionId === `shop:${item.id}`,
       isGenerated: false,
       deletable: false,
-      onSelect: () => setActiveCompanion(`shop:${item.id}`),
+      onSelect: () => { setActiveCompanion(`shop:${item.id}`); goHome(); },
     })),
     ...companionSlots.map((slot) => ({
       id: slot.id,
@@ -204,7 +229,7 @@ function GalleryContent() {
                 )}
                 <Pressable
                   style={({ pressed }) => [styles.hangerBtn, pressed && styles.pressed]}
-                  onPress={() => setWardrobeFor({ id: char.id, name: char.name })}
+                  onPress={() => setWardrobeFor({ id: char.id, name: localizeCompanionName(char.name, t) })}
                   hitSlop={8}>
                   <HangerIcon color="#FFFFFF" size={22} />
                 </Pressable>
@@ -216,7 +241,7 @@ function GalleryContent() {
                   )}
                 </View>
                 <Text style={styles.companionName} numberOfLines={1}>
-                  {char.name}
+                  {localizeCompanionName(char.name, t)}
                   {char.isGenerated ? ' 🎨' : ''}
                 </Text>
                 <Text style={styles.companionSubtitle} numberOfLines={2}>{TAGLINE_KEYS[char.name] ? t(TAGLINE_KEYS[char.name]) : t('gallery.defaultTagline')}</Text>
@@ -274,7 +299,7 @@ function GalleryContent() {
                         onPress={() => {
                           if (locked) {
                             const item = skin.shopItemId ? getShopItem(skin.shopItemId) : null;
-                            if (item) setBuyItem({ id: item.id, name: item.name, image: skin.image, price: item.price });
+                            if (item) setBuyItem({ id: item.id, name: localizeOutfitName(skin.name, t), image: skin.image, price: item.price });
                           } else {
                             equipWardrobeSkin(skin.id);
                           }
@@ -287,16 +312,14 @@ function GalleryContent() {
                           />
                           {locked && (
                             <View style={styles.lockBadge}>
-                              <Text style={styles.lockBadgeText}>🔒</Text>
+                              <PinkLock size={16} />
                             </View>
                           )}
                         </View>
                         <Text style={styles.skinName} numberOfLines={1}>
-                          {skin.emoji} {skin.name}
+                          {skin.emoji} {localizeOutfitName(skin.name, t)}
                         </Text>
-                        {locked ? (
-                          <Text style={styles.skinLockedText}>{t('gallery.tapToUnlock')}</Text>
-                        ) : equipped ? (
+                        {locked ? null : equipped ? (
                           <View style={styles.skinPill}>
                             <Text style={styles.skinPillText}>{t('gallery.wearing')}</Text>
                           </View>
@@ -504,8 +527,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  lockBadgeText: { fontSize: 15 },
-  skinLockedText: { fontSize: 11.5, color: P.pink, fontWeight: '800', marginTop: 6 },
   skinName: { fontSize: 14, fontWeight: '800', color: P.brown, textAlign: 'center' },
   skinPill: {
     marginTop: 4,

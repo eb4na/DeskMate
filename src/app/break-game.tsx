@@ -6,7 +6,7 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Dimensions, Pressable, ScrollView, Share, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Companion } from '@/components/companion';
@@ -28,7 +28,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 // ─── Types ───────────────────────────────────────────────────────────────────
 type GameId = 'tictactoe' | 'connect4' | 'cakekitchen';
 type Phase = 'select' | 'playing' | 'resting' | 'over';
-type TicTacToeMode = 'ai' | 'friend';
+type TicTacToeMode = 'ai' | 'friend' | 'online';
 
 // ─── Tic-Tac-Toe ─────────────────────────────────────────────────────────────
 type Cell = 'X' | 'O' | null;
@@ -223,6 +223,8 @@ function TicTacToeGame({
     companionSlots,
     bunSkinId,
     companionSkins,
+    friendCode,
+    addFriend,
   } = useApp();
   const { width: winW, height: winH } = useWindowDimensions();
   const boardSize = Math.min(winW - 32, winH * 0.38, 340);
@@ -249,17 +251,29 @@ function TicTacToeGame({
   );
   const oppAvatar = companion.imageSource;
 
-  // Two-step flow like Connect 4: pick the opponent first, then play.
-  const [screen, setScreen] = useState<'mode' | 'play'>(online ? 'play' : 'mode');
+  // Whether this game came from an external friend invite (skip the picker; the
+  // back button exits straight out instead of returning to it).
+  const externalInvite = !!online;
+
+  // Three-way flow like Connect 4: pick the opponent, (online) lobby, then play.
+  const [screen, setScreen] = useState<'mode' | 'lobby' | 'play'>(externalInvite ? 'lobby' : 'mode');
   const [board, setBoard] = useState<Cell[]>(Array(9).fill(null));
   const [isPlayerTurn, setIsPlayerTurn] = useState(true);
-  const [mode, setMode] = useState<TicTacToeMode>('ai');
+  const [mode, setMode] = useState<TicTacToeMode>(externalInvite ? 'online' : 'ai');
   const aiMovePending = useRef(false);
 
-  // Online: host plays Hearts (X, moves first), guest plays Stars (O).
-  const mySymbol: 'X' | 'O' | null = online ? (online.isHost ? 'X' : 'O') : null;
-  const roomRef = useRef<GameRoom | null>(null);
+  // Online state — host plays Hearts (X, moves first), guest plays Stars (O).
+  const [mySymbol, setMySymbol] = useState<'X' | 'O' | null>(online ? (online.isHost ? 'X' : 'O') : null);
   const [opponentPresent, setOpponentPresent] = useState(false);
+  const [connecting, setConnecting] = useState(externalInvite);
+  const [joinInput, setJoinInput] = useState('');
+  const roomRef = useRef<GameRoom | null>(null);
+  const screenRef = useRef<'mode' | 'lobby' | 'play'>(externalInvite ? 'lobby' : 'mode');
+  useEffect(() => {
+    screenRef.current = screen;
+  }, [screen]);
+
+  const isOnline = mode === 'online';
 
   const { winner, line: winLine } = checkWinner(board);
   const gameOver = !!winner;
@@ -278,9 +292,22 @@ function TicTacToeGame({
     });
   };
 
-  useEffect(() => {
-    if (!online) return;
-    roomRef.current = joinGameRoom(online.room, online.isHost, {
+  const leaveRoom = () => {
+    roomRef.current?.leave();
+    roomRef.current = null;
+  };
+  useEffect(() => () => leaveRoom(), []);
+
+  // Join (or host) an online room. Presence flips the lobby into play once the
+  // opponent connects — mirrors Connect 4's lobby flow.
+  const connectRoom = (code: string, isHost: boolean) => {
+    setMode('online');
+    setMySymbol(isHost ? 'X' : 'O');
+    setOpponentPresent(false);
+    setConnecting(true);
+    setBoard(Array(9).fill(null));
+    leaveRoom();
+    roomRef.current = joinGameRoom(code, isHost, {
       onMessage: (type, data) => {
         if (type === 'move') {
           const d = data as { idx: number; symbol: 'X' | 'O' };
@@ -289,11 +316,41 @@ function TicTacToeGame({
           setBoard(Array(9).fill(null));
         }
       },
-      onPresence: setOpponentPresent,
+      onPresence: (present) => {
+        setOpponentPresent(present);
+        if (present) {
+          setConnecting(false);
+          if (screenRef.current !== 'play') {
+            setBoard(Array(9).fill(null));
+            setScreen('play');
+          }
+        }
+      },
     });
-    return () => roomRef.current?.leave();
+    setScreen('lobby');
+  };
+
+  // Launched straight from a friend invite — join the room, skip the picker.
+  useEffect(() => {
+    if (online) connectRoom(online.room, online.isHost);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const hostGame = () => {
+    if (!friendCode) return;
+    connectRoom(friendCode, true);
+  };
+
+  const joinGame = () => {
+    const code = joinInput.trim().toUpperCase();
+    if (code.length < 4) return;
+    addFriend(code);
+    connectRoom(code, false);
+  };
+
+  const shareCode = () => {
+    Share.share({ message: t('friends.shareMessage', { code: friendCode }) });
+  };
 
   const resetBoard = () => {
     aiMovePending.current = false;
@@ -301,26 +358,52 @@ function TicTacToeGame({
     setIsPlayerTurn(true);
   };
 
-  // Mode select → play.
+  // Mode select → play (offline modes only).
   const chooseMode = (nextMode: TicTacToeMode) => {
     setMode(nextMode);
     resetBoard();
     setScreen('play');
   };
 
-  // Back from the board: return to mode select (offline) or exit (online).
+  const backToModes = () => {
+    leaveRoom();
+    setMode('ai');
+    setMySymbol(null);
+    setOpponentPresent(false);
+    setConnecting(false);
+    resetBoard();
+    setScreen('mode');
+  };
+
+  // Back from the board: exit (external invite / online) or return to the picker.
   const backFromPlay = () => {
-    if (online) {
+    if (externalInvite) {
       onLeave?.();
+      return;
+    }
+    if (isOnline) {
+      backToModes();
       return;
     }
     resetBoard();
     setScreen('mode');
   };
 
+  // Top-left back target depends on the current screen.
+  const topBack = () => {
+    if (screen === 'mode') {
+      onLeave?.();
+    } else if (screen === 'lobby') {
+      if (externalInvite) onLeave?.();
+      else backToModes();
+    } else {
+      backFromPlay();
+    }
+  };
+
   const handlePress = (idx: number) => {
     if (board[idx] || gameOver) return;
-    if (online) {
+    if (isOnline) {
       if (!mySymbol || !myTurnOnline || !opponentPresent) return;
       applyMove(idx, mySymbol);
       roomRef.current?.send('move', { idx, symbol: mySymbol });
@@ -334,7 +417,6 @@ function TicTacToeGame({
   };
 
   useEffect(() => {
-    if (online) return;
     if (mode !== 'ai') return;
     if (isPlayerTurn || gameOver) return;
     const { winner: w } = checkWinner(board);
@@ -354,10 +436,10 @@ function TicTacToeGame({
       clearTimeout(t);
       aiMovePending.current = false;
     };
-  }, [board, gameOver, isPlayerTurn, mode, online]);
+  }, [board, gameOver, isPlayerTurn, mode]);
 
   const reset = () => {
-    if (online) {
+    if (isOnline) {
       setBoard(Array(9).fill(null));
       roomRef.current?.send('rematch');
       return;
@@ -365,7 +447,7 @@ function TicTacToeGame({
     resetBoard();
   };
 
-  const statusText = online
+  const statusText = isOnline
     ? gameOver
       ? winner === 'draw'
         ? t('games.draw')
@@ -400,20 +482,20 @@ function TicTacToeGame({
     ? winner === 'X' || winner === 'O'
       ? winner
       : null
-    : online
+    : isOnline
       ? nextSymbol
       : isPlayerTurn
         ? 'X'
         : 'O';
 
-  const xLabel = online
+  const xLabel = isOnline
     ? mySymbol === 'X'
       ? t('games.you')
       : t('games.friend')
     : mode === 'ai'
       ? t('games.you')
       : t('games.p1');
-  const oLabel = online
+  const oLabel = isOnline
     ? mySymbol === 'O'
       ? t('games.you')
       : t('games.friend')
@@ -421,12 +503,12 @@ function TicTacToeGame({
       ? companion.name
       : t('games.p2');
   // X is "you" except when online and you're playing O.
-  const xIsYou = online ? mySymbol === 'X' : true;
-  const oIsYou = online ? mySymbol === 'O' : false;
+  const xIsYou = isOnline ? mySymbol === 'X' : true;
+  const oIsYou = isOnline ? mySymbol === 'O' : false;
   // Avatars like Connect 4: human players show a silhouette placeholder; only
   // the companion (vs-AI opponent) and your own online card show real art.
-  const xAvatar = online ? (xIsYou ? youAvatar : null) : null;
-  const oAvatar = online ? (oIsYou ? youAvatar : null) : mode === 'ai' ? oppAvatar : null;
+  const xAvatar = isOnline ? (xIsYou ? youAvatar : null) : null;
+  const oAvatar = isOnline ? (oIsYou ? youAvatar : null) : mode === 'ai' ? oppAvatar : null;
 
   return (
     <View style={tttStyles.screen}>
@@ -439,7 +521,7 @@ function TicTacToeGame({
 
       {/* Back (to mode select / out) + close */}
       <Pressable
-        onPress={screen === 'mode' ? onLeave : backFromPlay}
+        onPress={topBack}
         hitSlop={10}
         style={({ pressed }) => [tttStyles.circleBtn, { top: insets.top + 6, left: 16 }, pressed && tttStyles.pressed]}>
         <ThemedText style={tttStyles.circleBtnText}>‹</ThemedText>
@@ -475,10 +557,69 @@ function TicTacToeGame({
                   <Image source={TTT_X} style={tttStyles.modePiece} contentFit="contain" />
                   <Image source={TTT_O} style={[tttStyles.modePiece, { marginLeft: -8 }]} contentFit="contain" />
                 </View>
-                <ThemedText type="smallBold" style={tttStyles.modeTitle}>{t('games.vsFriend')}</ThemedText>
-                <ThemedText type="small" style={tttStyles.modeSub}>{t('games.passAndPlay')}</ThemedText>
+                <ThemedText type="smallBold" style={tttStyles.modeTitle}>{t('games.passAndPlay')}</ThemedText>
+                <ThemedText type="small" style={tttStyles.modeSub}>{t('games.sameDevice')}</ThemedText>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [tttStyles.modeCard, pressed && tttStyles.pressed]}
+                onPress={() => { setMode('online'); setScreen('lobby'); }}>
+                <View style={tttStyles.modePieces}>
+                  <Image source={TTT_X} style={tttStyles.modePiece} contentFit="contain" />
+                  <Image source={TTT_O} style={[tttStyles.modePiece, { marginLeft: 4 }]} contentFit="contain" />
+                </View>
+                <ThemedText type="smallBold" style={tttStyles.modeTitle}>{t('connect4.online')}</ThemedText>
+                <ThemedText type="small" style={tttStyles.modeSub}>{t('connect4.playFriend')}</ThemedText>
               </Pressable>
             </View>
+          </>
+        ) : screen === 'lobby' ? (
+          /* ── Online lobby (host & wait / join by code) ── */
+          <>
+            {connecting && !opponentPresent ? (
+              <View style={tttStyles.lobbyCard}>
+                <ThemedText type="smallBold" style={tttStyles.lobbyHeading}>{t('connect4.waitingFriend')}</ThemedText>
+                <ThemedText type="small" style={tttStyles.lobbyHint}>{t('connect4.shareCodeHint')}</ThemedText>
+                <ThemedText style={tttStyles.codeBig}>{friendCode || '——'}</ThemedText>
+                <Pressable style={({ pressed }) => [tttStyles.primaryBtn, pressed && tttStyles.pressed]} onPress={shareCode}>
+                  <ThemedText type="smallBold" style={tttStyles.primaryBtnText}>{t('connect4.shareCode')}</ThemedText>
+                </Pressable>
+                <Pressable onPress={backToModes} style={tttStyles.linkBtn}>
+                  <ThemedText type="small" style={tttStyles.lobbyHint}>{t('common.cancel')}</ThemedText>
+                </Pressable>
+              </View>
+            ) : (
+              <>
+                <View style={tttStyles.lobbyCard}>
+                  <ThemedText type="smallBold" style={tttStyles.lobbyHeading}>{t('connect4.yourCode')}</ThemedText>
+                  <ThemedText style={tttStyles.codeBig}>{friendCode || '——'}</ThemedText>
+                  <Pressable
+                    style={({ pressed }) => [tttStyles.primaryBtn, !friendCode && tttStyles.btnDisabled, pressed && tttStyles.pressed]}
+                    onPress={hostGame}
+                    disabled={!friendCode}>
+                    <ThemedText type="smallBold" style={tttStyles.primaryBtnText}>{t('connect4.hostWait')}</ThemedText>
+                  </Pressable>
+                </View>
+                <View style={tttStyles.lobbyCard}>
+                  <ThemedText type="smallBold" style={tttStyles.lobbyHeading}>{t('connect4.joinFriend')}</ThemedText>
+                  <TextInput
+                    style={tttStyles.codeInput}
+                    value={joinInput}
+                    onChangeText={(txt) => setJoinInput(txt.toUpperCase())}
+                    placeholder={t('friends.enterFriendCode')}
+                    placeholderTextColor="#C8A98F"
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    maxLength={8}
+                  />
+                  <Pressable
+                    style={({ pressed }) => [tttStyles.primaryBtn, joinInput.trim().length < 4 && tttStyles.btnDisabled, pressed && tttStyles.pressed]}
+                    onPress={joinGame}
+                    disabled={joinInput.trim().length < 4}>
+                    <ThemedText type="smallBold" style={tttStyles.primaryBtnText}>{t('connect4.joinGame')}</ThemedText>
+                  </Pressable>
+                </View>
+              </>
+            )}
           </>
         ) : (
           /* ── Play ── */
@@ -597,23 +738,55 @@ const tttStyles = StyleSheet.create({
     paddingVertical: 7,
   },
   subPillText: { color: '#A85A4A', fontSize: 14 },
-  modeCards: { flexDirection: 'row', gap: Spacing.three },
+  modeCards: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.two },
   modeCard: {
-    width: 138,
+    width: 108,
     borderRadius: 22,
     paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.two,
+    paddingHorizontal: Spacing.one,
     alignItems: 'center',
     gap: 6,
     backgroundColor: 'rgba(255,252,248,0.92)',
     borderWidth: 1.5,
     borderColor: '#F4D7DE',
   },
-  modeIcon: { width: 76, height: 76 },
-  modePieces: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 76 },
-  modePiece: { width: 48, height: 48 },
-  modeTitle: { color: '#A85A4A', fontSize: 16, textAlign: 'center' },
-  modeSub: { color: '#9A8978', textAlign: 'center' },
+  modeIcon: { width: 60, height: 60 },
+  modePieces: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 60 },
+  modePiece: { width: 40, height: 40 },
+  modeTitle: { color: '#A85A4A', fontSize: 15, textAlign: 'center' },
+  modeSub: { color: '#9A8978', textAlign: 'center', fontSize: 11 },
+  // Online lobby
+  lobbyCard: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: 18,
+    padding: Spacing.three,
+    alignItems: 'center',
+    gap: Spacing.two,
+    backgroundColor: 'rgba(255,252,248,0.94)',
+    borderWidth: 1.5,
+    borderColor: '#F4D7DE',
+  },
+  lobbyHeading: { color: '#A85A4A', fontSize: 15, textAlign: 'center' },
+  lobbyHint: { color: '#9A8978', textAlign: 'center' },
+  codeBig: { fontSize: 28, fontWeight: '800', letterSpacing: 4, color: '#A85A4A' },
+  codeInput: {
+    width: '100%',
+    borderWidth: 1.5,
+    borderColor: '#E7C9A9',
+    borderRadius: 12,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 10,
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: 4,
+    color: '#A85A4A',
+  },
+  primaryBtn: { backgroundColor: '#F2A0B5', borderRadius: 999, paddingHorizontal: 28, paddingVertical: 11 },
+  primaryBtnText: { color: '#FFF' },
+  btnDisabled: { opacity: 0.45 },
+  linkBtn: { paddingVertical: Spacing.one },
   statusPill: {
     borderRadius: 999,
     paddingHorizontal: 22,
@@ -837,13 +1010,13 @@ export default function BreakGameScreen() {
         )}
 
         {phase === 'select' ? (
-          // The game picker is styled like a little phone, with the home button
-          // sitting on the "chin" below the screen.
-          <View style={styles.phoneFrame}>
-            <View style={styles.phoneNotch} />
-            <View style={styles.phoneScreen}>
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.phoneScreenContent}>
-                <ThemedView style={styles.selectContent}>
+          // Full-screen game picker.
+          <>
+            <ScrollView
+              style={styles.scrollFlex}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.selectScrollContent}>
+              <ThemedView style={styles.selectContent}>
               <ThemedView style={styles.selectHeader}>
                 <ThemedText style={styles.selectTitle}>
                   {t('games.chooseGame')}
@@ -911,20 +1084,17 @@ export default function BreakGameScreen() {
                   <ThemedText type="linkPrimary">{t('games.justRest')}</ThemedText>
                 </Pressable>
               )}
-                </ThemedView>
-              </ScrollView>
-            </View>
-            {/* Phone "chin" with the home button */}
-            <View style={styles.phoneChin}>
-              <Pressable
-                style={({ pressed }) => [styles.homeBtn, pressed && styles.pressed]}
-                onPress={goHome}
-                hitSlop={8}
-                accessibilityLabel={t('nav.home')}>
-                <HomeTabIcon color="#D86F9C" size={26} />
-              </Pressable>
-            </View>
-          </View>
+              </ThemedView>
+            </ScrollView>
+            {/* Home button */}
+            <Pressable
+              style={({ pressed }) => [styles.homeBtn, pressed && styles.pressed]}
+              onPress={goHome}
+              hitSlop={8}
+              accessibilityLabel={t('nav.home')}>
+              <HomeTabIcon color="#D86F9C" size={26} />
+            </Pressable>
+          </>
         ) : phase === 'resting' ? (
           <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollFlex}>
             <ThemedView style={styles.restContent}>
@@ -991,42 +1161,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     gap: Spacing.three,
   },
-  scrollFlex: { flex: 1 },
-  // "Phone" frame around the game picker
-  phoneFrame: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 40,
-    borderWidth: 3,
-    borderColor: '#F2C6D6',
-    paddingTop: 14,
-    paddingHorizontal: 10,
-    paddingBottom: 6,
-    alignItems: 'center',
-    shadowColor: '#C98AA0',
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
-  },
-  phoneNotch: {
-    width: 56,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#F2C6D6',
-    marginBottom: 8,
-  },
-  phoneScreen: {
-    flex: 1,
-    width: '100%',
-    borderRadius: 28,
-    overflow: 'hidden',
-    backgroundColor: '#FFFDFB',
-    borderWidth: 1.5,
-    borderColor: '#F6DDE7',
-  },
-  phoneScreenContent: { padding: Spacing.three, paddingBottom: Spacing.four, gap: Spacing.three },
-  phoneChin: { height: 58, alignItems: 'center', justifyContent: 'center' },
+  scrollFlex: { flex: 1, width: '100%' },
+  selectScrollContent: { paddingBottom: Spacing.three },
   timerBar: {
     borderRadius: 16,
     padding: Spacing.three,

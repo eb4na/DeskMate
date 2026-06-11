@@ -36,10 +36,18 @@ type StudyRoomValue = {
   netStatus: string;
   roomId: string | null;
   hostBackgroundId: string | null;
+  hostDeskId: string | null;
+  canStartSelf: boolean;
   joinRoom: (roomId: string, isHost: boolean) => void;
   leaveRoom: () => void;
   start: (opts: StudyStartOpts) => void;
+  // A guest joining an already-running room starts their own session on their own
+  // clock (no broadcast). Used by the lobby's late-joiner Start button.
+  startSelf: (opts: StudyStartOpts) => void;
   setStatus: (s: StudyStatus) => void;
+  // Each player picks their own session length up front; the host only triggers
+  // the synchronized start. Everyone then studies for their own chosen duration.
+  setPreferredMinutes: (minutes: number) => void;
 };
 
 const StudyRoomContext = createContext<StudyRoomValue | null>(null);
@@ -53,6 +61,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     bunSkinId,
     startActiveSession,
     equippedBackgroundRoomId,
+    equippedDeskRoomId,
   } = useApp();
 
   const myCode = friendCode;
@@ -70,15 +79,29 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
   const [statusMap, setStatusMap] = useState<Record<string, StudyStatus>>({});
   const [presentCodes, setPresentCodes] = useState<string[]>([]);
   const [netStatus, setNetStatus] = useState('');
-  // Host's room background — everyone in the room studies in the host's room.
+  // Host's room — everyone in the room studies with the host's background + desk.
   const [hostBackgroundId, setHostBackgroundId] = useState<string | null>(null);
+  const [hostDeskId, setHostDeskId] = useState<string | null>(null);
+  // True only for a late joiner (joined a room that's already running): the lobby
+  // shows them a "Start studying" button to begin on their own clock.
+  const [canStartSelf, setCanStartSelf] = useState(false);
 
   const isHostRef = useRef(isHost);
   isHostRef.current = isHost;
+  // This player's own chosen session length (null until they pick one → falls
+  // back to the host's broadcast duration).
+  const myPreferredMinutes = useRef<number | null>(null);
   const beginTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Mirror of `begun` for synchronous reads inside the realtime closure, plus the
+  // last begin payload so the host can re-sync a late joiner.
+  const begunRef = useRef(false);
+  const lastBeginRef = useRef<{ startAt: number; opts: StudyStartOpts; bgRoomId: string | null; deskRoomId: string | null } | null>(null);
+  // Synchronous roster mirror so the host can enforce the 4-person cap without
+  // racing React state.
+  const rosterRef = useRef<StudyRosterEntry[]>([]);
   // Latest identity, so the realtime closure (created on join) reads current values.
-  const meRef = useRef({ myCode, myName, myCompanionId, mySkinId, bgRoomId: equippedBackgroundRoomId });
-  meRef.current = { myCode, myName, myCompanionId, mySkinId, bgRoomId: equippedBackgroundRoomId };
+  const meRef = useRef({ myCode, myName, myCompanionId, mySkinId, bgRoomId: equippedBackgroundRoomId, deskRoomId: equippedDeskRoomId });
+  meRef.current = { myCode, myName, myCompanionId, mySkinId, bgRoomId: equippedBackgroundRoomId, deskRoomId: equippedDeskRoomId };
   const startRef = useRef(startActiveSession);
   startRef.current = startActiveSession;
 
@@ -89,6 +112,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
   // Schedule the synced session start for `startAt` and head to the home screen.
   const applyBegin = (startAt: number, opts: StudyStartOpts) => {
     setBegun(true);
+    begunRef.current = true;
     if (beginTimer.current) clearTimeout(beginTimer.current);
     const delay = Math.max(0, startAt - Date.now());
     beginTimer.current = setTimeout(() => {
@@ -101,7 +125,11 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
         startedAt: new Date(startAt).toISOString(),
         isMultiplayer: true,
       });
-      router.replace('/');
+      // The lobby (and any pickers) are presented as modals over the tabs. Pop
+      // them so the session takes over the real full-screen Home, rather than
+      // rendering Home *inside* the modal (which reads as a popup sheet).
+      if (router.canDismiss()) router.dismissAll();
+      else router.replace('/');
     }, delay);
   };
   const applyBeginRef = useRef(applyBegin);
@@ -117,8 +145,15 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     setStatusMap({});
     setPresentCodes([]);
     setHostBackgroundId(host ? meRef.current.bgRoomId : null);
+    setHostDeskId(host ? meRef.current.deskRoomId : null);
+    myPreferredMinutes.current = null;
+    begunRef.current = false;
+    lastBeginRef.current = null;
+    setCanStartSelf(false);
     const me = meRef.current;
-    setRoster([{ code: me.myCode, name: me.myName, isHost: host, companionId: me.myCompanionId, skinId: me.mySkinId }]);
+    const initialRoster = [{ code: me.myCode, name: me.myName, isHost: host, companionId: me.myCompanionId, skinId: me.mySkinId }];
+    rosterRef.current = initialRoster;
+    setRoster(initialRoster);
 
     room.current = joinGameRoom(
       id,
@@ -138,6 +173,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
           setRoster((prev) => {
             const next = prev.filter((e) => e.code === meRef.current.myCode || codes.includes(e.code));
             if (next.length !== prev.length) {
+              rosterRef.current = next;
               broadcastRoster(next);
               return next;
             }
@@ -148,25 +184,57 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
           if (type === 'hello') {
             if (!isHostRef.current) return;
             const d = data as { code: string; name: string; companionId?: string; skinId?: string };
-            setRoster((prev) => {
-              const exists = prev.some((e) => e.code === d.code);
-              const next = exists
-                ? prev.map((e) => (e.code === d.code ? { ...e, name: d.name, companionId: d.companionId, skinId: d.skinId } : e))
-                : [...prev, { code: d.code, name: d.name, isHost: false, companionId: d.companionId, skinId: d.skinId }];
-              broadcastRoster(next);
-              setTimeout(() => broadcastRoster(next), 400); // beat the subscribe race
-              return next;
-            });
+            const prev = rosterRef.current;
+            const exists = prev.some((e) => e.code === d.code);
+            // Cap the room at 4 — silently ignore a NEW person once full.
+            if (!exists && prev.length >= 4) return;
+            const next = exists
+              ? prev.map((e) => (e.code === d.code ? { ...e, name: d.name, companionId: d.companionId, skinId: d.skinId } : e))
+              : [...prev, { code: d.code, name: d.name, isHost: false, companionId: d.companionId, skinId: d.skinId }];
+            rosterRef.current = next;
+            setRoster(next);
+            broadcastRoster(next);
+            setTimeout(() => broadcastRoster(next), 400); // beat the subscribe race
+            // If the session is already running, re-send `begin` so this late joiner
+            // learns the room is live (and gets the host's room/desk). The `resend`
+            // flag tells them NOT to auto-sync — they pick their own length + Start.
+            // Existing members ignore it (their begunRef is already true).
+            if (begunRef.current && lastBeginRef.current) {
+              const b = lastBeginRef.current;
+              room.current?.send('begin', { startAt: b.startAt, ...b.opts, bgRoomId: b.bgRoomId, deskRoomId: b.deskRoomId, resend: true });
+            }
           } else if (type === 'roster') {
-            setRoster((data as { players: StudyRosterEntry[] }).players);
+            const players = (data as { players: StudyRosterEntry[] }).players;
+            rosterRef.current = players;
+            setRoster(players);
           } else if (type === 'status') {
             const d = data as { code: string; status: StudyStatus };
             setStatusMap((prev) => ({ ...prev, [d.code]: d.status }));
           } else if (type === 'begin') {
-            const d = data as { startAt: number; durationMinutes: number; subjectName: string | null; taskId: string | null; taskTitle: string | null; bgRoomId?: string | null };
+            // Idempotent: each member applies `begin` once. A re-sent begin (same
+            // startAt) is ignored by anyone already begun.
+            if (begunRef.current) return;
+            const d = data as { startAt: number; durationMinutes: number; subjectName: string | null; taskId: string | null; taskTitle: string | null; bgRoomId?: string | null; deskRoomId?: string | null; resend?: boolean };
+            begunRef.current = true;
+            setBegun(true);
             if (d.bgRoomId !== undefined) setHostBackgroundId(d.bgRoomId);
+            if (d.deskRoomId !== undefined) setHostDeskId(d.deskRoomId);
+            lastBeginRef.current = {
+              startAt: d.startAt,
+              opts: { durationMinutes: d.durationMinutes, subjectName: d.subjectName, taskId: d.taskId, taskTitle: d.taskTitle },
+              bgRoomId: d.bgRoomId ?? null,
+              deskRoomId: d.deskRoomId ?? null,
+            };
+            if (d.resend) {
+              // Late joiner: the room is already running. Don't auto-apply — surface
+              // a Start button so they pick their own length + start (startSelf).
+              setCanStartSelf(true);
+              return;
+            }
             applyBeginRef.current(d.startAt, {
-              durationMinutes: d.durationMinutes,
+              // Each player studies for their own chosen length; the host's start
+              // only sets the shared start moment. Fall back to host's if unset.
+              durationMinutes: myPreferredMinutes.current ?? d.durationMinutes,
               subjectName: d.subjectName,
               taskId: d.taskId,
               taskTitle: d.taskTitle,
@@ -174,11 +242,13 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
           } else if (type === 'leave') {
             const code = (data as { code: string }).code;
             if (!isHostRef.current) return;
-            setRoster((prev) => {
-              const next = prev.filter((e) => e.code === code ? false : true);
-              if (next.length !== prev.length) broadcastRoster(next);
-              return next;
-            });
+            const prev = rosterRef.current;
+            const next = prev.filter((e) => e.code !== code);
+            if (next.length !== prev.length) {
+              rosterRef.current = next;
+              setRoster(next);
+              broadcastRoster(next);
+            }
           }
         },
       },
@@ -195,24 +265,45 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     setRoomId(null);
     setIsHost(false);
     setBegun(false);
+    begunRef.current = false;
+    lastBeginRef.current = null;
+    rosterRef.current = [];
+    setCanStartSelf(false);
     setRoster([]);
     setStatusMap({});
     setPresentCodes([]);
     setHostBackgroundId(null);
+    setHostDeskId(null);
   };
 
   const start = (opts: StudyStartOpts) => {
     if (!isHostRef.current) return;
     const startAt = Date.now() + 800;
     const bgRoomId = meRef.current.bgRoomId;
+    const deskRoomId = meRef.current.deskRoomId;
     setHostBackgroundId(bgRoomId);
-    room.current?.send('begin', { startAt, ...opts, bgRoomId });
+    setHostDeskId(deskRoomId);
+    begunRef.current = true;
+    lastBeginRef.current = { startAt, opts, bgRoomId, deskRoomId };
+    room.current?.send('begin', { startAt, ...opts, bgRoomId, deskRoomId });
+    applyBeginRef.current(startAt, opts);
+  };
+
+  // A guest's own start when they join a room that's ALREADY running: they study
+  // on their own clock (their picked length), no broadcast. Reuses applyBegin
+  // (which dismisses the lobby → full-screen Home).
+  const startSelf = (opts: StudyStartOpts) => {
+    const startAt = Date.now() + 300;
     applyBeginRef.current(startAt, opts);
   };
 
   const setStatus = (s: StudyStatus) => {
     setStatusMap((prev) => ({ ...prev, [meRef.current.myCode]: s }));
     room.current?.send('status', { code: meRef.current.myCode, status: s });
+  };
+
+  const setPreferredMinutes = (minutes: number) => {
+    myPreferredMinutes.current = minutes;
   };
 
   // Clean up the connection if the provider ever unmounts (app teardown).
@@ -235,14 +326,18 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
       netStatus,
       roomId,
       hostBackgroundId,
+      hostDeskId,
+      canStartSelf,
       joinRoom,
       leaveRoom,
       start,
+      startSelf,
       setStatus,
+      setPreferredMinutes,
     }),
     // joinRoom/leaveRoom/start/setStatus are stable enough (read refs); deps are the state they expose.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [roomId, begun, isHost, myCode, roster, statusMap, presentCodes, netStatus, hostBackgroundId],
+    [roomId, begun, isHost, myCode, roster, statusMap, presentCodes, netStatus, hostBackgroundId, hostDeskId, canStartSelf],
   );
 
   return <StudyRoomContext.Provider value={value}>{children}</StudyRoomContext.Provider>;

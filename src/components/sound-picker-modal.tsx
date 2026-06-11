@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import { useApp } from '@/context/app-context';
 import { SHOP_ITEMS } from '@/constants/shop-data';
+import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
 
 const C = BakeryColors;
@@ -13,6 +14,7 @@ const C = BakeryColors;
  */
 export function SoundPickerModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { ownedShopItems, equippedShopItems, setEquippedSound } = useApp();
+  const { t } = useTranslation();
   const sounds = SHOP_ITEMS.filter((i) => i.category === 'sound' && ownedShopItems.includes(i.id));
   const equipped = equippedShopItems.sound;
 
@@ -21,16 +23,14 @@ export function SoundPickerModal({ visible, onClose }: { visible: boolean; onClo
       <View style={styles.root}>
         <Pressable style={styles.backdrop} onPress={onClose} />
         <View style={styles.card}>
-          <Text style={styles.title}>Study sounds</Text>
+          <Text style={styles.title}>{t('soundPicker.title')}</Text>
 
           {sounds.length === 0 ? (
-            <Text style={styles.empty}>
-              No sounds yet — buy some in the Shop’s Sounds and they’ll show up here to play while you study.
-            </Text>
+            <Text style={styles.empty}>{t('soundPicker.empty')}</Text>
           ) : (
             <ScrollView style={{ maxHeight: 300 }} contentContainerStyle={{ gap: Spacing.two }} showsVerticalScrollIndicator={false}>
               <Pressable onPress={() => setEquippedSound(null)} style={[styles.row, equipped == null && styles.rowActive]}>
-                <Text style={styles.rowText}>Off</Text>
+                <Text style={styles.rowText}>{t('soundPicker.off')}</Text>
                 {equipped == null && <Text style={styles.check}>✓</Text>}
               </Pressable>
               {sounds.map((s) => (
@@ -44,7 +44,7 @@ export function SoundPickerModal({ visible, onClose }: { visible: boolean; onClo
           )}
 
           <Pressable onPress={onClose} style={({ pressed }) => [styles.doneBtn, pressed && styles.pressed]}>
-            <Text style={styles.doneBtnText}>Done</Text>
+            <Text style={styles.doneBtnText}>{t('common.done')}</Text>
           </Pressable>
         </View>
       </View>

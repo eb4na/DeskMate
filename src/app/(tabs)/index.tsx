@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Easing, Image as RNImage, ImageBackground, PanResponder, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Animated, AppState, Easing, Image as RNImage, ImageBackground, PanResponder, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/coin-icon';
@@ -16,6 +16,8 @@ import { useApp } from '@/context/app-context';
 import i18n, { useTranslation } from '@/i18n';
 import { coinsForMinutes } from '@/constants/placeholder-data';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
+import { useAuth } from '@/context/auth-context';
+import { listIncomingRequests } from '@/lib/friend-requests';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { takePendingDragSession, setDragActive, type DragSessionData } from '@/lib/drag-session';
 import { showLoadingScreen } from '@/lib/loading-signal';
@@ -112,6 +114,25 @@ const SUNLIGHT = require('@/assets/images/home/sunlight.png');
 const DESK_STRAWBERRIES = require('@/assets/images/home/desk-strawberries.png');
 const DESK_EGGS = require('@/assets/images/home/desk-eggs.png');
 const DESK_BUTTER = require('@/assets/images/home/desk-butter.png');
+// Pudding desk art (swap these placeholder PNGs for desk-style versions).
+const DESK_MIXER_PUDDING = require('@/assets/images/home/desk-mixer-pudding.png');
+const DESK_MILK = require('@/assets/images/home/desk-milk.png');
+const DESK_SUGAR = require('@/assets/images/home/desk-sugar.png');
+const DESK_CORNSTARCH = require('@/assets/images/home/desk-cornstarch.png');
+// Berry croissant desk art (reuses the kitchen ingredient PNGs).
+const DESK_MIXER_CROISSANT = require('@/assets/images/cake/mixer-croissant.png');
+const DESK_FLOUR = require('@/assets/images/cake/base-flour.png');
+const DESK_CR_BUTTER = require('@/assets/images/cake/filling-butter.png');
+const DESK_BERRIES = require('@/assets/images/cake/topping-berries.png');
+// Sakura mochi + matcha crepe desk art (reuses the kitchen ingredient PNGs).
+const DESK_MIXER_SAKURA = require('@/assets/images/cake/mixer-sakura.png');
+const DESK_RICEFLOUR = require('@/assets/images/cake/base-riceFlour.png');
+const DESK_REDBEAN = require('@/assets/images/cake/filling-redBean.png');
+const DESK_SAKURALEAF = require('@/assets/images/cake/topping-sakuraLeaf.png');
+const DESK_MIXER_MATCHA = require('@/assets/images/cake/mixer-matcha.png');
+const DESK_MATCHA = require('@/assets/images/cake/base-matcha.png');
+const DESK_MATCHA_MILK = require('@/assets/images/cake/filling-milk.png');
+const DESK_EGGFLOUR = require('@/assets/images/cake/topping-eggFlour.png');
 const HOME_CAT = require('@/assets/images/bun/bun-home.png');
 const BUN_STUDYING = require('@/assets/images/bun/bun-studying.png');
 const STUDY_OVEN = require('@/assets/images/cake/oven.png');
@@ -132,13 +153,71 @@ const EXAM_CALENDAR_ICON = require('@/assets/images/home/exam-calendar-icon.png'
 const REMINDER_BELL_ICON = require('@/assets/images/home/reminder-bell-icon.png');
 const REMINDER_BREAD_ICON = require('@/assets/images/home/reminder-sundae-icon.png');
 
-const DRAG_INGREDIENTS = [
-  { id: 'eggs',         src: require('@/assets/images/home/desk-eggs.png') },
-  { id: 'strawberries', src: require('@/assets/images/home/desk-strawberries.png') },
-  { id: 'butter',       src: require('@/assets/images/home/desk-butter.png') },
-] as const;
+// Each equipped dessert puts its own mixer + 3 ingredients on the desk. The
+// three ingredients fill the same three desk slots (positions in the
+// `deskStrawberries` / `deskEggs` / `deskButter` styles, by index).
+type DeskIngredient = { id: string; src: number; style?: object };
+// `mixerStyle` overrides the default mixer box (size/position) per dessert, since
+// each mixer art has its own proportions.
+type DeskKit = {
+  mixer: number;
+  mixerStyle?: object;
+  ingredients: [DeskIngredient, DeskIngredient, DeskIngredient];
+};
 
-type DragId = 'eggs' | 'strawberries' | 'butter';
+const DESK_KITS: Record<string, DeskKit> = {
+  'strawberry-shortcake': {
+    mixer: DESK_MIXER,
+    ingredients: [
+      { id: 'strawberries', src: DESK_STRAWBERRIES },
+      { id: 'eggs', src: DESK_EGGS },
+      { id: 'butter', src: DESK_BUTTER },
+    ],
+  },
+  pudding: {
+    mixer: DESK_MIXER_PUDDING,
+    // Pudding mixer art has a tall rounded top — give the box the art's aspect
+    // (~0.914 w/h) so the motor head isn't letterboxed/cut, and keep it on-desk.
+    mixerStyle: { right: 6, bottom: '40%', width: 112, height: 123 },
+    ingredients: [
+      { id: 'milk', src: DESK_MILK },
+      { id: 'sugar', src: DESK_SUGAR },
+      { id: 'cornstarch', src: DESK_CORNSTARCH },
+    ],
+  },
+  'berry-croissant': {
+    mixer: DESK_MIXER_CROISSANT,
+    // Croissant mixer art is roughly square — match pudding's compact on-desk box.
+    mixerStyle: { right: 6, bottom: '40%', width: 116, height: 110 },
+    ingredients: [
+      { id: 'flour', src: DESK_FLOUR },
+      { id: 'butter', src: DESK_CR_BUTTER },
+      { id: 'berries', src: DESK_BERRIES },
+    ],
+  },
+  'sakura-mochi': {
+    mixer: DESK_MIXER_SAKURA,
+    // Sakura "mixer" art is a mixing bowl — keep it small so it doesn't dominate.
+    mixerStyle: { right: 10, bottom: '40%', width: 92, height: 88 },
+    ingredients: [
+      { id: 'riceFlour', src: DESK_RICEFLOUR },
+      { id: 'redBean', src: DESK_REDBEAN },
+      { id: 'sakuraLeaf', src: DESK_SAKURALEAF },
+    ],
+  },
+  'matcha-crepe': {
+    mixer: DESK_MIXER_MATCHA,
+    mixerStyle: { right: 6, bottom: '40%', width: 116, height: 114 },
+    ingredients: [
+      { id: 'matcha', src: DESK_MATCHA },
+      { id: 'milk', src: DESK_MATCHA_MILK },
+      { id: 'eggFlour', src: DESK_EGGFLOUR },
+    ],
+  },
+};
+const DEFAULT_DESK_FOOD = 'strawberry-shortcake';
+
+type DragId = string;
 
 function DraggableIngredient({
   id, src, style, onDropped, mixerCenterX, mixerCenterY,
@@ -214,11 +293,29 @@ export default function HomeScreen() {
     equippedDeskRoomId,
     addMoodEntry,
     startActiveSession,
+    selectedFoodId,
+    addCoins,
+    recordSession,
+    addSubjectTime,
   } = useApp();
+  const { user } = useAuth();
+
+  // Count of pending friend requests → red badge on the friend button.
+  // Refreshed whenever Home regains focus (e.g. after accepting/declining).
+  const [pendingRequests, setPendingRequests] = useState(0);
+
+  // Desk mixer + ingredients follow the equipped dessert. The 3 ingredients
+  // drop into these 3 fixed desk-slot positions, by index.
+  const deskKit = DESK_KITS[selectedFoodId] ?? DESK_KITS[DEFAULT_DESK_FOOD];
+  const DESK_SLOT_STYLES = [styles.deskStrawberries, styles.deskEggs, styles.deskButter];
   const studyRoom = useStudyRoom();
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [didHomeImageFail, setDidHomeImageFail] = useState(false);
   const handledCompletionId = useRef<string | null>(null);
+  // While true, the just-finished session plays its recipe-pop in the study view
+  // before we hand off to the finish screen.
+  const [finishingSession, setFinishingSession] = useState(false);
+  const finishParamsRef = useRef<Record<string, string> | null>(null);
   const [dragSession, setDragSession] = useState<DragSessionData | null>(null);
   const [droppedIds, setDroppedIds] = useState<Set<DragId>>(new Set());
   const fadeOverlay = useRef(new Animated.Value(0)).current;
@@ -226,16 +323,32 @@ export default function HomeScreen() {
   // Idle home companion: a gentle, slow bounce with a tiny squash-and-stretch.
   // 0 = resting/lowest (slightly squished), 1 = apex (slightly stretched).
   const charBounce = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
+  const bounceLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+  // (Re)start the idle loop from scratch. Native-driven loops can get paused by
+  // the OS (e.g. when the app is backgrounded) and not auto-resume, so we keep a
+  // handle and restart it whenever Home becomes active/focused.
+  const startBounce = useCallback(() => {
+    bounceLoopRef.current?.stop();
+    charBounce.setValue(0);
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(charBounce, { toValue: 1, duration: 900, easing: Easing.out(Easing.quad), useNativeDriver: true }),
         Animated.timing(charBounce, { toValue: 0, duration: 900, easing: Easing.in(Easing.quad), useNativeDriver: true }),
       ]),
     );
+    bounceLoopRef.current = loop;
     loop.start();
-    return () => loop.stop();
   }, [charBounce]);
+  useEffect(() => {
+    startBounce();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') startBounce();
+    });
+    return () => {
+      sub.remove();
+      bounceLoopRef.current?.stop();
+    };
+  }, [startBounce]);
   const charTranslateY = charBounce.interpolate({ inputRange: [0, 1], outputRange: [0, -7] });
   const charScaleY = charBounce.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1.02] });
   const charScaleX = charBounce.interpolate({ inputRange: [0, 1], outputRange: [1.02, 0.99] });
@@ -246,13 +359,25 @@ export default function HomeScreen() {
   const MIXER_CY_FROM_TOP = 852 * (1 - 0.30) - 235 * 0.55;
 
   useFocusEffect(useCallback(() => {
+    // Make sure the idle bounce is running each time Home regains focus.
+    startBounce();
     const session = takePendingDragSession();
     if (session) {
       setDragSession(session);
       setDroppedIds(new Set());
       fadeOverlay.setValue(0);
     }
-  }, []));
+    // Refresh the pending friend-request count for the badge.
+    let cancelled = false;
+    if (user?.id) {
+      listIncomingRequests(user.id)
+        .then((reqs) => { if (!cancelled) setPendingRequests(reqs.length); })
+        .catch(() => {});
+    } else {
+      setPendingRequests(0);
+    }
+    return () => { cancelled = true; };
+  }, [startBounce, user?.id]));
 
 
   const handleIngredientDropped = (id: DragId) => {
@@ -358,18 +483,32 @@ export default function HomeScreen() {
     if (activeSession.isMultiplayer) return;
 
     handledCompletionId.current = activeSession.id;
-    clearActiveSession();
-    router.push({
-      pathname: '/session-complete',
-      params: {
-        sessionLength: String(activeSession.durationMinutes),
-        subject: activeSession.subjectName ?? '',
-        coinsEarned: String(coinsForMinutes(activeSession.durationMinutes)),
-        taskId: activeSession.taskId ?? '',
-        taskTitle: activeSession.taskTitle ?? '',
-      },
-    });
-  }, [activeSession, clearActiveSession, sessionSecondsLeft]);
+    // Stash the finish params, then let the study view play the recipe-pop out of
+    // the timer for a beat before we navigate (see the effect below).
+    finishParamsRef.current = {
+      sessionLength: String(activeSession.durationMinutes),
+      subject: activeSession.subjectName ?? '',
+      coinsEarned: String(coinsForMinutes(activeSession.durationMinutes)),
+      taskId: activeSession.taskId ?? '',
+      taskTitle: activeSession.taskTitle ?? '',
+    };
+    setFinishingSession(true);
+  }, [activeSession, sessionSecondsLeft]);
+
+  // After the recipe pops out of the timer, hand off to the finish screen.
+  useEffect(() => {
+    if (!finishingSession) return;
+    const id = setTimeout(() => {
+      clearActiveSession();
+      setFinishingSession(false);
+      if (finishParamsRef.current) {
+        router.push({ pathname: '/session-complete', params: finishParamsRef.current });
+        finishParamsRef.current = null;
+      }
+    }, 1700);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finishingSession]);
 
   const handleExamPress = () => {
     if (featuredExam) {
@@ -399,21 +538,14 @@ export default function HomeScreen() {
           const endedSession = activeSession;
           clearActiveSession();
 
+          // Ending midway skips the finish screen. Credit any earned coins and
+          // record the partial session here, then go straight back to home.
           if (cancelCoins > 0) {
-            router.push({
-              pathname: '/session-complete',
-              params: {
-                sessionLength: String(sessionElapsedMinutes),
-                subject: endedSession.subjectName ?? '',
-                coinsEarned: String(cancelCoins),
-                taskId: endedSession.taskId ?? '',
-                taskTitle: endedSession.taskTitle ?? '',
-              },
-            });
-          } else {
-            // Back to home — show the loading transition.
-            showLoadingScreen();
+            addCoins(cancelCoins);
+            recordSession(sessionElapsedMinutes);
+            addSubjectTime(endedSession.subjectName, sessionElapsedMinutes);
           }
+          showLoadingScreen();
         },
       },
     ]);
@@ -460,6 +592,7 @@ export default function HomeScreen() {
                 secondsLeft={sessionSecondsLeft}
                 onStop={handleStopSession}
                 onBreakGame={handleBreakGame}
+                finishing={finishingSession}
               />
             </View>
           ) : (
@@ -618,6 +751,13 @@ export default function HomeScreen() {
                   onPress={() => router.push('/friends')}
                   accessibilityLabel={t('home.a11yFriends')}>
                   <Image source={FRIEND_BTN} style={styles.friendBtnImg} contentFit="contain" />
+                  {pendingRequests > 0 && (
+                    <View style={styles.friendReqBadge} pointerEvents="none">
+                      <ThemedText style={styles.friendReqBadgeText}>
+                        {pendingRequests > 9 ? '9+' : pendingRequests}
+                      </ThemedText>
+                    </View>
+                  )}
                 </Pressable>
               )}
 
@@ -641,19 +781,20 @@ export default function HomeScreen() {
               />
               {/* Thin line marking the table's front edge */}
               <View style={styles.tableEdgeLine} pointerEvents="none" />
-              {/* Mixer on desk */}
-              <RNImage source={DESK_MIXER} style={styles.deskMixer} resizeMode="contain" pointerEvents="none" />
+              {/* Mixer on desk — matches the equipped dessert */}
+              <RNImage source={deskKit.mixer} style={[styles.deskMixer, deskKit.mixerStyle]} resizeMode="contain" pointerEvents="none" />
 
-              {/* Ingredients — draggable in drag mode, static otherwise */}
+              {/* Ingredients — draggable in drag mode, static otherwise. The 3
+                  ingredients fill the 3 fixed desk slots, by index. */}
               {dragSession ? (
                 <>
-                  {DRAG_INGREDIENTS.map((ing) => (
+                  {deskKit.ingredients.map((ing, idx) => (
                     droppedIds.has(ing.id) ? null : (
                       <DraggableIngredient
                         key={ing.id}
                         id={ing.id}
                         src={ing.src}
-                        style={styles[`desk${ing.id.charAt(0).toUpperCase() + ing.id.slice(1)}` as keyof typeof styles]}
+                        style={[DESK_SLOT_STYLES[idx], ing.style]}
                         onDropped={() => handleIngredientDropped(ing.id)}
                         mixerCenterX={MIXER_CX}
                         mixerCenterY={MIXER_CY_FROM_TOP}
@@ -673,9 +814,9 @@ export default function HomeScreen() {
                 </>
               ) : (
                 <>
-                  <RNImage source={DESK_STRAWBERRIES} style={styles.deskStrawberries} resizeMode="contain" />
-                  <RNImage source={DESK_EGGS} style={styles.deskEggs} resizeMode="contain" />
-                  <RNImage source={DESK_BUTTER} style={styles.deskButter} resizeMode="contain" />
+                  {deskKit.ingredients.map((ing, idx) => (
+                    <RNImage key={ing.id} source={ing.src} style={[DESK_SLOT_STYLES[idx], ing.style]} resizeMode="contain" />
+                  ))}
                 </>
               )}
 
@@ -779,10 +920,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   friendBtnImg: { width: 62, height: 62 },
+  friendReqBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FF4D5E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  friendReqBadgeText: { color: '#FFFFFF', fontSize: 11, lineHeight: 14, fontWeight: '900' },
   gameFloating: {
     backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: -18,
   },
   gameFloatingImg: { width: 72, height: 72 },
   dragPrompt: {
@@ -1359,7 +1516,7 @@ const styles = StyleSheet.create({
   startSessionInner: {
     marginRight: 10,
     width: 262,
-    height: 68,
+    height: 87,
     alignItems: 'center',
     justifyContent: 'center',
   },

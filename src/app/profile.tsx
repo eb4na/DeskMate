@@ -7,22 +7,19 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot';
 
-import {
-  BakeryBellEmoji,
-  BakeryCakeEmoji,
-  BakeryFlameEmoji,
-} from '@/components/bakery-emoji';
+const STREAK_ICON = require('@/assets/images/profile/streak-cupcake.png');
+const BEST_STREAK_ICON = require('@/assets/images/profile/best-streak-cupcake.png');
+const STUDIED_ICON = require('@/assets/images/profile/studied-book.png');
+const BIRTHDAY_ICON = require('@/assets/images/profile/birthday-candle.png');
 import { DateWheelPicker } from '@/components/date-wheel-picker';
 import { useApp } from '@/context/app-context';
-import { useAuth } from '@/context/auth-context';
-import { uploadProfile } from '@/lib/profile-sync';
 import i18n, { useTranslation } from '@/i18n';
-import { ROOM_PAIRS } from '@/constants/room-data';
+import { ROOM_PAIRS, backgroundOwned } from '@/constants/room-data';
 import {
   BUN_SKINS,
   type BunSkin,
@@ -31,6 +28,7 @@ import {
   getCompanionSkins,
   getStarterActiveId,
   isBunSkinUnlocked,
+  localizeCompanionName,
   resolveActiveCompanion,
   SHOP_COMPANIONS,
 } from '@/lib/companion-utils';
@@ -76,41 +74,11 @@ export default function ProfileScreen() {
     ownedShopItems,
   } = useApp();
 
-  const { user } = useAuth();
   const cardRef = useRef<View>(null);
   const [editingBirthday, setEditingBirthday] = useState(!!profileBirthday);
 
-  // Sync this card to the cloud (debounced) so friends see the real character.
-  useEffect(() => {
-    if (!user?.id || !friendCode) return;
-    const timer = setTimeout(() => {
-      uploadProfile(user.id, {
-        friendCode,
-        displayName: profileDisplayName,
-        description: profileDescription,
-        birthday: profileBirthday,
-        companionId: profileCompanionId,
-        skinId: profileSkinId,
-        backgroundId: profileBackgroundId,
-        currentStreak: streak.currentStreak,
-        longestStreak: streak.longestStreak,
-        totalMinutes,
-      });
-    }, 700);
-    return () => clearTimeout(timer);
-  }, [
-    user?.id,
-    friendCode,
-    profileDisplayName,
-    profileDescription,
-    profileBirthday,
-    profileCompanionId,
-    profileSkinId,
-    profileBackgroundId,
-    streak.currentStreak,
-    streak.longestStreak,
-    totalMinutes,
-  ]);
+  // Cloud profile sync (name + current character + stats) runs app-wide in
+  // app-context now, so friends see my character even without opening this screen.
 
   // Characters the player can put on their card: Bun + any owned shop companions.
   const starterId = getStarterActiveId(defaultCompanionId);
@@ -178,22 +146,22 @@ export default function ProfileScreen() {
                 <Text style={styles.name} numberOfLines={2}>{name}</Text>
 
                 <View style={styles.statRow}>
-                  <BakeryFlameEmoji size={16} />
+                  <Image source={STREAK_ICON} style={styles.statIcon} contentFit="contain" />
                   <Text style={styles.statLabel}>{t('profileCard.currentStreak')}</Text>
                   <Text style={styles.statValue}>{streak.currentStreak}d</Text>
                 </View>
                 <View style={styles.statRow}>
-                  <BakeryCakeEmoji size={16} />
+                  <Image source={BEST_STREAK_ICON} style={styles.statIcon} contentFit="contain" />
                   <Text style={styles.statLabel}>{t('profileCard.bestStreak')}</Text>
                   <Text style={styles.statValue}>{streak.longestStreak}d</Text>
                 </View>
                 <View style={styles.statRow}>
-                  <BakeryBellEmoji size={16} />
+                  <Image source={STUDIED_ICON} style={styles.statIcon} contentFit="contain" />
                   <Text style={styles.statLabel}>{t('profileCard.studied')}</Text>
                   <Text style={styles.statValue}>{hoursLabel}</Text>
                 </View>
                 <View style={styles.statRow}>
-                  <Text style={styles.statEmojiFallback}>🎂</Text>
+                  <Image source={BIRTHDAY_ICON} style={styles.statIcon} contentFit="contain" />
                   <Text style={styles.statLabel}>{t('profileCard.birthday')}</Text>
                   <Text style={styles.statValue}>{formatBirthday(profileBirthday)}</Text>
                 </View>
@@ -277,7 +245,7 @@ export default function ProfileScreen() {
                     <View style={[styles.charThumbWrap, selected && styles.charThumbSelected]}>
                       <Image source={thumb} style={styles.charThumb} contentFit="contain" />
                     </View>
-                    <Text style={styles.charName} numberOfLines={1}>{c.name}</Text>
+                    <Text style={styles.charName} numberOfLines={1}>{localizeCompanionName(c.name, t)}</Text>
                   </Pressable>
                 );
               })}
@@ -309,7 +277,7 @@ export default function ProfileScreen() {
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>{t('profileCard.cardBackground')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bgRow}>
-              {ROOM_PAIRS.map((r) => {
+              {ROOM_PAIRS.filter((r) => backgroundOwned(r, ownedShopItems)).map((r) => {
                 const selected = r.id === profileBackgroundId;
                 return (
                   <Pressable key={r.id} onPress={() => updateProfile({ backgroundId: r.id })}>
@@ -377,6 +345,7 @@ const styles = StyleSheet.create({
   name: { fontSize: 20, fontWeight: '900', color: P.brown, lineHeight: 24 },
   statRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   statEmojiFallback: { fontSize: 15, width: 16, textAlign: 'center' },
+  statIcon: { width: 20, height: 20 },
   statLabel: { fontSize: 12.5, color: P.muted, fontWeight: '600', flex: 1 },
   statValue: { fontSize: 13, color: P.brown, fontWeight: '800' },
   desc: { fontSize: 12.5, color: P.cocoa, fontStyle: 'italic', lineHeight: 17, marginTop: 2 },
@@ -393,14 +362,14 @@ const styles = StyleSheet.create({
   codeStripValue: { fontSize: 16, fontWeight: '900', color: '#fff', letterSpacing: 3 },
 
   shareBtn: {
-    backgroundColor: P.honey,
+    backgroundColor: P.pink,
     borderRadius: 16,
     paddingVertical: 13,
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#E0A33C',
+    borderColor: '#E68299',
   },
-  shareBtnText: { color: P.brown, fontSize: 16, fontWeight: '900' },
+  shareBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
 
   // Editor
   editTitle: { fontSize: 17, fontWeight: '800', color: P.brown, marginTop: Spacing.two },

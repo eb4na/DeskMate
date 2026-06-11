@@ -19,13 +19,14 @@ import { BakeryColors, BakeryRadii, BakeryShadow, Colors, MaxContentWidth, Spaci
 import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
 import { supabase } from '@/lib/supabase';
+import { signInWithProvider } from '@/lib/oauth';
 import { LANGUAGES, type SupportedLanguage, useTranslation } from '@/i18n';
 
 const LOGIN_BG = require('@/assets/images/auth/login-bg.png');
 
 export default function LoginScreen() {
   const { email: emailParam, notice } = useLocalSearchParams<{ email?: string; notice?: string }>();
-  const { continueAsGuest } = useAuth();
+  const { continueAsGuest, kickedReason, clearKickedReason } = useAuth();
   const { t } = useTranslation();
   const { language, setLanguage, markLanguageSelected } = useApp();
 
@@ -62,6 +63,7 @@ export default function LoginScreen() {
 
     setSubmitting(true);
     setErrorMessage('');
+    clearKickedReason();
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email: normalizedEmail,
@@ -86,12 +88,8 @@ export default function LoginScreen() {
       return;
     }
 
-    // One device per account: signing in here revokes sessions on other devices.
-    try {
-      await supabase.auth.signOut({ scope: 'others' });
-    } catch {
-      // Non-fatal — the local session is still valid.
-    }
+    // One device per account is enforced centrally in AuthProvider (it claims the
+    // active session, revokes other devices, and listens for its own eviction).
 
     // Blur any focused field so iOS tears down the keyboard/input views
     // before this screen unmounts (prevents stranded input artifacts).
@@ -100,8 +98,26 @@ export default function LoginScreen() {
     setSubmitting(false);
   };
 
+  // Social sign-in (Google) via the Supabase OAuth browser flow. On success the
+  // auth listener already has the session.
+  const handleSocial = async (run: () => Promise<{ ok: boolean; cancelled?: boolean; error?: string }>) => {
+    setSubmitting(true);
+    setErrorMessage('');
+    clearKickedReason();
+    const res = await run();
+    if (res.ok) {
+      // Single-device enforcement is handled centrally in AuthProvider.
+      Keyboard.dismiss();
+      router.replace('/');
+    } else if (!res.cancelled) {
+      setErrorMessage(res.error ?? t('errors.signInFailed'));
+    }
+    setSubmitting(false);
+  };
+
   const handleGuest = () => {
     Keyboard.dismiss();
+    clearKickedReason();
     continueAsGuest();
     router.replace('/');
   };
@@ -171,6 +187,12 @@ export default function LoginScreen() {
                 onSubmitEditing={handleLogin}
               />
 
+              {!errorMessage && kickedReason ? (
+                <ThemedText type="small" style={styles.errorText}>
+                  {t('auth.signedOutOtherDevice')}
+                </ThemedText>
+              ) : null}
+
               {errorMessage ? (
                 <ThemedText type="small" style={styles.errorText}>
                   {errorMessage}
@@ -194,6 +216,22 @@ export default function LoginScreen() {
                   {submitting ? t('auth.signingIn') : t('auth.signIn')}
                 </ThemedText>
               </Pressable>
+
+              <ThemedView style={styles.orRow}>
+                <ThemedView style={styles.orLine} />
+                <ThemedText type="small" themeColor="textSecondary" style={styles.orText}>{t('auth.or')}</ThemedText>
+                <ThemedView style={styles.orLine} />
+              </ThemedView>
+
+              <Pressable
+                style={({ pressed }) => [styles.oauthButton, (pressed || submitting) && styles.pressed]}
+                onPress={() => handleSocial(() => signInWithProvider('google'))}
+                disabled={submitting}>
+                <ThemedText type="smallBold" style={styles.oauthText}>
+                  {t('auth.continueWithGoogle')}
+                </ThemedText>
+              </Pressable>
+
 
               <Pressable
                 style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
@@ -307,6 +345,18 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: { color: BakeryColors.cocoa },
   guestNote: { textAlign: 'center', lineHeight: 20 },
+  orRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, backgroundColor: 'transparent', marginVertical: 2 },
+  orLine: { flex: 1, height: 1, backgroundColor: BakeryColors.border },
+  orText: { paddingHorizontal: 2 },
+  oauthButton: {
+    borderRadius: BakeryRadii.button,
+    paddingVertical: Spacing.three,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: BakeryColors.border,
+    backgroundColor: '#FFFFFF',
+  },
+  oauthText: { color: BakeryColors.cocoaDark },
   supportLinks: {
     marginTop: Spacing.one,
     flexDirection: 'row',

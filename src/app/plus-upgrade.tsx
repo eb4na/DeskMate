@@ -1,3 +1,4 @@
+import { Image as ExpoImage } from 'expo-image';
 import { router } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,6 +28,7 @@ const FEATURES: { titleKey: string; descKey: string; renderIcon: (size: number) 
   { titleKey: 'plus.f_ambience', descKey: 'plus.f_ambienceDesc', renderIcon: (s) => <MusicNoteIcon size={s} /> },
   { titleKey: 'plus.f_allGames', descKey: 'plus.f_allGamesDesc', renderIcon: (s) => <GameIcon size={s} /> },
   { titleKey: 'plus.f_shopDiscount', descKey: 'plus.f_shopDiscountDesc', renderIcon: (s) => <ShopTabIcon size={s} color={BakeryColors.honey} /> },
+  { titleKey: 'plus.f_tira', descKey: 'plus.f_tiraDesc', renderIcon: (s) => <ExpoImage source={require('@/assets/images/tira/tira.png')} style={{ width: s, height: s }} contentFit="contain" /> },
 ];
 
 export default function PlusUpgradeScreen() {
@@ -125,20 +127,20 @@ export default function PlusUpgradeScreen() {
                     {t('plus.cancelAnytime')}
                   </ThemedText>
                 </ThemedView>
-                <ThemedText style={styles.priceValue}>$6.70</ThemedText>
+                <ThemedText style={styles.priceValue}>{t('plus.monthlyPrice')}</ThemedText>
               </ThemedView>
               <ThemedView style={styles.divider} />
               <ThemedView style={styles.priceRow}>
                 <ThemedView>
                   <ThemedText type="smallBold" style={styles.priceTitle}>
                     {t('plus.yearly')}{' '}
-                    <ThemedText style={styles.saveBadge}>{t('plus.save48')}</ThemedText>
+                    <ThemedText style={styles.saveBadge}>{t('plus.saveYearly')}</ThemedText>
                   </ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
                     {t('plus.yearlyDetail')}
                   </ThemedText>
                 </ThemedView>
-                <ThemedText style={styles.priceValue}>$4.17/mo</ThemedText>
+                <ThemedText style={styles.priceValue}>{t('plus.yearlyPrice')}</ThemedText>
               </ThemedView>
             </ThemedView>
           )}

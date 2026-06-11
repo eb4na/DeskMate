@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useRef, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Dimensions, Image as RNImage, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -17,8 +17,8 @@ import {
   type ShopCategory,
 } from '@/constants/shop-data';
 import { outfitsForCharacter } from '@/constants/outfit-data';
-import { partnerItemId } from '@/constants/room-data';
-import { SHOP_COMPANIONS, STARTER_COMPANION_IMAGES, getStarterActiveId } from '@/lib/companion-utils';
+import { pairForItem, isPairOwned, partnerItemId } from '@/constants/room-data';
+import { SHOP_COMPANIONS, STARTER_COMPANION_IMAGES, getStarterActiveId, localizeCompanionName, localizeOutfitName } from '@/lib/companion-utils';
 import { DAILY_EARN_CAP } from '@/constants/placeholder-data';
 import {
   BakeryColors,
@@ -123,6 +123,11 @@ const USE_HINTS: Partial<Record<ShopCategory, string>> = {
 
 const ITEMS_PER_PAGE = 6;
 
+type ShopItemT = (typeof SHOP_ITEMS)[number];
+// A pending purchase shown in the white confirm popup. `items` are the (unowned)
+// items to buy; `equip` runs after a successful purchase so the thing shows up.
+type BuyReq = { title: string; items: ShopItemT[]; total: number; equip?: () => void };
+
 export default function ShopScreen() {
   const { t } = useTranslation();
   const {
@@ -132,14 +137,30 @@ export default function ShopScreen() {
     equippedShopItems,
     purchaseShopItem,
     equipShopItem,
+    equippedBackgroundRoomId,
+    equippedDeskRoomId,
+    setEquippedBackground,
+    setEquippedDesk,
     isPlus,
     addPurchasedCoins,
     companionSlots,
   } = useApp();
   const [activeCategory, setActiveCategory] = useState<ShopCategory>('companion');
   const [zoomImage, setZoomImage] = useState<number | null>(null);
+
+  // Open straight to a category when navigated with a `category` param (e.g. from
+  // a locked recipe in the Bakery Menu). Consumed once so it doesn't stick.
+  const { category: categoryParam } = useLocalSearchParams<{ category?: string }>();
+  useEffect(() => {
+    if (categoryParam && CATEGORIES.includes(categoryParam as ShopCategory)) {
+      setActiveCategory(categoryParam as ShopCategory);
+      router.setParams({ category: undefined });
+    }
+  }, [categoryParam]);
   const [outfitCharId, setOutfitCharId] = useState<string | null>(null);
   const [itemPage, setItemPage] = useState(0);
+  // The purchase the white confirm popup is currently asking about.
+  const [buyReq, setBuyReq] = useState<BuyReq | null>(null);
 
   // Characters the user owns (for the Outfits tab).
   const ownedCharacters: { id: string; name: string; image: number | { uri: string } | null; emoji: string }[] = [
@@ -204,36 +225,63 @@ export default function ShopScreen() {
   };
 
 
-  const handleBuy = (itemId: string, name: string, basePrice: number) => {
-    const price = Math.floor(basePrice * discount);
-    if (ownedShopItems.includes(itemId)) return;
-    if (coins < price) {
-      Alert.alert(t('shop.notEnoughCoins'), t('shop.notEnoughCoinsMsg', { price, coins }));
-      return;
-    }
-    Alert.alert(t('shop.buyItemQ', { name }), isPlus ? t('shop.spendCoinsPlus', { price }) : t('shop.spendCoins', { price }), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('shop.buyForCoins', { price }),
-        onPress: () => {
-          if (!purchaseShopItem(itemId, price))
-            Alert.alert(t('shop.purchaseFailed'), t('errors.generic'));
-        },
-      },
-    ]);
+  // Open the white confirm popup for a single item the player tapped to buy.
+  const openBuy = (item: ShopItemT) => {
+    if (ownedShopItems.includes(item.id)) return;
+    const pair = pairForItem(item.id);
+    // Desks equip into the room on confirm; backgrounds are left for the player
+    // to equip when they want (buying one shouldn't swap their current room).
+    const equip =
+      item.category === 'desk' && pair ? () => setEquippedDesk(pair.id)
+      : undefined;
+    setBuyReq({ title: t('shop.buyItemQ', { name: localizeCompanionName(item.name, t) }), items: [item], total: Math.floor(item.price * discount), equip });
   };
 
-  const goToPartner = (itemId: string) => {
-    const partner = partnerItemId(itemId);
-    if (!partner) return;
-    const pItem = SHOP_ITEMS.find((i) => i.id === partner);
-    if (pItem) setActiveCategory(pItem.category);
+  // The pair button buys + equips the WHOLE matched set (background + desk) so the
+  // finished room shows up at once. If both halves are already owned, just equip.
+  const openPairBuy = (item: ShopItemT) => {
+    const pair = pairForItem(item.id);
+    if (!pair) return;
+    if (isPairOwned(pair, ownedShopItems)) {
+      setEquippedBackground(pair.id);
+      setEquippedDesk(pair.id);
+      Alert.alert(t('shop.equippedTitle'), t('shop.nowActive', { name: pair.name }));
+      return;
+    }
+    const need = [pair.backgroundId, pair.deskId]
+      .filter((id): id is string => !!id && !ownedShopItems.includes(id))
+      .map((id) => SHOP_ITEMS.find((s) => s.id === id))
+      .filter((it): it is ShopItemT => !!it);
+    setBuyReq({
+      title: t('editRoom.unlockPair', { name: pair.name }),
+      items: need,
+      total: need.reduce((sum, it) => sum + Math.floor(it.price * discount), 0),
+      equip: () => { setEquippedBackground(pair.id); setEquippedDesk(pair.id); },
+    });
+  };
+
+  // Confirm the popup: buy everything it lists, then equip so it shows up.
+  const confirmBuy = () => {
+    if (!buyReq || coins < buyReq.total) return;
+    for (const it of buyReq.items) purchaseShopItem(it.id, Math.floor(it.price * discount));
+    buyReq.equip?.();
+    setBuyReq(null);
   };
 
   const handleEquip = (itemId: string, name: string) => {
     const ok = equipShopItem(itemId);
     if (!ok) { Alert.alert(t('shop.cantEquip'), t('shop.unlockFirst')); return; }
     Alert.alert(t('shop.equippedTitle'), t('shop.nowActive', { name }));
+  };
+
+  // Equip an owned background/desk straight into the room (not equipShopItem,
+  // which the home screen ignores for room art).
+  const equipRoomHalf = (item: ShopItemT) => {
+    const pair = pairForItem(item.id);
+    if (!pair) return;
+    if (item.category === 'background') setEquippedBackground(pair.id);
+    else setEquippedDesk(pair.id);
+    Alert.alert(t('shop.equippedTitle'), t('shop.nowActive', { name: localizeCompanionName(item.name, t) }));
   };
 
   return (
@@ -324,14 +372,14 @@ export default function ShopScreen() {
                         style={styles.outfitCharCard}
                         onPress={() => {
                           if (c.owned) setOutfitCharId(c.id);
-                          else Alert.alert(t('shop.charLocked', { name: c.name }), t('shop.charLockedMsg', { name: c.name }));
+                          else Alert.alert(t('shop.charLocked', { name: localizeCompanionName(c.name, t) }), t('shop.charLockedMsg', { name: localizeCompanionName(c.name, t) }));
                         }}>
                         {c.image ? (
                           <RNImage source={c.image} style={[styles.outfitCharImg, !c.owned && styles.lockedImg]} resizeMode="contain" />
                         ) : (
                           <ThemedText style={[styles.itemEmoji, !c.owned && styles.lockedImg]}>{c.emoji}</ThemedText>
                         )}
-                        <ThemedText style={styles.itemName} numberOfLines={1}>{c.name}</ThemedText>
+                        <ThemedText style={styles.itemName} numberOfLines={1}>{localizeCompanionName(c.name, t)}</ThemedText>
                         <View style={[styles.charBadge, c.owned ? styles.badgeOwned : styles.charLockedBadge]}>
                           <ThemedText style={c.owned ? styles.badgeText : styles.charLockedText}>
                             {c.owned ? t('shop.ownedBadge') : t('shop.lockedBadge')}
@@ -363,9 +411,9 @@ export default function ShopScreen() {
                           disabled={owned || !canAfford}
                           onPress={() => {
                             if (purchaseShopItem(o.id, o.price)) {
-                              Alert.alert(t('shop.outfitUnlocked'), t('shop.outfitUnlockedMsg', { name: o.name, char: outfitChar.name }));
+                              Alert.alert(t('shop.outfitUnlocked'), t('shop.outfitUnlockedMsg', { name: localizeOutfitName(o.name, t), char: outfitChar.name }));
                             } else {
-                              Alert.alert(t('shop.notEnoughCoins'), t('shop.needCoinsFor', { price: o.price, name: o.name }));
+                              Alert.alert(t('shop.notEnoughCoins'), t('shop.needCoinsFor', { price: o.price, name: localizeOutfitName(o.name, t) }));
                             }
                           }}>
                           <View style={[styles.itemCard, owned && styles.itemOwned, !owned && !canAfford && styles.itemDim]}>
@@ -392,7 +440,7 @@ export default function ShopScreen() {
                             ) : (
                               <CoinAmount amount={o.price} size={22} textStyle={[styles.priceText, !canAfford && styles.priceTextDim]} />
                             )}
-                            <ThemedText style={styles.itemName} numberOfLines={1}>{o.name}</ThemedText>
+                            <ThemedText style={styles.itemName} numberOfLines={1}>{localizeOutfitName(o.name, t)}</ThemedText>
                           </View>
                         </Pressable>
                       );
@@ -437,8 +485,13 @@ export default function ShopScreen() {
                   const discountedPrice = Math.floor(item.price * discount);
                   const canAfford = coins >= discountedPrice;
                   const equipable = isEquipableCategory(item.category);
-                  const equippedCat = equipable ? (item.category as keyof typeof equippedShopItems) : null;
-                  const isEquipped = owned && equippedCat && equippedShopItems[equippedCat] === item.id;
+                  const roomPair = (item.category === 'background' || item.category === 'desk') ? pairForItem(item.id) : undefined;
+                  // Backgrounds/desks track the room-equip system; everything else uses equippedShopItems.
+                  const isEquipped = !!owned && (
+                    item.category === 'background' ? !!roomPair && equippedBackgroundRoomId === roomPair.id
+                    : item.category === 'desk' ? !!roomPair && equippedDeskRoomId === roomPair.id
+                    : equipable && equippedShopItems[item.category as keyof typeof equippedShopItems] === item.id
+                  );
 
                   return (
                     <Pressable
@@ -447,16 +500,20 @@ export default function ShopScreen() {
                       onPress={() => {
                         if (owned) {
                           // Owned companions are set active from the Companion gallery,
-                          // not by tapping them here.
-                          if (item.category === 'companion') return;
-                          if (equipable && !isEquipped) handleEquip(item.id, item.name);
+                          // and recipes are chosen in the Bakery Menu — not by tapping here.
+                          if (item.category === 'companion' || item.category === 'recipe') return;
+                          if (item.category === 'background' || item.category === 'desk') {
+                            if (!isEquipped) equipRoomHalf(item);
+                          } else if (equipable && !isEquipped) {
+                            handleEquip(item.id, item.name);
+                          }
                         } else if (item.plusOnly) {
                           Alert.alert(
-                            t('shop.plusExclusive', { name: item.name }),
-                            t('shop.plusExclusiveMsg', { name: item.name }),
+                            t('shop.plusExclusive', { name: localizeCompanionName(item.name, t) }),
+                            t('shop.plusExclusiveMsg', { name: localizeCompanionName(item.name, t) }),
                           );
                         } else {
-                          handleBuy(item.id, item.name, item.price);
+                          openBuy(item);
                         }
                       }}>
                       <View style={[
@@ -481,7 +538,7 @@ export default function ShopScreen() {
                               <Pressable
                                 style={styles.pairBtn}
                                 hitSlop={8}
-                                onPress={(e) => { e.stopPropagation?.(); goToPartner(item.id); }}>
+                                onPress={(e) => { e.stopPropagation?.(); openPairBuy(item); }}>
                                 <View style={styles.pairGlyph}>
                                   <View style={styles.pairRing} />
                                   <View style={[styles.pairRing, styles.pairRing2]} />
@@ -507,7 +564,7 @@ export default function ShopScreen() {
                             textStyle={[styles.priceText, !canAfford && styles.priceTextDim]}
                           />
                         )}
-                        <ThemedText style={styles.itemName} numberOfLines={1}>{item.name}</ThemedText>
+                        <ThemedText style={styles.itemName} numberOfLines={1}>{localizeCompanionName(item.name, t)}</ThemedText>
                         {USE_HINTS[item.category] && (
                           <ThemedText style={styles.useHint} numberOfLines={1}>{t('shop.setActiveInGallery')}</ThemedText>
                         )}
@@ -586,6 +643,66 @@ export default function ShopScreen() {
           )}
         </Pressable>
       </Modal>
+
+      {/* White confirm popup — shows the item picture + Buy / Cancel. */}
+      <Modal visible={buyReq !== null} transparent animationType="fade" onRequestClose={() => setBuyReq(null)}>
+        <Pressable style={styles.buyBackdrop} onPress={() => setBuyReq(null)}>
+          <Pressable style={styles.buyCard} onPress={(e) => e.stopPropagation?.()}>
+            {buyReq && (
+              <>
+                <ThemedText style={styles.buyTitle}>{buyReq.title}</ThemedText>
+
+                <View style={styles.buyItems}>
+                  {buyReq.items.map((it) => (
+                    <View key={it.id} style={styles.buyItemRow}>
+                      {it.image ? (
+                        <RNImage source={it.image} style={styles.buyItemImg} resizeMode="cover" />
+                      ) : (
+                        <ThemedText style={styles.buyItemEmoji}>{it.emoji}</ThemedText>
+                      )}
+                      <View style={styles.buyItemInfo}>
+                        <ThemedText style={styles.buyItemName} numberOfLines={1}>{localizeCompanionName(it.name, t)}</ThemedText>
+                        {!!it.description && (
+                          <ThemedText style={styles.buyItemDesc} numberOfLines={2}>{it.description}</ThemedText>
+                        )}
+                      </View>
+                      <CoinAmount amount={Math.floor(it.price * discount)} size={20} textStyle={styles.buyItemPrice} />
+                    </View>
+                  ))}
+                </View>
+
+                <View style={styles.buyBalanceRow}>
+                  <ThemedText style={styles.buyBalanceLabel}>{t('editRoom.yourBalance')}</ThemedText>
+                  <View style={styles.buyBalance}>
+                    <CoinIcon size={20} />
+                    <ThemedText style={styles.buyBalanceNum}>{coins}</ThemedText>
+                  </View>
+                </View>
+
+                {coins < buyReq.total && (
+                  <ThemedText style={styles.buyShortfall}>{t('gallery.shortfall', { count: buyReq.total - coins })}</ThemedText>
+                )}
+
+                <Pressable
+                  disabled={coins < buyReq.total}
+                  style={({ pressed }) => [
+                    styles.buyConfirmBtn,
+                    coins < buyReq.total && styles.buyConfirmDisabled,
+                    pressed && coins >= buyReq.total && { opacity: 0.85 },
+                  ]}
+                  onPress={confirmBuy}>
+                  <ThemedText style={styles.buyConfirmText}>
+                    {coins >= buyReq.total ? t('gallery.unlockForCoins', { price: buyReq.total }) : t('gallery.notEnoughCoins')}
+                  </ThemedText>
+                </Pressable>
+                <Pressable style={styles.buyCancelBtn} onPress={() => setBuyReq(null)}>
+                  <ThemedText style={styles.buyCancelText}>{t('gallery.maybeLater')}</ThemedText>
+                </Pressable>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ThemedView>
   );
 }
@@ -648,6 +765,42 @@ const styles = StyleSheet.create({
   },
   zoomImage: { width: '100%', height: 300 },
   zoomHint: { fontSize: 12, color: '#9A7B6D' },
+
+  // White buy-confirmation popup
+  buyBackdrop: {
+    flex: 1, backgroundColor: 'rgba(60,40,30,0.45)',
+    alignItems: 'center', justifyContent: 'center', padding: 24,
+  },
+  buyCard: {
+    width: '100%', maxWidth: 360, backgroundColor: '#FFFDF8', borderRadius: 26,
+    padding: Spacing.four, gap: Spacing.three, borderWidth: 1.5, borderColor: BakeryColors.shortbread,
+    ...BakeryShadow,
+  },
+  buyTitle: { fontSize: 19, fontWeight: '800', color: BakeryColors.cocoaDark, textAlign: 'center' },
+  buyItems: { gap: Spacing.two },
+  buyItemRow: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.two,
+    backgroundColor: BakeryColors.frosting, borderRadius: 16, padding: Spacing.two,
+    borderWidth: 1.5, borderColor: BakeryColors.shortbread,
+  },
+  buyItemImg: { width: 52, height: 52, borderRadius: 10, backgroundColor: BakeryColors.cream },
+  buyItemEmoji: { fontSize: 40, width: 52, textAlign: 'center' },
+  buyItemInfo: { flex: 1, gap: 2 },
+  buyItemName: { fontSize: 14.5, fontWeight: '800', color: BakeryColors.cocoaDark },
+  buyItemDesc: { fontSize: 11.5, color: BakeryColors.mocha, lineHeight: 15 },
+  buyItemPrice: { fontSize: 15, fontWeight: '800', color: BakeryColors.cocoaDark },
+  buyBalanceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  buyBalanceLabel: { fontSize: 13, fontWeight: '600', color: BakeryColors.mocha },
+  buyBalance: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  buyBalanceNum: { fontSize: 15, fontWeight: '800', color: BakeryColors.cocoaDark },
+  buyShortfall: { fontSize: 12.5, color: BakeryColors.berry, fontWeight: '700', textAlign: 'center' },
+  buyConfirmBtn: {
+    backgroundColor: BakeryColors.honey, borderRadius: 18, paddingVertical: Spacing.three, alignItems: 'center',
+  },
+  buyConfirmDisabled: { backgroundColor: BakeryColors.shortbread },
+  buyConfirmText: { color: BakeryColors.cocoaDark, fontSize: 16, fontWeight: '800' },
+  buyCancelBtn: { alignItems: 'center', paddingVertical: 4 },
+  buyCancelText: { fontSize: 13.5, color: BakeryColors.mocha, fontWeight: '700' },
 
   // Sticky header
   header: {

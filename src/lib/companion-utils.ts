@@ -3,6 +3,48 @@ import { SHOP_ITEMS } from '@/constants/shop-data';
 
 export type CompanionImageSource = number | { uri: string };
 
+// Built-in companions have localized display names (gallery.name_*). This maps
+// their canonical English name to its i18n key. Any other name (user-created
+// companions, outfit/background items) falls back to the original string, so this
+// is safe to apply at every name-display site.
+const COMPANION_NAME_KEYS: Record<string, string> = {
+  Bun: 'gallery.name_Bun',
+  Cocoa: 'gallery.name_Cocoa',
+  Bunny: 'gallery.name_Bunny',
+  Miel: 'gallery.name_Miel',
+  Tira: 'gallery.name_Tira',
+  Hanji: 'gallery.name_Hanji',
+};
+
+/** Localize a built-in companion's name; returns the input unchanged otherwise. */
+export function localizeCompanionName(name: string, t: (key: string) => string): string {
+  const key = COMPANION_NAME_KEYS[name];
+  return key ? t(key) : name;
+}
+
+// Outfit / wardrobe-skin display names → i18n keys (outfitNames.*). Applied at
+// every place an outfit/skin name is shown (wardrobe labels, shop outfit cards).
+const OUTFIT_NAME_KEYS: Record<string, string> = {
+  Classic: 'outfitNames.classic',
+  Angel: 'outfitNames.angel',
+  'Angel Kei': 'outfitNames.angelKei',
+  Relax: 'outfitNames.relax',
+  Demon: 'outfitNames.demon',
+  "Wolf's Meal": 'outfitNames.wolfsMeal',
+  'Choco Mint': 'outfitNames.chocoMint',
+  Sleepover: 'outfitNames.sleepover',
+  Champion: 'outfitNames.champion',
+  ZZZ: 'outfitNames.zzz',
+  'Jirai Kei': 'outfitNames.jiraiKei',
+  'Blue Peony': 'outfitNames.bluePeony',
+};
+
+/** Localize an outfit/skin name; returns the input unchanged if unmapped. */
+export function localizeOutfitName(name: string, t: (key: string) => string): string {
+  const key = OUTFIT_NAME_KEYS[name];
+  return key ? t(key) : name;
+}
+
 export const STARTER_COMPANION_IMAGES: Record<DefaultCompanionId, number> = {
   girl: require('@/assets/images/bun/bun-home.png'),
   dude: require('@/assets/images/bun/bun-home.png'),
@@ -37,7 +79,9 @@ export function getEffectiveBunSkinId(
 // companion id (`shop:<itemId>`). The first entry is the default look.
 export const COMPANION_SKINS: Record<string, BunSkin[]> = {
   'shop:companion_cocoa': [
-    { id: 'classic', name: 'Classic', emoji: '☕', image: require('@/assets/images/cocoa/cocoa.png'), shopItemId: null },    { id: 'relax', name: 'Relax', emoji: '🍁', image: require('@/assets/images/cocoa/cocoa-relax.png'), shopItemId: 'outfit_cocoa_relax' },
+    { id: 'classic', name: 'Classic', emoji: '☕', image: require('@/assets/images/cocoa/cocoa.png'), shopItemId: null },
+    { id: 'relax', name: 'Relax', emoji: '🍁', image: require('@/assets/images/cocoa/cocoa-relax.png'), shopItemId: 'outfit_cocoa_relax' },
+    { id: 'demon', name: 'Demon', emoji: '😈', image: require('@/assets/images/cocoa/cocoa-demon.png'), shopItemId: 'outfit_cocoa_demon' },
   ],
   'shop:companion_tira': [
     { id: 'classic', name: 'Classic', emoji: '🍰', image: require('@/assets/images/tira/tira.png'), shopItemId: null },
@@ -54,6 +98,9 @@ export const COMPANION_SKINS: Record<string, BunSkin[]> = {
     { id: 'classic', name: 'Classic', emoji: '👑', image: require('@/assets/images/bunny/bunny.png'), shopItemId: null },
     { id: 'jiraikei', name: 'Jirai Kei', emoji: '🖤', image: require('@/assets/images/bunny/bunny-jiraikei.png'), shopItemId: 'outfit_bunny_jiraikei' },
     { id: 'palace', name: 'Blue Peony', emoji: '🪷', image: require('@/assets/images/bunny/bunny-palace.png'), shopItemId: 'outfit_bunny_palace' },
+  ],
+  'shop:companion_hanji': [
+    { id: 'classic', name: 'Classic', emoji: '🐈‍⬛', image: require('@/assets/images/hanji/hanji.png'), shopItemId: null },
   ],
 };
 

@@ -31,8 +31,9 @@ import { ThemedView } from '@/components/themed-view';
 import { BakeryCakeEmoji, BakeryHeartEmoji, BakeryReceiptEmoji } from '@/components/bakery-emoji';
 import { BaseIcon, CakeBuildIcon, CakeIngredientIcon, type IngredientKind } from '@/components/cake-ingredients';
 import { useApp } from '@/context/app-context';
-import { useTranslation } from '@/i18n';
+import i18n, { useTranslation } from '@/i18n';
 import { joinGameRoom, newRoomId, type GameRoom } from '@/lib/game-net';
+import { localizeCompanionName } from '@/lib/companion-utils';
 import {
   NAV_DEBUG,
   obstaclesPx,
@@ -45,17 +46,15 @@ import {
 } from '@/game/cake/nav';
 import { BakeryColors, BakeryRadii, BakeryShadow, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 import {
-  BASES,
-  FILLINGS,
   MODE_META,
   STATIONS,
-  TOPPINGS,
   createInitialPlayer,
   findBase,
   findFilling,
   findTopping,
+  recipePools,
 } from '@/game/cake/gameData';
-import { cakeMatchesOrder, generateStarterOrder } from '@/game/cake/gameLogic';
+import { cakeMatchesOrder, generateStarterOrder, setActiveRecipe } from '@/game/cake/gameLogic';
 import type {
   CakeBase,
   CakeFilling,
@@ -66,6 +65,7 @@ import type {
   HeldItem,
   IngredientDef,
   PlayerState,
+  RecipeId,
   Station,
 } from '@/game/cake/gameTypes';
 
@@ -279,12 +279,16 @@ const STATION_IMG = {
   decoration: require('@/assets/images/cake/decorate.png'),
   mixerEmpty: require('@/assets/images/cake/mixer-empty.png'),
   mixerFull: require('@/assets/images/cake/mixer-full.png'),
+  mixerPudding: require('@/assets/images/cake/mixer-pudding.png'),
+  mixerSakura: require('@/assets/images/cake/mixer-sakura.png'),
+  mixerMatcha: require('@/assets/images/cake/mixer-matcha.png'),
+  mixerCroissant: require('@/assets/images/cake/mixer-croissant.png'),
   ovenEmpty: require('@/assets/images/cake/oven-empty.png'),
   ovenFull: require('@/assets/images/cake/oven-full.png'),
   trash: require('@/assets/images/cake/trash.png'),
 } as const;
 
-function stationImage(kind: Station['kind'], hasContent: boolean) {
+function stationImage(kind: Station['kind'], hasContent: boolean, recipe: RecipeId = 'cake') {
   switch (kind) {
     case 'ingredient':
       return STATION_IMG.ingredient;
@@ -295,6 +299,10 @@ function stationImage(kind: Station['kind'], hasContent: boolean) {
     case 'trash':
       return STATION_IMG.trash;
     case 'mixer':
+      if (recipe === 'pudding') return STATION_IMG.mixerPudding;
+      if (recipe === 'sakura') return STATION_IMG.mixerSakura;
+      if (recipe === 'matcha') return STATION_IMG.mixerMatcha;
+      if (recipe === 'croissant') return STATION_IMG.mixerCroissant;
       return hasContent ? STATION_IMG.mixerFull : STATION_IMG.mixerEmpty;
     case 'oven':
       return hasContent ? STATION_IMG.ovenFull : STATION_IMG.ovenEmpty;
@@ -302,6 +310,15 @@ function stationImage(kind: Station['kind'], hasContent: boolean) {
       return null;
   }
 }
+
+// Maps a selected food-gallery recipe to its in-game recipe + the shop item that
+// must be owned to play it. Foods not listed here fall back to normal cake play.
+const RECIPE_BY_FOOD: Record<string, { recipe: RecipeId; item: string }> = {
+  pudding: { recipe: 'pudding', item: 'recipe_pudding' },
+  'sakura-mochi': { recipe: 'sakura', item: 'recipe_sakura' },
+  'matcha-crepe': { recipe: 'matcha', item: 'recipe_matcha' },
+  'berry-croissant': { recipe: 'croissant', item: 'recipe_croissant' },
+};
 
 const makeOrder = (): CakeOrder => ({ ...generateStarterOrder(), createdAt: Date.now() });
 
@@ -584,7 +601,7 @@ function SetupScreen({
               onPress={() => setCakeCharacter(c.id)}
               style={({ pressed }) => [styles.charCard, cakeCharacter === c.id && styles.choiceCardActive, pressed && styles.pressed]}>
               <Image source={c.img} style={styles.charImg} contentFit="contain" />
-              <Text style={styles.choiceTitle}>{c.name}</Text>
+              <Text style={styles.choiceTitle}>{localizeCompanionName(c.name, t)}</Text>
             </Pressable>
           ))}
         </View>
@@ -669,7 +686,14 @@ function KitchenView({
   onHome: () => void;
 }) {
   const { t } = useTranslation();
-  const { cakeBestRush, cakeBestLine, recordCakeBest, addCoins, cakeCharacter } = useApp();
+  const { cakeBestRush, cakeBestLine, recordCakeBest, addCoins, cakeCharacter, selectedFoodId, ownedShopItems } = useApp();
+  // Which dessert the kitchen makes: a special recipe only when it's the chosen
+  // recipe AND the player owns it in the shop; otherwise the original cake flow.
+  // Set on the gameLogic module synchronously so the first order (below) reads it.
+  const recipeCfg = RECIPE_BY_FOOD[selectedFoodId];
+  const activeRecipe: RecipeId =
+    recipeCfg && ownedShopItems.includes(recipeCfg.item) ? recipeCfg.recipe : 'cake';
+  setActiveRecipe(activeRecipe);
   // `online` aliases the party context for the many in-game checks below.
   const online = party ?? null;
   const room = useRef<GameRoom | null>(null);
@@ -1367,8 +1391,9 @@ function KitchenView({
     beginRound();
   };
 
+  const pools = recipePools(activeRecipe);
   const pickerOptions: IngredientDef[] =
-    picker === 'base' ? BASES : picker === 'filling' ? FILLINGS : picker === 'topping' ? TOPPINGS : [];
+    picker === 'base' ? pools.bases : picker === 'filling' ? pools.fillings : picker === 'topping' ? pools.toppings : [];
 
   // A cooker that has finished and is waiting to be collected.
   const readyCookerId = (): string | null =>
@@ -1603,7 +1628,7 @@ function KitchenView({
                           height: mixH,
                         }}>
                         <Image
-                          source={stationImage('mixer', !!cooker)}
+                          source={stationImage('mixer', !!cooker, activeRecipe)}
                           style={StyleSheet.absoluteFill}
                           contentFit="contain"
                           pointerEvents="none"
@@ -1698,7 +1723,7 @@ function KitchenView({
                       width: r.x1 - r.x0,
                       height: r.y1 - r.y0,
                     }}>
-                    <Image source={stationImage(s.kind, false)} style={StyleSheet.absoluteFill} contentFit="contain" pointerEvents="none" />
+                    <Image source={stationImage(s.kind, false, activeRecipe)} style={StyleSheet.absoluteFill} contentFit="contain" pointerEvents="none" />
                     {nextStationId === s.id && <Text style={styles.counterPoint}>👇</Text>}
                   </Pressable>
                 );
@@ -1719,7 +1744,7 @@ function KitchenView({
                   station={s}
                   w={size.w}
                   h={size.h}
-                  image={stationImage(s.kind, !!cooker)}
+                  image={stationImage(s.kind, !!cooker, activeRecipe)}
                   suggested={nextStationId === s.id}
                   progress={cooker && !ready ? cookerProgress(cooker) : undefined}
                   onPress={() => moveTo(s)}
@@ -2077,7 +2102,7 @@ function OrderCard({ customer, held, onGreet }: { customer: Customer; held: Held
           );
         })}
       </View>
-      {!greeted && <Text style={styles.orderNew}>New! Tap to take</Text>}
+      {!greeted && <Text style={styles.orderNew}>{i18n.t('cake.orderNew')}</Text>}
       <View style={styles.orderBar}>
         <View style={[styles.orderBarFill, { width: `${t * 100}%`, backgroundColor: barColorFor(t) }]} />
       </View>

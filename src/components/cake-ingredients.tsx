@@ -16,12 +16,20 @@ const BASE_ASSETS: Record<CakeBase, number> = {
   chocolate: require('@/assets/images/cake/base-chocolate.png'),
   strawberry: require('@/assets/images/cake/base-strawberry.png'),
   redVelvet: require('@/assets/images/cake/base-redVelvet.png'),
+  milk: require('@/assets/images/cake/base-milk.png'),
+  riceFlour: require('@/assets/images/cake/base-riceFlour.png'),
+  matcha: require('@/assets/images/cake/base-matcha.png'),
+  flour: require('@/assets/images/cake/base-flour.png'),
 };
 const FILLING_ASSETS: Record<CakeFilling, number> = {
   cream: require('@/assets/images/cake/filling-cream.png'),
   chocCream: require('@/assets/images/cake/filling-chocCream.png'),
   strawJam: require('@/assets/images/cake/filling-strawJam.png'),
   redVelvet: require('@/assets/images/cake/filling-redVelvet.png'),
+  sugar: require('@/assets/images/cake/filling-sugar.png'),
+  redBean: require('@/assets/images/cake/filling-redBean.png'),
+  milk: require('@/assets/images/cake/filling-milk.png'),
+  butter: require('@/assets/images/cake/filling-butter.png'),
 };
 const TOPPING_ASSETS: Record<CakeTopping, number> = {
   strawberry: require('@/assets/images/cake/topping-strawberry.png'),
@@ -29,6 +37,20 @@ const TOPPING_ASSETS: Record<CakeTopping, number> = {
   blueberry: require('@/assets/images/cake/topping-blueberry.png'),
   choco: require('@/assets/images/cake/topping-choco.png'),
   sprinkles: require('@/assets/images/cake/topping-sprinkles.png'),
+  cornstarch: require('@/assets/images/cake/topping-cornstarch.png'),
+  sakuraLeaf: require('@/assets/images/cake/topping-sakuraLeaf.png'),
+  eggFlour: require('@/assets/images/cake/topping-eggFlour.png'),
+  berries: require('@/assets/images/cake/topping-berries.png'),
+};
+
+// Finished-dessert art for special recipes, keyed by their base ingredient.
+// When a build uses one of these bases it renders the finished dish instead of
+// the layered-cake composite.
+const FINISHED_BY_BASE: Partial<Record<CakeBase, number>> = {
+  milk: require('@/assets/images/cake/pudding.png'),
+  riceFlour: require('@/assets/images/cake/sakura-mochi.png'),
+  matcha: require('@/assets/images/cake/matcha-crepe.png'),
+  flour: require('@/assets/images/cake/croissant.png'),
 };
 
 // Cake-body colour per base, for the composite built cake.
@@ -37,6 +59,10 @@ const BASE_LOOK: Record<CakeBase, string> = {
   chocolate: '#6B4A2F',
   strawberry: '#F2A8BC',
   redVelvet: '#B5352F',
+  milk: '#FBF6EC',
+  riceFlour: '#F4C6D2',
+  matcha: '#A7C268',
+  flour: '#F8E9D2',
 };
 
 export function BaseIcon({ id, size = 22 }: Sz & { id: CakeBase }) {
@@ -73,6 +99,12 @@ export function CakeBuildIcon({
   topping,
   size = 26,
 }: Sz & { base?: CakeBase; filling?: CakeFilling; topping?: CakeTopping }) {
+  // Special recipes (pudding, sakura mochi) serve as their finished dish, not a
+  // layered cake.
+  const finished = base ? FINISHED_BY_BASE[base] : undefined;
+  if (finished) {
+    return <Image source={finished} style={{ width: size, height: size }} contentFit="contain" />;
+  }
   const baseC = base ? BASE_LOOK[base] : '#F4D9A6';
   const fillC = filling ? findFilling(filling).color : null;
   return (

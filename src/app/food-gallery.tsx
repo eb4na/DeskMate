@@ -1,21 +1,63 @@
 import { router } from 'expo-router';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Image, ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
+const BAKERY_BG = require('@/assets/images/backgrounds/bakery-menu.png');
+const BAKERY_HEADER = require('@/assets/images/backgrounds/bakery-menu-header.png');
+
+// Default "made it" badge (mirrors the finish-studying receipt's fallback).
+const BUN_FINISHED = require('@/assets/images/bun/bun-finished.png');
+
 export type FoodItem = {
   id: string;
   image: number;
+  // Shop item that must be owned before this recipe can be selected. Undefined =
+  // always available (free starter recipe).
+  requiresItem?: string;
+  price?: number;
+  // Optional art shown as a top-right "made it" badge once the player has baked
+  // this recipe at least once (e.g. the companion enjoying the finished dish).
+  madeBadge?: number;
 };
 
 export const FOOD_ITEMS: FoodItem[] = [
   {
     id: 'strawberry-shortcake',
     image: require('@/assets/images/cake/strawberry-shortcake.png'),
+    madeBadge: require('@/assets/images/cake/strawberry-badge.png'),
+  },
+  {
+    id: 'pudding',
+    image: require('@/assets/images/cake/pudding.png'),
+    requiresItem: 'recipe_pudding',
+    price: 400,
+    madeBadge: require('@/assets/images/cake/pudding-finished.png'),
+  },
+  {
+    id: 'sakura-mochi',
+    image: require('@/assets/images/cake/sakura-mochi.png'),
+    requiresItem: 'recipe_sakura',
+    price: 400,
+    madeBadge: require('@/assets/images/cake/sakura-badge.png'),
+  },
+  {
+    id: 'matcha-crepe',
+    image: require('@/assets/images/cake/matcha-crepe.png'),
+    requiresItem: 'recipe_matcha',
+    price: 400,
+    madeBadge: require('@/assets/images/cake/matcha-badge.png'),
+  },
+  {
+    id: 'berry-croissant',
+    image: require('@/assets/images/cake/croissant.png'),
+    requiresItem: 'recipe_croissant',
+    price: 400,
+    madeBadge: require('@/assets/images/cake/croissant-badge.png'),
   },
 ];
 
@@ -37,16 +79,22 @@ const P = {
 
 export default function FoodGalleryScreen() {
   const { t } = useTranslation();
-  const { selectedFoodId, madeFoods, setSelectedFood } = useApp();
+  const { selectedFoodId, madeFoods, setSelectedFood, ownedShopItems } = useApp();
+  // Badge image currently shown enlarged in the zoom modal (null = closed).
+  const [zoomBadge, setZoomBadge] = useState<number | null>(null);
 
   return (
-    <ThemedView style={[styles.container, { backgroundColor: P.cream }]}>
-      <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: P.cream }}>
+    <ImageBackground source={BAKERY_BG} resizeMode="cover" style={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
         <SafeAreaView style={styles.safeArea}>
-          {/* Header panel */}
+          {/* Header — the scalloped banner art (full width) with the title/subtitle
+              overlaid and centered inside it. */}
           <View style={styles.headerPanel}>
-            <Text style={styles.headerTitle}>{t('foodGallery.bakeryMenu')}</Text>
-            <Text style={styles.headerSubtitle}>{t('foodGallery.chooseBunBakes')}</Text>
+            <Image source={BAKERY_HEADER} style={styles.headerImg} resizeMode="stretch" />
+            <View style={styles.headerTextWrap}>
+              <Text style={styles.headerTitle}>{t('foodGallery.bakeryMenu')}</Text>
+              <Text style={styles.headerSubtitle}>{t('foodGallery.chooseBunBakes')}</Text>
+            </View>
           </View>
 
           {/* My Recipes */}
@@ -54,23 +102,44 @@ export default function FoodGalleryScreen() {
             <Text style={styles.sectionTitle}>{t('foodGallery.myRecipes')}</Text>
             <View style={styles.grid}>
               {FOOD_ITEMS.map((food) => {
-                const isSelected = selectedFoodId === food.id;
+                const locked = !!food.requiresItem && !ownedShopItems.includes(food.requiresItem);
+                const isSelected = !locked && selectedFoodId === food.id;
                 const isMade = madeFoods.includes(food.id);
                 return (
                   <View
                     key={food.id}
-                    style={[styles.foodCard, isSelected && styles.foodCardActive]}>
+                    style={[styles.foodCard, isSelected && styles.foodCardActive, locked && styles.foodCardLocked]}>
+                    {/* Top-right: an empty circle slot on every recipe; once baked
+                        it fills with the same badge shown on the finish-studying
+                        receipt. Locked recipes show a lock in the slot. */}
+                    {isMade ? (
+                      <Pressable
+                        style={styles.madeBadgeBtn}
+                        hitSlop={6}
+                        onPress={() => setZoomBadge(food.madeBadge ?? BUN_FINISHED)}>
+                        <Image source={food.madeBadge ?? BUN_FINISHED} style={styles.madeBadgeImg} resizeMode="cover" />
+                      </Pressable>
+                    ) : (
+                      <View style={styles.badgeSlotEmpty} />
+                    )}
                     <View style={styles.imageWrap}>
-                      <Image source={food.image} style={styles.foodImg} resizeMode="contain" />
-                      {isMade && (
-                        <View style={styles.madeBadge}>
-                          <Text style={styles.madeBadgeText}>{t('foodGallery.made')}</Text>
-                        </View>
-                      )}
+                      <Image
+                        source={food.image}
+                        style={[styles.foodImg, locked && styles.lockedImg]}
+                        resizeMode="contain"
+                      />
                     </View>
                     <Text style={styles.foodName} numberOfLines={1}>{t(`foodGallery.food_${food.id}`)}</Text>
                     <Text style={styles.foodDesc} numberOfLines={2}>{t(`foodGallery.food_${food.id}_desc`)}</Text>
-                    {isSelected ? (
+                    {locked ? (
+                      <Pressable
+                        style={({ pressed }) => [styles.lockedBtn, pressed && styles.pressed]}
+                        onPress={() => router.replace({ pathname: '/shop', params: { category: 'recipe' } })}>
+                        <Text style={styles.lockedBtnText} numberOfLines={1}>
+                          {t('foodGallery.lockedBuy', { price: food.price ?? 0 })}
+                        </Text>
+                      </Pressable>
+                    ) : isSelected ? (
                       <View style={styles.activePill}>
                         <Text style={styles.activePillText}>{t('foodGallery.baking')}</Text>
                       </View>
@@ -102,38 +171,61 @@ export default function FoodGalleryScreen() {
           </Pressable>
         </SafeAreaView>
       </ScrollView>
-    </ThemedView>
+
+      {/* Tap a recipe's badge to see it enlarged. */}
+      <Modal visible={zoomBadge !== null} transparent animationType="fade" onRequestClose={() => setZoomBadge(null)}>
+        <Pressable style={styles.zoomBackdrop} onPress={() => setZoomBadge(null)}>
+          {zoomBadge !== null && (
+            <View style={styles.zoomCard}>
+              <Image source={zoomBadge} style={styles.zoomBadgeImg} resizeMode="contain" />
+              <Text style={styles.zoomHint}>{t('shop.tapToClose')}</Text>
+            </View>
+          )}
+        </Pressable>
+      </Modal>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  scroll: { backgroundColor: 'transparent' },
   safeArea: {
     padding: Spacing.four,
     maxWidth: MaxContentWidth,
     width: '100%',
     alignSelf: 'center',
     gap: Spacing.four,
-    backgroundColor: P.cream,
+    backgroundColor: 'transparent',
   },
 
+  // Header banner: the scalloped art (BAKERY_HEADER) is an absolute layer behind
+  // the title/subtitle. The panel matches the art's aspect ratio and centers the
+  // text, with a little extra top padding so it clears the awning scallops.
+  // Pull out past the screen padding so the banner reads bigger; symmetric, so it
+  // stays centered. The image (width 100% + aspectRatio) drives the panel size —
+  // putting aspectRatio on the image, not the flex container, avoids the Yoga
+  // quirk where stretch+aspectRatio collapses the width and left-aligns it.
   headerPanel: {
-    backgroundColor: P.card,
-    borderRadius: 26,
-    paddingVertical: Spacing.four,
-    paddingHorizontal: Spacing.four,
-    borderWidth: 1.5,
-    borderColor: '#F4C5A8',
-    alignItems: 'center',
-    gap: 4,
-    shadowColor: '#C9A18A',
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 3,
+    marginTop: Spacing.two,
+    marginHorizontal: -Spacing.three,
+    alignSelf: 'stretch',
   },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: P.brown, letterSpacing: 0.2 },
-  headerSubtitle: { fontSize: 13, color: P.mutedBrown, fontWeight: '500' },
+  headerImg: { width: '100%', aspectRatio: 891 / 287 },
+  // Text overlay, centered in the card's flat area (below the scalloped awning).
+  headerTextWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: '8%',
+    gap: 4,
+  },
+  headerTitle: { fontSize: 26, fontWeight: '800', color: P.brown, letterSpacing: 0.2, textAlign: 'center' },
+  headerSubtitle: { fontSize: 15, color: P.mutedBrown, fontWeight: '500', textAlign: 'center' },
 
   section: { gap: Spacing.two },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: P.brown },
@@ -161,13 +253,55 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 12,
   },
+  foodCardLocked: {
+    borderColor: P.pinkSoft,
+    backgroundColor: '#FBF6F2',
+  },
+  lockedImg: { opacity: 0.45 },
+  lockedBtn: {
+    marginTop: 6,
+    backgroundColor: P.button,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  lockedBtnText: { fontSize: 11, color: '#fff', fontWeight: '800' },
   imageWrap: { width: 96, height: 96, alignItems: 'center', justifyContent: 'center' },
   foodImg: { width: 96, height: 96 },
   madeBadge: {
-    position: 'absolute', bottom: 0, right: 0,
+    position: 'absolute', top: 6, right: 6, zIndex: 2,
     backgroundColor: '#E88AA0', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2,
   },
   madeBadgeText: { fontSize: 10, color: '#fff', fontWeight: '700' },
+  madeBadgeBtn: {
+    position: 'absolute', top: 4, right: 4, zIndex: 2,
+    width: 40, height: 40, borderRadius: 20,
+    borderWidth: 2, borderColor: '#fff',
+    backgroundColor: '#FBD9E0',
+    overflow: 'hidden',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  madeBadgeImg: { width: '100%', height: '100%' },
+  // Zoomed-in badge viewer
+  zoomBackdrop: {
+    flex: 1, backgroundColor: 'rgba(60,40,30,0.5)',
+    alignItems: 'center', justifyContent: 'center', padding: Spacing.four,
+  },
+  zoomCard: {
+    backgroundColor: P.card, borderRadius: 28, padding: Spacing.four,
+    alignItems: 'center', gap: Spacing.two,
+    borderWidth: 1.5, borderColor: '#F4C5A8',
+  },
+  zoomBadgeImg: { width: 170, height: 170, borderRadius: 20 },
+  zoomHint: { fontSize: 12.5, color: P.mutedBrown, fontWeight: '600' },
+  // Empty placeholder circle shown top-right until the recipe is baked.
+  badgeSlotEmpty: {
+    position: 'absolute', top: 4, right: 4, zIndex: 2,
+    width: 40, height: 40, borderRadius: 20,
+    borderWidth: 2, borderColor: P.pinkSoft,
+    backgroundColor: 'rgba(255,255,255,0.45)',
+    alignItems: 'center', justifyContent: 'center',
+  },
   foodName: { fontSize: 15, fontWeight: '800', color: P.brown, textAlign: 'center' },
   foodDesc: { fontSize: 11, color: P.mutedBrown, textAlign: 'center', lineHeight: 15 },
   activePill: {

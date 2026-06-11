@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { ArrowUpIcon, ArrowDownIcon, RemoveIcon } from '@/components/subject-icons';
 import { useApp, MAX_SUBJECTS_FREE, MAX_SUBJECTS_PLUS } from '@/context/app-context';
 import { SUBJECT_COLORS } from '@/constants/placeholder-data';
 import { useTranslation } from '@/i18n';
@@ -12,7 +13,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 export default function ManageSubjectsScreen() {
   const { t } = useTranslation();
-  const { subjects, addSubject, renameSubject, archiveSubject, deleteSubject, reorderSubjects, isPlus } =
+  const { subjects, addSubject, renameSubject, deleteSubject, reorderSubjects, isPlus } =
     useApp();
   const subjectLimit = isPlus ? MAX_SUBJECTS_PLUS : MAX_SUBJECTS_FREE;
   const scheme = useColorScheme();
@@ -23,12 +24,10 @@ export default function ManageSubjectsScreen() {
   const [selectedColor, setSelectedColor] = useState<string>(SUBJECT_COLORS[0]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
-  const [showArchived, setShowArchived] = useState(false);
 
   const activeSubjects = subjects
     .filter((s) => !s.archived)
     .sort((a, b) => a.order - b.order);
-  const archivedSubjects = subjects.filter((s) => s.archived);
 
   const nextColor = (): string => {
     const used = subjects.map((s) => s.color);
@@ -79,13 +78,6 @@ export default function ManageSubjectsScreen() {
     if (idx < 0 || idx >= sorted.length - 1) return;
     [sorted[idx], sorted[idx + 1]] = [sorted[idx + 1], sorted[idx]];
     reorderSubjects(sorted.map((s) => s.id));
-  };
-
-  const handleArchive = (id: string, name: string) => {
-    Alert.alert(t('manageSubjects.archiveSubjectQ'), t('manageSubjects.archiveMsg', { name }), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('manageSubjects.archive'), onPress: () => archiveSubject(id) },
-    ]);
   };
 
   const handleDelete = (id: string, name: string) => {
@@ -148,19 +140,16 @@ export default function ManageSubjectsScreen() {
                   {/* Reorder */}
                   {idx > 0 && (
                     <Pressable style={styles.iconBtn} onPress={() => handleMoveUp(sub.id)}>
-                      <ThemedText style={styles.iconBtnText}>↑</ThemedText>
+                      <ArrowUpIcon />
                     </Pressable>
                   )}
                   {idx < activeSubjects.length - 1 && (
                     <Pressable style={styles.iconBtn} onPress={() => handleMoveDown(sub.id)}>
-                      <ThemedText style={styles.iconBtnText}>↓</ThemedText>
+                      <ArrowDownIcon />
                     </Pressable>
                   )}
-                  <Pressable style={styles.iconBtn} onPress={() => handleArchive(sub.id, sub.name)}>
-                    <ThemedText style={styles.iconBtnText}>📦</ThemedText>
-                  </Pressable>
                   <Pressable style={styles.iconBtn} onPress={() => handleDelete(sub.id, sub.name)}>
-                    <ThemedText style={[styles.iconBtnText, styles.deleteText]}>✕</ThemedText>
+                    <RemoveIcon />
                   </Pressable>
                 </ThemedView>
               </ThemedView>
@@ -216,30 +205,6 @@ export default function ManageSubjectsScreen() {
             </Pressable>
           </ThemedView>
 
-          {/* Archived subjects */}
-          {archivedSubjects.length > 0 && (
-            <ThemedView style={styles.section}>
-              <Pressable onPress={() => setShowArchived((v) => !v)} style={styles.archivedToggle}>
-                <ThemedText type="smallBold" themeColor="textSecondary">
-                  {showArchived ? '▾' : '▸'} {t('manageSubjects.archivedCount', { count: archivedSubjects.length })}
-                </ThemedText>
-              </Pressable>
-
-              {showArchived &&
-                archivedSubjects.map((sub) => (
-                  <ThemedView key={sub.id} type="backgroundElement" style={styles.archivedRow}>
-                    <ThemedView style={[styles.colorDot, { backgroundColor: sub.color, opacity: 0.5 }]} />
-                    <ThemedText type="small" themeColor="textSecondary" style={styles.subjectName}>
-                      {sub.name}
-                    </ThemedText>
-                    <Pressable style={styles.iconBtn} onPress={() => deleteSubject(sub.id)}>
-                      <ThemedText style={[styles.iconBtnText, styles.deleteText]}>✕</ThemedText>
-                    </Pressable>
-                  </ThemedView>
-                ))}
-            </ThemedView>
-          )}
-
           <Pressable
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
             style={styles.doneBtn}
@@ -280,17 +245,7 @@ const styles = StyleSheet.create({
   editHint: { fontSize: 11 },
   subjectActions: { flexDirection: 'row', gap: 2 },
   iconBtn: { padding: 6 },
-  iconBtnText: { fontSize: 14 },
-  deleteText: { color: '#E05C3A' },
   inlineInput: { flex: 1, paddingVertical: 6, fontSize: 14 },
-  archivedRow: {
-    borderRadius: 12,
-    padding: Spacing.two,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  archivedToggle: { paddingVertical: 4 },
   input: {
     borderWidth: 1.5,
     borderRadius: 12,
