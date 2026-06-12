@@ -209,7 +209,7 @@ export default function ManageSubjectsScreen() {
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
             style={styles.doneBtn}
             hitSlop={12}>
-            <ThemedText type="linkPrimary">{t('common.done')}</ThemedText>
+            <ThemedText type="linkPrimary" style={{ color: '#F7A7B8' }}>{t('common.done')}</ThemedText>
           </Pressable>
         </SafeAreaView>
       </ScrollView>

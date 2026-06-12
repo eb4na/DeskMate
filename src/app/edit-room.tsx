@@ -121,7 +121,7 @@ export default function EditRoomScreen() {
       onPress={owned ? onPress : onLocked}>
       <PairButton room={room} />
       <Image source={image} style={styles.thumbImg} contentFit="cover" />
-      {!owned && <View style={styles.lockBadge}><Text style={styles.lockText}>🔒</Text></View>}
+      {!owned && <View style={styles.lockBadge}><Text style={styles.lockText}></Text></View>}
       <Text style={styles.thumbName} numberOfLines={1}>{room.name}</Text>
       {active ? (
         <View style={styles.activePill}><Text style={styles.activePillText}>{t('editRoom.inUse')}</Text></View>
@@ -195,7 +195,7 @@ export default function EditRoomScreen() {
 
           <Text style={styles.sectionTitle}>{t('editRoom.effect')}</Text>
           <View style={styles.comingSoon}>
-            <Text style={styles.comingSoonEmoji}>✨</Text>
+            <Text style={styles.comingSoonEmoji}></Text>
             <Text style={styles.comingSoonTitle}>{t('editRoom.noEffects')}</Text>
             <Text style={styles.comingSoonText}>{t('editRoom.effectsSoon')}</Text>
           </View>
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
   comingSoonTitle: { fontSize: 15, fontWeight: '800', color: P.brown },
   comingSoonText: { fontSize: 12.5, color: P.mutedBrown, textAlign: 'center' },
   doneBtn: {
-    backgroundColor: P.button, borderRadius: 18, paddingVertical: Spacing.three,
+    backgroundColor: '#F7A7B8', borderRadius: 18, paddingVertical: Spacing.three,
     alignItems: 'center', marginTop: Spacing.two,
   },
   doneText: { color: '#FFF', fontSize: 17, fontWeight: '800' },

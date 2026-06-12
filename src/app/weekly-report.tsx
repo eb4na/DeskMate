@@ -101,11 +101,11 @@ export default function WeeklyReportScreen() {
     suggestedGoal = t('weeklyReport.goalHigh', { count: weekSessionCount });
 
   const stats = [
-    { label: t('weeklyReport.statSessions'), value: String(weekSessionCount), emoji: '📚' },
+    { label: t('weeklyReport.statSessions'), value: String(weekSessionCount), emoji: '' },
     { label: t('weeklyReport.statStudyTime'), value: weekMinutes > 0 ? formatMinutes(weekMinutes) : '—', emoji: '⏱' },
-    { label: t('weeklyReport.statDaysShowedUp'), value: String(weekDays), emoji: '📅' },
-    { label: t('weeklyReport.statTasksDone'), value: String(weekTasks.length), emoji: '✅' },
-    { label: t('weeklyReport.statStreakNow'), value: `${streak.currentStreak}d`, emoji: '🔥' },
+    { label: t('weeklyReport.statDaysShowedUp'), value: String(weekDays), emoji: '' },
+    { label: t('weeklyReport.statTasksDone'), value: String(weekTasks.length), emoji: '' },
+    { label: t('weeklyReport.statStreakNow'), value: `${streak.currentStreak}d`, emoji: '' },
     { label: t('weeklyReport.statEstCoins'), value: estimatedCoins > 0 ? String(estimatedCoins) : '—', coinIcon: true },
   ];
 
@@ -127,7 +127,7 @@ export default function WeeklyReportScreen() {
 
           {/* Summary card */}
           <ThemedView type="backgroundElement" style={styles.summaryCard}>
-            <ThemedText style={styles.summaryEmoji}>📊</ThemedText>
+            <ThemedText style={styles.summaryEmoji}></ThemedText>
             {summaryText ? (
               <ThemedText style={styles.summaryText}>{summaryText}</ThemedText>
             ) : (
@@ -194,7 +194,7 @@ export default function WeeklyReportScreen() {
             <ThemedView style={styles.section}>
               <ThemedText type="smallBold">{t('weeklyReport.moodInsight')}</ThemedText>
               <ThemedView type="backgroundElement" style={styles.moodInsightCard}>
-                <ThemedText style={styles.moodInsightEmoji}>😊</ThemedText>
+                <ThemedText style={styles.moodInsightEmoji}></ThemedText>
                 <ThemedText type="small" style={styles.moodInsightText}>
                   {t('weeklyReport.moodInsightText', { pct: moodPct })}
                 </ThemedText>
@@ -206,7 +206,7 @@ export default function WeeklyReportScreen() {
           <ThemedView style={styles.section}>
             <ThemedText type="smallBold">{t('weeklyReport.goalNextWeek')}</ThemedText>
             <ThemedView type="backgroundElement" style={styles.goalCard}>
-              <ThemedText style={styles.goalEmoji}>💡</ThemedText>
+              <ThemedText style={styles.goalEmoji}></ThemedText>
               <ThemedText type="small" style={styles.goalText}>
                 {suggestedGoal}
               </ThemedText>
@@ -231,7 +231,7 @@ export default function WeeklyReportScreen() {
                   </ThemedView>
                 </ThemedView>
                 <ThemedView type="backgroundElement" style={styles.advancedCard}>
-                  <ThemedText style={styles.advancedEmoji}>📉</ThemedText>
+                  <ThemedText style={styles.advancedEmoji}></ThemedText>
                   <ThemedView style={styles.advancedText}>
                     <ThemedText type="smallBold">{t('weeklyReport.avoidanceInsights')}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
@@ -240,7 +240,7 @@ export default function WeeklyReportScreen() {
                   </ThemedView>
                 </ThemedView>
                 <ThemedView type="backgroundElement" style={styles.advancedCard}>
-                  <ThemedText style={styles.advancedEmoji}>📅</ThemedText>
+                  <ThemedText style={styles.advancedEmoji}></ThemedText>
                   <ThemedView style={styles.advancedText}>
                     <ThemedText type="smallBold">{t('weeklyReport.monthlyOverview')}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
@@ -257,12 +257,12 @@ export default function WeeklyReportScreen() {
                   description={t('weeklyReport.bestStudyHoursDesc')}
                 />
                 <PlusGateCard
-                  emoji="📉"
+                  emoji=""
                   title={t('weeklyReport.avoidanceInsights')}
                   description={t('weeklyReport.avoidanceDesc')}
                 />
                 <PlusGateCard
-                  emoji="📅"
+                  emoji=""
                   title={t('weeklyReport.monthlyReport')}
                   description={t('weeklyReport.monthlyDesc')}
                 />

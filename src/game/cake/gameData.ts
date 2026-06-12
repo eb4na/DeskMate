@@ -13,37 +13,37 @@ import type {
 } from './gameTypes';
 
 export const BASES: IngredientDef<CakeBase>[] = [
-  { id: 'vanilla', label: 'Vanilla', emoji: '🟡', color: '#FDE6B8' },
-  { id: 'chocolate', label: 'Chocolate', emoji: '🟤', color: '#C99878' },
-  { id: 'strawberry', label: 'Strawberry', emoji: '🩷', color: '#F7B6C6' },
-  { id: 'redVelvet', label: 'Red Velvet', emoji: '🍰', color: '#B5352F' },
-  { id: 'milk', label: 'Milk', emoji: '🥛', color: '#FBF6EC' },
-  { id: 'riceFlour', label: 'Rice Flour', emoji: '🍚', color: '#FBEFF2' },
-  { id: 'matcha', label: 'Matcha', emoji: '🍵', color: '#A7C268' },
-  { id: 'flour', label: 'Flour', emoji: '🌾', color: '#F8E9D2' },
+  { id: 'vanilla', label: 'Vanilla', emoji: '', color: '#FDE6B8' },
+  { id: 'chocolate', label: 'Chocolate', emoji: '', color: '#C99878' },
+  { id: 'strawberry', label: 'Strawberry', emoji: '', color: '#F7B6C6' },
+  { id: 'redVelvet', label: 'Red Velvet', emoji: '', color: '#B5352F' },
+  { id: 'milk', label: 'Milk', emoji: '', color: '#FBF6EC' },
+  { id: 'riceFlour', label: 'Rice Flour', emoji: '', color: '#FBEFF2' },
+  { id: 'matcha', label: 'Matcha', emoji: '', color: '#A7C268' },
+  { id: 'flour', label: 'Flour', emoji: '', color: '#F8E9D2' },
 ];
 
 export const FILLINGS: IngredientDef<CakeFilling>[] = [
-  { id: 'cream', label: 'Cream', emoji: '🥛', color: '#FFF6E9' },
-  { id: 'chocCream', label: 'Choc Cream', emoji: '🍫', color: '#B07A5C' },
-  { id: 'strawJam', label: 'Strawberry Jam', emoji: '🍓', color: '#F28BA0' },
-  { id: 'redVelvet', label: 'Red Velvet', emoji: '🍰', color: '#C0303A' },
-  { id: 'sugar', label: 'Sugar', emoji: '🍬', color: '#FBE3EC' },
-  { id: 'redBean', label: 'Red Bean', emoji: '🫘', color: '#7A2E33' },
-  { id: 'milk', label: 'Milk', emoji: '🥛', color: '#FBF6EC' },
-  { id: 'butter', label: 'Butter', emoji: '🧈', color: '#F5DE7E' },
+  { id: 'cream', label: 'Cream', emoji: '', color: '#FFF6E9' },
+  { id: 'chocCream', label: 'Choc Cream', emoji: '', color: '#B07A5C' },
+  { id: 'strawJam', label: 'Strawberry Jam', emoji: '', color: '#F28BA0' },
+  { id: 'redVelvet', label: 'Red Velvet', emoji: '', color: '#C0303A' },
+  { id: 'sugar', label: 'Sugar', emoji: '', color: '#FBE3EC' },
+  { id: 'redBean', label: 'Red Bean', emoji: '', color: '#7A2E33' },
+  { id: 'milk', label: 'Milk', emoji: '', color: '#FBF6EC' },
+  { id: 'butter', label: 'Butter', emoji: '', color: '#F5DE7E' },
 ];
 
 export const TOPPINGS: IngredientDef<CakeTopping>[] = [
-  { id: 'strawberry', label: 'Strawberry', emoji: '🍓', color: '#F28BA0' },
-  { id: 'cherry', label: 'Cherry', emoji: '🍒', color: '#E26A7E' },
-  { id: 'blueberry', label: 'Blueberry', emoji: '🫐', color: '#8E9BE0' },
-  { id: 'choco', label: 'Chocolate', emoji: '🍫', color: '#6B4A33' },
-  { id: 'sprinkles', label: 'Sprinkles', emoji: '✨', color: '#FAD9A0' },
-  { id: 'cornstarch', label: 'Cornstarch', emoji: '🌽', color: '#FFFDF6' },
-  { id: 'sakuraLeaf', label: 'Sakura Leaf', emoji: '🌿', color: '#8FA45A' },
-  { id: 'eggFlour', label: 'Eggs & Flour', emoji: '🥚', color: '#F6E7C2' },
-  { id: 'berries', label: 'Berries', emoji: '🍓', color: '#D24B66' },
+  { id: 'strawberry', label: 'Strawberry', emoji: '', color: '#F28BA0' },
+  { id: 'cherry', label: 'Cherry', emoji: '', color: '#E26A7E' },
+  { id: 'blueberry', label: 'Blueberry', emoji: '', color: '#8E9BE0' },
+  { id: 'choco', label: 'Chocolate', emoji: '', color: '#6B4A33' },
+  { id: 'sprinkles', label: 'Sprinkles', emoji: '', color: '#FAD9A0' },
+  { id: 'cornstarch', label: 'Cornstarch', emoji: '', color: '#FFFDF6' },
+  { id: 'sakuraLeaf', label: 'Sakura Leaf', emoji: '', color: '#8FA45A' },
+  { id: 'eggFlour', label: 'Eggs & Flour', emoji: '', color: '#F6E7C2' },
+  { id: 'berries', label: 'Berries', emoji: '', color: '#D24B66' },
 ];
 
 // Each non-cake recipe is a single fixed order using its own dedicated ingredient
@@ -96,20 +96,20 @@ export function recipePools(recipe: RecipeId): {
 // appendix, normalized to a ~300x540 vertical layout) so they scale on any
 // phone. Stations are placed so the flow reads roughly top-to-bottom.
 export const STATIONS: Station[] = [
-  { id: 'counter', kind: 'counter', label: 'Counter', emoji: '🔔', x: 50, y: 14, allowedActions: ['serve'] },
+  { id: 'counter', kind: 'counter', label: 'Counter', emoji: '', x: 50, y: 14, allowedActions: ['serve'] },
   // Left column: ingredients + ovens
-  { id: 'ingredient', kind: 'ingredient', label: 'Ingredients', emoji: '🧺', x: 14, y: 30, allowedActions: ['pickBase'] },
-  { id: 'oven1', kind: 'oven', label: 'Oven', emoji: '🔥', x: 14, y: 48, allowedActions: ['bake'] },
-  { id: 'oven2', kind: 'oven', label: 'Oven', emoji: '🔥', x: 14, y: 65, allowedActions: ['bake'] },
-  { id: 'oven3', kind: 'oven', label: 'Oven', emoji: '🔥', x: 14, y: 82, allowedActions: ['bake'] },
+  { id: 'ingredient', kind: 'ingredient', label: 'Ingredients', emoji: '', x: 14, y: 30, allowedActions: ['pickBase'] },
+  { id: 'oven1', kind: 'oven', label: 'Oven', emoji: '', x: 14, y: 48, allowedActions: ['bake'] },
+  { id: 'oven2', kind: 'oven', label: 'Oven', emoji: '', x: 14, y: 65, allowedActions: ['bake'] },
+  { id: 'oven3', kind: 'oven', label: 'Oven', emoji: '', x: 14, y: 82, allowedActions: ['bake'] },
   // Right column: assembly, decorate, trash
-  { id: 'assembly', kind: 'assembly', label: 'Assembly', emoji: '🍰', x: 86, y: 40, allowedActions: ['addFilling'] },
-  { id: 'decoration', kind: 'decoration', label: 'Decorate', emoji: '🎀', x: 86, y: 58, allowedActions: ['addTopping'] },
-  { id: 'trash', kind: 'trash', label: 'Trash', emoji: '🗑️', x: 86, y: 76, allowedActions: [] },
+  { id: 'assembly', kind: 'assembly', label: 'Assembly', emoji: '', x: 86, y: 40, allowedActions: ['addFilling'] },
+  { id: 'decoration', kind: 'decoration', label: 'Decorate', emoji: '', x: 86, y: 58, allowedActions: ['addTopping'] },
+  { id: 'trash', kind: 'trash', label: 'Trash', emoji: '', x: 86, y: 76, allowedActions: [] },
   // Bottom row: mixers
-  { id: 'mixer1', kind: 'mixer', label: 'Mixer', emoji: '🥣', x: 33, y: 93, allowedActions: ['mix'] },
-  { id: 'mixer2', kind: 'mixer', label: 'Mixer', emoji: '🥣', x: 50, y: 93, allowedActions: ['mix'] },
-  { id: 'mixer3', kind: 'mixer', label: 'Mixer', emoji: '🥣', x: 67, y: 93, allowedActions: ['mix'] },
+  { id: 'mixer1', kind: 'mixer', label: 'Mixer', emoji: '', x: 33, y: 93, allowedActions: ['mix'] },
+  { id: 'mixer2', kind: 'mixer', label: 'Mixer', emoji: '', x: 50, y: 93, allowedActions: ['mix'] },
+  { id: 'mixer3', kind: 'mixer', label: 'Mixer', emoji: '', x: 67, y: 93, allowedActions: ['mix'] },
 ];
 
 // A small set of starter recipes so early orders are gentle and completable
@@ -126,8 +126,8 @@ export const findTopping = (id: CakeTopping) => TOPPINGS.find((t) => t.id === id
 
 // Mode-select card copy.
 export const MODE_META: Record<GameMode, { label: string; emoji: string; blurb: string }> = {
-  rush: { label: 'Cake Rush', emoji: '🧁', blurb: 'Make as many cakes as you can in 2 minutes!' },
-  line: { label: 'Customer Line', emoji: '🔔', blurb: 'Endless orders — keep your 3 hearts alive!' },
+  rush: { label: 'Cake Rush', emoji: '', blurb: 'Make as many cakes as you can in 2 minutes!' },
+  line: { label: 'Customer Line', emoji: '', blurb: 'Endless orders — keep your 3 hearts alive!' },
 };
 
 // One local player named "You". Stored in an array later (multiplayer-ready).

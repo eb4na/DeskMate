@@ -11,6 +11,11 @@ export type RoomPair = {
   deskId: string | null; // shop item id for the desk, or null (default)
   backgroundImage: number;
   deskImage: number;
+  // Desk surface render tuning. `deskFit: 'contain'` zooms the desk out (shows the
+  // whole image instead of cropping), and `deskTint` fills the revealed edges with
+  // a colour that blends into the surface (e.g. a tiled floor's base tone).
+  deskFit?: 'cover' | 'contain';
+  deskTint?: string;
 };
 
 export const DEFAULT_ROOM_BG = require('@/assets/images/home/home-room-bg.png');
@@ -82,6 +87,19 @@ export const ROOM_PAIRS: RoomPair[] = [
     deskId: 'desk_lavender',
     backgroundImage: require('@/assets/images/backgrounds/lavender-palace.png'),
     deskImage: require('@/assets/images/desks/lavender.png'),
+  },
+  {
+    // Plus-exclusive matched set — background + crimson cloth desk, both granted with Plus.
+    id: 'strawberry-palace',
+    name: 'Golden Teahouse',
+    backgroundId: 'bg_strawberry_palace',
+    deskId: 'desk_strawberry',
+    backgroundImage: require('@/assets/images/backgrounds/strawberry-palace.png'),
+    deskImage: require('@/assets/images/desks/strawberry.png'),
+    // The tiled palace floor reads too large when cropped — show the whole tile
+    // pattern (zoomed out) and fill the edges with the floor's pale-pink base.
+    deskFit: 'contain',
+    deskTint: '#F9E3D8',
   },
 ];
 

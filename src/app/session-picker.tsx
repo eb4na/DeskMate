@@ -5,6 +5,7 @@ import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, useWindowDime
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/coin-icon';
+import { PlusIcon } from '@/components/plus-icon';
 import { useApp } from '@/context/app-context';
 import { newRoomId } from '@/lib/game-net';
 import { useStudyRoom } from '@/lib/use-study-room';
@@ -144,6 +145,7 @@ export default function SessionPickerScreen() {
           <Pressable
             style={({ pressed }) => [styles.customRow, pressed && styles.pressed]}
             onPress={() => router.push({ pathname: '/custom-timer', params: { mode: 'focus' } })}>
+            <PlusIcon size={34} />
             <View style={styles.customTextWrap}>
               <Text style={styles.customTitle}>{t('sessionPicker.customTitle')}</Text>
               <Text style={styles.customSub}>{t('sessionPicker.customSub')}</Text>

@@ -8,6 +8,7 @@ import { fetchCloudState, pushCloudStateDebounced } from '@/lib/cloud-sync';
 import { getEffectiveBunSkinId, getEffectiveCompanionSkins } from '@/lib/companion-utils';
 import { maskProfanity } from '@/lib/profanity';
 import { uploadProfile } from '@/lib/profile-sync';
+import { HANJI_COMPANION_ID, hasAllRecipeBadges } from '@/constants/recipes';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -221,6 +222,9 @@ type PersistedState = {
   // Food / baking
   selectedFoodId: string;
   madeFoods: string[];
+  // Set true the moment all recipe badges are collected (grants Hanji); the home
+  // screen shows a one-time unlock popup, then clears it.
+  hanjiUnlockPending: boolean;
 
   // Calendar day notes (dateISO → note text)
   dayNotes: Record<string, string>;
@@ -318,6 +322,7 @@ const DEFAULTS: PersistedState = {
   advancedExamMap: {},
   selectedFoodId: 'strawberry-shortcake',
   madeFoods: [],
+  hanjiUnlockPending: false,
   dayNotes: {},
   friendCode: '',
   friends: [],
@@ -356,6 +361,30 @@ function daysBetween(a: string, b: string): number {
   return Math.round((msB - msA) / 86400000);
 }
 
+// Pure streak transition for a study completion on `today`. `changed` is false when
+// the day already counts (so callers can leave state untouched and award no bonus).
+// `next` is both the new streak number and the coin bonus for the day. When `rescue`
+// is set and the gap is within the 3-day freeze window (2–4 days), the streak is
+// bridged and continued (consuming a freeze) instead of resetting.
+function nextStreakState(
+  st: StreakData,
+  today: string,
+  rescue = false,
+): { changed: boolean; next: number; isComeback: boolean; useFreeze: boolean } {
+  if (!st.lastStudyDate) return { changed: true, next: 1, isComeback: false, useFreeze: false };
+  const diff = daysBetween(st.lastStudyDate, today);
+  if (diff === 0) return { changed: false, next: st.currentStreak, isComeback: false, useFreeze: false };
+  if (diff === 1) {
+    return { changed: true, next: Math.min(STREAK_MAX, st.currentStreak + 1), isComeback: false, useFreeze: false };
+  }
+  if (rescue && diff <= 4) {
+    // Bridge the missed days with a freeze and continue the streak.
+    return { changed: true, next: Math.min(STREAK_MAX, st.currentStreak + 1), isComeback: false, useFreeze: true };
+  }
+  // Missed too long (or no rescue) → streak resets; today is day 1 of a fresh streak.
+  return { changed: true, next: 1, isComeback: true, useFreeze: false };
+}
+
 function uid(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
@@ -383,10 +412,20 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
     merged.aiTicketsResetMonth = month;
   }
 
-  // Plus exclusive: ensure Plus members own Tira (covers players who had Plus
-  // before she became a Plus perk).
-  if (merged.isPlus && !(merged.ownedShopItems ?? []).includes('companion_tira')) {
-    merged.ownedShopItems = [...(merged.ownedShopItems ?? []), 'companion_tira'];
+  // Plus exclusive: ensure Plus members own the Berry Princess Bun skin and the
+  // Strawberry Palace room (covers players who had Plus before these became perks).
+  for (const plusGrant of ['outfit_bun_strawberry', 'bg_strawberry_palace', 'desk_strawberry']) {
+    if (merged.isPlus && !(merged.ownedShopItems ?? []).includes(plusGrant)) {
+      merged.ownedShopItems = [...(merged.ownedShopItems ?? []), plusGrant];
+    }
+  }
+
+  // Badge reward: grant Hanji once every recipe badge is collected (covers players
+  // who completed all recipes before Hanji became a badge reward). The home screen
+  // shows the one-time unlock popup off `hanjiUnlockPending`.
+  if (hasAllRecipeBadges(merged.madeFoods ?? []) && !(merged.ownedShopItems ?? []).includes(HANJI_COMPANION_ID)) {
+    merged.ownedShopItems = [...(merged.ownedShopItems ?? []), HANJI_COMPANION_ID];
+    merged.hanjiUnlockPending = true;
   }
 
   merged.equippedShopItems = {
@@ -476,6 +515,8 @@ type AppContextType = {
   madeFoods: string[];
   setSelectedFood: (id: string) => void;
   markFoodMade: (id: string) => void;
+  hanjiUnlockPending: boolean;
+  clearHanjiUnlock: () => void;
   dayNotes: Record<string, string>;
   setDayNote: (date: string, note: string) => void;
   friendCode: string;
@@ -518,7 +559,11 @@ type AppContextType = {
   removeExam: (id: string) => void;
   setReminder: (enabled: boolean, time: string) => void;
   setUse24HourTime: (value: boolean) => void;
-  updateStreak: () => { bonus: number; isComeback: boolean };
+  updateStreak: (opts?: { rescueWithFreeze?: boolean }) => {
+    bonus: number;
+    isComeback: boolean;
+    rescued: boolean;
+  };
 
   // Wave 2 subject actions
   addSubject: (name: string, color: string, emoji?: string) => boolean;
@@ -795,41 +840,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Streak counts STUDY days only (called from session-complete). Each study day
   // rewards coins equal to the new streak number (1, 2, 3, … up to 200). Missing a
   // day resets the streak — today becomes day 1 again.
-  const updateStreak = (): { bonus: number; isComeback: boolean } => {
-    let bonus = 0;
-    let isComeback = false;
+  // Pass `rescueWithFreeze` when the user opted to spend a freeze to keep a streak
+  // that lapsed 1–3 days ago (the session-complete "keep your streak?" prompt).
+  const updateStreak = (
+    opts?: { rescueWithFreeze?: boolean },
+  ): { bonus: number; isComeback: boolean; rescued: boolean } => {
+    const today = todayISO();
+    const canRescue = !!opts?.rescueWithFreeze && s.isPlus && s.streakFreezes > 0;
+    // Compute synchronously from current state for the return value (the setS
+    // updater below runs later, so reading its result there would be too late).
+    const result = nextStreakState(s.streak, today, canRescue);
 
-    setS((prev) => {
-      const today = todayISO();
-      const { streak: st } = prev;
-
-      // Advance to `next` day, award `next` coins (once per day, so not capped).
-      const advance = (next: number) => {
-        bonus = next;
+    if (result.changed) {
+      setS((prev) => {
+        // Recompute against `prev` to stay correct under React batching.
+        const prevCanRescue = !!opts?.rescueWithFreeze && prev.isPlus && prev.streakFreezes > 0;
+        const r = nextStreakState(prev.streak, today, prevCanRescue);
+        if (!r.changed) return prev;
         return {
           ...prev,
           streak: {
-            currentStreak: next,
-            longestStreak: Math.max(st.longestStreak, next),
+            currentStreak: r.next,
+            longestStreak: Math.max(prev.streak.longestStreak, r.next),
             lastStudyDate: today,
           },
-          coins: prev.coins + next,
+          // Award `next` coins once per day (intentionally not daily-capped).
+          coins: prev.coins + r.next,
+          // A rescued streak consumes one freeze.
+          streakFreezes: r.useFreeze ? prev.streakFreezes - 1 : prev.streakFreezes,
         };
-      };
+      });
+    }
 
-      if (!st.lastStudyDate) return advance(1); // first study ever
-
-      const diff = daysBetween(st.lastStudyDate, today);
-      if (diff === 0) return prev; // already studied today
-
-      if (diff === 1) return advance(Math.min(STREAK_MAX, st.currentStreak + 1)); // consecutive day
-
-      // Missed a day → streak resets; today is day 1 of a fresh streak.
-      isComeback = true;
-      return advance(1);
-    });
-
-    return { bonus, isComeback };
+    return {
+      bonus: result.changed ? result.next : 0,
+      isComeback: result.isComeback,
+      rescued: result.useFreeze,
+    };
   };
 
   // ─── Wave 2 subject actions ───────────────────────────────────────────────
@@ -952,7 +999,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...prev.subjectTimeMap,
         [key]: (prev.subjectTimeMap[key] ?? 0) + minutes,
       },
-      sessionHistory: [record, ...prev.sessionHistory].slice(0, 90),
+      sessionHistory: [record, ...prev.sessionHistory].slice(0, 1000),
     }));
   };
 
@@ -1015,24 +1062,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updates.aiTickets = 3;
         updates.aiTicketsResetMonth = month;
       }
-      // Plus exclusive: getting Plus grants Tira (the companion) for free. She is
-      // kept even if Plus later lapses; her outfits must still be bought.
-      if (value && !prev.ownedShopItems.includes('companion_tira')) {
-        updates.ownedShopItems = [...prev.ownedShopItems, 'companion_tira'];
+      // Plus exclusive: getting Plus grants the Berry Princess Bun skin and the
+      // Strawberry Palace room for free. Both are kept even if Plus later lapses.
+      if (value) {
+        const granted = prev.ownedShopItems;
+        const toGrant = ['outfit_bun_strawberry', 'bg_strawberry_palace', 'desk_strawberry'].filter((id) => !granted.includes(id));
+        if (toGrant.length) updates.ownedShopItems = [...granted, ...toGrant];
       }
       return { ...prev, ...updates };
     });
   };
 
+  // A freeze rescues a streak missed for up to 3 days (daysBetween 2–4). One freeze
+  // bridges the whole gap to yesterday, so studying today continues the streak.
+  const canFreezeGap = (gap: number) => gap >= 2 && gap <= 4;
+
   const useStreakFreeze = (): boolean => {
     if (!s.isPlus || s.streakFreezes <= 0) return false;
     const { lastStudyDate } = s.streak;
-    if (!lastStudyDate || daysBetween(lastStudyDate, todayISO()) !== 2) return false;
+    if (!lastStudyDate || !canFreezeGap(daysBetween(lastStudyDate, todayISO()))) return false;
 
     setS((prev) => {
       if (!prev.isPlus || prev.streakFreezes <= 0) return prev;
       const { lastStudyDate: last } = prev.streak;
-      if (!last || daysBetween(last, todayISO()) !== 2) return prev;
+      if (!last || !canFreezeGap(daysBetween(last, todayISO()))) return prev;
       return {
         ...prev,
         streakFreezes: prev.streakFreezes - 1,
@@ -1210,10 +1263,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setS((prev) => ({ ...prev, selectedFoodId: id }));
 
   const markFoodMade = (id: string) =>
-    setS((prev) => ({
-      ...prev,
-      madeFoods: prev.madeFoods.includes(id) ? prev.madeFoods : [...prev.madeFoods, id],
-    }));
+    setS((prev) => {
+      const madeFoods = prev.madeFoods.includes(id) ? prev.madeFoods : [...prev.madeFoods, id];
+      // Collecting the final recipe badge grants Hanji and flags the home popup.
+      const unlockHanji = hasAllRecipeBadges(madeFoods) && !prev.ownedShopItems.includes(HANJI_COMPANION_ID);
+      return {
+        ...prev,
+        madeFoods,
+        ...(unlockHanji
+          ? {
+              ownedShopItems: [...prev.ownedShopItems, HANJI_COMPANION_ID],
+              hanjiUnlockPending: true,
+            }
+          : {}),
+      };
+    });
+
+  const clearHanjiUnlock = () => setS((prev) => ({ ...prev, hanjiUnlockPending: false }));
 
   const setDayNote = (date: string, note: string) =>
     setS((prev) => {
@@ -1393,6 +1459,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         madeFoods: s.madeFoods ?? [],
         setSelectedFood,
         markFoodMade,
+        hanjiUnlockPending: s.hanjiUnlockPending ?? false,
+        clearHanjiUnlock,
         dayNotes: s.dayNotes ?? {},
         setDayNote,
         friendCode: s.friendCode,

@@ -131,7 +131,7 @@ export default function LoginScreen() {
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
           <SafeAreaView style={styles.safeArea}>
             <ThemedView style={styles.hero}>
-              <ThemedText style={styles.heroEmoji}>🥐</ThemedText>
+              <ThemedText style={styles.heroEmoji}></ThemedText>
               <ThemedText type="subtitle" style={styles.title}>
                 {t('auth.welcomeBack')}
               </ThemedText>

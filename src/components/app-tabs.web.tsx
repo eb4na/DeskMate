@@ -23,13 +23,13 @@ export default function AppTabs() {
             <TabButton glyph="⌂">Home</TabButton>
           </TabTrigger>
           <TabTrigger name="tasks" href="/tasks" asChild>
-            <TabButton glyph="☑">Tasks</TabButton>
+            <TabButton glyph="">Tasks</TabButton>
           </TabTrigger>
           <TabTrigger name="progress" href="/progress" asChild>
             <TabButton glyph="▥">Progress</TabButton>
           </TabTrigger>
           <TabTrigger name="shop" href="/shop" asChild>
-            <TabButton glyph="🧺">Shop</TabButton>
+            <TabButton glyph="">Shop</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>

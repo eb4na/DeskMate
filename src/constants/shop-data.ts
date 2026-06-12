@@ -24,21 +24,24 @@ export type ShopItem = {
   // Plus-exclusive: cannot be bought with coins. Granted automatically the first
   // time a player gets Plus.
   plusOnly?: boolean;
+  // Locked until the player has collected all five recipe badges (baked every
+  // companion's signature recipe). Used to gate Hanji.
+  requiresAllRecipes?: boolean;
 };
 
 export const CATEGORY_LABELS: Record<ShopCategory, string> = {
-  companion: '🐾 Companions',
-  outfits: '👗 Outfits',
-  background: '🖼️ Backgrounds',
-  desk: '🪵 Desks',
-  recipe: '🍰 Recipes',
-  sound: '🎧 Study Sounds',
-  game: '🎮 Break Games',
-  reminder: '🔔 Reminders',
-  decoration: '🏡 Decorations',
-  outfit: '👘 Starter Outfits',
-  theme: '🎨 Themes',
-  pose: '✨ Poses',
+  companion: 'Companions',
+  outfits: 'Outfits',
+  background: 'Backgrounds',
+  desk: 'Desks',
+  recipe: 'Recipes',
+  sound: 'Study Sounds',
+  game: 'Break Games',
+  reminder: 'Reminders',
+  decoration: 'Decorations',
+  outfit: 'Starter Outfits',
+  theme: 'Themes',
+  pose: 'Poses',
 };
 
 // Categories shown as tabs in the shop, in order.
@@ -57,7 +60,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'companion_cocoa',
     name: 'Cocoa',
-    emoji: '🐱',
+    emoji: '',
     description: 'A cozy barista kitty in a cocoa-brown apron.',
     price: 500,
     category: 'companion',
@@ -66,7 +69,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'companion_bunny',
     name: 'Bunny',
-    emoji: '🐰',
+    emoji: '',
     description: 'A princess bunny in a frilly pink gown.',
     price: 550,
     category: 'companion',
@@ -75,7 +78,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'companion_honey',
     name: 'Miel',
-    emoji: '🐻',
+    emoji: '',
     description: 'A sweet honey-bear baker in a gingham chef coat.',
     price: 550,
     category: 'companion',
@@ -84,28 +87,28 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'companion_tira',
     name: 'Tira',
-    emoji: '🐰',
-    description: 'A tiramisu bunny with a cocoa-dusted apron. Yours free with Plus!',
+    emoji: '',
+    description: 'A tiramisu bunny with a cocoa-dusted apron.',
     price: 550,
     category: 'companion',
     image: require('@/assets/images/tira/tira.png'),
-    plusOnly: true,
   },
   {
     id: 'companion_hanji',
     name: 'Hanji',
-    emoji: '🐈‍⬛',
+    emoji: '',
     description: 'An elegant black cat in a lavender hanfu with wisteria charms.',
     price: 550,
     category: 'companion',
     image: require('@/assets/images/hanji/hanji.png'),
+    requiresAllRecipes: true,
   },
 
   // ─── Outfits / wardrobe skins (300–600 coins) ───────────────────────────
   {
     id: 'outfit_bun_angel',
     name: 'Angel Bun',
-    emoji: '👼',
+    emoji: '',
     description: "A frilly angel gown with wings & bonnet. Bun sends soft, watch-over-you reminders while wearing it — wear it from Bun's Wardrobe.",
     price: 450,
     category: 'outfits',
@@ -114,16 +117,26 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'outfit_bun_angelkei',
     name: 'Angel Kei Bun',
-    emoji: '😇',
+    emoji: '',
     description: "A dreamy white angel-kei gown with halo & wings. Bun drifts you gently into focus with dreamy reminders — wear it from Bun's Wardrobe.",
     price: 450,
     category: 'outfits',
     image: require('@/assets/images/bun/bun-angelkei.png'),
   },
   {
+    id: 'outfit_bun_strawberry',
+    name: 'Strawberry Plus',
+    emoji: '',
+    description: "A royal strawberry-lolita gown with a lace bonnet & crown. Yours free with Plus — wear it from Bun's Wardrobe.",
+    price: 450,
+    category: 'outfits',
+    image: require('@/assets/images/bun/bun-strawberry.png'),
+    plusOnly: true,
+  },
+  {
     id: 'outfit_cocoa_relax',
     name: 'Relax Cocoa',
-    emoji: '🍁',
+    emoji: '',
     description: "A cozy autumn kimono & hakama. Cocoa sends warm steep-some-tea reminders while wearing it — wear it from Cocoa's Wardrobe.",
     price: 450,
     category: 'outfits',
@@ -132,7 +145,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'outfit_cocoa_demon',
     name: 'Demon Cocoa',
-    emoji: '😈',
+    emoji: '',
     description: "A gothic demon-lord coat with horns, bat wings & a spade tail. Wear it from Cocoa's Wardrobe.",
     price: 450,
     category: 'outfits',
@@ -141,7 +154,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'outfit_tira_wolfsmeal',
     name: "Wolf's Meal Tira",
-    emoji: '🧺',
+    emoji: '',
     description: "A Little Red Riding Hood cape & basket. Tira gives wry 'don't-be-the-wolf's-lunch' reminders while wearing it — wear it from Tira's Wardrobe.",
     price: 450,
     category: 'outfits',
@@ -150,7 +163,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'outfit_tira_chocomint',
     name: 'Choco Mint Tira',
-    emoji: '🍫',
+    emoji: '',
     description: "A mint-and-chocolate lolita dress with a bow. Tira gives sweet-but-strict mint-fresh reminders while wearing it — wear it from Tira's Wardrobe.",
     price: 450,
     category: 'outfits',
@@ -159,7 +172,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'outfit_tira_sleepover',
     name: 'Sleepover Tira',
-    emoji: '🌙',
+    emoji: '',
     description: "A cozy gingham pajama set & sleep bonnet. Tira nags you to study in soft pajama-party mode while wearing it — wear it from Tira's Wardrobe.",
     price: 450,
     category: 'outfits',
@@ -168,7 +181,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'outfit_honey_champion',
     name: 'Champion Miel',
-    emoji: '🏆',
+    emoji: '',
     description: "A bold champion arena outfit. Miel gives pumped go-for-gold reminders while wearing it — wear it from Miel's Wardrobe.",
     price: 450,
     category: 'outfits',
@@ -177,7 +190,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'outfit_honey_zzz',
     name: 'ZZZ Miel',
-    emoji: '😴',
+    emoji: '',
     description: "Cozy honey-pot pajamas & nightcap. Miel mumbles sleepy 'study-first, snuggle-after' reminders while wearing it — wear it from Miel's Wardrobe.",
     price: 450,
     category: 'outfits',
@@ -186,7 +199,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'outfit_bunny_jiraikei',
     name: 'Jirai Kei Bunny',
-    emoji: '🖤',
+    emoji: '',
     description: "A pink-and-black jirai kei lolita outfit. Bunny turns cute-but-menacing in her reminders while wearing it — wear it from Bunny's Wardrobe.",
     price: 450,
     category: 'outfits',
@@ -195,7 +208,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'outfit_bunny_palace',
     name: 'Blue Peony Bunny',
-    emoji: '🪷',
+    emoji: '',
     description: "An ornate blue peony palace robe & headdress. Bunny issues regal by-royal-decree reminders while wearing it — wear it from Bunny's Wardrobe.",
     price: 450,
     category: 'outfits',
@@ -206,7 +219,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'bg_modern_kitchen',
     name: 'Modern Kitchen',
-    emoji: '🍳',
+    emoji: '',
     description: 'A sleek modern kitchen backdrop — pairs with the Marble desk.',
     price: 600,
     category: 'background',
@@ -215,7 +228,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'bg_washitsu',
     name: 'Beach',
-    emoji: '🏖️',
+    emoji: '',
     description: 'A sunny seaside beach backdrop — pairs with the Wood desk.',
     price: 600,
     category: 'background',
@@ -224,7 +237,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'bg_tiras_room',
     name: "Tira's Room",
-    emoji: '🛏️',
+    emoji: '',
     description: "Tira's cozy blue bedroom — soft quilts, lace curtains, and morning light.",
     price: 600,
     category: 'background',
@@ -233,7 +246,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'bg_buns_room',
     name: "Bun's Room",
-    emoji: '🍓',
+    emoji: '',
     description: "Bun's pink strawberry bedroom — frills, bows, and cozy pastel sweetness. Pairs with the Pink desk.",
     price: 600,
     category: 'background',
@@ -242,7 +255,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'bg_tranquil',
     name: 'Tranquil',
-    emoji: '🍵',
+    emoji: '',
     description: 'A serene Japanese kitchen — warm wood, pottery shelves, and a sunlit sakura window. Pairs with the Maplewood desk.',
     price: 600,
     category: 'background',
@@ -251,7 +264,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'bg_landmine',
     name: 'Landmine',
-    emoji: '🎀',
+    emoji: '',
     description: 'A pink-and-black jirai kei bedroom — bows, a lit vanity mirror, and a moonlit window.',
     price: 600,
     category: 'background',
@@ -260,17 +273,27 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'bg_lavender_palace',
     name: 'Lavender Palace',
-    emoji: '💜',
+    emoji: '',
     description: 'A serene wisteria palace — moon gate, lavender blooms, and warm wood. Pairs with the Lavender desk.',
     price: 600,
     category: 'background',
     image: require('@/assets/images/backgrounds/lavender-palace.png'),
   },
+  {
+    id: 'bg_strawberry_palace',
+    name: 'Golden Teahouse',
+    emoji: '',
+    description: 'A royal strawberry-pink palace — gilded throne, ribbon drapes, and a berry-sweet tea table. Yours free with Plus.',
+    price: 600,
+    category: 'background',
+    image: require('@/assets/images/backgrounds/strawberry-palace.png'),
+    plusOnly: true,
+  },
   // ─── Desks / study surfaces (400–700 coins) ─────────────────────────────
   {
     id: 'desk_marble',
     name: 'Marble Desk',
-    emoji: '🪨',
+    emoji: '',
     description: 'A clean white marble study surface.',
     price: 500,
     category: 'desk',
@@ -279,7 +302,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'desk_wood',
     name: 'Wood Desk',
-    emoji: '🪵',
+    emoji: '',
     description: 'A warm natural wood study surface — pairs with the Tatami Room.',
     price: 500,
     category: 'desk',
@@ -288,7 +311,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'desk_pink',
     name: 'Pink Desk',
-    emoji: '🌸',
+    emoji: '',
     description: "A soft pink study surface — pairs with Bun's Room.",
     price: 500,
     category: 'desk',
@@ -297,7 +320,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'desk_pale_wood',
     name: 'Pale Wood Desk',
-    emoji: '🪵',
+    emoji: '',
     description: "A soft cream-wood study surface — pairs with Tira's Room.",
     price: 500,
     category: 'desk',
@@ -306,7 +329,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'desk_maple',
     name: 'Maplewood Desk',
-    emoji: '🍁',
+    emoji: '',
     description: 'A bright maplewood study surface — pairs with the Tranquil room.',
     price: 500,
     category: 'desk',
@@ -315,7 +338,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'desk_landmine',
     name: 'Noir Desk',
-    emoji: '🖤',
+    emoji: '',
     description: 'A matte black study surface — pairs with the Landmine room.',
     price: 500,
     category: 'desk',
@@ -324,11 +347,21 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'desk_lavender',
     name: 'Lavender Desk',
-    emoji: '💜',
+    emoji: '',
     description: 'A soft pale-wood study surface — pairs with the Lavender Palace room.',
     price: 500,
     category: 'desk',
     image: require('@/assets/images/desks/lavender.png'),
+  },
+  {
+    id: 'desk_strawberry',
+    name: 'Crimson Cloth Desk',
+    emoji: '',
+    description: 'A plush crimson tablecloth surface — pairs with the Strawberry Palace room. Yours free with Plus.',
+    price: 500,
+    category: 'desk',
+    image: require('@/assets/images/desks/strawberry.png'),
+    plusOnly: true,
   },
 
   // ─── Break games are all free to play — nothing to buy here. ──────────────
@@ -337,7 +370,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'recipe_pudding',
     name: 'Pudding',
-    emoji: '🍮',
+    emoji: '',
     description: 'A silky caramel custard pudding. Pick it in the Bakery Menu to bake it in the kitchen!',
     price: 400,
     category: 'recipe',
@@ -346,7 +379,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'recipe_sakura',
     name: 'Sakura Mochi',
-    emoji: '🌸',
+    emoji: '',
     description: 'A pink mochi wrapped in a salted sakura leaf. Pick it in the Bakery Menu to bake it in the kitchen!',
     price: 400,
     category: 'recipe',
@@ -355,7 +388,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'recipe_matcha',
     name: 'Matcha Mille Crêpe',
-    emoji: '🍵',
+    emoji: '',
     description: 'A thousand-layer matcha crepe cake. Pick it in the Bakery Menu to bake it in the kitchen!',
     price: 400,
     category: 'recipe',
@@ -364,7 +397,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'recipe_croissant',
     name: 'Berry Croissant',
-    emoji: '🥐',
+    emoji: '',
     description: 'A flaky croissant piled with fresh berries and cream. Pick it in the Bakery Menu to bake it in the kitchen!',
     price: 400,
     category: 'recipe',
@@ -375,7 +408,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'reminder_chirp',
     name: 'Cute Chirp',
-    emoji: '🐦',
+    emoji: '',
     description: 'A cheerful little bird reminds you to study.',
     price: 150,
     category: 'reminder',
@@ -383,7 +416,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'reminder_bells',
     name: 'Gentle Bells',
-    emoji: '🔔',
+    emoji: '',
     description: 'Soft bell chimes for your daily reminder.',
     price: 250,
     category: 'reminder',

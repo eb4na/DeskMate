@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
@@ -5,21 +6,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BakeryGlobeEmoji } from '@/components/bakery-emoji';
 import { CoinIcon } from '@/components/coin-icon';
+import { PlusIcon } from '@/components/plus-icon';
+import { ProgressTabIcon } from '@/components/tab-icons';
 import {
   BakerHatIcon,
   DoorOutIcon,
-  SparkleStarIcon,
   MeasuringCupIcon,
   PawIcon,
   KitchenTimerIcon,
   RecipeBooksIcon,
-  MusicNoteIcon,
-  BellIcon,
   GearIcon,
-  ChartIcon,
   ChatBubbleIcon,
   InfoIcon,
 } from '@/components/settings-icons';
+
+// Reuse the same icons the rest of the app uses for these concepts.
+const REMINDER_BELL_ICON = require('@/assets/images/home/reminder-bell-icon.png');
+const STUDY_RADIO_ICON = require('@/assets/images/home/study-radio.png');
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
@@ -210,7 +213,7 @@ export default function SettingsScreen() {
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
             <SettingRow
-              icon={<SparkleStarIcon size={32} />}
+              icon={<PlusIcon size={38} />}
               label={t('settings.plus')}
               value={isPlus ? t('settings.plusActive') : t('settings.freePlan')}
               badge={isPlus ? 'PLUS' : undefined}
@@ -230,7 +233,7 @@ export default function SettingsScreen() {
               <Switch
                 value={isPlus}
                 onValueChange={setIsPlus}
-                trackColor={{ true: BakeryColors.honey, false: BakeryColors.shortbread }}
+                trackColor={{ true: BakeryColors.jam, false: BakeryColors.shortbread }}
                 thumbColor="#FFF"
               />
             </View>
@@ -264,7 +267,7 @@ export default function SettingsScreen() {
             />
             <View style={styles.divider} />
             <SettingRow
-              icon={<MusicNoteIcon size={32} />}
+              icon={<Image source={STUDY_RADIO_ICON} style={styles.imageIcon} contentFit="contain" />}
               label={t('settings.ambienceSounds')}
               value={ambienceId ? getAmbienceName(ambienceId) : isPlus ? t('settings.noneSelected') : t('settings.plusFeature')}
               onPress={() => router.push('/ambience-picker')}
@@ -278,7 +281,7 @@ export default function SettingsScreen() {
           <ThemedView type="backgroundElement" style={styles.group}>
             <View style={styles.row}>
               <View style={styles.rowIconImage}>
-                <BellIcon size={32} />
+                <Image source={REMINDER_BELL_ICON} style={styles.imageIcon} contentFit="contain" />
               </View>
               <View style={styles.rowBody}>
                 <ThemedText type="smallBold">{t('settings.dailyStudyReminder')}</ThemedText>
@@ -289,7 +292,7 @@ export default function SettingsScreen() {
               <Switch
                 value={reminderEnabled}
                 onValueChange={(next) => setReminder(next, reminderTime)}
-                trackColor={{ true: BakeryColors.honey, false: BakeryColors.shortbread }}
+                trackColor={{ true: BakeryColors.jam, false: BakeryColors.shortbread }}
                 thumbColor="#FFF"
               />
             </View>
@@ -314,7 +317,7 @@ export default function SettingsScreen() {
               <Switch
                 value={use24HourTime}
                 onValueChange={setUse24HourTime}
-                trackColor={{ true: BakeryColors.honey, false: BakeryColors.shortbread }}
+                trackColor={{ true: BakeryColors.jam, false: BakeryColors.shortbread }}
                 thumbColor="#FFF"
               />
             </View>
@@ -336,7 +339,7 @@ export default function SettingsScreen() {
             />
             <View style={styles.divider} />
             <SettingRow
-              icon={<ChartIcon size={32} />}
+              icon={<ProgressTabIcon color={BakeryColors.cocoa} size={30} />}
               label={t('settings.progressStats')}
               value={t('settings.progressStatsNote')}
               onPress={() => router.push('/progress')}
@@ -346,7 +349,7 @@ export default function SettingsScreen() {
               icon={<ChatBubbleIcon size={32} />}
               label={t('settings.sendFeedback')}
               value={t('settings.sendFeedbackNote')}
-              onPress={() => Linking.openURL('mailto:hello@deskmate.app?subject=DeskMate%20Feedback')}
+              onPress={() => Linking.openURL('mailto:hello@deskmate.app?subject=Memobun%20Feedback')}
             />
             <View style={styles.divider} />
             <SettingRow icon={<InfoIcon size={32} />} label={t('settings.version')} value={t('settings.versionValue')} />
@@ -378,7 +381,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one,
     borderRadius: BakeryRadii.pill,
-    backgroundColor: BakeryColors.honey,
+    backgroundColor: BakeryColors.jam,
   },
   closeText: { color: BakeryColors.cocoaDark },
   sectionTitle: {
@@ -402,6 +405,7 @@ const styles = StyleSheet.create({
   rowPressed: { opacity: 0.7 },
   rowIcon: { fontSize: 22, lineHeight: 28, width: 28, textAlign: 'center' },
   rowIconImage: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  imageIcon: { width: 34, height: 34 },
   rowBody: { flex: 1, gap: 2 },
   chevron: { fontSize: 22, lineHeight: 24 },
   divider: {
@@ -411,7 +415,7 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.five,
   },
   badge: {
-    backgroundColor: BakeryColors.honey,
+    backgroundColor: BakeryColors.jam,
     borderRadius: BakeryRadii.chip,
     paddingHorizontal: Spacing.two,
     paddingVertical: 2,

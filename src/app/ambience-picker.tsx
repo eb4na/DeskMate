@@ -10,12 +10,12 @@ import i18n, { useTranslation } from '@/i18n';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 export const AMBIENCE_OPTIONS = [
-  { id: 'rain', emoji: '🌧️' },
-  { id: 'cafe', emoji: '☕' },
-  { id: 'library', emoji: '📚' },
-  { id: 'fireplace', emoji: '🔥' },
-  { id: 'keyboard', emoji: '⌨️' },
-  { id: 'night', emoji: '🌙' },
+  { id: 'rain', emoji: '' },
+  { id: 'cafe', emoji: '' },
+  { id: 'library', emoji: '' },
+  { id: 'fireplace', emoji: '' },
+  { id: 'keyboard', emoji: '' },
+  { id: 'night', emoji: '' },
 ] as const;
 
 export type AmbienceId = (typeof AMBIENCE_OPTIONS)[number]['id'];
@@ -24,7 +24,7 @@ export function getAmbienceName(id: string): string {
   return AMBIENCE_OPTIONS.some((a) => a.id === id) ? i18n.t(`ambience.name_${id}`) : id;
 }
 export function getAmbienceEmoji(id: string): string {
-  return AMBIENCE_OPTIONS.find((a) => a.id === id)?.emoji ?? '🎵';
+  return AMBIENCE_OPTIONS.find((a) => a.id === id)?.emoji ?? '';
 }
 
 function AmbienceContent() {
@@ -98,7 +98,7 @@ export default function AmbiencePickerScreen() {
       <PlusGate
         feature={t('ambience.plusFeatureName')}
         description={t('ambience.plusFeatureDesc')}
-        emoji="🎵">
+        emoji="">
         <AmbienceContent />
       </PlusGate>
     </ThemedView>
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
   noticeCard: { borderRadius: 12, padding: Spacing.three },
   noticeText: { textAlign: 'center', lineHeight: 20 },
   doneBtn: {
-    backgroundColor: '#7C6F5A',
+    backgroundColor: '#F7A7B8',
     borderRadius: 16,
     paddingVertical: Spacing.three,
     alignItems: 'center',

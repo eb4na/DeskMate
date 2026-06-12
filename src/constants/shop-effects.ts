@@ -40,31 +40,31 @@ const THEME_EFFECTS: Record<string, ThemeEffect> = {
     label: 'Rainy Cabin',
     lightRoom: '#DCE7F2',
     darkRoom: '#283547',
-    overlay: '🌧️',
+    overlay: '',
   },
   theme_blossom: {
     accent: '#D784A5',
     label: 'Cherry Blossom',
     lightRoom: '#F6E1EC',
     darkRoom: '#4B3041',
-    overlay: '🌸',
+    overlay: '',
   },
 };
 
 const OUTFIT_EFFECTS: Record<string, OutfitEffect> = {
   outfit_sweater: {
     accent: '#B8794F',
-    badge: '🧥 Cozy Sweater',
+    badge: ' Cozy Sweater',
     label: 'Sweater look equipped',
   },
   outfit_cape: {
     accent: '#A05AA8',
-    badge: '👘 Silk Kimono',
+    badge: ' Silk Kimono',
     label: 'Kimono look equipped',
   },
   outfit_robe: {
     accent: '#6A7FB8',
-    badge: '📜 Scholar Robe',
+    badge: ' Scholar Robe',
     label: 'Scholar robe equipped',
   },
 };
@@ -72,7 +72,7 @@ const OUTFIT_EFFECTS: Record<string, OutfitEffect> = {
 const POSE_EFFECTS: Record<string, PoseEffect> = {
   pose_victory: {
     accent: '#F5A623',
-    emoji: '🏆',
+    emoji: '',
     label: 'Victory pose equipped',
     rotateDeg: -3,
     scale: 1.03,
@@ -80,7 +80,7 @@ const POSE_EFFECTS: Record<string, PoseEffect> = {
   },
   pose_reading: {
     accent: '#4F8F7A',
-    emoji: '📖',
+    emoji: '',
     label: 'Reading nook pose equipped',
     rotateDeg: 2,
     scale: 0.99,
@@ -90,31 +90,31 @@ const POSE_EFFECTS: Record<string, PoseEffect> = {
 
 const DECORATION_EFFECTS: Record<string, DecorationEffect> = {
   deco_lamp: {
-    accents: ['🪔', '✨'],
+    accents: ['', ''],
     label: 'Cozy lamp glowing',
   },
   deco_cactus: {
-    accents: ['🌵', '🪴'],
+    accents: ['', ''],
     label: 'Tiny cactus corner',
   },
   deco_lights: {
-    accents: ['✨', '💫', '✨'],
+    accents: ['', '', ''],
     label: 'Fairy lights twinkling',
   },
   deco_rug: {
-    accents: ['🟫', '☁️'],
+    accents: ['', ''],
     label: 'Fluffy rug rolled out',
   },
 };
 
 const REMINDER_STYLE_EFFECTS: Record<string, ReminderStyleEffect> = {
   reminder_chirp: {
-    emoji: '🐦',
+    emoji: '',
     line: '"Chirp chirp. Tiny study buddy check-in!"',
     preview: 'Cute Chirp active',
   },
   reminder_bells: {
-    emoji: '🔔',
+    emoji: '',
     line: '"Soft bells for your next study block."',
     preview: 'Gentle Bells active',
   },

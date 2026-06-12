@@ -1,12 +1,12 @@
 import Svg, { Circle, Ellipse, Path, Rect, Line } from 'react-native-svg';
 
-// Shared sketchy bakery palette
-const S = '#7A5240'; // sketch stroke
-const H = '#F0B44A'; // honey
-const B = '#F4C976'; // butter
-const C = '#FFF0CC'; // cream
-const R = '#F6C8C2'; // rose
-const M = '#A6C8B4'; // mint
+// Shared cute pink-dessert palette (strawberry/cherry, mostly pink + red accent).
+const S = '#A24A5B'; // deep raspberry outline
+const H = '#F491A9'; // strawberry pink (primary fill)
+const B = '#F8B5C6'; // soft pink (secondary fill)
+const C = '#FFF2F5'; // pink-cream highlight
+const R = '#E2566E'; // cherry red accent
+const M = '#EF9DBE'; // orchid pink (variety)
 
 type IconProps = { size?: number };
 
@@ -111,7 +111,7 @@ export function KitchenTimerIcon({ size = 32 }: IconProps) {
       <Line x1="24" y1="28" x2="29" y2="30" stroke={S} strokeWidth="1.8" strokeLinecap="round" />
       <Circle cx="24" cy="28" r="1.6" fill={S} />
       {/* top knob */}
-      <Rect x="21" y="9" width="6" height="5" rx="2" fill="#A46F56" stroke={S} strokeWidth="1.5" />
+      <Rect x="21" y="9" width="6" height="5" rx="2" fill={R} stroke={S} strokeWidth="1.5" />
       {/* ticks */}
       <Line x1="24" y1="19" x2="24" y2="20.5" stroke={S} strokeWidth="1" strokeLinecap="round" opacity={0.5} />
       <Line x1="33" y1="28" x2="31.5" y2="28" stroke={S} strokeWidth="1" strokeLinecap="round" opacity={0.5} />
@@ -151,9 +151,9 @@ export function BellIcon({ size = 32 }: IconProps) {
     <Svg width={size} height={size} viewBox="0 0 48 48">
       <Path d="M24 8 Q35 9 36 22 L37 32 L11 32 L12 22 Q13 9 24 8 Z"
         fill={H} stroke={S} strokeWidth="2" strokeLinejoin="round" />
-      <Path d="M9 32 Q9 36 24 36 Q39 36 39 32 Z" fill="#C38F72" stroke={S} strokeWidth="2" strokeLinejoin="round" />
+      <Path d="M9 32 Q9 36 24 36 Q39 36 39 32 Z" fill={H} stroke={S} strokeWidth="2" strokeLinejoin="round" />
       <Circle cx="24" cy="39" r="2.5" fill={S} />
-      <Path d="M22 6 Q22 4 24 4 Q26 4 26 6 L26 8 L22 8 Z" fill="#A46F56" stroke={S} strokeWidth="1.5" />
+      <Path d="M22 6 Q22 4 24 4 Q26 4 26 6 L26 8 L22 8 Z" fill={R} stroke={S} strokeWidth="1.5" />
       <Path d="M16 18 Q15 24 16 28" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" fill="none" opacity={0.4} />
     </Svg>
   );

@@ -17,58 +17,58 @@ type CompanionVoice = { emoji: string; lines: string[] };
 
 export const COMPANION_REMINDER_LINES: Record<string, CompanionVoice> = {
   bun: {
-    emoji: '🍓',
+    emoji: '',
     lines: [
-      'Bun study with you forever 🍓',
-      "It's study o'clock! I saved you the comfiest seat 🍓",
-      'Bun believes in you — let’s rise together 📖',
-      'Your future self is already thanking you. Let’s go ✨',
-      'Just you, me, and a fresh page. Ready? 💛',
-      'A little focus now makes everything sweeter later 🍓',
+      'Bun study with you forever ',
+      "It's study o'clock! I saved you the comfiest seat ",
+      'Bun believes in you — let’s rise together ',
+      'Your future self is already thanking you. Let’s go ',
+      'Just you, me, and a fresh page. Ready? ',
+      'A little focus now makes everything sweeter later ',
     ],
   },
   companion_cocoa: {
-    emoji: '☕',
+    emoji: '',
     lines: [
-      'Work hard now, treat later ☕',
-      'Order up: one focused session, treat to follow ☕',
-      'Work hard now, treat later — I’ll keep your cocoa warm 🐱',
-      'Brewing something good? Let’s start studying ☕',
-      'One shot of focus, extra foam. On it? 🐱',
-      'The café’s open and your seat’s reserved. Let’s study ☕',
+      'Work hard now, treat later ',
+      'Order up: one focused session, treat to follow ',
+      'Work hard now, treat later — I’ll keep your cocoa warm ',
+      'Brewing something good? Let’s start studying ',
+      'One shot of focus, extra foam. On it? ',
+      'The café’s open and your seat’s reserved. Let’s study ',
     ],
   },
   companion_bunny: {
-    emoji: '👑',
+    emoji: '',
     lines: [
-      'bunny know bunny the cutest thing ever — now study 👑',
-      'Bunny says it’s study time, and Bunny is always right 👑',
-      'A princess studies too, you know. Come, join Bunny 💖',
-      'Bunny saved the prettiest desk for you. Sit, sit! 👑',
-      'Bunny demands one fabulous study session. Now! 💅',
-      'Be cute AND smart — Bunny does both. Your turn 👑',
+      'bunny know bunny the cutest thing ever — now study ',
+      'Bunny says it’s study time, and Bunny is always right ',
+      'A princess studies too, you know. Come, join Bunny ',
+      'Bunny saved the prettiest desk for you. Sit, sit! ',
+      'Bunny demands one fabulous study session. Now! ',
+      'Be cute AND smart — Bunny does both. Your turn ',
     ],
   },
   companion_honey: {
-    emoji: '🍯',
+    emoji: '',
     lines: [
-      'Nap now, study after… wait, no — study first 😴🍯',
-      'Mmm… *yawn*… okay okay, study time. Miel’s up 🍯',
-      'One sweet session, then nap. Deal? 🐻',
-      'Miel rolled out of the honey pot for this. Let’s study 🍯',
-      'Sleepy but here for you. Let’s do a little focus 🐻',
-      'Honey’s sweet, but finishing your work is sweeter 🍯',
+      'Nap now, study after… wait, no — study first ',
+      'Mmm… *yawn*… okay okay, study time. Miel’s up ',
+      'One sweet session, then nap. Deal? ',
+      'Miel rolled out of the honey pot for this. Let’s study ',
+      'Sleepy but here for you. Let’s do a little focus ',
+      'Honey’s sweet, but finishing your work is sweeter ',
     ],
   },
   companion_tira: {
-    emoji: '🍰',
+    emoji: '',
     lines: [
-      'Tira dropped out, you should study though 🍰',
-      'Tira dropped out. You shouldn’t. Go study 🍰',
-      'I’m not gonna study. But you? Yeah. Open the book 🍰',
-      'Do as Tira says, not as Tira does. Study time 😐',
-      'Look, one of us has to have a future. Get to it 🍰',
-      'Tira’s rooting for you. Quietly. From the couch. Study 😐',
+      'Tira dropped out, you should study though ',
+      'Tira dropped out. You shouldn’t. Go study ',
+      'I’m not gonna study. But you? Yeah. Open the book ',
+      'Do as Tira says, not as Tira does. Study time ',
+      'Look, one of us has to have a future. Get to it ',
+      'Tira’s rooting for you. Quietly. From the couch. Study ',
     ],
   },
 };
@@ -81,9 +81,9 @@ export function getCompanionReminderPool(companionKey: string | null | undefined
   return voice && voice.lines.length > 0 ? [...voice.lines] : [...FALLBACK_LINES];
 }
 
-/** The title emoji for a companion (defaults to 🔔). */
+/** The title emoji for a companion (defaults to ). */
 export function getCompanionReminderEmoji(companionKey: string | null | undefined): string {
-  return (companionKey && COMPANION_REMINDER_LINES[companionKey]?.emoji) || '🔔';
+  return (companionKey && COMPANION_REMINDER_LINES[companionKey]?.emoji) || '';
 }
 
 /** A single random line from the companion's pool. */

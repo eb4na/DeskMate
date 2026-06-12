@@ -6,6 +6,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { CoinIcon } from '@/components/coin-icon';
 import { StudyRoomView } from '@/components/study-room-view';
+import { HanjiUnlockModal } from '@/components/hanji-unlock-modal';
 import { useStudyRoom } from '@/lib/use-study-room';
 import { BakeryGearEmoji } from '@/components/bakery-emoji';
 import { CookieChatIcon } from '@/components/settings-icons';
@@ -15,7 +16,8 @@ import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import i18n, { useTranslation } from '@/i18n';
 import { coinsForMinutes } from '@/constants/placeholder-data';
-import { resolveActiveCompanion } from '@/lib/companion-utils';
+import { isHanjiActiveId, resolveActiveCompanion } from '@/lib/companion-utils';
+import { HanjiFigure } from '@/components/hanji-figure';
 import { useAuth } from '@/context/auth-context';
 import { listIncomingRequests } from '@/lib/friend-requests';
 import { ROOM_PAIRS } from '@/constants/room-data';
@@ -764,19 +766,23 @@ export default function HomeScreen() {
               <View style={styles.homeCharacterLayer} pointerEvents="none">
                 <Animated.View
                   style={{ transform: [{ translateY: charTranslateY }, { scaleX: charScaleX }, { scaleY: charScaleY }] }}>
-                  <RNImage
-                    source={homeCompanionSource}
-                    style={styles.homeCharacterImage}
-                    resizeMode="contain"
-                  />
+                  {isHanjiActiveId(activeCompanionId) ? (
+                    <HanjiFigure style={styles.homeCharacterImage} />
+                  ) : (
+                    <RNImage
+                      source={homeCompanionSource}
+                      style={styles.homeCharacterImage}
+                      resizeMode="contain"
+                    />
+                  )}
                 </Animated.View>
               </View>
 
               {/* Desk surface */}
               <RNImage
                 source={deskRoom.deskImage}
-                style={styles.deskNewLayer}
-                resizeMode="cover"
+                style={[styles.deskNewLayer, deskRoom.deskTint ? { backgroundColor: deskRoom.deskTint } : null]}
+                resizeMode={deskRoom.deskFit ?? 'cover'}
                 pointerEvents="none"
               />
               {/* Thin line marking the table's front edge */}
@@ -839,6 +845,7 @@ export default function HomeScreen() {
           )}
         </View>
       </SafeAreaView>
+      <HanjiUnlockModal />
     </ThemedView>
   );
 }

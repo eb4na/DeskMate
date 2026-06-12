@@ -13,7 +13,8 @@ import { useApp } from '@/context/app-context';
 import { autoBreakMinutes, coinsForMinutes } from '@/constants/placeholder-data';
 import { SoundPickerModal } from '@/components/sound-picker-modal';
 import { showLoadingScreen } from '@/lib/loading-signal';
-import { getCompanionImage, resolveActiveCompanion } from '@/lib/companion-utils';
+import { getCompanionImage, isHanjiActiveId, resolveActiveCompanion } from '@/lib/companion-utils';
+import { HanjiFigure } from '@/components/hanji-figure';
 import { useStudyRoom, type StudyStatus } from '@/lib/use-study-room';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { useTranslation } from '@/i18n';
@@ -82,7 +83,8 @@ export function StudyRoomView({
   const room = useStudyRoom();
   // In a room everyone studies on the host's desk; solo uses my equipped desk.
   const deskRoomId = room.active && room.hostDeskId ? room.hostDeskId : equippedDeskRoomId;
-  const equippedDeskImage = ROOM_PAIRS.find((r) => r.id === deskRoomId)?.deskImage ?? DESK;
+  const deskRoom = ROOM_PAIRS.find((r) => r.id === deskRoomId);
+  const equippedDeskImage = deskRoom?.deskImage ?? DESK;
 
   // My status (studying/break), toggled by the Break button in a room.
   const [onBreak, setOnBreak] = useState(false);
@@ -334,7 +336,7 @@ export function StudyRoomView({
 
       {/* Characters behind the desk. Solo shows one big like Home; multiplayer
           shows everyone's character — evenly spaced, sized by headcount, each
-          with a live status dot (or 💤 on break). */}
+          with a live status dot (or  on break). */}
       <View style={styles.scene}>
         {soloScene && (
           // Transform lives on an Animated.View (like Home) — applying it to the
@@ -346,7 +348,11 @@ export function StudyRoomView({
               styles.characterSolo,
               { transform: [{ translateY: charTranslateY }, { scaleX: charScaleX }, { scaleY: charScaleY }] },
             ]}>
-            <Image source={bigCharacter} style={styles.characterFill} contentFit="contain" />
+            {isHanjiActiveId(activeCompanionId) ? (
+              <HanjiFigure style={styles.characterFill} />
+            ) : (
+              <Image source={bigCharacter} style={styles.characterFill} contentFit="contain" />
+            )}
           </Animated.View>
         )}
         {isSolo && onBreak && (
@@ -366,10 +372,11 @@ export function StudyRoomView({
           {participants.slice(0, 4).map((p) => {
             const status = participantStatus(p.code);
             const img = p.code === friendCode ? bigCharacter : getCompanionImage(p.companionId, p.skinId);
+            const pIsHanji = p.code === friendCode ? isHanjiActiveId(activeCompanionId) : isHanjiActiveId(p.companionId);
             return (
               <View key={p.code} style={[styles.partyMember, { width: partyCharSize }]}>
                 {status === 'break' ? (
-                  <View style={styles.partyStatusPill}><Text style={styles.partyStatusEmoji}>💤</Text></View>
+                  <View style={styles.partyStatusPill}><Text style={styles.partyStatusEmoji}></Text></View>
                 ) : (
                   <View style={[styles.partyDot, { backgroundColor: DOT_COLOR[status] }]} />
                 )}
@@ -377,7 +384,11 @@ export function StudyRoomView({
                     Animated.View, not the image, to avoid per-second re-render stutter). */}
                 <Animated.View
                   style={{ transform: [{ translateY: charTranslateY }, { scaleX: charScaleX }, { scaleY: charScaleY }] }}>
-                  <Image source={img} style={{ width: partyCharSize, height: partyCharSize }} contentFit="contain" />
+                  {pIsHanji ? (
+                    <HanjiFigure style={{ width: partyCharSize, height: partyCharSize }} />
+                  ) : (
+                    <Image source={img} style={{ width: partyCharSize, height: partyCharSize }} contentFit="contain" />
+                  )}
                 </Animated.View>
               </View>
             );
@@ -387,7 +398,7 @@ export function StudyRoomView({
 
       {/* Desk surface — a full-width layer along the bottom. The character sits
           behind it; the book, controls and end-session button lie ON it. */}
-      <Image source={equippedDeskImage} style={styles.studyDesk} contentFit="cover" pointerEvents="none" />
+      <Image source={equippedDeskImage} style={[styles.studyDesk, deskRoom?.deskTint ? { backgroundColor: deskRoom.deskTint } : null]} contentFit={deskRoom?.deskFit ?? 'cover'} pointerEvents="none" />
       <View style={styles.deskEdge} pointerEvents="none" />
       {soloScene ? (
         <View style={styles.bookOnDesk} pointerEvents="none">

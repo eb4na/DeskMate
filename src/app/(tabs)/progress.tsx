@@ -68,6 +68,15 @@ export default function ProgressScreen() {
 
   const recentMoods = moodEntries.slice(0, 10);
 
+  // ── Streak status ─────────────────────────────────────────────────────────
+  // Days since last study: <=1 active, 2–4 broken-but-rescuable (1–3 missed days,
+  // a freeze can still save it), >=5 the streak is permanently gone.
+  const missed = streak.lastStudyDate ? daysSince(streak.lastStudyDate) : 0;
+  const streakRescuable = missed >= 2 && missed <= 4;
+  const streakLost = missed >= 5;
+  const freezeDaysLeft = 5 - missed; // days remaining to act while rescuable
+  const displayStreak = streakLost ? 0 : streak.currentStreak;
+
   // ── Weekly summary for the "This week" card ───────────────────────────────
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -183,10 +192,22 @@ export default function ProgressScreen() {
               contentFit="contain"
               accessibilityLabel=""
             />
-            <ThemedText style={styles.streakNumber}>{streak.currentStreak}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {t('home.dayStreak')}
+            <ThemedText style={[styles.streakNumber, streakRescuable && styles.streakNumberPaused]}>
+              {displayStreak}
             </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {streakRescuable ? t('progress.previousStreak') : t('home.dayStreak')}
+            </ThemedText>
+            {streakRescuable && (
+              <ThemedText type="small" style={styles.streakAtRisk}>
+                {t('progress.streakAtRisk')}
+              </ThemedText>
+            )}
+            {streakLost && (
+              <ThemedText type="small" themeColor="textSecondary">
+                {t('progress.streakLost')}
+              </ThemedText>
+            )}
             {streak.longestStreak > 0 && (
               <ThemedText type="small" themeColor="textSecondary">
                 {t('progress.best', { count: streak.longestStreak })}
@@ -198,16 +219,14 @@ export default function ProgressScreen() {
           {(
             <ThemedView type="backgroundElement" style={styles.freezeCard}>
               <ThemedView style={styles.freezeRow}>
-                <StreakFreezeIcon size={72} style={styles.freezeIcon} />
+                <StreakFreezeIcon size={52} style={styles.freezeIcon} />
                 <ThemedView style={styles.freezeInfo}>
                   <ThemedText type="smallBold">{t('progress.streakFreeze')}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
                     {t('progress.freezesRemaining', { count: streakFreezes })}
                   </ThemedText>
                 </ThemedView>
-                {streak.lastStudyDate &&
-                  daysSince(streak.lastStudyDate) === 2 &&
-                  streakFreezes > 0 && (
+                {streakRescuable && streakFreezes > 0 && (
                   <Pressable
                     style={({ pressed }) => [styles.freezeBtn, pressed && styles.pressed]}
                     onPress={() => {
@@ -230,16 +249,18 @@ export default function ProgressScreen() {
                   </Pressable>
                 )}
               </ThemedView>
-              {streak.lastStudyDate && daysSince(streak.lastStudyDate) === 2 && streakFreezes <= 0 && (
+              {streakRescuable && streakFreezes > 0 && (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {t('progress.freezeDaysLeft', { count: freezeDaysLeft })}
+                </ThemedText>
+              )}
+              {streakRescuable && streakFreezes <= 0 && (
                 <ThemedText type="small" themeColor="textSecondary">
                   {t('progress.noFreezesLeft')}
                 </ThemedText>
               )}
-              {streak.lastStudyDate && daysSince(streak.lastStudyDate) > 2 && (
-                <ThemedText type="small" themeColor="textSecondary">
-                  {t('progress.freezeCoversOne')}
-                </ThemedText>
-              )}
+              {/* When the streak is fully lost the streak card already shows the
+                  "start fresh" message, so no note is needed here. */}
             </ThemedView>
           )}
 
@@ -292,11 +313,19 @@ export default function ProgressScreen() {
           <ThemedView style={styles.section}>
             <ThemedView style={styles.sectionHeader}>
               <ThemedText type="smallBold">{t('progress.timeBySubject')}</ThemedText>
-              <Pressable
-                style={({ pressed }) => [styles.manageSubjectsBtn, pressed && styles.pressed]}
-                onPress={() => router.push('/manage-subjects')}>
-                <ThemedText type="small" themeColor="textSecondary">{t('settings.manageSubjects')}</ThemedText>
-              </Pressable>
+              <View style={styles.subjectHeaderBtns}>
+                <Pressable
+                  style={({ pressed }) => [styles.moodChartBtn, pressed && styles.pressed]}
+                  onPress={() => router.push('/subject-chart')}>
+                  <ChartIcon size={14} />
+                  <ThemedText type="small" themeColor="textSecondary">{t('progress.subjectChartBtn')}</ThemedText>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [styles.manageSubjectsBtn, pressed && styles.pressed]}
+                  onPress={() => router.push('/manage-subjects')}>
+                  <ThemedText type="small" themeColor="textSecondary">{t('settings.manageSubjects')}</ThemedText>
+                </Pressable>
+              </View>
             </ThemedView>
 
             {subjectEntries.length === 0 ? (
@@ -355,7 +384,15 @@ export default function ProgressScreen() {
 
           {/* ── Mood tracker ──────────────────────────────────────────────── */}
           <ThemedView style={styles.section}>
-            <ThemedText type="smallBold">{t('progress.moodTracker')}</ThemedText>
+            <ThemedView style={styles.sectionHeader}>
+              <ThemedText type="smallBold">{t('progress.moodTracker')}</ThemedText>
+              <Pressable
+                style={({ pressed }) => [styles.moodChartBtn, pressed && styles.pressed]}
+                onPress={() => router.push('/mood-chart')}>
+                <ChartIcon size={14} />
+                <ThemedText type="small" themeColor="textSecondary">{t('progress.moodChartBtn')}</ThemedText>
+              </Pressable>
+            </ThemedView>
             {recentMoods.length === 0 ? (
               <ThemedView type="backgroundElement" style={styles.emptyCard}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
@@ -393,7 +430,7 @@ export default function ProgressScreen() {
           {/* ── Mood insight ─────────────────────────────────────────────── */}
           {moodInsightPct !== null && (
             <ThemedView type="backgroundElement" style={styles.moodInsightCard}>
-              <ThemedText style={styles.moodInsightEmoji}>😊</ThemedText>
+              <ThemedText style={styles.moodInsightEmoji}></ThemedText>
               <ThemedText type="small" style={styles.moodInsightText}>
                 {t('progress.moodInsightText', { pct: moodInsightPct })}
               </ThemedText>
@@ -457,6 +494,8 @@ const styles = StyleSheet.create({
     height: 58,
   },
   streakNumber: { fontSize: 60, fontWeight: '800', lineHeight: 66, color: BakeryColors.honey },
+  streakNumberPaused: { color: BakeryColors.mocha, opacity: 0.6 },
+  streakAtRisk: { color: BakeryColors.rose, fontWeight: '700', textAlign: 'center' },
   statsRow: { flexDirection: 'row', gap: Spacing.two },
   statCard: {
     flex: 1,
@@ -471,7 +510,7 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 26, fontWeight: '700', lineHeight: 32 },
   statLabel: { textAlign: 'center', fontSize: 11 },
   section: { gap: Spacing.two },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: Spacing.two },
   insightRow: { flexDirection: 'row', gap: Spacing.two },
   insightCard: {
     flex: 1,
@@ -493,6 +532,18 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
+  moodChartBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 6,
+    borderRadius: BakeryRadii.pill,
+    backgroundColor: BakeryColors.cream,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+  },
+  subjectHeaderBtns: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   subjectList: { gap: Spacing.two },
   subjectRow: { borderRadius: BakeryRadii.card, padding: Spacing.two, gap: 6, backgroundColor: BakeryColors.glass, borderWidth: 1.5, borderColor: BakeryColors.shortbread },
   subjectRowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -551,15 +602,15 @@ const styles = StyleSheet.create({
   maxNote: { textAlign: 'center' },
   freezeCard: { borderRadius: BakeryRadii.card, padding: Spacing.three, gap: Spacing.two, backgroundColor: BakeryColors.glass, borderWidth: 1.5, borderColor: BakeryColors.shortbread },
   freezeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  freezeIcon: { width: 80 },
+  freezeIcon: { width: 52 },
   freezeInfo: { flex: 1, gap: 2 },
   freezeBtn: {
-    backgroundColor: BakeryColors.honey,
+    backgroundColor: '#6FB7E0',
     borderRadius: BakeryRadii.chip,
     paddingHorizontal: Spacing.two,
     paddingVertical: 6,
   },
-  freezeBtnText: { color: BakeryColors.cocoaDark, fontSize: 13, fontWeight: '700' },
+  freezeBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
   pressed: { opacity: 0.85 },
   plusBadge: { color: BakeryColors.berry, fontSize: 11 },
   upgradeExamCard: {

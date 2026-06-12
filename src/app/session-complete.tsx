@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BakeryHeartEmoji } from '@/components/bakery-emoji';
@@ -39,6 +39,15 @@ const FP = {
 };
 
 type Stage = 'reward' | 'break';
+
+// Whole days between an ISO date (YYYY-MM-DD) and today, ignoring time of day.
+function daysFromToday(dateISO: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const past = new Date(dateISO);
+  past.setHours(0, 0, 0, 0);
+  return Math.round((today.getTime() - past.getTime()) / 86400000);
+}
 
 function ReceiptRow({
   label,
@@ -82,6 +91,8 @@ export default function SessionCompleteScreen() {
     selectedFoodId,
     markFoodMade,
     earnedToday,
+    streak,
+    streakFreezes,
   } = useApp();
   const { t } = useTranslation();
   const credited = useRef(false);
@@ -119,15 +130,45 @@ export default function SessionCompleteScreen() {
   }, []);
 
   useEffect(() => {
-    if (!credited.current) {
-      credited.current = true;
-      addCoins(earned);
-      recordSession(minutes);
-      addSubjectTime(subjectName, minutes);
-      if (selectedFoodId) markFoodMade(selectedFoodId);
-      const { bonus, isComeback: comeback } = updateStreak();
+    if (credited.current) return;
+    credited.current = true;
+    addCoins(earned);
+    recordSession(minutes);
+    addSubjectTime(subjectName, minutes);
+    if (selectedFoodId) markFoodMade(selectedFoodId);
+
+    const commit = (rescueWithFreeze: boolean) => {
+      const { bonus, isComeback: comeback, rescued } = updateStreak(
+        rescueWithFreeze ? { rescueWithFreeze: true } : undefined,
+      );
       setStreakBonus(bonus);
       setIsComeback(comeback);
+      if (rescued) {
+        // streakFreezes is the pre-spend value here (state update is still pending).
+        Alert.alert(
+          t('progress.streakProtected'),
+          t('sessionComplete.freezeUsedMsg', { count: Math.max(0, streakFreezes - 1) }),
+        );
+      }
+    };
+
+    // Streak lapsed 1–3 days ago and the user has a freeze available → ask whether
+    // to spend one to keep the streak (otherwise it resets to day 1).
+    const last = streak.lastStudyDate;
+    const gap = last ? daysFromToday(last) : 0;
+    const canRescue = gap >= 2 && gap <= 4 && isPlus && streakFreezes > 0;
+
+    if (canRescue) {
+      Alert.alert(
+        t('sessionComplete.rescueStreakQ'),
+        t('sessionComplete.rescueStreakMsg', { count: streak.currentStreak }),
+        [
+          { text: t('sessionComplete.letItReset'), style: 'cancel', onPress: () => commit(false) },
+          { text: t('progress.useFreeze'), onPress: () => commit(true) },
+        ],
+      );
+    } else {
+      commit(false);
     }
   }, []);
 

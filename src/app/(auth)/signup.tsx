@@ -93,7 +93,7 @@ export default function SignupScreen() {
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
           <SafeAreaView style={styles.safeArea}>
             <ThemedView style={styles.hero}>
-              <ThemedText style={styles.heroEmoji}>🍰</ThemedText>
+              <ThemedText style={styles.heroEmoji}></ThemedText>
               <ThemedText type="subtitle" style={styles.title}>
                 {t('auth.signupTitle')}
               </ThemedText>

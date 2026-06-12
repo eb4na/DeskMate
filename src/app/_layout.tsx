@@ -17,10 +17,13 @@ import '@/lib/notifications';
 import i18n, { useTranslation } from '@/i18n';
 
 const LOADING_IMGS = [
-  require('@/assets/images/home/loading.png'),
-  require('@/assets/images/home/loading2.png'),
   require('@/assets/images/home/loading3.png'),
   require('@/assets/images/home/loading4.png'),
+  require('@/assets/images/home/loading6.png'),
+  require('@/assets/images/home/loading7.png'),
+  require('@/assets/images/home/loading8.png'),
+  require('@/assets/images/home/loading9.png'),
+  require('@/assets/images/home/loading10.png'),
 ];
 
 // Full-screen loading splash shown OVER the app — the home screen mounts behind
@@ -153,6 +156,8 @@ function RootNavigator() {
         <Stack.Screen name="manage-subjects" options={{ presentation: 'modal', title: t('screens.subjects') }} />
         {/* Wave 3 */}
         <Stack.Screen name="weekly-report" options={{ presentation: 'modal', title: t('screens.weeklyReport') }} />
+        <Stack.Screen name="mood-chart" options={{ presentation: 'modal', title: t('screens.moodChart') }} />
+        <Stack.Screen name="subject-chart" options={{ presentation: 'modal', title: t('screens.subjectChart') }} />
         <Stack.Screen name="break-game" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="cake-game" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="party-invite" options={{ presentation: 'modal', headerShown: false }} />

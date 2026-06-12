@@ -94,7 +94,7 @@ export default function ReminderSettingsScreen() {
       resolved.type === 'starter' ? 'bun' : resolved.type === 'shop' ? resolved.id : null;
     const emoji =
       resolved.type === 'slot'
-        ? resolved.slot.emoji || '🔔'
+        ? resolved.slot.emoji || ''
         : getCompanionReminderEmoji(companionKey);
     return { companionKey, name: resolved.name, emoji };
   })();
@@ -245,7 +245,7 @@ export default function ReminderSettingsScreen() {
               <ThemedView style={styles.sectionHeader}>
                 <ThemedText type="smallBold">
                   {t('reminder.extraReminders')}
-                  <ThemedText style={styles.plusTag}> ✨ Plus</ThemedText>
+                  <ThemedText style={styles.plusTag}>  Plus</ThemedText>
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   {reminders.length}/{MAX_EXTRA_REMINDERS}
@@ -306,7 +306,7 @@ export default function ReminderSettingsScreen() {
             </ThemedView>
           ) : (
             <PlusGateCard
-              emoji="🔔"
+              emoji=""
               title={t('reminder.multipleReminders')}
               description={t('reminder.multipleRemindersDesc')}
             />

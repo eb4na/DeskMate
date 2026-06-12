@@ -1,10 +1,11 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Image, ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
+import { localizeCompanionName } from '@/lib/companion-utils';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 const BAKERY_BG = require('@/assets/images/backgrounds/bakery-menu.png');
@@ -23,6 +24,9 @@ export type FoodItem = {
   // Optional art shown as a top-right "made it" badge once the player has baked
   // this recipe at least once (e.g. the companion enjoying the finished dish).
   madeBadge?: number;
+  // The companion this recipe belongs to (their signature bake). Canonical
+  // English name — localize via localizeCompanionName at display time.
+  owner: string;
 };
 
 export const FOOD_ITEMS: FoodItem[] = [
@@ -30,6 +34,7 @@ export const FOOD_ITEMS: FoodItem[] = [
     id: 'strawberry-shortcake',
     image: require('@/assets/images/cake/strawberry-shortcake.png'),
     madeBadge: require('@/assets/images/cake/strawberry-badge.png'),
+    owner: 'Bun',
   },
   {
     id: 'pudding',
@@ -37,6 +42,7 @@ export const FOOD_ITEMS: FoodItem[] = [
     requiresItem: 'recipe_pudding',
     price: 400,
     madeBadge: require('@/assets/images/cake/pudding-finished.png'),
+    owner: 'Miel',
   },
   {
     id: 'sakura-mochi',
@@ -44,6 +50,7 @@ export const FOOD_ITEMS: FoodItem[] = [
     requiresItem: 'recipe_sakura',
     price: 400,
     madeBadge: require('@/assets/images/cake/sakura-badge.png'),
+    owner: 'Bunny',
   },
   {
     id: 'matcha-crepe',
@@ -51,6 +58,7 @@ export const FOOD_ITEMS: FoodItem[] = [
     requiresItem: 'recipe_matcha',
     price: 400,
     madeBadge: require('@/assets/images/cake/matcha-badge.png'),
+    owner: 'Tira',
   },
   {
     id: 'berry-croissant',
@@ -58,8 +66,13 @@ export const FOOD_ITEMS: FoodItem[] = [
     requiresItem: 'recipe_croissant',
     price: 400,
     madeBadge: require('@/assets/images/cake/croissant-badge.png'),
+    owner: 'Cocoa',
   },
 ];
+
+// The recipe-badge unlock logic lives in a plain constants module so app-context
+// can use it without an import cycle. Re-exported here for existing callers.
+export { RECIPE_IDS, hasAllRecipeBadges } from '@/constants/recipes';
 
 // Patisserie palette — mirrors the Companion Bakery screen.
 const P = {
@@ -82,18 +95,26 @@ export default function FoodGalleryScreen() {
   const { selectedFoodId, madeFoods, setSelectedFood, ownedShopItems } = useApp();
   // Badge image currently shown enlarged in the zoom modal (null = closed).
   const [zoomBadge, setZoomBadge] = useState<number | null>(null);
+  // Explicit banner width (≈8px side margins) so centering is deterministic and
+  // the header image's width:'100%' resolves against a concrete number.
+  const { width } = useWindowDimensions();
+  // Centered banner — a fraction of the content width rather than full-bleed.
+  const bannerWidth = Math.round(Math.min(width, MaxContentWidth) * 0.92);
+  const bannerHeight = Math.round((bannerWidth * 287) / 891);
 
   return (
     <ImageBackground source={BAKERY_BG} resizeMode="cover" style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
         <SafeAreaView style={styles.safeArea}>
-          {/* Header — the scalloped banner art (full width) with the title/subtitle
-              overlaid and centered inside it. */}
-          <View style={styles.headerPanel}>
-            <Image source={BAKERY_HEADER} style={styles.headerImg} resizeMode="stretch" />
-            <View style={styles.headerTextWrap}>
-              <Text style={styles.headerTitle}>{t('foodGallery.bakeryMenu')}</Text>
-              <Text style={styles.headerSubtitle}>{t('foodGallery.chooseBunBakes')}</Text>
+          {/* Header — the scalloped banner art (compact) with the title/subtitle
+              overlaid, centered via a full-width row wrapper. */}
+          <View style={styles.headerRow}>
+            <View style={styles.headerPanel}>
+              <Image source={BAKERY_HEADER} style={{ width: bannerWidth, height: bannerHeight }} resizeMode="stretch" />
+              <View style={styles.headerTextWrap}>
+                <Text style={styles.headerTitle}>{t('foodGallery.bakeryMenu')}</Text>
+                <Text style={styles.headerSubtitle}>{t('foodGallery.chooseBunBakes')}</Text>
+              </View>
             </View>
           </View>
 
@@ -130,6 +151,7 @@ export default function FoodGalleryScreen() {
                       />
                     </View>
                     <Text style={styles.foodName} numberOfLines={1}>{t(`foodGallery.food_${food.id}`)}</Text>
+                    <Text style={styles.foodOwner} numberOfLines={1}>{t('foodGallery.ownerTag', { name: localizeCompanionName(food.owner, t) })}</Text>
                     <Text style={styles.foodDesc} numberOfLines={2}>{t(`foodGallery.food_${food.id}_desc`)}</Text>
                     {locked ? (
                       <Pressable
@@ -206,11 +228,8 @@ const styles = StyleSheet.create({
   // stays centered. The image (width 100% + aspectRatio) drives the panel size —
   // putting aspectRatio on the image, not the flex container, avoids the Yoga
   // quirk where stretch+aspectRatio collapses the width and left-aligns it.
-  headerPanel: {
-    marginTop: Spacing.two,
-    marginHorizontal: -Spacing.three,
-    alignSelf: 'stretch',
-  },
+  headerRow: { width: '100%', alignItems: 'center', marginTop: Spacing.five },
+  headerPanel: {},
   headerImg: { width: '100%', aspectRatio: 891 / 287 },
   // Text overlay, centered in the card's flat area (below the scalloped awning).
   headerTextWrap: {
@@ -221,11 +240,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: '8%',
+    paddingTop: '6%',
     gap: 4,
   },
-  headerTitle: { fontSize: 26, fontWeight: '800', color: P.brown, letterSpacing: 0.2, textAlign: 'center' },
-  headerSubtitle: { fontSize: 15, color: P.mutedBrown, fontWeight: '500', textAlign: 'center' },
+  headerTitle: { fontSize: 19, fontWeight: '800', color: P.brown, letterSpacing: 0.2, textAlign: 'center' },
+  headerSubtitle: { fontSize: 11, color: P.mutedBrown, fontWeight: '500', textAlign: 'center' },
 
   section: { gap: Spacing.two },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: P.brown },
@@ -303,6 +322,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   foodName: { fontSize: 15, fontWeight: '800', color: P.brown, textAlign: 'center' },
+  foodOwner: { fontSize: 10, fontWeight: '700', color: P.pinkActiveText, textAlign: 'center', marginTop: 1 },
   foodDesc: { fontSize: 11, color: P.mutedBrown, textAlign: 'center', lineHeight: 15 },
   activePill: {
     marginTop: 6,
@@ -333,7 +353,7 @@ const styles = StyleSheet.create({
   infoText: { fontSize: 12.5, color: P.brown, textAlign: 'center', lineHeight: 18, fontWeight: '500' },
 
   doneButton: {
-    backgroundColor: P.button,
+    backgroundColor: P.pink,
     borderRadius: 18,
     paddingVertical: Spacing.three,
     alignItems: 'center',

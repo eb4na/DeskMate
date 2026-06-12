@@ -12,6 +12,9 @@ import { lookupFriendUserId } from '@/lib/friend-requests';
 import { maskProfanity } from '@/lib/profanity';
 import type { OnlineGameId } from '@/lib/game-net';
 
+// Max characters allowed in a single DM message.
+export const DM_MAX_LENGTH = 500;
+
 export type DmKind = 'text' | 'invite';
 export type DmInvite = { game: OnlineGameId; room: string };
 
@@ -101,7 +104,8 @@ export async function sendDm(args: {
   body?: string | null;
   invite?: DmInvite | null;
 }): Promise<SendResult> {
-  const body = args.body != null ? maskProfanity(args.body) : null;
+  // Cap length (safety net — the composer also enforces this) before masking.
+  const body = args.body != null ? maskProfanity(args.body.slice(0, DM_MAX_LENGTH)) : null;
   const { data, error } = await supabase
     .from('direct_messages')
     .insert({

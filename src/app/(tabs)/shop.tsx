@@ -19,6 +19,7 @@ import {
 import { outfitsForCharacter } from '@/constants/outfit-data';
 import { pairForItem, isPairOwned, partnerItemId } from '@/constants/room-data';
 import { SHOP_COMPANIONS, STARTER_COMPANION_IMAGES, getStarterActiveId, localizeCompanionName, localizeOutfitName } from '@/lib/companion-utils';
+import { RECIPE_IDS, hasAllRecipeBadges } from '@/app/food-gallery';
 import { DAILY_EARN_CAP } from '@/constants/placeholder-data';
 import {
   BakeryColors,
@@ -30,12 +31,12 @@ import {
 } from '@/constants/theme';
 
 const CATEGORY_EMOJI: Partial<Record<ShopCategory, string>> = {
-  companion: '🐾',
-  outfits: '👗',
-  background: '🖼️',
-  desk: '🪵',
-  recipe: '🍰',
-  sound: '🎧',
+  companion: '',
+  outfits: '',
+  background: '',
+  desk: '',
+  recipe: '',
+  sound: '',
 };
 
 const CAT_ICON_IMG: Partial<Record<ShopCategory, number>> = {
@@ -144,7 +145,10 @@ export default function ShopScreen() {
     isPlus,
     addPurchasedCoins,
     companionSlots,
+    madeFoods,
   } = useApp();
+  const allRecipesDone = hasAllRecipeBadges(madeFoods);
+  const recipesDoneCount = RECIPE_IDS.filter((id) => madeFoods.includes(id)).length;
   const [activeCategory, setActiveCategory] = useState<ShopCategory>('companion');
   const [zoomImage, setZoomImage] = useState<number | null>(null);
 
@@ -164,7 +168,7 @@ export default function ShopScreen() {
 
   // Characters the user owns (for the Outfits tab).
   const ownedCharacters: { id: string; name: string; image: number | { uri: string } | null; emoji: string }[] = [
-    { id: getStarterActiveId('girl'), name: 'Bun', image: STARTER_COMPANION_IMAGES.girl, emoji: '🐱' },
+    { id: getStarterActiveId('girl'), name: 'Bun', image: STARTER_COMPANION_IMAGES.girl, emoji: '' },
     ...SHOP_COMPANIONS.filter((c) => ownedShopItems.includes(c.id)).map((c) => ({
       id: `shop:${c.id}`,
       name: c.name,
@@ -178,7 +182,7 @@ export default function ShopScreen() {
   // Every dressable character (owned or not) — so the Outfits tab can show which
   // characters you still need to unlock.
   const allOutfitCharacters: { id: string; name: string; image: number | { uri: string } | null; emoji: string; owned: boolean }[] = [
-    { id: getStarterActiveId('girl'), name: 'Bun', image: STARTER_COMPANION_IMAGES.girl, emoji: '🐱', owned: true },
+    { id: getStarterActiveId('girl'), name: 'Bun', image: STARTER_COMPANION_IMAGES.girl, emoji: '', owned: true },
     ...SHOP_COMPANIONS.map((c) => ({
       id: `shop:${c.id}`,
       name: c.name,
@@ -200,9 +204,10 @@ export default function ShopScreen() {
 
 
   const discount = isPlus ? 0.8 : 1;
-  // Plus-exclusive items (e.g. Tira) are not sold in the shop — they're granted
-  // with Plus — but their data stays in SHOP_ITEMS for the gallery & wardrobe.
-  const items = SHOP_ITEMS.filter((i) => i.category === activeCategory && !i.plusOnly);
+  // Some companions aren't sold: Plus-exclusive (Tira) are granted with Plus, and
+  // badge-reward ones (Hanji, requiresAllRecipes) are granted by collecting every
+  // recipe badge. Their data stays in SHOP_ITEMS for the gallery & wardrobe.
+  const items = SHOP_ITEMS.filter((i) => i.category === activeCategory && !i.plusOnly && !i.requiresAllRecipes);
   const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
   const pages = Array.from({ length: totalPages }, (_, i) => items.slice(i * ITEMS_PER_PAGE, (i + 1) * ITEMS_PER_PAGE));
   const capRemaining = Math.max(0, DAILY_EARN_CAP - earnedToday);
@@ -228,6 +233,13 @@ export default function ShopScreen() {
   // Open the white confirm popup for a single item the player tapped to buy.
   const openBuy = (item: ShopItemT) => {
     if (ownedShopItems.includes(item.id)) return;
+    if (item.requiresAllRecipes && !allRecipesDone) {
+      Alert.alert(
+        t('shop.recipeLockTitle', { name: localizeCompanionName(item.name, t) }),
+        t('shop.recipeLockMsg', { name: localizeCompanionName(item.name, t), done: recipesDoneCount, total: RECIPE_IDS.length }),
+      );
+      return;
+    }
     const pair = pairForItem(item.id);
     // Desks equip into the room on confirm; backgrounds are left for the player
     // to equip when they want (buying one shouldn't swap their current room).
@@ -396,9 +408,14 @@ export default function ShopScreen() {
                   </Pressable>
                   {outfitsForCharacter(outfitChar.id).length === 0 && (
                     <View style={styles.emptyCard}>
-                      <ThemedText style={styles.emptyEmoji}>👗</ThemedText>
-                      <ThemedText style={styles.emptyTitle}>{t('shop.noOutfitsYet')}</ThemedText>
-                      <ThemedText style={styles.emptyText}>{t('shop.wardrobeEmpty', { name: outfitChar.name })}</ThemedText>
+                      {outfitChar.id === 'shop:companion_hanji' ? (
+                        <ThemedText style={styles.emptyText}>{t('shop.hanjiOutfitHint')}</ThemedText>
+                      ) : (
+                        <>
+                          <ThemedText style={styles.emptyTitle}>{t('shop.noOutfitsYet')}</ThemedText>
+                          <ThemedText style={styles.emptyText}>{t('shop.wardrobeEmpty', { name: outfitChar.name })}</ThemedText>
+                        </>
+                      )}
                     </View>
                   )}
                   <View style={styles.outfitGrid}>
@@ -454,7 +471,6 @@ export default function ShopScreen() {
           {/* ── Empty category ── */}
           {activeCategory !== 'outfits' && items.length === 0 && (
             <View style={styles.emptyCard}>
-              <ThemedText style={styles.emptyEmoji}>🧁</ThemedText>
               <ThemedText style={styles.emptyTitle}>{t('shop.nothingHereYet')}</ThemedText>
               <ThemedText style={styles.emptyText}>{t('shop.newTreatsSoon')}</ThemedText>
             </View>
@@ -482,6 +498,7 @@ export default function ShopScreen() {
                     return <View key={`empty-${slotIdx}`} style={[styles.itemCard, styles.itemSlot]} />;
                   }
                   const owned = ownedShopItems.includes(item.id);
+                  const recipeLocked = !!item.requiresAllRecipes && !owned && !allRecipesDone;
                   const discountedPrice = Math.floor(item.price * discount);
                   const canAfford = coins >= discountedPrice;
                   const equipable = isEquipableCategory(item.category);
@@ -520,7 +537,7 @@ export default function ShopScreen() {
                         styles.itemCard,
                         owned && styles.itemOwned,
                         isEquipped && styles.itemEquipped,
-                        !owned && !canAfford && styles.itemDim,
+                        ((!owned && !canAfford) || recipeLocked) && styles.itemDim,
                       ]}>
                         {item.image ? (
                           <>
@@ -552,6 +569,10 @@ export default function ShopScreen() {
                         {owned ? (
                           <View style={[styles.priceBadge, isEquipped ? styles.badgeEquipped : styles.badgeOwned]}>
                             <ThemedText style={styles.badgeText}>{isEquipped ? t('shop.equippedBadge') : t('shop.ownedBadge')}</ThemedText>
+                          </View>
+                        ) : recipeLocked ? (
+                          <View style={[styles.priceBadge, styles.badgeRecipeLock]}>
+                            <ThemedText style={styles.badgeRecipeLockText}> {recipesDoneCount}/{RECIPE_IDS.length}</ThemedText>
                           </View>
                         ) : item.plusOnly ? (
                           <View style={[styles.priceBadge, styles.badgePlus]}>
@@ -969,7 +990,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  emptyEmoji: { fontSize: 40 },
   emptyTitle: { fontSize: 16, fontWeight: '800', color: '#5B3A2E' },
   emptyText: { fontSize: 13, color: '#9A7B6D', textAlign: 'center' },
   itemName: {
@@ -998,6 +1018,8 @@ const styles = StyleSheet.create({
   lockedImg: { opacity: 0.4 },
   badgePlus: { backgroundColor: '#C75A7820' },
   badgePlusText: { fontSize: 12, fontWeight: '700', color: '#C75A78', lineHeight: 16 },
+  badgeRecipeLock: { backgroundColor: '#8A7A6022' },
+  badgeRecipeLockText: { fontSize: 12, fontWeight: '700', color: '#8A7A60', lineHeight: 16 },
   badgeText: { fontSize: 12, fontWeight: '700', color: BakeryColors.mocha, lineHeight: 16 },
   priceText: { fontSize: 14, fontWeight: '700', color: BakeryColors.cocoaDark, lineHeight: 18 },
   priceTextDim: { color: BakeryColors.latte },

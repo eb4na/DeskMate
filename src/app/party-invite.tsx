@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
-import { getCompanionImage } from '@/lib/companion-utils';
+import { bunAvatarNudge, getCompanionImage } from '@/lib/companion-utils';
 import { joinPresence, sendInvite, type OnlineGameId } from '@/lib/game-net';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -68,7 +68,7 @@ export default function PartyInviteScreen() {
                 <View key={f.code} style={styles.row}>
                   <View style={styles.avatarWrap}>
                     {f.companionId !== undefined ? (
-                      <Image source={getCompanionImage(f.companionId, f.skinId)} style={styles.avatarImg} contentFit="contain" />
+                      <Image source={getCompanionImage(f.companionId, f.skinId)} style={[styles.avatarImg, bunAvatarNudge(f.companionId)]} contentFit="contain" />
                     ) : (
                       <View style={styles.avatarFallback}>
                         <Text style={styles.avatarText}>{(f.code[0] ?? '?').toUpperCase()}</Text>
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
   emptyCard: { backgroundColor: BakeryColors.glass, borderRadius: BakeryRadii.card, padding: Spacing.four, alignItems: 'center', gap: 6 },
   emptyTitle: { fontSize: 16, fontWeight: '800', color: BakeryColors.cocoaDark },
   emptyText: { fontSize: 13, color: BakeryColors.mocha, textAlign: 'center', lineHeight: 18 },
-  doneBtn: { backgroundColor: BakeryColors.honey, borderRadius: BakeryRadii.button, paddingVertical: 13, alignItems: 'center', marginBottom: Spacing.two },
+  doneBtn: { backgroundColor: '#F7A7B8', borderRadius: BakeryRadii.button, paddingVertical: 13, alignItems: 'center', marginBottom: Spacing.two },
   doneText: { fontSize: 16, fontWeight: '900', color: BakeryColors.cocoaDark },
   pressed: { opacity: 0.85 },
 });

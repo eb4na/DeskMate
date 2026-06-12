@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
   bgHint: { fontSize: 11.5, color: P.muted, lineHeight: 16 },
 
   doneBtn: {
-    backgroundColor: P.cocoa,
+    backgroundColor: '#F7A7B8',
     borderRadius: 18,
     paddingVertical: 14,
     alignItems: 'center',

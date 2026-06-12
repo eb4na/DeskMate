@@ -6,7 +6,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { ThemedView } from '@/components/themed-view';
 import { SESSION_LENGTHS } from '@/constants/placeholder-data';
-import { getCompanionImage } from '@/lib/companion-utils';
+import { bunAvatarNudge, getCompanionImage } from '@/lib/companion-utils';
 import { useStudyRoom } from '@/lib/use-study-room';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -67,7 +67,7 @@ export default function StudyLobbyScreen() {
                 <View key={e.code} style={styles.row}>
                   <View style={styles.avatarWrap}>
                     {e.companionId !== undefined || e.skinId !== undefined ? (
-                      <Image source={getCompanionImage(e.companionId, e.skinId)} style={styles.avatarImg} contentFit="contain" />
+                      <Image source={getCompanionImage(e.companionId, e.skinId)} style={[styles.avatarImg, bunAvatarNudge(e.companionId)]} contentFit="contain" />
                     ) : (
                       <View style={styles.avatarFallback}>
                         <Text style={styles.avatarText}>{(e.name[0] ?? '?').toUpperCase()}</Text>
@@ -77,7 +77,7 @@ export default function StudyLobbyScreen() {
                   </View>
                   <Text style={styles.name} numberOfLines={1}>
                     {e.name}
-                    {e.isHost ? ' 👑' : ''}
+                    {e.isHost ? ' ' : ''}
                     {e.code === myCode ? t('lobby.you') : ''}
                   </Text>
                 </View>

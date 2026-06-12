@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   rowIcon: { width: 28, height: 28 },
   rowText: { flex: 1, fontSize: 15, fontWeight: '700', color: C.cocoaDark },
   check: { fontSize: 16, fontWeight: '900', color: C.berry },
-  doneBtn: { paddingVertical: 13, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: C.honey },
+  doneBtn: { paddingVertical: 13, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: '#F7A7B8' },
   doneBtnText: { fontSize: 15, fontWeight: '900', color: C.cocoaDark },
   pressed: { opacity: 0.85 },
 });

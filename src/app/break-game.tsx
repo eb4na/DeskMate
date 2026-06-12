@@ -738,9 +738,11 @@ const tttStyles = StyleSheet.create({
     paddingVertical: 7,
   },
   subPillText: { color: '#A85A4A', fontSize: 14 },
-  modeCards: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.two },
+  modeCards: { flexDirection: 'row', flexWrap: 'nowrap', justifyContent: 'center', gap: Spacing.one, paddingHorizontal: Spacing.two },
   modeCard: {
-    width: 108,
+    flex: 1,
+    minWidth: 0,
+    maxWidth: 130,
     borderRadius: 22,
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.one,
@@ -750,9 +752,9 @@ const tttStyles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#F4D7DE',
   },
-  modeIcon: { width: 60, height: 60 },
-  modePieces: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 60 },
-  modePiece: { width: 40, height: 40 },
+  modeIcon: { width: 46, height: 46 },
+  modePieces: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 46 },
+  modePiece: { width: 28, height: 28 },
   modeTitle: { color: '#A85A4A', fontSize: 15, textAlign: 'center' },
   modeSub: { color: '#9A8978', textAlign: 'center', fontSize: 11 },
   // Online lobby
@@ -908,9 +910,9 @@ export default function BreakGameScreen() {
   const pct = totalSeconds > 0 ? (secondsLeft / totalSeconds) * 100 : 0;
 
   const GAMES: { id: GameId; nameKey: string; emoji: string; free: boolean; shopItemId: string | null; route?: string; icon?: number; tint: string; featured?: boolean }[] = [
-    { id: 'cakekitchen', nameKey: 'friends.game_batterdash', emoji: '🎂', free: true, shopItemId: null, route: '/cake-game', icon: require('@/assets/images/cake/batterdash-banner.png'), tint: '#FBE0E6', featured: true },
-    { id: 'tictactoe', nameKey: 'friends.game_tictactoe', emoji: '⭕', free: true, shopItemId: null, icon: require('@/assets/images/tictactoe/thumbnail.png'), tint: '#FBEAD2' },
-    { id: 'connect4', nameKey: 'friends.game_connect4', emoji: '🔴', free: true, shopItemId: null, icon: require('@/assets/images/games/connect4.png'), tint: '#DFEAF4' },
+    { id: 'cakekitchen', nameKey: 'friends.game_batterdash', emoji: '', free: true, shopItemId: null, route: '/cake-game', icon: require('@/assets/images/cake/batterdash-banner.png'), tint: '#FBE0E6', featured: true },
+    { id: 'tictactoe', nameKey: 'friends.game_tictactoe', emoji: '', free: true, shopItemId: null, icon: require('@/assets/images/tictactoe/thumbnail.png'), tint: '#FBEAD2' },
+    { id: 'connect4', nameKey: 'friends.game_connect4', emoji: '', free: true, shopItemId: null, icon: require('@/assets/images/games/connect4.png'), tint: '#DFEAF4' },
   ];
   const featuredGame = GAMES.find((g) => g.featured);
   const gridGames = GAMES.filter((g) => !g.featured);
@@ -994,7 +996,7 @@ export default function BreakGameScreen() {
         {/* Break timer — only during a real study break, not when browsing */}
         {!isBrowse && (
           <ThemedView type="backgroundElement" style={styles.timerBar}>
-            <ThemedText style={styles.timerEmoji}>🕐</ThemedText>
+            <ThemedText style={styles.timerEmoji}></ThemedText>
             <ThemedView style={styles.timerContent}>
               <ThemedView style={styles.timerRow}>
                 <ThemedText type="smallBold">{t('games.breakEndsIn')}</ThemedText>

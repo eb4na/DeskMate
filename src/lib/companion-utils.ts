@@ -1,7 +1,15 @@
 import type { ActiveCompanionId, CompanionSlot, DefaultCompanionId } from '@/context/app-context';
 import { SHOP_ITEMS } from '@/constants/shop-data';
+import { HANJI_COMPANION_ID } from '@/constants/recipes';
 
 export type CompanionImageSource = number | { uri: string };
+
+/** True when the active-companion id points at Hanji (`shop:companion_hanji`).
+ * Hanji renders as an animated layered figure (swinging tassels) instead of a
+ * flat sprite — see HanjiFigure. */
+export function isHanjiActiveId(id: string | null | undefined): boolean {
+  return id === `shop:${HANJI_COMPANION_ID}`;
+}
 
 // Built-in companions have localized display names (gallery.name_*). This maps
 // their canonical English name to its i18n key. Any other name (user-created
@@ -37,6 +45,7 @@ const OUTFIT_NAME_KEYS: Record<string, string> = {
   ZZZ: 'outfitNames.zzz',
   'Jirai Kei': 'outfitNames.jiraiKei',
   'Blue Peony': 'outfitNames.bluePeony',
+  'Berry Princess': 'outfitNames.berryPrincess',
 };
 
 /** Localize an outfit/skin name; returns the input unchanged if unmapped. */
@@ -54,9 +63,10 @@ export const STARTER_COMPANION_IMAGES: Record<DefaultCompanionId, number> = {
 // `shopItemId: null` means free/owned by default; otherwise it must be purchased.
 export type BunSkin = { id: string; name: string; emoji: string; image: number; shopItemId: string | null };
 export const BUN_SKINS: BunSkin[] = [
-  { id: 'classic', name: 'Classic', emoji: '🍓', image: require('@/assets/images/bun/bun-home.png'), shopItemId: null },
-  { id: 'angel', name: 'Angel', emoji: '👼', image: require('@/assets/images/bun/bun-angel.png'), shopItemId: 'outfit_bun_angel' },
-  { id: 'angelkei', name: 'Angel Kei', emoji: '😇', image: require('@/assets/images/bun/bun-angelkei.png'), shopItemId: 'outfit_bun_angelkei' },];
+  { id: 'classic', name: 'Strawberry', emoji: '', image: require('@/assets/images/bun/bun-home.png'), shopItemId: null },
+  { id: 'angel', name: 'Angel', emoji: '', image: require('@/assets/images/bun/bun-angel.png'), shopItemId: 'outfit_bun_angel' },
+  { id: 'angelkei', name: 'Angel Kei', emoji: '', image: require('@/assets/images/bun/bun-angelkei.png'), shopItemId: 'outfit_bun_angelkei' },
+  { id: 'strawberry', name: 'Berry Princess', emoji: '', image: require('@/assets/images/bun/bun-strawberry.png'), shopItemId: 'outfit_bun_strawberry' },];
 
 export function getBunSkinImage(skinId: string | null | undefined): number {
   return BUN_SKINS.find((s) => s.id === skinId)?.image ?? BUN_SKINS[0].image;
@@ -79,28 +89,28 @@ export function getEffectiveBunSkinId(
 // companion id (`shop:<itemId>`). The first entry is the default look.
 export const COMPANION_SKINS: Record<string, BunSkin[]> = {
   'shop:companion_cocoa': [
-    { id: 'classic', name: 'Classic', emoji: '☕', image: require('@/assets/images/cocoa/cocoa.png'), shopItemId: null },
-    { id: 'relax', name: 'Relax', emoji: '🍁', image: require('@/assets/images/cocoa/cocoa-relax.png'), shopItemId: 'outfit_cocoa_relax' },
-    { id: 'demon', name: 'Demon', emoji: '😈', image: require('@/assets/images/cocoa/cocoa-demon.png'), shopItemId: 'outfit_cocoa_demon' },
+    { id: 'classic', name: 'Top Tier', emoji: '', image: require('@/assets/images/cocoa/cocoa.png'), shopItemId: null },
+    { id: 'relax', name: 'Relax', emoji: '', image: require('@/assets/images/cocoa/cocoa-relax.png'), shopItemId: 'outfit_cocoa_relax' },
+    { id: 'demon', name: 'Demon', emoji: '', image: require('@/assets/images/cocoa/cocoa-demon.png'), shopItemId: 'outfit_cocoa_demon' },
   ],
   'shop:companion_tira': [
-    { id: 'classic', name: 'Classic', emoji: '🍰', image: require('@/assets/images/tira/tira.png'), shopItemId: null },
-    { id: 'wolfsmeal', name: "Wolf's Meal", emoji: '🧺', image: require('@/assets/images/tira/tira-wolfsmeal.png'), shopItemId: 'outfit_tira_wolfsmeal' },
-    { id: 'chocomint', name: 'Choco Mint', emoji: '🍫', image: require('@/assets/images/tira/tira-chocomint.png'), shopItemId: 'outfit_tira_chocomint' },
-    { id: 'sleepover', name: 'Sleepover', emoji: '🌙', image: require('@/assets/images/tira/tira-sleepover.png'), shopItemId: 'outfit_tira_sleepover' },
+    { id: 'classic', name: 'Graceful Walk', emoji: '', image: require('@/assets/images/tira/tira.png'), shopItemId: null },
+    { id: 'wolfsmeal', name: "Wolf's Meal", emoji: '', image: require('@/assets/images/tira/tira-wolfsmeal.png'), shopItemId: 'outfit_tira_wolfsmeal' },
+    { id: 'chocomint', name: 'Choco Mint', emoji: '', image: require('@/assets/images/tira/tira-chocomint.png'), shopItemId: 'outfit_tira_chocomint' },
+    { id: 'sleepover', name: 'Sleepover', emoji: '', image: require('@/assets/images/tira/tira-sleepover.png'), shopItemId: 'outfit_tira_sleepover' },
   ],
   'shop:companion_honey': [
-    { id: 'classic', name: 'Classic', emoji: '🍯', image: require('@/assets/images/honey/honey.png'), shopItemId: null },
-    { id: 'champion', name: 'Champion', emoji: '🏆', image: require('@/assets/images/honey/honey-champion.png'), shopItemId: 'outfit_honey_champion' },
-    { id: 'zzz', name: 'ZZZ', emoji: '😴', image: require('@/assets/images/honey/honey-zzz.png'), shopItemId: 'outfit_honey_zzz' },
+    { id: 'classic', name: 'Honey Bear', emoji: '', image: require('@/assets/images/honey/honey.png'), shopItemId: null },
+    { id: 'champion', name: 'Champion', emoji: '', image: require('@/assets/images/honey/honey-champion.png'), shopItemId: 'outfit_honey_champion' },
+    { id: 'zzz', name: 'ZZZ', emoji: '', image: require('@/assets/images/honey/honey-zzz.png'), shopItemId: 'outfit_honey_zzz' },
   ],
   'shop:companion_bunny': [
-    { id: 'classic', name: 'Classic', emoji: '👑', image: require('@/assets/images/bunny/bunny.png'), shopItemId: null },
-    { id: 'jiraikei', name: 'Jirai Kei', emoji: '🖤', image: require('@/assets/images/bunny/bunny-jiraikei.png'), shopItemId: 'outfit_bunny_jiraikei' },
-    { id: 'palace', name: 'Blue Peony', emoji: '🪷', image: require('@/assets/images/bunny/bunny-palace.png'), shopItemId: 'outfit_bunny_palace' },
+    { id: 'classic', name: 'Cutest Thing Ever', emoji: '', image: require('@/assets/images/bunny/bunny.png'), shopItemId: null },
+    { id: 'jiraikei', name: 'Jirai Kei', emoji: '', image: require('@/assets/images/bunny/bunny-jiraikei.png'), shopItemId: 'outfit_bunny_jiraikei' },
+    { id: 'palace', name: 'Blue Peony', emoji: '', image: require('@/assets/images/bunny/bunny-palace.png'), shopItemId: 'outfit_bunny_palace' },
   ],
   'shop:companion_hanji': [
-    { id: 'classic', name: 'Classic', emoji: '🐈‍⬛', image: require('@/assets/images/hanji/hanji.png'), shopItemId: null },
+    { id: 'classic', name: 'Quiet Lavender', emoji: '', image: require('@/assets/images/hanji/hanji.png'), shopItemId: null },
   ],
 };
 
@@ -212,6 +222,18 @@ export function getCompanionImage(
     return getCompanionSkinImage(companionId, skinId ?? 'classic') ?? getBunSkinImage('classic');
   }
   return getBunSkinImage(skinId ?? 'classic');
+}
+
+/**
+ * Bun's art sits a little low for tight circular avatars (game/friend lists), so
+ * her face gets clipped. Nudge ONLY Bun up in those small avatars — shop
+ * companions get no shift. Do not use this for the big home/profile figures.
+ */
+export function bunAvatarNudge(
+  companionId: string | null | undefined,
+): { transform: { translateY: number }[] } | undefined {
+  const isBun = !companionId || !companionId.startsWith('shop:');
+  return isBun ? { transform: [{ translateY: -8 }] } : undefined;
 }
 
 /**

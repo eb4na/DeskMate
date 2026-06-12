@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   },
   codeStripLabel: { fontSize: 11, fontWeight: '800', color: '#fff', letterSpacing: 1, opacity: 0.9 },
   codeStripValue: { fontSize: 16, fontWeight: '900', color: '#fff', letterSpacing: 3 },
-  doneBtn: { backgroundColor: P.cocoa, borderRadius: 18, paddingVertical: 14, alignItems: 'center' },
+  doneBtn: { backgroundColor: '#F7A7B8', borderRadius: 18, paddingVertical: 14, alignItems: 'center' },
   doneBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
   pressed: { opacity: 0.85 },
 });

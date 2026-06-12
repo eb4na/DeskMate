@@ -8,7 +8,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import type { Friend } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
-import { getCompanionImage } from '@/lib/companion-utils';
+import { bunAvatarNudge, getCompanionImage, resolveActiveCompanion } from '@/lib/companion-utils';
 import { joinPresence, newRoomId, sendInvite, type OnlineGameId } from '@/lib/game-net';
 import { hostGameInvite } from '@/lib/invite-actions';
 import { useStudyRoom } from '@/lib/use-study-room';
@@ -51,15 +51,20 @@ const P = {
 } as const;
 
 const INVITE_GAMES: { id: OnlineGameId; nameKey: string; emoji: string }[] = [
-  { id: 'connect4', nameKey: 'friends.game_connect4', emoji: '🔴' },
-  { id: 'tictactoe', nameKey: 'friends.game_tictactoe', emoji: '⭕' },
-  { id: 'memory', nameKey: 'friends.game_memory', emoji: '🃏' },
-  { id: 'batterdash', nameKey: 'friends.game_batterdash', emoji: '🎂' },
+  { id: 'connect4', nameKey: 'friends.game_connect4', emoji: '' },
+  { id: 'tictactoe', nameKey: 'friends.game_tictactoe', emoji: '' },
+  { id: 'memory', nameKey: 'friends.game_memory', emoji: '' },
+  { id: 'batterdash', nameKey: 'friends.game_batterdash', emoji: '' },
 ];
 
 export default function FriendsScreen() {
   const { t } = useTranslation();
-  const { friendCode, friends, addFriend, removeFriend, setFriendProfile, profileDisplayName, dmUnread } = useApp();
+  const {
+    friendCode, friends, addFriend, removeFriend, setFriendProfile, profileDisplayName, dmUnread,
+    activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins,
+  } = useApp();
+  // My own character, shown in the "you" card at the top (how friends see me).
+  const me = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
   const { user } = useAuth();
   const studyRoom = useStudyRoom();
   const [input, setInput] = useState('');
@@ -169,11 +174,26 @@ export default function FriendsScreen() {
             <Text style={styles.headerSubtitle}>{t('friends.addAndStudy')}</Text>
           </View>
 
-          {/* My profile card */}
+          {/* My profile card — my avatar, name, and code, the way friends see me. */}
           <Pressable
-            style={({ pressed }) => [styles.profileBtn, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.friendRow, styles.meRow, pressed && styles.pressed]}
             onPress={() => router.push('/profile')}>
-            <Text style={styles.profileBtnText}>{t('friends.myProfileCard')}</Text>
+            <View style={styles.avatarWrap}>
+              <View style={styles.friendAvatar}>
+                <Image
+                  source={me.imageSource}
+                  style={[styles.friendAvatarImg, me.type === 'starter' && bunAvatarNudge('')]}
+                  contentFit="contain"
+                />
+              </View>
+            </View>
+            <View style={styles.friendInfo}>
+              <Text style={styles.friendName}>{profileDisplayName || t('friends.you')}</Text>
+              <Text style={styles.friendCode}>{friendCode}</Text>
+            </View>
+            <View style={styles.meTag}>
+              <Text style={styles.meTagText}>{t('friends.you')}</Text>
+            </View>
             <Text style={styles.profileBtnChevron}>›</Text>
           </Pressable>
 
@@ -222,7 +242,7 @@ export default function FriendsScreen() {
                     <View style={styles.friendAvatar}>
                       <Image
                         source={getCompanionImage(req.profile?.companionId, req.profile?.skinId)}
-                        style={styles.friendAvatarImg}
+                        style={[styles.friendAvatarImg, bunAvatarNudge(req.profile?.companionId)]}
                         contentFit="contain"
                       />
                     </View>
@@ -247,7 +267,7 @@ export default function FriendsScreen() {
             <Text style={styles.sectionTitle}>{t('friends.myFriends', { count: friends.length })}</Text>
             {friends.length === 0 ? (
               <View style={styles.emptyCard}>
-                <Text style={styles.emptyEmoji}>🧁</Text>
+                <Text style={styles.emptyEmoji}></Text>
                 <Text style={styles.emptyTitle}>{t('friends.noFriendsYet')}</Text>
                 <Text style={styles.emptyText}>{t('friends.noFriendsHint')}</Text>
               </View>
@@ -262,7 +282,7 @@ export default function FriendsScreen() {
                         <View style={styles.friendAvatar}>
                           <Image
                             source={getCompanionImage(f.companionId, f.skinId)}
-                            style={styles.friendAvatarImg}
+                            style={[styles.friendAvatarImg, bunAvatarNudge(f.companionId)]}
                             contentFit="contain"
                           />
                         </View>
@@ -378,6 +398,9 @@ const styles = StyleSheet.create({
   },
   profileBtnText: { fontSize: 16, fontWeight: '800', color: P.brown },
   profileBtnChevron: { fontSize: 22, fontWeight: '800', color: P.pink },
+  meRow: { borderColor: P.pink, borderWidth: 2 },
+  meTag: { backgroundColor: P.pink, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
+  meTagText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 },
 
   section: { gap: Spacing.two },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: P.brown },
@@ -517,7 +540,7 @@ const styles = StyleSheet.create({
   infoText: { fontSize: 12.5, color: P.brown, textAlign: 'center', lineHeight: 18, fontWeight: '500' },
 
   doneButton: {
-    backgroundColor: P.button,
+    backgroundColor: '#F7A7B8',
     borderRadius: 18,
     paddingVertical: Spacing.three,
     alignItems: 'center',

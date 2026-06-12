@@ -8,7 +8,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
-import { getCompanionImage } from '@/lib/companion-utils';
+import { bunAvatarNudge, getCompanionImage } from '@/lib/companion-utils';
 import { joinPresence, subscribeToInvites, type GameInvite, type OnlineGameId } from '@/lib/game-net';
 import { acceptGameInvite } from '@/lib/invite-actions';
 import { fetchUnreadCounts, subscribeInbox } from '@/lib/direct-messages';
@@ -72,7 +72,7 @@ export function InviteListener() {
             {fromFriend?.companionId !== undefined ? (
               <Image
                 source={getCompanionImage(fromFriend.companionId, fromFriend.skinId)}
-                style={styles.avatarImg}
+                style={[styles.avatarImg, bunAvatarNudge(fromFriend.companionId)]}
                 contentFit="contain"
               />
             ) : (

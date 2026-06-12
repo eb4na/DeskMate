@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Rect } from 'react-native-svg';
 
+import { CoinIcon } from '@/components/coin-icon';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
@@ -237,12 +238,11 @@ function GalleryContent() {
                   {char.image ? (
                     <Image source={char.image} style={styles.companionImage} contentFit="contain" />
                   ) : (
-                    <Text style={styles.companionEmoji}>{char.emoji ?? '🐾'}</Text>
+                    <View style={styles.companionImagePlaceholder} />
                   )}
                 </View>
                 <Text style={styles.companionName} numberOfLines={1}>
                   {localizeCompanionName(char.name, t)}
-                  {char.isGenerated ? ' 🎨' : ''}
                 </Text>
                 <Text style={styles.companionSubtitle} numberOfLines={2}>{TAGLINE_KEYS[char.name] ? t(TAGLINE_KEYS[char.name]) : t('gallery.defaultTagline')}</Text>
                 {char.isActive ? (
@@ -299,7 +299,17 @@ function GalleryContent() {
                         onPress={() => {
                           if (locked) {
                             const item = skin.shopItemId ? getShopItem(skin.shopItemId) : null;
-                            if (item) setBuyItem({ id: item.id, name: localizeOutfitName(skin.name, t), image: skin.image, price: item.price });
+                            if (item?.plusOnly) {
+                              // Plus-exclusive skins can't be bought with coins — they're
+                              // granted with Plus. Point the player to upgrading instead.
+                              const outfitName = localizeOutfitName(skin.name, t);
+                              Alert.alert(
+                                t('shop.plusExclusive', { name: outfitName }),
+                                t('shop.plusExclusiveMsg', { name: outfitName }),
+                              );
+                            } else if (item) {
+                              setBuyItem({ id: item.id, name: localizeOutfitName(skin.name, t), image: skin.image, price: item.price });
+                            }
                           } else {
                             equipWardrobeSkin(skin.id);
                           }
@@ -317,7 +327,7 @@ function GalleryContent() {
                           )}
                         </View>
                         <Text style={styles.skinName} numberOfLines={1}>
-                          {skin.emoji} {localizeOutfitName(skin.name, t)}
+                          {localizeOutfitName(skin.name, t)}
                         </Text>
                         {locked ? null : equipped ? (
                           <View style={styles.skinPill}>
@@ -333,7 +343,6 @@ function GalleryContent() {
               </>
             ) : (
               <View style={styles.wardrobeEmpty}>
-                <Text style={styles.wardrobeEmptyEmoji}>🧥</Text>
                 <Text style={styles.wardrobeEmptyTitle}>{t('gallery.noOutfitsYet')}</Text>
                 <Text style={styles.wardrobeEmptyText}>
                   {t('gallery.wardrobeEmpty', { name: wardrobeFor?.name ?? '' })}
@@ -365,7 +374,10 @@ function GalleryContent() {
                 )}
                 <View style={styles.buyBalanceRow}>
                   <Text style={styles.buyBalanceLabel}>{t('gallery.yourBalance')}</Text>
-                  <Text style={styles.buyBalanceNum}>🪙 {coins}</Text>
+                  <View style={styles.buyBalanceValue}>
+                    <CoinIcon size={15} />
+                    <Text style={styles.buyBalanceNum}>{coins}</Text>
+                  </View>
                 </View>
                 {!canAffordBuy && (
                   <Text style={styles.buyShortfall}>
@@ -491,7 +503,6 @@ const styles = StyleSheet.create({
   wardrobeTitle: { fontSize: 20, fontWeight: '800', color: P.brown, textAlign: 'center' },
   wardrobeSubtitle: { fontSize: 13, color: P.mutedBrown, fontWeight: '500', textAlign: 'center', marginTop: -6 },
   wardrobeEmpty: { alignItems: 'center', gap: 6, paddingVertical: Spacing.four },
-  wardrobeEmptyEmoji: { fontSize: 44 },
   wardrobeEmptyTitle: { fontSize: 16, fontWeight: '800', color: P.brown },
   wardrobeEmptyText: { fontSize: 13, color: P.mutedBrown, textAlign: 'center', lineHeight: 18, paddingHorizontal: Spacing.three },
   skinGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three, justifyContent: 'center' },
@@ -589,7 +600,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   companionImage: { width: '100%', height: '100%' },
-  companionEmoji: { fontSize: 56 },
+  companionImagePlaceholder: { width: '100%', height: '100%' },
   companionName: {
     fontSize: 15,
     fontWeight: '800',
@@ -668,6 +679,7 @@ const styles = StyleSheet.create({
   buyTitle: { fontSize: 19, fontWeight: '800', color: P.brown, textAlign: 'center' },
   buyImage: { width: 120, height: 120 },
   buyBalanceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', alignSelf: 'stretch' },
+  buyBalanceValue: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   buyBalanceLabel: { fontSize: 13, fontWeight: '600', color: P.mutedBrown },
   buyBalanceNum: { fontSize: 15, fontWeight: '800', color: P.brown },
   buyShortfall: { fontSize: 12.5, color: P.pinkActiveText, fontWeight: '700', textAlign: 'center' },
@@ -800,7 +812,7 @@ const styles = StyleSheet.create({
 
   // Done
   doneButton: {
-    backgroundColor: P.button,
+    backgroundColor: P.pink,
     borderRadius: 18,
     paddingVertical: Spacing.three,
     alignItems: 'center',

@@ -18,10 +18,11 @@ import Svg, { Path } from 'react-native-svg';
 
 import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
-import { getCompanionImage } from '@/lib/companion-utils';
+import { bunAvatarNudge, getCompanionImage } from '@/lib/companion-utils';
 import { joinPresence, newRoomId, sendInvite, type OnlineGameId } from '@/lib/game-net';
 import { acceptGameInvite, hostGameInvite } from '@/lib/invite-actions';
 import {
+  DM_MAX_LENGTH,
   fetchConversation,
   markConversationRead,
   resolveUserId,
@@ -37,11 +38,11 @@ const C = BakeryColors;
 
 // Games (plus Study) that can be invited to from a chat.
 const INVITE_OPTIONS: { id: OnlineGameId; nameKey: string; emoji: string }[] = [
-  { id: 'study', nameKey: 'friends.game_study', emoji: '📚' },
-  { id: 'connect4', nameKey: 'friends.game_connect4', emoji: '🔴' },
-  { id: 'tictactoe', nameKey: 'friends.game_tictactoe', emoji: '⭕' },
-  { id: 'memory', nameKey: 'friends.game_memory', emoji: '🃏' },
-  { id: 'batterdash', nameKey: 'friends.game_batterdash', emoji: '🎂' },
+  { id: 'study', nameKey: 'friends.game_study', emoji: '' },
+  { id: 'connect4', nameKey: 'friends.game_connect4', emoji: '' },
+  { id: 'tictactoe', nameKey: 'friends.game_tictactoe', emoji: '' },
+  { id: 'memory', nameKey: 'friends.game_memory', emoji: '' },
+  { id: 'batterdash', nameKey: 'friends.game_batterdash', emoji: '' },
 ];
 
 const GAME_LABEL_KEY: Record<OnlineGameId, string> = {
@@ -242,7 +243,7 @@ export default function DmChatScreen() {
           </Pressable>
           <View style={styles.headerCenter}>
             <View style={styles.headerAvatar}>
-              <Image source={getCompanionImage(friend?.companionId, friend?.skinId)} style={styles.headerAvatarImg} contentFit="contain" />
+              <Image source={getCompanionImage(friend?.companionId, friend?.skinId)} style={[styles.headerAvatarImg, bunAvatarNudge(friend?.companionId)]} contentFit="contain" />
             </View>
             <View>
               <Text style={styles.headerTitle} numberOfLines={1}>{friendName}</Text>
@@ -333,6 +334,7 @@ export default function DmChatScreen() {
                 placeholder={t('dm.placeholder', { name: friendName })}
                 placeholderTextColor={C.latte}
                 multiline
+                maxLength={DM_MAX_LENGTH}
                 onSubmitEditing={handleSend}
               />
             </View>

@@ -180,7 +180,7 @@ export async function scheduleTaskNotification(task: {
 
   return Notifications.scheduleNotificationAsync({
     content: {
-      title: '🔔 Task reminder',
+      title: 'Task reminder',
       body: task.title,
       sound: 'default',
       data: { kind: 'task', taskId: task.id },
@@ -225,8 +225,8 @@ export async function syncStudyReminders({
   }
 
   let scheduledCount = 0;
-  // Title reads like the equipped companion is messaging you (e.g. "🌙 Tira").
-  const baseTitle = `${reminderEmoji ?? '🔔'} ${companionName ?? 'Study time'}`;
+  // Title reads like the equipped companion is messaging you (e.g. " Tira").
+  const baseTitle = `${reminderEmoji ?? ''} ${companionName ?? 'Study time'}`.trim();
   const fallbackBody = 'Your study seat is ready.';
 
   if (enabled) {

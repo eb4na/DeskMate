@@ -516,7 +516,7 @@ export function Connect4Game({
       {/* Status pill */}
       <View style={styles.statusPill}>
         <ThemedText type="smallBold" style={styles.statusText}>
-          ♥ {oppLeft ? t('connect4.friendLeft') : statusText} ♥
+           {oppLeft ? t('connect4.friendLeft') : statusText} 
         </ThemedText>
       </View>
 
@@ -609,14 +609,16 @@ const styles = StyleSheet.create({
   subPillText: { color: BakeryColors.cocoaDark, fontSize: 13 },
   modeRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     justifyContent: 'center',
-    gap: Spacing.two,
+    gap: Spacing.one,
     marginTop: Spacing.three,
     paddingHorizontal: Spacing.two,
   },
   modeCard: {
-    width: 110,
+    flex: 1,
+    minWidth: 0,
+    maxWidth: 130,
     borderRadius: 20,
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.one,
@@ -626,10 +628,10 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#F4D7DE',
   },
-  modeIcon: { width: 52, height: 52 },
-  modeDiscPair: { flexDirection: 'row', alignItems: 'center', height: 52, justifyContent: 'center' },
-  modeDiscRow: { flexDirection: 'row', alignItems: 'center', height: 52, justifyContent: 'center', gap: 4 },
-  modePiece: { width: 32, height: 32 },
+  modeIcon: { width: 46, height: 46 },
+  modeDiscPair: { flexDirection: 'row', alignItems: 'center', height: 46, justifyContent: 'center' },
+  modeDiscRow: { flexDirection: 'row', alignItems: 'center', height: 46, justifyContent: 'center', gap: 4 },
+  modePiece: { width: 28, height: 28 },
   modeTitle: { color: BakeryColors.cocoaDark, fontSize: 15, textAlign: 'center' },
   modeSub: { color: '#9A8978', textAlign: 'center' },
 

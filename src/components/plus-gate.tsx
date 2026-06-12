@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { type ReactNode } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
+import { PlusIcon } from '@/components/plus-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
@@ -22,7 +23,7 @@ export function PlusGateCard({ emoji = '✨', icon, title, description }: CardPr
       onPress={() => router.push('/plus-upgrade')}>
       <ThemedView type="backgroundElement" style={styles.card}>
         <ThemedView style={styles.header}>
-          {icon ?? <ThemedText style={styles.emoji}>{emoji}</ThemedText>}
+          {icon ?? (emoji === '✨' ? <PlusIcon size={32} /> : <ThemedText style={styles.emoji}>{emoji}</ThemedText>)}
           <ThemedView style={styles.badge}>
             <ThemedText style={styles.badgeText}>Chef&apos;s Special</ThemedText>
           </ThemedView>

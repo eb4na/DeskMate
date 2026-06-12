@@ -339,7 +339,7 @@ function NextArrow({ x, y }: { x: number; y: number }) {
   const st = useAnimatedStyle(() => ({ transform: [{ translateY: -10 * t.value }] }));
   return (
     <Animated.View pointerEvents="none" style={[styles.nextArrow, { left: x - 18, top: y - 66 }, st]}>
-      <Text style={styles.nextArrowText}>⬇️</Text>
+      <Text style={styles.nextArrowText}></Text>
     </Animated.View>
   );
 }
@@ -413,7 +413,7 @@ function CakeLobby({
             <View key={e.code} style={styles.lobbyRow}>
               <Text style={styles.lobbyName} numberOfLines={1}>
                 {e.name}
-                {e.isHost ? ' 👑' : ''}
+                {e.isHost ? ' ' : ''}
                 {e.code === myCode ? t('cake.you') : ''}
               </Text>
               <Text style={[styles.lobbyReady, e.ready && styles.lobbyReadyOn]}>
@@ -1206,14 +1206,14 @@ function KitchenView({
       setBestCombo((b) => Math.max(b, newCombo));
       setCakesMade((c) => c + 1);
       flashMood(newCombo % 3 === 0 ? 'excited' : 'happy');
-      popup(`+${pts}${tags.length ? '  ' + tags.join(' · ') : ''} 🎉`, 'ok');
+      popup(`+${pts}${tags.length ? '  ' + tags.join(' · ') : ''} `, 'ok');
     } else {
       setHeld(null); // discard the wrong cake
       setCombo(0);
       flashMood('sad');
       if (isRush) {
         setScore((s) => Math.max(0, s + SCORE_WRONG));
-        popup(`Wrong order! ${SCORE_WRONG} ❌`, 'bad');
+        popup(`Wrong order! ${SCORE_WRONG} `, 'bad');
       } else {
         popup(t('cake.p_wrongOrder'), 'bad');
       }
@@ -1453,7 +1453,7 @@ function KitchenView({
         .sort((a, b) => b.s - a.s)
     : [];
   const teamTotal = leaderboard.reduce((sum, r) => sum + r.s, 0);
-  const MEDALS = ['🥇', '🥈', '🥉', '🎀'];
+  const MEDALS = ['', '', '', ''];
 
   return (
     <ThemedView style={styles.container}>
@@ -1502,7 +1502,7 @@ function KitchenView({
             {online && (
               <View style={styles.statBadge}>
                 <Text style={styles.statBadgeText} numberOfLines={1}>
-                  {partyMode === 'cooperative' ? '🤝 Co-op' : '🏆 Race'} · {roster.length} players
+                  {partyMode === 'cooperative' ? ' Co-op' : ' Race'} · {roster.length} players
                 </Text>
               </View>
             )}
@@ -1566,7 +1566,7 @@ function KitchenView({
                     hitSlop={6}
                     onPress={tapCounter}
                     style={{ position: 'absolute', left: 0, top: cTop, width: cW, height: 0.55 * cH, alignItems: 'center', zIndex: 8 }}>
-                    {nextStationId === 'counter' && <Text style={styles.counterPoint}>👇</Text>}
+                    {nextStationId === 'counter' && <Text style={styles.counterPoint}></Text>}
                   </Pressable>
                 </>
               );
@@ -1611,7 +1611,7 @@ function KitchenView({
                   <Pressable
                     onPress={() => moveTo(STATIONS.find((s) => s.kind === 'ingredient')!)}
                     style={{ position: 'absolute', left: 0, top: 0, width: 0.6 * lcW, height: 0.42 * lcH }}>
-                    {nextStationId === 'ingredient' && <Text style={styles.counterPoint}>👇</Text>}
+                    {nextStationId === 'ingredient' && <Text style={styles.counterPoint}></Text>}
                   </Pressable>
                   {mixerStations.map((st, i) => {
                     const cooker = cookers[st.id];
@@ -1643,7 +1643,7 @@ function KitchenView({
                             <BaseIcon id={cooker.base} size={20} />
                           </View>
                         )}
-                        {nextStationId === st.id && <Text style={styles.counterPoint}>👇</Text>}
+                        {nextStationId === st.id && <Text style={styles.counterPoint}></Text>}
                       </Pressable>
                     );
                   })}
@@ -1698,7 +1698,7 @@ function KitchenView({
                             <BaseIcon id={cooker.base} size={20} />
                           </View>
                         )}
-                        {nextStationId === st.id && <Text style={styles.counterPoint}>👇</Text>}
+                        {nextStationId === st.id && <Text style={styles.counterPoint}></Text>}
                       </Pressable>
                     );
                   })}
@@ -1724,7 +1724,7 @@ function KitchenView({
                       height: r.y1 - r.y0,
                     }}>
                     <Image source={stationImage(s.kind, false, activeRecipe)} style={StyleSheet.absoluteFill} contentFit="contain" pointerEvents="none" />
-                    {nextStationId === s.id && <Text style={styles.counterPoint}>👇</Text>}
+                    {nextStationId === s.id && <Text style={styles.counterPoint}></Text>}
                   </Pressable>
                 );
               });
@@ -1787,7 +1787,7 @@ function KitchenView({
                   player={sprite}
                   held={null}
                   image={characterImg(r.char)}
-                  face="🐱"
+                  face=""
                   kw={size.w}
                   kh={size.h}
                 />
@@ -1940,7 +1940,7 @@ function KitchenView({
                     ]
                   : [
                       ...leaderboard.map((r, i): [string, string] => [
-                        `${MEDALS[i] ?? '🎀'} ${r.name}${r.code === online.myCode ? t('cake.you') : ''}`,
+                        `${MEDALS[i] ?? ''} ${r.name}${r.code === online.myCode ? t('cake.you') : ''}`,
                         `${r.s}`,
                       ]),
                       [t('cake.r_coinsEarned'), `+${Math.floor(score / SCORE_PER_COIN)}`],
@@ -2042,7 +2042,7 @@ function CustomerSprite({ customer, myCode, onGreet }: { customer: Customer; myC
       {/* Party: this bunny was claimed by another player. */}
       {claimedByOther && (
         <View style={styles.takenBadge} pointerEvents="none">
-          <Text style={styles.takenText} numberOfLines={1}>🔒 {claimedName}</Text>
+          <Text style={styles.takenText} numberOfLines={1}> {claimedName}</Text>
         </View>
       )}
       {/* Greet prompt — absolute (over the bunny) so the bunny never shifts on
@@ -2147,7 +2147,7 @@ function StationBox({
           top: (station.y / 100) * h - STATION_H / 2,
         },
       ]}>
-      {suggested && <Text style={styles.suggestPoint}>👇</Text>}
+      {suggested && <Text style={styles.suggestPoint}></Text>}
       {progress !== undefined && (
         <View style={styles.cookTrack}>
           <View style={[styles.cookFill, { width: `${progress * 100}%` }]} />
@@ -2171,13 +2171,13 @@ function StationBox({
 function moodFace(mood: Mood): string {
   switch (mood) {
     case 'happy':
-      return '😸';
+      return '';
     case 'excited':
-      return '😻';
+      return '';
     case 'sad':
-      return '🙀';
+      return '';
     default:
-      return '🐱';
+      return '';
   }
 }
 
@@ -2283,9 +2283,9 @@ function PlayerSprite({
 function HeldIcon({ held }: { held: HeldItem }) {
   switch (held.kind) {
     case 'base':
-      return held.base ? <BaseIcon id={held.base} size={22} /> : <Text style={styles.heldEmoji}>🥚</Text>;
+      return held.base ? <BaseIcon id={held.base} size={22} /> : <Text style={styles.heldEmoji}></Text>;
     case 'batter':
-      return <Text style={styles.heldEmoji}>🥣</Text>;
+      return <Text style={styles.heldEmoji}></Text>;
     case 'sponge':
       return <CakeBuildIcon base={held.base} filling={held.filling} size={24} />;
     case 'cake':
@@ -2398,7 +2398,7 @@ const styles = StyleSheet.create({
 
   doneBtn: {
     marginTop: 'auto',
-    backgroundColor: BakeryColors.jam,
+    backgroundColor: '#F7A7B8',
     borderRadius: BakeryRadii.button,
     paddingVertical: Spacing.three,
     alignItems: 'center',

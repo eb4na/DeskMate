@@ -1,9 +1,9 @@
-import { Image as ExpoImage } from 'expo-image';
 import { router } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { GameIcon } from '@/components/category-icons';
+import { GameIcon, OutfitIcon } from '@/components/category-icons';
+import { PlusIcon } from '@/components/plus-icon';
 import { ExamCalendarIcon } from '@/components/home-icons';
 import {
   BellIcon,
@@ -26,9 +26,9 @@ const FEATURES: { titleKey: string; descKey: string; renderIcon: (size: number) 
   { titleKey: 'plus.f_streakFreezes', descKey: 'plus.f_streakFreezesDesc', renderIcon: (s) => <StreakFreezeIcon size={s} /> },
   { titleKey: 'plus.f_advancedReports', descKey: 'plus.f_advancedReportsDesc', renderIcon: (s) => <ChartIcon size={s} /> },
   { titleKey: 'plus.f_ambience', descKey: 'plus.f_ambienceDesc', renderIcon: (s) => <MusicNoteIcon size={s} /> },
+  { titleKey: 'plus.f_exclusiveSkin', descKey: 'plus.f_exclusiveSkinDesc', renderIcon: (s) => <OutfitIcon size={s} /> },
   { titleKey: 'plus.f_allGames', descKey: 'plus.f_allGamesDesc', renderIcon: (s) => <GameIcon size={s} /> },
   { titleKey: 'plus.f_shopDiscount', descKey: 'plus.f_shopDiscountDesc', renderIcon: (s) => <ShopTabIcon size={s} color={BakeryColors.honey} /> },
-  { titleKey: 'plus.f_tira', descKey: 'plus.f_tiraDesc', renderIcon: (s) => <ExpoImage source={require('@/assets/images/tira/tira.png')} style={{ width: s, height: s }} contentFit="contain" /> },
 ];
 
 export default function PlusUpgradeScreen() {
@@ -79,9 +79,9 @@ export default function PlusUpgradeScreen() {
         <SafeAreaView style={styles.safeArea}>
           {/* Hero */}
           <ThemedView style={styles.hero}>
-            <ThemedText style={styles.heroEmoji}>✨</ThemedText>
+            <PlusIcon size={72} />
             <ThemedText type="subtitle" style={styles.heroTitle}>
-              DeskMate Plus
+              Memobun Plus
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary" style={styles.heroSub}>
               {t('plus.heroSub')}
@@ -91,7 +91,7 @@ export default function PlusUpgradeScreen() {
           {/* Status banner (if already Plus) */}
           {isPlus && (
             <ThemedView type="backgroundElement" style={styles.activeBanner}>
-              <ThemedText style={styles.activeEmoji}>🎉</ThemedText>
+              <ThemedText style={styles.activeEmoji}></ThemedText>
               <ThemedText type="smallBold">{t('plus.plusMember')}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 {t('plus.allUnlocked')}
@@ -203,7 +203,6 @@ const styles = StyleSheet.create({
     gap: Spacing.four,
   },
   hero: { alignItems: 'center', gap: Spacing.one },
-  heroEmoji: { fontSize: 48, lineHeight: 56 },
   heroTitle: { fontSize: 28, lineHeight: 34 },
   heroSub: { textAlign: 'center' },
   activeBanner: {

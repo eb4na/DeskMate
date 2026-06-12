@@ -45,35 +45,35 @@ export const STATIC_SUBJECTS = [
 
 // Before-session mood options (how you feel going into studying)
 export const BEFORE_SESSION_MOODS = [
-  { value: 'motivated', emoji: '💪', label: 'Motivated', image: require('@/assets/images/moods/after-0.png') },
-  { value: 'ready', emoji: '😺', label: 'Ready', image: require('@/assets/images/moods/after-1.png') },
-  { value: 'calm', emoji: '😌', label: 'Calm', image: require('@/assets/images/moods/after-2.png') },
-  { value: 'excited', emoji: '✨', label: 'Excited', image: require('@/assets/images/moods/after-3.png') },
-  { value: 'happy', emoji: '😸', label: 'Happy', image: require('@/assets/images/moods/after-4.png') },
-  { value: 'okay', emoji: '🙂', label: 'Okay', image: require('@/assets/images/moods/before-4.png') },
-  { value: 'sleepy', emoji: '😴', label: 'Sleepy', image: require('@/assets/images/moods/before-0.png') },
-  { value: 'tired', emoji: '😪', label: 'Tired', image: require('@/assets/images/moods/after-5.png') },
-  { value: 'stressed', emoji: '😰', label: 'Stressed', image: require('@/assets/images/moods/before-1.png') },
-  { value: 'lost', emoji: '😕', label: 'Lost', image: require('@/assets/images/moods/before-2.png') },
-  { value: 'frustrated', emoji: '😣', label: 'Frustrated', image: require('@/assets/images/moods/before-3.png') },
-  { value: 'down', emoji: '😟', label: 'Down', image: require('@/assets/images/moods/before-5.png') },
+  { value: 'motivated', emoji: '', label: 'Motivated', image: require('@/assets/images/moods/after-0.png') },
+  { value: 'ready', emoji: '', label: 'Ready', image: require('@/assets/images/moods/after-1.png') },
+  { value: 'calm', emoji: '', label: 'Calm', image: require('@/assets/images/moods/after-2.png') },
+  { value: 'excited', emoji: '', label: 'Excited', image: require('@/assets/images/moods/after-3.png') },
+  { value: 'happy', emoji: '', label: 'Happy', image: require('@/assets/images/moods/after-4.png') },
+  { value: 'okay', emoji: '', label: 'Okay', image: require('@/assets/images/moods/before-4.png') },
+  { value: 'sleepy', emoji: '', label: 'Sleepy', image: require('@/assets/images/moods/before-0.png') },
+  { value: 'tired', emoji: '', label: 'Tired', image: require('@/assets/images/moods/after-5.png') },
+  { value: 'stressed', emoji: '', label: 'Stressed', image: require('@/assets/images/moods/before-1.png') },
+  { value: 'lost', emoji: '', label: 'Lost', image: require('@/assets/images/moods/before-2.png') },
+  { value: 'frustrated', emoji: '', label: 'Frustrated', image: require('@/assets/images/moods/before-3.png') },
+  { value: 'down', emoji: '', label: 'Down', image: require('@/assets/images/moods/before-5.png') },
 ] as const;
 
 // After-session mood options (how you feel after studying). Full emotional range
 // — the same breadth as the before-session set, framed for "after studying".
 export const AFTER_SESSION_MOODS = [
-  { value: 'proud', emoji: '😤', label: 'Proud', image: require('@/assets/images/moods/after-0.png') },
-  { value: 'better', emoji: '😊', label: 'Better', image: require('@/assets/images/moods/after-1.png') },
-  { value: 'relieved', emoji: '😌', label: 'Relieved', image: require('@/assets/images/moods/after-2.png') },
-  { value: 'motivated', emoji: '✨', label: 'Motivated', image: require('@/assets/images/moods/after-3.png') },
-  { value: 'happy', emoji: '😸', label: 'Happy', image: require('@/assets/images/moods/after-4.png') },
-  { value: 'okay', emoji: '🙂', label: 'Okay', image: require('@/assets/images/moods/before-4.png') },
-  { value: 'sleepy', emoji: '😴', label: 'Sleepy', image: require('@/assets/images/moods/before-0.png') },
-  { value: 'exhausted', emoji: '😮‍💨', label: 'Exhausted', image: require('@/assets/images/moods/after-5.png') },
-  { value: 'stressed', emoji: '😰', label: 'Stressed', image: require('@/assets/images/moods/before-1.png') },
-  { value: 'lost', emoji: '😕', label: 'Lost', image: require('@/assets/images/moods/before-2.png') },
-  { value: 'frustrated', emoji: '😣', label: 'Frustrated', image: require('@/assets/images/moods/before-3.png') },
-  { value: 'down', emoji: '😟', label: 'Down', image: require('@/assets/images/moods/before-5.png') },
+  { value: 'proud', emoji: '', label: 'Proud', image: require('@/assets/images/moods/after-0.png') },
+  { value: 'better', emoji: '', label: 'Better', image: require('@/assets/images/moods/after-1.png') },
+  { value: 'relieved', emoji: '', label: 'Relieved', image: require('@/assets/images/moods/after-2.png') },
+  { value: 'motivated', emoji: '', label: 'Motivated', image: require('@/assets/images/moods/after-3.png') },
+  { value: 'happy', emoji: '', label: 'Happy', image: require('@/assets/images/moods/after-4.png') },
+  { value: 'okay', emoji: '', label: 'Okay', image: require('@/assets/images/moods/before-4.png') },
+  { value: 'sleepy', emoji: '', label: 'Sleepy', image: require('@/assets/images/moods/before-0.png') },
+  { value: 'exhausted', emoji: '', label: 'Exhausted', image: require('@/assets/images/moods/after-5.png') },
+  { value: 'stressed', emoji: '', label: 'Stressed', image: require('@/assets/images/moods/before-1.png') },
+  { value: 'lost', emoji: '', label: 'Lost', image: require('@/assets/images/moods/before-2.png') },
+  { value: 'frustrated', emoji: '', label: 'Frustrated', image: require('@/assets/images/moods/before-3.png') },
+  { value: 'down', emoji: '', label: 'Down', image: require('@/assets/images/moods/before-5.png') },
 ] as const;
 
 export type BeforeMoodValue = (typeof BEFORE_SESSION_MOODS)[number]['value'];
