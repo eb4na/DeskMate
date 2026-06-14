@@ -123,6 +123,7 @@ export default function ManageSubjectsScreen() {
                     onChangeText={setEditName}
                     onBlur={handleRenameCommit}
                     onSubmitEditing={handleRenameCommit}
+                    maxLength={30}
                     autoFocus
                   />
                 ) : (
@@ -168,6 +169,7 @@ export default function ManageSubjectsScreen() {
               placeholderTextColor={isDark ? '#666' : '#AAA'}
               value={newName}
               onChangeText={setNewName}
+              maxLength={30}
               returnKeyType="done"
               onSubmitEditing={handleAdd}
             />
@@ -178,6 +180,7 @@ export default function ManageSubjectsScreen() {
               placeholderTextColor={isDark ? '#666' : '#AAA'}
               value={newEmoji}
               onChangeText={setNewEmoji}
+              maxLength={2}
             />
 
             {/* Color picker */}

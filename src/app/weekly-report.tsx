@@ -8,7 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import i18n, { useTranslation } from '@/i18n';
-import { COIN_REWARDS } from '@/constants/placeholder-data';
+import { coinsForMinutes } from '@/constants/placeholder-data';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 function formatMinutes(total: number): string {
@@ -57,15 +57,8 @@ export default function WeeklyReportScreen() {
   const subjectEntries = Object.entries(weekSubjectMap).sort((a, b) => b[1] - a[1]);
   const topSubject = subjectEntries[0];
 
-  // Estimated coins
-  const LENGTHS = [10, 25, 50, 90] as const;
-  const estimatedCoins =
-    weekSessions.reduce((sum, r) => {
-      const nearest = LENGTHS.reduce((p, c) =>
-        Math.abs(c - r.minutes) < Math.abs(p - r.minutes) ? c : p,
-      );
-      return sum + (COIN_REWARDS[nearest] ?? 0);
-    }, 0) + weekTasks.length * 10;
+  // Estimated coins — 1 coin per minute studied (matches the earn rule).
+  const estimatedCoins = weekSessions.reduce((sum, r) => sum + coinsForMinutes(r.minutes), 0);
 
   // Mood improvement
   const weekAfterMoods = weekMoods.filter((m) => m.type === 'after');

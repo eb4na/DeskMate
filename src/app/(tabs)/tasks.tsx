@@ -2,14 +2,19 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 
-import { BakeryBellEmoji, BakeryLockEmoji, BakeryStarEmoji } from '@/components/bakery-emoji';
+import { BakeryBellEmoji } from '@/components/bakery-emoji';
+import { CountdownShape } from '@/components/countdown-shapes';
+import { LockBadge } from '@/components/lock-badge';
 import { TaskCalendar } from '@/components/task-calendar';
 import { formatTimeLabel } from '@/components/time-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
-import type { Task, TaskStatus } from '@/context/app-context';
+import type { Task } from '@/context/app-context';
+import { computeTaskRollover } from '@/lib/task-recurrence';
+import { cancelTaskNotification, scheduleTaskNotification } from '@/lib/notifications';
 import i18n, { useTranslation } from '@/i18n';
 import {
   BakeryColors,
@@ -29,30 +34,12 @@ function daysUntil(dateISO: string): number {
   return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-const STATUS_CYCLE: Record<TaskStatus, TaskStatus> = {
-  not_started: 'in_progress',
-  in_progress: 'done',
-  done: 'not_started',
-};
-
-const PRIORITY_COLOR: Record<string, string> = {
-  high: '#E0584A',
-  medium: '#F2B33C',
-  low: '#CDBFAC',
-};
-
 function formatDueDate(dateISO: string): string {
   return new Date(`${dateISO}T00:00:00`).toLocaleDateString(i18n.language || 'en-US', {
     month: 'short',
     day: 'numeric',
   });
 }
-
-const STATUS_ICON: Record<TaskStatus, string> = {
-  not_started: '○',
-  in_progress: '◑',
-  done: '●',
-};
 
 function SubjectBadge({ subjectId }: { subjectId: string | null }) {
   const { subjects } = useApp();
@@ -67,37 +54,49 @@ function SubjectBadge({ subjectId }: { subjectId: string | null }) {
   );
 }
 
-function TaskRow({ task, onToggle, onEdit, onDelete, onPostpone }: {
+// Simple pastel-red trash can for the delete action — lid, handle, and a clean
+// tapered body. Deliberately minimal (no ribs/details) so it reads at icon size.
+const TRASH_PASTEL = '#E89B9B';
+function TrashIcon({ size = 16, color = TRASH_PASTEL }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      {/* lid */}
+      <Path d="M4 7 h16" />
+      {/* handle */}
+      <Path d="M9.5 7 V5.5 a1.5 1.5 0 0 1 1.5 -1.5 h2 a1.5 1.5 0 0 1 1.5 1.5 V7" />
+      {/* body */}
+      <Path d="M6.5 7 l0.9 11.4 a1.6 1.6 0 0 0 1.6 1.5 h6 a1.6 1.6 0 0 0 1.6 -1.5 L18.5 7" />
+    </Svg>
+  );
+}
+
+function TaskRow({ task, onToggle, onEdit, onDelete }: {
   task: Task;
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  onPostpone: () => void;
 }) {
   const { use24HourTime } = useApp();
   const isDone = task.status === 'done';
 
   return (
     <ThemedView type="backgroundElement" style={[styles.taskRow, isDone && styles.taskRowDone]}>
-      {/* Status toggle */}
-      <Pressable style={styles.statusBtn} onPress={onToggle}>
-        <ThemedText style={[styles.statusIcon, isDone && styles.statusIconDone]}>
-          {STATUS_ICON[task.status]}
-        </ThemedText>
-      </Pressable>
-
       {/* Content */}
       <Pressable style={styles.taskContent} onPress={onEdit}>
-        <ThemedView style={styles.taskTitleRow}>
+        <View style={styles.taskTitleRow}>
           <ThemedText
             style={[styles.taskTitle, isDone && styles.taskTitleDone]}
             numberOfLines={2}>
             {task.title}
           </ThemedText>
-          <View style={[styles.priorityDot, { backgroundColor: PRIORITY_COLOR[task.priority] }]} />
-        </ThemedView>
+          {/* Finished / not-finished toggle. */}
+          <Pressable onPress={onToggle} hitSlop={12}>
+            <View style={[styles.statusDot, isDone ? styles.statusDotDone : styles.statusDotTodo]} />
+          </Pressable>
+        </View>
 
-        <ThemedView style={styles.taskMeta}>
+        <View style={styles.taskMeta}>
           <SubjectBadge subjectId={task.subjectId} />
           {task.dueDate && (
             <ThemedText type="small" themeColor="textSecondary" style={styles.metaText}>
@@ -114,20 +113,20 @@ function TaskRow({ task, onToggle, onEdit, onDelete, onPostpone }: {
               ↷ {task.postponeCount}×
             </ThemedText>
           )}
-        </ThemedView>
+          {task.repeatDays && task.repeatDays.length > 0 && (
+            <ThemedText type="small" themeColor="textSecondary" style={styles.metaText}>
+              ↻ {[...task.repeatDays].sort((a, b) => a - b).map((d) => i18n.t(`calendar.wd_${d}`)).join('')}
+            </ThemedText>
+          )}
+        </View>
       </Pressable>
 
       {/* Actions */}
-      <ThemedView style={styles.taskActions}>
-        {!isDone && (
-          <Pressable style={styles.actionBtn} onPress={onPostpone}>
-            <ThemedText type="small" themeColor="textSecondary">↷</ThemedText>
-          </Pressable>
-        )}
-        <Pressable style={styles.actionBtn} onPress={onDelete}>
-          <ThemedText style={styles.deleteIcon}>✕</ThemedText>
+      <View style={styles.taskActions}>
+        <Pressable style={styles.actionBtn} onPress={onDelete} hitSlop={8}>
+          <TrashIcon size={16} />
         </Pressable>
-      </ThemedView>
+      </View>
     </ThemedView>
   );
 }
@@ -140,18 +139,16 @@ export default function TasksScreen() {
     updateTask,
     deleteTask,
     completeTask,
-    postponeTask,
     examCountdowns,
     removeExam,
     isPlus,
   } = useApp();
   const [showDone, setShowDone] = useState(false);
 
-  const canAddExam = isPlus || examCountdowns.length < 3;
-  const examLimitText = isPlus ? t('tasks.examsCount', { count: examCountdowns.length }) : `${examCountdowns.length}/3`;
+  const canAddExam = isPlus || examCountdowns.length < 2;
+  const examLimitText = isPlus ? t('tasks.examsCount', { count: examCountdowns.length }) : `${examCountdowns.length}/2`;
 
-  const notStarted = tasks.filter((t) => t.status === 'not_started');
-  const inProgress = tasks.filter((t) => t.status === 'in_progress');
+  const todo = tasks.filter((t) => t.status !== 'done');
   const done = tasks.filter((t) => t.status === 'done');
 
   // Avoidance tracker: tasks with postponeCount >= 1, not done, sorted by count desc
@@ -160,11 +157,22 @@ export default function TasksScreen() {
     .sort((a, b) => b.postponeCount - a.postponeCount)
     .slice(0, 3);
 
-  const handleToggle = (task: Task) => {
-    if (task.status === 'in_progress') {
+  const handleToggle = async (task: Task) => {
+    if (task.status !== 'done') {
+      // Mark finished. A repeating task rolls its due date forward instead of
+      // finishing, so reschedule its reminder to the next occurrence.
+      const rollover = task.repeatDays?.length ? computeTaskRollover(task) : null;
       completeTask(task.id);
+      if (rollover) {
+        await cancelTaskNotification(task.notifId);
+        if (rollover.notifyAt) {
+          const notifId = await scheduleTaskNotification({ id: task.id, title: task.title, notifyAt: rollover.notifyAt });
+          updateTask(task.id, { notifId: notifId ?? null });
+        }
+      }
     } else {
-      updateTask(task.id, { status: STATUS_CYCLE[task.status] });
+      // Mark not finished again.
+      updateTask(task.id, { status: 'not_started' });
     }
   };
 
@@ -197,7 +205,6 @@ export default function TasksScreen() {
                 onToggle={() => handleToggle(task)}
                 onEdit={() => router.push({ pathname: '/add-task', params: { taskId: task.id } })}
                 onDelete={() => handleDelete(task)}
-                onPostpone={() => postponeTask(task.id)}
               />
             ))}
           </ThemedView>
@@ -232,88 +239,6 @@ export default function TasksScreen() {
           {/* Calendar with day notes + task peek */}
           <TaskCalendar />
 
-          {/* ── Exam countdowns ───────────────────────────────────────────── */}
-          <ThemedView style={styles.section}>
-            <ThemedView style={styles.examHeader}>
-              <ThemedText type="smallBold" style={styles.sectionTitle}>
-                {t('tasks.examCountdowns')}
-              </ThemedText>
-              <View style={styles.examLimitRow}>
-                <ThemedText type="small" themeColor="textSecondary">{examLimitText}</ThemedText>
-                {isPlus && (
-                  <>
-                    <BakeryStarEmoji size={12} />
-                    <ThemedText style={styles.plusBadge}>{t('tasks.plusBadge')}</ThemedText>
-                  </>
-                )}
-              </View>
-            </ThemedView>
-
-            {examCountdowns.length === 0 && (
-              <ThemedView type="backgroundElement" style={styles.examEmptyCard}>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                  {t('tasks.noExamsYet')}{isPlus ? t('tasks.unlimitedWithPlus') : t('tasks.trackUpTo3')}
-                </ThemedText>
-              </ThemedView>
-            )}
-
-            {examCountdowns.map((exam) => {
-              const days = daysUntil(exam.dateISO);
-              const isUrgent = days >= 0 && days <= 7;
-              const isPast = days < 0;
-              const isToday = days === 0;
-              return (
-                <ThemedView key={exam.id} type="backgroundElement" style={styles.examCard}>
-                  <ThemedView style={styles.examInfo}>
-                    <View style={styles.examNameRow}>
-                      {isToday && <BakeryStarEmoji size={14} />}
-                      <ThemedText type="smallBold">{exam.name}</ThemedText>
-                    </View>
-                    <View style={styles.examSubRow}>
-                      <ThemedText type="small" themeColor="textSecondary">
-                        {exam.subject ? `${exam.subject} · ` : ''}{exam.dateISO}
-                      </ThemedText>
-                      {exam.reminderEnabled && <BakeryBellEmoji size={11} />}
-                    </View>
-                  </ThemedView>
-                  <ThemedView style={styles.examRight}>
-                    <ThemedText
-                      style={[
-                        styles.examDays,
-                        isUrgent && styles.examDaysUrgent,
-                        isPast && styles.examDaysPast,
-                      ]}>
-                      {isPast ? t('tasks.past') : isToday ? t('tasks.today') : `${days}d`}
-                    </ThemedText>
-                    <Pressable onPress={() => removeExam(exam.id)} style={styles.removeBtn}>
-                      <ThemedText type="small" themeColor="textSecondary">✕</ThemedText>
-                    </Pressable>
-                  </ThemedView>
-                </ThemedView>
-              );
-            })}
-
-            {canAddExam ? (
-              <Pressable
-                style={({ pressed }) => [styles.addExamBtn, pressed && styles.pressed]}
-                onPress={() => router.push('/add-exam')}>
-                <ThemedText type="small" style={styles.addExamText}>
-                  {t('tasks.addExamCountdown')}
-                </ThemedText>
-              </Pressable>
-            ) : (
-              <Pressable onPress={() => router.push('/plus-upgrade')}>
-                <ThemedView type="backgroundElement" style={styles.upgradeExamCard}>
-                  <BakeryLockEmoji size={14} />
-                  <ThemedText type="small" style={styles.upgradeExamText}>
-                    {t('tasks.unlimitedUpgrade')}
-                  </ThemedText>
-                </ThemedView>
-              </Pressable>
-            )}
-          </ThemedView>
-
-
           {/* Needs attention (avoidance tracker) */}
           {needsAttention.length > 0 && (
             <ThemedView style={styles.section}>
@@ -335,13 +260,6 @@ export default function TasksScreen() {
                     <ThemedText type="small" themeColor="textSecondary" style={styles.nudgeText}>
                       {nudge}
                     </ThemedText>
-                    <Pressable
-                      style={({ pressed }) => [styles.nudgeBtn, pressed && styles.pressed]}
-                      onPress={() => router.push('/')}>
-                      <ThemedText type="small" style={styles.nudgeBtnText}>
-                        {t('tasks.startSessionArrow')}
-                      </ThemedText>
-                    </Pressable>
                   </ThemedView>
                 );
               })}
@@ -349,8 +267,7 @@ export default function TasksScreen() {
           )}
 
           {/* Task sections */}
-          {renderSection(t('tasks.inProgress'), inProgress)}
-          {renderSection(t('tasks.notStarted'), notStarted)}
+          {renderSection(t('tasks.notStarted'), todo)}
 
           {/* Done section (collapsible) */}
           {done.length > 0 && (
@@ -369,13 +286,87 @@ export default function TasksScreen() {
                       onToggle={() => handleToggle(task)}
                       onEdit={() => router.push({ pathname: '/add-task', params: { taskId: task.id } })}
                       onDelete={() => handleDelete(task)}
-                      onPostpone={() => postponeTask(task.id)}
                     />
                   ))}
                 </ThemedView>
               )}
             </ThemedView>
           )}
+
+          {/* ── Exam countdowns (below the task list) ─────────────────────── */}
+          <ThemedView style={styles.section}>
+            <ThemedView style={styles.examHeader}>
+              <ThemedText type="smallBold" style={styles.sectionTitle}>
+                {t('tasks.examCountdowns')}
+              </ThemedText>
+              <View style={styles.examLimitRow}>
+                <ThemedText type="small" themeColor="textSecondary">{examLimitText}</ThemedText>
+              </View>
+            </ThemedView>
+
+            {examCountdowns.length === 0 && (
+              <ThemedView type="backgroundElement" style={styles.examEmptyCard}>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
+                  {t('tasks.noExamsYet')}{isPlus ? t('tasks.unlimitedWithPlus') : t('tasks.trackUpTo3')}
+                </ThemedText>
+              </ThemedView>
+            )}
+
+            {examCountdowns.map((exam) => {
+              const days = daysUntil(exam.dateISO);
+              const isUrgent = days >= 0 && days <= 7;
+              const isPast = days < 0;
+              const isToday = days === 0;
+              return (
+                <ThemedView key={exam.id} type="backgroundElement" style={styles.examCard}>
+                  <View style={styles.examInfo}>
+                    <View style={styles.examNameRow}>
+                      <CountdownShape shape={exam.shape} size={16} />
+                      <ThemedText type="smallBold">{exam.name}</ThemedText>
+                    </View>
+                    <View style={styles.examSubRow}>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {exam.subject ? `${exam.subject} · ` : ''}{exam.dateISO}
+                      </ThemedText>
+                      {exam.reminderEnabled && <BakeryBellEmoji size={11} />}
+                    </View>
+                  </View>
+                  <View style={styles.examRight}>
+                    <ThemedText
+                      style={[
+                        styles.examDays,
+                        isUrgent && styles.examDaysUrgent,
+                        isPast && styles.examDaysPast,
+                      ]}>
+                      {isPast ? t('tasks.past') : isToday ? t('tasks.today') : `${days}d`}
+                    </ThemedText>
+                    <Pressable onPress={() => removeExam(exam.id)} style={styles.removeBtn} hitSlop={8}>
+                      <TrashIcon size={16} />
+                    </Pressable>
+                  </View>
+                </ThemedView>
+              );
+            })}
+
+            {canAddExam ? (
+              <Pressable
+                style={({ pressed }) => [styles.addExamBtn, pressed && styles.pressed]}
+                onPress={() => router.push('/add-exam')}>
+                <ThemedText type="small" style={styles.addExamText}>
+                  {t('tasks.addExamCountdown')}
+                </ThemedText>
+              </Pressable>
+            ) : (
+              <Pressable onPress={() => router.push('/plus-upgrade')}>
+                <ThemedView type="backgroundElement" style={styles.upgradeExamCard}>
+                  <LockBadge size={16} />
+                  <ThemedText type="small" style={styles.upgradeExamText}>
+                    {t('tasks.unlimitedUpgrade')}
+                  </ThemedText>
+                </ThemedView>
+              </Pressable>
+            )}
+          </ThemedView>
         </SafeAreaView>
       </ScrollView>
     </ThemedView>
@@ -448,14 +439,14 @@ const styles = StyleSheet.create({
     backgroundColor: BakeryColors.glass,
   },
   taskRowDone: { opacity: 0.55 },
-  statusBtn: { paddingHorizontal: 2 },
-  statusIcon: { fontSize: 20, lineHeight: 24, color: BakeryColors.mocha },
-  statusIconDone: { color: BakeryColors.success },
   taskContent: { flex: 1, gap: 5 },
   taskTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   taskTitle: { flex: 1, fontSize: 15, lineHeight: 20, fontWeight: '600' },
   taskTitleDone: { textDecorationLine: 'line-through' },
-  priorityDot: { width: 9, height: 9, borderRadius: 5 },
+  // Finished / not-finished dot at the end of the title row.
+  statusDot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2 },
+  statusDotTodo: { backgroundColor: 'transparent', borderColor: BakeryColors.latte },
+  statusDotDone: { backgroundColor: BakeryColors.success, borderColor: BakeryColors.success },
   taskMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
   metaText: { fontSize: 12 },
   badge: {
@@ -470,7 +461,6 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 11, fontWeight: '600' },
   taskActions: { flexDirection: 'row', gap: 2, alignItems: 'center' },
   actionBtn: { padding: 6 },
-  deleteIcon: { fontSize: 13, color: BakeryColors.danger },
   emptyCard: {
     borderRadius: BakeryRadii.card,
     padding: Spacing.three,
@@ -503,7 +493,6 @@ const styles = StyleSheet.create({
   examLimitRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   examNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   examSubRow: { flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' },
-  plusBadge: { color: BakeryColors.berry, fontSize: 11 },
   examEmptyCard: {
     borderRadius: BakeryRadii.card,
     padding: Spacing.four,

@@ -1,34 +1,28 @@
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { GameIcon, OutfitIcon } from '@/components/category-icons';
 import { PlusIcon } from '@/components/plus-icon';
-import { ExamCalendarIcon } from '@/components/home-icons';
-import {
-  BellIcon,
-  ChartIcon,
-  KitchenTimerIcon,
-  MusicNoteIcon,
-} from '@/components/settings-icons';
-import { StreakFreezeIcon } from '@/components/streak-freeze-icon';
-import { ShopTabIcon } from '@/components/tab-icons';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
-import { BakeryColors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 
-const FEATURES: { titleKey: string; descKey: string; renderIcon: (size: number) => React.ReactNode }[] = [
-  { titleKey: 'plus.f_customTimers', descKey: 'plus.f_customTimersDesc', renderIcon: (s) => <KitchenTimerIcon size={s} /> },
-  { titleKey: 'plus.f_multiReminders', descKey: 'plus.f_multiRemindersDesc', renderIcon: (s) => <BellIcon size={s} /> },
-  { titleKey: 'plus.f_unlimitedExams', descKey: 'plus.f_unlimitedExamsDesc', renderIcon: (s) => <ExamCalendarIcon size={s} /> },
-  { titleKey: 'plus.f_streakFreezes', descKey: 'plus.f_streakFreezesDesc', renderIcon: (s) => <StreakFreezeIcon size={s} /> },
-  { titleKey: 'plus.f_advancedReports', descKey: 'plus.f_advancedReportsDesc', renderIcon: (s) => <ChartIcon size={s} /> },
-  { titleKey: 'plus.f_ambience', descKey: 'plus.f_ambienceDesc', renderIcon: (s) => <MusicNoteIcon size={s} /> },
-  { titleKey: 'plus.f_exclusiveSkin', descKey: 'plus.f_exclusiveSkinDesc', renderIcon: (s) => <OutfitIcon size={s} /> },
-  { titleKey: 'plus.f_allGames', descKey: 'plus.f_allGamesDesc', renderIcon: (s) => <GameIcon size={s} /> },
-  { titleKey: 'plus.f_shopDiscount', descKey: 'plus.f_shopDiscountDesc', renderIcon: (s) => <ShopTabIcon size={s} color={BakeryColors.honey} /> },
+// Each feature shows the same in-game art used for that feature elsewhere, so the
+// paywall reads as a tour of real Memobun content rather than generic line icons.
+const FEATURES: { titleKey: string; descKey: string; art: number }[] = [
+  { titleKey: 'plus.f_customTimers', descKey: 'plus.f_customTimersDesc', art: require('@/assets/images/settings/timer.png') },
+  { titleKey: 'plus.f_multiReminders', descKey: 'plus.f_multiRemindersDesc', art: require('@/assets/images/shop/icon-reminder.png') },
+  { titleKey: 'plus.f_unlimitedExams', descKey: 'plus.f_unlimitedExamsDesc', art: require('@/assets/images/home/exam-calendar-icon.png') },
+  { titleKey: 'plus.f_streakFreezes', descKey: 'plus.f_streakFreezesDesc', art: require('@/assets/images/home/streak-freeze-icon.png') },
+  { titleKey: 'plus.f_advancedReports', descKey: 'plus.f_advancedReportsDesc', art: require('@/assets/images/settings/progress.png') },
+  { titleKey: 'plus.f_ambience', descKey: 'plus.f_ambienceDesc', art: require('@/assets/images/shop/icon-sound.png') },
+  { titleKey: 'plus.f_exclusiveSkin', descKey: 'plus.f_exclusiveSkinDesc', art: require('@/assets/images/bun/bun-strawberry.png') },
+  { titleKey: 'plus.f_goldenTeahouse', descKey: 'plus.f_goldenTeahouseDesc', art: require('@/assets/images/backgrounds/strawberry-palace.png') },
+  { titleKey: 'plus.f_shopDiscount', descKey: 'plus.f_shopDiscountDesc', art: require('@/assets/images/tabIcons/gen-shop.png') },
+  { titleKey: 'plus.f_streakCoins', descKey: 'plus.f_streakCoinsDesc', art: require('@/assets/images/home/coin-icon.png') },
 ];
 
 export default function PlusUpgradeScreen() {
@@ -103,7 +97,9 @@ export default function PlusUpgradeScreen() {
           <ThemedView style={styles.featureList}>
             {FEATURES.map((f) => (
               <ThemedView key={f.titleKey} style={styles.featureRow}>
-                <ThemedView style={styles.featureIcon}>{f.renderIcon(40)}</ThemedView>
+                <ThemedView style={styles.featureIcon}>
+                  <Image source={f.art} style={styles.featureImg} contentFit="contain" />
+                </ThemedView>
                 <ThemedView style={styles.featureText}>
                   <ThemedText type="smallBold">{t(f.titleKey)}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
@@ -224,6 +220,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(0,0,0,0.06)',
   },
   featureIcon: { width: 44, alignItems: 'center', justifyContent: 'center' },
+  featureImg: { width: 40, height: 40, backgroundColor: 'transparent' },
   featureText: { flex: 1, gap: 2 },
   checkmark: { fontSize: 16, color: '#C75A78', fontWeight: '700' },
   priceCard: { borderRadius: 16, padding: Spacing.three, gap: Spacing.two },

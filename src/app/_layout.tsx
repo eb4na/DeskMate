@@ -10,21 +10,24 @@ import { InviteListener } from '@/components/invite-listener';
 import { AppProvider } from '@/context/app-context';
 import { useApp } from '@/context/app-context';
 import { StudyRoomProvider } from '@/lib/use-study-room';
-import { subscribeLoadingScreen } from '@/lib/loading-signal';
+import { subscribeLoadingScreen, takeLoadingDone } from '@/lib/loading-signal';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { Spacing } from '@/constants/theme';
 import '@/lib/notifications';
 import i18n, { useTranslation } from '@/i18n';
 
 const LOADING_IMGS = [
-  require('@/assets/images/home/loading3.png'),
   require('@/assets/images/home/loading4.png'),
   require('@/assets/images/home/loading6.png'),
-  require('@/assets/images/home/loading7.png'),
+  require('@/assets/images/home/loading11.png'),
   require('@/assets/images/home/loading8.png'),
   require('@/assets/images/home/loading9.png'),
   require('@/assets/images/home/loading10.png'),
 ];
+
+// Index-aligned with LOADING_IMGS: true where the art's bottom (under the label)
+// is too dark or too pink for the default pink label to read — use white there.
+const LOADING_TEXT_WHITE = [true, true, true, true, true, false];
 
 // Full-screen loading splash shown OVER the app — the home screen mounts behind
 // it (loading its art) and stays hidden until everything is ready. Only when
@@ -33,7 +36,9 @@ function LoadingScreen({ ready, onDone }: { ready: boolean; onDone: () => void }
   const progress = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(1)).current;
   // Pick one of the loading artworks at random each time it shows.
-  const img = useRef(LOADING_IMGS[Math.floor(Math.random() * LOADING_IMGS.length)]).current;
+  const idx = useRef(Math.floor(Math.random() * LOADING_IMGS.length)).current;
+  const img = LOADING_IMGS[idx];
+  const whiteText = LOADING_TEXT_WHITE[idx];
   const { t } = useTranslation();
   const [slow, setSlow] = useState(false);
   const [minDone, setMinDone] = useState(false);
@@ -70,7 +75,7 @@ function LoadingScreen({ ready, onDone }: { ready: boolean; onDone: () => void }
     <Animated.View style={[styles.loadingRoot, { opacity: fade }]} pointerEvents="auto">
       <ExpoImage source={img} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="center" />
       <View style={styles.loadingBarWrap}>
-        <Text style={styles.loadingLabel}>{t('common.loading')}</Text>
+        <Text style={[styles.loadingLabel, whiteText && styles.loadingLabelWhite]}>{t('common.loading')}</Text>
         <View style={styles.loadingTrack}>
           <Animated.View style={[styles.loadingFill, { width }]} />
         </View>
@@ -184,7 +189,12 @@ function RootNavigator() {
       <LoadingScreen
         key={authed ? 'authed' : 'launch'}
         ready={appReady}
-        onDone={() => setLoadingVisible(false)}
+        onDone={() => {
+          setLoadingVisible(false);
+          // Run any pending completion callback (e.g. start the study timer only
+          // now that the loading screen has finished).
+          takeLoadingDone()?.();
+        }}
       />
     )}
     </>
@@ -246,5 +256,6 @@ const styles = StyleSheet.create({
   },
   loadingFill: { height: '100%', borderRadius: 8, backgroundColor: '#F2A0B5' },
   loadingLabel: { fontSize: 18, fontWeight: '800', color: '#F2A0B5', letterSpacing: 0.5, textShadowColor: 'rgba(255,255,255,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
+  loadingLabelWhite: { color: '#fff', textShadowColor: 'rgba(0,0,0,0.4)' },
   loadingSlow: { fontSize: 12, fontWeight: '700', color: '#fff', textShadowColor: 'rgba(0,0,0,0.25)', textShadowRadius: 3 },
 });

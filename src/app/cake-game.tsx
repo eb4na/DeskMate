@@ -103,11 +103,11 @@ const LINE_MAX_ORDERS = 4; // how many customers can wait at once (grows slowly)
 // Active customers over time: 2 → 3 (~1min) → 4 (~2min). Eases the player in.
 const lineTargetOrders = (elapsedSec: number) => Math.min(LINE_MAX_ORDERS, 2 + Math.floor(elapsedSec / 60));
 
-// Coins awarded per round = score / this (then clamped by the app's daily cap).
-const SCORE_PER_COIN = 100;
 
 const KITCHEN_BG = require('@/assets/images/cake/kitchen-bg.png');
 const COUNTER_IMG = require('@/assets/images/cake/counter.png');
+// Shared arrow back button — same art across all break games.
+const BACK_ARROW = require('@/assets/images/common/back-arrow.png');
 const COUNTER_ASPECT = 820 / 225;
 const LEFT_COUNTER_IMG = require('@/assets/images/cake/left-counter.png');
 const LEFT_COUNTER_ASPECT = 520 / 860;
@@ -573,8 +573,8 @@ function SetupScreen({
           <Pressable
             hitSlop={14}
             onPress={goBack}
-            style={({ pressed }) => [styles.setupBackBtn, pressed && styles.pressed]}>
-            <Text style={styles.setupBackText}>{t('cake.back')}</Text>
+            style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}>
+            <Image source={BACK_ARROW} style={styles.backImg} contentFit="contain" />
           </Pressable>
         </View>
         <View style={styles.header}>
@@ -686,7 +686,7 @@ function KitchenView({
   onHome: () => void;
 }) {
   const { t } = useTranslation();
-  const { cakeBestRush, cakeBestLine, recordCakeBest, addCoins, cakeCharacter, selectedFoodId, ownedShopItems } = useApp();
+  const { cakeBestRush, cakeBestLine, recordCakeBest, cakeCharacter, selectedFoodId, ownedShopItems } = useApp();
   // Which dessert the kitchen makes: a special recipe only when it's the chosen
   // recipe AND the player owns it in the shop; otherwise the original cake flow.
   // Set on the gameLogic module synchronously so the first order (below) reads it.
@@ -981,14 +981,10 @@ function KitchenView({
     if (party?.isHost && phase === 'playing') room.current?.send('customers', { c: customers });
   }, [party, phase, customers]);
 
-  // End-of-round payout: save the best score and credit coins (the app's
-  // addCoins enforces a daily cap, so rounds can't be farmed for infinite coins).
-  // Runs once per round because the calling effects flip phase to 'results'.
+  // End-of-round: save the best score. Games don't award coins (coins come only
+  // from studying), so this just records the high score.
   const finishRound = (m: 'rush' | 'line') => {
-    const sc = scoreRef.current;
-    recordCakeBest(m, sc);
-    const earned = Math.floor(sc / SCORE_PER_COIN);
-    if (earned > 0) addCoins(earned);
+    recordCakeBest(m, scoreRef.current);
   };
 
   useEffect(() => () => {
@@ -1461,8 +1457,8 @@ function KitchenView({
       <SafeAreaView style={styles.kitchenSafe} edges={['top', 'bottom']}>
         {/* Top bar */}
         <View style={styles.topBar}>
-          <Pressable hitSlop={10} style={({ pressed }) => [styles.modesBtn, pressed && styles.pressed]} onPress={onBack}>
-            <Text style={styles.modesBtnText}>‹ Modes</Text>
+          <Pressable hitSlop={10} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} onPress={onBack}>
+            <Image source={BACK_ARROW} style={styles.backImg} contentFit="contain" />
           </Pressable>
           {/* Hearts = lives, Customer Line only. Timed (Cake Rush) has no pill. */}
           {!isRush && (
@@ -1936,28 +1932,24 @@ function KitchenView({
                   ? [
                       [t('cake.r_teamScore'), `${teamTotal}`],
                       [t('cake.r_yourCakes'), `${cakesMade}`],
-                      [t('cake.r_coinsEarned'), `+${Math.floor(score / SCORE_PER_COIN)}`],
                     ]
                   : [
                       ...leaderboard.map((r, i): [string, string] => [
                         `${MEDALS[i] ?? ''} ${r.name}${r.code === online.myCode ? t('cake.you') : ''}`,
                         `${r.s}`,
                       ]),
-                      [t('cake.r_coinsEarned'), `+${Math.floor(score / SCORE_PER_COIN)}`],
                     ]
                 : isRush
                 ? [
                     [t('cake.r_cakesMade'), `${cakesMade}`],
                     [t('cake.r_score'), `${score}`],
                     [t('cake.r_bestCombo'), `x${bestCombo}`],
-                    [t('cake.r_coinsEarned'), `+${Math.floor(score / SCORE_PER_COIN)}`],
                     [t('cake.r_bestScore'), `${cakeBestRush}`],
                   ]
                 : [
                     [t('cake.r_score'), `${score}`],
                     [t('cake.r_cakesServed'), `${cakesMade}`],
                     [t('cake.r_bestCombo'), `x${bestCombo}`],
-                    [t('cake.r_coinsEarned'), `+${Math.floor(score / SCORE_PER_COIN)}`],
                     [t('cake.r_bestScore'), `${cakeBestLine}`],
                   ]
             }
@@ -2480,6 +2472,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  backBtn: { width: 54, height: 54, marginLeft: -6 },
+  backImg: { width: 54, height: 54 },
   modesBtn: {
     backgroundColor: BakeryColors.frosting,
     borderRadius: BakeryRadii.pill,

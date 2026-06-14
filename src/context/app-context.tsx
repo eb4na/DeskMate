@@ -1,14 +1,15 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import i18n, { detectDeviceLanguage } from '@/i18n';
-import { DAILY_EARN_CAP, STATIC_SUBJECTS } from '@/constants/placeholder-data';
+import { DAILY_EARN_CAP, MAX_FRIENDS, STATIC_SUBJECTS } from '@/constants/placeholder-data';
 import { SHOP_ITEMS, type ShopCategory } from '@/constants/shop-data';
 import { useAuth } from '@/context/auth-context';
 import { getAppStateScope, loadScopedAppState, saveScopedAppState } from '@/lib/app-state-repository';
 import { fetchCloudState, pushCloudStateDebounced } from '@/lib/cloud-sync';
 import { getEffectiveBunSkinId, getEffectiveCompanionSkins } from '@/lib/companion-utils';
 import { maskProfanity } from '@/lib/profanity';
+import { computeTaskRollover } from '@/lib/task-recurrence';
 import { uploadProfile } from '@/lib/profile-sync';
-import { HANJI_COMPANION_ID, hasAllRecipeBadges } from '@/constants/recipes';
+import { HANJI_COMPANION_ID, recipeBadgeKey, badgesFromMadeFoods, hasAllCharacterBadges, RECIPE_IDS } from '@/constants/recipes';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -31,6 +32,8 @@ export type ExamCountdown = {
   /** Time of day the exam starts, as "HH:MM" (24-hour). Optional for legacy data. */
   time?: string;
   reminderEnabled: boolean;
+  /** Decorative shape shown on the countdown (e.g. 'heart', 'tear'). Optional. */
+  shape?: string;
 };
 
 export type StreakData = {
@@ -67,6 +70,10 @@ export type Task = {
   lastActivityAt: string | null;
   notifyAt: string | null;
   notifId: string | null;
+  /** Weekdays (0=Sun … 6=Sat) the task repeats on. Empty/undefined = no repeat. */
+  repeatDays?: number[];
+  /** Last date (ISO "YYYY-MM-DD") the repeat rolls to. Undefined = no end. */
+  repeatUntil?: string;
 };
 
 export type SessionRecord = {
@@ -222,8 +229,11 @@ type PersistedState = {
   // Food / baking
   selectedFoodId: string;
   madeFoods: string[];
-  // Set true the moment all recipe badges are collected (grants Hanji); the home
-  // screen shows a one-time unlock popup, then clears it.
+  // Companion badge keys the player has baked with (any recipe while that
+  // companion was active). Collecting all five → unlocks Hanji.
+  bakedWith: string[];
+  // Set true the moment all character badges are collected (grants Hanji); the
+  // home screen shows a one-time unlock popup, then clears it.
   hanjiUnlockPending: boolean;
 
   // Calendar day notes (dateISO → note text)
@@ -249,6 +259,10 @@ type PersistedState = {
   // i18n
   language: string;
   languageSelected: boolean;
+
+  // IANA timezone captured once on first load and kept for the account's lifetime.
+  // The streak "day" rolls at 12am in this zone. Never re-extracted after first set.
+  timezone: string;
 };
 
 // How many companion chat messages one AI generation ticket converts into.
@@ -265,8 +279,8 @@ export const MAX_SUBJECTS_FREE = 10;
 export const MAX_SUBJECTS_PLUS = 20;
 
 const DEFAULTS: PersistedState = {
-  // New accounts start with a small coin gift.
-  coins: 500,
+  // New accounts start with a coin gift.
+  coins: 1000,
   sessionsCompleted: 0,
   totalMinutes: 0,
   moodEntries: [],
@@ -298,7 +312,7 @@ const DEFAULTS: PersistedState = {
   sessionHistory: [],
   // Wave 4
   isPlus: false,
-  streakFreezes: 3,
+  streakFreezes: 0,
   streakFreezeResetMonth: '',
   savedTimerPresets: [],
   savedBreakPresets: [],
@@ -322,6 +336,7 @@ const DEFAULTS: PersistedState = {
   advancedExamMap: {},
   selectedFoodId: 'strawberry-shortcake',
   madeFoods: [],
+  bakedWith: [],
   hanjiUnlockPending: false,
   dayNotes: {},
   friendCode: '',
@@ -337,28 +352,79 @@ const DEFAULTS: PersistedState = {
   cakeCharacter: 'bun',
   language: 'en',
   languageSelected: false,
+  timezone: '',
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function todayISO(): string {
-  return new Date().toISOString().split('T')[0];
+// The user's "day" is anchored to a timezone captured ONCE per account (on first
+// load — see normalizePersistedState), then persisted and reused forever; we never
+// re-extract it, so travelling/changing devices won't shift their streak day. Until
+// that stored value is applied we fall back to the current device timezone. All day
+// math (todayISO/yesterdayISO/daysBetween) flows through here so the streak engine
+// and its UI agree on when midnight (12am) is.
+let activeTimezone: string | null = null;
+
+export function setActiveTimezone(tz: string | null | undefined): void {
+  activeTimezone = tz || null;
+}
+
+function detectDeviceTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
+// Calendar date (YYYY-MM-DD) of `date` as seen in `tz` (device tz when null).
+function dateInTimeZone(date: Date, tz: string | null): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz || undefined,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+    const pick = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+    return `${pick('year')}-${pick('month')}-${pick('day')}`;
+  } catch {
+    return date.toISOString().split('T')[0];
+  }
+}
+
+export function todayISO(): string {
+  return dateInTimeZone(new Date(), activeTimezone);
+}
+
+// Shift a YYYY-MM-DD string by whole days via pure UTC calendar math (DST-safe).
+function addDaysISO(iso: string, delta: number): string {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d) + delta * 86400000).toISOString().split('T')[0];
 }
 
 function yesterdayISO(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().split('T')[0];
+  return addDaysISO(todayISO(), -1);
 }
 
 const MAX_COMPANION_SLOTS = 3;
-const FREE_EXAM_LIMIT = 3;
+const FREE_EXAM_LIMIT = 2;
+// Plus users get a high exam cap rather than truly unlimited (mirrors subjects).
+const MAX_EXAMS_PLUS = 50;
+// Total tasks a user can keep at once.
+export const MAX_TASKS = 500;
+// Mood journal keeps only the most recent entries so it can't grow forever.
+const MAX_MOOD_ENTRIES = 365;
 const STREAK_MAX = 200; // study-day streak caps here
 
-function daysBetween(a: string, b: string): number {
-  const msA = new Date(a).setHours(0, 0, 0, 0);
-  const msB = new Date(b).setHours(0, 0, 0, 0);
-  return Math.round((msB - msA) / 86400000);
+// Whole-day difference between two YYYY-MM-DD strings via pure UTC calendar math
+// (timezone/DST independent). Single source of truth for streak day-counting — the
+// engine AND its UI (progress banner, rescue prompt, freeze button) all measure
+// "days since last study" through this + todayISO() so they always agree.
+export function daysBetween(a: string, b: string): number {
+  const [ay, am, ad] = a.slice(0, 10).split('-').map(Number);
+  const [by, bm, bd] = b.slice(0, 10).split('-').map(Number);
+  return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86400000);
 }
 
 // Pure streak transition for a study completion on `today`. `changed` is false when
@@ -395,14 +461,20 @@ function getShopItem(itemId: string) {
 
 function normalizePersistedState(saved?: Partial<PersistedState> | null): PersistedState {
   if (!saved) {
-    // Brand-new user: default to the device language if we support it.
-    return { ...DEFAULTS, friendCode: generateFriendCode(), language: detectDeviceLanguage() };
+    // Brand-new user: capture device language + timezone once, now.
+    return {
+      ...DEFAULTS,
+      friendCode: generateFriendCode(),
+      language: detectDeviceLanguage(),
+      timezone: detectDeviceTimezone(),
+    };
   }
 
   const month = new Date().toISOString().slice(0, 7);
   const merged = { ...saved };
 
-  if (!merged.streakFreezeResetMonth || merged.streakFreezeResetMonth < month) {
+  // Only Plus members get the monthly allotment of free streak freezes.
+  if (merged.isPlus && (!merged.streakFreezeResetMonth || merged.streakFreezeResetMonth < month)) {
     merged.streakFreezes = 3;
     merged.streakFreezeResetMonth = month;
   }
@@ -420,10 +492,15 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
     }
   }
 
-  // Badge reward: grant Hanji once every recipe badge is collected (covers players
-  // who completed all recipes before Hanji became a badge reward). The home screen
+  // Badge progress is derived from the recipes actually made. Recompute it here so
+  // any save corrupted by the old equipped-companion logic self-heals (e.g. a badge
+  // credited for the wrong character drops off).
+  merged.bakedWith = badgesFromMadeFoods(merged.madeFoods ?? []);
+
+  // Badge reward: grant Hanji once the player has earned all five character badges
+  // (covers anyone who reached that before this check existed). The home screen
   // shows the one-time unlock popup off `hanjiUnlockPending`.
-  if (hasAllRecipeBadges(merged.madeFoods ?? []) && !(merged.ownedShopItems ?? []).includes(HANJI_COMPANION_ID)) {
+  if (hasAllCharacterBadges(merged.bakedWith ?? []) && !(merged.ownedShopItems ?? []).includes(HANJI_COMPANION_ID)) {
     merged.ownedShopItems = [...(merged.ownedShopItems ?? []), HANJI_COMPANION_ID];
     merged.hanjiUnlockPending = true;
   }
@@ -455,6 +532,11 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
 
   // Give every user a stable friend code the first time.
   if (!merged.friendCode) merged.friendCode = generateFriendCode();
+
+  // Capture the account's timezone exactly once (first load after this feature
+  // shipped, or brand-new accounts above). Once stored it's never re-extracted, so
+  // the streak day boundary stays put even if the user later changes timezone.
+  if (!merged.timezone) merged.timezone = detectDeviceTimezone();
 
   // Users from before the language feature have no saved language — fall back to
   // their device language rather than forcing English.
@@ -513,10 +595,15 @@ type AppContextType = {
   languageSelected: boolean;
   selectedFoodId: string;
   madeFoods: string[];
+  bakedWith: string[];
   setSelectedFood: (id: string) => void;
   markFoodMade: (id: string) => void;
   hanjiUnlockPending: boolean;
   clearHanjiUnlock: () => void;
+  recipeBadgePending: string | null;
+  clearRecipeBadge: () => void;
+  resetGameData: () => void;
+  devGrantBadgesExceptCroissant: () => void;
   dayNotes: Record<string, string>;
   setDayNote: (date: string, note: string) => void;
   friendCode: string;
@@ -574,7 +661,7 @@ type AppContextType = {
 
   // Wave 2 task actions
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completedAt' | 'postponeCount' | 'lastActivityAt' | 'notifId'>) => string;
-  updateTask: (id: string, patch: Partial<Pick<Task, 'title' | 'subjectId' | 'dueDate' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'notifId'>>) => void;
+  updateTask: (id: string, patch: Partial<Pick<Task, 'title' | 'subjectId' | 'dueDate' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'notifId' | 'repeatDays' | 'repeatUntil'>>) => void;
   deleteTask: (id: string) => void;
   completeTask: (id: string) => void;
   postponeTask: (id: string) => void;
@@ -631,6 +718,7 @@ type AppContextType = {
   consumeChatMessage: () => boolean;
   setChatThread: (turns: ChatTurn[]) => void;
   addPurchasedCoins: (amount: number) => void;
+  addStreakFreeze: (count?: number) => void;
   setMultipleReminders: (reminders: ReminderEntry[]) => void;
   updateAdvancedExam: (examId: string, fields: AdvancedExamFields) => void;
 };
@@ -648,6 +736,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Unread DM counts keyed by the sender's friend code. In-memory only — it's
   // derived from the server (fetched on focus, bumped by live inbox pings).
   const [dmUnread, setDmUnreadState] = useState<Record<string, number>>({});
+  // Recipe id whose badge was just earned — drives the transient home progress
+  // popup. In-memory only (auto-dismisses after a few seconds).
+  const [recipeBadgePending, setRecipeBadgePending] = useState<string | null>(null);
   // Key the persistence scope on the *stable* identity (user id, or guest) — NOT
   // the session object. Supabase (autoRefreshToken) hands back a brand-new session
   // object on every token refresh; memoizing on the object would re-run the loader
@@ -700,6 +791,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const normalized = normalizePersistedState(saved);
       setS(normalized);
+      // Anchor all day math to this account's stored timezone before any streak action.
+      setActiveTimezone(normalized.timezone);
       if (normalized.language) i18n.changeLanguage(normalized.language);
       // Marking the scope loaded is what lets the save effect run.
       setLoadedScopeKey(appStateScope.storageKey);
@@ -727,6 +820,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       pushCloudStateDebounced(appStateScope.userId, stamped as Record<string, unknown>);
     }
   }, [appStateScope, loaded, loadedScopeKey, s]);
+
+  // Free users: past-due exam countdowns auto-erase once the day is over, freeing
+  // their slots. Plus users keep every countdown (even when "Past due"). Runs on
+  // load and whenever the exam list or Plus status changes.
+  useEffect(() => {
+    if (!loaded) return;
+    setS((prev) => {
+      if (prev.isPlus) return prev;
+      const today = todayISO();
+      const kept = prev.examCountdowns.filter((e) => e.dateISO >= today);
+      return kept.length === prev.examCountdowns.length ? prev : { ...prev, examCountdowns: kept };
+    });
+  }, [loaded, s.isPlus, s.examCountdowns]);
 
   // Publish my public profile (name + current character + stats) to the cloud so
   // friends always see the character I'm actually using — even if I never open the
@@ -790,14 +896,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addMoodEntry = (entry: Omit<MoodEntry, 'id'>) =>
     setS((prev) => ({
       ...prev,
-      moodEntries: [{ ...entry, id: uid() }, ...prev.moodEntries],
+      moodEntries: [{ ...entry, id: uid() }, ...prev.moodEntries].slice(0, MAX_MOOD_ENTRIES),
     }));
 
   const addExam = (exam: Omit<ExamCountdown, 'id'>): string | null => {
     const newId = uid();
     let added = false;
     setS((prev) => {
-      if (!prev.isPlus && prev.examCountdowns.length >= FREE_EXAM_LIMIT) return prev;
+      const examCap = prev.isPlus ? MAX_EXAMS_PLUS : FREE_EXAM_LIMIT;
+      if (prev.examCountdowns.length >= examCap) return prev;
       added = true;
       return {
         ...prev,
@@ -865,7 +972,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             lastStudyDate: today,
           },
           // Award `next` coins once per day (intentionally not daily-capped).
-          coins: prev.coins + r.next,
+          // Plus members earn double the streak bonus.
+          coins: prev.coins + (prev.isPlus ? r.next * 2 : r.next),
           // A rescued streak consumes one freeze.
           streakFreezes: r.useFreeze ? prev.streakFreezes - 1 : prev.streakFreezes,
         };
@@ -873,7 +981,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     return {
-      bonus: result.changed ? result.next : 0,
+      bonus: result.changed ? (s.isPlus ? result.next * 2 : result.next) : 0,
       isComeback: result.isComeback,
       rescued: result.useFreeze,
     };
@@ -932,26 +1040,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ─── Wave 2 task actions ──────────────────────────────────────────────────
 
   const addTask = (task: Omit<Task, 'id' | 'createdAt' | 'completedAt' | 'postponeCount' | 'lastActivityAt' | 'notifId'>) => {
+    // At the cap, don't add — return '' so the caller can show a limit message.
+    if (s.tasks.length >= MAX_TASKS) return '';
     const id = uid();
-    setS((prev) => ({
-      ...prev,
-      tasks: [
-        {
-          ...task,
-          id,
-          createdAt: new Date().toISOString(),
-          completedAt: null,
-          postponeCount: 0,
-          lastActivityAt: null,
-          notifId: null,
-        },
-        ...prev.tasks,
-      ],
-    }));
+    setS((prev) => {
+      if (prev.tasks.length >= MAX_TASKS) return prev;
+      return {
+        ...prev,
+        tasks: [
+          {
+            ...task,
+            id,
+            createdAt: new Date().toISOString(),
+            completedAt: null,
+            postponeCount: 0,
+            lastActivityAt: null,
+            notifId: null,
+          },
+          ...prev.tasks,
+        ],
+      };
+    });
     return id;
   };
 
-  const updateTask = (id: string, patch: Partial<Pick<Task, 'title' | 'subjectId' | 'dueDate' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'notifId'>>) =>
+  const updateTask = (id: string, patch: Partial<Pick<Task, 'title' | 'subjectId' | 'dueDate' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'notifId' | 'repeatDays' | 'repeatUntil'>>) =>
     setS((prev) => ({
       ...prev,
       tasks: prev.tasks.map((t) =>
@@ -968,6 +1081,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setS((prev) => {
       const task = prev.tasks.find((t) => t.id === id);
       if (!task || task.status === 'done') return prev;
+
+      // Repeating task: instead of marking done, roll its due date forward to the
+      // next selected weekday and reset it to not-started so it recurs.
+      const rollover = computeTaskRollover(task);
+      if (rollover) {
+        return {
+          ...prev,
+          tasks: prev.tasks.map((t) =>
+            t.id === id
+              ? {
+                  ...t,
+                  status: 'not_started' as TaskStatus,
+                  dueDate: rollover.dueDate,
+                  notifyAt: rollover.notifyAt,
+                  notifId: null,
+                  completedAt: null,
+                  lastActivityAt: now,
+                  postponeCount: 0,
+                }
+              : t,
+          ),
+        };
+      }
 
       return {
         ...prev,
@@ -1259,17 +1395,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
       purchasedCoins: prev.purchasedCoins + amount,
     }));
 
+  // Buy streak freezes (shop, real-money mock purchase). Plus members also get a
+  // free monthly allotment; everyone else only has the ones they buy here.
+  const addStreakFreeze = (count = 1) =>
+    setS((prev) => ({ ...prev, streakFreezes: prev.streakFreezes + count }));
+
   const setSelectedFood = (id: string) =>
     setS((prev) => ({ ...prev, selectedFoodId: id }));
 
-  const markFoodMade = (id: string) =>
+  const markFoodMade = (id: string) => {
+    // The badge is credited to the character the *recipe* belongs to (each of the
+    // five badge recipes maps to one character), NOT the equipped companion.
+    // badgeKey: '' = Bun, or a shop companion id; null if `id` isn't a badge recipe.
+    const badgeKey = recipeBadgeKey(id);
+    const isNewBadge = badgeKey != null && !s.bakedWith.includes(badgeKey);
     setS((prev) => {
       const madeFoods = prev.madeFoods.includes(id) ? prev.madeFoods : [...prev.madeFoods, id];
-      // Collecting the final recipe badge grants Hanji and flags the home popup.
-      const unlockHanji = hasAllRecipeBadges(madeFoods) && !prev.ownedShopItems.includes(HANJI_COMPANION_ID);
+      // Badge progress is always derived from the recipes actually made.
+      const bakedWith = badgesFromMadeFoods(madeFoods);
+      // Baking with the final character grants Hanji and flags the home popup.
+      const unlockHanji = hasAllCharacterBadges(bakedWith) && !prev.ownedShopItems.includes(HANJI_COMPANION_ID);
       return {
         ...prev,
         madeFoods,
+        bakedWith,
         ...(unlockHanji
           ? {
               ownedShopItems: [...prev.ownedShopItems, HANJI_COMPANION_ID],
@@ -1278,8 +1427,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
           : {}),
       };
     });
+    // Every new badge shows the progress popup (keyed by the recipe just made),
+    // including the 5th — its popup reads 5/5 with every character collected. The
+    // Hanji unlock modal is gated on `recipeBadgePending` being clear, so it only
+    // appears once the player dismisses this final progress popup.
+    if (isNewBadge) setRecipeBadgePending(id);
+  };
 
   const clearHanjiUnlock = () => setS((prev) => ({ ...prev, hanjiUnlockPending: false }));
+  const clearRecipeBadge = () => setRecipeBadgePending(null);
+
+  // TEST/PLACEHOLDER: wipe game progress back to defaults but hand out 1,000,000
+  // coins. Keeps identity (friend code) + language so the session doesn't break.
+  const resetGameData = () => {
+    setActiveSession(null);
+    setRecipeBadgePending(null);
+    setS((prev) => ({
+      ...DEFAULTS,
+      friendCode: prev.friendCode,
+      friends: prev.friends,
+      language: prev.language,
+      languageSelected: prev.languageSelected,
+      coins: 1_000_000,
+    }));
+  };
+
+  // TEST: grant every recipe badge except the croissant, plus all recipe shop
+  // items, so the final "bake the last recipe → unlock Hanji" flow can be tested
+  // by baking just the croissant.
+  const devGrantBadgesExceptCroissant = () => {
+    setS((prev) => {
+      const made = RECIPE_IDS.filter((id) => id !== 'berry-croissant');
+      const recipeItemIds = SHOP_ITEMS.filter((i) => i.category === 'recipe').map((i) => i.id);
+      const ownedShopItems = Array.from(new Set([...prev.ownedShopItems, ...recipeItemIds]));
+      return {
+        ...prev,
+        madeFoods: made,
+        bakedWith: badgesFromMadeFoods(made),
+        ownedShopItems,
+      };
+    });
+  };
 
   const setDayNote = (date: string, note: string) =>
     setS((prev) => {
@@ -1294,6 +1482,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (code.length !== 6) return { ok: false, error: 'Friend codes are 6 letters/numbers.' };
     if (code === s.friendCode) return { ok: false, error: "That's your own code!" };
     if (s.friends.some((f) => f.code === code)) return { ok: false, error: 'Already friends with this code.' };
+    if (s.friends.length >= MAX_FRIENDS) return { ok: false, error: `You can have up to ${MAX_FRIENDS} friends.` };
     setS((prev) => ({
       ...prev,
       friends: [{ code, name: `Friend ${code}`, addedAt: new Date().toISOString() }, ...prev.friends],
@@ -1353,6 +1542,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const purchaseShopItem = (itemId: string, price: number): boolean => {
     const item = getShopItem(itemId);
     if (!item || s.ownedShopItems.includes(itemId) || s.coins < price) return false;
+    // Plus-exclusive and all-recipe-reward items are granted, never bought with
+    // coins — refuse to sell them no matter what price a caller passes.
+    if (item.plusOnly || item.requiresAllRecipes) return false;
     setS((prev) => {
       if (prev.ownedShopItems.includes(itemId) || prev.coins < price) return prev;
 
@@ -1457,10 +1649,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         advancedExamMap: s.advancedExamMap,
         selectedFoodId: s.selectedFoodId ?? 'strawberry-shortcake',
         madeFoods: s.madeFoods ?? [],
+        bakedWith: s.bakedWith ?? [],
         setSelectedFood,
         markFoodMade,
         hanjiUnlockPending: s.hanjiUnlockPending ?? false,
         clearHanjiUnlock,
+        recipeBadgePending,
+        clearRecipeBadge,
+        resetGameData,
+        devGrantBadgesExceptCroissant,
         dayNotes: s.dayNotes ?? {},
         setDayNote,
         friendCode: s.friendCode,
@@ -1508,6 +1705,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         consumeChatMessage,
         setChatThread,
         addPurchasedCoins,
+        addStreakFreeze,
         setMultipleReminders,
         updateAdvancedExam,
         language: s.language ?? 'en',

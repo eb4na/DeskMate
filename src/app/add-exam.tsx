@@ -3,7 +3,9 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, TextInput, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BakeryLockEmoji, BakeryWrenchEmoji } from '@/components/bakery-emoji';
+import { BakeryWrenchEmoji } from '@/components/bakery-emoji';
+import { LockBadge } from '@/components/lock-badge';
+import { CountdownShape, COUNTDOWN_SHAPES, DEFAULT_COUNTDOWN_SHAPE, type CountdownShapeKey } from '@/components/countdown-shapes';
 import { DateWheelPicker, getTodayISO } from '@/components/date-wheel-picker';
 import { TimeWheelPicker } from '@/components/time-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
@@ -38,6 +40,7 @@ export default function AddExamScreen() {
   const [date, setDate] = useState(getTodayISO());
   const [time, setTime] = useState('09:00');
   const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [shape, setShape] = useState<CountdownShapeKey>(DEFAULT_COUNTDOWN_SHAPE);
   // Plus advanced fields
   const [topics, setTopics] = useState('');
   const [targetHours, setTargetHours] = useState('');
@@ -46,7 +49,7 @@ export default function AddExamScreen() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
-  const canAdd = isPlus || examCountdowns.length < 3;
+  const canAdd = isPlus || examCountdowns.length < 2;
 
   const handleSave = () => {
     const trimmedName = name.trim();
@@ -78,6 +81,7 @@ export default function AddExamScreen() {
       dateISO: trimmedDate,
       time,
       reminderEnabled,
+      shape,
     });
 
     if (!examId) {
@@ -131,6 +135,7 @@ export default function AddExamScreen() {
             onChangeText={setName}
             placeholder={t('addExam.examNamePlaceholder')}
             placeholderTextColor={colors.textSecondary}
+            maxLength={40}
             returnKeyType="next"
             autoFocus
           />
@@ -164,6 +169,24 @@ export default function AddExamScreen() {
                 <ThemedText type="smallBold" style={styles.addSubjectChipText}>{t('addExam.newSubject')}</ThemedText>
               </ThemedView>
             </Pressable>
+          </ThemedView>
+        </ThemedView>
+
+        <ThemedView style={styles.field}>
+          <ThemedText type="smallBold">{t('addExam.shape')}</ThemedText>
+          <ThemedView style={styles.chipRow}>
+            {COUNTDOWN_SHAPES.map((sh) => (
+              <Pressable
+                key={sh}
+                onPress={() => setShape(sh)}
+                style={({ pressed }) => [pressed && styles.pressed]}>
+                <ThemedView
+                  type={shape === sh ? 'backgroundSelected' : 'backgroundElement'}
+                  style={styles.shapeBtn}>
+                  <CountdownShape shape={sh} size={26} />
+                </ThemedView>
+              </Pressable>
+            ))}
           </ThemedView>
         </ThemedView>
 
@@ -221,6 +244,7 @@ export default function AddExamScreen() {
                     onChangeText={setTopics}
                     placeholder={t('addExam.topicsPlaceholder')}
                     placeholderTextColor={colors.textSecondary}
+                    maxLength={200}
                     multiline
                   />
                 </ThemedView>
@@ -234,6 +258,7 @@ export default function AddExamScreen() {
                     placeholder={t('addExam.targetHoursPlaceholder')}
                     placeholderTextColor={colors.textSecondary}
                     keyboardType="number-pad"
+                    maxLength={4}
                   />
                 </ThemedView>
 
@@ -262,7 +287,7 @@ export default function AddExamScreen() {
         ) : examCountdowns.length >= 3 ? (
           <Pressable onPress={() => router.push('/plus-upgrade')}>
             <ThemedView type="backgroundElement" style={[styles.upgradeCard, styles.noticeRow]}>
-              <BakeryLockEmoji size={14} />
+              <LockBadge size={16} />
               <ThemedText type="small" style={styles.upgradeText}>
                 {t('addExam.upgradeUnlimited')}
               </ThemedText>
@@ -316,6 +341,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   subjectDot: { width: 10, height: 10, borderRadius: 5 },
+  shapeBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   addSubjectChip: { borderWidth: 1, borderColor: '#D9C5B2', borderStyle: 'dashed' },
   addSubjectChipText: { color: '#7A5240' },
   pressed: { opacity: 0.8 },

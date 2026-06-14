@@ -11,22 +11,21 @@ import {
   View,
 } from 'react-native';
 
-import { Image } from 'expo-image';
-import Svg, { Polygon } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
+
+import { CountdownShape } from '@/components/countdown-shapes';
 
 import {
   BakeryBellEmoji,
   BakeryCakeEmoji,
   BakeryCalendarEmoji,
   BakeryCheckEmoji,
-  BakeryCupcakeEmoji,
 } from '@/components/bakery-emoji';
 import { useApp } from '@/context/app-context';
 import type { Task } from '@/context/app-context';
 import i18n from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
-const MAGNIFIER = require('@/assets/images/shop/magnifier.png');
 
 const C = BakeryColors;
 const weekdayLetters = () => [0, 1, 2, 3, 4, 5, 6].map((i) => i18n.t(`calendar.wd_${i}`));
@@ -76,9 +75,11 @@ function TaskPreviewCard({ task }: { task: Task }) {
         {done && <BakeryCheckEmoji size={13} />}
       </Pressable>
 
-      <View style={styles.taskIcon}>
-        {task.notifyAt ? <BakeryBellEmoji size={20} /> : <BakeryCupcakeEmoji size={20} />}
-      </View>
+      {task.notifyAt && (
+        <View style={styles.taskIcon}>
+          <BakeryBellEmoji size={20} />
+        </View>
+      )}
 
       <View style={styles.taskCardBody}>
         <Text style={[styles.taskTitle, done && styles.taskTitleDone]} numberOfLines={2}>
@@ -121,12 +122,12 @@ function CalendarMonthCard({
   const { tasks, subjects, dayNotes, examCountdowns } = useApp();
   const today = todayISO();
 
-  // Map each exam day to its subject colour (falls back to pink).
-  const examColorByDay = useMemo(() => {
-    const map: Record<string, string> = {};
+  // Map each exam day to its subject colour (falls back to pink) + chosen shape.
+  const examByDay = useMemo(() => {
+    const map: Record<string, { color: string; shape?: string }> = {};
     for (const e of examCountdowns) {
       const subj = e.subject ? subjects.find((s) => s.name === e.subject) : null;
-      map[e.dateISO.slice(0, 10)] = subj?.color ?? '#F4A8C0';
+      map[e.dateISO.slice(0, 10)] = { color: subj?.color ?? '#F4A8C0', shape: e.shape };
     }
     return map;
   }, [examCountdowns, subjects]);
@@ -144,10 +145,25 @@ function CalendarMonthCard({
   const tasksByDay = useMemo(() => {
     const map: Record<string, Task[]> = {};
     for (const t of tasks) {
-      if (t.dueDate && t.status !== 'done') (map[t.dueDate.slice(0, 10)] ??= []).push(t);
+      if (t.status === 'done' || !t.dueDate) continue;
+      const start = t.dueDate.slice(0, 10);
+      if (t.repeatDays?.length) {
+        // A repeating task shows on every matching weekday from its start date
+        // through its end date (repeatUntil), expanded across the visible month.
+        for (let d = 1; d <= daysInMonth; d++) {
+          const iso = toISO(year, month, d);
+          if (iso < start) continue;
+          if (t.repeatUntil && iso > t.repeatUntil) continue;
+          if (t.repeatDays.includes(new Date(`${iso}T00:00:00`).getDay())) {
+            (map[iso] ??= []).push(t);
+          }
+        }
+      } else {
+        (map[start] ??= []).push(t);
+      }
     }
     return map;
-  }, [tasks]);
+  }, [tasks, year, month, daysInMonth]);
 
   const goMonth = (delta: number) => setMonthOffset(monthOffset + delta);
 
@@ -183,8 +199,8 @@ function CalendarMonthCard({
           const isToday = iso === today;
           const dayTasks = tasksByDay[iso] ?? [];
           const hasNote = !!dayNotes[iso];
-          const examColor = examColorByDay[iso];
-          const hasExam = !!examColor;
+          const exam = examByDay[iso];
+          const hasExam = !!exam;
           return (
             <Pressable
               key={i}
@@ -193,30 +209,12 @@ function CalendarMonthCard({
               <View style={[styles.dayInner, isToday && styles.dayToday]}>
                 {hasExam && (
                   <View style={styles.examStar} pointerEvents="none">
-                    <Svg width="92%" height="92%" viewBox="0 0 32 32">
-                      <Polygon
-                        points="16,4.5 19.17,11.63 26.94,12.45 21.14,17.67 22.76,25.3 16,21.4 9.24,25.3 10.86,17.67 5.06,12.45 12.83,11.63"
-                        fill={examColor}
-                        stroke={examColor}
-                        strokeWidth={5}
-                        strokeLinejoin="round"
-                      />
-                    </Svg>
+                    <CountdownShape shape={exam.shape} color={exam.color} size={cellW * 0.92} />
                   </View>
                 )}
                 <Text style={[styles.dayNum, hasExam && styles.dayNumExam]}>{d}</Text>
-                <View style={styles.dotRow}>
-                  {dayTasks.slice(0, 3).map((t, di) => (
-                    <View
-                      key={t.id + di}
-                      style={[styles.dot, { backgroundColor: subjectColor(t.subjectId) }]}
-                    />
-                  ))}
-                  {dayTasks.length > 3 && <Text style={styles.dotMore}>+</Text>}
-                  {hasNote && dayTasks.length === 0 && (
-                    <View style={[styles.dot, { backgroundColor: C.latte }]} />
-                  )}
-                </View>
+                {dayTasks.length > 0 && <Text style={styles.taskCount}>{dayTasks.length}</Text>}
+                {hasNote && dayTasks.length === 0 && <View style={styles.noteDot} />}
               </View>
             </Pressable>
           );
@@ -408,7 +406,10 @@ export function TaskCalendar() {
           style={({ pressed }) => [styles.searchBtn, searchMode && styles.searchBtnActive, pressed && styles.pressed]}
           onPress={() => setSearchMode((v) => !v)}
           hitSlop={8}>
-          <Image source={MAGNIFIER} style={styles.searchIconImg} contentFit="contain" />
+          <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+            <Circle cx="10.5" cy="10.5" r="6.5" stroke={searchMode ? '#FFFFFF' : C.cocoaDark} strokeWidth={2.4} />
+            <Path d="M15.6 15.6 L20.5 20.5" stroke={searchMode ? '#FFFFFF' : C.cocoaDark} strokeWidth={2.4} strokeLinecap="round" />
+          </Svg>
         </Pressable>
       </View>
 
@@ -496,9 +497,8 @@ const styles = StyleSheet.create({
   dayNum: { fontSize: 14, color: C.cocoaDark, fontWeight: '600' },
   dayNumExam: { color: '#fff', fontWeight: '800' },
   dayNumSelected: { color: '#fff', fontWeight: '800' },
-  dotRow: { position: 'absolute', bottom: 2, flexDirection: 'row', gap: 1.5, alignItems: 'center', height: 4 },
-  dot: { width: 3, height: 3, borderRadius: 1.5 },
-  dotMore: { fontSize: 10, lineHeight: 10, color: C.berry, fontWeight: '800' },
+  taskCount: { position: 'absolute', bottom: 1, right: 3, fontSize: 9, lineHeight: 10, color: C.mocha, fontWeight: '800' },
+  noteDot: { position: 'absolute', bottom: 3, right: 3, width: 4, height: 4, borderRadius: 2, backgroundColor: C.latte },
 
   // Selected day preview
   previewWrap: { gap: Spacing.two },

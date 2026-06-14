@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Dimensions, Pressable, Share, StyleSheet, TextInput, View } from 'react-native';
+import { Dimensions, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
@@ -30,6 +31,7 @@ type Result = Player | 'draw' | null;
 // image's width/height) were measured from the art so discs land in the holes.
 const BOARD_NATIVE_AR = 1402 / 1122; // height / width of board.png
 const SCREEN_W = Dimensions.get('window').width;
+const SCREEN_H = Dimensions.get('window').height;
 const BOARD_W = Math.min(SCREEN_W - 40, 360);
 const BOARD_H = BOARD_W * BOARD_NATIVE_AR;
 const COL_FX = [0.1556, 0.2687, 0.3823, 0.4944, 0.6076, 0.7234, 0.8358];
@@ -38,7 +40,8 @@ const PIECE_D = BOARD_W * 0.085;
 const COL_ZONE_W = BOARD_W * 0.11;
 
 const BOARD_IMG = require('@/assets/images/connect4/board.png');
-const BACK_IMG = require('@/assets/images/connect4/back.png');
+// Shared simple arrow back button — same art across all break games.
+const BACK_IMG = require('@/assets/images/common/back-arrow.png');
 const TITLE_IMG = require('@/assets/images/connect4/title.png');
 const BTN_REMATCH = require('@/assets/images/connect4/btn-rematch.png');
 const BTN_LEAVE = require('@/assets/images/connect4/btn-leave.png');
@@ -118,7 +121,6 @@ export function Connect4Game({
     profileSkinId,
     friendCode,
     friends,
-    addFriend,
   } = useApp();
 
   const opponent = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
@@ -132,8 +134,6 @@ export function Connect4Game({
     bunSkinId,
     companionSkins,
   });
-  // All games are free — anyone can play the AI or host a game.
-  const hasAccess = true;
 
   const [screen, setScreen] = useState<Screen>('mode');
   const [opp, setOpp] = useState<Opp>('ai');
@@ -144,7 +144,6 @@ export function Connect4Game({
 
   // Online state
   const [myPlayer, setMyPlayer] = useState<Player>(1);
-  const [joinInput, setJoinInput] = useState('');
   const [opponentPresent, setOpponentPresent] = useState(false);
   const [oppLeft, setOppLeft] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -285,11 +284,10 @@ export function Connect4Game({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const joinGame = () => {
-    const code = joinInput.trim().toUpperCase();
-    if (code.length < 4) return;
-    addFriend(code);
-    connectRoom(code, false);
+  // Friends-only: open the friend list to invite someone into this hosted room.
+  const inviteFriends = () => {
+    if (!friendCode) return;
+    router.push({ pathname: '/party-invite', params: { room: friendCode, game: 'connect4' } });
   };
 
   const backToModes = () => {
@@ -299,10 +297,6 @@ export function Connect4Game({
     setConnecting(false);
     resetGame(1);
     setScreen('mode');
-  };
-
-  const shareCode = () => {
-    Share.share({ message: `Play Connect 4 with me on Memobun! Join with my code: ${friendCode}` });
   };
 
   // ── Render helpers ──────────────────────────────────────────────────────
@@ -324,7 +318,7 @@ export function Connect4Game({
   // ── Mode screen ─────────────────────────────────────────────────────────
   if (screen === 'mode') {
     return (
-      <View style={styles.playRoot}>
+      <View style={[styles.playRoot, styles.modeRoot]}>
         <Pressable style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} onPress={() => onLeave?.()} hitSlop={8}>
           <Image source={BACK_IMG} style={styles.backImg} contentFit="contain" />
         </Pressable>
@@ -348,7 +342,7 @@ export function Connect4Game({
             <ThemedText type="smallBold" style={styles.modeTitle}>{t('games.passAndPlay')}</ThemedText>
             <ThemedText type="small" style={styles.modeSub}>{t('games.sameDevice')}</ThemedText>
           </Pressable>
-          <Pressable style={({ pressed }) => [styles.modeCard, pressed && styles.pressed]} onPress={() => { setOpp('online'); setScreen('lobby'); }}>
+          <Pressable style={({ pressed }) => [styles.modeCard, pressed && styles.pressed]} onPress={hostGame}>
             <View style={styles.modeDiscPair}>
               <Image source={PIECE_IMG[1]} style={styles.modePiece} contentFit="contain" />
               <View style={{ marginLeft: -10 }}><Image source={PIECE_IMG[2]} style={styles.modePiece} contentFit="contain" /></View>
@@ -367,64 +361,18 @@ export function Connect4Game({
       <ThemedView style={styles.container}>
         <ThemedText type="subtitle" style={styles.heading}>{t('connect4.playOnline')}</ThemedText>
 
-        {connecting && !opponentPresent ? (
-          <ThemedView type="backgroundElement" style={styles.lobbyCard}>
-            <ThemedText type="smallBold" style={styles.center}>{t('connect4.waitingFriend')}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.center}>
-              {t('connect4.shareCodeHint')}
-            </ThemedText>
-            <ThemedText style={styles.codeBig}>{friendCode}</ThemedText>
-            <Pressable style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]} onPress={shareCode}>
-              <ThemedText type="smallBold" style={styles.primaryBtnText}>{t('connect4.shareCode')}</ThemedText>
-            </Pressable>
-            <Pressable onPress={backToModes} style={styles.linkBtn}>
-              <ThemedText type="small" themeColor="textSecondary">{t('common.cancel')}</ThemedText>
-            </Pressable>
-          </ThemedView>
-        ) : (
-          <>
-            <ThemedView type="backgroundElement" style={styles.lobbyCard}>
-              <ThemedText type="smallBold" style={styles.center}>{t('connect4.yourCode')}</ThemedText>
-              <ThemedText style={styles.codeBig}>{friendCode || '——'}</ThemedText>
-              <Pressable
-                style={({ pressed }) => [styles.primaryBtn, (!friendCode || !hasAccess) && styles.btnDisabled, pressed && styles.pressed]}
-                onPress={hostGame}
-                disabled={!friendCode || !hasAccess}>
-                <ThemedText type="smallBold" style={styles.primaryBtnText}>{t('connect4.hostWait')}</ThemedText>
-              </Pressable>
-              {!hasAccess && (
-                <ThemedText type="small" themeColor="textSecondary" style={styles.center}>{t('connect4.hostNeedsPlus')}</ThemedText>
-              )}
-            </ThemedView>
-
-            <ThemedView type="backgroundElement" style={styles.lobbyCard}>
-              <ThemedText type="smallBold" style={styles.center}>{t('connect4.joinFriend')}</ThemedText>
-              {!hasAccess && (
-                <ThemedText type="small" themeColor="textSecondary" style={styles.center}>{t('connect4.freePlayFriend')}</ThemedText>
-              )}
-              <TextInput
-                style={styles.codeInput}
-                value={joinInput}
-                onChangeText={(txt) => setJoinInput(txt.toUpperCase())}
-                placeholder={t('friends.enterFriendCode')}
-                placeholderTextColor="#B9A78F"
-                autoCapitalize="characters"
-                autoCorrect={false}
-                maxLength={8}
-              />
-              <Pressable
-                style={({ pressed }) => [styles.primaryBtn, (joinInput.trim().length < 4) && styles.btnDisabled, pressed && styles.pressed]}
-                onPress={joinGame}
-                disabled={joinInput.trim().length < 4}>
-                <ThemedText type="smallBold" style={styles.primaryBtnText}>{t('connect4.joinGame')}</ThemedText>
-              </Pressable>
-            </ThemedView>
-
-            <Pressable onPress={backToModes} style={styles.linkBtn}>
-              <ThemedText type="small" themeColor="textSecondary">{t('connect4.back')}</ThemedText>
-            </Pressable>
-          </>
-        )}
+        <ThemedView type="backgroundElement" style={styles.lobbyCard}>
+          <ThemedText type="smallBold" style={styles.center}>{t('connect4.waitingFriend')}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.center}>
+            {t('party.inviteSubtitle')}
+          </ThemedText>
+          <Pressable style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]} onPress={inviteFriends}>
+            <ThemedText type="smallBold" style={styles.primaryBtnText}>{t('lobby.inviteFriend')}</ThemedText>
+          </Pressable>
+          <Pressable onPress={backToModes} style={styles.linkBtn}>
+            <ThemedText type="small" themeColor="textSecondary">{t('common.cancel')}</ThemedText>
+          </Pressable>
+        </ThemedView>
       </ThemedView>
     );
   }
@@ -662,6 +610,8 @@ const styles = StyleSheet.create({
 
   // ── Play screen ──────────────────────────────────────────────────────────
   playRoot: { flex: 1, width: '100%', alignItems: 'center', gap: Spacing.one, backgroundColor: 'transparent' },
+  // Picker sits high so the CONNECT4 title overlaps the "VS" baked into the background.
+  modeRoot: { paddingTop: SCREEN_H * 0.1 },
   backBtn: { position: 'absolute', top: -2, left: 2, width: 58, height: 58, zIndex: 5 },
   backImg: { width: 58, height: 58 },
   titleImg: { width: Math.min(BOARD_W, 320), height: Math.min(BOARD_W, 320) / 2.66, marginTop: 2 },

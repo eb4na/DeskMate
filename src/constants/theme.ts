@@ -58,7 +58,7 @@ export const BakeryColors = {
   cream: '#FFF0E3',
   shortbread: '#F7DFC4',
   butter: '#F4C976',
-  honey: '#F0B44A',
+  honey: '#F6C96B',
   jam: '#E48A9A',
   berry: '#CC6B7B',
   mint: '#F2C6D1',

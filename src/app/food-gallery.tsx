@@ -150,7 +150,7 @@ export default function FoodGalleryScreen() {
                         resizeMode="contain"
                       />
                     </View>
-                    <Text style={styles.foodName} numberOfLines={1}>{t(`foodGallery.food_${food.id}`)}</Text>
+                    <Text style={styles.foodName} numberOfLines={2}>{t(`foodGallery.food_${food.id}`)}</Text>
                     <Text style={styles.foodOwner} numberOfLines={1}>{t('foodGallery.ownerTag', { name: localizeCompanionName(food.owner, t) })}</Text>
                     <Text style={styles.foodDesc} numberOfLines={2}>{t(`foodGallery.food_${food.id}_desc`)}</Text>
                     {locked ? (
@@ -176,13 +176,6 @@ export default function FoodGalleryScreen() {
                 );
               })}
             </View>
-          </View>
-
-          {/* Info note */}
-          <View style={styles.infoCard}>
-            <Text style={styles.infoText}>
-              {t('foodGallery.infoNote')}
-            </Text>
           </View>
 
           {/* Done */}
@@ -343,14 +336,6 @@ const styles = StyleSheet.create({
   },
   selectBtnText: { fontSize: 12, color: '#fff', fontWeight: '800' },
 
-  infoCard: {
-    backgroundColor: P.pinkSoft,
-    borderRadius: 18,
-    padding: Spacing.three,
-    borderWidth: 1.5,
-    borderColor: P.pink,
-  },
-  infoText: { fontSize: 12.5, color: P.brown, textAlign: 'center', lineHeight: 18, fontWeight: '500' },
 
   doneButton: {
     backgroundColor: P.pink,

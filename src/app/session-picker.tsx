@@ -6,15 +6,26 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { CoinIcon } from '@/components/coin-icon';
 import { PlusIcon } from '@/components/plus-icon';
+import { LockBadge } from '@/components/lock-badge';
 import { useApp } from '@/context/app-context';
 import { newRoomId } from '@/lib/game-net';
 import { useStudyRoom } from '@/lib/use-study-room';
 import { SESSION_LENGTHS, autoBreakMinutes, coinsForMinutes } from '@/constants/placeholder-data';
 import { useTranslation } from '@/i18n';
-import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, MaxContentWidth, Spacing } from '@/constants/theme';
 
 const C = BakeryColors;
 const SCREEN_BG = require('@/assets/images/home/session-bg.png');
+
+// One soft, consistent shadow shared by every card so the screen reads calm
+// instead of having each block carry its own heavy drop shadow.
+const SOFT_SHADOW = {
+  shadowColor: 'rgba(132,87,63,0.18)',
+  shadowOpacity: 1,
+  shadowRadius: 10,
+  shadowOffset: { width: 0, height: 4 },
+  elevation: 3,
+} as const;
 
 const CARD_IMG: Record<number, number> = {
   15: require('@/assets/images/cake/dessert-10.png'),
@@ -28,7 +39,7 @@ type Mode = 'single' | 'multi';
 export default function SessionPickerScreen() {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const { subjects, coins } = useApp();
+  const { subjects, coins, isPlus } = useApp();
   const studyRoom = useStudyRoom();
   const { t } = useTranslation();
   const [selected, setSelected] = useState(30);
@@ -38,8 +49,7 @@ export default function SessionPickerScreen() {
   const activeSubjects = subjects.filter((s) => !s.archived).sort((a, b) => a.order - b.order);
   const contentW = Math.min(width, MaxContentWidth) - Spacing.four * 2;
   const cardW = (contentW - Spacing.two) / 2;
-  // Single-player break: one break of floor(focus / 12) minutes; short warm-ups
-  // (≤15 min) get no break.
+  // Single-player break: 5 min for sessions under an hour, 10 min for an hour or more.
   const breakForSelected = autoBreakMinutes(selected);
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
@@ -83,6 +93,16 @@ export default function SessionPickerScreen() {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+          {/* Mode — drives the whole flow, so it sits up top */}
+          <View style={styles.modeToggle}>
+            <Pressable style={[styles.modeSeg, mode === 'single' && styles.modeSegActive]} onPress={() => setMode('single')}>
+              <Text style={[styles.modeText, mode === 'single' && styles.modeTextActive]}>{t('sessionPicker.singlePlayer')}</Text>
+            </Pressable>
+            <Pressable style={[styles.modeSeg, mode === 'multi' && styles.modeSegActive]} onPress={() => setMode('multi')}>
+              <Text style={[styles.modeText, mode === 'multi' && styles.modeTextActive]}>{t('sessionPicker.multiplayer')}</Text>
+            </Pressable>
+          </View>
+
           {/* Duration cards */}
           <Text style={styles.sectionLabel}>{t('sessionPicker.chooseDuration')}</Text>
           <View style={styles.grid}>
@@ -91,7 +111,7 @@ export default function SessionPickerScreen() {
               return (
                 <Pressable
                   key={opt.minutes}
-                  style={[styles.lenCard, { width: cardW }, isActive && styles.lenCardActive]}
+                  style={[styles.card, styles.lenCard, { width: cardW }, isActive && styles.lenCardActive]}
                   onPress={() => setSelected(opt.minutes)}>
                   {isActive && (
                     <View style={styles.checkBadge}>
@@ -117,7 +137,7 @@ export default function SessionPickerScreen() {
 
           {/* Subject */}
           <Text style={styles.sectionLabel}>{t('sessionPicker.subjectHeader')}</Text>
-          <View style={styles.softCard}>
+          <View style={[styles.card, styles.softCard]}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
               {activeSubjects.map((s) => {
                 const isActive = selectedSubjectId === s.id;
@@ -141,32 +161,31 @@ export default function SessionPickerScreen() {
             </ScrollView>
           </View>
 
-          {/* Custom duration */}
+          {/* Custom duration — a Plus feature. Free users see a lock and are sent
+              to the paywall instead of the timer. */}
           <Pressable
-            style={({ pressed }) => [styles.customRow, pressed && styles.pressed]}
-            onPress={() => router.push({ pathname: '/custom-timer', params: { mode: 'focus' } })}>
+            style={({ pressed }) => [styles.card, styles.customRow, pressed && styles.pressed]}
+            onPress={() =>
+              isPlus
+                ? router.push({ pathname: '/custom-timer', params: { mode: 'focus' } })
+                : router.push('/plus-upgrade')
+            }>
             <PlusIcon size={34} />
             <View style={styles.customTextWrap}>
               <Text style={styles.customTitle}>{t('sessionPicker.customTitle')}</Text>
               <Text style={styles.customSub}>{t('sessionPicker.customSub')}</Text>
             </View>
-            <View style={styles.customPill}>
-              <Text style={styles.customPillText}>{t('sessionPicker.customSet')}</Text>
-            </View>
+            {isPlus ? (
+              <View style={styles.customPill}>
+                <Text style={styles.customPillText}>{t('sessionPicker.customSet')}</Text>
+              </View>
+            ) : (
+              <LockBadge size={30} />
+            )}
           </Pressable>
 
-          {/* Mode toggle */}
-          <View style={styles.modeToggle}>
-            <Pressable style={[styles.modeSeg, mode === 'single' && styles.modeSegActive]} onPress={() => setMode('single')}>
-              <Text style={[styles.modeText, mode === 'single' && styles.modeTextActive]}>{t('sessionPicker.singlePlayer')}</Text>
-            </Pressable>
-            <Pressable style={[styles.modeSeg, mode === 'multi' && styles.modeSegActive]} onPress={() => setMode('multi')}>
-              <Text style={[styles.modeText, mode === 'multi' && styles.modeTextActive]}>{t('sessionPicker.multiplayer')}</Text>
-            </Pressable>
-          </View>
-
-          {/* Break info — how the break is calculated */}
-          <View style={styles.breakInfo}>
+          {/* Start — break info reads as a quiet caption above the one CTA */}
+          <View style={styles.startBlock}>
             {mode === 'single' ? (
               <Text style={styles.breakInfoText}>
                 {breakForSelected > 0
@@ -176,12 +195,10 @@ export default function SessionPickerScreen() {
             ) : (
               <Text style={styles.breakInfoText}>{t('sessionPicker.breakInfoMulti')}</Text>
             )}
+            <Pressable style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]} onPress={onStart}>
+              <Text style={styles.startBtnText}>{t('customTimer.startSession')}  →</Text>
+            </Pressable>
           </View>
-
-          {/* Start */}
-          <Pressable style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]} onPress={onStart}>
-            <Text style={styles.startBtnText}>{t('customTimer.startSession')}  →</Text>
-          </Pressable>
         </ScrollView>
       </SafeAreaView>
     </ImageBackground>
@@ -191,8 +208,9 @@ export default function SessionPickerScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.cream },
   safe: { flex: 1, paddingHorizontal: Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' },
-  bgOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,252,247,0.35)' },
-  scroll: { paddingBottom: Spacing.four, gap: Spacing.two },
+  // Heavier cream wash so the strawberry art reads as a soft tint, not clutter.
+  bgOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,248,241,0.62)' },
+  scroll: { paddingBottom: Spacing.five, gap: Spacing.three },
 
   // Top bar
   topBar: { flexDirection: 'row', alignItems: 'center', paddingTop: Spacing.one, paddingBottom: Spacing.two, gap: Spacing.two },
@@ -202,7 +220,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   backChevron: { fontSize: 22, fontWeight: '800', color: C.cocoaDark, marginTop: -2 },
-  gearIcon: { fontSize: 16 },
   titleWrap: { flex: 1, alignItems: 'center' },
   title: { fontSize: 20, fontWeight: '900', color: C.cocoaDark, letterSpacing: 0.2 },
   subtitle: { fontSize: 12, color: C.mocha, fontWeight: '600' },
@@ -215,20 +232,21 @@ const styles = StyleSheet.create({
   coinText: { fontSize: 13, fontWeight: '800', color: C.cocoaDark },
 
   // Section labels
-  sectionLabel: { fontSize: 11, fontWeight: '800', color: C.latte, letterSpacing: 1, marginTop: Spacing.one, marginBottom: 2 },
+  sectionLabel: { fontSize: 11, fontWeight: '800', color: C.latte, letterSpacing: 1, marginBottom: -Spacing.one },
+
+  // One shared surface — every card/row uses this for a consistent, calm weight.
+  card: {
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderRadius: BakeryRadii.card,
+    borderWidth: 1,
+    borderColor: 'rgba(195,143,114,0.14)',
+    ...SOFT_SHADOW,
+  },
 
   // Duration cards
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  lenCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: 'rgba(195,143,114,0.18)',
-    padding: 14,
-    gap: 4,
-    ...BakeryShadow,
-  },
-  lenCardActive: { borderWidth: 2.5, borderColor: C.jam },
+  lenCard: { padding: 14, gap: 4 },
+  lenCardActive: { borderWidth: 2, borderColor: C.jam, backgroundColor: 'rgba(228,138,154,0.10)' },
   checkBadge: {
     position: 'absolute', top: 10, right: 12, zIndex: 2,
     width: 22, height: 22, borderRadius: 11, backgroundColor: C.jam,
@@ -250,15 +268,7 @@ const styles = StyleSheet.create({
   lenRewardText: { fontSize: 12, fontWeight: '800', color: '#C98A2B' },
 
   // Soft card (subject chips)
-  softCard: {
-    backgroundColor: '#fff',
-    borderRadius: BakeryRadii.card,
-    borderWidth: 1.5,
-    borderColor: 'rgba(195,143,114,0.18)',
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.two,
-    ...BakeryShadow,
-  },
+  softCard: { paddingVertical: Spacing.two, paddingHorizontal: Spacing.two },
   chipRow: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingRight: 8 },
   chip: { borderRadius: BakeryRadii.pill, borderWidth: 1.5, paddingHorizontal: 13, paddingVertical: 8 },
   chipAdd: { borderColor: C.jam, borderStyle: 'dashed', backgroundColor: 'transparent' },
@@ -267,14 +277,8 @@ const styles = StyleSheet.create({
   // Custom duration row
   customRow: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.two,
-    backgroundColor: '#fff',
-    borderRadius: BakeryRadii.card,
-    borderWidth: 1.5,
-    borderColor: 'rgba(195,143,114,0.18)',
     padding: Spacing.three,
-    ...BakeryShadow,
   },
-  customIcon: { fontSize: 22 },
   customTextWrap: { flex: 1 },
   customTitle: { fontSize: 14.5, fontWeight: '800', color: C.cocoaDark },
   customSub: { fontSize: 11.5, color: C.mocha, marginTop: 1 },
@@ -293,26 +297,22 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: C.shortbread,
     padding: 4,
-    marginTop: Spacing.one,
   },
   modeSeg: { flex: 1, paddingVertical: 11, alignItems: 'center', borderRadius: BakeryRadii.pill },
   modeSegActive: { backgroundColor: C.jam },
   modeText: { fontSize: 14, fontWeight: '800', color: C.mocha },
   modeTextActive: { color: '#fff' },
 
-  // Break info
-  breakInfo: { alignItems: 'center', marginTop: Spacing.one },
+  // Start block — quiet caption + the single CTA
+  startBlock: { alignItems: 'center', gap: Spacing.two, marginTop: Spacing.one },
   breakInfoText: { fontSize: 12, color: C.mocha, fontWeight: '600', textAlign: 'center' },
-  breakInfoBold: { fontWeight: '900', color: C.berry },
-
-  // Start button
   startBtn: {
+    alignSelf: 'stretch',
     backgroundColor: C.berry,
     borderRadius: BakeryRadii.pill,
     paddingVertical: 16,
     alignItems: 'center',
-    marginTop: Spacing.two,
-    ...BakeryShadow,
+    ...SOFT_SHADOW,
   },
   startBtnText: { fontSize: 17, fontWeight: '900', color: '#fff', letterSpacing: 0.3 },
 

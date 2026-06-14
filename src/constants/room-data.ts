@@ -95,11 +95,11 @@ export const ROOM_PAIRS: RoomPair[] = [
     backgroundId: 'bg_strawberry_palace',
     deskId: 'desk_strawberry',
     backgroundImage: require('@/assets/images/backgrounds/strawberry-palace.png'),
+    // Desk built from the palace's own cream-pink marble + gold-filigree floor so
+    // it ties into the background. Cover-cropped like the other desks; deskTint is
+    // the floor base color as a safety net if the image is slow/stale to load.
     deskImage: require('@/assets/images/desks/strawberry.png'),
-    // The tiled palace floor reads too large when cropped — show the whole tile
-    // pattern (zoomed out) and fill the edges with the floor's pale-pink base.
-    deskFit: 'contain',
-    deskTint: '#F9E3D8',
+    deskTint: '#F3D7CA',
   },
 ];
 

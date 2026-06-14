@@ -5,7 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinAmount, CoinIcon } from '@/components/coin-icon';
 import { DecoIcon, OutfitIcon, ThemeIcon, PoseIcon, GameIcon, ReminderIcon } from '@/components/category-icons';
-import { BakeryStarEmoji, BakeryLockEmoji, BakeryWrenchEmoji } from '@/components/bakery-emoji';
+import { BakeryStarEmoji, BakeryWrenchEmoji } from '@/components/bakery-emoji';
+import { LockOverlay } from '@/components/lock-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { isEquipableCategory } from '@/constants/shop-effects';
@@ -127,7 +128,7 @@ const ITEMS_PER_PAGE = 6;
 type ShopItemT = (typeof SHOP_ITEMS)[number];
 // A pending purchase shown in the white confirm popup. `items` are the (unowned)
 // items to buy; `equip` runs after a successful purchase so the thing shows up.
-type BuyReq = { title: string; items: ShopItemT[]; total: number; equip?: () => void };
+type BuyReq = { title: string; items: ShopItemT[]; total: number; equip?: () => void; equipName?: string };
 
 export default function ShopScreen() {
   const { t } = useTranslation();
@@ -138,12 +139,15 @@ export default function ShopScreen() {
     equippedShopItems,
     purchaseShopItem,
     equipShopItem,
+    setActiveCompanion,
     equippedBackgroundRoomId,
     equippedDeskRoomId,
     setEquippedBackground,
     setEquippedDesk,
     isPlus,
     addPurchasedCoins,
+    addStreakFreeze,
+    streakFreezes,
     companionSlots,
     madeFoods,
   } = useApp();
@@ -165,6 +169,8 @@ export default function ShopScreen() {
   const [itemPage, setItemPage] = useState(0);
   // The purchase the white confirm popup is currently asking about.
   const [buyReq, setBuyReq] = useState<BuyReq | null>(null);
+  // After a successful buy, ask whether to equip the new item now.
+  const [equipPrompt, setEquipPrompt] = useState<{ name: string; equip: () => void } | null>(null);
 
   // Characters the user owns (for the Outfits tab).
   const ownedCharacters: { id: string; name: string; image: number | { uri: string } | null; emoji: string }[] = [
@@ -203,7 +209,7 @@ export default function ShopScreen() {
 
 
 
-  const discount = isPlus ? 0.8 : 1;
+  const discount = isPlus ? 0.75 : 1;
   // Some companions aren't sold: Plus-exclusive (Tira) are granted with Plus, and
   // badge-reward ones (Hanji, requiresAllRecipes) are granted by collecting every
   // recipe badge. Their data stays in SHOP_ITEMS for the gallery & wardrobe.
@@ -211,6 +217,23 @@ export default function ShopScreen() {
   const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
   const pages = Array.from({ length: totalPages }, (_, i) => items.slice(i * ITEMS_PER_PAGE, (i + 1) * ITEMS_PER_PAGE));
   const capRemaining = Math.max(0, DAILY_EARN_CAP - earnedToday);
+
+  const handleBuyFreeze = () => {
+    Alert.alert(
+      t('shop.streakFreezeName'),
+      t('shop.streakFreezeDesc'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('shop.buyForMock', { price: '$2.00' }),
+          onPress: () => {
+            addStreakFreeze(1);
+            Alert.alert(t('shop.freezeAdded'), t('shop.mockComplete'));
+          },
+        },
+      ],
+    );
+  };
 
   const handleCoinPack = (pack: CoinPack) => {
     Alert.alert(
@@ -241,12 +264,21 @@ export default function ShopScreen() {
       return;
     }
     const pair = pairForItem(item.id);
-    // Desks equip into the room on confirm; backgrounds are left for the player
-    // to equip when they want (buying one shouldn't swap their current room).
+    // Attach an equip action by category so the post-purchase "Equip now?" prompt
+    // knows what to do. Recipes aren't equipped (picked in the Bakery Menu) → none.
     const equip =
       item.category === 'desk' && pair ? () => setEquippedDesk(pair.id)
+      : item.category === 'background' && pair ? () => setEquippedBackground(pair.id)
+      : item.category === 'companion' ? () => setActiveCompanion(`shop:${item.id}` as never)
+      : isEquipableCategory(item.category) ? () => { equipShopItem(item.id); }
       : undefined;
-    setBuyReq({ title: t('shop.buyItemQ', { name: localizeCompanionName(item.name, t) }), items: [item], total: Math.floor(item.price * discount), equip });
+    setBuyReq({
+      title: t('shop.buyItemQ', { name: localizeCompanionName(item.name, t) }),
+      items: [item],
+      total: Math.floor(item.price * discount),
+      equip,
+      equipName: localizeCompanionName(item.name, t),
+    });
   };
 
   // The pair button buys + equips the WHOLE matched set (background + desk) so the
@@ -269,15 +301,17 @@ export default function ShopScreen() {
       items: need,
       total: need.reduce((sum, it) => sum + Math.floor(it.price * discount), 0),
       equip: () => { setEquippedBackground(pair.id); setEquippedDesk(pair.id); },
+      equipName: pair.name,
     });
   };
 
-  // Confirm the popup: buy everything it lists, then equip so it shows up.
+  // Confirm the popup: buy everything it lists, then ask whether to equip it now.
   const confirmBuy = () => {
     if (!buyReq || coins < buyReq.total) return;
     for (const it of buyReq.items) purchaseShopItem(it.id, Math.floor(it.price * discount));
-    buyReq.equip?.();
+    const { equip, equipName } = buyReq;
     setBuyReq(null);
+    if (equip) setEquipPrompt({ name: equipName ?? '', equip });
   };
 
   const handleEquip = (itemId: string, name: string) => {
@@ -378,27 +412,44 @@ export default function ShopScreen() {
                 <>
                   <ThemedText style={styles.outfitsHint}>{t('shop.pickCharacter')}</ThemedText>
                   <View style={styles.outfitCharGrid}>
-                    {allOutfitCharacters.map((c) => (
+                    {allOutfitCharacters.map((c) => {
+                      // Hanji is a secret badge reward — keep her a mystery "?"
+                      // (art + name hidden) until the player earns her.
+                      const mystery = c.id === 'shop:companion_hanji' && !c.owned;
+                      return (
                       <Pressable
                         key={c.id}
                         style={styles.outfitCharCard}
                         onPress={() => {
                           if (c.owned) setOutfitCharId(c.id);
+                          else if (mystery) Alert.alert(t('shop.charLocked', { name: '???' }), t('shop.hanjiOutfitHint'));
                           else Alert.alert(t('shop.charLocked', { name: localizeCompanionName(c.name, t) }), t('shop.charLockedMsg', { name: localizeCompanionName(c.name, t) }));
                         }}>
-                        {c.image ? (
-                          <RNImage source={c.image} style={[styles.outfitCharImg, !c.owned && styles.lockedImg]} resizeMode="contain" />
+                        {mystery ? (
+                          <View style={styles.mysteryImg}><ThemedText style={styles.mysteryMark}>?</ThemedText></View>
                         ) : (
-                          <ThemedText style={[styles.itemEmoji, !c.owned && styles.lockedImg]}>{c.emoji}</ThemedText>
+                          <View style={styles.outfitArtWrap}>
+                            {c.image ? (
+                              <RNImage source={c.image} style={styles.outfitArtImg} resizeMode="contain" />
+                            ) : (
+                              <ThemedText style={styles.itemEmoji}>{c.emoji}</ThemedText>
+                            )}
+                            {!c.owned && <LockOverlay size={28} radius={12} />}
+                          </View>
                         )}
-                        <ThemedText style={styles.itemName} numberOfLines={1}>{localizeCompanionName(c.name, t)}</ThemedText>
-                        <View style={[styles.charBadge, c.owned ? styles.badgeOwned : styles.charLockedBadge]}>
-                          <ThemedText style={c.owned ? styles.badgeText : styles.charLockedText}>
-                            {c.owned ? t('shop.ownedBadge') : t('shop.lockedBadge')}
-                          </ThemedText>
-                        </View>
+                        {!mystery && (
+                          <>
+                            <ThemedText style={styles.itemName} numberOfLines={1}>{localizeCompanionName(c.name, t)}</ThemedText>
+                            <View style={[styles.charBadge, c.owned ? styles.badgeOwned : styles.charLockedBadge]}>
+                              <ThemedText style={c.owned ? styles.badgeText : styles.charLockedText}>
+                                {c.owned ? t('shop.ownedBadge') : t('shop.lockedBadge')}
+                              </ThemedText>
+                            </View>
+                          </>
+                        )}
                       </Pressable>
-                    ))}
+                      );
+                    })}
                   </View>
                 </>
               ) : (
@@ -539,9 +590,15 @@ export default function ShopScreen() {
                         isEquipped && styles.itemEquipped,
                         ((!owned && !canAfford) || recipeLocked) && styles.itemDim,
                       ]}>
-                        {item.image ? (
-                          <>
+                        <View style={styles.itemImageWrap}>
+                          {item.image ? (
                             <RNImage source={item.image} style={styles.itemImage} resizeMode="contain" />
+                          ) : (
+                            <ThemedText style={styles.itemEmoji}>{item.emoji}</ThemedText>
+                          )}
+                        </View>
+                        {item.image && (
+                          <>
                             <Pressable
                               style={styles.zoomBtn}
                               hitSlop={8}
@@ -563,8 +620,6 @@ export default function ShopScreen() {
                               </Pressable>
                             )}
                           </>
-                        ) : (
-                          <ThemedText style={styles.itemEmoji}>{item.emoji}</ThemedText>
                         )}
                         {owned ? (
                           <View style={[styles.priceBadge, isEquipped ? styles.badgeEquipped : styles.badgeOwned]}>
@@ -586,9 +641,14 @@ export default function ShopScreen() {
                           />
                         )}
                         <ThemedText style={styles.itemName} numberOfLines={1}>{localizeCompanionName(item.name, t)}</ThemedText>
+                        {item.category === 'recipe' && item.owner && (
+                          <ThemedText style={styles.useHint} numberOfLines={1}>{t('foodGallery.ownerTag', { name: localizeCompanionName(item.owner, t) })}</ThemedText>
+                        )}
                         {USE_HINTS[item.category] && (
                           <ThemedText style={styles.useHint} numberOfLines={1}>{t('shop.setActiveInGallery')}</ThemedText>
                         )}
+                        {/* Locked: frost the whole card. */}
+                        {!owned && <LockOverlay size={36} radius={BakeryRadii.card} />}
                       </View>
                     </Pressable>
                   );
@@ -640,6 +700,28 @@ export default function ShopScreen() {
             ))}
           </View>
 
+          {/* ── Streak Freeze (real-money mock purchase) ── */}
+          <View style={styles.menuCard}>
+            <View style={styles.menuHeader}>
+              <ThemedText style={styles.menuTitle}>{t('shop.streakFreezeName')}</ThemedText>
+              <ThemedText style={styles.menuSubtitle}>{t('shop.freezeOwned', { count: streakFreezes })}</ThemedText>
+            </View>
+            <Pressable onPress={handleBuyFreeze} style={({ pressed }) => pressed && styles.pressed}>
+              <View style={styles.menuRow}>
+                <View style={styles.menuBody}>
+                  <View style={styles.menuTopLine}>
+                    <ThemedText style={styles.menuName} numberOfLines={1}>{t('shop.streakFreezeName')}</ThemedText>
+                    <View style={styles.menuLeader} />
+                    <ThemedText style={styles.menuPrice}>$2.00</ThemedText>
+                  </View>
+                  <View style={styles.menuSubLine}>
+                    <ThemedText style={styles.menuCoinText}>{t('shop.streakFreezeDesc')}</ThemedText>
+                  </View>
+                </View>
+              </View>
+            </Pressable>
+          </View>
+
           <View style={styles.disclaimerCard}>
             <View style={styles.disclaimerRow}>
               <BakeryWrenchEmoji size={16} />
@@ -673,24 +755,40 @@ export default function ShopScreen() {
               <>
                 <ThemedText style={styles.buyTitle}>{buyReq.title}</ThemedText>
 
-                <View style={styles.buyItems}>
-                  {buyReq.items.map((it) => (
-                    <View key={it.id} style={styles.buyItemRow}>
-                      {it.image ? (
-                        <RNImage source={it.image} style={styles.buyItemImg} resizeMode="cover" />
-                      ) : (
-                        <ThemedText style={styles.buyItemEmoji}>{it.emoji}</ThemedText>
-                      )}
-                      <View style={styles.buyItemInfo}>
-                        <ThemedText style={styles.buyItemName} numberOfLines={1}>{localizeCompanionName(it.name, t)}</ThemedText>
-                        {!!it.description && (
-                          <ThemedText style={styles.buyItemDesc} numberOfLines={2}>{it.description}</ThemedText>
+                {buyReq.items.length === 1 ? (
+                  // Single item: show a big zoomed-in preview.
+                  <View style={styles.buyHero}>
+                    {buyReq.items[0].image ? (
+                      <RNImage source={buyReq.items[0].image} style={styles.buyHeroImg} resizeMode="contain" />
+                    ) : (
+                      <ThemedText style={styles.buyHeroEmoji}>{buyReq.items[0].emoji}</ThemedText>
+                    )}
+                    <ThemedText style={styles.buyItemName} numberOfLines={1}>{localizeCompanionName(buyReq.items[0].name, t)}</ThemedText>
+                    {!!buyReq.items[0].description && (
+                      <ThemedText style={styles.buyHeroDesc} numberOfLines={3}>{buyReq.items[0].description}</ThemedText>
+                    )}
+                    <CoinAmount amount={Math.floor(buyReq.items[0].price * discount)} size={20} textStyle={styles.buyItemPrice} />
+                  </View>
+                ) : (
+                  <View style={styles.buyItems}>
+                    {buyReq.items.map((it) => (
+                      <View key={it.id} style={styles.buyItemRow}>
+                        {it.image ? (
+                          <RNImage source={it.image} style={styles.buyItemImg} resizeMode="cover" />
+                        ) : (
+                          <ThemedText style={styles.buyItemEmoji}>{it.emoji}</ThemedText>
                         )}
+                        <View style={styles.buyItemInfo}>
+                          <ThemedText style={styles.buyItemName} numberOfLines={1}>{localizeCompanionName(it.name, t)}</ThemedText>
+                          {!!it.description && (
+                            <ThemedText style={styles.buyItemDesc} numberOfLines={2}>{it.description}</ThemedText>
+                          )}
+                        </View>
+                        <CoinAmount amount={Math.floor(it.price * discount)} size={20} textStyle={styles.buyItemPrice} />
                       </View>
-                      <CoinAmount amount={Math.floor(it.price * discount)} size={20} textStyle={styles.buyItemPrice} />
-                    </View>
-                  ))}
-                </View>
+                    ))}
+                  </View>
+                )}
 
                 <View style={styles.buyBalanceRow}>
                   <ThemedText style={styles.buyBalanceLabel}>{t('editRoom.yourBalance')}</ThemedText>
@@ -724,6 +822,27 @@ export default function ShopScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* After a successful buy: ask whether to equip the new item now. */}
+      <Modal visible={equipPrompt !== null} transparent animationType="fade" onRequestClose={() => setEquipPrompt(null)}>
+        <Pressable style={styles.buyBackdrop} onPress={() => setEquipPrompt(null)}>
+          <Pressable style={styles.buyCard} onPress={(e) => e.stopPropagation?.()}>
+            {equipPrompt && (
+              <>
+                <ThemedText style={styles.buyTitle}>{t('shop.equipNowQ', { name: equipPrompt.name })}</ThemedText>
+                <Pressable
+                  style={({ pressed }) => [styles.buyConfirmBtn, pressed && { opacity: 0.85 }]}
+                  onPress={() => { equipPrompt.equip(); setEquipPrompt(null); }}>
+                  <ThemedText style={styles.buyConfirmText}>{t('shop.equipNow')}</ThemedText>
+                </Pressable>
+                <Pressable style={styles.buyCancelBtn} onPress={() => setEquipPrompt(null)}>
+                  <ThemedText style={styles.buyCancelText}>{t('shop.notNow')}</ThemedText>
+                </Pressable>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ThemedView>
   );
 }
@@ -741,6 +860,8 @@ const styles = StyleSheet.create({
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
+    // Sit above the locked frosted veil so the magnifier stays crisp.
+    zIndex: 5,
   },
   zoomBtnText: { fontSize: 13 },
   zoomIcon: { width: 30, height: 30 },
@@ -756,6 +877,7 @@ const styles = StyleSheet.create({
     borderColor: BakeryColors.jam,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 5,
   },
   pairGlyph: { width: 20, height: 12, justifyContent: 'center' },
   pairRing: {
@@ -806,6 +928,10 @@ const styles = StyleSheet.create({
   },
   buyItemImg: { width: 52, height: 52, borderRadius: 10, backgroundColor: BakeryColors.cream },
   buyItemEmoji: { fontSize: 40, width: 52, textAlign: 'center' },
+  buyHero: { alignItems: 'center', gap: 6, paddingVertical: Spacing.one },
+  buyHeroImg: { width: 150, height: 150 },
+  buyHeroEmoji: { fontSize: 96 },
+  buyHeroDesc: { fontSize: 13, color: BakeryColors.mocha, textAlign: 'center', lineHeight: 18, paddingHorizontal: Spacing.two },
   buyItemInfo: { flex: 1, gap: 2 },
   buyItemName: { fontSize: 14.5, fontWeight: '800', color: BakeryColors.cocoaDark },
   buyItemDesc: { fontSize: 11.5, color: BakeryColors.mocha, lineHeight: 15 },
@@ -958,6 +1084,9 @@ const styles = StyleSheet.create({
   itemOwned: { borderColor: '#F2A0B5' },
   itemEquipped: { borderColor: BakeryColors.honey, backgroundColor: `${BakeryColors.honey}12` },
   itemDim: { opacity: 0.55 },
+  itemImageWrap: { width: '100%', height: 84, alignItems: 'center', justifyContent: 'center' },
+  outfitArtWrap: { width: '78%', height: '64%', alignItems: 'center', justifyContent: 'center' },
+  outfitArtImg: { width: '100%', height: '100%' },
   itemEmoji: { fontSize: 52, lineHeight: 62 },
   itemImage: { width: 62, height: 62 },
   outfitsWrap: { gap: 10, paddingVertical: 4 },
@@ -976,10 +1105,17 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   outfitCharImg: { width: '78%', height: '64%' },
+  mysteryImg: {
+    width: '78%',
+    height: '64%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mysteryMark: { fontSize: 48, lineHeight: 56, fontWeight: '800', color: '#B7A4E3', textAlign: 'center' },
   outfitItemImg: { width: 62, height: 62 },
   outfitBack: { paddingVertical: 4 },
   outfitBackText: { fontSize: 14, fontWeight: '800', color: '#C4607A' },
-  outfitGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  outfitGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
   emptyCard: {
     backgroundColor: '#FFFDF8',
     borderRadius: 22,

@@ -11,15 +11,18 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path, Rect } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 
 import { CoinIcon } from '@/components/coin-icon';
+import { LockOverlay } from '@/components/lock-badge';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 import { BUN_SKINS, getBunSkinImage, getCompanionSkinImage, getCompanionSkins, getStarterActiveId, localizeCompanionName, localizeOutfitName, SHOP_COMPANIONS } from '@/lib/companion-utils';
 import { SHOP_ITEMS } from '@/constants/shop-data';
+
+const BAKERY_HEADER = require('@/assets/images/backgrounds/bakery-menu-header.png');
 
 const getShopItem = (id: string) => SHOP_ITEMS.find((s) => s.id === id);
 
@@ -59,26 +62,6 @@ function HangerIcon({ color = '#B06A50', size = 18 }: { color?: string; size?: n
         strokeLinejoin="round"
         fill="none"
       />
-    </Svg>
-  );
-}
-
-// Solid pink padlock — shown on locked outfits (no text needed).
-function PinkLock({ size = 16 }: { size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      {/* shackle */}
-      <Path
-        d="M8 11V8.5a4 4 0 0 1 8 0V11"
-        stroke="#F2A0B5"
-        strokeWidth={2.2}
-        strokeLinecap="round"
-        fill="none"
-      />
-      {/* body */}
-      <Rect x="5.5" y="10.5" width="13" height="9.5" rx="2.6" fill="#F2A0B5" />
-      {/* keyhole */}
-      <Path d="M12 14v3" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" />
     </Svg>
   );
 }
@@ -126,7 +109,9 @@ function GalleryContent() {
   const [wardrobeFor, setWardrobeFor] = useState<{ id: string; name: string } | null>(null);
   // In-place unlock popup for a coin-priced item (a locked companion or skin).
   const [buyItem, setBuyItem] = useState<{ id: string; name: string; image: number | null; price: number } | null>(null);
-  const buyDiscount = isPlus ? 0.8 : 1;
+  // Plus-exclusive outfit popup (custom — replaces the native alert).
+  const [plusAlertName, setPlusAlertName] = useState<string | null>(null);
+  const buyDiscount = isPlus ? 0.75 : 1;
   const buyPrice = buyItem ? Math.floor(buyItem.price * buyDiscount) : 0;
   const canAffordBuy = coins >= buyPrice;
   const confirmBuy = () => {
@@ -206,10 +191,15 @@ function GalleryContent() {
   return (
     <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: P.cream }}>
       <SafeAreaView style={styles.safeArea}>
-        {/* Header panel */}
-        <View style={styles.headerPanel}>
-          <Text style={styles.headerTitle}>{t('gallery.companionBakery')}</Text>
-          <Text style={styles.headerSubtitle}>{t('gallery.chooseToday')}</Text>
+        {/* Header — scalloped bakery banner with the title/subtitle overlaid. */}
+        <View style={styles.headerRow}>
+          <View style={styles.headerPanel}>
+            <Image source={BAKERY_HEADER} style={styles.headerImg} contentFit="fill" />
+            <View style={styles.headerTextWrap}>
+              <Text style={styles.headerTitle}>{t('gallery.companionBakery')}</Text>
+              <Text style={styles.headerSubtitle}>{t('gallery.chooseToday')}</Text>
+            </View>
+          </View>
         </View>
 
         {/* My Companions */}
@@ -261,13 +251,6 @@ function GalleryContent() {
           </View>
         </View>
 
-        {/* Info note */}
-        <View style={styles.infoCard}>
-          <Text style={styles.infoText}>
-            {t('gallery.infoNote')}
-          </Text>
-        </View>
-
         {/* Done */}
         <Pressable
           style={({ pressed }) => [styles.doneButton, pressed && styles.pressed]}
@@ -302,11 +285,7 @@ function GalleryContent() {
                             if (item?.plusOnly) {
                               // Plus-exclusive skins can't be bought with coins — they're
                               // granted with Plus. Point the player to upgrading instead.
-                              const outfitName = localizeOutfitName(skin.name, t);
-                              Alert.alert(
-                                t('shop.plusExclusive', { name: outfitName }),
-                                t('shop.plusExclusiveMsg', { name: outfitName }),
-                              );
+                              setPlusAlertName(localizeOutfitName(skin.name, t));
                             } else if (item) {
                               setBuyItem({ id: item.id, name: localizeOutfitName(skin.name, t), image: skin.image, price: item.price });
                             }
@@ -317,14 +296,10 @@ function GalleryContent() {
                         <View style={styles.skinImageWrap}>
                           <Image
                             source={skin.image}
-                            style={[styles.skinImage, locked && styles.skinImageLocked]}
+                            style={styles.skinImage}
                             contentFit="contain"
                           />
-                          {locked && (
-                            <View style={styles.lockBadge}>
-                              <PinkLock size={16} />
-                            </View>
-                          )}
+                          {locked && <LockOverlay size={34} radius={18} />}
                         </View>
                         <Text style={styles.skinName} numberOfLines={1}>
                           {localizeOutfitName(skin.name, t)}
@@ -404,6 +379,29 @@ function GalleryContent() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Plus-exclusive outfit popup (custom, reddish-pink OK). */}
+      <Modal
+        visible={plusAlertName !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPlusAlertName(null)}>
+        <Pressable style={styles.buyBackdrop} onPress={() => setPlusAlertName(null)}>
+          <Pressable style={styles.buyCard} onPress={(e) => e.stopPropagation?.()}>
+            {plusAlertName && (
+              <>
+                <Text style={styles.buyTitle}>{t('shop.plusExclusive', { name: plusAlertName })}</Text>
+                <Text style={styles.plusAlertMsg}>{t('shop.plusExclusiveMsg', { name: plusAlertName })}</Text>
+                <Pressable
+                  style={({ pressed }) => [styles.plusOkBtn, pressed && styles.pressed]}
+                  onPress={() => setPlusAlertName(null)}>
+                  <Text style={styles.plusOkText}>{t('common.ok')}</Text>
+                </Pressable>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
@@ -427,32 +425,33 @@ const styles = StyleSheet.create({
     backgroundColor: P.cream,
   },
 
-  // Header
-  headerPanel: {
-    backgroundColor: P.card,
-    borderRadius: 26,
-    paddingVertical: Spacing.four,
-    paddingHorizontal: Spacing.four,
-    borderWidth: 1.5,
-    borderColor: P.peach,
+  // Header — scalloped bakery banner with the title/subtitle overlaid.
+  headerRow: { width: '100%', alignItems: 'center' },
+  headerPanel: { width: '100%', position: 'relative' },
+  headerImg: { width: '100%', aspectRatio: 891 / 287 },
+  headerTextWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: '6%',
     gap: 4,
-    shadowColor: '#C9A18A',
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 3,
   },
   headerTitle: {
     fontSize: 22,
     fontWeight: '800',
     color: P.brown,
     letterSpacing: 0.2,
+    textAlign: 'center',
   },
   headerSubtitle: {
     fontSize: 13,
     color: P.mutedBrown,
     fontWeight: '500',
+    textAlign: 'center',
   },
 
   // Sections
@@ -528,13 +527,7 @@ const styles = StyleSheet.create({
   skinImage: { width: '100%', height: '100%' },
   skinImageLocked: { opacity: 0.45 },
   lockBadge: {
-    position: 'absolute',
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderWidth: 1.5,
-    borderColor: P.pink,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -688,6 +681,9 @@ const styles = StyleSheet.create({
   buyBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
   buyCancel: { alignItems: 'center', paddingVertical: 2 },
   buyCancelText: { fontSize: 13.5, color: P.mutedBrown, fontWeight: '700' },
+  plusAlertMsg: { fontSize: 14, color: P.mutedBrown, fontWeight: '600', textAlign: 'center', lineHeight: 20 },
+  plusOkBtn: { alignSelf: 'stretch', backgroundColor: '#E85C77', borderRadius: 18, paddingVertical: Spacing.three, alignItems: 'center', marginTop: Spacing.one },
+  plusOkText: { color: '#FFF', fontSize: 16, fontWeight: '900' },
 
   // Receipt card
   receiptCard: {

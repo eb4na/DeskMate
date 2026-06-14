@@ -16,7 +16,11 @@ const P = { card: '#FFFDF8', purple: '#B7A0E0', purpleSoft: '#ECE3FA', brown: '#
 
 export function HanjiUnlockModal() {
   const { t } = useTranslation();
-  const { hanjiUnlockPending, clearHanjiUnlock } = useApp();
+  const { hanjiUnlockPending, clearHanjiUnlock, recipeBadgePending } = useApp();
+  // On the final badge both flags are set; show the 5/5 recipe-progress popup
+  // first and only reveal Hanji once that popup is dismissed (recipeBadgePending
+  // cleared).
+  const visible = hanjiUnlockPending && !recipeBadgePending;
 
   const meet = () => {
     clearHanjiUnlock();
@@ -24,7 +28,7 @@ export function HanjiUnlockModal() {
   };
 
   return (
-    <Modal visible={hanjiUnlockPending} transparent animationType="fade" onRequestClose={clearHanjiUnlock}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={clearHanjiUnlock}>
       <View style={styles.root}>
         <Pressable style={styles.backdrop} onPress={clearHanjiUnlock} />
         <View style={styles.card}>

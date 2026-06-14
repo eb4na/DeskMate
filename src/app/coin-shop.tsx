@@ -3,7 +3,8 @@ import { Alert, Image, Pressable, ScrollView, StyleSheet, View } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinAmount, CoinIcon } from '@/components/coin-icon';
-import { BakeryStarEmoji, BakeryLockEmoji, BakeryWrenchEmoji } from '@/components/bakery-emoji';
+import { BakeryStarEmoji, BakeryWrenchEmoji } from '@/components/bakery-emoji';
+import { LockBadge } from '@/components/lock-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
@@ -151,7 +152,7 @@ export default function CoinShopScreen() {
                 </ThemedView>
                 <ThemedView style={styles.plusBadge}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <BakeryLockEmoji size={14} />
+                    <LockBadge size={16} />
                     <ThemedText style={styles.plusBadgeText}>Plus</ThemedText>
                   </View>
                 </ThemedView>

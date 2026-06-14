@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import i18n, { useTranslation } from '@/i18n';
+import { historyCutoffISO } from '@/lib/history-window';
 import { AFTER_SESSION_MOODS, BEFORE_SESSION_MOODS } from '@/constants/placeholder-data';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
@@ -30,7 +31,14 @@ function mondayOf(d: Date): Date {
 
 export default function MoodChartScreen() {
   const { t } = useTranslation();
-  const { moodEntries } = useApp();
+  const { moodEntries, isPlus } = useApp();
+
+  // Free accounts only chart the last 3 months of moods; Plus sees the full log.
+  const cutoff = historyCutoffISO(isPlus);
+  const visibleMoods = useMemo(
+    () => (cutoff ? moodEntries.filter((e) => e.timestamp >= cutoff) : moodEntries),
+    [moodEntries, cutoff],
+  );
 
   const localeLabel = (value: string, fallback: string) =>
     t(`moods.${value}`, { defaultValue: fallback });
@@ -38,19 +46,19 @@ export default function MoodChartScreen() {
   // Distinct moods the player has actually logged, most frequent first.
   const moodCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const e of moodEntries) counts[e.value] = (counts[e.value] ?? 0) + 1;
+    for (const e of visibleMoods) counts[e.value] = (counts[e.value] ?? 0) + 1;
     return Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  }, [moodEntries]);
+  }, [visibleMoods]);
 
   const [selected, setSelected] = useState<string | null>(moodCounts[0]?.[0] ?? null);
 
   // Occurrences of the selected mood, newest first.
   const selectedEntries = useMemo(
     () =>
-      moodEntries
+      visibleMoods
         .filter((e) => e.value === selected)
         .sort((a, b) => b.timestamp.localeCompare(a.timestamp)),
-    [moodEntries, selected],
+    [visibleMoods, selected],
   );
 
   // Bucket the selected mood into the last 8 calendar weeks.
@@ -123,10 +131,10 @@ export default function MoodChartScreen() {
                 {selMeta?.image && (
                   <Image source={selMeta.image} style={styles.headlineImage} contentFit="contain" />
                 )}
-                <ThemedView style={styles.headlineText}>
+                <View style={styles.headlineText}>
                   <ThemedText type="smallBold">{t('moodChart.headline', { mood: selLabel })}</ThemedText>
                   <ThemedText style={styles.headlineCount}>{t('moodChart.totalTimes', { count: total })}</ThemedText>
-                </ThemedView>
+                </View>
               </ThemedView>
 
               {/* 8-week bar chart */}

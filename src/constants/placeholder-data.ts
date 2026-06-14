@@ -7,25 +7,21 @@ export const SESSION_LENGTHS = [
 
 export type SessionLengthOption = (typeof SESSION_LENGTHS)[number];
 
-// Auto-break length for a solo session: one break of ⌊focus ÷ 12⌋ minutes, but
-// short warm-ups (15 min or less) run straight through with no break.
+// Auto-break length for a solo session: a flat 5 min break for sessions under an
+// hour, and 10 min for an hour or longer.
 export function autoBreakMinutes(focusMinutes: number): number {
-  return focusMinutes > 15 ? Math.floor(focusMinutes / 12) : 0;
+  return focusMinutes < 60 ? 5 : 10;
 }
 
-export const COIN_REWARDS: Record<number, number> = {
-  15: 15,
-  30: 30,
-  60: 60,
-  90: 90,
-};
-
 // Coins earned per minute studied.
-export const COINS_PER_MINUTE = 1;
+export const COINS_PER_MINUTE = 2;
 export const coinsForMinutes = (minutes: number) => Math.floor(minutes * COINS_PER_MINUTE);
 
 // Max coins a user can earn from studying in a single day.
-export const DAILY_EARN_CAP = 200;
+export const DAILY_EARN_CAP = 500;
+
+// Max number of friends a user can add.
+export const MAX_FRIENDS = 150;
 
 export const BREAK_LENGTHS = [5, 10, 15] as const;
 

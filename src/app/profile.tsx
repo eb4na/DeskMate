@@ -125,6 +125,23 @@ export default function ProfileScreen() {
     }
   };
 
+  // Save the card to Photos via the system share sheet ("Save Image"). We go
+  // through the sheet rather than a one-tap MediaLibrary save because
+  // expo-media-library's current release is binary-incompatible with this
+  // project's expo-modules-core, so the native module can't be linked.
+  const saveToAlbum = async () => {
+    try {
+      const uri = await captureRef(cardRef, { format: 'png', quality: 1 });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'image/png', UTI: 'public.png', dialogTitle: t('profileCard.saveToAlbum') });
+      } else {
+        await Share.share({ url: uri });
+      }
+    } catch {
+      Alert.alert(t('profileCard.saveFailTitle'), t('profileCard.saveFailMsg'));
+    }
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: P.cream }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -179,9 +196,12 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {/* Share */}
+          {/* Share + save */}
           <Pressable style={({ pressed }) => [styles.shareBtn, pressed && styles.pressed]} onPress={shareCard}>
             <Text style={styles.shareBtnText}>{t('profileCard.shareMyCard')}</Text>
+          </Pressable>
+          <Pressable style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]} onPress={saveToAlbum}>
+            <Text style={styles.saveBtnText}>{t('profileCard.saveToAlbum')}</Text>
           </Pressable>
 
           {/* ── Editor ────────────────────────────────────────────────────── */}
@@ -370,6 +390,16 @@ const styles = StyleSheet.create({
     borderColor: '#E68299',
   },
   shareBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
+  saveBtn: {
+    backgroundColor: P.card,
+    borderRadius: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: P.pinkSoft,
+    marginTop: 8,
+  },
+  saveBtnText: { color: P.pink, fontSize: 15, fontWeight: '800' },
 
   // Editor
   editTitle: { fontSize: 17, fontWeight: '800', color: P.brown, marginTop: Spacing.two },

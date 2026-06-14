@@ -7,8 +7,10 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CoinIcon } from '@/components/coin-icon';
 import { StudyRoomView } from '@/components/study-room-view';
 import { HanjiUnlockModal } from '@/components/hanji-unlock-modal';
+import { RecipeBadgeModal } from '@/components/recipe-badge-modal';
 import { useStudyRoom } from '@/lib/use-study-room';
 import { BakeryGearEmoji } from '@/components/bakery-emoji';
+import { CountdownShape } from '@/components/countdown-shapes';
 import { CookieChatIcon } from '@/components/settings-icons';
 import { getReminderStyleEffect } from '@/constants/shop-effects';
 import { ThemedText } from '@/components/themed-text';
@@ -283,6 +285,7 @@ export default function HomeScreen() {
     ambienceId,
     equippedShopItems,
     examCountdowns,
+    tasks,
     subjects,
     activeSession,
     activeCompanionId,
@@ -318,6 +321,7 @@ export default function HomeScreen() {
   // before we hand off to the finish screen.
   const [finishingSession, setFinishingSession] = useState(false);
   const finishParamsRef = useRef<Record<string, string> | null>(null);
+  const [homeFocused, setHomeFocused] = useState(false);
   const [dragSession, setDragSession] = useState<DragSessionData | null>(null);
   const [droppedIds, setDroppedIds] = useState<Set<DragId>>(new Set());
   const fadeOverlay = useRef(new Animated.Value(0)).current;
@@ -361,6 +365,9 @@ export default function HomeScreen() {
   const MIXER_CY_FROM_TOP = 852 * (1 - 0.30) - 235 * 0.55;
 
   useFocusEffect(useCallback(() => {
+    // Track Home focus so the recipe-badge popup waits until the player is back on
+    // Home (not over the session-complete screen right after studying).
+    setHomeFocused(true);
     // Make sure the idle bounce is running each time Home regains focus.
     startBounce();
     const session = takePendingDragSession();
@@ -378,7 +385,7 @@ export default function HomeScreen() {
     } else {
       setPendingRequests(0);
     }
-    return () => { cancelled = true; };
+    return () => { cancelled = true; setHomeFocused(false); };
   }, [startBounce, user?.id]));
 
 
@@ -387,15 +394,24 @@ export default function HomeScreen() {
       const next = new Set(prev);
       next.add(id);
       if (next.size === 3) {
+        // Capture the session now; once everything's dropped, fade out, play the
+        // loading screen, and only START the timer when the loading screen ends.
+        const ds = dragSession;
         setTimeout(() => {
           Animated.timing(fadeOverlay, { toValue: 1, duration: 800, useNativeDriver: true }).start(() => {
-            if (dragSession) {
-              if (dragSession.moodValue && dragSession.moodLabel) {
-                addMoodEntry({ value: dragSession.moodValue, label: dragSession.moodLabel, type: 'before', sessionMinutes: dragSession.durationMinutes, timestamp: new Date().toISOString() });
+            showLoadingScreen(() => {
+              if (ds) {
+                if (ds.moodValue && ds.moodLabel) {
+                  addMoodEntry({ value: ds.moodValue, label: ds.moodLabel, type: 'before', sessionMinutes: ds.durationMinutes, timestamp: new Date().toISOString() });
+                }
+                // Starting the session sets its start time to now → the timer
+                // begins exactly when the loading screen finishes.
+                startActiveSession({ durationMinutes: ds.durationMinutes, subjectName: ds.subjectName, taskId: ds.taskId, taskTitle: ds.taskTitle, breakMinutes: ds.breakMinutes });
               }
-              startActiveSession({ durationMinutes: dragSession.durationMinutes, subjectName: dragSession.subjectName, taskId: dragSession.taskId, taskTitle: dragSession.taskTitle, breakMinutes: dragSession.breakMinutes });
-            }
-            setDragSession(null);
+              setDragSession(null);
+              setDroppedIds(new Set());
+              fadeOverlay.setValue(0);
+            });
           });
         }, 300);
       }
@@ -422,6 +438,15 @@ export default function HomeScreen() {
     .sort((a, b) => a.dateISO.localeCompare(b.dateISO))[0];
   const latestExam = [...examCountdowns].sort((a, b) => b.dateISO.localeCompare(a.dateISO))[0];
   const featuredExam = nextUpcomingExam ?? latestExam ?? null;
+  // Soonest still-pending task (by due date + time), shown on the home card.
+  const nextTask =
+    [...tasks]
+      .filter((tk) => tk.status !== 'done' && tk.dueDate)
+      .sort((a, b) =>
+        (a.dueDate! + (a.dueTime ?? '99:99')).localeCompare(b.dueDate! + (b.dueTime ?? '99:99')),
+      )[0] ?? null;
+  const nextTaskColor =
+    (nextTask?.subjectId ? subjects.find((s) => s.id === nextTask.subjectId)?.color : null) ?? '#C9A18A';
   const examDays = featuredExam ? daysUntil(featuredExam.dateISO) : null;
   const examIsUrgent = examDays !== null && examDays >= 0 && examDays <= 7;
   const examIsPast = examDays !== null && examDays < 0;
@@ -547,7 +572,6 @@ export default function HomeScreen() {
             recordSession(sessionElapsedMinutes);
             addSubjectTime(endedSession.subjectName, sessionElapsedMinutes);
           }
-          showLoadingScreen();
         },
       },
     ]);
@@ -576,17 +600,20 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      {/* Full-screen room background (behind the safe area) so it bleeds edge to
+          edge — under the status bar and down to the bottom. */}
+      <Image
+        source={bgRoom.backgroundImage}
+        style={styles.roomBackground}
+        contentFit="cover"
+        contentPosition="center"
+        pointerEvents="none"
+      />
+      {/* Soft sunlight shining from the top — kept gentle so the room stays clear */}
+      <Image source={SUNLIGHT} style={styles.sunlight} contentFit="cover" pointerEvents="none" />
+
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.scene}>
-          <Image
-            source={bgRoom.backgroundImage}
-            style={styles.roomBackground}
-            contentFit="cover"
-            contentPosition="center"
-          />
-
-          {/* Soft sunlight shining from the top — kept gentle so the room stays clear */}
-          <Image source={SUNLIGHT} style={styles.sunlight} contentFit="cover" pointerEvents="none" />
 
           {activeSession ? (
             <View style={[styles.studyRoomWrap, { paddingTop: insets.top + 4, paddingBottom: insets.bottom + 8 }]}>
@@ -643,9 +670,12 @@ export default function HomeScreen() {
                         <View style={styles.metaCardTextBlock}>
                           {featuredExam ? (
                             <>
-                              <ThemedText style={styles.metaHeadline} numberOfLines={1}>
-                                {featuredExam.name}
-                              </ThemedText>
+                              <View style={styles.examHeadlineRow}>
+                                <CountdownShape shape={featuredExam.shape} size={15} />
+                                <ThemedText style={[styles.metaHeadline, styles.examHeadlineText]} numberOfLines={1}>
+                                  {featuredExam.name}
+                                </ThemedText>
+                              </View>
                               <ThemedText style={styles.metaSubline} numberOfLines={1}>{formatExamDate(featuredExam.dateISO)}</ThemedText>
                               <View style={styles.examCountdownRow}>
                                 <ThemedText
@@ -680,25 +710,35 @@ export default function HomeScreen() {
 
                   <Pressable
                     style={({ pressed }) => [styles.metaCardPressable, pressed && styles.cardPressed]}
-                    onPress={() => router.push('/reminder-settings')}>
+                    onPress={() => router.push(nextTask ? '/tasks' : '/add-task')}>
                     <View style={styles.metaCard}>
                       <View style={styles.metaCardHeader}>
                         <View style={styles.reminderTitleRow}>
                           <Image source={REMINDER_BELL_ICON} style={styles.reminderBellIcon} contentFit="contain" accessibilityLabel="" />
-                          <ThemedText style={styles.metaCardTitle}>{t('home.reminder')}</ThemedText>
+                          <ThemedText style={styles.metaCardTitle}>{t('home.upcomingTask')}</ThemedText>
                         </View>
                       </View>
                       <View style={styles.metaCardContent}>
                         <View style={styles.metaCardTextBlock}>
-                          <ThemedText style={styles.reminderCopy}>
-                            {reminderEnabled
-                              ? `${t('home.dailyPing', { time: reminderTime })} ${
-                                  isPlus && ambienceId
-                                    ? `${getAmbienceEmoji(ambienceId)} ${getAmbienceName(ambienceId)}`
-                                    : t('home.youGotThis')
-                                }`
-                              : t('home.tapToSetReminders')}
-                          </ThemedText>
+                          {nextTask ? (
+                            <>
+                              <ThemedText style={styles.metaHeadline} numberOfLines={1}>{nextTask.title}</ThemedText>
+                              <ThemedText style={styles.metaSubline} numberOfLines={1}>{formatExamDate(nextTask.dueDate!)}</ThemedText>
+                              {nextTask.subjectId ? (
+                                <View style={styles.examSubjectChip}>
+                                  <View style={[styles.examSubjectDot, { backgroundColor: nextTaskColor }]} />
+                                  <ThemedText style={styles.examSubjectText} numberOfLines={1}>
+                                    {subjects.find((s) => s.id === nextTask.subjectId)?.name}
+                                  </ThemedText>
+                                </View>
+                              ) : null}
+                            </>
+                          ) : (
+                            <>
+                              <ThemedText style={styles.metaHeadline}>{t('home.noTaskYet')}</ThemedText>
+                              <ThemedText style={styles.metaSubline}>{t('home.tapToAdd')}</ThemedText>
+                            </>
+                          )}
                         </View>
                       </View>
                     </View>
@@ -778,15 +818,18 @@ export default function HomeScreen() {
                 </Animated.View>
               </View>
 
-              {/* Desk surface */}
+              {/* Desk surface — top edge fixed at 53%; bleeds past the bottom safe-area
+                  inset so the desk (not the room background) fills the very bottom strip. */}
               <RNImage
                 source={deskRoom.deskImage}
-                style={[styles.deskNewLayer, deskRoom.deskTint ? { backgroundColor: deskRoom.deskTint } : null]}
+                style={[styles.deskNewLayer, { bottom: -insets.bottom }, deskRoom.deskTint ? { backgroundColor: deskRoom.deskTint } : null]}
                 resizeMode={deskRoom.deskFit ?? 'cover'}
                 pointerEvents="none"
               />
-              {/* Thin line marking the table's front edge */}
-              <View style={styles.tableEdgeLine} pointerEvents="none" />
+              {/* A hairline along the desk's top edge so it reads as a table edge
+                  instead of a hard cut. Shares the desk's exact geometry (same
+                  height + bottom inset) so its top border sits right on the edge. */}
+              <View style={[styles.deskTopEdge, { bottom: -insets.bottom }]} pointerEvents="none" />
               {/* Mixer on desk — matches the equipped dessert */}
               <RNImage source={deskKit.mixer} style={[styles.deskMixer, deskKit.mixerStyle]} resizeMode="contain" pointerEvents="none" />
 
@@ -846,6 +889,7 @@ export default function HomeScreen() {
         </View>
       </SafeAreaView>
       <HanjiUnlockModal />
+      {homeFocused && <RecipeBadgeModal />}
     </ThemedView>
   );
 }
@@ -971,7 +1015,8 @@ const styles = StyleSheet.create({
   },
   scene: {
     flex: 1,
-    overflow: 'hidden',
+    // overflow stays visible so the desk surface can bleed past the bottom
+    // safe-area inset down to the screen edge (see deskNewLayer).
     justifyContent: 'space-between',
     backgroundColor: 'transparent',
   },
@@ -992,7 +1037,6 @@ const styles = StyleSheet.create({
     right: 0,
     height: '55%',
     opacity: 0.8,
-    zIndex: 1,
   },
   deskMixer: {
     position: 'absolute',
@@ -1019,16 +1063,18 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: '47%',
+    height: '54%',
     zIndex: 2,
   },
-  tableEdgeLine: {
+  // Hairline on the desk's top edge. Must mirror deskNewLayer's height so its top
+  // border lands exactly on the desk's top edge (keep the height in sync).
+  deskTopEdge: {
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: '47%',
-    height: 1,
-    backgroundColor: 'rgba(120, 90, 70, 0.22)',
+    height: '54%',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(120, 90, 70, 0.45)',
     zIndex: 3,
   },
   deskOverlay: {
@@ -1487,6 +1533,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: BakeryColors.cocoaDark,
   },
+  examHeadlineRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  examHeadlineText: { flexShrink: 1 },
   metaAccentText: {
     fontSize: 10.5,
     lineHeight: 13,

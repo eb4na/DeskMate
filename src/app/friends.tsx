@@ -72,6 +72,7 @@ export default function FriendsScreen() {
   const [busy, setBusy] = useState(false);
   const [playFor, setPlayFor] = useState<Friend | null>(null);
   const [onlineCodes, setOnlineCodes] = useState<Set<string>>(new Set());
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!friendCode) return;
@@ -150,6 +151,22 @@ export default function FriendsScreen() {
     }
   };
 
+  // Copy the friend code to the clipboard, flashing the button label for ~1.5s.
+  // Lazy-require so a dev build missing the native clipboard module doesn't crash
+  // the whole screen at import time. If the native module isn't in the binary yet
+  // (needs a rebuild), fall back to the OS share sheet so the button still works.
+  const copyCode = async () => {
+    if (!friendCode) return;
+    try {
+      const Clipboard = require('expo-clipboard');
+      await Clipboard.setStringAsync(friendCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      shareCode();
+    }
+  };
+
   const confirmRemove = (code: string, name: string) => {
     Alert.alert(t('friends.removeFriendQ'), t('friends.removeFriendMsg', { name }), [
       { text: t('common.cancel'), style: 'cancel' },
@@ -200,12 +217,21 @@ export default function FriendsScreen() {
           {/* Your code */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t('friends.yourFriendCode')}</Text>
-            <Pressable style={({ pressed }) => [styles.codeCard, pressed && styles.pressed]} onPress={shareCode}>
+            <View style={styles.codeCard}>
               <Text style={styles.codeText}>{friendCode}</Text>
-              <View style={styles.copyBtn}>
-                <Text style={styles.copyBtnText}>{t('friends.share')}</Text>
+              <View style={styles.codeBtnRow}>
+                <Pressable
+                  style={({ pressed }) => [styles.copyBtn, pressed && styles.pressed]}
+                  onPress={copyCode}>
+                  <Text style={styles.copyBtnText}>{copied ? t('friends.copied') : t('friends.copyCode')}</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [styles.shareBtn, pressed && styles.pressed]}
+                  onPress={shareCode}>
+                  <Text style={styles.shareBtnText}>{t('friends.share')}</Text>
+                </Pressable>
               </View>
-            </Pressable>
+            </View>
             <Text style={styles.codeHint}>{t('friends.shareCodeHint')}</Text>
           </View>
 
@@ -417,8 +443,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   codeText: { fontSize: 26, fontWeight: '900', letterSpacing: 4, color: P.brown },
+  codeBtnRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   copyBtn: { backgroundColor: P.pink, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 7 },
   copyBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
+  shareBtn: {
+    backgroundColor: P.card,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderWidth: 1.5,
+    borderColor: P.pink,
+  },
+  shareBtnText: { color: P.pink, fontWeight: '800', fontSize: 13 },
   codeHint: { fontSize: 12, color: P.mutedBrown, textAlign: 'center' },
 
   addRow: { flexDirection: 'row', gap: Spacing.two },

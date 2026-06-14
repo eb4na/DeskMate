@@ -6,11 +6,11 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, Pressable, ScrollView, Share, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
+import { Dimensions, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Companion } from '@/components/companion';
-import { HomeTabIcon } from '@/components/tab-icons';
+import { SimpleHomeIcon } from '@/components/tab-icons';
 import {
   resolveActiveCompanion,
   resolveProfileFigure,
@@ -23,7 +23,7 @@ import { useTranslation } from '@/i18n';
 import { getCompanionLine } from '@/constants/companion-lines';
 import { Connect4Game } from '@/game/connect4/Connect4Game';
 import { joinGameRoom, type GameRoom } from '@/lib/game-net';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type GameId = 'tictactoe' | 'connect4' | 'cakekitchen';
@@ -69,32 +69,30 @@ function getAIMove(board: Cell[]): number {
 
 // ─── Tic-Tac-Toe art ──────────────────────────────────────────────────────────
 const TTT_BOARD = require('@/assets/images/tictactoe/board.png');
-const TTT_PLATE_PINK = require('@/assets/images/tictactoe/nameplate-pink.png');
-const TTT_PLATE_GOLD = require('@/assets/images/tictactoe/nameplate-gold.png');
 const TTT_X = require('@/assets/images/tictactoe/piece-x.png');
 const TTT_O = require('@/assets/images/tictactoe/piece-o.png');
+// Shared arrow back button — same art across all break games.
+const BACK_ARROW = require('@/assets/images/common/back-arrow.png');
+// Tic-Tac-Toe wordmark, shown on the opponent picker.
+const TTT_TITLE = require('@/assets/images/tictactoe/title.png');
 
 // Fraction of board.png taken up by the playable 3×3 grid (measured from the
 // art: frosting drip adds extra height at the top). Tune here if art changes.
 const GRID_INSET = { left: 0.105, right: 0.105, top: 0.135, bottom: 0.105 };
-const PLATE_RATIO = 1086 / 1448; // height / width of the nameplate art
 
-// Round window baked into each plate art (centre + diameter as fractions of the
-// plate width, measured from the art).
-const PINK_FACE = { x: 0.297, y: 0.488, d: 0.225 };
-const GOLD_FACE = { x: 0.279, y: 0.529, d: 0.27 };
-// Name banner area (fractions of plate width): text + piece live between these.
-const BANNER_LEFT = 0.4;
-const BANNER_RIGHT = 0.12;
+// Per-player accent palette, keyed by the player's piece symbol.
+const ACCENT = {
+  X: { border: '#F2A6C0', chip: '#FCE4EC', ink: '#D9568A' },
+  O: { border: '#E8B04B', chip: '#FBF0D8', ink: '#C98A1E' },
+} as const;
 
-// Head focus in the companion art: face at ~(0.49, 0.21). Framed so the head
-// sits near the top of the window and the torso fills the rest — no empty gap.
-const HEAD_FX = 0.49;
-const HEAD_FY = 0.38;
-const HEAD_ZOOM = 1.7;
+// Avatar framing for full-body companion art (head sits near the top of the
+// image). The image fills the circle, then a centred scale + downward shift
+// brings the head to the middle — filling guarantees perfect horizontal centring.
+const AVATAR_ZOOM = 1.6;
+const AVATAR_DY = 0.14; // fraction of the avatar diameter to shift the head down
 
-// Head-and-shoulders placeholder used for human players (no companion art),
-// mirroring Connect 4's "you" avatar.
+// Head-and-shoulders placeholder used for human players (no companion art).
 function Silhouette({ size }: { size: number }) {
   return (
     <View style={[plateStyles.sil, { width: size, height: size }]}>
@@ -113,97 +111,106 @@ function Silhouette({ size }: { size: number }) {
   );
 }
 
-// A small player card: companion face in the round window, the player's piece,
-// and a name — built on the bakery nameplate art.
+// A compact player card (code-built): a centred avatar circle, the player's
+// name, and a chip showing which piece (X / O) they're using.
 function PlayerPlate({
-  plate,
   avatar,
   piece,
   label,
   width,
   active,
   isWinner,
-  faceCenter,
+  symbol,
 }: {
-  plate: number;
   avatar: CompanionImageSource | null;
   piece: number;
   label: string;
   width: number;
   active: boolean;
   isWinner: boolean;
-  faceCenter: { x: number; y: number; d: number };
+  symbol: 'X' | 'O';
 }) {
-  const height = width * PLATE_RATIO;
-  const faceD = width * faceCenter.d; // matches the plate's baked round window
+  const c = ACCENT[symbol];
+  const avatarD = Math.round(width * 0.3);
+  const highlight = active || isWinner;
   return (
-    <View style={[plateStyles.wrap, { width, height, opacity: active || isWinner ? 1 : 0.55 }]}>
-      <Image source={plate} style={StyleSheet.absoluteFill} contentFit="contain" />
+    <View
+      style={[
+        plateStyles.card,
+        { width, borderColor: c.border, opacity: highlight ? 1 : 0.6 },
+        highlight && { borderWidth: 2.5, shadowColor: c.border, shadowOpacity: 0.9, shadowRadius: 8 },
+      ]}>
       <View
         style={[
-          plateStyles.face,
-          {
-            width: faceD,
-            height: faceD,
-            borderRadius: faceD / 2,
-            left: width * faceCenter.x - faceD / 2,
-            top: height * faceCenter.y - faceD / 2,
-          },
+          plateStyles.avatar,
+          { width: avatarD, height: avatarD, borderRadius: avatarD / 2, borderColor: c.border },
         ]}>
         {avatar ? (
           <Image
             source={avatar}
-            style={{
-              position: 'absolute',
-              width: faceD * HEAD_ZOOM,
-              height: faceD * HEAD_ZOOM,
-              left: faceD / 2 - HEAD_FX * faceD * HEAD_ZOOM,
-              top: faceD / 2 - HEAD_FY * faceD * HEAD_ZOOM,
-            }}
+            style={[
+              StyleSheet.absoluteFill,
+              { transform: [{ translateY: avatarD * AVATAR_DY }, { scale: AVATAR_ZOOM }] },
+            ]}
             contentFit="cover"
           />
         ) : (
-          <Silhouette size={faceD} />
+          <Silhouette size={avatarD} />
         )}
       </View>
-      <View style={[plateStyles.banner, { left: width * BANNER_LEFT, right: width * BANNER_RIGHT }]}>
-        <Image source={piece} style={{ width: width * 0.13, height: width * 0.13 }} contentFit="contain" />
+      <View style={plateStyles.info}>
         <ThemedText
           type="smallBold"
           numberOfLines={1}
           adjustsFontSizeToFit
-          minimumFontScale={0.5}
-          style={[plateStyles.label, { fontSize: width * 0.12 }]}>
+          minimumFontScale={0.6}
+          style={plateStyles.name}>
           {label}
         </ThemedText>
+        <View style={[plateStyles.chip, { backgroundColor: c.chip }]}>
+          <Image source={piece} style={plateStyles.chipPiece} contentFit="contain" />
+          <ThemedText type="smallBold" style={[plateStyles.chipText, { color: c.ink }]}>
+            {symbol}
+          </ThemedText>
+        </View>
       </View>
-      {active && !isWinner && <View style={[plateStyles.turnDot, { left: width * faceCenter.x - 4 }]} />}
     </View>
   );
 }
 
 const plateStyles = StyleSheet.create({
-  wrap: { position: 'relative' },
-  face: { position: 'absolute', overflow: 'hidden', backgroundColor: '#FEECD4' },
-  sil: { alignItems: 'center', justifyContent: 'flex-end', backgroundColor: '#F3E7DA' },
-  banner: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
+  card: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 2,
+    backgroundColor: '#FFF7EE',
+    ...BakeryShadow,
+  },
+  avatar: {
+    overflow: 'hidden',
+    backgroundColor: '#FEECD4',
+    borderWidth: 2,
+    alignItems: 'center',
     justifyContent: 'center',
+  },
+  sil: { alignItems: 'center', justifyContent: 'flex-end', backgroundColor: '#F3E7DA' },
+  info: { flex: 1, minWidth: 0, gap: 5 },
+  name: { color: '#8A5A3B', fontSize: 15, lineHeight: 19 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
     gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
   },
-  label: { color: '#8A5A3B', flexShrink: 1 },
-  turnDot: {
-    position: 'absolute',
-    bottom: 2,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#5BC47A',
-  },
+  chipPiece: { width: 18, height: 18 },
+  chipText: { fontSize: 13, fontWeight: '800' },
 });
 
 function TicTacToeGame({
@@ -224,7 +231,6 @@ function TicTacToeGame({
     bunSkinId,
     companionSkins,
     friendCode,
-    addFriend,
   } = useApp();
   const { width: winW, height: winH } = useWindowDimensions();
   const boardSize = Math.min(winW - 32, winH * 0.38, 340);
@@ -266,7 +272,6 @@ function TicTacToeGame({
   const [mySymbol, setMySymbol] = useState<'X' | 'O' | null>(online ? (online.isHost ? 'X' : 'O') : null);
   const [opponentPresent, setOpponentPresent] = useState(false);
   const [connecting, setConnecting] = useState(externalInvite);
-  const [joinInput, setJoinInput] = useState('');
   const roomRef = useRef<GameRoom | null>(null);
   const screenRef = useRef<'mode' | 'lobby' | 'play'>(externalInvite ? 'lobby' : 'mode');
   useEffect(() => {
@@ -341,15 +346,10 @@ function TicTacToeGame({
     connectRoom(friendCode, true);
   };
 
-  const joinGame = () => {
-    const code = joinInput.trim().toUpperCase();
-    if (code.length < 4) return;
-    addFriend(code);
-    connectRoom(code, false);
-  };
-
-  const shareCode = () => {
-    Share.share({ message: t('friends.shareMessage', { code: friendCode }) });
+  // Friends-only: open the friend list to invite someone into this hosted room.
+  const inviteFriends = () => {
+    if (!friendCode) return;
+    router.push({ pathname: '/party-invite', params: { room: friendCode, game: 'tictactoe' } });
   };
 
   const resetBoard = () => {
@@ -514,29 +514,26 @@ function TicTacToeGame({
     <View style={tttStyles.screen}>
       <Image source={TTT_BG} style={StyleSheet.absoluteFill} contentFit="cover" />
 
-      {/* Title */}
-      <ThemedText style={[tttStyles.title, { top: insets.top + winH * 0.045 }]}>
-        {t('friends.game_tictactoe')}
-      </ThemedText>
+      {/* Title — wordmark on the picker; plain text once in a game. */}
+      {screen !== 'mode' && (
+        <ThemedText style={[tttStyles.title, { top: insets.top + winH * 0.085 }]}>
+          {t('friends.game_tictactoe')}
+        </ThemedText>
+      )}
 
-      {/* Back (to mode select / out) + close */}
+      {/* Single arrow back button (matches Connect 4 / BatterDash). */}
       <Pressable
         onPress={topBack}
         hitSlop={10}
-        style={({ pressed }) => [tttStyles.circleBtn, { top: insets.top + 6, left: 16 }, pressed && tttStyles.pressed]}>
-        <ThemedText style={tttStyles.circleBtnText}>‹</ThemedText>
-      </Pressable>
-      <Pressable
-        onPress={onLeave}
-        hitSlop={10}
-        style={({ pressed }) => [tttStyles.circleBtn, { top: insets.top + 6, right: 16 }, pressed && tttStyles.pressed]}>
-        <ThemedText style={[tttStyles.circleBtnText, { fontSize: 18 }]}>✕</ThemedText>
+        style={({ pressed }) => [tttStyles.backBtn, { top: insets.top + 2, left: 8 }, pressed && tttStyles.pressed]}>
+        <Image source={BACK_ARROW} style={tttStyles.backImg} contentFit="contain" />
       </Pressable>
 
       <View style={[tttStyles.content, { paddingTop: insets.top + winH * 0.12, paddingBottom: insets.bottom + winH * 0.13 }]}>
         {screen === 'mode' ? (
           /* ── Opponent picker (shown first, like Connect 4) ── */
           <>
+            <Image source={TTT_TITLE} style={tttStyles.titleImg} contentFit="contain" />
             <View style={tttStyles.subPill}>
               <ThemedText type="smallBold" style={tttStyles.subPillText}>
                 {t('games.chooseOpponent')}
@@ -562,7 +559,7 @@ function TicTacToeGame({
               </Pressable>
               <Pressable
                 style={({ pressed }) => [tttStyles.modeCard, pressed && tttStyles.pressed]}
-                onPress={() => { setMode('online'); setScreen('lobby'); }}>
+                onPress={hostGame}>
                 <View style={tttStyles.modePieces}>
                   <Image source={TTT_X} style={tttStyles.modePiece} contentFit="contain" />
                   <Image source={TTT_O} style={[tttStyles.modePiece, { marginLeft: 4 }]} contentFit="contain" />
@@ -571,79 +568,42 @@ function TicTacToeGame({
                 <ThemedText type="small" style={tttStyles.modeSub}>{t('connect4.playFriend')}</ThemedText>
               </Pressable>
             </View>
+            {/* Bottom spacer pushes the centered picker group upward. */}
+            <View style={{ height: winH * 0.08 }} />
           </>
         ) : screen === 'lobby' ? (
-          /* ── Online lobby (host & wait / join by code) ── */
-          <>
-            {connecting && !opponentPresent ? (
-              <View style={tttStyles.lobbyCard}>
-                <ThemedText type="smallBold" style={tttStyles.lobbyHeading}>{t('connect4.waitingFriend')}</ThemedText>
-                <ThemedText type="small" style={tttStyles.lobbyHint}>{t('connect4.shareCodeHint')}</ThemedText>
-                <ThemedText style={tttStyles.codeBig}>{friendCode || '——'}</ThemedText>
-                <Pressable style={({ pressed }) => [tttStyles.primaryBtn, pressed && tttStyles.pressed]} onPress={shareCode}>
-                  <ThemedText type="smallBold" style={tttStyles.primaryBtnText}>{t('connect4.shareCode')}</ThemedText>
-                </Pressable>
-                <Pressable onPress={backToModes} style={tttStyles.linkBtn}>
-                  <ThemedText type="small" style={tttStyles.lobbyHint}>{t('common.cancel')}</ThemedText>
-                </Pressable>
-              </View>
-            ) : (
-              <>
-                <View style={tttStyles.lobbyCard}>
-                  <ThemedText type="smallBold" style={tttStyles.lobbyHeading}>{t('connect4.yourCode')}</ThemedText>
-                  <ThemedText style={tttStyles.codeBig}>{friendCode || '——'}</ThemedText>
-                  <Pressable
-                    style={({ pressed }) => [tttStyles.primaryBtn, !friendCode && tttStyles.btnDisabled, pressed && tttStyles.pressed]}
-                    onPress={hostGame}
-                    disabled={!friendCode}>
-                    <ThemedText type="smallBold" style={tttStyles.primaryBtnText}>{t('connect4.hostWait')}</ThemedText>
-                  </Pressable>
-                </View>
-                <View style={tttStyles.lobbyCard}>
-                  <ThemedText type="smallBold" style={tttStyles.lobbyHeading}>{t('connect4.joinFriend')}</ThemedText>
-                  <TextInput
-                    style={tttStyles.codeInput}
-                    value={joinInput}
-                    onChangeText={(txt) => setJoinInput(txt.toUpperCase())}
-                    placeholder={t('friends.enterFriendCode')}
-                    placeholderTextColor="#C8A98F"
-                    autoCapitalize="characters"
-                    autoCorrect={false}
-                    maxLength={8}
-                  />
-                  <Pressable
-                    style={({ pressed }) => [tttStyles.primaryBtn, joinInput.trim().length < 4 && tttStyles.btnDisabled, pressed && tttStyles.pressed]}
-                    onPress={joinGame}
-                    disabled={joinInput.trim().length < 4}>
-                    <ThemedText type="smallBold" style={tttStyles.primaryBtnText}>{t('connect4.joinGame')}</ThemedText>
-                  </Pressable>
-                </View>
-              </>
-            )}
-          </>
+          /* ── Online lobby: host & invite a friend (friends only) ── */
+          <View style={tttStyles.lobbyCard}>
+            <ThemedText type="smallBold" style={tttStyles.lobbyHeading}>{t('connect4.waitingFriend')}</ThemedText>
+            <ThemedText type="small" style={tttStyles.lobbyHint}>{t('party.inviteSubtitle')}</ThemedText>
+            <Pressable style={({ pressed }) => [tttStyles.primaryBtn, pressed && tttStyles.pressed]} onPress={inviteFriends}>
+              <ThemedText type="smallBold" style={tttStyles.primaryBtnText}>{t('lobby.inviteFriend')}</ThemedText>
+            </Pressable>
+            <Pressable onPress={backToModes} style={tttStyles.linkBtn}>
+              <ThemedText type="small" style={tttStyles.lobbyHint}>{t('common.cancel')}</ThemedText>
+            </Pressable>
+          </View>
         ) : (
           /* ── Play ── */
           <>
             <View style={tttStyles.cardRow}>
               <PlayerPlate
-                plate={TTT_PLATE_PINK}
                 avatar={xAvatar}
                 piece={TTT_X}
                 label={xLabel}
                 width={cardW}
                 active={activeSymbol === 'X' && !gameOver}
                 isWinner={gameOver && winner === 'X'}
-                faceCenter={PINK_FACE}
+                symbol="X"
               />
               <PlayerPlate
-                plate={TTT_PLATE_GOLD}
                 avatar={oAvatar}
                 piece={TTT_O}
                 label={oLabel}
                 width={cardW}
                 active={activeSymbol === 'O' && !gameOver}
                 isWinner={gameOver && winner === 'O'}
-                faceCenter={GOLD_FACE}
+                symbol="O"
               />
             </View>
 
@@ -713,10 +673,13 @@ const tttStyles = StyleSheet.create({
     position: 'absolute',
     alignSelf: 'center',
     fontSize: 26,
+    lineHeight: 38,
+    paddingTop: 4,
     fontWeight: '800',
     color: '#A85A4A',
     letterSpacing: 0.5,
   },
+  titleImg: { width: '66%', aspectRatio: 1513 / 724, alignSelf: 'center', marginBottom: Spacing.one },
   circleBtn: {
     position: 'absolute',
     width: 38,
@@ -727,6 +690,8 @@ const tttStyles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 5,
   },
+  backBtn: { position: 'absolute', width: 58, height: 58, zIndex: 5 },
+  backImg: { width: 58, height: 58 },
   circleBtnText: { fontSize: 24, lineHeight: 28, color: '#C75A78', fontWeight: '700' },
   pressed: { opacity: 0.6 },
   cardRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.two },
@@ -738,25 +703,25 @@ const tttStyles = StyleSheet.create({
     paddingVertical: 7,
   },
   subPillText: { color: '#A85A4A', fontSize: 14 },
-  modeCards: { flexDirection: 'row', flexWrap: 'nowrap', justifyContent: 'center', gap: Spacing.one, paddingHorizontal: Spacing.two },
+  modeCards: { flexDirection: 'row', flexWrap: 'nowrap', justifyContent: 'center', gap: Spacing.two, paddingHorizontal: Spacing.two },
   modeCard: {
     flex: 1,
     minWidth: 0,
-    maxWidth: 130,
-    borderRadius: 22,
-    paddingVertical: Spacing.three,
+    maxWidth: 150,
+    borderRadius: 26,
+    paddingVertical: Spacing.five,
     paddingHorizontal: Spacing.one,
     alignItems: 'center',
-    gap: 6,
+    gap: 10,
     backgroundColor: 'rgba(255,252,248,0.92)',
     borderWidth: 1.5,
     borderColor: '#F4D7DE',
   },
-  modeIcon: { width: 46, height: 46 },
-  modePieces: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 46 },
-  modePiece: { width: 28, height: 28 },
-  modeTitle: { color: '#A85A4A', fontSize: 15, textAlign: 'center' },
-  modeSub: { color: '#9A8978', textAlign: 'center', fontSize: 11 },
+  modeIcon: { width: 64, height: 64 },
+  modePieces: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 64 },
+  modePiece: { width: 40, height: 40 },
+  modeTitle: { color: '#A85A4A', fontSize: 17, textAlign: 'center' },
+  modeSub: { color: '#9A8978', textAlign: 'center', fontSize: 12 },
   // Online lobby
   lobbyCard: {
     width: '100%',
@@ -1088,14 +1053,17 @@ export default function BreakGameScreen() {
               )}
               </ThemedView>
             </ScrollView>
-            {/* Home button */}
-            <Pressable
-              style={({ pressed }) => [styles.homeBtn, pressed && styles.pressed]}
-              onPress={goHome}
-              hitSlop={8}
-              accessibilityLabel={t('nav.home')}>
-              <HomeTabIcon color="#D86F9C" size={26} />
-            </Pressable>
+            {/* Home button + phone-style home indicator line above it */}
+            <View style={styles.homeFooter}>
+              <View style={styles.homeIndicator} />
+              <Pressable
+                style={({ pressed }) => [styles.homeBtn, pressed && styles.pressed]}
+                onPress={goHome}
+                hitSlop={8}
+                accessibilityLabel={t('nav.home')}>
+                <SimpleHomeIcon color="#D86F9C" size={34} />
+              </Pressable>
+            </View>
           </>
         ) : phase === 'resting' ? (
           <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollFlex}>
@@ -1129,13 +1097,16 @@ export default function BreakGameScreen() {
 
         {phase !== 'playing' && phase !== 'select' &&
           (isBrowse ? (
-            <Pressable
-              style={({ pressed }) => [styles.homeBtn, pressed && styles.pressed]}
-              onPress={goHome}
-              hitSlop={8}
-              accessibilityLabel={t('nav.home')}>
-              <HomeTabIcon color="#D86F9C" size={26} />
-            </Pressable>
+            <View style={styles.homeFooter}>
+              <View style={styles.homeIndicator} />
+              <Pressable
+                style={({ pressed }) => [styles.homeBtn, pressed && styles.pressed]}
+                onPress={goHome}
+                hitSlop={8}
+                accessibilityLabel={t('nav.home')}>
+                <SimpleHomeIcon color="#D86F9C" size={34} />
+              </Pressable>
+            </View>
           ) : (
             <Pressable
               style={({ pressed }) => [styles.endStudyBtn, pressed && styles.pressed]}
@@ -1286,11 +1257,21 @@ const styles = StyleSheet.create({
     color: '#7C6F5A',
     fontSize: 16,
   },
+  homeFooter: { alignItems: 'center', gap: 12 },
+  // Full-width pink divider spanning edge to edge (phone-screen look). Bleeds
+  // past the safeArea's horizontal padding (Spacing.four) to the true screen edges.
+  homeIndicator: {
+    alignSelf: 'stretch',
+    marginHorizontal: -Spacing.four,
+    height: 2.5,
+    backgroundColor: '#F2A0B5',
+    opacity: 0.7,
+  },
   homeBtn: {
     alignSelf: 'center',
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 66,
+    height: 66,
+    borderRadius: 33,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,

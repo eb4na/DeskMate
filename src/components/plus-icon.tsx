@@ -2,7 +2,7 @@ import { Image as ExpoImage } from 'expo-image';
 
 type Props = { size?: number };
 
-/** DeskMate Plus / premium icon — crossed fork & spoon with a bow. */
+/** Memobun Plus / premium icon — strawberry-gem crown. */
 export function PlusIcon({ size = 32 }: Props) {
   return (
     <ExpoImage

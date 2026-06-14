@@ -4,6 +4,36 @@ import type { ColorValue } from 'react-native';
 type P = { color: ColorValue; size?: number };
 const c = (color: ColorValue) => color as string;
 
+// Simple, clean home glyph (roof + body + door) — used where the detailed
+// bread-cottage icon is too busy (e.g. the break-game home button).
+export function SimpleHomeIcon({ color, size = 24 }: P) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M3.5 11.5 L12 4 L20.5 11.5"
+        stroke={c(color)}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M5.5 10 V19.5 H18.5 V10"
+        stroke={c(color)}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M9.5 19.5 V14 a2.5 2.5 0 0 1 5 0 V19.5"
+        stroke={c(color)}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 // Home → sketchy bread cottage
 export function HomeTabIcon({ color, size = 24 }: P) {
   return (

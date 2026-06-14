@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -9,9 +10,10 @@ import { ChartIcon, MusicNoteIcon, PawIcon } from '@/components/settings-icons';
 import { StreakFreezeIcon } from '@/components/streak-freeze-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useApp } from '@/context/app-context';
+import { daysBetween, todayISO, useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
 import i18n, { useTranslation } from '@/i18n';
+import { FREE_HISTORY_MONTHS, historyCutoffISO } from '@/lib/history-window';
 import { AFTER_SESSION_MOODS, BEFORE_SESSION_MOODS } from '@/constants/placeholder-data';
 
 const MOOD_IMAGE: Record<string, number> = {};
@@ -42,12 +44,11 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(i18n.language || 'en-US', { month: 'short', day: 'numeric' });
 }
 
+// Days since a study date, measured the same way the streak engine does
+// (daysBetween + todayISO), so the "at risk / lost" banner and freeze button
+// agree with the actual streak transition. See app-context daysBetween().
 function daysSince(dateISO: string): number {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const past = new Date(dateISO);
-  past.setHours(0, 0, 0, 0);
-  return Math.round((today.getTime() - past.getTime()) / 86400000);
+  return daysBetween(dateISO, todayISO());
 }
 
 export default function ProgressScreen() {
@@ -59,14 +60,47 @@ export default function ProgressScreen() {
     streak,
     moodEntries,
     subjects,
-    subjectTimeMap,
     sessionHistory,
     isPlus,
     streakFreezes,
     useStreakFreeze: applyStreakFreeze,
   } = useApp();
 
-  const recentMoods = moodEntries.slice(0, 10);
+  // Free accounts only browse the last 3 months of history; Plus sees it all.
+  // Lifetime counters (sessionsCompleted/totalMinutes/streak) stay uncapped.
+  const cutoff = historyCutoffISO(isPlus);
+  const visibleSessions = cutoff ? sessionHistory.filter((r) => r.dateISO >= cutoff) : sessionHistory;
+  const visibleMoods = cutoff ? moodEntries.filter((e) => e.timestamp >= cutoff) : moodEntries;
+  const hasOlderHistory =
+    !!cutoff &&
+    (sessionHistory.some((r) => r.dateISO < cutoff) || moodEntries.some((e) => e.timestamp < cutoff));
+
+  const recentMoods = visibleMoods.slice(0, 10);
+
+  // One mood card (before/after). Extracted so before+after rows of the same
+  // session can be grouped and joined with a connector line.
+  const renderMoodRow = (entry: (typeof recentMoods)[number]) => {
+    const dateStr = new Date(entry.timestamp).toLocaleDateString(i18n.language || 'en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+    return (
+      <ThemedView key={entry.id} type="backgroundElement" style={styles.moodRow}>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.moodType}>
+          {entry.type === 'before' ? t('progress.before') : t('progress.after')}
+        </ThemedText>
+        {MOOD_IMAGE[entry.value] && (
+          <Image source={MOOD_IMAGE[entry.value]} style={styles.moodImage} contentFit="contain" />
+        )}
+        <ThemedText type="smallBold" style={styles.moodLabel}>
+          {t(`moods.${entry.value}`, { defaultValue: entry.label })}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.moodMeta}>
+          {entry.sessionMinutes}m · {dateStr}
+        </ThemedText>
+      </ThemedView>
+    );
+  };
 
   // ── Streak status ─────────────────────────────────────────────────────────
   // Days since last study: <=1 active, 2–4 broken-but-rescuable (1–3 missed days,
@@ -81,12 +115,12 @@ export default function ProgressScreen() {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const weekStartISO = sevenDaysAgo.toISOString().split('T')[0];
-  const weekSessions = sessionHistory.filter((r) => r.dateISO >= weekStartISO);
+  const weekSessions = visibleSessions.filter((r) => r.dateISO >= weekStartISO);
   const weekMinutes = weekSessions.reduce((s, r) => s + r.minutes, 0);
   const weekDays = new Set(weekSessions.map((r) => r.dateISO)).size;
 
   // ── Mood insight ──────────────────────────────────────────────────────────
-  const afterMoods = moodEntries.filter((m) => m.type === 'after');
+  const afterMoods = visibleMoods.filter((m) => m.type === 'after');
   const POSITIVE = new Set(['proud', 'better', 'relieved']);
   const posCount = afterMoods.filter((m) => POSITIVE.has(m.value)).length;
   const moodInsightPct = afterMoods.length >= 5
@@ -94,8 +128,14 @@ export default function ProgressScreen() {
     : null;
 
   // ── Subject time breakdown ────────────────────────────────────────────────
-
-  const subjectEntries = Object.entries(subjectTimeMap).sort((a, b) => b[1] - a[1]);
+  // Recomputed from the visible (windowed) history so it stays in step with the
+  // 3-month cap — the lifetime subjectTimeMap would otherwise leak older data.
+  const subjectTotals: Record<string, number> = {};
+  for (const r of visibleSessions) {
+    const key = r.subjectName ?? 'General Study';
+    subjectTotals[key] = (subjectTotals[key] ?? 0) + r.minutes;
+  }
+  const subjectEntries = Object.entries(subjectTotals).sort((a, b) => b[1] - a[1]);
   const totalTrackedMinutes = subjectEntries.reduce((sum, [, m]) => sum + m, 0);
   const mostStudied = subjectEntries[0];
   const leastStudied = subjectEntries
@@ -105,18 +145,18 @@ export default function ProgressScreen() {
   // ── Session insights ─────────────────────────────────────────────────────
 
   const avgMinutes =
-    sessionHistory.length > 0
-      ? Math.round(sessionHistory.reduce((s, r) => s + r.minutes, 0) / sessionHistory.length)
+    visibleSessions.length > 0
+      ? Math.round(visibleSessions.reduce((s, r) => s + r.minutes, 0) / visibleSessions.length)
       : 0;
 
   const dayMap: Record<string, number> = {};
-  for (const rec of sessionHistory) {
+  for (const rec of visibleSessions) {
     dayMap[rec.dateISO] = (dayMap[rec.dateISO] ?? 0) + rec.minutes;
   }
   const bestDayEntry = Object.entries(dayMap).sort((a, b) => b[1] - a[1])[0];
 
   const mondayISO = getMondayISO();
-  const daysThisWeek = new Set(sessionHistory.filter((r) => r.dateISO >= mondayISO).map((r) => r.dateISO)).size;
+  const daysThisWeek = new Set(visibleSessions.filter((r) => r.dateISO >= mondayISO).map((r) => r.dateISO)).size;
 
   const handleSignOut = () => {
     Alert.alert(isGuest ? t('settings.leaveGuestQ') : t('settings.signOutQ'), isGuest
@@ -287,7 +327,7 @@ export default function ProgressScreen() {
           </ThemedView>
 
           {/* ── Session insights ──────────────────────────────────────────── */}
-          {sessionHistory.length > 0 && (
+          {visibleSessions.length > 0 && (
             <ThemedView style={styles.section}>
               <ThemedText type="smallBold">{t('progress.sessionInsights')}</ThemedText>
               <ThemedView style={styles.insightRow}>
@@ -401,28 +441,32 @@ export default function ProgressScreen() {
               </ThemedView>
             ) : (
               <ThemedView style={styles.moodList}>
-                {recentMoods.map((entry) => {
-                  const dateStr = new Date(entry.timestamp).toLocaleDateString(i18n.language || 'en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                  });
-                  return (
-                    <ThemedView key={entry.id} type="backgroundElement" style={styles.moodRow}>
-                      <ThemedText type="small" themeColor="textSecondary" style={styles.moodType}>
-                        {entry.type === 'before' ? t('progress.before') : t('progress.after')}
-                      </ThemedText>
-                      {MOOD_IMAGE[entry.value] && (
-                        <Image source={MOOD_IMAGE[entry.value]} style={styles.moodImage} contentFit="contain" />
-                      )}
-                      <ThemedText type="smallBold" style={styles.moodLabel}>
-                        {t(`moods.${entry.value}`, { defaultValue: entry.label })}
-                      </ThemedText>
-                      <ThemedText type="small" themeColor="textSecondary" style={styles.moodMeta}>
-                        {entry.sessionMinutes}m · {dateStr}
-                      </ThemedText>
-                    </ThemedView>
-                  );
-                })}
+                {(() => {
+                  // Group each session's after+before rows (an 'after' immediately
+                  // followed by its 'before') and join them with a connector line.
+                  const rows: ReactNode[] = [];
+                  for (let i = 0; i < recentMoods.length; i++) {
+                    const entry = recentMoods[i];
+                    const next = recentMoods[i + 1];
+                    const paired =
+                      entry.type === 'after' &&
+                      next?.type === 'before' &&
+                      next.sessionMinutes === entry.sessionMinutes;
+                    if (paired) {
+                      rows.push(
+                        <View key={entry.id} style={styles.moodPair}>
+                          {renderMoodRow(entry)}
+                          <View style={styles.moodConnector} />
+                          {renderMoodRow(next)}
+                        </View>,
+                      );
+                      i++; // consume the paired 'before'
+                    } else {
+                      rows.push(renderMoodRow(entry));
+                    }
+                  }
+                  return rows;
+                })()}
               </ThemedView>
             )}
           </ThemedView>
@@ -435,6 +479,15 @@ export default function ProgressScreen() {
                 {t('progress.moodInsightText', { pct: moodInsightPct })}
               </ThemedText>
             </ThemedView>
+          )}
+
+          {/* ── Full-history upsell — only when older data is actually hidden ── */}
+          {hasOlderHistory && (
+            <PlusGateCard
+              emoji=""
+              title={t('progress.historyCapTitle')}
+              description={t('progress.historyCapDesc', { months: FREE_HISTORY_MONTHS })}
+            />
           )}
 
         </SafeAreaView>
@@ -484,9 +537,9 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     gap: Spacing.one,
     alignItems: 'center',
-    backgroundColor: '#FFF4F6',
+    backgroundColor: BakeryColors.glass,
     borderWidth: 1.5,
-    borderColor: BakeryColors.rose,
+    borderColor: BakeryColors.shortbread,
     ...BakeryShadow,
   },
   streakFireIcon: {
@@ -558,6 +611,15 @@ const styles = StyleSheet.create({
   emptyCard: { borderRadius: BakeryRadii.card, padding: Spacing.four, alignItems: 'center', backgroundColor: BakeryColors.glass, borderWidth: 1.5, borderColor: BakeryColors.shortbread },
   emptyText: { textAlign: 'center', lineHeight: 20 },
   moodList: { gap: Spacing.two },
+  // before+after of one session, joined by a short vertical connector line.
+  moodPair: {},
+  moodConnector: {
+    width: 3,
+    height: 12,
+    marginLeft: 34,
+    borderRadius: 2,
+    backgroundColor: BakeryColors.latte,
+  },
   moodRow: {
     borderRadius: BakeryRadii.card,
     padding: Spacing.three,

@@ -9,10 +9,9 @@ import { CoinIcon } from '@/components/coin-icon';
 import { Companion } from '@/components/companion';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useApp } from '@/context/app-context';
+import { daysBetween, todayISO, useApp } from '@/context/app-context';
 import { AFTER_SESSION_MOODS, BREAK_LENGTHS, DAILY_EARN_CAP } from '@/constants/placeholder-data';
 import { getCompanionLine } from '@/constants/companion-lines';
-import { showLoadingScreen } from '@/lib/loading-signal';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
@@ -40,13 +39,11 @@ const FP = {
 
 type Stage = 'reward' | 'break';
 
-// Whole days between an ISO date (YYYY-MM-DD) and today, ignoring time of day.
+// Whole days between an ISO date (YYYY-MM-DD) and today. Uses the streak engine's
+// own basis (daysBetween + todayISO) so the rescue prompt fires exactly when
+// updateStreak treats the gap as rescuable — no timezone off-by-one.
 function daysFromToday(dateISO: string): number {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const past = new Date(dateISO);
-  past.setHours(0, 0, 0, 0);
-  return Math.round((today.getTime() - past.getTime()) / 86400000);
+  return daysBetween(dateISO, todayISO());
 }
 
 function ReceiptRow({
@@ -214,8 +211,6 @@ export default function SessionCompleteScreen() {
   };
 
   const goHome = () => {
-    // Re-show the loading screen as a transition back from studying.
-    showLoadingScreen();
     if (router.canDismiss()) {
       router.dismissAll();
       return;

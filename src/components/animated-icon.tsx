@@ -1,45 +1,37 @@
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
-import Animated, { Easing, Keyframe } from 'react-native-reanimated';
+import Animated, { Easing, FadeOut, Keyframe } from 'react-native-reanimated';
 
 const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
 const DURATION = 600;
 
+// How long the white icon screen holds before it fades away to reveal the
+// loading screen behind it.
+const HOLD_MS = 850;
+const FADE_MS = 450;
+
+// Plain white launch screen with the app icon centred. Sits above the loading
+// overlay (zIndex 1000 > 999) so it's the very first thing shown when the app
+// opens, then fades out to reveal the loading screen.
 export function AnimatedSplashOverlay() {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    const timer = setTimeout(() => setVisible(false), DURATION + 300);
+    const timer = setTimeout(() => setVisible(false), HOLD_MS);
     return () => clearTimeout(timer);
   }, []);
 
   if (!visible) return null;
 
-  const splashKeyframe = new Keyframe({
-    0: {
-      transform: [{ scale: INITIAL_SCALE_FACTOR }],
-      opacity: 1,
-    },
-    20: {
-      opacity: 1,
-    },
-    70: {
-      opacity: 0,
-      easing: Easing.elastic(0.7),
-    },
-    100: {
-      opacity: 0,
-      transform: [{ scale: 1 }],
-      easing: Easing.elastic(0.7),
-    },
-  });
-
   return (
-    <Animated.View
-      entering={splashKeyframe.duration(DURATION)}
-      style={styles.backgroundSolidColor}
-    />
+    <Animated.View exiting={FadeOut.duration(FADE_MS)} style={styles.splashRoot}>
+      <Image
+        source={require('@/assets/images/splash-icon.png')}
+        style={styles.splashIcon}
+        contentFit="contain"
+      />
+    </Animated.View>
   );
 }
 
@@ -127,5 +119,16 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     backgroundColor: '#208AEF',
     zIndex: 1000,
+  },
+  splashRoot: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  splashIcon: {
+    width: 132,
+    height: 132,
   },
 });

@@ -12,17 +12,11 @@ import { DateWheelPicker, getTodayISO } from '@/components/date-wheel-picker';
 import { TimeWheelPicker } from '@/components/time-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useApp } from '@/context/app-context';
-import type { TaskPriority, TaskStatus } from '@/context/app-context';
+import { useApp, MAX_TASKS } from '@/context/app-context';
+import type { TaskStatus } from '@/context/app-context';
 import { cancelTaskNotification, scheduleTaskNotification } from '@/lib/notifications';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, MaxContentWidth, Spacing } from '@/constants/theme';
-
-const PRIORITY_OPTIONS: { value: TaskPriority; labelKey: string; color: string }[] = [
-  { value: 'low', labelKey: 'addTask.prioLow', color: '#CDBFAC' },
-  { value: 'medium', labelKey: 'addTask.prioMedium', color: '#F2B33C' },
-  { value: 'high', labelKey: 'addTask.prioHigh', color: '#E0584A' },
-];
 
 const STATUS_OPTIONS: { value: TaskStatus; labelKey: string }[] = [
   { value: 'not_started', labelKey: 'addTask.statusNotStarted' },
@@ -49,8 +43,14 @@ export default function AddTaskScreen() {
   const [dueDateEnabled, setDueDateEnabled] = useState(existingTask?.dueDate != null || !editing);
   const [dueDate, setDueDate] = useState(existingTask?.dueDate ?? date ?? todayISO);
   const [dueTime, setDueTime] = useState(existingTask?.dueTime ?? '09:00');
-  const [priority, setPriority] = useState<TaskPriority>(existingTask?.priority ?? 'medium');
   const [status, setStatus] = useState<TaskStatus>(existingTask?.status ?? 'not_started');
+  // Weekdays (0=Sun … 6=Sat) the task repeats on. Empty = no repeat.
+  const [repeatDays, setRepeatDays] = useState<number[]>(existingTask?.repeatDays ?? []);
+  const toggleRepeatDay = (d: number) =>
+    setRepeatDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort((a, b) => a - b)));
+  // Optional end date for the repeat ("repeat until …"). Off = repeats with no end.
+  const [repeatUntilEnabled, setRepeatUntilEnabled] = useState(existingTask?.repeatUntil != null);
+  const [repeatUntil, setRepeatUntil] = useState(existingTask?.repeatUntil ?? existingTask?.dueDate ?? date ?? todayISO);
 
   // Notification reminder — fires N minutes before the task's due time (or off).
   const deriveOffset = (): number | null => {
@@ -94,6 +94,10 @@ export default function AddTaskScreen() {
     // Cancel any previously scheduled reminder for this task.
     await cancelTaskNotification(existingTask?.notifId ?? null);
 
+    // Repeats only make sense with a due date to roll forward.
+    const repeatDaysValue = dueDateEnabled && repeatDays.length ? repeatDays : undefined;
+    const repeatUntilValue = repeatDaysValue && repeatUntilEnabled ? repeatUntil.trim() || undefined : undefined;
+
     const titleVal = title.trim();
     const id = editing ? taskId! : addTask({
       title: titleVal,
@@ -101,16 +105,24 @@ export default function AddTaskScreen() {
       dueDate: dueDateValue,
       dueTime: dueTimeValue,
       estimatedMinutes: existingTask?.estimatedMinutes ?? null,
-      priority,
+      priority: existingTask?.priority ?? 'medium',
       status,
       notifyAt,
+      repeatDays: repeatDaysValue,
+      repeatUntil: repeatUntilValue,
     });
+
+    // addTask returns '' when the task cap is reached.
+    if (!editing && !id) {
+      Alert.alert(t('addTask.limitReached'), t('addTask.limitMsg', { count: MAX_TASKS }));
+      return;
+    }
 
     // Schedule the new reminder (if any) and persist its id.
     const notifId = notifyAt ? await scheduleTaskNotification({ id, title: titleVal, notifyAt }) : null;
 
     if (editing) {
-      updateTask(taskId!, { title: titleVal, subjectId, dueDate: dueDateValue, dueTime: dueTimeValue, priority, status, notifyAt, notifId });
+      updateTask(taskId!, { title: titleVal, subjectId, dueDate: dueDateValue, dueTime: dueTimeValue, status, notifyAt, notifId, repeatDays: repeatDaysValue, repeatUntil: repeatUntilValue });
     } else if (notifId) {
       updateTask(id, { notifId });
     }
@@ -142,6 +154,7 @@ export default function AddTaskScreen() {
               placeholderTextColor={isDark ? '#666' : '#AAA'}
               value={title}
               onChangeText={setTitle}
+              maxLength={80}
               autoFocus={!editing}
               returnKeyType="next"
             />
@@ -184,28 +197,6 @@ export default function AddTaskScreen() {
                   </ThemedText>
                 </ThemedView>
               </Pressable>
-            </ThemedView>
-          </ThemedView>
-
-          {/* Priority */}
-          <ThemedView style={styles.fieldGroup}>
-            <ThemedText type="smallBold" style={styles.label}>
-              {t('addTask.priority')}
-            </ThemedText>
-            <ThemedView style={styles.chipRow}>
-              {PRIORITY_OPTIONS.map((opt) => (
-                <Pressable
-                  key={opt.value}
-                  onPress={() => setPriority(opt.value)}
-                  style={({ pressed }) => [pressed && styles.pressed]}>
-                  <ThemedView
-                    type={priority === opt.value ? 'backgroundSelected' : 'backgroundElement'}
-                    style={styles.chip}>
-                    <View style={[styles.priorityDot, { backgroundColor: opt.color }]} />
-                    <ThemedText type="small">{t(opt.labelKey)}</ThemedText>
-                  </ThemedView>
-                </Pressable>
-              ))}
             </ThemedView>
           </ThemedView>
 
@@ -270,6 +261,47 @@ export default function AddTaskScreen() {
               </ThemedView>
             )}
           </ThemedView>
+
+          {/* Repeat — choose which weekdays the task repeats on (needs a due date) */}
+          {dueDateEnabled && (
+            <ThemedView style={styles.fieldGroup}>
+              <ThemedText type="smallBold" style={styles.label}>
+                {t('addTask.repeatOn')}
+              </ThemedText>
+              <View style={styles.weekdayRow}>
+                {[0, 1, 2, 3, 4, 5, 6].map((d) => {
+                  const on = repeatDays.includes(d);
+                  return (
+                    <Pressable key={d} onPress={() => toggleRepeatDay(d)} style={({ pressed }) => [pressed && styles.pressed]}>
+                      <ThemedView type={on ? 'backgroundSelected' : 'backgroundElement'} style={styles.weekdayChip}>
+                        <ThemedText type="smallBold">{t(`calendar.wd_${d}`)}</ThemedText>
+                      </ThemedView>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {repeatDays.length > 0 && (
+                <>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {t('addTask.repeatHint')}
+                  </ThemedText>
+                  <ThemedView style={styles.chipRow}>
+                    <Pressable onPress={() => setRepeatUntilEnabled(false)} style={({ pressed }) => [pressed && styles.pressed]}>
+                      <ThemedView type={!repeatUntilEnabled ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
+                        <ThemedText type="small">{t('addTask.repeatNoEnd')}</ThemedText>
+                      </ThemedView>
+                    </Pressable>
+                    <Pressable onPress={() => setRepeatUntilEnabled(true)} style={({ pressed }) => [pressed && styles.pressed]}>
+                      <ThemedView type={repeatUntilEnabled ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
+                        <ThemedText type="small">{t('addTask.repeatUntil')}</ThemedText>
+                      </ThemedView>
+                    </Pressable>
+                  </ThemedView>
+                  {repeatUntilEnabled && <DateWheelPicker value={repeatUntil} onChange={setRepeatUntil} />}
+                </>
+              )}
+            </ThemedView>
+          )}
 
           {/* Reminder notification — N minutes before the due time */}
           <ThemedView style={styles.fieldGroup}>
@@ -337,6 +369,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  weekdayRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  weekdayChip: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -351,7 +391,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
   },
   chipEmoji: { fontSize: 14, lineHeight: 18 },
-  priorityDot: { width: 10, height: 10, borderRadius: 5 },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   timeInput: { flex: 1 },
   subjectDot: { width: 10, height: 10, borderRadius: 5 },

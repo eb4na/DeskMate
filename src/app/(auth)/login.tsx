@@ -4,18 +4,26 @@ import {
   Image as RNImage,
   Keyboard,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   TextInput,
-  useColorScheme,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { BakeryColors, BakeryRadii, BakeryShadow, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import {
+  ChevronDownIcon,
+  EyeIcon,
+  EyeOffIcon,
+  GoogleGIcon,
+  LockIcon,
+  MailIcon,
+} from '@/components/auth-icons';
+import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
 import { supabase } from '@/lib/supabase';
@@ -23,35 +31,38 @@ import { signInWithProvider } from '@/lib/oauth';
 import { LANGUAGES, type SupportedLanguage, useTranslation } from '@/i18n';
 
 const LOGIN_BG = require('@/assets/images/auth/login-bg.png');
+const LOGIN_CAT = require('@/assets/images/auth/login-cat.png');
+const LOGO = require('@/assets/images/auth/memobun-sign.png');
+
+// Same flag art the Settings language picker uses. Codes without a PNG fall
+// back to the emoji in LANGUAGES.
+const FLAGS: Partial<Record<SupportedLanguage, number>> = {
+  en: require('@/assets/images/flags/en.png'),
+  ja: require('@/assets/images/flags/ja.png'),
+};
 
 export default function LoginScreen() {
   const { email: emailParam, notice } = useLocalSearchParams<{ email?: string; notice?: string }>();
-  const { continueAsGuest, kickedReason, clearKickedReason } = useAuth();
+  const { kickedReason, clearKickedReason } = useAuth();
   const { t } = useTranslation();
   const { language, setLanguage, markLanguageSelected } = useApp();
+
+  const [email, setEmail] = useState(typeof emailParam === 'string' ? emailParam : '');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const noticeMessage = typeof notice === 'string' ? notice : '';
+
+  const activeLang = LANGUAGES.find((l) => l.code === language) ?? LANGUAGES[0];
 
   // Choosing a language here applies it live and counts as the user's choice, so
   // the first-launch language prompt won't appear again after sign-in.
   const handlePickLanguage = (code: SupportedLanguage) => {
     setLanguage(code);
     markLanguageSelected();
-  };
-  const [email, setEmail] = useState(typeof emailParam === 'string' ? emailParam : '');
-  const [password, setPassword] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
-  const noticeMessage = typeof notice === 'string' ? notice : '';
-
-  const inputStyle = {
-    borderWidth: 1.5,
-    borderColor: colors.backgroundSelected,
-    borderRadius: 12,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    color: colors.text,
-    fontSize: 16,
+    setLangMenuOpen(false);
   };
 
   const handleLogin = async () => {
@@ -115,262 +126,338 @@ export default function LoginScreen() {
     setSubmitting(false);
   };
 
-  const handleGuest = () => {
-    Keyboard.dismiss();
-    clearKickedReason();
-    continueAsGuest();
-    router.replace('/');
-  };
-
   return (
-    <ThemedView style={[styles.container, styles.screenBackground]}>
-      <RNImage source={LOGIN_BG} style={styles.bg} resizeMode="cover" />
+    <View style={styles.container}>
+      <RNImage source={LOGIN_BG} style={styles.bg} resizeMode="stretch" />
+      <View style={styles.catWrap} pointerEvents="none">
+        <RNImage source={LOGIN_CAT} style={styles.cat} resizeMode="contain" />
+      </View>
+      {/* Hanging Memobun sign — pinned to the very top so the strings meet the
+          screen edge; the form below is padded down to clear it. */}
+      <View style={styles.signHang} pointerEvents="none">
+        <RNImage source={LOGO} style={styles.signHangImg} resizeMode="contain" />
+      </View>
       <KeyboardAvoidingView
-        style={styles.container}
+        style={styles.flexFill}
         behavior={Platform.select({ ios: 'padding', android: undefined })}>
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
-          <SafeAreaView style={styles.safeArea}>
-            <ThemedView style={styles.hero}>
-              <ThemedText style={styles.heroEmoji}></ThemedText>
-              <ThemedText type="subtitle" style={styles.title}>
-                {t('auth.welcomeBack')}
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary" style={styles.subtitle}>
-                {t('auth.tagline')} {t('auth.guestNote')}
-              </ThemedText>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+          {/* Language dropdown — pinned top-right, independent of the centered form */}
+          <View style={styles.langBar}>
+            <Pressable
+              style={({ pressed }) => [styles.langPill, pressed && styles.pressed]}
+              onPress={() => setLangMenuOpen(true)}>
+              {FLAGS[activeLang.code] ? (
+                <RNImage source={FLAGS[activeLang.code]!} style={styles.langPillFlagImg} resizeMode="contain" />
+              ) : (
+                <Text style={styles.langPillFlag}>{activeLang.flag}</Text>
+              )}
+              <Text style={styles.langPillText}>{activeLang.native}</Text>
+              <ChevronDownIcon color={BakeryColors.mocha} size={15} />
+            </Pressable>
+          </View>
 
-              <ThemedView style={styles.langRow}>
-                {LANGUAGES.map((lang) => {
-                  const isActive = language === lang.code;
-                  return (
-                    <Pressable
-                      key={lang.code}
-                      onPress={() => handlePickLanguage(lang.code)}
-                      style={[styles.langChip, isActive && styles.langChipActive]}>
-                      <ThemedText style={styles.langChipFlag}>{lang.flag}</ThemedText>
-                      <ThemedText
-                        type="smallBold"
-                        style={[styles.langChipText, isActive && styles.langChipTextActive]}>
-                        {lang.native}
-                      </ThemedText>
-                    </Pressable>
-                  );
-                })}
-              </ThemedView>
-            </ThemedView>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}>
+            <View style={styles.inner}>
+              {/* Email */}
+              <View style={styles.inputRow}>
+                <MailIcon color={BakeryColors.jam} />
+                <TextInput
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  textContentType="emailAddress"
+                  placeholder={t('auth.emailAddress')}
+                  placeholderTextColor={BakeryColors.jam}
+                  returnKeyType="next"
+                />
+              </View>
 
-            <ThemedView type="backgroundElement" style={styles.card}>
-              <ThemedText type="smallBold">{t('auth.email')}</ThemedText>
-              <TextInput
-                style={inputStyle}
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                textContentType="emailAddress"
-                placeholder={t('auth.emailPlaceholder')}
-                placeholderTextColor={colors.textSecondary}
-                returnKeyType="next"
-              />
+              {/* Password */}
+              <View style={styles.inputRow}>
+                <LockIcon color={BakeryColors.jam} />
+                <TextInput
+                  style={styles.input}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  textContentType="password"
+                  placeholder={t('auth.password')}
+                  placeholderTextColor={BakeryColors.jam}
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
+                />
+                <Pressable
+                  hitSlop={8}
+                  onPress={() => setShowPassword((s) => !s)}
+                  style={({ pressed }) => pressed && styles.pressed}>
+                  {showPassword ? (
+                    <EyeOffIcon color={BakeryColors.jam} />
+                  ) : (
+                    <EyeIcon color={BakeryColors.jam} />
+                  )}
+                </Pressable>
+              </View>
 
-              <ThemedText type="smallBold">{t('auth.password')}</ThemedText>
-              <TextInput
-                style={inputStyle}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                textContentType="password"
-                placeholder={t('auth.passwordPlaceholder')}
-                placeholderTextColor={colors.textSecondary}
-                returnKeyType="done"
-                onSubmitEditing={handleLogin}
-              />
-
-              {!errorMessage && kickedReason ? (
-                <ThemedText type="small" style={styles.errorText}>
-                  {t('auth.signedOutOtherDevice')}
-                </ThemedText>
-              ) : null}
-
-              {errorMessage ? (
-                <ThemedText type="small" style={styles.errorText}>
-                  {errorMessage}
-                </ThemedText>
-              ) : null}
-
-              {!errorMessage && noticeMessage ? (
-                <ThemedText type="small" style={styles.noticeText}>
-                  {noticeMessage}
-                </ThemedText>
-              ) : null}
-
+              {/* Forgot password */}
               <Pressable
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  (pressed || submitting) && styles.pressed,
-                ]}
-                onPress={handleLogin}
-                disabled={submitting}>
-                <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                  {submitting ? t('auth.signingIn') : t('auth.signIn')}
-                </ThemedText>
+                style={styles.forgotRow}
+                onPress={() => router.push('/forgot-password')}>
+                <Text style={styles.forgotText}>{t('auth.forgotPassword')}</Text>
               </Pressable>
 
-              <ThemedView style={styles.orRow}>
-                <ThemedView style={styles.orLine} />
-                <ThemedText type="small" themeColor="textSecondary" style={styles.orText}>{t('auth.or')}</ThemedText>
-                <ThemedView style={styles.orLine} />
-              </ThemedView>
+              {/* Messages */}
+              {!errorMessage && kickedReason ? (
+                <Text style={styles.errorText}>{t('auth.signedOutOtherDevice')}</Text>
+              ) : null}
+              {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+              {!errorMessage && noticeMessage ? (
+                <Text style={styles.noticeText}>{noticeMessage}</Text>
+              ) : null}
 
+              {/* Log In */}
+              <Pressable
+                style={({ pressed }) => [styles.primaryButton, (pressed || submitting) && styles.pressed]}
+                onPress={handleLogin}
+                disabled={submitting}>
+                <Text style={styles.primaryButtonText}>
+                  {submitting ? t('auth.signingIn') : t('auth.logIn')}
+                </Text>
+              </Pressable>
+
+              {/* Continue with Google */}
               <Pressable
                 style={({ pressed }) => [styles.oauthButton, (pressed || submitting) && styles.pressed]}
                 onPress={() => handleSocial(() => signInWithProvider('google'))}
                 disabled={submitting}>
-                <ThemedText type="smallBold" style={styles.oauthText}>
-                  {t('auth.continueWithGoogle')}
-                </ThemedText>
+                <GoogleGIcon size={20} />
+                <Text style={styles.oauthText}>{t('auth.continueWithGoogle')}</Text>
               </Pressable>
 
-
+              {/* Create account footer */}
               <Pressable
-                style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
-                onPress={handleGuest}>
-                <ThemedText type="smallBold" style={styles.secondaryButtonText}>
-                  {t('auth.continueAsGuest')}
-                </ThemedText>
+                style={({ pressed }) => [styles.footerPill, pressed && styles.pressed]}
+                onPress={() => router.push('/signup')}>
+                <Text style={styles.footerText}>{t('auth.dontHaveAccount')} </Text>
+                <Text style={styles.footerLink}>{t('auth.createAccount')}</Text>
+                <ChevronDownIcon color={BakeryColors.berry} size={14} />
               </Pressable>
 
-              <ThemedText type="small" themeColor="textSecondary" style={styles.guestNote}>
-                {t('auth.guestModeNote')}
-              </ThemedText>
-
-              <ThemedView style={styles.supportLinks}>
-                <Pressable onPress={() => router.push('/forgot-password')}>
-                  <ThemedText type="smallBold" style={styles.linkText}>
-                    {t('auth.forgotPassword')}
-                  </ThemedText>
-                </Pressable>
-                <Pressable onPress={() => router.push('/resend-confirmation')}>
-                  <ThemedText type="smallBold" style={styles.linkText}>
-                    {t('auth.resendVerification')}
-                  </ThemedText>
-                </Pressable>
-              </ThemedView>
-            </ThemedView>
-
-            <Pressable onPress={() => router.push('/signup')} style={styles.linkRow}>
-              <ThemedText type="small" themeColor="textSecondary">
-                {t('auth.needAccount')}
-              </ThemedText>
-              <ThemedText type="smallBold" style={styles.linkText}>
-                {t('auth.createOne')}
-              </ThemedText>
-            </Pressable>
-          </SafeAreaView>
-        </ScrollView>
+              {/* Resend verification (subtle) */}
+              <Pressable
+                hitSlop={8}
+                style={styles.resendRow}
+                onPress={() => router.push('/resend-confirmation')}>
+                <Text style={styles.resendText}>{t('auth.resendVerification')}</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
       </KeyboardAvoidingView>
-    </ThemedView>
+
+      {/* Language picker modal */}
+      <Modal
+        visible={langMenuOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLangMenuOpen(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setLangMenuOpen(false)}>
+          <View style={styles.langMenu}>
+            {LANGUAGES.map((lang) => {
+              const isActive = lang.code === language;
+              return (
+                <Pressable
+                  key={lang.code}
+                  style={({ pressed }) => [
+                    styles.langMenuItem,
+                    isActive && styles.langMenuItemActive,
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => handlePickLanguage(lang.code)}>
+                  {FLAGS[lang.code] ? (
+                    <RNImage source={FLAGS[lang.code]!} style={styles.langMenuFlagImg} resizeMode="contain" />
+                  ) : (
+                    <Text style={styles.langMenuFlag}>{lang.flag}</Text>
+                  )}
+                  <Text style={[styles.langMenuText, isActive && styles.langMenuTextActive]}>
+                    {lang.native}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Pressable>
+      </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  screenBackground: { backgroundColor: BakeryColors.frosting },
+  container: { flex: 1, backgroundColor: BakeryColors.frosting },
+  // Above the hanging sign (zIndex 2) so the language pill stays tappable/visible;
+  // the form's top region is transparent, so the sign still shows through.
+  flexFill: { flex: 1, zIndex: 3 },
   bg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
-  scrollContent: { flexGrow: 1 },
-  safeArea: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: Spacing.four,
-    gap: Spacing.four,
-    maxWidth: MaxContentWidth,
+  catWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center' },
+  cat: { width: 150, height: 150 },
+  safeArea: { flex: 1 },
+  scrollContent: { flexGrow: 1, justifyContent: 'flex-start', paddingTop: 185 },
+  inner: {
     width: '100%',
+    maxWidth: MaxContentWidth,
     alignSelf: 'center',
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.four,
+    gap: Spacing.two,
   },
-  hero: { gap: Spacing.two, backgroundColor: 'transparent' },
-  langRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: Spacing.one,
-    backgroundColor: 'transparent',
-    marginTop: Spacing.one,
-  },
-  langChip: {
+  signHang: { position: 'absolute', top: 0, left: 0, right: 0, height: 360, alignItems: 'center', zIndex: 2 },
+  signHangImg: { width: '100%', height: '100%' },
+
+  // Language pill — pinned to the top-right corner
+  langBar: { alignItems: 'flex-end', paddingHorizontal: Spacing.four, paddingTop: Spacing.one },
+  langPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 6,
-    borderRadius: BakeryRadii.chip,
+    gap: 6,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 8,
+    borderRadius: BakeryRadii.pill,
+    backgroundColor: BakeryColors.glass,
     borderWidth: 1.5,
     borderColor: BakeryColors.border,
-    backgroundColor: BakeryColors.glass,
-  },
-  langChipActive: {
-    borderColor: BakeryColors.honey,
-    backgroundColor: BakeryColors.cream,
-  },
-  langChipFlag: { fontSize: 14 },
-  langChipText: { fontSize: 12, color: BakeryColors.mocha },
-  langChipTextActive: { color: BakeryColors.cocoaDark },
-  heroEmoji: { textAlign: 'center', fontSize: 48, lineHeight: 56 },
-  title: { textAlign: 'center' },
-  subtitle: { textAlign: 'center', lineHeight: 20 },
-  card: {
-    borderRadius: BakeryRadii.panel,
-    padding: Spacing.four,
-    gap: Spacing.two,
-    borderWidth: 1.5,
-    borderColor: BakeryColors.border,
-    backgroundColor: BakeryColors.glass,
     ...BakeryShadow,
   },
+  langPillFlag: { fontSize: 15 },
+  langPillFlagImg: { width: 20, height: 14, borderRadius: 3 },
+  langPillText: { fontSize: 13, fontWeight: '700', color: BakeryColors.cocoaDark },
+
+  // Welcome banner
+  welcomeCard: {
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    borderRadius: BakeryRadii.panel,
+    backgroundColor: BakeryColors.glass,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.border,
+    ...BakeryShadow,
+  },
+  welcomeTitleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  heart: { fontSize: 13, color: BakeryColors.jam },
+  welcomeTitle: { fontSize: 19, fontWeight: '800', color: BakeryColors.cocoaDark },
+  taglinePill: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 6,
+    borderRadius: BakeryRadii.pill,
+    backgroundColor: BakeryColors.shortbread,
+  },
+  taglineText: { fontSize: 11, fontWeight: '600', color: BakeryColors.cocoa, textAlign: 'center' },
+
+  // Inputs
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    height: 54,
+    borderRadius: BakeryRadii.pill,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: BakeryColors.rose,
+    ...BakeryShadow,
+  },
+  input: { flex: 1, fontSize: 15, color: BakeryColors.cocoaDark, paddingVertical: 0 },
+
+  forgotRow: { alignSelf: 'flex-end', paddingVertical: 2 },
+  forgotText: { fontSize: 12.5, fontWeight: '700', color: BakeryColors.mocha },
+
+  // Buttons
   primaryButton: {
     marginTop: Spacing.one,
-    backgroundColor: BakeryColors.honey,
-    borderRadius: BakeryRadii.button,
-    paddingVertical: Spacing.three,
+    height: 54,
+    borderRadius: BakeryRadii.pill,
+    backgroundColor: BakeryColors.jam,
     alignItems: 'center',
-  },
-  primaryButtonText: { color: BakeryColors.cocoaDark },
-  secondaryButton: {
-    borderRadius: BakeryRadii.button,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: BakeryColors.border,
-    backgroundColor: BakeryColors.cream,
-  },
-  secondaryButtonText: { color: BakeryColors.cocoa },
-  guestNote: { textAlign: 'center', lineHeight: 20 },
-  orRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, backgroundColor: 'transparent', marginVertical: 2 },
-  orLine: { flex: 1, height: 1, backgroundColor: BakeryColors.border },
-  orText: { paddingHorizontal: 2 },
-  oauthButton: {
-    borderRadius: BakeryRadii.button,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: BakeryColors.border,
-    backgroundColor: '#FFFFFF',
-  },
-  oauthText: { color: BakeryColors.cocoaDark },
-  supportLinks: {
-    marginTop: Spacing.one,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-  },
-  linkRow: {
-    flexDirection: 'row',
     justifyContent: 'center',
+    ...BakeryShadow,
+  },
+  primaryButtonText: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
+  oauthButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    height: 54,
+    borderRadius: BakeryRadii.pill,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: BakeryColors.border,
+    ...BakeryShadow,
+  },
+  oauthText: { fontSize: 15, fontWeight: '700', color: BakeryColors.cocoaDark },
+
+  // Footer
+  footerPill: {
+    marginTop: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
+    borderRadius: BakeryRadii.pill,
+    backgroundColor: BakeryColors.glass,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.border,
+    ...BakeryShadow,
+  },
+  footerText: { fontSize: 13, color: BakeryColors.cocoa },
+  footerLink: { fontSize: 13, fontWeight: '800', color: BakeryColors.berry },
+
+  resendRow: { alignSelf: 'center', marginTop: Spacing.two, paddingVertical: 4 },
+  resendText: { fontSize: 12, color: BakeryColors.mocha, opacity: 0.75 },
+
+  // Messages
+  errorText: { color: BakeryColors.danger, fontSize: 13, lineHeight: 18, textAlign: 'center' },
+  noticeText: { color: BakeryColors.success, fontSize: 13, lineHeight: 18, textAlign: 'center' },
+
+  // Language modal
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(78, 53, 40, 0.28)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: Platform.select({ ios: 96, android: 64 }),
+    paddingHorizontal: Spacing.four,
+  },
+  langMenu: {
+    minWidth: 180,
+    borderRadius: BakeryRadii.card,
+    backgroundColor: BakeryColors.frosting,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.border,
+    padding: Spacing.one,
+    gap: 2,
+    ...BakeryShadow,
+  },
+  langMenuItem: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderRadius: BakeryRadii.chip,
   },
-  linkText: { color: BakeryColors.mocha },
-  errorText: { color: BakeryColors.danger, lineHeight: 20 },
-  noticeText: { color: BakeryColors.success, lineHeight: 20 },
+  langMenuItemActive: { backgroundColor: BakeryColors.cream },
+  langMenuFlag: { fontSize: 16 },
+  langMenuFlagImg: { width: 24, height: 17, borderRadius: 3 },
+  langMenuText: { fontSize: 14, fontWeight: '600', color: BakeryColors.cocoa },
+  langMenuTextActive: { color: BakeryColors.cocoaDark, fontWeight: '800' },
+
   pressed: { opacity: 0.85 },
 });

@@ -10,9 +10,8 @@ import { SubjectPickerModal } from '@/components/subject-picker-modal';
 import { FOOD_ITEMS } from '@/app/food-gallery';
 import { ThemedText } from '@/components/themed-text';
 import { useApp } from '@/context/app-context';
-import { autoBreakMinutes, coinsForMinutes } from '@/constants/placeholder-data';
+import { autoBreakMinutes, coinsForMinutes, SESSION_LENGTHS } from '@/constants/placeholder-data';
 import { SoundPickerModal } from '@/components/sound-picker-modal';
-import { showLoadingScreen } from '@/lib/loading-signal';
 import { getCompanionImage, isHanjiActiveId, resolveActiveCompanion } from '@/lib/companion-utils';
 import { HanjiFigure } from '@/components/hanji-figure';
 import { useStudyRoom, type StudyStatus } from '@/lib/use-study-room';
@@ -40,6 +39,36 @@ const DOT_COLOR: Record<StudyStatus, string> = {
   break: '#F0B44A',
   idle: BakeryColors.latte,
 };
+
+// Per-character placement for the desk book (dx = fraction of the 300px canvas,
+// negative = left). The book sits centered on the character's column, then shifts
+// by dx so it lands under that character's FACE — needed because each studying art
+// isn't perfectly face-centered in its canvas (hats/paws/tails pull the art off the
+// face). dx = a systematic book-placement bias (~-0.024, common to all) + the
+// character's measured face center. These values are MEASURED, not eyeballed —
+// regenerate with `python3 scripts/measure-book-offsets.py` and paste the output
+// (re-run when art changes or a companion is added).
+const SOLO_BOOK_CANVAS = 300; // characterSolo width/height
+const SOLO_BOOK_OFFSET: Record<string, { dx: number; dy: number }> = {
+  bun: { dx: -0.035, dy: 0 },
+  companion_cocoa: { dx: -0.032, dy: 0 },
+  companion_tira: { dx: -0.026, dy: 0 },
+  companion_honey: { dx: -0.026, dy: 0 },
+  companion_bunny: { dx: -0.032, dy: 0 },
+  hanji: { dx: -0.018, dy: 0 },
+};
+const DEFAULT_SOLO_BOOK_OFFSET = { dx: -0.026, dy: 0 };
+
+// Resolve any companion id to its SOLO_BOOK_OFFSET key so the book can sit under
+// that character's face in multiplayer too (shop ids keep their bare name).
+function bookOffsetFor(companionId: string | null | undefined): { dx: number; dy: number } {
+  const key = isHanjiActiveId(companionId ?? '')
+    ? 'hanji'
+    : companionId?.startsWith('shop:')
+      ? companionId.slice(5)
+      : 'bun';
+  return SOLO_BOOK_OFFSET[key] ?? DEFAULT_SOLO_BOOK_OFFSET;
+}
 
 /**
  * The "studying together" screen shown while a session runs. Works solo (one
@@ -116,6 +145,18 @@ export function StudyRoomView({
   const me = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
   // Use the companion's original art (not a reading pose) while studying.
   const bigCharacter = me.imageSource ?? BUN_STUDYING;
+
+  // Where the desk book sits in front of THIS character (see SOLO_BOOK_OFFSET).
+  // Hanji renders as a layered figure, so key it explicitly; shop companions key
+  // by item id ('companion_cocoa', …); the starter is Bun; custom slots default.
+  const soloBookKey = isHanjiActiveId(activeCompanionId)
+    ? 'hanji'
+    : me.type === 'shop'
+      ? me.id
+      : me.type === 'starter'
+        ? 'bun'
+        : 'custom';
+  const soloBookOffset = SOLO_BOOK_OFFSET[soloBookKey] ?? DEFAULT_SOLO_BOOK_OFFSET;
 
   // Equipped solo character: a gentle, slow bounce with a tiny squash-and-stretch
   // (same idle motion as the home screen). 0 = resting/lowest, 1 = apex.
@@ -237,11 +278,32 @@ export function StudyRoomView({
     }
   };
 
-  // Multiplayer finish (no cake): credit coins once, then offer continue/break/exit.
+  // Multiplayer finish (no cake): credit coins once, then offer study-again/break/exit.
   const [finishPickerOpen, setFinishPickerOpen] = useState(false);
   const [coinsEarned, setCoinsEarned] = useState(0);
   const creditedRef = useRef<string | null>(null);
   const mpFinished = !!activeSession?.isMultiplayer && secondsLeft <= 0;
+  // Post-finish unlimited break: a resting state with a Continue button (no timer,
+  // no limit). Separate from `onBreak` (the in-session soft break) on purpose.
+  const [finishBreak, setFinishBreak] = useState(false);
+  // "Study again" lets the player pick a fresh duration + subject; the chosen
+  // duration waits here between the time picker and the subject picker.
+  const [durationPickerOpen, setDurationPickerOpen] = useState(false);
+  const [restartDuration, setRestartDuration] = useState<number | null>(null);
+
+  const startFinishBreak = () => {
+    setFinishBreak(true);
+    if (room.active) room.setStatus('break');
+  };
+  const endFinishBreak = () => {
+    setFinishBreak(false);
+    if (room.active) room.setStatus('idle');
+  };
+  const pickRestartDuration = (minutes: number) => {
+    setRestartDuration(minutes);
+    setDurationPickerOpen(false);
+    setFinishPickerOpen(true);
+  };
 
   useEffect(() => {
     if (mpFinished && activeSession && creditedRef.current !== activeSession.id) {
@@ -258,7 +320,7 @@ export function StudyRoomView({
   const restartWithSubject = (subjectName: string | null) => {
     if (!activeSession) return;
     startActiveSession({
-      durationMinutes: activeSession.durationMinutes,
+      durationMinutes: restartDuration ?? activeSession.durationMinutes,
       subjectName,
       taskId: null,
       taskTitle: null,
@@ -266,14 +328,15 @@ export function StudyRoomView({
       isMultiplayer: true,
     });
     setFinishPickerOpen(false);
+    setRestartDuration(null);
     setMpSubjectPicked(true);
     setOnBreak(false);
+    setFinishBreak(false);
   };
 
   const handleFinishExit = () => {
     room.leaveRoom();
     clearActiveSession();
-    showLoadingScreen();
   };
 
   return (
@@ -401,34 +464,52 @@ export function StudyRoomView({
       <Image source={equippedDeskImage} style={[styles.studyDesk, deskRoom?.deskTint ? { backgroundColor: deskRoom.deskTint } : null]} contentFit={deskRoom?.deskFit ?? 'cover'} pointerEvents="none" />
       <View style={styles.deskEdge} pointerEvents="none" />
       {soloScene ? (
-        <View style={styles.bookOnDesk} pointerEvents="none">
+        <View
+          style={[
+            styles.bookOnDesk,
+            { transform: [{ translateX: SOLO_BOOK_CANVAS * soloBookOffset.dx }, { translateY: SOLO_BOOK_CANVAS * soloBookOffset.dy }] },
+          ]}
+          pointerEvents="none">
           <StudyBook active={!onBreak} size={118} />
         </View>
       ) : (
-        // One book per character, on the desk. The character art sits a touch
-        // left-of-center in its canvas, so nudge the books left to match (scales
-        // with character size).
-        <View style={[styles.partyBookRow, { transform: [{ translateX: -partyCharSize * 0.05 }] }]} pointerEvents="none">
-          {participants.slice(0, 4).map((p) => (
-            <View key={p.code} style={[styles.partyBookSlot, { width: partyCharSize }]}>
-              <StudyBook active={participantStatus(p.code) !== 'break'} size={partyBookSize} />
-            </View>
-          ))}
+        // One book per character. Book and character share identical columns (same
+        // row layout + partyCharSize slots); each book then gets ITS character's
+        // face offset (same measured values as solo, scaled to partyCharSize) so it
+        // sits under that character's face — book + character move as one object.
+        <View style={styles.partyBookRow} pointerEvents="none">
+          {participants.slice(0, 4).map((p) => {
+            const off = bookOffsetFor(p.code === friendCode ? activeCompanionId : p.companionId);
+            return (
+              <View
+                key={p.code}
+                style={[
+                  styles.partyBookSlot,
+                  { width: partyCharSize, transform: [{ translateX: partyCharSize * off.dx }, { translateY: partyCharSize * off.dy }] },
+                ]}>
+                <StudyBook active={participantStatus(p.code) !== 'break'} size={partyBookSize} />
+              </View>
+            );
+          })}
         </View>
       )}
 
       {/* Controls */}
       <View style={styles.controls}>
-        {/* Game button with the radio (sound picker) stacked directly above it. */}
+        {/* Game button with the radio (sound picker) stacked directly above it.
+            The game slot keeps its space even while studying (button hidden) so the
+            radio is already in its final spot and doesn't jump up when break starts. */}
         <View style={styles.gameCol}>
           <Pressable onPress={() => setSoundOpen(true)} style={({ pressed }) => [styles.radioBtn, pressed && styles.pressed]} hitSlop={8}>
             <Image source={STUDY_RADIO} style={styles.radioImg} contentFit="contain" />
           </Pressable>
-          {onBreak && (
-            <Pressable onPress={onBreakGame} style={({ pressed }) => [styles.gameBtnWrap, pressed && styles.pressed]} hitSlop={6}>
-              <Image source={GAME_BTN} style={styles.gameBtn} contentFit="contain" />
-            </Pressable>
-          )}
+          <Pressable
+            onPress={onBreakGame}
+            disabled={!onBreak}
+            style={({ pressed }) => [styles.gameBtnWrap, pressed && onBreak && styles.pressed]}
+            hitSlop={6}>
+            {onBreak && <Image source={GAME_BTN} style={styles.gameBtn} contentFit="contain" />}
+          </Pressable>
         </View>
         {showBreakButton && (
           <Pressable
@@ -452,8 +533,20 @@ export function StudyRoomView({
         onClose={() => pickStartSubject(null)}
       />
 
-      {/* Multiplayer finish menu (no cake) */}
-      {mpFinished && (
+      {/* Multiplayer finish — either the unlimited break (Continue, no limit) or
+          the finish menu. Both sit on the same full-screen layer so the live
+          session controls underneath stay covered. */}
+      {mpFinished && (finishBreak ? (
+        // Lighter backdrop so the resting characters/desk show through behind the card.
+        <View style={styles.finishOverlayLight}>
+          <View style={styles.finishCard}>
+            <Text style={styles.finishTitle}>{t('studyRoom.onBreakBadge')}</Text>
+            <Pressable onPress={endFinishBreak} style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
+              <Text style={styles.finishBtnText}>{t('sessionComplete.continue')}</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : (
         <View style={styles.finishOverlay}>
           <View style={styles.finishCard}>
             <Text style={styles.finishTitle}>{t('studyRoom.sessionComplete')}</Text>
@@ -461,10 +554,10 @@ export function StudyRoomView({
               <CoinIcon size={24} />
               <Text style={styles.coinText}>+{coinsEarned}</Text>
             </View>
-            <Pressable onPress={() => setFinishPickerOpen(true)} style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
-              <Text style={styles.finishBtnText}>{t('studyRoom.differentSubject')}</Text>
+            <Pressable onPress={() => setDurationPickerOpen(true)} style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
+              <Text style={styles.finishBtnText}>{t('studyRoom.studyAgain')}</Text>
             </Pressable>
-            <Pressable onPress={() => router.push('/study-desk')} style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
+            <Pressable onPress={startFinishBreak} style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
               <Text style={styles.finishBtnText}>{t('studyRoom.takeBreak')}</Text>
             </Pressable>
             <Pressable onPress={handleFinishExit} style={({ pressed }) => [styles.finishBtnGhost, pressed && styles.pressed]}>
@@ -472,7 +565,27 @@ export function StudyRoomView({
             </Pressable>
           </View>
         </View>
+      ))}
+
+      {/* Study-again step 1: pick a fresh session length. */}
+      {durationPickerOpen && (
+        <View style={styles.finishOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setDurationPickerOpen(false)} />
+          <View style={styles.finishCard}>
+            <Text style={styles.finishTitle}>{t('studyRoom.howLong')}</Text>
+            {SESSION_LENGTHS.map((opt) => (
+              <Pressable
+                key={opt.minutes}
+                onPress={() => pickRestartDuration(opt.minutes)}
+                style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
+                <Text style={styles.finishBtnText}>{t('studyRoom.minutesOption', { count: opt.minutes })}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
       )}
+
+      {/* Study-again step 2: pick the subject, then restart with the chosen length. */}
       <SubjectPickerModal
         visible={finishPickerOpen}
         title={t('studyRoom.studyDifferent')}
@@ -490,7 +603,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, paddingHorizontal: Spacing.three, paddingTop: Spacing.one, gap: Spacing.two },
 
   // Timer card
-  timerWrap: { alignSelf: 'center', width: '52%', aspectRatio: 1032 / 838, marginTop: -10 },
+  timerWrap: { alignSelf: 'center', width: '52%', aspectRatio: 1032 / 838, marginTop: -36 },
   timerWrapSolo: { width: '72%' },
   timerText: { position: 'absolute', left: '11%', right: '11%', top: '30%', bottom: '12%', alignItems: 'center', justifyContent: 'center' },
   timer: { fontSize: 32, fontWeight: '900', color: BakeryColors.cocoaDark, letterSpacing: 1 },
@@ -537,6 +650,9 @@ const styles = StyleSheet.create({
   // Desk surface layer along the bottom (behind character, under book/controls).
   studyDesk: { position: 'absolute', left: -Spacing.three, right: -Spacing.three, bottom: -60, height: 300, zIndex: 1 },
   deskEdge: { position: 'absolute', left: -Spacing.three, right: -Spacing.three, bottom: 240, height: 1.5, backgroundColor: 'rgba(120, 90, 70, 0.22)', zIndex: 1 },
+  // Base position spans root's padded content box (same axis as the character
+  // canvas) for a geometric center; a per-character transform (SOLO_BOOK_OFFSET)
+  // then nudges it to sit right in front of each companion's visual center.
   bookOnDesk: { position: 'absolute', bottom: 150, left: 0, right: 0, alignItems: 'center', zIndex: 2 },
   breakBadge: { position: 'absolute', top: 6, zIndex: 4, backgroundColor: 'rgba(78,53,40,0.85)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
   breakBadgeText: { color: '#fff', fontSize: 12, fontWeight: '800' },
@@ -563,7 +679,9 @@ const styles = StyleSheet.create({
   // Radio sits directly above the game button so the two line up. Floated to the
   // left so the Break pill stays centered on screen.
   gameCol: { position: 'absolute', left: 0, bottom: -68, alignItems: 'center', gap: 6 },
-  gameBtnWrap: {},
+  // Fixed size so the slot reserves the game button's space even when it's hidden
+  // (studying) — keeps the radio above it from shifting when break reveals it.
+  gameBtnWrap: { width: 44, height: 38, alignItems: 'center', justifyContent: 'center' },
   gameBtn: { width: 44, height: 38 },
   breakBtn: { width: 240, height: 46, position: 'relative', alignItems: 'center', justifyContent: 'center' },
   breakBtnDisabled: { opacity: 0.5 },
@@ -600,6 +718,9 @@ const styles = StyleSheet.create({
 
   // Multiplayer finish menu
   finishOverlay: { ...StyleSheet.absoluteFill, zIndex: 50, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(48,32,24,0.45)', padding: 28 },
+  // Unlimited-break backdrop — full-screen (still covers the live controls) but
+  // light enough that the resting characters/desk show through behind the card.
+  finishOverlayLight: { ...StyleSheet.absoluteFill, zIndex: 50, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(48,32,24,0.18)', padding: 28 },
   finishCard: {
     width: '100%', maxWidth: 320, backgroundColor: BakeryColors.frosting,
     borderRadius: BakeryRadii.panel, borderWidth: 2, borderColor: BakeryColors.shortbread,

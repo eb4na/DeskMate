@@ -95,7 +95,6 @@ export const COMPANION_SKINS: Record<string, BunSkin[]> = {
   ],
   'shop:companion_tira': [
     { id: 'classic', name: 'Graceful Walk', emoji: '', image: require('@/assets/images/tira/tira.png'), shopItemId: null },
-    { id: 'wolfsmeal', name: "Wolf's Meal", emoji: '', image: require('@/assets/images/tira/tira-wolfsmeal.png'), shopItemId: 'outfit_tira_wolfsmeal' },
     { id: 'chocomint', name: 'Choco Mint', emoji: '', image: require('@/assets/images/tira/tira-chocomint.png'), shopItemId: 'outfit_tira_chocomint' },
     { id: 'sleepover', name: 'Sleepover', emoji: '', image: require('@/assets/images/tira/tira-sleepover.png'), shopItemId: 'outfit_tira_sleepover' },
   ],

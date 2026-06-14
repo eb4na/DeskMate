@@ -97,6 +97,12 @@ export default function CustomTimerScreen() {
     else router.replace(isBreakMode ? '/' : '/session-picker');
   };
 
+  // Custom timer is a Plus feature — guard the screen itself so no path (deep
+  // link, back-stack) can reach it without Plus; send free users to the paywall.
+  useEffect(() => {
+    if (!isPlus) router.replace('/plus-upgrade');
+  }, [isPlus]);
+
   const setFocusTotal = (m: number) => { setFocusHr(Math.floor(m / 60)); setFocusMin(m % 60); };
   const setBreakTotal = (m: number) => { setBreakHr(Math.floor(m / 60)); setBreakMin(m % 60); };
 

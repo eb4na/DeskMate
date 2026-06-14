@@ -5,6 +5,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinAmount, CoinIcon } from '@/components/coin-icon';
+import { LockOverlay } from '@/components/lock-badge';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
@@ -18,6 +19,8 @@ import {
 } from '@/constants/room-data';
 import { SHOP_ITEMS } from '@/constants/shop-data';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+
+const BAKERY_HEADER = require('@/assets/images/backgrounds/bakery-menu-header.png');
 
 type BuyTarget = { room: RoomPair; kind: 'background' | 'desk' | 'pair' };
 
@@ -51,7 +54,7 @@ export default function EditRoomScreen() {
   // When the player taps something they don't own yet, we pop a little purchase
   // sheet for that exact item instead of sending them off to the Shop.
   const [buyTarget, setBuyTarget] = useState<BuyTarget | null>(null);
-  const discount = isPlus ? 0.8 : 1;
+  const discount = isPlus ? 0.75 : 1;
 
   // Picking the pair applies BOTH halves at once.
   const usePair = (room: RoomPair) => {
@@ -120,8 +123,10 @@ export default function EditRoomScreen() {
       style={[styles.thumbCard, active && styles.thumbCardActive, !owned && styles.thumbCardLocked]}
       onPress={owned ? onPress : onLocked}>
       <PairButton room={room} />
-      <Image source={image} style={styles.thumbImg} contentFit="cover" />
-      {!owned && <View style={styles.lockBadge}><Text style={styles.lockText}></Text></View>}
+      <View style={styles.thumbImgWrap}>
+        <Image source={image} style={styles.thumbImg} contentFit="cover" />
+        {!owned && <LockOverlay size={30} radius={12} />}
+      </View>
       <Text style={styles.thumbName} numberOfLines={1}>{room.name}</Text>
       {active ? (
         <View style={styles.activePill}><Text style={styles.activePillText}>{t('editRoom.inUse')}</Text></View>
@@ -142,24 +147,30 @@ export default function EditRoomScreen() {
     <ThemedView style={[styles.container, { backgroundColor: P.cream }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <SafeAreaView style={styles.safe}>
-          <View style={styles.header}>
-            <Text style={styles.title}>{t('editRoom.editRoom')}</Text>
-            {/* Render the subtitle with the actual pair button glyph spliced in
-                where the {link} marker sits (instead of a link emoji). */}
-            <View style={styles.subtitleRow}>
-              {t('editRoom.subtitle').split('{link}').map((part, i) => (
-                <Fragment key={i}>
-                  {i > 0 && (
-                    <View style={styles.subtitleBtn}>
-                      <View style={styles.subtitleGlyph}>
-                        <View style={styles.subtitleRing} />
-                        <View style={[styles.subtitleRing, styles.subtitleRing2]} />
-                      </View>
-                    </View>
-                  )}
-                  {part !== '' && <Text style={styles.subtitle}>{part}</Text>}
-                </Fragment>
-              ))}
+          {/* Header — scalloped bakery banner with the title/subtitle overlaid. */}
+          <View style={styles.headerRow}>
+            <View style={styles.header}>
+              <Image source={BAKERY_HEADER} style={styles.headerImg} contentFit="fill" />
+              <View style={styles.headerTextWrap}>
+                <Text style={styles.title}>{t('editRoom.editRoom')}</Text>
+                {/* Render the subtitle with the actual pair button glyph spliced
+                    in where the {link} marker sits (instead of a link emoji). */}
+                <View style={styles.subtitleRow}>
+                  {t('editRoom.subtitle').split('{link}').map((part, i) => (
+                    <Fragment key={i}>
+                      {i > 0 && (
+                        <View style={styles.subtitleBtn}>
+                          <View style={styles.subtitleGlyph}>
+                            <View style={styles.subtitleRing} />
+                            <View style={[styles.subtitleRing, styles.subtitleRing2]} />
+                          </View>
+                        </View>
+                      )}
+                      {part !== '' && <Text style={styles.subtitle}>{part}</Text>}
+                    </Fragment>
+                  ))}
+                </View>
+              </View>
             </View>
           </View>
 
@@ -195,7 +206,6 @@ export default function EditRoomScreen() {
 
           <Text style={styles.sectionTitle}>{t('editRoom.effect')}</Text>
           <View style={styles.comingSoon}>
-            <Text style={styles.comingSoonEmoji}></Text>
             <Text style={styles.comingSoonTitle}>{t('editRoom.noEffects')}</Text>
             <Text style={styles.comingSoonText}>{t('editRoom.effectsSoon')}</Text>
           </View>
@@ -290,13 +300,20 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     gap: Spacing.three,
   },
-  header: {
-    backgroundColor: P.card,
-    borderRadius: 22,
-    padding: Spacing.three,
-    borderWidth: 1.5,
-    borderColor: P.peach,
+  // Header — scalloped bakery banner with the title/subtitle overlaid.
+  headerRow: { width: '100%', alignItems: 'center' },
+  header: { width: '100%', position: 'relative' },
+  headerImg: { width: '100%', aspectRatio: 891 / 287 },
+  headerTextWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: '5%',
+    paddingHorizontal: '12%',
     gap: 4,
   },
   title: { fontSize: 22, fontWeight: '800', color: P.brown },
@@ -329,14 +346,8 @@ const styles = StyleSheet.create({
   },
   thumbCardActive: { borderColor: P.pink, backgroundColor: '#FFF4F6' },
   thumbCardLocked: { opacity: 0.92 },
-  thumbImg: { width: '100%', height: 96, borderRadius: 12, backgroundColor: P.pinkSoft },
-  lockBadge: {
-    position: 'absolute', top: 14, right: 14,
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.9)', borderWidth: 1.5, borderColor: P.pink,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  lockText: { fontSize: 14 },
+  thumbImgWrap: { width: '100%', height: 96, borderRadius: 12, overflow: 'hidden' },
+  thumbImg: { width: '100%', height: '100%', backgroundColor: P.pinkSoft },
   // Pair button — top-left of a card that has a matching desk+background.
   pairBtn: {
     position: 'absolute', top: 12, left: 12, zIndex: 2,
@@ -362,7 +373,6 @@ const styles = StyleSheet.create({
     backgroundColor: P.card, borderRadius: 18, borderWidth: 1.5, borderColor: P.pinkSoft,
     padding: Spacing.four, alignItems: 'center', gap: 4,
   },
-  comingSoonEmoji: { fontSize: 36 },
   comingSoonTitle: { fontSize: 15, fontWeight: '800', color: P.brown },
   comingSoonText: { fontSize: 12.5, color: P.mutedBrown, textAlign: 'center' },
   doneBtn: {

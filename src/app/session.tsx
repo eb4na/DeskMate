@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Companion } from '@/components/companion';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { COIN_REWARDS } from '@/constants/placeholder-data';
+import { coinsForMinutes } from '@/constants/placeholder-data';
 import { getCompanionLine } from '@/constants/companion-lines';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -52,7 +52,7 @@ export default function SessionScreen() {
   useEffect(() => {
     if (secondsLeft === 0 && !hasCompleted.current) {
       hasCompleted.current = true;
-      const earned = COIN_REWARDS[minutes] ?? 15;
+      const earned = coinsForMinutes(minutes);
       router.replace({
         pathname: '/session-complete',
         params: {
@@ -81,9 +81,8 @@ export default function SessionScreen() {
 
     let cancelCoins = 0;
     if (minutesElapsed >= MIN_MINUTES_FOR_COINS) {
-      const fullCoins = COIN_REWARDS[minutes] ?? 15;
-      // Prorated at 50% to discourage gaming
-      cancelCoins = Math.floor((minutesElapsed / minutes) * fullCoins * 0.5);
+      // 1 coin per minute studied (matches every other earn path).
+      cancelCoins = coinsForMinutes(minutesElapsed);
     }
 
     const coinMsg =

@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
+import { historyCutoffISO } from '@/lib/history-window';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
 const RANGES = ['day', 'week', 'month', 'year'] as const;
@@ -48,9 +49,14 @@ function slicePath(startAngle: number, endAngle: number): string {
 
 export default function SubjectChartScreen() {
   const { t } = useTranslation();
-  const { sessionHistory, subjects } = useApp();
+  const { sessionHistory, subjects, isPlus } = useApp();
 
   const [range, setRange] = useState<Range>('week');
+
+  // Free accounts only chart the last 3 months, so the "year" range (which would
+  // imply older data) is Plus-only; day/week/month all sit inside the window.
+  const cutoff = historyCutoffISO(isPlus);
+  const availableRanges = isPlus ? RANGES : RANGES.filter((r) => r !== 'year');
 
   // Minutes per subject within the selected range, sorted descending.
   const slices = useMemo(() => {
@@ -58,6 +64,7 @@ export default function SubjectChartScreen() {
     const totals: Record<string, number> = {};
     for (const r of sessionHistory) {
       if (r.dateISO < startISO) continue;
+      if (cutoff && r.dateISO < cutoff) continue;
       const key = r.subjectName ?? GENERAL_KEY;
       totals[key] = (totals[key] ?? 0) + r.minutes;
     }
@@ -71,7 +78,7 @@ export default function SubjectChartScreen() {
             : subjects.find((s) => s.name === name)?.color ?? FALLBACK_COLOR;
         return { name, minutes, color };
       });
-  }, [sessionHistory, subjects, range]);
+  }, [sessionHistory, subjects, range, cutoff]);
 
   const total = slices.reduce((sum, s) => sum + s.minutes, 0);
 
@@ -101,7 +108,7 @@ export default function SubjectChartScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.pickerRow}>
-            {RANGES.map((r) => {
+            {availableRanges.map((r) => {
               const active = r === range;
               return (
                 <Pressable
