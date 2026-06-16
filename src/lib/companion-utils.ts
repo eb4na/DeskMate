@@ -11,6 +11,16 @@ export function isHanjiActiveId(id: string | null | undefined): boolean {
   return id === `shop:${HANJI_COMPANION_ID}`;
 }
 
+/** Hanji renders as the animated layered figure (HanjiFigure) only in her default
+ * look; any other outfit is a flat sprite like every other companion skin. An
+ * unset skin (player never opened the wardrobe) counts as the default. */
+export function hanjiIsAnimated(
+  companionId: string | null | undefined,
+  skinId: string | null | undefined,
+): boolean {
+  return isHanjiActiveId(companionId) && (!skinId || skinId === 'classic');
+}
+
 // Built-in companions have localized display names (gallery.name_*). This maps
 // their canonical English name to its i18n key. Any other name (user-created
 // companions, outfit/background items) falls back to the original string, so this
@@ -35,7 +45,6 @@ export function localizeCompanionName(name: string, t: (key: string) => string):
 const OUTFIT_NAME_KEYS: Record<string, string> = {
   Classic: 'outfitNames.classic',
   Angel: 'outfitNames.angel',
-  'Angel Kei': 'outfitNames.angelKei',
   Relax: 'outfitNames.relax',
   Demon: 'outfitNames.demon',
   "Wolf's Meal": 'outfitNames.wolfsMeal',
@@ -46,6 +55,8 @@ const OUTFIT_NAME_KEYS: Record<string, string> = {
   'Jirai Kei': 'outfitNames.jiraiKei',
   'Blue Peony': 'outfitNames.bluePeony',
   'Berry Princess': 'outfitNames.berryPrincess',
+  'Ivory Rose': 'outfitNames.ivoryRose',
+  'Strawberry Dreams': 'outfitNames.strawberryDreams',
 };
 
 /** Localize an outfit/skin name; returns the input unchanged if unmapped. */
@@ -61,12 +72,16 @@ export const STARTER_COMPANION_IMAGES: Record<DefaultCompanionId, number> = {
 
 // Wardrobe — alternate outfits ("skins") for the starter companion Bun.
 // `shopItemId: null` means free/owned by default; otherwise it must be purchased.
-export type BunSkin = { id: string; name: string; emoji: string; image: number; shopItemId: string | null };
+// `roomId` (optional) ties an outfit to a matched room (ROOM_PAIRS id); the
+// wardrobe shows a chain/link icon that sets that background+desk to match.
+export type BunSkin = { id: string; name: string; emoji: string; image: number; shopItemId: string | null; roomId?: string };
 export const BUN_SKINS: BunSkin[] = [
   { id: 'classic', name: 'Strawberry', emoji: '', image: require('@/assets/images/bun/bun-home.png'), shopItemId: null },
   { id: 'angel', name: 'Angel', emoji: '', image: require('@/assets/images/bun/bun-angel.png'), shopItemId: 'outfit_bun_angel' },
-  { id: 'angelkei', name: 'Angel Kei', emoji: '', image: require('@/assets/images/bun/bun-angelkei.png'), shopItemId: 'outfit_bun_angelkei' },
-  { id: 'strawberry', name: 'Berry Princess', emoji: '', image: require('@/assets/images/bun/bun-strawberry.png'), shopItemId: 'outfit_bun_strawberry' },];
+  { id: 'strawberry', name: 'Berry Princess', emoji: '', image: require('@/assets/images/bun/bun-strawberry.png'), shopItemId: 'outfit_bun_strawberry' },
+  { id: 'snowrabbit', name: 'Snow Rabbit', emoji: '', image: require('@/assets/images/bun/bun-snowrabbit.png'), shopItemId: 'outfit_bun_snowrabbit', roomId: 'frostbloom-shrine' },
+  { id: 'dreams', name: 'Strawberry Dreams', emoji: '', image: require('@/assets/images/bun/bun-dreams.png'), shopItemId: 'outfit_bun_dreams', roomId: 'buns-room' },
+];
 
 export function getBunSkinImage(skinId: string | null | undefined): number {
   return BUN_SKINS.find((s) => s.id === skinId)?.image ?? BUN_SKINS[0].image;
@@ -96,7 +111,7 @@ export const COMPANION_SKINS: Record<string, BunSkin[]> = {
   'shop:companion_tira': [
     { id: 'classic', name: 'Graceful Walk', emoji: '', image: require('@/assets/images/tira/tira.png'), shopItemId: null },
     { id: 'chocomint', name: 'Choco Mint', emoji: '', image: require('@/assets/images/tira/tira-chocomint.png'), shopItemId: 'outfit_tira_chocomint' },
-    { id: 'sleepover', name: 'Sleepover', emoji: '', image: require('@/assets/images/tira/tira-sleepover.png'), shopItemId: 'outfit_tira_sleepover' },
+    { id: 'sleepover', name: 'Sleepover', emoji: '', image: require('@/assets/images/tira/tira-sleepover.png'), shopItemId: 'outfit_tira_sleepover', roomId: 'tiras-room' },
   ],
   'shop:companion_honey': [
     { id: 'classic', name: 'Honey Bear', emoji: '', image: require('@/assets/images/honey/honey.png'), shopItemId: null },
@@ -105,11 +120,12 @@ export const COMPANION_SKINS: Record<string, BunSkin[]> = {
   ],
   'shop:companion_bunny': [
     { id: 'classic', name: 'Cutest Thing Ever', emoji: '', image: require('@/assets/images/bunny/bunny.png'), shopItemId: null },
-    { id: 'jiraikei', name: 'Jirai Kei', emoji: '', image: require('@/assets/images/bunny/bunny-jiraikei.png'), shopItemId: 'outfit_bunny_jiraikei' },
+    { id: 'jiraikei', name: 'Jirai Kei', emoji: '', image: require('@/assets/images/bunny/bunny-jiraikei.png'), shopItemId: 'outfit_bunny_jiraikei', roomId: 'landmine' },
     { id: 'palace', name: 'Blue Peony', emoji: '', image: require('@/assets/images/bunny/bunny-palace.png'), shopItemId: 'outfit_bunny_palace' },
   ],
   'shop:companion_hanji': [
-    { id: 'classic', name: 'Quiet Lavender', emoji: '', image: require('@/assets/images/hanji/hanji.png'), shopItemId: null },
+    { id: 'classic', name: 'Quiet Lavender', emoji: '', image: require('@/assets/images/hanji/hanji.png'), shopItemId: null, roomId: 'lavender-palace' },
+    { id: 'ivoryrose', name: 'Ivory Rose', emoji: '', image: require('@/assets/images/hanji/hanji-ivoryrose.png'), shopItemId: 'outfit_hanji_ivoryrose' },
   ],
 };
 
@@ -138,7 +154,50 @@ export function getCompanionSkinImage(companionId: string, skinId: string | null
 }
 
 // Purchasable companions that have full-body art usable as the active character.
-export const SHOP_COMPANIONS = SHOP_ITEMS.filter((i) => i.category === 'companion' && i.image);
+// `companion_bun` is excluded: Bun is the starter mascot whose active id is
+// `starter:girl`, not `shop:companion_bun`; its SKU only exists so an unchosen
+// Bun can be shown/bought in the shop grid.
+export const SHOP_COMPANIONS = SHOP_ITEMS.filter(
+  (i) => i.category === 'companion' && i.image && i.id !== 'companion_bun',
+);
+
+// ─── Starter companions ────────────────────────────────────────────────────
+// The five characters a new player chooses one of (for free) on first launch;
+// the other four are sold in the shop. Order is fixed (carousel order): Bun →
+// Cocoa → Bunny → Miel → Tira, wrapping back to Bun. Hanji is excluded — it stays
+// a recipe-badge reward.
+export type StarterChoice = {
+  activeId: ActiveCompanionId; // what activeCompanionId becomes when chosen
+  shopItemId: string;          // the SKU granted/checked for ownership
+  name: string;                // canonical English name (localize at display)
+  image: number;
+};
+export const STARTER_CHOICES: StarterChoice[] = [
+  { activeId: 'starter:girl', shopItemId: 'companion_bun', name: 'Bun', image: require('@/assets/images/bun/bun-home.png') },
+  { activeId: 'shop:companion_cocoa', shopItemId: 'companion_cocoa', name: 'Cocoa', image: require('@/assets/images/cocoa/cocoa.png') },
+  { activeId: 'shop:companion_bunny', shopItemId: 'companion_bunny', name: 'Bunny', image: require('@/assets/images/bunny/bunny.png') },
+  { activeId: 'shop:companion_honey', shopItemId: 'companion_honey', name: 'Miel', image: require('@/assets/images/honey/honey.png') },
+  { activeId: 'shop:companion_tira', shopItemId: 'companion_tira', name: 'Tira', image: require('@/assets/images/tira/tira.png') },
+];
+
+/** The active-companion id a companion SKU maps to (Bun is the starter id). */
+export function starterActiveIdForItem(itemId: string): ActiveCompanionId {
+  return itemId === 'companion_bun' ? 'starter:girl' : `shop:${itemId}`;
+}
+
+/**
+ * Whether one of the five starter companions is owned: true if it's the chosen
+ * free starter, or its SKU was purchased. Use this (not a bare ownedShopItems
+ * check) anywhere a starter companion's lock/owned state is shown — it keeps a
+ * grandfathered Bun (no `companion_bun` SKU, starter = `starter:girl`) owned.
+ */
+export function isCompanionOwned(
+  itemId: string,
+  starterCompanionId: string,
+  ownedShopItems: string[],
+): boolean {
+  return ownedShopItems.includes(itemId) || starterActiveIdForItem(itemId) === starterCompanionId;
+}
 
 export type ResolvedCompanion =
   | {
@@ -224,15 +283,29 @@ export function getCompanionImage(
 }
 
 /**
- * Bun's art sits a little low for tight circular avatars (game/friend lists), so
- * her face gets clipped. Nudge ONLY Bun up in those small avatars — shop
- * companions get no shift. Do not use this for the big home/profile figures.
+ * Each character's art sits at a different height, so a fixed crop clips some
+ * faces in the tight circular avatars (game/friend lists). This nudges each
+ * character vertically (px, +down/−up) so its FACE lands centred in the circle.
+ * Values are measured from each art's face line (render the avatar crop and dial)
+ * — re-check when art changes or a companion is added. Keyed on the companion id;
+ * Bun (the default, id '' or non-'shop:') uses the fallback. Do NOT use this for
+ * the big home/profile figures.
  */
+const AVATAR_FACE_NUDGE: Record<string, number> = {
+  'shop:companion_cocoa': -3,
+  'shop:companion_bunny': -1,
+  'shop:companion_honey': 7,
+  'shop:companion_tira': -8,
+  'shop:companion_hanji': 9,
+};
+const BUN_FACE_NUDGE = -8;
+
 export function bunAvatarNudge(
   companionId: string | null | undefined,
 ): { transform: { translateY: number }[] } | undefined {
-  const isBun = !companionId || !companionId.startsWith('shop:');
-  return isBun ? { transform: [{ translateY: -8 }] } : undefined;
+  const isBun = !companionId || !companionId.startsWith('shop:') || companionId === 'shop:companion_bun';
+  const translateY = isBun ? BUN_FACE_NUDGE : (AVATAR_FACE_NUDGE[companionId] ?? 0);
+  return translateY ? { transform: [{ translateY }] } : undefined;
 }
 
 /**

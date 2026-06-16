@@ -4,12 +4,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Dimensions, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
+import { DevKnobs } from '@/components/dev-knobs';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
+import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { useTranslation } from '@/i18n';
 import { getCompanionImage, resolveActiveCompanion, resolveProfileFigure } from '@/lib/companion-utils';
-import { joinConnect4Room, type Connect4Room } from '@/lib/connect4-room';
+import { joinConnect4Room, type Connect4Room, type PlayerMeta } from '@/lib/connect4-room';
 import { BakeryColors, Spacing } from '@/constants/theme';
 import {
   applyMove,
@@ -111,6 +113,14 @@ export function Connect4Game({
   onLeave?: () => void;
 } = {}) {
   const { t } = useTranslation();
+  // Chrome only — the board uses COL_FX/ROW_FY coordinate hit-testing, so it must
+  // never be transformed (taps would land in the wrong column).
+  const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('connect4', [
+    { name: 'back', label: 'Back btn' },
+    { name: 'title', label: 'Title' },
+    { name: 'rematch', label: 'Rematch btn' },
+    { name: 'leave', label: 'Leave btn' },
+  ]);
   const {
     activeCompanionId,
     defaultCompanionId,
@@ -119,6 +129,7 @@ export function Connect4Game({
     bunSkinId,
     profileCompanionId,
     profileSkinId,
+    profileDisplayName,
     friendCode,
     friends,
   } = useApp();
@@ -145,6 +156,7 @@ export function Connect4Game({
   // Online state
   const [myPlayer, setMyPlayer] = useState<Player>(1);
   const [opponentPresent, setOpponentPresent] = useState(false);
+  const [oppMeta, setOppMeta] = useState<PlayerMeta | null>(null);
   const [oppLeft, setOppLeft] = useState(false);
   const [connecting, setConnecting] = useState(false);
 
@@ -257,8 +269,9 @@ export function Connect4Game({
     roomRef.current = joinConnect4Room(code, isHost, {
       onMove: (col) => doMove(col, mine === 1 ? 2 : 1),
       onRematch: () => resetGame(1),
-      onPresence: ({ opponentPresent: present }) => {
+      onPresence: ({ opponentPresent: present, opponent }) => {
         setOpponentPresent(present);
+        if (opponent) setOppMeta(opponent);
         if (present) {
           setConnecting(false);
           if (screenRef.current !== 'play') {
@@ -269,6 +282,10 @@ export function Connect4Game({
           setOppLeft(true);
         }
       },
+    }, {
+      companionId: profileCompanionId ?? activeCompanionId ?? undefined,
+      skinId: profileSkinId ?? undefined,
+      name: profileDisplayName || undefined,
     });
     setScreen('lobby');
   };
@@ -319,10 +336,10 @@ export function Connect4Game({
   if (screen === 'mode') {
     return (
       <View style={[styles.playRoot, styles.modeRoot]}>
-        <Pressable style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} onPress={() => onLeave?.()} hitSlop={8}>
+        <Pressable style={({ pressed }) => [styles.backBtn, tw('back'), pressed && styles.pressed]} onPress={() => onLeave?.()} hitSlop={8}>
           <Image source={BACK_IMG} style={styles.backImg} contentFit="contain" />
         </Pressable>
-        <Image source={TITLE_IMG} style={styles.titleImg} contentFit="contain" />
+        <Image source={TITLE_IMG} style={[styles.titleImg, tw('title')]} contentFit="contain" />
         <View style={styles.subPill}>
           <ThemedText type="smallBold" style={styles.subPillText}>{t('connect4.dropDiscs')}</ThemedText>
         </View>
@@ -358,7 +375,10 @@ export function Connect4Game({
   // ── Online lobby ────────────────────────────────────────────────────────
   if (screen === 'lobby') {
     return (
-      <ThemedView style={styles.container}>
+      <View style={[styles.playRoot, styles.lobbyRoot]}>
+        <Pressable style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} onPress={() => onLeave?.()} hitSlop={8}>
+          <Image source={BACK_IMG} style={styles.backImg} contentFit="contain" />
+        </Pressable>
         <ThemedText type="subtitle" style={styles.heading}>{t('connect4.playOnline')}</ThemedText>
 
         <ThemedView type="backgroundElement" style={styles.lobbyCard}>
@@ -373,7 +393,7 @@ export function Connect4Game({
             <ThemedText type="small" themeColor="textSecondary">{t('common.cancel')}</ThemedText>
           </Pressable>
         </ThemedView>
-      </ThemedView>
+      </View>
     );
   }
 
@@ -393,13 +413,19 @@ export function Connect4Game({
   //    your active companion.
   //  • online → you show your profile character; the opponent shows their
   //    friend-profile character + skin (looked up by the room/friend code).
+  // The opponent's avatar comes from the companion they broadcast over presence
+  // (oppMeta). getCompanionImage resolves bundled companions on this device; a
+  // custom/AI-generated companion is a local file the friend doesn't have, so it
+  // falls back to the silhouette placeholder. Friends-list lookup is a last resort.
   const friendRec = opp === 'online' && online ? friends.find((f) => f.code === online.room) : undefined;
-  const friendChar = friendRec?.companionId ? getCompanionImage(friendRec.companionId, friendRec.skinId) : null;
+  const friendChar =
+    (oppMeta?.companionId ? getCompanionImage(oppMeta.companionId, oppMeta.skinId) : null) ??
+    (friendRec?.companionId ? getCompanionImage(friendRec.companionId, friendRec.skinId) : null);
   // Pass & play shows two neutral silhouettes labelled Player 1 / Player 2.
   const leftAvatar = localMode || opp === 'ai' ? null : playerFigure;
   const rightAvatar = localMode ? null : opp === 'ai' ? opponent.imageSource : friendChar;
   const leftName = localMode ? t('games.player1') : t('connect4.you');
-  const rightName = localMode ? t('games.player2') : opp === 'ai' ? opponent.name : friendRec?.name || t('connect4.friend');
+  const rightName = localMode ? t('games.player2') : opp === 'ai' ? opponent.name : oppMeta?.name || friendRec?.name || t('connect4.friend');
 
   // One player card: framed avatar (top-half face in the cut-out centre) + name.
   const playerCard = (avatar: number | { uri: string } | null, name: string, piece: Player) => {
@@ -452,7 +478,7 @@ export function Connect4Game({
       </Pressable>
 
       {/* Title logo */}
-      <Image source={TITLE_IMG} style={styles.titleImg} contentFit="contain" />
+      <Image source={TITLE_IMG} style={[styles.titleImg, tw('title')]} contentFit="contain" />
 
       {/* Players — the "VS" badge is baked into the background between them. */}
       <View style={styles.playersRow}>
@@ -515,19 +541,20 @@ export function Connect4Game({
       {gameOver && (
         <View style={styles.footerRow}>
           <Pressable
-            style={({ pressed }) => [pressed && styles.pressed]}
+            style={({ pressed }) => [tw('rematch'), pressed && styles.pressed]}
             onPress={rematch}
             accessibilityLabel={t('connect4.rematch')}>
             <Image source={BTN_REMATCH} style={[styles.btnImg, { aspectRatio: BTN_REMATCH_AR }]} contentFit="contain" />
           </Pressable>
           <Pressable
-            style={({ pressed }) => [pressed && styles.pressed]}
+            style={({ pressed }) => [tw('leave'), pressed && styles.pressed]}
             onPress={() => onLeave?.()}
             accessibilityLabel={t('connect4.leave')}>
             <Image source={BTN_LEAVE} style={[styles.btnImg, { aspectRatio: BTN_LEAVE_AR }]} contentFit="contain" />
           </Pressable>
         </View>
       )}
+      <DevKnobs screen="connect4" knobs={twKnobs} onChange={twChange} />
     </View>
   );
 }
@@ -610,6 +637,9 @@ const styles = StyleSheet.create({
 
   // ── Play screen ──────────────────────────────────────────────────────────
   playRoot: { flex: 1, width: '100%', alignItems: 'center', gap: Spacing.one, backgroundColor: 'transparent' },
+  // Online lobby: center the waiting card in the full-screen root (was a bare,
+  // top-aligned container that let the room show through behind it).
+  lobbyRoot: { justifyContent: 'center', gap: Spacing.three, paddingHorizontal: Spacing.four },
   // Picker sits high so the CONNECT4 title overlaps the "VS" baked into the background.
   modeRoot: { paddingTop: SCREEN_H * 0.1 },
   backBtn: { position: 'absolute', top: -2, left: 2, width: 58, height: 58, zIndex: 5 },

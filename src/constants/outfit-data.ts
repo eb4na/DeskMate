@@ -20,7 +20,9 @@ export const CHARACTER_OUTFITS: Record<string, Outfit[]> = {
   // wardrobe skin. Wearable from the Companion Bakery → that companion's Wardrobe.
   'starter:girl': [
     { id: 'outfit_bun_angel', name: 'Angel', emoji: '', price: 600, characterId: 'starter:girl', image: require('@/assets/images/bun/bun-angel.png') },
-    { id: 'outfit_bun_angelkei', name: 'Angel Kei', emoji: '', price: 600, characterId: 'starter:girl', image: require('@/assets/images/bun/bun-angelkei.png') },  ],
+    { id: 'outfit_bun_snowrabbit', name: 'Snow Rabbit', emoji: '', price: 600, characterId: 'starter:girl', image: require('@/assets/images/bun/bun-snowrabbit.png') },
+    { id: 'outfit_bun_dreams', name: 'Strawberry Dreams', emoji: '', price: 600, characterId: 'starter:girl', image: require('@/assets/images/bun/bun-dreams.png') },
+  ],
   'shop:companion_cocoa': [
     { id: 'outfit_cocoa_relax', name: 'Relax', emoji: '', price: 600, characterId: 'shop:companion_cocoa', image: require('@/assets/images/cocoa/cocoa-relax.png') },
     { id: 'outfit_cocoa_demon', name: 'Demon', emoji: '', price: 600, characterId: 'shop:companion_cocoa', image: require('@/assets/images/cocoa/cocoa-demon.png') },
@@ -35,6 +37,9 @@ export const CHARACTER_OUTFITS: Record<string, Outfit[]> = {
   'shop:companion_bunny': [
     { id: 'outfit_bunny_jiraikei', name: 'Jirai Kei', emoji: '', price: 600, characterId: 'shop:companion_bunny', image: require('@/assets/images/bunny/bunny-jiraikei.png') },
     { id: 'outfit_bunny_palace', name: 'Blue Peony', emoji: '', price: 600, characterId: 'shop:companion_bunny', image: require('@/assets/images/bunny/bunny-palace.png') },
+  ],
+  'shop:companion_hanji': [
+    { id: 'outfit_hanji_ivoryrose', name: 'Ivory Rose', emoji: '', price: 600, characterId: 'shop:companion_hanji', image: require('@/assets/images/hanji/hanji-ivoryrose.png') },
   ],
 };
 

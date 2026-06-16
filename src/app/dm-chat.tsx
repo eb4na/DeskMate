@@ -2,7 +2,6 @@ import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -13,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
@@ -41,14 +41,11 @@ const INVITE_OPTIONS: { id: OnlineGameId; nameKey: string; emoji: string }[] = [
   { id: 'study', nameKey: 'friends.game_study', emoji: '' },
   { id: 'connect4', nameKey: 'friends.game_connect4', emoji: '' },
   { id: 'tictactoe', nameKey: 'friends.game_tictactoe', emoji: '' },
-  { id: 'memory', nameKey: 'friends.game_memory', emoji: '' },
-  { id: 'batterdash', nameKey: 'friends.game_batterdash', emoji: '' },
 ];
 
 const GAME_LABEL_KEY: Record<OnlineGameId, string> = {
   connect4: 'friends.game_connect4',
   tictactoe: 'friends.game_tictactoe',
-  memory: 'friends.game_memory',
   batterdash: 'friends.game_batterdash',
   study: 'friends.game_study',
 };
@@ -177,12 +174,12 @@ export default function DmChatScreen() {
     const text = input.trim();
     if (!text) return;
     if (!user?.id) {
-      Alert.alert(t('dm.sendFailed'), t('dm.signInNeeded'));
+      showPopup(t('dm.sendFailed'), t('dm.signInNeeded'));
       return;
     }
     const otherId = await ensureOtherId();
     if (!otherId) {
-      Alert.alert(t('dm.sendFailed'), t('dm.friendNotReachable', { name: friendName }));
+      showPopup(t('dm.sendFailed'), t('dm.friendNotReachable', { name: friendName }));
       return;
     }
     setInput('');
@@ -196,7 +193,7 @@ export default function DmChatScreen() {
     });
     if (!res.ok) {
       setInput(text);
-      Alert.alert(t('dm.sendFailed'), res.error);
+      showPopup(t('dm.sendFailed'), res.error);
       return;
     }
     append(res.msg);
@@ -205,12 +202,12 @@ export default function DmChatScreen() {
   const sendGameInvite = async (game: OnlineGameId) => {
     setSheetOpen(false);
     if (!user?.id) {
-      Alert.alert(t('dm.sendFailed'), t('dm.signInNeeded'));
+      showPopup(t('dm.sendFailed'), t('dm.signInNeeded'));
       return;
     }
     const otherId = await ensureOtherId();
     if (!otherId || !code) {
-      Alert.alert(t('dm.sendFailed'), t('dm.friendNotReachable', { name: friendName }));
+      showPopup(t('dm.sendFailed'), t('dm.friendNotReachable', { name: friendName }));
       return;
     }
     const room = newRoomId();
@@ -226,7 +223,7 @@ export default function DmChatScreen() {
       invite: { game, room },
     });
     if (!res.ok) {
-      Alert.alert(t('dm.sendFailed'), res.error);
+      showPopup(t('dm.sendFailed'), res.error);
       return;
     }
     // Enter the room as host.

@@ -4,7 +4,9 @@
  */
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View, useColorScheme } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View, useColorScheme } from 'react-native';
+import { SoundPressable } from '@/components/sound-pressable';
+import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BakeryBellEmoji } from '@/components/bakery-emoji';
@@ -42,6 +44,8 @@ export default function AddTaskScreen() {
   const [subjectId, setSubjectId] = useState<string | null>(existingTask?.subjectId ?? null);
   const [dueDateEnabled, setDueDateEnabled] = useState(existingTask?.dueDate != null || !editing);
   const [dueDate, setDueDate] = useState(existingTask?.dueDate ?? date ?? todayISO);
+  // A due time is optional — dated tasks default to "All day" (no time).
+  const [dueTimeEnabled, setDueTimeEnabled] = useState(editing ? existingTask?.dueTime != null : false);
   const [dueTime, setDueTime] = useState(existingTask?.dueTime ?? '09:00');
   const [status, setStatus] = useState<TaskStatus>(existingTask?.status ?? 'not_started');
   // Weekdays (0=Sun … 6=Sat) the task repeats on. Empty = no repeat.
@@ -76,11 +80,11 @@ export default function AddTaskScreen() {
 
   const handleSave = async () => {
     if (!title.trim()) {
-      Alert.alert(t('addTask.titleRequired'), t('addTask.enterTaskTitle'));
+      showPopup(t('addTask.titleRequired'), t('addTask.enterTaskTitle'));
       return;
     }
     const dueDateValue = dueDateEnabled ? dueDate.trim() || todayISO : null;
-    const dueTimeValue = dueDateEnabled ? dueTime : null;
+    const dueTimeValue = dueDateEnabled && dueTimeEnabled ? dueTime : null;
 
     // Reminder fires `notifyOffset` minutes before the due date+time.
     let notifyAt: string | null = null;
@@ -114,7 +118,7 @@ export default function AddTaskScreen() {
 
     // addTask returns '' when the task cap is reached.
     if (!editing && !id) {
-      Alert.alert(t('addTask.limitReached'), t('addTask.limitMsg', { count: MAX_TASKS }));
+      showPopup(t('addTask.limitReached'), t('addTask.limitMsg', { count: MAX_TASKS }));
       return;
     }
 
@@ -251,7 +255,29 @@ export default function AddTaskScreen() {
             {dueDateEnabled ? (
               <>
                 <DateWheelPicker value={dueDate} onChange={setDueDate} />
-                <TimeWheelPicker value={dueTime} onChange={setDueTime} use24Hour={use24HourTime} />
+                <ThemedView style={styles.chipRow}>
+                  <Pressable
+                    onPress={() => setDueTimeEnabled(true)}
+                    style={({ pressed }) => [pressed && styles.pressed]}>
+                    <ThemedView
+                      type={dueTimeEnabled ? 'backgroundSelected' : 'backgroundElement'}
+                      style={styles.chip}>
+                      <ThemedText type="small">{t('addTask.pickTime')}</ThemedText>
+                    </ThemedView>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setDueTimeEnabled(false)}
+                    style={({ pressed }) => [pressed && styles.pressed]}>
+                    <ThemedView
+                      type={!dueTimeEnabled ? 'backgroundSelected' : 'backgroundElement'}
+                      style={styles.chip}>
+                      <ThemedText type="small">{t('addTask.noTime')}</ThemedText>
+                    </ThemedView>
+                  </Pressable>
+                </ThemedView>
+                {dueTimeEnabled && (
+                  <TimeWheelPicker value={dueTime} onChange={setDueTime} use24Hour={use24HourTime} />
+                )}
               </>
             ) : (
               <ThemedView type="backgroundElement" style={styles.dateHintCard}>
@@ -308,7 +334,7 @@ export default function AddTaskScreen() {
             <ThemedText type="smallBold" style={styles.label}>
               {t('addTask.reminderOptional')}
             </ThemedText>
-            {dueDateEnabled ? (
+            {dueDateEnabled && dueTimeEnabled ? (
               <ThemedView style={styles.chipRow}>
                 <Pressable onPress={() => setNotifyOffset(null)} style={({ pressed }) => [pressed && styles.pressed]}>
                   <ThemedView type={notifyOffset == null ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
@@ -332,13 +358,14 @@ export default function AddTaskScreen() {
           </ThemedView>
 
           {/* Save */}
-          <Pressable
+          <SoundPressable
+            sound="confirm"
             style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
             onPress={handleSave}>
             <ThemedText type="smallBold" style={styles.saveBtnText}>
               {editing ? t('addTask.saveChanges') : t('addTask.addTaskTitle')}
             </ThemedText>
-          </Pressable>
+          </SoundPressable>
 
           <Pressable onPress={() => router.back()} style={styles.cancelBtn}>
             <ThemedText type="linkPrimary">{t('common.cancel')}</ThemedText>

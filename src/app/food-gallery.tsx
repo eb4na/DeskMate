@@ -1,15 +1,15 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Image, ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Image, ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useApp } from '@/context/app-context';
+import { useIsTablet } from '@/hooks/use-device-class';
 import { useTranslation } from '@/i18n';
 import { localizeCompanionName } from '@/lib/companion-utils';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 
 const BAKERY_BG = require('@/assets/images/backgrounds/bakery-menu.png');
-const BAKERY_HEADER = require('@/assets/images/backgrounds/bakery-menu-header.png');
 
 // Default "made it" badge (mirrors the finish-studying receipt's fallback).
 const BUN_FINISHED = require('@/assets/images/bun/bun-finished.png');
@@ -40,7 +40,7 @@ export const FOOD_ITEMS: FoodItem[] = [
     id: 'pudding',
     image: require('@/assets/images/cake/pudding.png'),
     requiresItem: 'recipe_pudding',
-    price: 400,
+    price: 600,
     madeBadge: require('@/assets/images/cake/pudding-finished.png'),
     owner: 'Miel',
   },
@@ -48,7 +48,7 @@ export const FOOD_ITEMS: FoodItem[] = [
     id: 'sakura-mochi',
     image: require('@/assets/images/cake/sakura-mochi.png'),
     requiresItem: 'recipe_sakura',
-    price: 400,
+    price: 600,
     madeBadge: require('@/assets/images/cake/sakura-badge.png'),
     owner: 'Bunny',
   },
@@ -56,7 +56,7 @@ export const FOOD_ITEMS: FoodItem[] = [
     id: 'matcha-crepe',
     image: require('@/assets/images/cake/matcha-crepe.png'),
     requiresItem: 'recipe_matcha',
-    price: 400,
+    price: 600,
     madeBadge: require('@/assets/images/cake/matcha-badge.png'),
     owner: 'Tira',
   },
@@ -64,7 +64,7 @@ export const FOOD_ITEMS: FoodItem[] = [
     id: 'berry-croissant',
     image: require('@/assets/images/cake/croissant.png'),
     requiresItem: 'recipe_croissant',
-    price: 400,
+    price: 600,
     madeBadge: require('@/assets/images/cake/croissant-badge.png'),
     owner: 'Cocoa',
   },
@@ -92,35 +92,25 @@ const P = {
 
 export default function FoodGalleryScreen() {
   const { t } = useTranslation();
+  // Tablet: the scalloped banner is large, so the small phone-sized title floats
+  // in too much empty space — scale the "Bakery Menu" / "My Recipes" text up.
+  const isTablet = useIsTablet();
   const { selectedFoodId, madeFoods, setSelectedFood, ownedShopItems } = useApp();
   // Badge image currently shown enlarged in the zoom modal (null = closed).
   const [zoomBadge, setZoomBadge] = useState<number | null>(null);
-  // Explicit banner width (≈8px side margins) so centering is deterministic and
-  // the header image's width:'100%' resolves against a concrete number.
-  const { width } = useWindowDimensions();
-  // Centered banner — a fraction of the content width rather than full-bleed.
-  const bannerWidth = Math.round(Math.min(width, MaxContentWidth) * 0.92);
-  const bannerHeight = Math.round((bannerWidth * 287) / 891);
 
   return (
     <ImageBackground source={BAKERY_BG} resizeMode="cover" style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
         <SafeAreaView style={styles.safeArea}>
-          {/* Header — the scalloped banner art (compact) with the title/subtitle
-              overlaid, centered via a full-width row wrapper. */}
+          {/* Header — a big bubbly title (no banner frame). */}
           <View style={styles.headerRow}>
-            <View style={styles.headerPanel}>
-              <Image source={BAKERY_HEADER} style={{ width: bannerWidth, height: bannerHeight }} resizeMode="stretch" />
-              <View style={styles.headerTextWrap}>
-                <Text style={styles.headerTitle}>{t('foodGallery.bakeryMenu')}</Text>
-                <Text style={styles.headerSubtitle}>{t('foodGallery.chooseBunBakes')}</Text>
-              </View>
-            </View>
+            <Text style={[styles.headerTitle, isTablet && { fontSize: 40, letterSpacing: 0.4 }]}>{t('foodGallery.bakeryMenu')}</Text>
           </View>
 
           {/* My Recipes */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('foodGallery.myRecipes')}</Text>
+            <Text style={[styles.sectionTitle, isTablet && { fontSize: 22 }]}>{t('foodGallery.myRecipes')}</Text>
             <View style={styles.grid}>
               {FOOD_ITEMS.map((food) => {
                 const locked = !!food.requiresItem && !ownedShopItems.includes(food.requiresItem);
@@ -233,11 +223,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: '6%',
     gap: 4,
   },
-  headerTitle: { fontSize: 19, fontWeight: '800', color: P.brown, letterSpacing: 0.2, textAlign: 'center' },
-  headerSubtitle: { fontSize: 11, color: P.mutedBrown, fontWeight: '500', textAlign: 'center' },
+  headerTitle: { fontFamily: Fonts.rounded, fontSize: 32, fontWeight: '900', color: P.brown, letterSpacing: 0.3, textAlign: 'center' },
 
   section: { gap: Spacing.two },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: P.brown },

@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, TextInput, useColorScheme } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, useColorScheme } from 'react-native';
+import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -38,7 +39,7 @@ export default function ManageSubjectsScreen() {
     if (!newName.trim()) return;
     const added = addSubject(newName.trim(), selectedColor, newEmoji.trim());
     if (!added) {
-      Alert.alert(
+      showPopup(
         t('manageSubjects.subjectLimitReached'),
         isPlus
           ? t('manageSubjects.limitMsgPlus', { max: MAX_SUBJECTS_PLUS })
@@ -81,7 +82,7 @@ export default function ManageSubjectsScreen() {
   };
 
   const handleDelete = (id: string, name: string) => {
-    Alert.alert(t('manageSubjects.deleteSubjectQ'), t('manageSubjects.deleteMsg', { name }), [
+    showPopup(t('manageSubjects.deleteSubjectQ'), t('manageSubjects.deleteMsg', { name }), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('common.delete'), style: 'destructive', onPress: () => deleteSubject(id) },
     ]);

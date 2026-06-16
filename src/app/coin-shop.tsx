@@ -1,8 +1,11 @@
 import { router } from 'expo-router';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { SoundPressable } from '@/components/sound-pressable';
+import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinAmount, CoinIcon } from '@/components/coin-icon';
+import { STREAK_FREEZE_ICON } from '@/components/streak-freeze-icon';
 import { BakeryStarEmoji, BakeryWrenchEmoji } from '@/components/bakery-emoji';
 import { LockBadge } from '@/components/lock-badge';
 import { ThemedText } from '@/components/themed-text';
@@ -33,12 +36,29 @@ const PACK_IMAGES: Record<string, number> = {
 
 export default function CoinShopScreen() {
   const { t } = useTranslation();
-  const { coins, earnedToday, addPurchasedCoins, isPlus } = useApp();
+  const { coins, earnedToday, addPurchasedCoins, isPlus, addStreakFreeze, streakFreezes } = useApp();
   const capRemaining = Math.max(0, DAILY_EARN_CAP - earnedToday);
+
+  const handleBuyFreeze = () => {
+    showPopup(
+      t('shop.streakFreezeName'),
+      t('shop.streakFreezeDesc'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('shop.buyForMock', { price: '$2.00' }),
+          onPress: () => {
+            addStreakFreeze(1);
+            showPopup(t('shop.freezeAdded'), t('shop.mockComplete'));
+          },
+        },
+      ],
+    );
+  };
 
   const handleCoinPack = (pack: CoinPack) => {
     const name = t(pack.nameKey);
-    Alert.alert(
+    showPopup(
       t('coinShop.buyPackQ', { name }),
       t('coinShop.packDetail', { coins: pack.coins, price: pack.price }),
       [
@@ -47,7 +67,7 @@ export default function CoinShopScreen() {
           text: t('coinShop.buyForMock', { price: pack.price }),
           onPress: () => {
             addPurchasedCoins(pack.coins);
-            Alert.alert(t('shop.coinsAdded', { coins: pack.coins }), t('shop.mockComplete'));
+            showPopup(t('shop.coinsAdded', { coins: pack.coins }), t('shop.mockComplete'));
           },
         },
       ],
@@ -70,7 +90,7 @@ export default function CoinShopScreen() {
 
           {/* Daily earn progress */}
           <ThemedView type="backgroundElement" style={styles.capCard}>
-            <ThemedView style={styles.capRow}>
+            <ThemedView type="transparent" style={styles.capRow}>
               <ThemedText type="small" themeColor="textSecondary">{t('coinShop.dailyFreeEarn')}</ThemedText>
               <View style={styles.capCoins}>
                 <ThemedText type="smallBold">{earnedToday}/{DAILY_EARN_CAP}</ThemedText>
@@ -89,16 +109,18 @@ export default function CoinShopScreen() {
             </ThemedText>
           </ThemedView>
 
-          {/* Packs header */}
-          {/* Bakery menu of coin packs */}
+          {/* ── Bakery Menu — Coins + Items on one paper, split by a rule ── */}
           <View style={styles.menuCard}>
             <View style={styles.menuHeader}>
               <ThemedText style={styles.menuTitle}>{t('shop.bakeryMenu')}</ThemedText>
-              <ThemedText style={styles.menuSubtitle}>{t('shop.coinsNeverExpire')}</ThemedText>
             </View>
+
+            <ThemedText style={styles.sectionLabel}>{t('shop.sectionCoins')}</ThemedText>
+            <ThemedText style={styles.sectionSubtitle}>{t('shop.coinsNeverExpire')}</ThemedText>
             {COIN_PACKS.map((pack, i) => (
-              <Pressable
+              <SoundPressable
                 key={pack.id}
+                sound="confirm"
                 style={({ pressed }) => [pressed && styles.pressed]}
                 onPress={() => handleCoinPack(pack)}>
                 <View style={styles.menuRow}>
@@ -120,22 +142,35 @@ export default function CoinShopScreen() {
                   </View>
                 </View>
                 {i < COIN_PACKS.length - 1 && <View style={styles.menuDivider} />}
-              </Pressable>
+              </SoundPressable>
             ))}
-          </View>
 
-          {/* Mock disclaimer */}
-          <ThemedView type="backgroundElement" style={styles.disclaimerCard}>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.disclaimerText}>
-              {t('coinShop.realPaymentNote')}
-            </ThemedText>
-          </ThemedView>
+            <View style={styles.sectionRule} />
+
+            <ThemedText style={styles.sectionLabel}>{t('shop.sectionItems')}</ThemedText>
+            <ThemedText style={styles.sectionSubtitle}>{t('shop.freezeOwned', { count: streakFreezes })}</ThemedText>
+            <Pressable onPress={handleBuyFreeze} style={({ pressed }) => [pressed && styles.pressed]}>
+              <View style={styles.menuRow}>
+                <Image source={STREAK_FREEZE_ICON} style={styles.menuIcon} resizeMode="contain" />
+                <View style={styles.menuBody}>
+                  <View style={styles.menuTopLine}>
+                    <ThemedText style={styles.menuName} numberOfLines={1}>{t('shop.streakFreezeName')}</ThemedText>
+                    <View style={styles.menuLeader} />
+                    <ThemedText style={styles.menuPrice}>$2.00</ThemedText>
+                  </View>
+                  <View style={styles.menuSubLine}>
+                    <ThemedText style={styles.menuCoinText}>{t('shop.streakFreezeDesc')}</ThemedText>
+                  </View>
+                </View>
+              </View>
+            </Pressable>
+          </View>
 
           {/* Plus discount note */}
           {isPlus ? (
             <ThemedView type="backgroundElement" style={[styles.plusBanner, styles.plusBannerActive]}>
               <BakeryStarEmoji size={28} />
-              <ThemedView style={styles.plusBannerText}>
+              <ThemedView type="transparent" style={styles.plusBannerText}>
                 <ThemedText type="smallBold">{t('coinShop.discountActive')}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">{t('coinShop.appliedAllItems')}</ThemedText>
               </ThemedView>
@@ -146,7 +181,7 @@ export default function CoinShopScreen() {
               onPress={() => router.push('/plus-upgrade')}>
               <ThemedView type="backgroundElement" style={styles.plusBanner}>
                 <BakeryStarEmoji size={28} />
-                <ThemedView style={styles.plusBannerText}>
+                <ThemedView type="transparent" style={styles.plusBannerText}>
                   <ThemedText type="smallBold">{t('coinShop.plusSave20')}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">{t('coinShop.tapToUpgrade')}</ThemedText>
                 </ThemedView>
@@ -171,7 +206,7 @@ export default function CoinShopScreen() {
               { labelKey: 'coinShop.earn_3day', coins: 30 },
               { labelKey: 'coinShop.earn_7day', coins: 80 },
             ].map((row) => (
-              <ThemedView key={row.labelKey} style={styles.tipRow}>
+              <ThemedView key={row.labelKey} type="transparent" style={styles.tipRow}>
                 <ThemedText type="small" themeColor="textSecondary">{t(row.labelKey)}</ThemedText>
                 <CoinAmount amount={row.coins} prefix="+" size={26} textStyle={styles.tipCoins} />
               </ThemedView>
@@ -244,6 +279,11 @@ const styles = StyleSheet.create({
   },
   menuTitle: { fontSize: 18, fontWeight: '800', color: BakeryColors.cocoaDark, letterSpacing: 0.5 },
   menuSubtitle: { fontSize: 12, color: BakeryColors.mocha },
+  // In-card section heading ("Coins" / "Items") + its little subtitle.
+  sectionLabel: { fontSize: 14, fontWeight: '800', color: BakeryColors.cocoaDark, letterSpacing: 0.3, marginTop: Spacing.one },
+  sectionSubtitle: { fontSize: 11, color: BakeryColors.mocha, marginBottom: 2 },
+  // Dashed rule separating the Coins and Items sections.
+  sectionRule: { borderBottomWidth: 1.5, borderBottomColor: BakeryColors.shortbread, borderStyle: 'dashed', marginVertical: Spacing.two },
   menuRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.two },
   menuIcon: { width: 54, height: 54 },
   menuBody: { flex: 1, gap: 3 },
@@ -268,12 +308,6 @@ const styles = StyleSheet.create({
   },
   chefText: { fontSize: 10, fontWeight: '700', color: BakeryColors.mocha },
   menuDivider: { height: 1, backgroundColor: `${BakeryColors.shortbread}99` },
-  disclaimerCard: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
-    backgroundColor: BakeryColors.glass,
-  },
-  disclaimerText: { textAlign: 'center', lineHeight: 18, fontSize: 12 },
   plusBanner: {
     borderRadius: BakeryRadii.card,
     padding: Spacing.three,

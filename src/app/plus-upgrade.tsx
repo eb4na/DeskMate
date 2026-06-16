@@ -1,9 +1,13 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { SoundPressable } from '@/components/sound-pressable';
+import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlusIcon } from '@/components/plus-icon';
+import { PlusCrown } from '@/components/avatar-frame';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
@@ -12,59 +16,54 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 // Each feature shows the same in-game art used for that feature elsewhere, so the
 // paywall reads as a tour of real Memobun content rather than generic line icons.
-const FEATURES: { titleKey: string; descKey: string; art: number }[] = [
+// `noteKind` flags whether a perk is kept forever ('keep' — the one-time skin &
+// room unlocks) or only lasts while subscribed ('expire' — avatar frames).
+const FEATURES: {
+  titleKey: string;
+  descKey: string;
+  art?: number;
+  crown?: boolean; // render the gold crown frame instead of an image
+  noteKey?: string;
+  noteKind?: 'keep' | 'expire';
+}[] = [
   { titleKey: 'plus.f_customTimers', descKey: 'plus.f_customTimersDesc', art: require('@/assets/images/settings/timer.png') },
   { titleKey: 'plus.f_multiReminders', descKey: 'plus.f_multiRemindersDesc', art: require('@/assets/images/shop/icon-reminder.png') },
   { titleKey: 'plus.f_unlimitedExams', descKey: 'plus.f_unlimitedExamsDesc', art: require('@/assets/images/home/exam-calendar-icon.png') },
   { titleKey: 'plus.f_streakFreezes', descKey: 'plus.f_streakFreezesDesc', art: require('@/assets/images/home/streak-freeze-icon.png') },
   { titleKey: 'plus.f_advancedReports', descKey: 'plus.f_advancedReportsDesc', art: require('@/assets/images/settings/progress.png') },
   { titleKey: 'plus.f_ambience', descKey: 'plus.f_ambienceDesc', art: require('@/assets/images/shop/icon-sound.png') },
-  { titleKey: 'plus.f_exclusiveSkin', descKey: 'plus.f_exclusiveSkinDesc', art: require('@/assets/images/bun/bun-strawberry.png') },
-  { titleKey: 'plus.f_goldenTeahouse', descKey: 'plus.f_goldenTeahouseDesc', art: require('@/assets/images/backgrounds/strawberry-palace.png') },
+  { titleKey: 'plus.f_spotify', descKey: 'plus.f_spotifyDesc', art: require('@/assets/images/settings/radio.png') },
+  { titleKey: 'plus.f_exclusiveSkin', descKey: 'plus.f_exclusiveSkinDesc', art: require('@/assets/images/bun/bun-strawberry.png'), noteKey: 'plus.noteKeep', noteKind: 'keep' },
+  { titleKey: 'plus.f_goldenTeahouse', descKey: 'plus.f_goldenTeahouseDesc', art: require('@/assets/images/backgrounds/strawberry-palace.png'), noteKey: 'plus.noteKeep', noteKind: 'keep' },
+  { titleKey: 'plus.f_avatarFrame', descKey: 'plus.f_avatarFrameDesc', crown: true, noteKey: 'plus.noteExpire', noteKind: 'expire' },
   { titleKey: 'plus.f_shopDiscount', descKey: 'plus.f_shopDiscountDesc', art: require('@/assets/images/tabIcons/gen-shop.png') },
   { titleKey: 'plus.f_streakCoins', descKey: 'plus.f_streakCoinsDesc', art: require('@/assets/images/home/coin-icon.png') },
 ];
 
+// Art shown in the first-time Plus reward popups (matches the in-game items).
+const SKIN_ART = require('@/assets/images/bun/bun-strawberry.png');
+const ROOM_ART = require('@/assets/images/backgrounds/strawberry-palace.png');
+
 export default function PlusUpgradeScreen() {
   const { t } = useTranslation();
-  const { isPlus, setIsPlus } = useApp();
-
-  const handleMockUpgrade = () => {
-    Alert.alert(
-      t('plus.mockUpgrade'),
-      t('plus.mockUpgradeMsg'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('plus.activatePlus'),
-          onPress: () => {
-            setIsPlus(true);
-            router.back();
-          },
-        },
-      ],
-    );
-  };
+  const { isPlus, setIsPlus, ownedShopItems } = useApp();
+  // Chosen billing period — monthly Plus lapses after a month, annual after a year.
+  const [plan, setPlan] = useState<'monthly' | 'annual'>('monthly');
+  // Confirm dialog rendered as a LOCAL <Modal> (not the root showPopup host): this
+  // screen is itself a native modal, and a root-mounted popup can fail to present
+  // over it. A local modal presents from this screen's own controller, so it always
+  // shows — and we don't call router.back() from its callback (dismissing two
+  // modals at once races on iOS); activating just flips the screen into its
+  // "Plus member" state and the user closes the screen themselves.
+  // 'rewardSkin' → 'rewardRoom' are the two first-time-Plus unlock popups, shown
+  // back-to-back only when the perks were actually newly granted.
+  const [confirm, setConfirm] = useState<null | 'activate' | 'deactivate' | 'rewardSkin' | 'rewardRoom'>(null);
 
   const handleRestore = () => {
-    Alert.alert(
+    showPopup(
       t('plus.restorePurchases'),
       t('plus.restoreMsg'),
     );
-  };
-
-  const handleDeactivate = () => {
-    Alert.alert(t('plus.deactivateQ'), t('plus.deactivateMsg'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('plus.deactivate'),
-        style: 'destructive',
-        onPress: () => {
-          setIsPlus(false);
-          router.back();
-        },
-      },
-    ]);
   };
 
   return (
@@ -98,46 +97,72 @@ export default function PlusUpgradeScreen() {
             {FEATURES.map((f) => (
               <ThemedView key={f.titleKey} style={styles.featureRow}>
                 <ThemedView style={styles.featureIcon}>
-                  <Image source={f.art} style={styles.featureImg} contentFit="contain" />
+                  {f.crown ? (
+                    <PlusCrown size={30} />
+                  ) : (
+                    <Image source={f.art} style={styles.featureImg} contentFit="contain" />
+                  )}
                 </ThemedView>
                 <ThemedView style={styles.featureText}>
                   <ThemedText type="smallBold">{t(f.titleKey)}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
                     {t(f.descKey)}
                   </ThemedText>
+                  {f.noteKey && (
+                    <ThemedView
+                      style={[styles.notepill, f.noteKind === 'keep' ? styles.notePillKeep : styles.notePillExpire]}>
+                      <ThemedText style={[styles.noteText, f.noteKind === 'keep' ? styles.noteTextKeep : styles.noteTextExpire]}>
+                        {f.noteKind === 'keep' ? '♡ ' : '⏳ '}{t(f.noteKey)}
+                      </ThemedText>
+                    </ThemedView>
+                  )}
                 </ThemedView>
                 <ThemedText style={styles.checkmark}>✓</ThemedText>
               </ThemedView>
             ))}
           </ThemedView>
 
-          {/* Pricing */}
+          {/* Pricing — tap to pick a plan. Monthly lapses after a month; annual after a year. */}
           {!isPlus && (
             <ThemedView type="backgroundElement" style={styles.priceCard}>
-              <ThemedView style={styles.priceRow}>
-                <ThemedView>
-                  <ThemedText type="smallBold" style={styles.priceTitle}>
-                    {t('plus.monthly')}
-                  </ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {t('plus.cancelAnytime')}
-                  </ThemedText>
+              <Pressable
+                onPress={() => setPlan('monthly')}
+                style={[styles.priceRow, styles.planRow, plan === 'monthly' && styles.planRowActive]}>
+                <ThemedView style={styles.planLeft}>
+                  <ThemedView style={[styles.radio, plan === 'monthly' && styles.radioActive]}>
+                    {plan === 'monthly' && <ThemedText style={styles.radioCheck}>✓</ThemedText>}
+                  </ThemedView>
+                  <View style={styles.planTextCol}>
+                    <ThemedText type="smallBold" style={styles.priceTitle}>
+                      {t('plus.monthly')}
+                    </ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {t('plus.cancelAnytime')}
+                    </ThemedText>
+                  </View>
                 </ThemedView>
                 <ThemedText style={styles.priceValue}>{t('plus.monthlyPrice')}</ThemedText>
-              </ThemedView>
+              </Pressable>
               <ThemedView style={styles.divider} />
-              <ThemedView style={styles.priceRow}>
-                <ThemedView>
-                  <ThemedText type="smallBold" style={styles.priceTitle}>
-                    {t('plus.yearly')}{' '}
-                    <ThemedText style={styles.saveBadge}>{t('plus.saveYearly')}</ThemedText>
-                  </ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {t('plus.yearlyDetail')}
-                  </ThemedText>
+              <Pressable
+                onPress={() => setPlan('annual')}
+                style={[styles.priceRow, styles.planRow, plan === 'annual' && styles.planRowActive]}>
+                <ThemedView style={styles.planLeft}>
+                  <ThemedView style={[styles.radio, plan === 'annual' && styles.radioActive]}>
+                    {plan === 'annual' && <ThemedText style={styles.radioCheck}>✓</ThemedText>}
+                  </ThemedView>
+                  <View style={styles.planTextCol}>
+                    <ThemedText type="smallBold" style={styles.priceTitle}>
+                      {t('plus.yearly')}{' '}
+                      <ThemedText style={styles.saveBadge}>{t('plus.saveYearly')}</ThemedText>
+                    </ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {t('plus.yearlyDetail')}
+                    </ThemedText>
+                  </View>
                 </ThemedView>
                 <ThemedText style={styles.priceValue}>{t('plus.yearlyPrice')}</ThemedText>
-              </ThemedView>
+              </Pressable>
             </ThemedView>
           )}
 
@@ -156,13 +181,14 @@ export default function PlusUpgradeScreen() {
           {/* CTA buttons */}
           {!isPlus ? (
             <>
-              <Pressable
+              <SoundPressable
+                sound="confirm"
                 style={({ pressed }) => [styles.upgradeBtn, pressed && styles.pressed]}
-                onPress={handleMockUpgrade}>
+                onPress={() => setConfirm('activate')}>
                 <ThemedText type="smallBold" style={styles.upgradeBtnText}>
                   {t('plus.startPlus')}
                 </ThemedText>
-              </Pressable>
+              </SoundPressable>
 
               <Pressable onPress={handleRestore} style={styles.restoreBtn}>
                 <ThemedText type="small" themeColor="textSecondary">
@@ -171,7 +197,7 @@ export default function PlusUpgradeScreen() {
               </Pressable>
             </>
           ) : (
-            <Pressable onPress={handleDeactivate} style={styles.deactivateBtn}>
+            <Pressable onPress={() => setConfirm('deactivate')} style={styles.deactivateBtn}>
               <ThemedText type="small" themeColor="textSecondary">
                 {t('plus.deactivatePlus')}
               </ThemedText>
@@ -183,6 +209,86 @@ export default function PlusUpgradeScreen() {
           </ThemedText>
         </SafeAreaView>
       </ScrollView>
+
+      {/* Local confirm dialog — see note on `confirm` state above. */}
+      <Modal visible={confirm !== null} transparent animationType="fade" onRequestClose={() => setConfirm(null)}>
+        <Pressable style={styles.confirmBackdrop} onPress={() => setConfirm(null)}>
+          <Pressable style={styles.confirmCard} onPress={(e) => e.stopPropagation?.()}>
+            {confirm === 'activate' ? (
+              <>
+                <ThemedText style={styles.confirmTitle}>{t('plus.mockUpgrade')}</ThemedText>
+                <ThemedText style={styles.confirmMsg}>{t('plus.mockUpgradeMsg')}</ThemedText>
+                <Pressable
+                  style={({ pressed }) => [styles.confirmPrimary, pressed && styles.pressed]}
+                  onPress={() => {
+                    // The perks are kept forever, so they're only newly granted the
+                    // first time you go Plus — show the reward popups only then.
+                    const firstTime = !ownedShopItems.includes('outfit_bun_strawberry');
+                    setIsPlus(true, plan);
+                    setConfirm(firstTime ? 'rewardSkin' : null);
+                  }}>
+                  <ThemedText style={styles.confirmPrimaryText}>{t('plus.activatePlus')}</ThemedText>
+                </Pressable>
+              </>
+            ) : confirm === 'deactivate' ? (
+              <>
+                <ThemedText style={styles.confirmTitle}>{t('plus.deactivateQ')}</ThemedText>
+                <ThemedText style={styles.confirmMsg}>{t('plus.deactivateMsg')}</ThemedText>
+                <Pressable
+                  style={({ pressed }) => [styles.confirmDestructive, pressed && styles.pressed]}
+                  onPress={() => { setIsPlus(false); setConfirm(null); }}>
+                  <ThemedText style={styles.confirmDestructiveText}>{t('plus.deactivate')}</ThemedText>
+                </Pressable>
+              </>
+            ) : confirm === 'rewardSkin' ? (
+              <>
+                <Image source={SKIN_ART} style={styles.confirmArt} contentFit="contain" />
+                <ThemedText style={styles.confirmTitle}>
+                  {t('plus.rewardSkinTitle', { defaultValue: "New outfit unlocked! 🍓" })}
+                </ThemedText>
+                <ThemedText style={styles.confirmMsg}>
+                  {t('plus.rewardSkinMsg', {
+                    defaultValue:
+                      "You got Bun's Berry Princess outfit — yours to keep forever. Find it in Bun's Wardrobe.",
+                  })}
+                </ThemedText>
+                <Pressable
+                  style={({ pressed }) => [styles.confirmPrimary, pressed && styles.pressed]}
+                  onPress={() => setConfirm('rewardRoom')}>
+                  <ThemedText style={styles.confirmPrimaryText}>
+                    {t('common.next', { defaultValue: 'Next' })}
+                  </ThemedText>
+                </Pressable>
+              </>
+            ) : confirm === 'rewardRoom' ? (
+              <>
+                <Image source={ROOM_ART} style={styles.confirmArtWide} contentFit="cover" />
+                <ThemedText style={styles.confirmTitle}>
+                  {t('plus.rewardRoomTitle', { defaultValue: 'New room & desk unlocked! 🏯' })}
+                </ThemedText>
+                <ThemedText style={styles.confirmMsg}>
+                  {t('plus.rewardRoomMsg', {
+                    defaultValue:
+                      "You received the Strawberry Palace room and its matching desk — yours to keep forever. Find them in Edit Room.",
+                  })}
+                </ThemedText>
+                <Pressable
+                  style={({ pressed }) => [styles.confirmPrimary, pressed && styles.pressed]}
+                  onPress={() => setConfirm(null)}>
+                  <ThemedText style={styles.confirmPrimaryText}>
+                    {t('plus.welcomeCta', { defaultValue: 'Sweet!' })}
+                  </ThemedText>
+                </Pressable>
+              </>
+            ) : null}
+            {confirm !== 'rewardSkin' && confirm !== 'rewardRoom' && (
+              <Pressable style={styles.confirmCancel} onPress={() => setConfirm(null)}>
+                <ThemedText style={styles.confirmCancelText}>{t('common.cancel')}</ThemedText>
+              </Pressable>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ThemedView>
   );
 }
@@ -223,6 +329,13 @@ const styles = StyleSheet.create({
   featureImg: { width: 40, height: 40, backgroundColor: 'transparent' },
   featureText: { flex: 1, gap: 2 },
   checkmark: { fontSize: 16, color: '#C75A78', fontWeight: '700' },
+  // Per-perk note pill: "keep forever" (positive green) vs "expires with Plus" (amber).
+  notepill: { alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginTop: 3 },
+  notePillKeep: { backgroundColor: 'rgba(75,164,110,0.14)' },
+  notePillExpire: { backgroundColor: 'rgba(214,158,46,0.16)' },
+  noteText: { fontSize: 11, fontWeight: '700', lineHeight: 15 },
+  noteTextKeep: { color: '#3E8E5C' },
+  noteTextExpire: { color: '#B07A1E' },
   priceCard: { borderRadius: 16, padding: Spacing.three, gap: Spacing.two },
   priceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   priceTitle: { fontSize: 15 },
@@ -232,6 +345,18 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: 'rgba(0,0,0,0.1)',
   },
+  // Selectable plan rows (monthly / annual).
+  planRow: { borderRadius: 12, borderWidth: 1.5, borderColor: 'transparent', paddingHorizontal: 10, paddingVertical: 8 },
+  planRowActive: { borderColor: '#C75A78', backgroundColor: 'rgba(199,90,120,0.07)' },
+  planLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'transparent' },
+  planTextCol: { backgroundColor: 'transparent' },
+  radio: {
+    width: 20, height: 20, borderRadius: 10, borderWidth: 1.5,
+    borderColor: 'rgba(0,0,0,0.2)', backgroundColor: 'transparent',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  radioActive: { backgroundColor: '#C75A78', borderColor: '#C75A78' },
+  radioCheck: { color: '#fff', fontSize: 11, fontWeight: '800', lineHeight: 13 },
   freeCard: { borderRadius: 16, padding: Spacing.three, gap: Spacing.one },
   freeTitle: { fontSize: 14 },
   freeText: { lineHeight: 20 },
@@ -246,4 +371,33 @@ const styles = StyleSheet.create({
   restoreBtn: { alignItems: 'center', paddingVertical: Spacing.two },
   deactivateBtn: { alignItems: 'center', paddingVertical: Spacing.two },
   disclaimer: { textAlign: 'center', lineHeight: 18, fontSize: 11 },
+
+  // Local confirm dialog (activate / deactivate Plus).
+  confirmBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(60,40,30,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.four,
+  },
+  confirmCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#FFFDF8',
+    borderRadius: 22,
+    padding: Spacing.four,
+    gap: Spacing.three,
+    borderWidth: 1.5,
+    borderColor: '#F2D9CF',
+  },
+  confirmArt: { width: 120, height: 120, alignSelf: 'center', backgroundColor: 'transparent' },
+  confirmArtWide: { width: '100%', height: 130, borderRadius: 16, backgroundColor: 'transparent' },
+  confirmTitle: { fontSize: 19, fontWeight: '800', color: '#5B3A2E', textAlign: 'center' },
+  confirmMsg: { fontSize: 14, fontWeight: '600', color: '#7C6F5A', textAlign: 'center', lineHeight: 20 },
+  confirmPrimary: { backgroundColor: '#7C6F5A', borderRadius: 16, paddingVertical: Spacing.three, alignItems: 'center' },
+  confirmPrimaryText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  confirmDestructive: { backgroundColor: '#D9534F', borderRadius: 16, paddingVertical: Spacing.three, alignItems: 'center' },
+  confirmDestructiveText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  confirmCancel: { alignItems: 'center', paddingVertical: 4 },
+  confirmCancelText: { fontSize: 14, fontWeight: '700', color: '#7C6F5A' },
 });

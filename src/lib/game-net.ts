@@ -10,7 +10,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase';
 
-export type OnlineGameId = 'connect4' | 'tictactoe' | 'memory' | 'batterdash' | 'study';
+export type OnlineGameId = 'connect4' | 'tictactoe' | 'batterdash' | 'study';
 
 export type GameInvite = {
   game: OnlineGameId;
@@ -101,6 +101,9 @@ export type GameRoom = {
   leave: () => void;
 };
 
+// What a player shares about themselves so the opponent can show their avatar.
+export type PlayerMeta = { companionId?: string; skinId?: string; name?: string };
+
 export type GameRoomHandlers = {
   onMessage: (type: string, data: unknown) => void;
   onPresence: (opponentPresent: boolean) => void;
@@ -109,6 +112,8 @@ export type GameRoomHandlers = {
   // the set of present player codes (from each client's tracked `meta.code`).
   onPresenceCount?: (count: number) => void;
   onPresenceCodes?: (codes: string[]) => void;
+  // 1v1 games: the opponent's shared companion/name (null until they sync).
+  onOpponentMeta?: (meta: PlayerMeta | null) => void;
 };
 
 // `meta` is merged into this client's presence payload (e.g. `{ code }`) so other
@@ -129,9 +134,14 @@ export function joinGameRoom(
       if (payload && typeof payload.type === 'string') handlers.onMessage(payload.type, payload.data);
     })
     .on('presence', { event: 'sync' }, () => {
-      const state = channel.presenceState() as Record<string, { code?: string }[]>;
+      const state = channel.presenceState() as Record<string, (PlayerMeta & { code?: string })[]>;
       const keys = Object.keys(state);
       handlers.onPresence(keys.length >= 2);
+      if (handlers.onOpponentMeta) {
+        const oppKey = keys.find((k) => k !== selfId);
+        const e = oppKey ? state[oppKey]?.[0] : undefined;
+        handlers.onOpponentMeta(e ? { companionId: e.companionId, skinId: e.skinId, name: e.name } : null);
+      }
       handlers.onPresenceCount?.(keys.length);
       if (handlers.onPresenceCodes) {
         const codes = Object.values(state)

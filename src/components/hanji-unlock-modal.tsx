@@ -60,7 +60,9 @@ const styles = StyleSheet.create({
     width: 96, height: 96, borderRadius: 48, backgroundColor: P.purpleSoft,
     overflow: 'hidden', alignItems: 'center', justifyContent: 'center', marginBottom: 2,
   },
-  avatarImg: { position: 'absolute', width: 150, height: 150, top: -6 },
+  // Framed to centre Hanji's head in the 96px circle (values measured from the
+  // current hanji.png; re-check if the art changes).
+  avatarImg: { position: 'absolute', width: 180, height: 180, left: -42, top: 4 },
   title: { fontSize: 18, fontWeight: '900', color: P.brown, textAlign: 'center' },
   message: { fontSize: 14, color: P.muted, fontWeight: '600', textAlign: 'center', lineHeight: 20 },
   button: {

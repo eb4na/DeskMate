@@ -18,9 +18,7 @@ import {
   type RoomPair,
 } from '@/constants/room-data';
 import { SHOP_ITEMS } from '@/constants/shop-data';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
-
-const BAKERY_HEADER = require('@/assets/images/backgrounds/bakery-menu-header.png');
+import { Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 
 type BuyTarget = { room: RoomPair; kind: 'background' | 'desk' | 'pair' };
 
@@ -147,29 +145,26 @@ export default function EditRoomScreen() {
     <ThemedView style={[styles.container, { backgroundColor: P.cream }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <SafeAreaView style={styles.safe}>
-          {/* Header — scalloped bakery banner with the title/subtitle overlaid. */}
+          {/* Header — big bubbly title + subtitle on the plain cream background. */}
           <View style={styles.headerRow}>
-            <View style={styles.header}>
-              <Image source={BAKERY_HEADER} style={styles.headerImg} contentFit="fill" />
-              <View style={styles.headerTextWrap}>
-                <Text style={styles.title}>{t('editRoom.editRoom')}</Text>
-                {/* Render the subtitle with the actual pair button glyph spliced
-                    in where the {link} marker sits (instead of a link emoji). */}
-                <View style={styles.subtitleRow}>
-                  {t('editRoom.subtitle').split('{link}').map((part, i) => (
-                    <Fragment key={i}>
-                      {i > 0 && (
-                        <View style={styles.subtitleBtn}>
-                          <View style={styles.subtitleGlyph}>
-                            <View style={styles.subtitleRing} />
-                            <View style={[styles.subtitleRing, styles.subtitleRing2]} />
-                          </View>
+            <View style={styles.headerTextWrap}>
+              <Text style={styles.title}>{t('editRoom.editRoom')}</Text>
+              {/* Render the subtitle with the actual pair button glyph spliced
+                  in where the {link} marker sits (instead of a link emoji). */}
+              <View style={styles.subtitleRow}>
+                {t('editRoom.subtitle').split('{link}').map((part, i) => (
+                  <Fragment key={i}>
+                    {i > 0 && (
+                      <View style={styles.subtitleBtn}>
+                        <View style={styles.subtitleGlyph}>
+                          <View style={styles.subtitleRing} />
+                          <View style={[styles.subtitleRing, styles.subtitleRing2]} />
                         </View>
-                      )}
-                      {part !== '' && <Text style={styles.subtitle}>{part}</Text>}
-                    </Fragment>
-                  ))}
-                </View>
+                      </View>
+                    )}
+                    {part !== '' && <Text style={styles.subtitle}>{part}</Text>}
+                  </Fragment>
+                ))}
               </View>
             </View>
           </View>
@@ -300,23 +295,25 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     gap: Spacing.three,
   },
-  // Header — scalloped bakery banner with the title/subtitle overlaid.
+  // Header — big bubbly title + subtitle on the plain cream background.
   headerRow: { width: '100%', alignItems: 'center' },
-  header: { width: '100%', position: 'relative' },
-  headerImg: { width: '100%', aspectRatio: 891 / 287 },
   headerTextWrap: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: '5%',
-    paddingHorizontal: '12%',
-    gap: 4,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.two,
+    paddingHorizontal: '8%',
+    gap: 6,
   },
-  title: { fontSize: 22, fontWeight: '800', color: P.brown },
+  title: {
+    fontFamily: Fonts.rounded,
+    fontSize: 38,
+    fontWeight: '900',
+    color: P.brown,
+    letterSpacing: 0.3,
+    textAlign: 'center',
+  },
   subtitle: { fontSize: 12.5, color: P.mutedBrown, fontWeight: '500', textAlign: 'center', lineHeight: 17 },
   // Subtitle laid out as a wrapping row so the real pair button can sit inline.
   subtitleRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' },

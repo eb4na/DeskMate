@@ -22,7 +22,7 @@ export function PlusGateCard({ emoji = '✨', icon, title, description }: CardPr
       style={({ pressed }) => [pressed && styles.pressed]}
       onPress={() => router.push('/plus-upgrade')}>
       <ThemedView type="backgroundElement" style={styles.card}>
-        <ThemedView style={styles.header}>
+        <ThemedView type="transparent" style={styles.header}>
           {icon ?? (emoji === '✨' ? <PlusIcon size={32} /> : <ThemedText style={styles.emoji}>{emoji}</ThemedText>)}
           <ThemedView style={styles.badge}>
             <ThemedText style={styles.badgeText}>Chef&apos;s Special</ThemedText>

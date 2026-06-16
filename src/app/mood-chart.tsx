@@ -141,7 +141,7 @@ export default function MoodChartScreen() {
               <ThemedView style={styles.section}>
                 <ThemedText type="smallBold">{t('moodChart.last8Weeks')}</ThemedText>
                 <ThemedView type="backgroundElement" style={styles.chartCard}>
-                  <ThemedView style={styles.chart}>
+                  <ThemedView type="transparent" style={styles.chart}>
                     {weekBuckets.map((b, i) => (
                       <View key={i} style={styles.barCol}>
                         <ThemedText type="small" style={styles.barValue}>

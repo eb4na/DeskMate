@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, TextInput, useColorScheme } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, TextInput, useColorScheme } from 'react-native';
+import { SoundPressable } from '@/components/sound-pressable';
+import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BakeryWrenchEmoji } from '@/components/bakery-emoji';
@@ -56,15 +58,15 @@ export default function AddExamScreen() {
     const trimmedDate = date.trim();
 
     if (!trimmedName) {
-      Alert.alert(t('addExam.missingName'), t('addExam.enterExamName'));
+      showPopup(t('addExam.missingName'), t('addExam.enterExamName'));
       return;
     }
     if (!isValidDateISO(trimmedDate)) {
-      Alert.alert(t('addExam.invalidDate'), t('addExam.chooseValidDate'));
+      showPopup(t('addExam.invalidDate'), t('addExam.chooseValidDate'));
       return;
     }
     if (!canAdd) {
-      Alert.alert(
+      showPopup(
         t('addExam.limitReached'),
         t('addExam.limitMsgFree'),
         [
@@ -85,7 +87,7 @@ export default function AddExamScreen() {
     });
 
     if (!examId) {
-      Alert.alert(
+      showPopup(
         t('addExam.limitReached'),
         t('addExam.limitMsgTier'),
         [
@@ -202,7 +204,7 @@ export default function AddExamScreen() {
 
         {/* Reminder toggle */}
         <ThemedView type="backgroundElement" style={styles.reminderRow}>
-          <ThemedView style={styles.reminderInfo}>
+          <ThemedView type="transparent" style={styles.reminderInfo}>
             <ThemedText type="smallBold">{t('addExam.reminder')}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               {t('addExam.reminderHint')}
@@ -296,13 +298,14 @@ export default function AddExamScreen() {
         ) : null}
 
         <ThemedView style={styles.actions}>
-          <Pressable
+          <SoundPressable
+            sound="confirm"
             style={({ pressed }) => [styles.saveBtn, pressed && styles.saveBtnPressed]}
             onPress={handleSave}>
             <ThemedText type="smallBold" style={styles.saveBtnText}>
               {t('addExam.addCountdown')}
             </ThemedText>
-          </Pressable>
+          </SoundPressable>
           <Pressable onPress={() => router.back()} style={styles.cancelBtn}>
             <ThemedText type="linkPrimary">{t('common.cancel')}</ThemedText>
           </Pressable>

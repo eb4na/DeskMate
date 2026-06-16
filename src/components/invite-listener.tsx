@@ -3,12 +3,13 @@
  * Mounted once in the root navigator so it works on any screen.
  */
 import { Image } from 'expo-image';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
 import { bunAvatarNudge, getCompanionImage } from '@/lib/companion-utils';
+import { listBlocked } from '@/lib/friend-requests';
 import { joinPresence, subscribeToInvites, type GameInvite, type OnlineGameId } from '@/lib/game-net';
 import { acceptGameInvite } from '@/lib/invite-actions';
 import { fetchUnreadCounts, subscribeInbox } from '@/lib/direct-messages';
@@ -18,7 +19,6 @@ import { useTranslation } from '@/i18n';
 const GAME_LABEL_KEY: Record<OnlineGameId, string> = {
   connect4: 'invite.game_connect4',
   tictactoe: 'invite.game_tictactoe',
-  memory: 'invite.game_memory',
   batterdash: 'invite.game_batterdash',
   study: 'invite.game_study',
 };
@@ -29,10 +29,19 @@ export function InviteListener() {
   const { user } = useAuth();
   const studyRoom = useStudyRoom();
   const [invite, setInvite] = useState<GameInvite | null>(null);
+  // Blocked codes (in a ref so the realtime subscriptions don't need to re-bind).
+  const blockedRef = useRef<string[]>([]);
+  useEffect(() => {
+    if (!user?.id) return;
+    listBlocked(user.id).then((b) => { blockedRef.current = b; }).catch(() => {});
+  }, [user?.id]);
 
   useEffect(() => {
     if (!friendCode) return;
-    return subscribeToInvites(friendCode, (inv) => setInvite(inv));
+    return subscribeToInvites(friendCode, (inv) => {
+      if (blockedRef.current.includes(inv.fromCode)) return; // hide blocked
+      setInvite(inv);
+    });
   }, [friendCode]);
 
   // Mark this user online app-wide while Memobun is open.
@@ -50,7 +59,10 @@ export function InviteListener() {
 
   useEffect(() => {
     if (!friendCode) return;
-    return subscribeInbox(friendCode, (fromCode) => bumpDmUnread(fromCode));
+    return subscribeInbox(friendCode, (fromCode) => {
+      if (blockedRef.current.includes(fromCode)) return; // don't ping for blocked
+      bumpDmUnread(fromCode);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [friendCode]);
 

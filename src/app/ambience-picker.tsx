@@ -1,21 +1,23 @@
 import { router } from 'expo-router';
+import { useEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { PlusGate } from '@/components/plus-gate';
+import { SoundPreviewButton } from '@/components/sound-preview-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
+import { stopPreview } from '@/lib/ambience-audio';
 import i18n, { useTranslation } from '@/i18n';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
+// Emojis are interim placeholders so each sound has a distinct picture; swap for
+// real per-sound art (assets/images/sounds/<id>.png) when it's drawn.
 export const AMBIENCE_OPTIONS = [
-  { id: 'rain', emoji: '' },
-  { id: 'cafe', emoji: '' },
-  { id: 'library', emoji: '' },
-  { id: 'fireplace', emoji: '' },
-  { id: 'keyboard', emoji: '' },
-  { id: 'night', emoji: '' },
+  { id: 'rain', emoji: '🌧️' },
+  { id: 'ocean', emoji: '🌊' },
+  { id: 'fireplace', emoji: '🔥' },
+  { id: 'night', emoji: '🌙' },
 ] as const;
 
 export type AmbienceId = (typeof AMBIENCE_OPTIONS)[number]['id'];
@@ -29,7 +31,10 @@ export function getAmbienceEmoji(id: string): string {
 
 function AmbienceContent() {
   const { t } = useTranslation();
-  const { ambienceId, setAmbience } = useApp();
+  const { ambienceId, setAmbience, isPlus, ownedShopItems } = useApp();
+
+  // Stop any running preview when leaving the screen.
+  useEffect(() => () => stopPreview(), []);
 
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
@@ -40,15 +45,23 @@ function AmbienceContent() {
 
         <ThemedView style={styles.grid}>
           {AMBIENCE_OPTIONS.map((opt) => {
-            const selected = ambienceId === opt.id;
+            // Plus unlocks every sound; everyone else uses the ones they've bought
+            // in the shop (sound_<id>). Locked cards send you to the shop.
+            const unlocked = isPlus || ownedShopItems.includes(`sound_${opt.id}`);
+            const selected = unlocked && ambienceId === opt.id;
             return (
               <Pressable
                 key={opt.id}
                 style={({ pressed }) => [pressed && styles.pressed]}
-                onPress={() => setAmbience(selected ? null : opt.id)}>
+                onPress={() =>
+                  unlocked
+                    ? setAmbience(selected ? null : opt.id)
+                    : router.replace({ pathname: '/shop', params: { category: 'sound' } })
+                }>
                 <ThemedView
                   type="backgroundElement"
-                  style={[styles.card, selected && styles.cardSelected]}>
+                  style={[styles.card, selected && styles.cardSelected, !unlocked && styles.cardLocked]}>
+                  <SoundPreviewButton id={opt.id} style={styles.previewBtn} />
                   <ThemedText style={styles.cardEmoji}>{opt.emoji}</ThemedText>
                   <ThemedText type="smallBold" style={styles.cardName}>
                     {t(`ambience.name_${opt.id}`)}
@@ -56,9 +69,15 @@ function AmbienceContent() {
                   <ThemedText type="small" themeColor="textSecondary" style={styles.cardDesc}>
                     {t(`ambience.desc_${opt.id}`)}
                   </ThemedText>
-                  {selected && (
-                    <ThemedView style={styles.selectedBadge}>
-                      <ThemedText style={styles.selectedBadgeText}>{t('ambience.active')}</ThemedText>
+                  {unlocked ? (
+                    selected && (
+                      <ThemedView style={styles.selectedBadge}>
+                        <ThemedText style={styles.selectedBadgeText}>{t('ambience.active')}</ThemedText>
+                      </ThemedView>
+                    )
+                  ) : (
+                    <ThemedView style={styles.lockedBadge}>
+                      <ThemedText style={styles.lockedBadgeText}>{t('shop.lockedBadge')}</ThemedText>
                     </ThemedView>
                   )}
                 </ThemedView>
@@ -92,15 +111,11 @@ function AmbienceContent() {
 }
 
 export default function AmbiencePickerScreen() {
-  const { t } = useTranslation();
+  // No blanket Plus lock: Plus members get all sounds, everyone else picks from the
+  // ones they've bought in the shop (the cards gate themselves).
   return (
     <ThemedView style={styles.container}>
-      <PlusGate
-        feature={t('ambience.plusFeatureName')}
-        description={t('ambience.plusFeatureDesc')}
-        emoji="">
-        <AmbienceContent />
-      </PlusGate>
+      <AmbienceContent />
     </ThemedView>
   );
 }
@@ -120,7 +135,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: Spacing.three,
     gap: Spacing.one,
+    position: 'relative',
   },
+  previewBtn: { position: 'absolute', top: 10, right: 10 },
   cardSelected: {
     borderWidth: 2,
     borderColor: '#7C6F5A',
@@ -137,6 +154,16 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   selectedBadgeText: { fontSize: 12, color: '#7C6F5A', fontWeight: '700' },
+  cardLocked: { opacity: 0.6 },
+  lockedBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(124,111,90,0.12)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 4,
+  },
+  lockedBadgeText: { fontSize: 12, color: '#9A7B6D', fontWeight: '700' },
   clearBtn: { alignItems: 'center', paddingVertical: Spacing.two },
   noticeCard: { borderRadius: 12, padding: Spacing.three },
   noticeText: { textAlign: 'center', lineHeight: 20 },

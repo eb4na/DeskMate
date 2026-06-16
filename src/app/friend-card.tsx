@@ -10,6 +10,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useApp } from '@/context/app-context';
+import { PlusCrown, isPlusFrame } from '@/components/avatar-frame';
 import { getCompanionImage } from '@/lib/companion-utils';
 import { fetchProfileByCode } from '@/lib/profile-sync';
 import { ROOM_PAIRS } from '@/constants/room-data';
@@ -50,6 +51,7 @@ export default function FriendCardScreen() {
           companionId: p.companionId,
           skinId: p.skinId,
           backgroundId: p.backgroundId,
+          avatarFrame: p.avatarFrame,
           description: p.description,
           birthday: p.birthday,
           currentStreak: p.currentStreak,
@@ -82,7 +84,10 @@ export default function FriendCardScreen() {
                 <Image source={figure} style={styles.figureImg} contentFit="contain" />
               </View>
               <View style={styles.infoPanel}>
-                <Text style={styles.name} numberOfLines={2}>{name}</Text>
+                <View style={styles.nameRow}>
+                  <Text style={styles.name} numberOfLines={2}>{name}</Text>
+                  {isPlusFrame(friend?.avatarFrame) && <PlusCrown size={18} />}
+                </View>
                 <Row label={t('friendCard.currentStreak')} value={`${friend?.currentStreak ?? 0}d`} />
                 <Row label={t('friendCard.bestStreak')} value={`${friend?.longestStreak ?? 0}d`} />
                 <Row label={t('friendCard.studied')} value={hoursLabel} />
@@ -135,7 +140,8 @@ const styles = StyleSheet.create({
   },
   figureImg: { width: '116%', height: '92%', marginBottom: -6 },
   infoPanel: { flex: 1, gap: 8, paddingTop: 2 },
-  name: { fontSize: 20, fontWeight: '900', color: P.brown, lineHeight: 24 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  name: { fontSize: 20, fontWeight: '900', color: P.brown, lineHeight: 24, flexShrink: 1 },
   statRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
   statLabel: { fontSize: 12.5, color: P.muted, fontWeight: '600', flex: 1 },
   statValue: { fontSize: 13, color: P.brown, fontWeight: '800' },

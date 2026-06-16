@@ -89,6 +89,16 @@ export const ROOM_PAIRS: RoomPair[] = [
     deskImage: require('@/assets/images/desks/lavender.png'),
   },
   {
+    // Matched set — snowy shrine courtyard + an all-snow desk surface that ties
+    // into the background's fresh-snow palette (built by scripts/generate-snow-desk.py).
+    id: 'frostbloom-shrine',
+    name: 'Frostbloom Shrine',
+    backgroundId: 'bg_frostbloom_shrine',
+    deskId: 'desk_snow',
+    backgroundImage: require('@/assets/images/backgrounds/frostbloom-shrine.png'),
+    deskImage: require('@/assets/images/desks/snow.png'),
+  },
+  {
     // Plus-exclusive matched set — background + crimson cloth desk, both granted with Plus.
     id: 'strawberry-palace',
     name: 'Golden Teahouse',
@@ -106,6 +116,11 @@ export const ROOM_PAIRS: RoomPair[] = [
 /** The pair that contains the given shop item id (background or desk), if any. */
 export function pairForItem(itemId: string): RoomPair | undefined {
   return ROOM_PAIRS.find((p) => p.backgroundId === itemId || p.deskId === itemId);
+}
+
+/** The room pair with the given pair id (e.g. an outfit's `roomId`), if any. */
+export function roomById(roomId: string | null | undefined): RoomPair | undefined {
+  return roomId ? ROOM_PAIRS.find((p) => p.id === roomId) : undefined;
 }
 
 /** The partner item id (desk for a background, background for a desk). */

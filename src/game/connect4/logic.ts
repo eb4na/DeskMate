@@ -79,27 +79,131 @@ function winsWith(board: Board, col: number, player: Player): boolean {
   return res ? checkWin(res.board, player).won : false;
 }
 
+// --- Strong AI: alpha-beta minimax with a positional evaluation. ----------
+// Depth of lookahead. The board is only 7×5, so 8 plies is near-perfect play
+// while staying well under a frame on a phone (alpha-beta + center ordering
+// prune most of the tree).
+const AI_DEPTH = 8;
+const WIN_SCORE = 100000;
+const CENTER = Math.floor(COLS / 2);
+// Search the centre first — it produces the best alpha-beta cutoffs and centre
+// columns are the strongest squares.
+const COL_ORDER = [3, 2, 4, 1, 5, 0, 6].filter((c) => c < COLS);
+
+// Score a 4-cell window for `ai` (positive = good for ai). Mixed windows are
+// dead (neither side can complete four there).
+function windowScore(a: number, h: number): number {
+  if (a > 0 && h > 0) return 0;
+  if (a === 3) return 50;
+  if (a === 2) return 10;
+  if (a === 1) return 1;
+  if (h === 3) return -55; // weight blocking a hair above building
+  if (h === 2) return -10;
+  if (h === 1) return -1;
+  return 0;
+}
+
+// Heuristic board value from `ai`'s perspective (only called on non-terminal
+// nodes — wins are caught earlier, so no window can already hold four).
+function evaluate(board: Board, ai: Player, human: Player): number {
+  let score = 0;
+  for (let r = 0; r < ROWS; r++) {
+    const v = board[r][CENTER];
+    if (v === ai) score += 3;
+    else if (v === human) score -= 3;
+  }
+  for (const [dr, dc] of DIRECTIONS) {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const er = r + dr * 3;
+        const ec = c + dc * 3;
+        if (er < 0 || er >= ROWS || ec < 0 || ec >= COLS) continue;
+        let a = 0;
+        let h = 0;
+        for (let k = 0; k < 4; k++) {
+          const cell = board[r + dr * k][c + dc * k];
+          if (cell === ai) a++;
+          else if (cell === human) h++;
+        }
+        score += windowScore(a, h);
+      }
+    }
+  }
+  return score;
+}
+
+function minimax(
+  board: Board,
+  depth: number,
+  alpha: number,
+  beta: number,
+  maximizing: boolean,
+  ai: Player,
+  human: Player,
+): number {
+  // Terminal: a win for either side (+depth so sooner wins / later losses win ties).
+  if (checkWin(board, ai).won) return WIN_SCORE + depth;
+  if (checkWin(board, human).won) return -WIN_SCORE - depth;
+  const cols = COL_ORDER.filter((c) => board[0][c] === 0);
+  if (depth === 0 || cols.length === 0) return evaluate(board, ai, human);
+
+  if (maximizing) {
+    let best = -Infinity;
+    for (const c of cols) {
+      const s = minimax(applyMove(board, c, ai)!.board, depth - 1, alpha, beta, false, ai, human);
+      if (s > best) best = s;
+      if (best > alpha) alpha = best;
+      if (alpha >= beta) break;
+    }
+    return best;
+  }
+  let best = Infinity;
+  for (const c of cols) {
+    const s = minimax(applyMove(board, c, human)!.board, depth - 1, alpha, beta, true, ai, human);
+    if (s < best) best = s;
+    if (best < beta) beta = best;
+    if (beta <= alpha) break;
+  }
+  return best;
+}
+
 /**
- * Heuristic AI: take a win, block a loss, avoid handing the opponent a win,
- * then prefer central columns, with a random fallback.
+ * Strong, non-repetitive AI: an alpha-beta search picks the best column, with a
+ * small jitter on the root scores so genuinely-equal choices vary game to game.
+ * The jitter (±~2.5) is dwarfed by any real threat (≥10) or forced win/loss
+ * (≥100000), so it never causes a tactical blunder — it only shuffles openings
+ * and even positions, killing the old "always the same pattern" behaviour.
  */
 export function getAIMove(board: Board, ai: Player, human: Player): number {
   const cols = validCols(board);
   if (cols.length === 0) return -1;
 
-  // 1) Win now.
+  // Cheap insurance the search also covers: take an immediate win; block a lone
+  // immediate threat. (Multiple simultaneous threats fall through to the search.)
   for (const c of cols) if (winsWith(board, c, ai)) return c;
-  // 2) Block the human's immediate win.
-  for (const c of cols) if (winsWith(board, c, human)) return c;
-  // 3) Don't play a column that lets the human win on their next turn.
-  const safe = cols.filter((c) => {
-    const res = applyMove(board, c, ai)!;
-    return !validCols(res.board).some((hc) => winsWith(res.board, hc, human));
-  });
-  const pool = safe.length > 0 ? safe : cols;
-  // 4) Prefer the center, then work outward.
-  const preference = [3, 2, 4, 1, 5, 0, 6];
-  for (const c of preference) if (pool.includes(c)) return c;
-  // 5) Random fallback.
-  return pool[Math.floor(Math.random() * pool.length)];
+  const threats = cols.filter((c) => winsWith(board, c, human));
+  if (threats.length === 1) return threats[0];
+
+  // Opening variety: on the AI's first move, pick among the three strong central
+  // columns instead of always slamming dead centre — all are fine this early, and
+  // the full search takes over once the board develops. Keeps games from feeling
+  // identical without conceding anything real.
+  let discs = 0;
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (board[r][c] !== 0) discs++;
+  if (discs <= 1) {
+    const open = [2, 3, 4].filter((c) => cols.includes(c));
+    if (open.length) return open[Math.floor(Math.random() * open.length)];
+  }
+
+  let best = -Infinity;
+  let choice = cols[0];
+  for (const c of COL_ORDER.filter((x) => cols.includes(x))) {
+    const exact = minimax(applyMove(board, c, ai)!.board, AI_DEPTH - 1, -Infinity, Infinity, false, ai, human);
+    const noisy = exact + (Math.random() - 0.5) * 5;
+    if (noisy > best) {
+      best = noisy;
+      choice = c;
+    }
+  }
+  return choice;
 }

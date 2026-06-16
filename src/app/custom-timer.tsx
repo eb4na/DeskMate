@@ -1,6 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, ImageBackground, NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ImageBackground, NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { SoundPressable } from '@/components/sound-pressable';
+import { showPopup } from '@/lib/popup';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/coin-icon';
@@ -108,7 +110,7 @@ export default function CustomTimerScreen() {
 
   const handleStart = () => {
     const mins = focusMins;
-    if (mins < 1 || mins > 300) { Alert.alert(t('customTimer.between1And300')); return; }
+    if (mins < 1 || mins > 300) { showPopup(t('customTimer.between1And300')); return; }
     if (isBreakMode) {
       router.replace({ pathname: '/break-game', params: { breakMinutes: String(mins), fromSession: '1' } });
       return;
@@ -227,9 +229,9 @@ export default function CustomTimerScreen() {
           )}
 
           {/* Start */}
-          <Pressable style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]} onPress={handleStart}>
+          <SoundPressable sound="confirm" style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]} onPress={handleStart}>
             <Text style={styles.startBtnText}>{t('customTimer.startSession')}  →</Text>
-          </Pressable>
+          </SoundPressable>
         </ScrollView>
       </SafeAreaView>
     </ImageBackground>

@@ -63,6 +63,13 @@ const pairTopic = (a: string, b: string) =>
   `dm:${[a.trim().toUpperCase(), b.trim().toUpperCase()].sort().join('-')}`;
 const inboxTopic = (code: string) => `dm-inbox:${code.trim().toUpperCase()}`;
 
+// The conversation screen subscribes to the pair topic while it's open. We track
+// that live channel here so sendDm can broadcast THROUGH it instead of opening a
+// second channel on the same topic — supabase-js can't join one topic twice on a
+// client (the duplicate fails to subscribe and the send silently no-ops, which is
+// why a sent message only appeared after leaving and re-entering the chat).
+const liveChannels = new Map<string, RealtimeChannel>();
+
 // Cache friend code → auth user UUID (friends are stored by code; messages are
 // addressed by UUID).
 const idCache = new Map<string, string>();
@@ -123,9 +130,18 @@ export async function sendDm(args: {
   if (!data) return { ok: false, error: 'No row returned from insert.' };
   const msg = rowToMsg(data as Row);
 
-  // Live append on the open conversation channel.
-  broadcastOnce(pairTopic(args.fromCode, args.toCode), 'dm', msg);
-  // App-wide unread ping for the recipient.
+  // Live append on the open conversation channel. Reuse the channel the screen
+  // already holds for this topic (a second channel on the same topic would fail
+  // to subscribe and never send); only fall back to an ephemeral one if the chat
+  // isn't currently open on this device.
+  const topic = pairTopic(args.fromCode, args.toCode);
+  const live = liveChannels.get(topic);
+  if (live) {
+    live.send({ type: 'broadcast', event: 'dm', payload: msg });
+  } else {
+    broadcastOnce(topic, 'dm', msg);
+  }
+  // App-wide unread ping for the recipient (its own topic — no conflict).
   broadcastOnce(inboxTopic(args.toCode), 'dm', { fromCode: msg.fromCode });
 
   return { ok: true, msg };
@@ -148,7 +164,8 @@ export function subscribeConversation(
   otherCode: string,
   onMessage: (m: DmMessage) => void,
 ): () => void {
-  const channel: RealtimeChannel = supabase.channel(pairTopic(myCode, otherCode), {
+  const topic = pairTopic(myCode, otherCode);
+  const channel: RealtimeChannel = supabase.channel(topic, {
     config: { broadcast: { self: false } },
   });
   channel
@@ -156,7 +173,10 @@ export function subscribeConversation(
       if (payload && (payload as DmMessage).id) onMessage(payload as DmMessage);
     })
     .subscribe();
+  // Register so sendDm broadcasts through this channel instead of a duplicate.
+  liveChannels.set(topic, channel);
   return () => {
+    if (liveChannels.get(topic) === channel) liveChannels.delete(topic);
     supabase.removeChannel(channel);
   };
 }

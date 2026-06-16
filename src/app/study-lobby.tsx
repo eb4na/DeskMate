@@ -1,10 +1,13 @@
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SoundPressable } from '@/components/sound-pressable';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DevKnobs } from '@/components/dev-knobs';
 import { ThemedView } from '@/components/themed-view';
+import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { SESSION_LENGTHS } from '@/constants/placeholder-data';
 import { bunAvatarNudge, getCompanionImage } from '@/lib/companion-utils';
 import { useStudyRoom } from '@/lib/use-study-room';
@@ -14,11 +17,26 @@ import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } fro
 // Lobby for a synced multiplayer study room: players gather, the host picks a
 // duration and starts. The realtime connection lives in StudyRoomProvider, so
 // it survives the transition to the home screen once the session begins.
+const LOBBY_ELEMENTS = [
+  { name: 'title', label: 'Title' },
+  { name: 'inviteBtn', label: 'Invite btn' },
+  { name: 'startBtn', label: 'Start btn' },
+  { name: 'cancel', label: 'Leave btn' },
+];
+
 export default function StudyLobbyScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('studylobby', LOBBY_ELEMENTS);
   const { active, isHost, canStartSelf, myCode, roster, presentCodes, netStatus, roomId, start, startSelf, leaveRoom, setPreferredMinutes } = useStudyRoom();
-  const [minutes, setMinutes] = useState(30);
+
+  // A length passed in from the Start Session screen — that choice carries over,
+  // so we use it and don't ask the player to pick again. Invite-flow joins
+  // arrive with no param and still see the picker.
+  const { minutes: minutesParam } = useLocalSearchParams<{ minutes?: string }>();
+  const parsedPreset = Number(minutesParam);
+  const presetMinutes = Number.isFinite(parsedPreset) && parsedPreset > 0 ? parsedPreset : null;
+  const [minutes, setMinutes] = useState(presetMinutes ?? 30);
 
   // Everyone picks their own session length up front; remember this player's
   // choice so their session runs for their chosen duration (not the host's).
@@ -50,7 +68,7 @@ export default function StudyLobbyScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: insets.top + Spacing.three }]} showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
+          <View style={[styles.header, tw('title')]}>
             <Text style={styles.title}>{t('lobby.studyRoom')}</Text>
             <Text style={styles.subtitle}>
               {connecting
@@ -85,51 +103,59 @@ export default function StudyLobbyScreen() {
             })}
           </View>
 
-          {/* Duration — everyone picks their own session length. */}
-          <Text style={styles.label}>{t('lobby.sessionLength')}</Text>
-          <View style={styles.lenGrid}>
-            {SESSION_LENGTHS.map((opt) => (
-              <Pressable
-                key={opt.minutes}
-                onPress={() => pickMinutes(opt.minutes)}
-                style={[styles.lenCard, minutes === opt.minutes && styles.lenCardActive]}>
-                <Text style={[styles.lenNum, minutes === opt.minutes && styles.lenNumActive]}>{opt.minutes}</Text>
-                <Text style={styles.lenLabel}>{t('lobby.min')}</Text>
-              </Pressable>
-            ))}
-          </View>
+          {/* Duration — everyone picks their own session length. Skipped when the
+              length was already chosen on the Start Session screen. */}
+          {presetMinutes == null && (
+            <>
+              <Text style={styles.label}>{t('lobby.sessionLength')}</Text>
+              <View style={styles.lenGrid}>
+                {SESSION_LENGTHS.map((opt) => (
+                  <Pressable
+                    key={opt.minutes}
+                    onPress={() => pickMinutes(opt.minutes)}
+                    style={[styles.lenCard, minutes === opt.minutes && styles.lenCardActive]}>
+                    <Text style={[styles.lenNum, minutes === opt.minutes && styles.lenNumActive]}>{opt.minutes}</Text>
+                    <Text style={styles.lenLabel}>{t('lobby.min')}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          )}
         </ScrollView>
 
         <View style={styles.actions}>
           {isHost ? (
             <>
-              <Pressable
+              <SoundPressable
                 onPress={() => router.push({ pathname: '/party-invite', params: { room: roomId ?? '', game: 'study' } })}
-                style={({ pressed }) => [styles.inviteBtn, pressed && styles.pressed]}>
+                style={({ pressed }) => [styles.inviteBtn, tw('inviteBtn'), pressed && styles.pressed]}>
                 <Text style={styles.inviteText}>{t('lobby.inviteFriend')}</Text>
-              </Pressable>
-              <Pressable
+              </SoundPressable>
+              <SoundPressable
+                sound="confirm"
                 onPress={() => start({ durationMinutes: minutes, subjectName: t('lobby.studyRoomName'), taskId: null, taskTitle: null })}
-                style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]}>
+                style={({ pressed }) => [styles.startBtn, tw('startBtn'), pressed && styles.pressed]}>
                 <Text style={styles.startText}>{t('lobby.startStudying')}</Text>
-              </Pressable>
+              </SoundPressable>
             </>
           ) : canStartSelf ? (
             // The room is already running — this is a late joiner. They start their
             // own session (their own clock + chosen length) whenever ready.
-            <Pressable
+            <SoundPressable
+              sound="confirm"
               onPress={() => startSelf({ durationMinutes: minutes, subjectName: t('lobby.studyRoomName'), taskId: null, taskTitle: null })}
-              style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]}>
+              style={({ pressed }) => [styles.startBtn, tw('startBtn'), pressed && styles.pressed]}>
               <Text style={styles.startText}>{t('lobby.startStudying')}</Text>
-            </Pressable>
+            </SoundPressable>
           ) : (
             <Text style={styles.hint}>{t('lobby.waitingHost')}</Text>
           )}
-          <Pressable onPress={leave} style={styles.cancel}>
+          <Pressable onPress={leave} style={[styles.cancel, tw('cancel')]}>
             <Text style={styles.cancelText}>{t('lobby.leave')}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
+      <DevKnobs screen="studylobby" knobs={twKnobs} onChange={twChange} />
     </ThemedView>
   );
 }

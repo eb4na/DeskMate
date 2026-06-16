@@ -1,50 +1,294 @@
 import { Image } from 'expo-image';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useApp } from '@/context/app-context';
+import { useIsTablet } from '@/hooks/use-device-class';
+import { playStudyMusic, stopStudyMusic } from '@/lib/ambience-audio';
+import { StudyVinyl } from '@/components/study-vinyl';
 import { SHOP_ITEMS } from '@/constants/shop-data';
+import {
+  connectSpotify,
+  disconnectSpotify,
+  markSpotifyAppOpened,
+  spotifyConfigured,
+  spotifyConnected,
+  spotifyNext,
+  spotifyPause,
+  spotifyPrevious,
+  spotifyResume,
+  spotifySeek,
+  subscribeSpotify,
+  type Playback,
+} from '@/lib/spotify';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
 
 const C = BakeryColors;
 
+// Soft pastel green for the Spotify buttons (instead of Spotify's harsh #1DB954).
+const SPOTIFY_GREEN = '#8FD3A8';
+const SPOTIFY_GREEN_DEEP = '#3E8A60';
+
+// Pickable vinyl disc colours (kept dark enough to contrast the pink label).
+// The first is the default (= DEFAULTS.vinylColor in app-context).
+const VINYL_COLORS = ['#3B3340', '#1E1B24', '#5A2A3A', '#2E3A59', '#2F4A3A', '#4A3528', '#5B4A6E', '#2C4A4E'];
+
+// ── Drawn media glyphs (white, no emoji) ──
+function Triangle({ dir }: { dir: 'left' | 'right' }) {
+  return <View style={dir === 'right' ? glyph.triRight : glyph.triLeft} />;
+}
+function PlayGlyph() {
+  return <Triangle dir="right" />;
+}
+function PauseGlyph() {
+  return (
+    <View style={glyph.pauseRow}>
+      <View style={glyph.bar} />
+      <View style={glyph.bar} />
+    </View>
+  );
+}
+function NextGlyph() {
+  return (
+    <View style={glyph.row}>
+      <Triangle dir="right" />
+      <View style={glyph.edge} />
+    </View>
+  );
+}
+function PrevGlyph() {
+  return (
+    <View style={glyph.row}>
+      <View style={glyph.edge} />
+      <Triangle dir="left" />
+    </View>
+  );
+}
+
 /**
- * Radio for the studying screen: pick a sound you bought in the Shop to play
- * while you study. Lists owned `sound` shop items (none yet → empty state).
+ * Study radio panel (right-anchored). Pick a bought study sound, or connect Spotify
+ * for full playback control (previous / play-pause / next) over your active device.
  */
-export function SoundPickerModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { ownedShopItems, equippedShopItems, setEquippedSound } = useApp();
+export function SoundPickerModal({
+  visible,
+  onClose,
+  playback,
+  onRefresh,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  // Now-playing + a re-poll trigger are owned by the study screen (so the radio
+  // vinyl stays live after this popup closes, and the popup opens already in sync).
+  playback: Playback | null;
+  onRefresh: () => Promise<void> | void;
+}) {
+  const { ownedShopItems, equippedShopItems, setEquippedSound, isPlus, vinylColor, setVinylColor } = useApp();
   const { t } = useTranslation();
+  const isTablet = useIsTablet();
   const sounds = SHOP_ITEMS.filter((i) => i.category === 'sound' && ownedShopItems.includes(i.id));
   const equipped = equippedShopItems.sound;
 
+  const [connected, setConnected] = useState(spotifyConnected());
+  const [connecting, setConnecting] = useState(false);
+  // Inline status shown in the panel (root popups don't render over this modal).
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => subscribeSpotify(() => setConnected(spotifyConnected())), []);
+
+  // Re-read now-playing shortly after a control action (Spotify needs a beat).
+  const refresh = useCallback(() => onRefresh(), [onRefresh]);
+
+  const handleConnect = async () => {
+    setNotice(null);
+    if (!isPlus) {
+      // Spotify control is a Memobun Plus benefit (see plus-upgrade FEATURES).
+      setNotice(t('soundPicker.spotifyPlus'));
+      return;
+    }
+    if (!spotifyConfigured()) {
+      setNotice(t('soundPicker.spotifySetup'));
+      return;
+    }
+    setConnecting(true);
+    const res = await connectSpotify();
+    setConnecting(false);
+    if (!res.ok) setNotice(t('soundPicker.spotifyFailed'));
+    else refresh(); // pull now-playing right away so controls reflect it
+  };
+
+  // Fire a control, then re-read state shortly after (Spotify needs a beat).
+  const control = async (fn: () => Promise<unknown>) => {
+    await fn();
+    setTimeout(refresh, 700);
+  };
+
+  // Jump to the Spotify app — to the current track (`spotify:track:…` URI) if we
+  // have one, else just open Spotify; web fallback if the app isn't installed.
+  const openInSpotify = () => {
+    const url = playback?.uri || 'spotify://';
+    // Tell the focus watcher we're stepping out on purpose, so the "come back"
+    // nudge waits ~10s instead of firing the instant we background.
+    markSpotifyAppOpened();
+    Linking.openURL(url).catch(() => Linking.openURL('https://open.spotify.com').catch(() => {}));
+  };
+
+  // Scrub slider: `scrub` is the dragged fraction (0..1) while the finger is down,
+  // else null and we show the live playback position.
+  const [scrub, setScrub] = useState<number | null>(null);
+  const trackW = useRef(0);
+  const dur = playback?.durationMs ?? 0;
+  const frac = scrub != null ? scrub : dur > 0 ? Math.min(1, (playback?.progressMs ?? 0) / dur) : 0;
+  const fracFromX = (x: number) => Math.max(0, Math.min(1, trackW.current > 0 ? x / trackW.current : 0));
+  const commitSeek = (x: number) => {
+    const f = fracFromX(x);
+    setScrub(null);
+    if (dur > 0) { spotifySeek(f * dur); setTimeout(refresh, 700); }
+  };
+  const pct = `${Math.round(frac * 100)}%` as const;
+  const fmtTime = (ms: number) => {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  };
+
+  // The big record's centre: the Spotify cover when connected, else the equipped
+  // study sound's icon, else nothing (plain tinted label). Spin while playing.
+  const equippedSound = sounds.find((s) => s.id === equipped);
+  const centerImage: number | { uri: string } | undefined =
+    connected && playback?.coverUrl ? { uri: playback.coverUrl } : equippedSound?.image;
+  const spinning = connected ? !!playback?.isPlaying : equipped != null;
+
+  // Remember the last-played study sound so spinning the record back on resumes it
+  // (rather than always jumping to the first owned sound).
+  const lastSoundRef = useRef<string | null>(equipped);
+  useEffect(() => { if (equipped) lastSoundRef.current = equipped; }, [equipped]);
+
+  // Spin the record to toggle play/stop. Spotify: pause/resume. Study sound:
+  // setEquippedSound is the single source of truth (the study screen's effect plays
+  // or stops the audio, and both vinyls spin off the equipped state).
+  const handleSpin = () => {
+    if (connected) {
+      control(playback?.isPlaying ? spotifyPause : spotifyResume);
+      return;
+    }
+    if (equipped) setEquippedSound(null);
+    else {
+      const next = lastSoundRef.current ?? sounds[0]?.id ?? null;
+      if (next) setEquippedSound(next);
+    }
+  };
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.root}>
-        <Pressable style={styles.backdrop} onPress={onClose} />
-        <View style={styles.card}>
-          <Text style={styles.title}>{t('soundPicker.title')}</Text>
+      <Pressable style={styles.backdrop} onPress={onClose} />
+      <View style={styles.centerWrap} pointerEvents="box-none">
+        <View style={[styles.panel, isTablet && styles.panelTablet]}>
+          <Text style={[styles.title, isTablet && styles.titleTablet]}>{t('soundPicker.title')}</Text>
 
-          {sounds.length === 0 ? (
-            <Text style={styles.empty}>{t('soundPicker.empty')}</Text>
-          ) : (
-            <ScrollView style={{ maxHeight: 300 }} contentContainerStyle={{ gap: Spacing.two }} showsVerticalScrollIndicator={false}>
-              <Pressable onPress={() => setEquippedSound(null)} style={[styles.row, equipped == null && styles.rowActive]}>
-                <Text style={styles.rowText}>{t('soundPicker.off')}</Text>
-                {equipped == null && <Text style={styles.check}>✓</Text>}
-              </Pressable>
-              {sounds.map((s) => (
-                <Pressable key={s.id} onPress={() => setEquippedSound(s.id)} style={[styles.row, equipped === s.id && styles.rowActive]}>
-                  <Image source={s.image} style={styles.rowIcon} contentFit="contain" />
-                  <Text style={styles.rowText} numberOfLines={1}>{s.name}</Text>
-                  {equipped === s.id && <Text style={styles.check}>✓</Text>}
+          {/* Record on the left, a tall panel of option buttons on the right */}
+          <View style={styles.vinylRow}>
+            <View style={[styles.vinylCol, isTablet && styles.vinylColTablet]}>
+              <StudyVinyl size={isTablet ? 230 : 150} playing={spinning} discColor={vinylColor} centerImage={centerImage} onSpin={handleSpin} />
+              {/* Vinyl colour swatches under the record */}
+              <View style={[styles.swatchRow, isTablet && styles.swatchRowTablet]}>
+                {VINYL_COLORS.map((col) => {
+                  const selected = vinylColor === col;
+                  return (
+                    <Pressable
+                      key={col}
+                      onPress={() => setVinylColor(col)}
+                      style={[styles.swatch, isTablet && styles.swatchTablet, { backgroundColor: col }, selected && styles.swatchSelected]}
+                      hitSlop={4}>
+                      {selected && <Text style={styles.swatchCheck}>✓</Text>}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={[styles.optionsPanel, isTablet && styles.optionsPanelTablet]}>
+              <ScrollView contentContainerStyle={{ gap: Spacing.one, padding: Spacing.two }} showsVerticalScrollIndicator={false}>
+                <Pressable onPress={() => { setEquippedSound(null); stopStudyMusic(); }} style={[styles.row, isTablet && styles.rowTablet, equipped == null && styles.rowActive]}>
+                  <Text style={[styles.rowText, isTablet && styles.rowTextTablet]}>{t('soundPicker.off')}</Text>
+                  {equipped == null && <Text style={styles.check}>✓</Text>}
                 </Pressable>
-              ))}
-            </ScrollView>
-          )}
+                {sounds.map((s) => (
+                  <Pressable key={s.id} onPress={() => { setEquippedSound(s.id); playStudyMusic(s.id.replace('sound_', '')); }} style={[styles.row, isTablet && styles.rowTablet, equipped === s.id && styles.rowActive]}>
+                    <Image source={s.image} style={[styles.rowIcon, isTablet && styles.rowIconTablet]} contentFit="contain" />
+                    <Text style={[styles.rowText, isTablet && styles.rowTextTablet]} numberOfLines={1}>{s.name}</Text>
+                    {equipped === s.id && <Text style={styles.check}>✓</Text>}
+                  </Pressable>
+                ))}
+                {sounds.length === 0 && <Text style={styles.empty}>{t('soundPicker.empty')}</Text>}
 
-          <Pressable onPress={onClose} style={({ pressed }) => [styles.doneBtn, pressed && styles.pressed]}>
-            <Text style={styles.doneBtnText}>{t('common.done')}</Text>
+                <View style={styles.rule} />
+
+                {/* Spotify */}
+                {!connected ? (
+                  <>
+                    <Pressable onPress={handleConnect} disabled={connecting} style={({ pressed }) => [styles.spotifyBtn, pressed && styles.pressed]}>
+                      <Text style={styles.spotifyBtnText}>{connecting ? t('soundPicker.connecting') : t('soundPicker.connectSpotify')}</Text>
+                    </Pressable>
+                    {notice ? <Text style={styles.notice}>{notice}</Text> : null}
+                  </>
+                ) : (
+                  <>
+                    <Pressable onPress={openInSpotify} style={({ pressed }) => [styles.nowPlaying, pressed && styles.pressed]}>
+                      <Text style={styles.npTrack} numberOfLines={1}>
+                        {playback?.track ?? (playback?.hasDevice === false ? t('soundPicker.noDevice') : t('soundPicker.connected'))}
+                      </Text>
+                      {!!playback?.artist && <Text style={styles.npArtist} numberOfLines={1}>{playback.artist}</Text>}
+                      <Text style={styles.openSpotify}>{t('soundPicker.openInSpotify')} ↗</Text>
+                    </Pressable>
+                    {dur > 0 && (
+                      <View style={styles.seekRow}>
+                        <View
+                          style={styles.seekTrack}
+                          onLayout={(e) => { trackW.current = e.nativeEvent.layout.width; }}
+                          onStartShouldSetResponder={() => true}
+                          onMoveShouldSetResponder={() => true}
+                          onResponderGrant={(e) => setScrub(fracFromX(e.nativeEvent.locationX))}
+                          onResponderMove={(e) => setScrub(fracFromX(e.nativeEvent.locationX))}
+                          onResponderRelease={(e) => commitSeek(e.nativeEvent.locationX)}
+                          onResponderTerminate={(e) => commitSeek(e.nativeEvent.locationX)}>
+                          {/* pointer-transparent so drag `locationX` stays measured
+                              against seekTrack, not the thumb/fill under the finger */}
+                          <View style={styles.seekBar} pointerEvents="none">
+                            <View style={[styles.seekFill, { width: pct }]} />
+                            <View style={[styles.seekThumb, { left: pct }]} />
+                          </View>
+                        </View>
+                        <View style={styles.seekTimes}>
+                          <Text style={styles.seekTime}>{fmtTime(frac * dur)}</Text>
+                          <Text style={styles.seekTime}>{fmtTime(dur)}</Text>
+                        </View>
+                      </View>
+                    )}
+                    <View style={styles.controls}>
+                      <Pressable onPress={() => control(spotifyPrevious)} style={({ pressed }) => [styles.ctlBtn, pressed && styles.pressed]} hitSlop={6}>
+                        <PrevGlyph />
+                      </Pressable>
+                      <Pressable
+                        onPress={() => control(playback?.isPlaying ? spotifyPause : spotifyResume)}
+                        style={({ pressed }) => [styles.ctlBtn, styles.ctlPrimary, pressed && styles.pressed]}
+                        hitSlop={6}>
+                        {playback?.isPlaying ? <PauseGlyph /> : <PlayGlyph />}
+                      </Pressable>
+                      <Pressable onPress={() => control(spotifyNext)} style={({ pressed }) => [styles.ctlBtn, pressed && styles.pressed]} hitSlop={6}>
+                        <NextGlyph />
+                      </Pressable>
+                    </View>
+                    <Pressable onPress={() => disconnectSpotify()} style={styles.disconnect}>
+                      <Text style={styles.disconnectText}>{t('soundPicker.disconnect')}</Text>
+                    </Pressable>
+                  </>
+                )}
+              </ScrollView>
+            </View>
+          </View>
+
+          <Pressable onPress={onClose} style={({ pressed }) => [styles.doneBtn, isTablet && styles.doneBtnTablet, pressed && styles.pressed]}>
+            <Text style={[styles.doneBtnText, isTablet && styles.doneBtnTextTablet]}>{t('common.done')}</Text>
           </Pressable>
         </View>
       </View>
@@ -52,25 +296,106 @@ export function SoundPickerModal({ visible, onClose }: { visible: boolean; onClo
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
-  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(48,32,24,0.4)' },
-  card: {
-    width: '100%', maxWidth: 340, backgroundColor: C.frosting,
-    borderRadius: BakeryRadii.panel, borderWidth: 2, borderColor: C.shortbread,
-    padding: Spacing.four, gap: Spacing.three, ...BakeryShadow,
+const glyph = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  triRight: {
+    width: 0, height: 0,
+    borderTopWidth: 7, borderBottomWidth: 7, borderLeftWidth: 12,
+    borderTopColor: 'transparent', borderBottomColor: 'transparent', borderLeftColor: '#FFFFFF',
   },
+  triLeft: {
+    width: 0, height: 0,
+    borderTopWidth: 7, borderBottomWidth: 7, borderRightWidth: 12,
+    borderTopColor: 'transparent', borderBottomColor: 'transparent', borderRightColor: '#FFFFFF',
+  },
+  edge: { width: 3.5, height: 16, borderRadius: 1.5, backgroundColor: '#FFFFFF' },
+  pauseRow: { flexDirection: 'row', gap: 4 },
+  bar: { width: 4, height: 15, borderRadius: 1.5, backgroundColor: '#FFFFFF' },
+});
+
+const styles = StyleSheet.create({
+  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(48,32,24,0.4)' },
+  centerWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.three },
+  panel: {
+    width: '92%', maxWidth: 440, maxHeight: '90%', backgroundColor: C.frosting,
+    borderRadius: BakeryRadii.panel, borderWidth: 2, borderColor: C.shortbread,
+    padding: Spacing.four, gap: Spacing.two, ...BakeryShadow,
+  },
+  // Tablet: a genuinely bigger box — wider card + more padding (inner sizes bump via isTablet).
+  panelTablet: { maxWidth: 660, padding: Spacing.four + 8, gap: Spacing.three },
   title: { fontSize: 18, fontWeight: '900', color: C.cocoaDark, textAlign: 'center' },
-  empty: { fontSize: 14, color: C.mocha, textAlign: 'center', lineHeight: 20 },
+  titleTablet: { fontSize: 26 },
+
+  // Record + colour swatches (left) | tall button panel (right)
+  vinylRow: { flexDirection: 'row', gap: Spacing.three, alignItems: 'center' },
+  vinylCol: { width: 150, alignItems: 'center', gap: Spacing.two },
+  optionsPanel: {
+    flex: 1,
+    minHeight: 232,
+    maxHeight: 320,
+    backgroundColor: C.frosting,
+    borderRadius: BakeryRadii.card,
+    borderWidth: 1.5,
+    borderColor: C.shortbread,
+    overflow: 'hidden',
+  },
+  // Tablet size bumps (applied via isTablet).
+  vinylColTablet: { width: 230 },
+  optionsPanelTablet: { minHeight: 360, maxHeight: 560 },
+  rowTablet: { paddingVertical: 16, paddingHorizontal: Spacing.four },
+  rowIconTablet: { width: 40, height: 40 },
+  rowTextTablet: { fontSize: 20 },
+  swatchRowTablet: { width: 230, gap: 10 },
+  swatchTablet: { width: 36, height: 36, borderRadius: 18 },
+  doneBtnTablet: { paddingVertical: 18 },
+  doneBtnTextTablet: { fontSize: 20 },
+  section: { fontSize: 13, fontWeight: '800', color: C.mocha, letterSpacing: 0.3, marginTop: 2 },
+  empty: { fontSize: 13, color: C.mocha, lineHeight: 19, paddingVertical: 4 },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.two,
     backgroundColor: '#fff', borderRadius: BakeryRadii.card,
-    borderWidth: 1.5, borderColor: C.shortbread, paddingHorizontal: Spacing.three, paddingVertical: 12,
+    borderWidth: 1.5, borderColor: C.shortbread, paddingHorizontal: Spacing.three, paddingVertical: 11,
   },
   rowActive: { borderColor: C.jam, backgroundColor: C.jam + '1A' },
   rowIcon: { width: 28, height: 28 },
   rowText: { flex: 1, fontSize: 15, fontWeight: '700', color: C.cocoaDark },
   check: { fontSize: 16, fontWeight: '900', color: C.berry },
+  rule: { height: 1.5, backgroundColor: C.shortbread, marginVertical: Spacing.one, borderRadius: 1 },
+
+  swatchRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', width: 150 },
+  swatch: {
+    width: 26, height: 26, borderRadius: 13,
+    borderWidth: 2, borderColor: '#FFFFFF',
+    alignItems: 'center', justifyContent: 'center',
+    ...BakeryShadow,
+  },
+  swatchSelected: { borderColor: C.berry, borderWidth: 3 },
+  swatchCheck: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
+
+  spotifyBtn: { backgroundColor: '#1DB954', borderRadius: BakeryRadii.button, paddingVertical: 13, alignItems: 'center' },
+  spotifyBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
+  note: { fontSize: 11.5, color: C.mocha, lineHeight: 16 },
+  notice: { fontSize: 12.5, color: C.berry, fontWeight: '700', lineHeight: 17 },
+
+  nowPlaying: { backgroundColor: '#fff', borderRadius: BakeryRadii.card, borderWidth: 1.5, borderColor: C.shortbread, paddingHorizontal: Spacing.three, paddingVertical: 10 },
+  seekRow: { paddingTop: 8, gap: 4 },
+  // Transparent wrapper with vertical padding = a generous touch target around the
+  // thin bar. Its width (measured via onLayout) maps 1:1 to the bar below it.
+  seekTrack: { paddingVertical: 10, justifyContent: 'center' },
+  seekBar: { height: 6, borderRadius: 3, backgroundColor: C.shortbread },
+  seekFill: { position: 'absolute', left: 0, top: 0, height: 6, borderRadius: 3, backgroundColor: C.jam },
+  seekThumb: { position: 'absolute', top: -4, width: 14, height: 14, borderRadius: 7, backgroundColor: C.jam, borderWidth: 2, borderColor: '#fff', marginLeft: -7, ...BakeryShadow },
+  seekTimes: { flexDirection: 'row', justifyContent: 'space-between' },
+  seekTime: { fontSize: 11, fontWeight: '700', color: C.mocha },
+  npTrack: { fontSize: 14, fontWeight: '800', color: C.cocoaDark },
+  npArtist: { fontSize: 12, color: C.mocha, marginTop: 2 },
+  openSpotify: { fontSize: 11.5, color: '#1DB954', fontWeight: '800', marginTop: 6 },
+  controls: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: Spacing.three, paddingVertical: 4 },
+  ctlBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#F4A0A8', alignItems: 'center', justifyContent: 'center' },
+  ctlPrimary: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#1DB954' },
+  disconnect: { alignItems: 'center', paddingVertical: 6 },
+  disconnectText: { fontSize: 13, fontWeight: '700', color: C.mocha },
+
   doneBtn: { paddingVertical: 13, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: '#F7A7B8' },
   doneBtnText: { fontSize: 15, fontWeight: '900', color: C.cocoaDark },
   pressed: { opacity: 0.85 },

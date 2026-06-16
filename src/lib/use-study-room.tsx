@@ -3,6 +3,14 @@ import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useSt
 
 import { useApp } from '@/context/app-context';
 import { joinGameRoom, type GameRoom } from '@/lib/game-net';
+import {
+  getPlayback,
+  playTrackAt,
+  spotifyConnected,
+  spotifyPause,
+  spotifyResume,
+  subscribeSpotify,
+} from '@/lib/spotify';
 
 // A synced multiplayer study room: friends study together with one shared timer
 // and live studying/break status. Built on the same realtime layer as the
@@ -62,6 +70,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     startActiveSession,
     equippedBackgroundRoomId,
     equippedDeskRoomId,
+    isPlus,
   } = useApp();
 
   const myCode = friendCode;
@@ -85,6 +94,14 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
   // True only for a late joiner (joined a room that's already running): the lobby
   // shows them a "Start studying" button to begin on their own clock.
   const [canStartSelf, setCanStartSelf] = useState(false);
+  // Spotify "host radio": the host broadcasts its now-playing track so every
+  // player whose own Spotify is connected mirrors the same song. Local connection
+  // flag (kept live) so a mid-session connect starts broadcasting / starts mirroring.
+  const [spotifyOn, setSpotifyOn] = useState(spotifyConnected());
+  useEffect(() => subscribeSpotify(() => setSpotifyOn(spotifyConnected())), []);
+  // Participant change-detection: the last track URI + play state we applied, so we
+  // only call Spotify on a real change (never re-seek every broadcast tick).
+  const mirrorRef = useRef<{ uri: string | null; playing: boolean }>({ uri: null, playing: false });
 
   const isHostRef = useRef(isHost);
   isHostRef.current = isHost;
@@ -150,6 +167,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     begunRef.current = false;
     lastBeginRef.current = null;
     setCanStartSelf(false);
+    mirrorRef.current = { uri: null, playing: false };
     const me = meRef.current;
     const initialRoster = [{ code: me.myCode, name: me.myName, isHost: host, companionId: me.myCompanionId, skinId: me.mySkinId }];
     rosterRef.current = initialRoster;
@@ -210,6 +228,40 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
           } else if (type === 'status') {
             const d = data as { code: string; status: StudyStatus };
             setStatusMap((prev) => ({ ...prev, [d.code]: d.status }));
+          } else if (type === 'spotify') {
+            // Host's now-playing → mirror it on this player's own Spotify (only if
+            // they have it connected; non-premium accounts just 403 and stay silent).
+            if (isHostRef.current || !spotifyConnected()) return;
+            const d = data as { uri?: string; positionMs?: number; isPlaying?: boolean; ts?: number };
+            const uri = d.uri ?? null;
+            const playing = !!d.isPlaying;
+            const last = mirrorRef.current;
+            // mirrorRef tracks the song this player actually STARTED (not just the
+            // host's last report) — only advance it when we issue a real change, so
+            // a resume after a skip-while-paused reloads the right track.
+            if (!uri) {
+              if (last.playing) spotifyPause();
+              mirrorRef.current = { uri: null, playing: false };
+            } else if (uri !== last.uri) {
+              // New/changed track — start it at the host's estimated position, but
+              // only if the host is actually playing. If the host is paused on a new
+              // track, do nothing AND leave mirrorRef untouched, so the eventual
+              // resume hits this branch again and loads the correct track.
+              if (playing) {
+                const elapsed = d.ts ? Math.max(0, Date.now() - d.ts) : 0;
+                playTrackAt(uri, (d.positionMs ?? 0) + elapsed);
+                mirrorRef.current = { uri, playing: true };
+              }
+            } else {
+              // Same track we started — react only to a play/pause flip, never a re-seek.
+              if (playing && !last.playing) {
+                spotifyResume();
+                mirrorRef.current = { uri, playing: true };
+              } else if (!playing && last.playing) {
+                spotifyPause();
+                mirrorRef.current = { uri, playing: false };
+              }
+            }
           } else if (type === 'begin') {
             // Idempotent: each member applies `begin` once. A re-sent begin (same
             // startAt) is ignored by anyone already begun.
@@ -269,6 +321,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     lastBeginRef.current = null;
     rosterRef.current = [];
     setCanStartSelf(false);
+    mirrorRef.current = { uri: null, playing: false };
     setRoster([]);
     setStatusMap({});
     setPresentCodes([]);
@@ -305,6 +358,31 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
   const setPreferredMinutes = (minutes: number) => {
     myPreferredMinutes.current = minutes;
   };
+
+  // Host radio broadcast: while the host's synced session is live and their own
+  // Spotify is connected (connecting is Plus-gated; control needs Premium), poll
+  // now-playing and push it to the room every ~5s so connected players mirror the
+  // same song. Gated on isPlus per spec; tears down on session end / leave / disconnect.
+  useEffect(() => {
+    if (!isHost || !begun || !isPlus || !spotifyOn) return;
+    let cancelled = false;
+    const tick = async () => {
+      const pb = await getPlayback();
+      if (cancelled || !pb) return;
+      room.current?.send('spotify', {
+        uri: pb.uri,
+        positionMs: pb.progressMs ?? 0,
+        isPlaying: pb.isPlaying,
+        ts: Date.now(),
+      });
+    };
+    tick();
+    const id = setInterval(tick, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [isHost, begun, isPlus, spotifyOn]);
 
   // Clean up the connection if the provider ever unmounts (app teardown).
   useEffect(() => {

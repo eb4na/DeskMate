@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BakeryCalendarEmoji, BakerySleepEmoji, BakeryTrophyEmoji } from '@/components/bakery-emoji';
@@ -159,7 +160,7 @@ export default function ProgressScreen() {
   const daysThisWeek = new Set(visibleSessions.filter((r) => r.dateISO >= mondayISO).map((r) => r.dateISO)).size;
 
   const handleSignOut = () => {
-    Alert.alert(isGuest ? t('settings.leaveGuestQ') : t('settings.signOutQ'), isGuest
+    showPopup(isGuest ? t('settings.leaveGuestQ') : t('settings.signOutQ'), isGuest
       ? t('settings.leaveGuestMsg')
       : t('settings.signOutMsg'), [
       { text: t('common.cancel'), style: 'cancel' },
@@ -171,7 +172,7 @@ export default function ProgressScreen() {
             await signOut();
             router.replace('/login');
           } catch (error) {
-            Alert.alert(
+            showPopup(
               t('settings.signOutFailed'),
               error instanceof Error ? error.message : t('settings.tryAgain'),
             );
@@ -190,7 +191,7 @@ export default function ProgressScreen() {
           </ThemedText>
 
           <ThemedView type="backgroundElement" style={styles.accountCard}>
-            <ThemedView style={styles.accountInfo}>
+            <ThemedView type="transparent" style={styles.accountInfo}>
               <ThemedText type="smallBold">{t('settings.account')}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 {isGuest ? t('settings.guestMode') : user?.email ?? t('settings.signedIn')}
@@ -210,13 +211,13 @@ export default function ProgressScreen() {
             style={({ pressed }) => [styles.weekCard, pressed && { opacity: 0.85 }]}
             onPress={() => router.push('/weekly-report')}>
             <ThemedView type="backgroundElement" style={styles.weekCardInner}>
-              <ThemedView style={styles.weekLeft}>
+              <ThemedView type="transparent" style={styles.weekLeft}>
                 <ThemedText type="smallBold">{t('progress.thisWeek')}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   {t('progress.weekSummary', { sessions: weekSessions.length, minutes: weekMinutes, days: weekDays })}
                 </ThemedText>
               </ThemedView>
-              <ThemedView style={styles.weekRight}>
+              <ThemedView type="transparent" style={styles.weekRight}>
                 <ThemedText type="small" style={styles.weekReportLink}>
                   {t('progress.fullReport')}
                 </ThemedText>
@@ -258,9 +259,9 @@ export default function ProgressScreen() {
           {/* ── Streak Freeze ─────────────────────────────────────────────── */}
           {(
             <ThemedView type="backgroundElement" style={styles.freezeCard}>
-              <ThemedView style={styles.freezeRow}>
+              <ThemedView type="transparent" style={styles.freezeRow}>
                 <StreakFreezeIcon size={52} style={styles.freezeIcon} />
-                <ThemedView style={styles.freezeInfo}>
+                <ThemedView type="transparent" style={styles.freezeInfo}>
                   <ThemedText type="smallBold">{t('progress.streakFreeze')}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
                     {t('progress.freezesRemaining', { count: streakFreezes })}
@@ -270,7 +271,7 @@ export default function ProgressScreen() {
                   <Pressable
                     style={({ pressed }) => [styles.freezeBtn, pressed && styles.pressed]}
                     onPress={() => {
-                      Alert.alert(
+                      showPopup(
                         t('progress.useFreezeQ'),
                         t('progress.useFreezeMsg'),
                         [
@@ -279,7 +280,7 @@ export default function ProgressScreen() {
                             text: t('progress.useFreeze'),
                             onPress: () => {
                               const used = applyStreakFreeze();
-                              if (used) Alert.alert(t('progress.streakProtected'), t('progress.streakSafe'));
+                              if (used) showPopup(t('progress.streakProtected'), t('progress.streakSafe'));
                             },
                           },
                         ],
@@ -382,8 +383,8 @@ export default function ProgressScreen() {
                   const barColor = subject?.color ?? '#7C6F5A';
                   return (
                     <ThemedView key={name} type="backgroundElement" style={styles.subjectRow}>
-                      <ThemedView style={styles.subjectRowTop}>
-                        <ThemedView style={styles.subjectLeft}>
+                      <ThemedView type="transparent" style={styles.subjectRowTop}>
+                        <ThemedView type="transparent" style={styles.subjectLeft}>
                           <ThemedView style={[styles.subjectDot, { backgroundColor: barColor }]} />
                           <ThemedText type="small" style={styles.subjectName}>{name}</ThemedText>
                         </ThemedView>
@@ -403,7 +404,7 @@ export default function ProgressScreen() {
             )}
 
             {mostStudied && (
-              <ThemedView style={styles.highlightRow}>
+              <ThemedView type="transparent" style={styles.highlightRow}>
                 <View style={styles.highlightItem}>
                   <BakeryTrophyEmoji size={15} />
                   <ThemedText type="small" themeColor="textSecondary">

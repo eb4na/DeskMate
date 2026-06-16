@@ -2,8 +2,11 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Image } from 'expo-image';
 import { router, Tabs } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, type ImageStyle, type StyleProp } from 'react-native';
 import { subscribeDragActive } from '@/lib/drag-session';
+import { SoundPressable } from '@/components/sound-pressable';
+import { DevKnobs } from '@/components/dev-knobs';
+import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 
@@ -44,10 +47,10 @@ const LEFT_ROUTES = ['index', 'tasks'];
 const RIGHT_ROUTES = ['progress', 'shop'];
 const ROUTE_INDEX: Record<string, number> = { index: 0, tasks: 1, progress: 2, shop: 3 };
 
-function TabItem({ name, isFocused, onPress }: { name: string; isFocused: boolean; onPress: () => void }) {
+function TabItem({ name, isFocused, onPress, iconStyle }: { name: string; isFocused: boolean; onPress: () => void; iconStyle?: StyleProp<ImageStyle> }) {
   const { t } = useTranslation();
   return (
-    <Pressable
+    <SoundPressable
       style={[
         styles.tab,
         name === 'index' && styles.tabHome,
@@ -66,18 +69,25 @@ function TabItem({ name, isFocused, onPress }: { name: string; isFocused: boolea
             name === 'shop' && isFocused ? SHOP_ICON_ACTIVE :
             ICONS[name]
           }
-          style={[styles.icon, name === 'index' && styles.iconHome]}
+          style={[styles.icon, name === 'index' && styles.iconHome, iconStyle]}
           contentFit="contain"
         />
       </View>
       <Text style={[styles.label, isFocused && styles.labelActive]}>{t(LABEL_KEYS[name])}</Text>
-    </Pressable>
+    </SoundPressable>
   );
 }
 
 const ALL_ROUTES = ['index', 'tasks', 'progress', 'shop'];
 
 function CustomTabBar({ state, navigation }: BottomTabBarProps) {
+  // Tablet-only per-icon nudge so each icon centers in its lace segment.
+  const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('menubar', [
+    { name: 'index', label: 'Home icon' },
+    { name: 'tasks', label: 'Tasks icon' },
+    { name: 'progress', label: 'Progress icon' },
+    { name: 'shop', label: 'Shop icon' },
+  ]);
   return (
     <View style={styles.wrapper}>
       <View style={styles.laceSlot}>
@@ -92,6 +102,7 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
               key={name}
               name={name}
               isFocused={isFocused}
+              iconStyle={tw(name)}
               onPress={() => {
                 const route = state.routes[index];
                 const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
@@ -101,6 +112,8 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
           );
         })}
       </View>
+      {/* Adjust from a non-home tab so this doesn't stack on the home panel. */}
+      {state.index !== ROUTE_INDEX.index && <DevKnobs screen="menubar" knobs={twKnobs} onChange={twChange} />}
     </View>
   );
 }

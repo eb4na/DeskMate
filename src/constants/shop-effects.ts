@@ -107,18 +107,10 @@ const DECORATION_EFFECTS: Record<string, DecorationEffect> = {
   },
 };
 
-const REMINDER_STYLE_EFFECTS: Record<string, ReminderStyleEffect> = {
-  reminder_chirp: {
-    emoji: '',
-    line: '"Chirp chirp. Tiny study buddy check-in!"',
-    preview: 'Cute Chirp active',
-  },
-  reminder_bells: {
-    emoji: '',
-    line: '"Soft bells for your next study block."',
-    preview: 'Gentle Bells active',
-  },
-};
+// Reminder "alert sounds" were removed from the shop — reminders now always use
+// the OS default notification sound. Kept as an empty map so getReminderStyleEffect
+// returns null for everyone (including anyone who had one equipped before).
+const REMINDER_STYLE_EFFECTS: Record<string, ReminderStyleEffect> = {};
 
 export function getThemeEffect(equipped: EquippedShopItems) {
   return equipped.theme ? THEME_EFFECTS[equipped.theme] ?? null : null;
@@ -141,5 +133,7 @@ export function getReminderStyleEffect(equipped: EquippedShopItems) {
 }
 
 export function isEquipableCategory(category: string) {
-  return category !== 'game';
+  // 'game' items just unlock; 'recipe' items are chosen in the Bakery Menu, not
+  // worn via an equipped slot — so neither shows an "Equip now?" prompt.
+  return category !== 'game' && category !== 'recipe';
 }

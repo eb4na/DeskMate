@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Image as RNImage,
   Keyboard,
@@ -7,13 +7,13 @@ import {
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { SoundPressable } from '@/components/sound-pressable';
 
 import {
   ChevronDownIcon,
@@ -23,9 +23,11 @@ import {
   LockIcon,
   MailIcon,
 } from '@/components/auth-icons';
-import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
+import { DevKnobs, type Knob } from '@/components/dev-knobs';
+import { BakeryColors, BakeryRadii, BakeryShadow, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
+import { useIsTablet } from '@/hooks/use-device-class';
 import { supabase } from '@/lib/supabase';
 import { signInWithProvider } from '@/lib/oauth';
 import { LANGUAGES, type SupportedLanguage, useTranslation } from '@/i18n';
@@ -33,6 +35,21 @@ import { LANGUAGES, type SupportedLanguage, useTranslation } from '@/i18n';
 const LOGIN_BG = require('@/assets/images/auth/login-bg.png');
 const LOGIN_CAT = require('@/assets/images/auth/login-cat.png');
 const LOGO = require('@/assets/images/auth/memobun-sign.png');
+
+// Tablet-only layout overrides for the login screen. Applied only when
+// useIsTablet() (phones stay byte-identical). Defaults equal today's values
+// (signTop:-120 is the old signHangTablet; the rest match the phone styles), so
+// nothing shifts until dialed. Author live via the 🎛 panel in Tablet mode,
+// "Log values", then paste the numbers here — they ship to all tablets.
+const LOGIN_TABLET = {
+  signTop: -80,             // signHang.top (was signHangTablet)
+  signHeight: 560,          // signHang.height
+  catSize: 214,             // cat width & height
+  catBottom: 2,             // catWrap.bottom offset
+  formTop: 373,             // scrollContent.paddingTop (form distance from top)
+  formWidth: 716,           // inner.maxWidth (how wide the input/button column gets)
+  formScale: 1.06,          // visual scale of the whole form column (inputs + buttons together)
+};
 
 // Same flag art the Settings language picker uses. Codes without a PNG fall
 // back to the emoji in LANGUAGES.
@@ -46,6 +63,20 @@ export default function LoginScreen() {
   const { kickedReason, clearKickedReason } = useAuth();
   const { t } = useTranslation();
   const { language, setLanguage, markLanguageSelected } = useApp();
+  // iPad's taller screen leaves the hanging sign sitting low, so lift it up there.
+  const isTablet = useIsTablet();
+  // Tablet overrides (see LOGIN_TABLET). `lt` only changes via the dev knob
+  // panel; production keeps the baked LOGIN_TABLET values.
+  const [lt, setLt] = useState(LOGIN_TABLET);
+  const loginKnobs: Knob[] = [
+    { key: 'signTop', label: 'Sign Y', value: lt.signTop, min: -260, max: 100, step: 2 },
+    { key: 'signHeight', label: 'Sign height', value: lt.signHeight, min: 200, max: 560, step: 4 },
+    { key: 'catSize', label: 'Cat size', value: lt.catSize, min: 80, max: 360, step: 4 },
+    { key: 'catBottom', label: 'Cat Y', value: lt.catBottom, min: -80, max: 200, step: 2 },
+    { key: 'formTop', label: 'Form top', value: lt.formTop, min: 60, max: 420, step: 4 },
+    { key: 'formWidth', label: 'Form width', value: lt.formWidth, min: 260, max: 820, step: 4 },
+    { key: 'formScale', label: 'Button/form size', value: lt.formScale, min: 0.6, max: 1.2, step: 0.02 },
+  ];
 
   const [email, setEmail] = useState(typeof emailParam === 'string' ? emailParam : '');
   const [password, setPassword] = useState('');
@@ -56,6 +87,17 @@ export default function LoginScreen() {
   const noticeMessage = typeof notice === 'string' ? notice : '';
 
   const activeLang = LANGUAGES.find((l) => l.code === language) ?? LANGUAGES[0];
+
+  // Surface the "kicked off by another device" reason as a custom cozy popup the
+  // moment we land here, once. The inline banner stays as a persistent reminder.
+  const kickAlertShown = useRef(false);
+  const [showKickModal, setShowKickModal] = useState(false);
+  useEffect(() => {
+    if (kickedReason && !kickAlertShown.current) {
+      kickAlertShown.current = true;
+      setShowKickModal(true);
+    }
+  }, [kickedReason]);
 
   // Choosing a language here applies it live and counts as the user's choice, so
   // the first-launch language prompt won't appear again after sign-in.
@@ -129,12 +171,16 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <RNImage source={LOGIN_BG} style={styles.bg} resizeMode="stretch" />
-      <View style={styles.catWrap} pointerEvents="none">
-        <RNImage source={LOGIN_CAT} style={styles.cat} resizeMode="contain" />
+      <View style={[styles.catWrap, isTablet && { bottom: lt.catBottom }]} pointerEvents="none">
+        <RNImage
+          source={LOGIN_CAT}
+          style={[styles.cat, isTablet && { width: lt.catSize, height: lt.catSize }]}
+          resizeMode="contain"
+        />
       </View>
       {/* Hanging Memobun sign — pinned to the very top so the strings meet the
           screen edge; the form below is padded down to clear it. */}
-      <View style={styles.signHang} pointerEvents="none">
+      <View style={[styles.signHang, isTablet && { top: lt.signTop, height: lt.signHeight }]} pointerEvents="none">
         <RNImage source={LOGO} style={styles.signHangImg} resizeMode="contain" />
       </View>
       <KeyboardAvoidingView
@@ -156,11 +202,8 @@ export default function LoginScreen() {
             </Pressable>
           </View>
 
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}>
-            <View style={styles.inner}>
+          <View style={[styles.scrollContent, isTablet && { paddingTop: lt.formTop }]}>
+            <View style={[styles.inner, isTablet && { maxWidth: lt.formWidth, transform: [{ scale: lt.formScale ?? 1 }] }]}>
               {/* Email */}
               <View style={styles.inputRow}>
                 <MailIcon color={BakeryColors.jam} />
@@ -221,23 +264,24 @@ export default function LoginScreen() {
               ) : null}
 
               {/* Log In */}
-              <Pressable
+              <SoundPressable
+                sound="confirm"
                 style={({ pressed }) => [styles.primaryButton, (pressed || submitting) && styles.pressed]}
                 onPress={handleLogin}
                 disabled={submitting}>
                 <Text style={styles.primaryButtonText}>
                   {submitting ? t('auth.signingIn') : t('auth.logIn')}
                 </Text>
-              </Pressable>
+              </SoundPressable>
 
               {/* Continue with Google */}
-              <Pressable
+              <SoundPressable
                 style={({ pressed }) => [styles.oauthButton, (pressed || submitting) && styles.pressed]}
                 onPress={() => handleSocial(() => signInWithProvider('google'))}
                 disabled={submitting}>
                 <GoogleGIcon size={20} />
                 <Text style={styles.oauthText}>{t('auth.continueWithGoogle')}</Text>
-              </Pressable>
+              </SoundPressable>
 
               {/* Create account footer */}
               <Pressable
@@ -256,7 +300,7 @@ export default function LoginScreen() {
                 <Text style={styles.resendText}>{t('auth.resendVerification')}</Text>
               </Pressable>
             </View>
-          </ScrollView>
+          </View>
         </SafeAreaView>
       </KeyboardAvoidingView>
 
@@ -293,6 +337,28 @@ export default function LoginScreen() {
           </View>
         </Pressable>
       </Modal>
+
+      {/* Signed-out-elsewhere popup — custom cozy card (not the native alert) */}
+      <Modal
+        visible={showKickModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowKickModal(false)}>
+        <View style={styles.kickBackdrop}>
+          <View style={styles.kickCard}>
+            <Text style={styles.kickEmoji}>🐰</Text>
+            <Text style={styles.kickTitle}>{t('auth.signedOutTitle')}</Text>
+            <Text style={styles.kickMsg}>{t('auth.signedOutOtherDevice')}</Text>
+            <Pressable
+              style={({ pressed }) => [styles.kickBtn, pressed && styles.pressed]}
+              onPress={() => setShowKickModal(false)}>
+              <Text style={styles.kickBtnText}>{t('common.ok')}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <DevKnobs screen="login" knobs={loginKnobs} onChange={(key, value) => setLt((p) => ({ ...p, [key]: value }))} />
     </View>
   );
 }
@@ -316,6 +382,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   signHang: { position: 'absolute', top: 0, left: 0, right: 0, height: 360, alignItems: 'center', zIndex: 2 },
+  // iPad sign position/height is tablet-gated via LOGIN_TABLET (signTop/signHeight).
   signHangImg: { width: '100%', height: '100%' },
 
   // Language pill — pinned to the top-right corner
@@ -458,6 +525,60 @@ const styles = StyleSheet.create({
   langMenuFlagImg: { width: 24, height: 17, borderRadius: 3 },
   langMenuText: { fontSize: 14, fontWeight: '600', color: BakeryColors.cocoa },
   langMenuTextActive: { color: BakeryColors.cocoaDark, fontWeight: '800' },
+
+  // Signed-out-elsewhere popup — cozy bubbly card replacing the native alert.
+  kickBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(91,58,46,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.four,
+  },
+  kickCard: {
+    width: '100%',
+    maxWidth: 320,
+    backgroundColor: BakeryColors.frosting,
+    borderRadius: 30,
+    borderWidth: 2.5,
+    borderColor: BakeryColors.rose,
+    paddingVertical: Spacing.four,
+    paddingHorizontal: Spacing.three,
+    alignItems: 'center',
+    gap: Spacing.two,
+    ...BakeryShadow,
+  },
+  kickEmoji: { fontSize: 44, marginBottom: -2 },
+  kickTitle: {
+    fontFamily: Fonts.rounded,
+    fontSize: 26,
+    fontWeight: '900',
+    color: BakeryColors.berry,
+    letterSpacing: 0.5,
+    textAlign: 'center',
+  },
+  kickMsg: {
+    fontFamily: Fonts.rounded,
+    fontSize: 15.5,
+    fontWeight: '700',
+    color: BakeryColors.cocoa,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  kickBtn: {
+    alignSelf: 'stretch',
+    backgroundColor: BakeryColors.jam,
+    borderRadius: BakeryRadii.pill,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: Spacing.two,
+  },
+  kickBtnText: {
+    fontFamily: Fonts.rounded,
+    fontSize: 17,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 0.5,
+  },
 
   pressed: { opacity: 0.85 },
 });

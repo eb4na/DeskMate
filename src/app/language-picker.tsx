@@ -1,15 +1,12 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ImageBackground, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { useApp } from '@/context/app-context';
 import { showLoadingScreen } from '@/lib/loading-signal';
 import { BakeryColors, BakeryRadii, BakeryShadow } from '@/constants/theme';
 import { LANGUAGES, type SupportedLanguage, useTranslation } from '@/i18n';
-
-const CARD_FRAME = require('@/assets/images/home/language-frame.png');
 
 // Flag art. Codes without a PNG yet fall back to the emoji in LANGUAGES.
 const FLAGS: Partial<Record<SupportedLanguage, number>> = {
@@ -17,11 +14,8 @@ const FLAGS: Partial<Record<SupportedLanguage, number>> = {
   ja: require('@/assets/images/flags/ja.png'),
 };
 
-const FRAME_RATIO = 971 / 1619; // width / height of the card-frame art
-
 export default function LanguagePickerScreen() {
   const { width } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
   const { setLanguage, markLanguageSelected, language, languageSelected } = useApp();
   const { t } = useTranslation();
 
@@ -54,83 +48,67 @@ export default function LanguagePickerScreen() {
   };
 
   const cardWidth = Math.min(width * 0.92, 430);
-  const cardHeight = cardWidth / FRAME_RATIO;
 
   const card = (
-    <ImageBackground
-        source={CARD_FRAME}
-        style={[styles.card, { width: cardWidth, height: cardHeight }]}
-        resizeMode="contain">
-        <View
-          style={[
-            styles.content,
-            {
-              paddingTop: cardHeight * 0.14 + insets.top * 0.1,
-              paddingHorizontal: cardWidth * 0.1,
-              paddingBottom: cardHeight * 0.05,
-            },
-          ]}>
+    <View style={[styles.card, { width: cardWidth }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.title}>{t('lang.title')}</Text>
+        <Text style={styles.subtitle}>{t('lang.subtitle')}</Text>
+      </View>
 
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>{t('lang.title')}</Text>
-            <Text style={styles.subtitle}>{t('lang.subtitle')}</Text>
-          </View>
+      {/* Language options */}
+      <View style={styles.langList}>
+        {LANGUAGES.map((lang) => {
+          const isActive = selected === lang.code;
+          const flagSrc = FLAGS[lang.code];
+          return (
+            <Pressable
+              key={lang.code}
+              style={[styles.langBtn, isActive && styles.langBtnActive]}
+              onPress={() => handleSelect(lang.code)}>
+              <View style={styles.flagWrap}>
+                {flagSrc ? (
+                  <Image source={flagSrc} style={styles.flagImg} contentFit="contain" />
+                ) : (
+                  <Text style={styles.flagEmoji}>{lang.flag}</Text>
+                )}
+              </View>
+              <View style={styles.langTextWrap}>
+                <Text
+                  style={[styles.langNative, isActive && styles.langNativeActive]}
+                  adjustsFontSizeToFit
+                  numberOfLines={1}
+                  minimumFontScale={0.75}>
+                  {lang.native}
+                </Text>
+                {lang.native !== lang.english && (
+                  <Text style={styles.langEnglish}>{lang.english}</Text>
+                )}
+              </View>
+              <View style={[styles.radio, isActive && styles.radioActive]}>
+                {isActive && <Text style={styles.radioCheck}>✓</Text>}
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
 
-          {/* Language options */}
-          <View style={styles.langList}>
-            {LANGUAGES.map((lang) => {
-              const isActive = selected === lang.code;
-              const flagSrc = FLAGS[lang.code];
-              return (
-                <Pressable
-                  key={lang.code}
-                  style={[styles.langBtn, isActive && styles.langBtnActive]}
-                  onPress={() => handleSelect(lang.code)}>
-                  <View style={styles.flagWrap}>
-                    {flagSrc ? (
-                      <Image source={flagSrc} style={styles.flagImg} contentFit="contain" />
-                    ) : (
-                      <Text style={styles.flagEmoji}>{lang.flag}</Text>
-                    )}
-                  </View>
-                  <View style={styles.langTextWrap}>
-                    <Text
-                      style={[styles.langNative, isActive && styles.langNativeActive]}
-                      adjustsFontSizeToFit
-                      numberOfLines={1}
-                      minimumFontScale={0.75}>
-                      {lang.native}
-                    </Text>
-                    {lang.native !== lang.english && (
-                      <Text style={styles.langEnglish}>{lang.english}</Text>
-                    )}
-                  </View>
-                  <View style={[styles.radio, isActive && styles.radioActive]}>
-                    {isActive && <Text style={styles.radioCheck}>✓</Text>}
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {/* Continue button */}
-          <Pressable
-            style={({ pressed }) => [styles.continueBtn, pressed && { opacity: 0.88 }]}
-            onPress={handleContinue}>
-            <Text style={styles.continueSparkle}>✦</Text>
-            <Text
-              style={styles.continueBtnText}
-              adjustsFontSizeToFit
-              numberOfLines={1}
-              minimumFontScale={0.75}>
-              {t('lang.confirm')}
-            </Text>
-            <Text style={styles.continueSparkle}>✦</Text>
-          </Pressable>
-
-        </View>
-      </ImageBackground>
+      {/* Continue button */}
+      <Pressable
+        style={({ pressed }) => [styles.continueBtn, pressed && { opacity: 0.88 }]}
+        onPress={handleContinue}>
+        <Text style={styles.continueSparkle}>✦</Text>
+        <Text
+          style={styles.continueBtnText}
+          adjustsFontSizeToFit
+          numberOfLines={1}
+          minimumFontScale={0.75}>
+          {t('lang.confirm')}
+        </Text>
+        <Text style={styles.continueSparkle}>✦</Text>
+      </Pressable>
+    </View>
   );
 
   // Always use the plain/normal backdrop — never swap in the login-room art (so
@@ -147,12 +125,18 @@ const styles = StyleSheet.create({
   plainBackdrop: {
     backgroundColor: BakeryColors.frosting,
   },
+  // Plain rounded card — replaces the old bow-frame PNG. Cream fill, soft pink
+  // border, gentle shadow; sizes to its content.
   card: {
     alignItems: 'stretch',
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'space-between',
+    backgroundColor: '#FFFDF8',
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: '#F4C2CC',
+    paddingVertical: 24,
+    paddingHorizontal: 22,
+    gap: 18,
+    ...BakeryShadow,
   },
 
   header: { alignItems: 'center', gap: 4 },

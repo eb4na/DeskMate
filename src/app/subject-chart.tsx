@@ -164,7 +164,7 @@ export default function SubjectChartScreen() {
                   const pct = Math.round((a.minutes / total) * 100);
                   return (
                     <ThemedView key={a.name} type="backgroundElement" style={styles.legendRow}>
-                      <ThemedView style={styles.legendLeft}>
+                      <ThemedView type="transparent" style={styles.legendLeft}>
                         <View style={[styles.dot, { backgroundColor: a.color }]} />
                         <ThemedText type="small" style={styles.legendName}>
                           {subjectLabel(a.name)}

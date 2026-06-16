@@ -158,7 +158,7 @@ export default function WeeklyReportScreen() {
                   const barColor = subject?.color ?? '#7C6F5A';
                   return (
                     <ThemedView key={name} type="backgroundElement" style={styles.subjectRow}>
-                      <ThemedView style={styles.subjectMeta}>
+                      <ThemedView type="transparent" style={styles.subjectMeta}>
                         <ThemedView style={[styles.subjectDot, { backgroundColor: barColor }]} />
                         <ThemedText type="small" style={styles.subjectName}>
                           {name}
@@ -216,7 +216,7 @@ export default function WeeklyReportScreen() {
               <>
                 <ThemedView type="backgroundElement" style={styles.advancedCard}>
                   <ThemedText style={styles.advancedEmoji}>⏰</ThemedText>
-                  <ThemedView style={styles.advancedText}>
+                  <ThemedView type="transparent" style={styles.advancedText}>
                     <ThemedText type="smallBold">{t('weeklyReport.bestStudyHours')}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
                       {t('weeklyReport.bestStudyHoursPlus')}
@@ -225,7 +225,7 @@ export default function WeeklyReportScreen() {
                 </ThemedView>
                 <ThemedView type="backgroundElement" style={styles.advancedCard}>
                   <ThemedText style={styles.advancedEmoji}></ThemedText>
-                  <ThemedView style={styles.advancedText}>
+                  <ThemedView type="transparent" style={styles.advancedText}>
                     <ThemedText type="smallBold">{t('weeklyReport.avoidanceInsights')}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
                       {t('weeklyReport.avoidancePlus')}
@@ -234,7 +234,7 @@ export default function WeeklyReportScreen() {
                 </ThemedView>
                 <ThemedView type="backgroundElement" style={styles.advancedCard}>
                   <ThemedText style={styles.advancedEmoji}></ThemedText>
-                  <ThemedView style={styles.advancedText}>
+                  <ThemedView type="transparent" style={styles.advancedText}>
                     <ThemedText type="smallBold">{t('weeklyReport.monthlyOverview')}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
                       {t('weeklyReport.monthlyPlus')}

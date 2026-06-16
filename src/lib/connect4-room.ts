@@ -8,10 +8,13 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase';
 
+// What we share about ourselves so the other side can show our avatar/name.
+export type PlayerMeta = { companionId?: string; skinId?: string; name?: string };
+
 export type Connect4Handlers = {
   onMove: (col: number) => void;
   onRematch: () => void;
-  onPresence: (state: { opponentPresent: boolean }) => void;
+  onPresence: (state: { opponentPresent: boolean; opponent: PlayerMeta | null }) => void;
   onStatus?: (status: string) => void;
 };
 
@@ -29,6 +32,7 @@ export function joinConnect4Room(
   roomCode: string,
   isHost: boolean,
   handlers: Connect4Handlers,
+  self: PlayerMeta = {},
 ): Connect4Room {
   // Unique presence key per device so host + guest are counted separately.
   const selfId = `${isHost ? 'host' : 'guest'}-${Math.random().toString(36).slice(2, 10)}`;
@@ -46,13 +50,20 @@ export function joinConnect4Room(
     })
     .on('broadcast', { event: 'rematch' }, () => handlers.onRematch())
     .on('presence', { event: 'sync' }, () => {
-      const participants = Object.keys(channel.presenceState()).length;
-      handlers.onPresence({ opponentPresent: participants >= 2 });
+      const state = channel.presenceState<PlayerMeta & { presence_ref: string }>();
+      const keys = Object.keys(state);
+      // The opponent is any presence key that isn't ours; read their shared meta.
+      const oppKey = keys.find((k) => k !== selfId);
+      const oppEntry = oppKey ? state[oppKey]?.[0] : undefined;
+      const opponent = oppEntry
+        ? { companionId: oppEntry.companionId, skinId: oppEntry.skinId, name: oppEntry.name }
+        : null;
+      handlers.onPresence({ opponentPresent: keys.length >= 2, opponent });
     })
     .subscribe((status) => {
       handlers.onStatus?.(status);
       if (status === 'SUBSCRIBED') {
-        channel.track({ role: isHost ? 'host' : 'guest', at: Date.now() });
+        channel.track({ role: isHost ? 'host' : 'guest', at: Date.now(), ...self });
       }
     });
 

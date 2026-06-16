@@ -1,6 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
+import { SoundPressable } from '@/components/sound-pressable';
+import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Companion } from '@/components/companion';
@@ -68,7 +70,7 @@ export default function SessionScreen() {
 
   const handlePause = () => {
     if (!isPaused && pausesUsed >= MAX_PAUSES) {
-      Alert.alert(t('session.noPausesLeft'), t('session.noPausesMsg'));
+      showPopup(t('session.noPausesLeft'), t('session.noPausesMsg'));
       return;
     }
     if (!isPaused) setPausesUsed((p) => p + 1);
@@ -90,7 +92,7 @@ export default function SessionScreen() {
         ? t('home.studiedEarn', { minutes: minutesElapsed, coins: cancelCoins })
         : t('home.lessThanMin', { min: MIN_MINUTES_FOR_COINS });
 
-    Alert.alert(t('session.endSessionEarlyQ'), coinMsg, [
+    showPopup(t('session.endSessionEarlyQ'), coinMsg, [
       { text: t('session.keepGoing'), style: 'cancel' },
       {
         text: t('session.endSession'),
@@ -154,13 +156,13 @@ export default function SessionScreen() {
 
         {/* Controls */}
         <ThemedView style={styles.controls}>
-          <Pressable
+          <SoundPressable
             style={({ pressed }) => [styles.pauseBtn, pressed && styles.btnPressed]}
             onPress={handlePause}>
             <ThemedText type="smallBold" style={styles.pauseBtnText}>
               {isPaused ? t('session.resume') : t('session.pause')}
             </ThemedText>
-          </Pressable>
+          </SoundPressable>
 
           <Pressable onPress={handleCancel} style={styles.cancelBtn}>
             <ThemedText type="small" themeColor="textSecondary">

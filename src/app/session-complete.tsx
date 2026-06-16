@@ -1,17 +1,23 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SoundPressable } from '@/components/sound-pressable';
+import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BakeryHeartEmoji } from '@/components/bakery-emoji';
 import { CoinIcon } from '@/components/coin-icon';
 import { Companion } from '@/components/companion';
+import { DevKnobs } from '@/components/dev-knobs';
+import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { daysBetween, todayISO, useApp } from '@/context/app-context';
 import { AFTER_SESSION_MOODS, BREAK_LENGTHS, DAILY_EARN_CAP } from '@/constants/placeholder-data';
 import { getCompanionLine } from '@/constants/companion-lines';
+import { showLoadingScreen } from '@/lib/loading-signal';
+import { track } from '@/lib/analytics';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
@@ -92,6 +98,12 @@ export default function SessionCompleteScreen() {
     streakFreezes,
   } = useApp();
   const { t } = useTranslation();
+  const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('sessioncomplete', [
+    { name: 'badge', label: 'Badge' },
+    { name: 'doneBtn', label: 'Done btn' },
+    { name: 'breakBlock', label: 'Break card' },
+    { name: 'homeBtn', label: 'Home btn' },
+  ]);
   const credited = useRef(false);
   const moodSaved = useRef(false);
   const moodRing = useRef(new Animated.Value(0)).current;
@@ -133,6 +145,7 @@ export default function SessionCompleteScreen() {
     recordSession(minutes);
     addSubjectTime(subjectName, minutes);
     if (selectedFoodId) markFoodMade(selectedFoodId);
+    track('study_session_completed', { minutes, subject: subjectName, coins: earned });
 
     const commit = (rescueWithFreeze: boolean) => {
       const { bonus, isComeback: comeback, rescued } = updateStreak(
@@ -142,7 +155,7 @@ export default function SessionCompleteScreen() {
       setIsComeback(comeback);
       if (rescued) {
         // streakFreezes is the pre-spend value here (state update is still pending).
-        Alert.alert(
+        showPopup(
           t('progress.streakProtected'),
           t('sessionComplete.freezeUsedMsg', { count: Math.max(0, streakFreezes - 1) }),
         );
@@ -156,7 +169,7 @@ export default function SessionCompleteScreen() {
     const canRescue = gap >= 2 && gap <= 4 && isPlus && streakFreezes > 0;
 
     if (canRescue) {
-      Alert.alert(
+      showPopup(
         t('sessionComplete.rescueStreakQ'),
         t('sessionComplete.rescueStreakMsg', { count: streak.currentStreak }),
         [
@@ -211,6 +224,7 @@ export default function SessionCompleteScreen() {
   };
 
   const goHome = () => {
+    showLoadingScreen(undefined, { quick: true });
     if (router.canDismiss()) {
       router.dismissAll();
       return;
@@ -237,7 +251,7 @@ export default function SessionCompleteScreen() {
             contentContainerStyle={styles.receiptScroll}>
             {/* Circular badge — the companion enjoying the baked recipe (or the
                 default Bun-with-cake art). */}
-            <View style={styles.badgeCircle}>
+            <View style={[styles.badgeCircle, tw('badge')]}>
               {FINISH_IMG[selectedFoodId ?? ''] ? (
                 <Image source={FINISH_IMG[selectedFoodId]} style={styles.badgeImageFill} contentFit="cover" />
               ) : (
@@ -315,11 +329,12 @@ export default function SessionCompleteScreen() {
               })}
             </View>
 
-            <Pressable
-              style={({ pressed }) => [styles.doneBtn, pressed && styles.btnPressed]}
+            <SoundPressable
+              sound="confirm"
+              style={({ pressed }) => [styles.doneBtn, tw('doneBtn'), pressed && styles.btnPressed]}
               onPress={commitMoodAndContinue}>
               <Text style={styles.doneBtnText}>{t('common.done')}</Text>
-            </Pressable>
+            </SoundPressable>
           </ScrollView>
         )}
 
@@ -327,7 +342,7 @@ export default function SessionCompleteScreen() {
           <>
             <Companion pose="break" size="full" />
 
-            <ThemedView style={styles.breakBlock}>
+            <ThemedView style={[styles.breakBlock, tw('breakBlock')]}>
               <ThemedText type="subtitle" style={styles.breakTitle}>
                 {t('sessionComplete.takeABreak')}
               </ThemedText>
@@ -359,7 +374,7 @@ export default function SessionCompleteScreen() {
             </ThemedView>
 
             <Pressable
-              style={({ pressed }) => [styles.primaryBtn, pressed && styles.btnPressed]}
+              style={({ pressed }) => [styles.primaryBtn, tw('homeBtn'), pressed && styles.btnPressed]}
               onPress={goHome}>
               <ThemedText type="smallBold" style={styles.primaryBtnText}>
                 {t('sessionComplete.backToHome')}
@@ -368,6 +383,7 @@ export default function SessionCompleteScreen() {
           </>
         )}
       </SafeAreaView>
+      <DevKnobs screen="sessioncomplete" knobs={twKnobs} onChange={twChange} />
     </ThemedView>
   );
 }

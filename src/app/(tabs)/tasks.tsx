@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { SoundPressable } from '@/components/sound-pressable';
+import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
@@ -90,10 +92,11 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: {
             numberOfLines={2}>
             {task.title}
           </ThemedText>
-          {/* Finished / not-finished toggle. */}
-          <Pressable onPress={onToggle} hitSlop={12}>
+          {/* Finished / not-finished toggle. Plays the confirm sound only when
+              completing a task (not when un-completing one). */}
+          <SoundPressable sound={isDone ? 'none' : 'confirm'} onPress={onToggle} hitSlop={12}>
             <View style={[styles.statusDot, isDone ? styles.statusDotDone : styles.statusDotTodo]} />
-          </Pressable>
+          </SoundPressable>
         </View>
 
         <View style={styles.taskMeta}>
@@ -177,7 +180,7 @@ export default function TasksScreen() {
   };
 
   const handleDelete = (task: Task) => {
-    Alert.alert(t('tasks.deleteTask'), t('tasks.deleteTaskMsg', { title: task.title }), [
+    showPopup(t('tasks.deleteTask'), t('tasks.deleteTaskMsg', { title: task.title }), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('common.delete'), style: 'destructive', onPress: () => deleteTask(task.id) },
     ]);
@@ -223,16 +226,16 @@ export default function TasksScreen() {
               {t('tasks.title')}
             </ThemedText>
             <ThemedView style={styles.headerActions}>
-              <Pressable
+              <SoundPressable
                 style={({ pressed }) => [styles.manageBtn, pressed && styles.pressed]}
                 onPress={() => router.push(canAddExam ? '/add-exam' : '/plus-upgrade')}>
                 <ThemedText type="small" themeColor="textSecondary">{t('tasks.addExamShort')}</ThemedText>
-              </Pressable>
-              <Pressable
+              </SoundPressable>
+              <SoundPressable
                 style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
                 onPress={() => router.push('/add-task')}>
                 <ThemedText style={styles.addBtnText}>{t('tasks.addTaskShort')}</ThemedText>
-              </Pressable>
+              </SoundPressable>
             </ThemedView>
           </ThemedView>
 

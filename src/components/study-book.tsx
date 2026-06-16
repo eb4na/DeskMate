@@ -101,7 +101,11 @@ export function StudyBook({ active, size = 110 }: { active: boolean; size?: numb
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: 'flex-start', justifyContent: 'flex-start', overflow: 'visible' },
+  // alignItems:center keeps the book's visual midline at the wrap's centre at ANY
+  // size. (With flex-start, up-scaling — e.g. the larger tablet book — shifts the
+  // centre-scaled art left of centre, pulling the book off the character.) Vertical
+  // stays flex-start so the on-desk height isn't disturbed.
+  wrap: { alignItems: 'center', justifyContent: 'flex-start', overflow: 'visible' },
   flip: {
     position: 'absolute',
     left: PAGE_X,

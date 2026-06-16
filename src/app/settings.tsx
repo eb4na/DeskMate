@@ -1,9 +1,12 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { useState } from 'react';
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DeleteAccountModal } from '@/components/delete-account-modal';
 import { PlusIcon } from '@/components/plus-icon';
 import { LockBadge } from '@/components/lock-badge';
 import { MeasuringCupIcon } from '@/components/settings-icons';
@@ -40,7 +43,7 @@ import { linkProvider } from '@/lib/oauth';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { getAmbienceName } from '@/app/ambience-picker';
 import { LANGUAGES, useTranslation } from '@/i18n';
-import { BakeryColors, BakeryRadii, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
 type RowProps = {
   icon: string | ReactNode;
@@ -87,10 +90,16 @@ function SettingRow({ icon, label, value, onPress, badge, lock }: RowProps) {
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
-  const { user, isGuest, signOut } = useAuth();
+  const { user, isGuest, signOut, deleteAccount, upgradeGuestWithGoogle } = useAuth();
+  const [upgrading, setUpgrading] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  // Local confirm for the test "reset to new account" — a root showPopup can't
+  // render over this native-modal screen (it just looked like nothing happened).
+  const [resetOpen, setResetOpen] = useState(false);
   const {
     coins,
     isPlus,
+    profileDisplayName,
     ambienceId,
     reminderEnabled,
     language,
@@ -98,6 +107,8 @@ export default function SettingsScreen() {
     setReminder,
     use24HourTime,
     setUse24HourTime,
+    soundEffectsEnabled,
+    setSoundEffectsEnabled,
     activeCompanionId,
     defaultCompanionId,
     companionSlots,
@@ -118,17 +129,30 @@ export default function SettingsScreen() {
       const res = await linkProvider(provider);
       if (res.ok) {
         await supabase.auth.refreshSession().catch(() => {});
-        Alert.alert(t('auth.connected'));
+        showPopup(t('auth.connected'));
       } else if (!res.cancelled) {
-        Alert.alert(t('auth.connectFailed'), res.error ?? '');
+        showPopup(t('auth.connectFailed'), res.error ?? '');
       }
     } catch (e) {
-      Alert.alert(t('auth.connectFailed'), e instanceof Error ? e.message : String(e));
+      showPopup(t('auth.connectFailed'), e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  // Guest → real account: connect Google, keeping the guest's progress. On
+  // success the auth listener flips us out of guest mode automatically.
+  const handleUpgrade = async () => {
+    setUpgrading(true);
+    const res = await upgradeGuestWithGoogle();
+    setUpgrading(false);
+    if (res.ok) {
+      showPopup(t('auth.connected'));
+    } else if (!res.cancelled) {
+      showPopup(t('auth.connectFailed'), res.error ?? '');
     }
   };
 
   const handleSignOut = () => {
-    Alert.alert(
+    showPopup(
       isGuest ? t('settings.leaveGuestQ') : t('settings.signOutQ'),
       isGuest ? t('settings.leaveGuestMsg') : t('settings.signOutMsg'),
       [
@@ -141,12 +165,26 @@ export default function SettingsScreen() {
               await signOut();
               router.replace('/login');
             } catch (error) {
-              Alert.alert(t('settings.signOutFailed'), error instanceof Error ? error.message : t('settings.tryAgain'));
+              showPopup(t('settings.signOutFailed'), error instanceof Error ? error.message : t('settings.tryAgain'));
             }
           },
         },
       ],
     );
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await deleteAccount();
+      setDeleteOpen(false);
+      router.replace('/login');
+    } catch (error) {
+      setDeleteOpen(false);
+      showPopup(
+        t('deleteAccount.failed', { defaultValue: 'Could not delete account' }),
+        error instanceof Error ? error.message : t('settings.tryAgain'),
+      );
+    }
   };
 
   return (
@@ -185,7 +223,45 @@ export default function SettingsScreen() {
                 </ThemedText>
               </View>
             </Pressable>
+            <View style={styles.divider} />
+            <Pressable
+              onPress={() => setDeleteOpen(true)}
+              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
+              <View style={styles.rowIconImage}>
+                <SettingsIcon name="reset" />
+              </View>
+              <View style={styles.rowBody}>
+                <ThemedText type="smallBold" style={styles.dangerText}>
+                  {t('settings.deleteAccount', { defaultValue: 'Delete account' })}
+                </ThemedText>
+              </View>
+            </Pressable>
           </ThemedView>
+
+          {/* Guests: create a real account (keeps progress, unlocks friends) */}
+          {isGuest && (
+            <>
+              <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
+                {t('auth.createAccount')}
+              </ThemedText>
+              <ThemedView type="backgroundElement" style={styles.group}>
+                <Pressable
+                  disabled={upgrading}
+                  onPress={handleUpgrade}
+                  style={({ pressed }) => [styles.row, !upgrading && pressed && styles.rowPressed]}>
+                  <View style={styles.rowIconImage}>
+                    <SettingsIcon name="google" />
+                  </View>
+                  <View style={styles.rowBody}>
+                    <ThemedText type="smallBold">{t('auth.continueWithGoogle')}</ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {t('auth.createAccountNote')}
+                    </ThemedText>
+                  </View>
+                </Pressable>
+              </ThemedView>
+            </>
+          )}
 
           {/* Connected accounts — link Google / Apple to this account */}
           {!isGuest && user && (
@@ -255,30 +331,21 @@ export default function SettingsScreen() {
             <View style={styles.divider} />
             {/* TEST/PLACEHOLDER — wipe progress, grant 1,000,000 coins. Remove before launch. */}
             <Pressable
-              onPress={() =>
-                Alert.alert(
-                  'Reset game data?',
-                  'TEST: wipes all progress (subjects, tasks, owned items, recipes, streaks) and gives you 1,000,000 coins. Keeps your friend code + language.',
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Reset + 1M coins', style: 'destructive', onPress: resetGameData },
-                  ],
-                )
-              }
+              onPress={() => setResetOpen(true)}
               style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
               <View style={styles.rowIconImage}>
                 <SettingsIcon name="reset" />
               </View>
               <View style={styles.rowBody}>
-                <ThemedText type="smallBold" style={styles.dangerText}>Reset data + 1M coins</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">Test button — wipes progress, grants 1,000,000 coins</ThemedText>
+                <ThemedText type="smallBold" style={styles.dangerText}>Reset to new account</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">Test button — restarts onboarding (legal, birthday, character), grants 1M coins</ThemedText>
               </View>
             </Pressable>
             <View style={styles.divider} />
             {/* TEST — grant all recipe badges except croissant (test the final unlock). */}
             <Pressable
               onPress={() =>
-                Alert.alert(
+                showPopup(
                   'Grant badges except croissant?',
                   'TEST: gives you every recipe badge except the Berry Croissant, plus all recipe items. Bake the croissant to test the all-badges → Hanji unlock.',
                   [
@@ -381,6 +448,24 @@ export default function SettingsScreen() {
                 thumbColor="#FFF"
               />
             </View>
+            <View style={styles.divider} />
+            <View style={styles.row}>
+              <View style={styles.rowIconImage}>
+                <SettingsIcon name="radio" />
+              </View>
+              <View style={styles.rowBody}>
+                <ThemedText type="smallBold">{t('settings.soundEffects')}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {soundEffectsEnabled ? t('settings.soundEffectsOn') : t('settings.soundEffectsOff')}
+                </ThemedText>
+              </View>
+              <Switch
+                value={soundEffectsEnabled}
+                onValueChange={setSoundEffectsEnabled}
+                trackColor={{ true: BakeryColors.jam, false: BakeryColors.shortbread }}
+                thumbColor="#FFF"
+              />
+            </View>
           </ThemedView>
 
           {/* Support & about */}
@@ -418,10 +503,17 @@ export default function SettingsScreen() {
               value={t('settings.reportBugNote')}
               onPress={() =>
                 Linking.openURL(
-                  'mailto:memobunspport@gmail.com?subject=Memobun%20Bug%20Report&body=' +
-                    encodeURIComponent('Describe the bug:\n\n\nWhat were you doing when it happened?\n\n\n(App version, device, etc.)'),
+                  'mailto:memobunsupport@gmail.com?subject=Memobun%20Support&body=' +
+                    encodeURIComponent('How can we help?\n\n\n(App version, device, etc.)'),
                 )
               }
+            />
+            <View style={styles.divider} />
+            <SettingRow
+              icon={<SettingsIcon name="info" />}
+              label="Privacy & Terms"
+              value="Privacy Policy & Terms of Service"
+              onPress={() => router.push('/legal')}
             />
             <View style={styles.divider} />
             <SettingRow icon={<SettingsIcon name="info" />} label={t('settings.version')} value={t('settings.versionValue')} />
@@ -430,6 +522,38 @@ export default function SettingsScreen() {
           <View style={styles.footer} />
         </SafeAreaView>
       </ScrollView>
+      <DeleteAccountModal
+        visible={deleteOpen}
+        displayName={isGuest ? null : profileDisplayName}
+        onConfirm={handleDeleteConfirm}
+        onClose={() => setDeleteOpen(false)}
+      />
+
+      {/* TEST reset confirm — local modal so it shows over the Settings modal. */}
+      <Modal visible={resetOpen} transparent animationType="fade" onRequestClose={() => setResetOpen(false)}>
+        <View style={styles.resetBackdrop}>
+          <View style={styles.resetCard}>
+            <ThemedText style={styles.resetTitle}>Reset to a new account?</ThemedText>
+            <ThemedText style={styles.resetBody}>
+              TEST: wipes ALL progress and drops you back to the new-account flow — Privacy Policy + Terms, birthday, then character selection. Keeps your friend code + language, and grants 1,000,000 coins once you finish.
+            </ThemedText>
+            <Pressable
+              style={({ pressed }) => [styles.resetBtn, pressed && styles.pressed]}
+              onPress={() => {
+                // Reset state, then close Settings (and any modals under it) so the
+                // root onboarding gates aren't hidden behind a native modal.
+                resetGameData();
+                setResetOpen(false);
+                if (router.canDismiss()) router.dismissAll();
+              }}>
+              <ThemedText style={styles.resetBtnText}>Reset to new account</ThemedText>
+            </Pressable>
+            <Pressable style={styles.resetCancel} onPress={() => setResetOpen(false)}>
+              <ThemedText style={styles.resetCancelText}>Cancel</ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -493,5 +617,19 @@ const styles = StyleSheet.create({
   },
   badgeText: { fontSize: 11, fontWeight: '800', color: BakeryColors.cocoaDark },
   dangerText: { color: BakeryColors.danger },
+  // Local reset-confirm modal
+  resetBackdrop: { flex: 1, backgroundColor: 'rgba(48,32,24,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  resetCard: {
+    width: '100%', maxWidth: 360, backgroundColor: BakeryColors.frosting,
+    borderRadius: BakeryRadii.panel, borderWidth: 2, borderColor: '#E8A0A0',
+    padding: Spacing.four, gap: Spacing.two, ...BakeryShadow,
+  },
+  resetTitle: { fontSize: 20, fontWeight: '900', color: '#C0392B', textAlign: 'center' },
+  resetBody: { fontSize: 13.5, color: BakeryColors.cocoaDark, lineHeight: 19, textAlign: 'center' },
+  resetBtn: { paddingVertical: 14, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: '#D0392B', marginTop: Spacing.one },
+  resetBtnText: { fontSize: 16, fontWeight: '900', color: '#fff' },
+  resetCancel: { alignItems: 'center', paddingVertical: Spacing.one },
+  resetCancelText: { fontSize: 14, fontWeight: '800', color: BakeryColors.mocha },
+  pressed: { opacity: 0.85 },
   footer: { height: Spacing.five },
 });

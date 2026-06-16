@@ -1,18 +1,26 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, AppState, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SoundPressable } from '@/components/sound-pressable';
+import { cancelComeBackNudge, sendComeBackNudge } from '@/lib/notifications';
 
 import { CoinIcon } from '@/components/coin-icon';
 import { RecipePop } from '@/components/recipe-pop';
 import { StudyBook } from '@/components/study-book';
+import { StudyOven } from '@/components/study-oven';
+import { StudyVinyl } from '@/components/study-vinyl';
+import { hasSoundPreview, playStudyMusic, stopStudyMusic } from '@/lib/ambience-audio';
+import { getPlayback, spotifyAppRecentlyOpened, spotifyConnected, spotifyPause, spotifyResume, subscribeSpotify, type Playback } from '@/lib/spotify';
+import { SHOP_ITEMS } from '@/constants/shop-data';
+import { useIsTablet } from '@/hooks/use-device-class';
 import { SubjectPickerModal } from '@/components/subject-picker-modal';
 import { FOOD_ITEMS } from '@/app/food-gallery';
 import { ThemedText } from '@/components/themed-text';
 import { useApp } from '@/context/app-context';
 import { autoBreakMinutes, coinsForMinutes, SESSION_LENGTHS } from '@/constants/placeholder-data';
 import { SoundPickerModal } from '@/components/sound-picker-modal';
-import { getCompanionImage, isHanjiActiveId, resolveActiveCompanion } from '@/lib/companion-utils';
+import { getCompanionImage, hanjiIsAnimated, isHanjiActiveId, resolveActiveCompanion } from '@/lib/companion-utils';
 import { HanjiFigure } from '@/components/hanji-figure';
 import { useStudyRoom, type StudyStatus } from '@/lib/use-study-room';
 import { ROOM_PAIRS } from '@/constants/room-data';
@@ -20,12 +28,10 @@ import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
 
 const BUN_STUDYING = require('@/assets/images/bun/bun-studying.png');
-const TIMER_CARD = require('@/assets/images/study/timer-card.png');
 const AVATAR_FRAME = require('@/assets/images/study/avatar-frame.png');
 const PPL_ICON = require('@/assets/images/study/ppl-icon.png');
 const BREAK_PILL = require('@/assets/images/study/break-pill.png');
 const DESK = require('@/assets/images/home/desk-new.png');
-const STUDY_RADIO = require('@/assets/images/home/study-radio.png');
 const GAME_BTN = require('@/assets/images/study/game-btn.png');
 
 function format(totalSeconds: number): string {
@@ -78,17 +84,25 @@ function bookOffsetFor(companionId: string | null | undefined): { dx: number; dy
 export function StudyRoomView({
   secondsLeft,
   onStop,
+  onAway,
   onBreakGame,
   finishing = false,
 }: {
   secondsLeft: number;
   onStop: () => void;
+  // Force-stop (no confirm) when the player leaves the app mid-session and doesn't
+  // return within a minute.
+  onAway: () => void;
   onBreakGame: () => void;
   // True for the brief moment the session has just ended — plays the recipe-pop
   // out of the timer before the Home screen navigates to the finish screen.
   finishing?: boolean;
 }) {
   const { t } = useTranslation();
+  // Tablet: shrink the timer ("oven") and enlarge the character / desk / book /
+  // bottom buttons. Sizes only (no transforms) so the character's bounce animation
+  // isn't disturbed.
+  const isTablet = useIsTablet();
   const {
     activeSession,
     equippedDeskRoomId,
@@ -106,7 +120,99 @@ export function StudyRoomView({
     recordSession,
     addSubjectTime,
     selectedFoodId,
+    equippedShopItems,
+    ownedShopItems,
+    setEquippedSound,
+    vinylColor,
   } = useApp();
+  // The equipped study sound (a `sound_<id>` shop item) → its ambience id. Music
+  // only actually plays for sounds that have an audio file; the vinyl spins to match.
+  const equippedAmbId = equippedShopItems.sound ? equippedShopItems.sound.replace('sound_', '') : null;
+  // When Spotify is connected it takes over the radio (the user controls it in the
+  // sound popup); otherwise the bundled study sound loops. The vinyl spins for either.
+  const [spotifyOn, setSpotifyOn] = useState(spotifyConnected());
+  useEffect(() => subscribeSpotify(() => setSpotifyOn(spotifyConnected())), []);
+  // Live Spotify now-playing, polled below. Lifted here (not just inside the popup)
+  // so the radio vinyl on the study screen keeps showing the cover after the popup
+  // closes, and so the popup opens already in sync. `null` = nothing/loading.
+  const [playback, setPlayback] = useState<Playback | null>(null);
+  // On-demand refresh handed to the popup (called after its control taps).
+  const refreshPlayback = async () => {
+    setPlayback(spotifyConnected() ? await getPlayback() : null);
+  };
+  // What the vinyl's label shows: the Spotify cover when connected & it has art,
+  // otherwise the equipped study sound's icon (or nothing).
+  const equippedSoundImage = SHOP_ITEMS.find((i) => i.id === equippedShopItems.sound)?.image;
+  const vinylCenter: number | { uri: string } | undefined =
+    spotifyOn && playback?.coverUrl ? { uri: playback.coverUrl } : equippedSoundImage;
+  // Spin only while something is actually playing: Spotify's reported state when
+  // connected, else the looping study sound.
+  const musicPlaying = (spotifyOn && !!playback?.isPlaying) || (!!equippedAmbId && hasSoundPreview(equippedAmbId));
+  // Play/stop the bundled study music. An equipped sound always plays — being
+  // merely *connected* to Spotify no longer silences it (set the sound to "Off" to
+  // hand the radio back to Spotify).
+  useEffect(() => { playStudyMusic(equippedAmbId); }, [equippedAmbId]);
+  useEffect(() => () => stopStudyMusic(), []);
+
+  // Spin the radio's record to toggle play/stop (spin once = start, spin again =
+  // stop). Spotify: pause/resume. Study sound: flip the equipped sound on/off (the
+  // effect above plays or stops it), remembering the last one so it resumes.
+  const lastSoundRef = useRef(equippedShopItems.sound);
+  useEffect(() => { if (equippedShopItems.sound) lastSoundRef.current = equippedShopItems.sound; }, [equippedShopItems.sound]);
+  const onVinylSpin = () => {
+    if (spotifyOn) {
+      (playback?.isPlaying ? spotifyPause : spotifyResume)();
+      setTimeout(refreshPlayback, 700);
+      return;
+    }
+    if (equippedShopItems.sound) {
+      setEquippedSound(null);
+    } else {
+      const next = lastSoundRef.current ?? SHOP_ITEMS.find((i) => i.category === 'sound' && ownedShopItems.includes(i.id))?.id ?? null;
+      if (next) setEquippedSound(next);
+    }
+  };
+
+  // Focus enforcement: leaving the app mid-session fires a "come back" notification,
+  // and the session auto-stops if the player doesn't return within a minute. iOS
+  // suspends JS in the background, so the 60s timer is best-effort — the reliable
+  // check is the elapsed time measured when the app returns to the foreground.
+  // (refs keep this effect mounted once even though onAway/t change each render.)
+  const onAwayRef = useRef(onAway);
+  onAwayRef.current = onAway;
+  const tRef = useRef(t);
+  tRef.current = t;
+  // The come-back notification body, in the active companion's voice. Set further
+  // down once soloBookKey is known; defaults to the generic warning.
+  const awayBodyKeyRef = useRef('session.awayBody');
+  useEffect(() => {
+    const AWAY_MS = 60_000;
+    let awayAt: number | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let nudgeId: string | null = null;
+    let stopped = false;
+    const stop = () => { if (!stopped) { stopped = true; onAwayRef.current(); } };
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'background') {
+        if (awayAt != null) return; // already away
+        awayAt = Date.now();
+        // If they just tapped "open in Spotify", hold the nudge ~10s so it doesn't
+        // scold them for deliberately stepping out to start music.
+        const nudgeDelay = spotifyAppRecentlyOpened() ? 10 : 1;
+        sendComeBackNudge(tRef.current('session.awayTitle'), tRef.current(awayBodyKeyRef.current), nudgeDelay).then((id) => { nudgeId = id; });
+        timer = setTimeout(stop, AWAY_MS);
+      } else if (state === 'active') {
+        const since = awayAt;
+        awayAt = null;
+        if (timer) { clearTimeout(timer); timer = null; }
+        cancelComeBackNudge(nudgeId);
+        nudgeId = null;
+        if (since != null && Date.now() - since >= AWAY_MS) stop();
+      }
+    });
+    return () => { sub.remove(); if (timer) clearTimeout(timer); cancelComeBackNudge(nudgeId); };
+  }, []);
+
   // The baked recipe's dish art (springs out of the timer when the session ends).
   const dishImage = (FOOD_ITEMS.find((f) => f.id === selectedFoodId) ?? FOOD_ITEMS[0]).image;
   const room = useStudyRoom();
@@ -125,6 +231,20 @@ export function StudyRoomView({
   const [mpSubjectPicked, setMpSubjectPicked] = useState(false);
   // Radio: pick a bought sound to play while studying.
   const [soundOpen, setSoundOpen] = useState(false);
+
+  // Poll Spotify's now-playing so the radio vinyl shows the live cover even with the
+  // popup closed; a faster cadence while the popup is open keeps controls/scrub fresh.
+  useEffect(() => {
+    let alive = true;
+    const tick = async () => {
+      const pb = spotifyConnected() ? await getPlayback() : null;
+      if (alive) setPlayback(pb);
+    };
+    tick(); // immediate so the popup opens / vinyl shows already in sync
+    if (!spotifyOn) return () => { alive = false; };
+    const id = setInterval(tick, soundOpen ? 3500 : 8000);
+    return () => { alive = false; clearInterval(id); };
+  }, [spotifyOn, soundOpen]);
 
   // Make sure I'm marked studying when a synced session begins.
   useEffect(() => {
@@ -156,6 +276,9 @@ export function StudyRoomView({
       : me.type === 'starter'
         ? 'bun'
         : 'custom';
+  // Pick the companion-flavored come-back line (custom characters keep the generic
+  // warning). en.json holds the English copy; other locales fall back to it.
+  awayBodyKeyRef.current = soloBookKey === 'custom' ? 'session.awayBody' : `session.awayBody_${soloBookKey}`;
   const soloBookOffset = SOLO_BOOK_OFFSET[soloBookKey] ?? DEFAULT_SOLO_BOOK_OFFSET;
 
   // Equipped solo character: a gentle, slow bounce with a tiny squash-and-stretch
@@ -357,8 +480,8 @@ export function StudyRoomView({
       )}
 
       {/* Timer card */}
-      <View style={[styles.timerWrap, isSolo && styles.timerWrapSolo]}>
-        <Image source={TIMER_CARD} style={StyleSheet.absoluteFill} contentFit="contain" pointerEvents="none" />
+      <View style={[styles.timerWrap, isSolo && styles.timerWrapSolo, isTablet && { width: isSolo ? '46%' : '38%' }]}>
+        <StudyOven style={StyleSheet.absoluteFill} />
         <View style={styles.timerText}>
           <Text style={[styles.timer, isSolo && styles.timerSolo]}>{format(displaySecs)}</Text>
           {!isSolo && (
@@ -409,9 +532,10 @@ export function StudyRoomView({
             style={[
               styles.character,
               styles.characterSolo,
+              isTablet && styles.characterSoloTablet,
               { transform: [{ translateY: charTranslateY }, { scaleX: charScaleX }, { scaleY: charScaleY }] },
             ]}>
-            {isHanjiActiveId(activeCompanionId) ? (
+            {hanjiIsAnimated(activeCompanionId, companionSkins?.[activeCompanionId ?? '']) ? (
               <HanjiFigure style={styles.characterFill} />
             ) : (
               <Image source={bigCharacter} style={styles.characterFill} contentFit="contain" />
@@ -435,7 +559,9 @@ export function StudyRoomView({
           {participants.slice(0, 4).map((p) => {
             const status = participantStatus(p.code);
             const img = p.code === friendCode ? bigCharacter : getCompanionImage(p.companionId, p.skinId);
-            const pIsHanji = p.code === friendCode ? isHanjiActiveId(activeCompanionId) : isHanjiActiveId(p.companionId);
+            const pIsHanji = p.code === friendCode
+              ? hanjiIsAnimated(activeCompanionId, companionSkins?.[activeCompanionId ?? ''])
+              : hanjiIsAnimated(p.companionId, p.skinId);
             return (
               <View key={p.code} style={[styles.partyMember, { width: partyCharSize }]}>
                 {status === 'break' ? (
@@ -461,16 +587,20 @@ export function StudyRoomView({
 
       {/* Desk surface — a full-width layer along the bottom. The character sits
           behind it; the book, controls and end-session button lie ON it. */}
-      <Image source={equippedDeskImage} style={[styles.studyDesk, deskRoom?.deskTint ? { backgroundColor: deskRoom.deskTint } : null]} contentFit={deskRoom?.deskFit ?? 'cover'} pointerEvents="none" />
-      <View style={styles.deskEdge} pointerEvents="none" />
+      <Image source={equippedDeskImage} style={[styles.studyDesk, isTablet && styles.studyDeskTablet, deskRoom?.deskTint ? { backgroundColor: deskRoom.deskTint } : null]} contentFit={deskRoom?.deskFit ?? 'cover'} pointerEvents="none" />
+      <View style={[styles.deskEdge, isTablet && { bottom: 380 }]} pointerEvents="none" />
       {soloScene ? (
         <View
           style={[
             styles.bookOnDesk,
-            { transform: [{ translateX: SOLO_BOOK_CANVAS * soloBookOffset.dx }, { translateY: SOLO_BOOK_CANVAS * soloBookOffset.dy }] },
+            isTablet && styles.bookOnDeskTablet,
+            // Sit dead-center on screen — no per-character horizontal nudge. (Only
+            // the vertical dy is applied; dx is intentionally dropped so the book
+            // reads as centered rather than shifted under each face.)
+            { transform: [{ translateY: SOLO_BOOK_CANVAS * soloBookOffset.dy }] },
           ]}
           pointerEvents="none">
-          <StudyBook active={!onBreak} size={118} />
+          <StudyBook active={!onBreak} size={isTablet ? 176 : 118} />
         </View>
       ) : (
         // One book per character. Book and character share identical columns (same
@@ -501,29 +631,29 @@ export function StudyRoomView({
             radio is already in its final spot and doesn't jump up when break starts. */}
         <View style={styles.gameCol}>
           <Pressable onPress={() => setSoundOpen(true)} style={({ pressed }) => [styles.radioBtn, pressed && styles.pressed]} hitSlop={8}>
-            <Image source={STUDY_RADIO} style={styles.radioImg} contentFit="contain" />
+            <StudyVinyl size={isTablet ? 92 : 64} playing={musicPlaying} discColor={vinylColor} centerImage={vinylCenter} onSpin={onVinylSpin} />
           </Pressable>
           <Pressable
             onPress={onBreakGame}
             disabled={!onBreak}
-            style={({ pressed }) => [styles.gameBtnWrap, pressed && onBreak && styles.pressed]}
+            style={({ pressed }) => [styles.gameBtnWrap, isTablet && { width: 64, height: 56 }, pressed && onBreak && styles.pressed]}
             hitSlop={6}>
-            {onBreak && <Image source={GAME_BTN} style={styles.gameBtn} contentFit="contain" />}
+            {onBreak && <Image source={GAME_BTN} style={[styles.gameBtn, isTablet && { width: 64, height: 56 }]} contentFit="contain" />}
           </Pressable>
         </View>
         {showBreakButton && (
-          <Pressable
+          <SoundPressable
             onPress={handleBreak}
             disabled={breakDisabled}
-            style={({ pressed }) => [styles.breakBtn, breakDisabled && styles.breakBtnDisabled, pressed && styles.pressed]}>
+            style={({ pressed }) => [styles.breakBtn, isTablet && { width: 340, height: 66 }, breakDisabled && styles.breakBtnDisabled, pressed && styles.pressed]}>
             <Image source={BREAK_PILL} style={StyleSheet.absoluteFill} contentFit="fill" pointerEvents="none" />
-            <Text style={styles.breakBtnText}>{breakLabel}</Text>
-          </Pressable>
+            <Text style={[styles.breakBtnText, isTablet && { fontSize: 21 }]}>{breakLabel}</Text>
+          </SoundPressable>
         )}
       </View>
-      <Pressable onPress={handleLeave} style={({ pressed }) => [styles.endBtn, pressed && styles.endBtnPressed]} hitSlop={8}>
-        <Text style={styles.endBtnText}>{room.active ? t('studyRoom.leaveRoom') : t('session.endSession')}</Text>
-      </Pressable>
+      <SoundPressable onPress={handleLeave} style={({ pressed }) => [styles.endBtn, isTablet && { paddingHorizontal: 34, paddingVertical: 14 }, pressed && styles.endBtnPressed]} hitSlop={8}>
+        <Text style={[styles.endBtnText, isTablet && { fontSize: 18 }]}>{room.active ? t('studyRoom.leaveRoom') : t('session.endSession')}</Text>
+      </SoundPressable>
 
       {/* Multiplayer: pick your own subject at the start */}
       <SubjectPickerModal
@@ -541,9 +671,9 @@ export function StudyRoomView({
         <View style={styles.finishOverlayLight}>
           <View style={styles.finishCard}>
             <Text style={styles.finishTitle}>{t('studyRoom.onBreakBadge')}</Text>
-            <Pressable onPress={endFinishBreak} style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
+            <SoundPressable sound="confirm" onPress={endFinishBreak} style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
               <Text style={styles.finishBtnText}>{t('sessionComplete.continue')}</Text>
-            </Pressable>
+            </SoundPressable>
           </View>
         </View>
       ) : (
@@ -554,12 +684,12 @@ export function StudyRoomView({
               <CoinIcon size={24} />
               <Text style={styles.coinText}>+{coinsEarned}</Text>
             </View>
-            <Pressable onPress={() => setDurationPickerOpen(true)} style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
+            <SoundPressable onPress={() => setDurationPickerOpen(true)} style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
               <Text style={styles.finishBtnText}>{t('studyRoom.studyAgain')}</Text>
-            </Pressable>
-            <Pressable onPress={startFinishBreak} style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
+            </SoundPressable>
+            <SoundPressable onPress={startFinishBreak} style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
               <Text style={styles.finishBtnText}>{t('studyRoom.takeBreak')}</Text>
-            </Pressable>
+            </SoundPressable>
             <Pressable onPress={handleFinishExit} style={({ pressed }) => [styles.finishBtnGhost, pressed && styles.pressed]}>
               <Text style={styles.finishBtnGhostText}>{t('studyRoom.exit')}</Text>
             </Pressable>
@@ -594,7 +724,7 @@ export function StudyRoomView({
       />
 
       {/* Radio: pick a bought sound to play while studying */}
-      <SoundPickerModal visible={soundOpen} onClose={() => setSoundOpen(false)} />
+      <SoundPickerModal visible={soundOpen} onClose={() => setSoundOpen(false)} playback={playback} onRefresh={refreshPlayback} />
     </View>
   );
 }
@@ -627,7 +757,9 @@ const styles = StyleSheet.create({
   character: { width: 172, height: 200, zIndex: 1, marginBottom: 0 },
   characterFill: { width: '100%', height: '100%' },
   // Solo: match the Home-screen companion size (300×300) so it feels prominent.
-  characterSolo: { width: 300, height: 300, marginBottom: 60 },
+  characterSolo: { width: 300, height: 300, marginBottom: 40 },
+  // Tablet: much bigger character, lifted more so it still sits on the desk.
+  characterSoloTablet: { width: 450, height: 450, marginBottom: 90 },
   // Multiplayer party — characters evenly spaced (equal gaps incl. the ends),
   // lifted up so heads clear the desk edge (240) and tuck behind the table.
   partyLayer: {
@@ -649,11 +781,16 @@ const styles = StyleSheet.create({
   // (lifted up via characterSolo.marginBottom) and the book/buttons sit on top.
   // Desk surface layer along the bottom (behind character, under book/controls).
   studyDesk: { position: 'absolute', left: -Spacing.three, right: -Spacing.three, bottom: -60, height: 300, zIndex: 1 },
+  // Tablet: taller desk surface to match the bigger character/book. Nudged down a
+  // touch (bottom -80 → -92) so the desk tucks just under the thin desk-edge line.
+  studyDeskTablet: { height: 460, bottom: -92 },
   deskEdge: { position: 'absolute', left: -Spacing.three, right: -Spacing.three, bottom: 240, height: 1.5, backgroundColor: 'rgba(120, 90, 70, 0.22)', zIndex: 1 },
   // Base position spans root's padded content box (same axis as the character
   // canvas) for a geometric center; a per-character transform (SOLO_BOOK_OFFSET)
   // then nudges it to sit right in front of each companion's visual center.
   bookOnDesk: { position: 'absolute', bottom: 150, left: 0, right: 0, alignItems: 'center', zIndex: 2 },
+  // Tablet: book sits higher, in front of the bigger/lifted character.
+  bookOnDeskTablet: { bottom: 250 },
   breakBadge: { position: 'absolute', top: 6, zIndex: 4, backgroundColor: 'rgba(78,53,40,0.85)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
   breakBadgeText: { color: '#fff', fontSize: 12, fontWeight: '800' },
 

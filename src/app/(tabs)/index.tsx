@@ -1,13 +1,18 @@
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, AppState, Easing, Image as RNImage, ImageBackground, PanResponder, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, AppState, Easing, Image as RNImage, ImageBackground, PanResponder, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { SoundPressable } from '@/components/sound-pressable';
+import { showPopup } from '@/lib/popup';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/coin-icon';
+import { DevKnobs, type Knob } from '@/components/dev-knobs';
+import { useIsTablet } from '@/hooks/use-device-class';
 import { StudyRoomView } from '@/components/study-room-view';
 import { HanjiUnlockModal } from '@/components/hanji-unlock-modal';
 import { RecipeBadgeModal } from '@/components/recipe-badge-modal';
+import { DailyRewardModal } from '@/components/daily-reward-modal';
 import { useStudyRoom } from '@/lib/use-study-room';
 import { BakeryGearEmoji } from '@/components/bakery-emoji';
 import { CountdownShape } from '@/components/countdown-shapes';
@@ -18,13 +23,14 @@ import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import i18n, { useTranslation } from '@/i18n';
 import { coinsForMinutes } from '@/constants/placeholder-data';
-import { isHanjiActiveId, resolveActiveCompanion } from '@/lib/companion-utils';
+import { hanjiIsAnimated, resolveActiveCompanion } from '@/lib/companion-utils';
 import { HanjiFigure } from '@/components/hanji-figure';
 import { useAuth } from '@/context/auth-context';
-import { listIncomingRequests } from '@/lib/friend-requests';
+import { listBlocked, listIncomingRequests } from '@/lib/friend-requests';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { takePendingDragSession, setDragActive, type DragSessionData } from '@/lib/drag-session';
 import { showLoadingScreen } from '@/lib/loading-signal';
+import { preloadStudyAssets } from '@/lib/preload-nav';
 import { getAmbienceEmoji, getAmbienceName } from '@/app/ambience-picker';
 import {
   BakeryColors,
@@ -39,6 +45,58 @@ import {
 
 const MIN_MINUTES_FOR_COINS = 10;
 const DEFAULT_BREAK_MINUTES = 5;
+
+// Tablet-only layout overrides for the home corner buttons. On phones these are
+// never applied (gated on useIsTablet → phones stay byte-identical). The numbers
+// below are the *baked* tablet values; defaults equal the phone layout (no shift
+// until dialed). Author them live via the 🎛 panel in Tablet mode, "Log values",
+// then paste the numbers here. Base coords live in the StyleSheet:
+//   switchChar top:210 / food top:292 (both 80px, left:4)
+//   editRoom top:376 / settings top:452 (both 72px, left:4)
+//   friend top:300 / right:12 (62px)
+const HOME_TABLET = {
+  // Corner buttons
+  leftInset: -3,   // shared left inset for the 4 left-column buttons
+  stackTop: 145,   // vertical shift applied to all 4 left-column buttons
+  btnScale: 1.3,   // size multiplier for every corner button
+  btnGap: 39,      // extra vertical spacing between the 4 left buttons (spreads them apart when zoomed)
+  friendTop: 86,   // vertical shift for the friend button
+  friendRight: -2, // right inset for the friend button
+  friendScale: 1.4, // friend button size (independent of the left buttons' btnScale; was 1.3 via btnScale, bumped a bit)
+  // Character (base 300×300, layer anchored bottom:38%)
+  charScale: 1.5,  // character size multiplier
+  charY: -6,       // character vertical shift (− = up) — nudged down a tiny bit
+  cocoaY: 12,      // EXTRA downward shift applied only to Cocoa (+ all Cocoa skins); she sits higher than the others, so drop her more
+  // Desk surface (marble) — height % from the bottom + texture zoom
+  deskHeight: 46,
+  deskZoom: 1.35,  // scales the desk image so the surface texture reads larger
+  deskY: 28,       // desk surface vertical nudge (− = up, + = down); dropped to sit on the hairline
+  deskEdgeY: 30,   // table-edge hairline's OWN vertical nudge (independent of deskY); dropped to sit on the desk top
+  // Streak & coin chips (top row)
+  hudScale: 1.3,   // size of the streak + coin chips on tablet
+  // Top cards (Upcoming Exam / Task)
+  cardsWidth: 780, // max width of the card row (centered) — bigger cards
+  cardsTop: 24,    // vertical shift of the whole top HUD (streak/coins/cards)
+  cardsGapTop: 16, // extra space below the chips so the bigger chips don't overlap the cards
+  cardsGap: 28,    // horizontal gap between the exam & task cards
+  cardRatio: 2.9,  // card width:height — higher = flatter/shorter (base 1.8); kept flat so the cards don't cover the character
+  cardTextScale: 1.4, // multiplies the card text sizes
+  examY: 0,        // exam card vertical nudge (kept level with task)
+  taskY: 0,        // task card vertical nudge
+  // Desk ingredients (berries / eggs / butter) — shared transform + per-item spread
+  ingX: 250,        // group X (− = left); nudged left
+  ingY: -194,
+  ingScale: 1.5,
+  ingSpread: 50,    // extra px pushing the outer two apart (idx 0 ← left, idx 2 → right)
+  // Mixer — shared transform (preserves per-recipe base position/size)
+  mixerX: -105,     // nudged left
+  mixerY: -80,
+  mixerScale: 1.5,  // bigger mixer
+  // Start Session button
+  startX: 338,     // Start centered on screen (game icon stays to its right)
+  startY: -78,
+  startScale: 1.5,
+};
 
 function daysUntil(dateISO: string): number {
   const today = new Date();
@@ -224,11 +282,12 @@ const DEFAULT_DESK_FOOD = 'strawberry-shortcake';
 type DragId = string;
 
 function DraggableIngredient({
-  id, src, style, onDropped, mixerCenterX, mixerCenterY,
+  id, src, style, onDropped, mixerCenterX, mixerCenterY, baseX = 0, baseY = 0, baseScale = 1, dropRadius = 100,
 }: {
   id: DragId; src: any; style: any;
   onDropped: () => void;
   mixerCenterX: number; mixerCenterY: number;
+  baseX?: number; baseY?: number; baseScale?: number; dropRadius?: number;
 }) {
   const pan = useRef(new Animated.ValueXY()).current;
   const scale = useRef(new Animated.Value(1)).current;
@@ -251,7 +310,7 @@ function DraggableIngredient({
       pan.flattenOffset();
       Animated.spring(scale, { toValue: 1, useNativeDriver: false }).start();
       const dist = Math.hypot(g.moveX - mixerCenterX, g.moveY - mixerCenterY);
-      if (dist < 100) {
+      if (dist < dropRadius) {
         dropped.current = true;
         Animated.parallel([
           Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: false }),
@@ -265,7 +324,7 @@ function DraggableIngredient({
 
   return (
     <Animated.View
-      style={[style, { transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale }], opacity, zIndex: 20 }]}
+      style={[style, { transform: [{ translateX: baseX }, { translateY: baseY }, { translateX: pan.x }, { translateY: pan.y }, { scale: baseScale }, { scale }], opacity, zIndex: 20 }]}
       {...pr.panHandlers}
     >
       <RNImage source={src} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
@@ -276,11 +335,86 @@ function DraggableIngredient({
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+
+  // Tablet corner-button overrides (see HOME_TABLET). `ht` only ever changes via
+  // the dev knob panel; in production it stays at the baked HOME_TABLET values.
+  const isTablet = useIsTablet();
+  const { width: winW, height: winH } = useWindowDimensions();
+  const [ht, setHt] = useState(HOME_TABLET);
+  const homeKnobs: Knob[] = [
+    { key: 'leftInset', label: 'Left buttons X', value: ht.leftInset, min: -20, max: 120, step: 1 },
+    { key: 'stackTop', label: 'Left buttons Y', value: ht.stackTop, min: -120, max: 200, step: 1 },
+    { key: 'btnScale', label: 'Button size ×', value: ht.btnScale, min: 0.5, max: 2, step: 0.05 },
+    { key: 'btnGap', label: 'Button spacing', value: ht.btnGap, min: -40, max: 160, step: 1 },
+    { key: 'friendTop', label: 'Friend Y', value: ht.friendTop, min: -120, max: 200, step: 1 },
+    { key: 'friendRight', label: 'Friend X', value: ht.friendRight, min: -20, max: 120, step: 1 },
+    { key: 'friendScale', label: 'Friend size', value: ht.friendScale ?? 1.4, min: 0.5, max: 2.5, step: 0.05 },
+    { key: 'charScale', label: 'Character size', value: ht.charScale, min: 0.6, max: 3, step: 0.05 },
+    { key: 'charY', label: 'Character Y', value: ht.charY, min: -300, max: 300, step: 2 },
+    { key: 'cocoaY', label: 'Cocoa extra Y', value: ht.cocoaY ?? 0, min: -100, max: 100, step: 2 },
+    { key: 'deskHeight', label: 'Desk height %', value: ht.deskHeight, min: 30, max: 80, step: 1 },
+    { key: 'deskZoom', label: 'Desk texture zoom', value: ht.deskZoom, min: 0.6, max: 3, step: 0.05 },
+    { key: 'deskY', label: 'Desk Y (down+)', value: ht.deskY ?? 0, min: -120, max: 120, step: 1 },
+    { key: 'deskEdgeY', label: 'Edge line Y', value: ht.deskEdgeY ?? 0, min: -120, max: 120, step: 1 },
+    { key: 'hudScale', label: 'Streak/coin size', value: ht.hudScale ?? 1.3, min: 0.8, max: 2, step: 0.05 },
+    { key: 'cardsWidth', label: 'Cards width', value: ht.cardsWidth, min: 280, max: 820, step: 4 },
+    { key: 'cardsTop', label: 'Cards Y', value: ht.cardsTop, min: -80, max: 300, step: 2 },
+    { key: 'cardsGapTop', label: 'Cards gap-top', value: ht.cardsGapTop ?? 0, min: 0, max: 120, step: 2 },
+    { key: 'cardsGap', label: 'Cards gap', value: ht.cardsGap ?? 28, min: 0, max: 120, step: 2 },
+    { key: 'cardRatio', label: 'Card flatness', value: ht.cardRatio ?? 2.6, min: 1.2, max: 4, step: 0.1 },
+    { key: 'cardTextScale', label: 'Card text size', value: ht.cardTextScale ?? 1.3, min: 0.8, max: 2, step: 0.05 },
+    { key: 'examY', label: 'Exam card Y', value: ht.examY ?? 0, min: -200, max: 200, step: 2 },
+    { key: 'taskY', label: 'Task card Y', value: ht.taskY ?? 0, min: -200, max: 200, step: 2 },
+    { key: 'ingX', label: 'Ingredients X', value: ht.ingX, min: -200, max: 300, step: 2 },
+    { key: 'ingY', label: 'Ingredients Y', value: ht.ingY, min: -200, max: 300, step: 2 },
+    { key: 'ingScale', label: 'Ingredients size', value: ht.ingScale, min: 0.5, max: 3, step: 0.05 },
+    { key: 'ingSpread', label: 'Ingredients spread', value: ht.ingSpread, min: 0, max: 200, step: 2 },
+    { key: 'mixerX', label: 'Mixer X', value: ht.mixerX, min: -300, max: 200, step: 2 },
+    { key: 'mixerY', label: 'Mixer Y', value: ht.mixerY, min: -300, max: 300, step: 2 },
+    { key: 'mixerScale', label: 'Mixer size', value: ht.mixerScale, min: 0.5, max: 3, step: 0.05 },
+    { key: 'startX', label: 'Start btn X', value: ht.startX, min: -200, max: 200, step: 2 },
+    { key: 'startY', label: 'Start btn Y', value: ht.startY, min: -200, max: 300, step: 2 },
+    { key: 'startScale', label: 'Start btn size', value: ht.startScale, min: 0.6, max: 2, step: 0.05 },
+  ];
+  // Tablet-gated style overrides; falsy on phones so nothing changes there.
+  const tBtn = (baseTop: number, index: number, base: number) =>
+    isTablet && { left: ht.leftInset, top: baseTop + ht.stackTop + index * ht.btnGap, width: base * ht.btnScale, height: base * ht.btnScale };
+  const tImg = (base: number) => (isTablet ? { width: base * ht.btnScale, height: base * ht.btnScale } : null);
+  const fScale = ht.friendScale ?? 1.4;
+  const tFriend = isTablet && { right: ht.friendRight, top: 300 + ht.friendTop, width: 62 * fScale, height: 62 * fScale };
+  const tFriendImg = isTablet ? { width: 62 * fScale, height: 62 * fScale } : null;
+  // Desk-scene tablet overrides (identity defaults compose cleanly with base styles).
+  const tCharImg = isTablet && { width: 300 * ht.charScale, height: 300 * ht.charScale };
+  // tCharLayer is built lower down (it needs the resolved companion so Cocoa can
+  // take an extra downward nudge — see `tCharLayer` near the character render).
+  const tDesk = isTablet && { height: `${ht.deskHeight}%`, transform: [{ translateY: ht.deskY ?? 0 }, { scale: ht.deskZoom }] };
+  // Hairline (table edge). It gets its OWN vertical nudge (deskEdgeY) so the desk
+  // can be dropped independently to meet it, and is scaled out horizontally by the
+  // same deskZoom as the desk so the line spans the full (zoomed) desk width — on
+  // tablet the desk is scaled wider, so an un-scaled line would stop short.
+  const tDeskEdge =
+    isTablet && { transform: [{ translateY: ht.deskEdgeY ?? 0 }, { scaleX: ht.deskZoom }] };
+  const tCards = isTablet && { maxWidth: ht.cardsWidth, alignSelf: 'center' as const, gap: ht.cardsGap ?? 28, marginTop: ht.cardsGapTop ?? 0 };
+  const tChip = isTablet && { transform: [{ scale: ht.hudScale ?? 1 }] };
+  const tTopHud = isTablet && { transform: [{ translateY: ht.cardsTop }] };
+  const tExam = isTablet && { transform: [{ translateY: ht.examY ?? 0 }] };
+  const tTask = isTablet && { transform: [{ translateY: ht.taskY ?? 0 }] };
+  const tCardBox = isTablet && { aspectRatio: ht.cardRatio ?? 2.6 };
+  const cardFont = (sz: number, lh: number) =>
+    isTablet ? { fontSize: sz * (ht.cardTextScale ?? 1.3), lineHeight: lh * (ht.cardTextScale ?? 1.3) } : null;
+  // Per-ingredient: shared group shift/scale plus a spread that pushes the outer
+  // two apart (idx 0 left, idx 1 centre, idx 2 right) so they don't bunch up.
+  const tIngFor = (idx: number) =>
+    isTablet && { transform: [{ translateX: ht.ingX + (idx - 1) * ht.ingSpread }, { translateY: ht.ingY }, { scale: ht.ingScale }] };
+  const tMixer = isTablet && { transform: [{ translateX: ht.mixerX }, { translateY: ht.mixerY }, { scale: ht.mixerScale }] };
+  const tStart = isTablet && { transform: [{ translateX: ht.startX }, { translateY: ht.startY }, { scale: ht.startScale }] };
+
   const {
     coins,
     reminderEnabled,
     reminderTime,
     streak,
+    todayStreakDay,
     isPlus,
     ambienceId,
     equippedShopItems,
@@ -298,8 +432,8 @@ export default function HomeScreen() {
     equippedDeskRoomId,
     addMoodEntry,
     startActiveSession,
+    shiftSessionStart,
     selectedFoodId,
-    addCoins,
     recordSession,
     addSubjectTime,
   } = useApp();
@@ -324,7 +458,34 @@ export default function HomeScreen() {
   const [homeFocused, setHomeFocused] = useState(false);
   const [dragSession, setDragSession] = useState<DragSessionData | null>(null);
   const [droppedIds, setDroppedIds] = useState<Set<DragId>>(new Set());
-  const fadeOverlay = useRef(new Animated.Value(0)).current;
+
+  // Celebrate the streak ticking up: a quick pop on the chip + flame, and a
+  // floating "+1". Driven purely by currentStreak rising (no date math) — fires on
+  // increase only, never on reset or the initial mount.
+  const streakPop = useRef(new Animated.Value(0)).current;
+  const streakPlusY = useRef(new Animated.Value(0)).current;
+  const streakPlusOpacity = useRef(new Animated.Value(0)).current;
+  const prevStreakRef = useRef(streak.currentStreak);
+  useEffect(() => {
+    const prev = prevStreakRef.current;
+    prevStreakRef.current = streak.currentStreak;
+    if (streak.currentStreak <= prev) return;
+    streakPop.setValue(0);
+    streakPlusY.setValue(0);
+    streakPlusOpacity.setValue(0);
+    Animated.parallel([
+      Animated.sequence([
+        Animated.timing(streakPop, { toValue: 1, duration: 240, easing: Easing.out(Easing.back(2.4)), useNativeDriver: true }),
+        Animated.timing(streakPop, { toValue: 0, duration: 300, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+      ]),
+      Animated.sequence([
+        Animated.timing(streakPlusOpacity, { toValue: 1, duration: 140, useNativeDriver: true }),
+        Animated.delay(300),
+        Animated.timing(streakPlusOpacity, { toValue: 0, duration: 320, useNativeDriver: true }),
+      ]),
+      Animated.timing(streakPlusY, { toValue: 1, duration: 780, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+    ]).start();
+  }, [streak.currentStreak, streakPop, streakPlusY, streakPlusOpacity]);
 
   // Idle home companion: a gentle, slow bounce with a tiny squash-and-stretch.
   // 0 = resting/lowest (slightly squished), 1 = apex (slightly stretched).
@@ -359,10 +520,17 @@ export default function HomeScreen() {
   const charScaleY = charBounce.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1.02] });
   const charScaleX = charBounce.interpolate({ inputRange: [0, 1], outputRange: [1.02, 0.99] });
 
-  // Mixer bowl centre (approx) — right:-30, bottom:30%, size 285×235
-  // These are rough screen coords; close enough for the drop zone
-  const MIXER_CX = 393 - 30 - 285 / 2 + 285 * 0.35;
-  const MIXER_CY_FROM_TOP = 852 * (1 - 0.30) - 235 * 0.55;
+  // Mixer bowl centre (approx) — right:-30, bottom:30%, size 285×235. Uses the
+  // REAL screen size (not a hardcoded iPhone 393×852) and, on tablet, follows the
+  // mixer's dialed offset so the drop zone lands where the mixer actually appears.
+  // The scene is capped at MaxContentWidth and centered (safeArea), so on a tablet
+  // the desk/mixer sit in a narrower centered column — anchor the drop X to that
+  // column's right edge, not the full window, or the target is off by hundreds of
+  // px and ingredients never register as dropped. (On phones sceneRight === winW,
+  // so this is byte-identical to before.)
+  const sceneRight = (winW + Math.min(winW, MaxContentWidth)) / 2;
+  const MIXER_CX = sceneRight - 30 - 285 / 2 + 285 * 0.35 + (isTablet ? ht.mixerX : 0);
+  const MIXER_CY_FROM_TOP = winH * (1 - 0.30) - 235 * 0.55 + (isTablet ? ht.mixerY : 0);
 
   useFocusEffect(useCallback(() => {
     // Track Home focus so the recipe-badge popup waits until the player is back on
@@ -374,13 +542,13 @@ export default function HomeScreen() {
     if (session) {
       setDragSession(session);
       setDroppedIds(new Set());
-      fadeOverlay.setValue(0);
     }
     // Refresh the pending friend-request count for the badge.
     let cancelled = false;
     if (user?.id) {
-      listIncomingRequests(user.id)
-        .then((reqs) => { if (!cancelled) setPendingRequests(reqs.length); })
+      // Exclude blocked senders from the request badge.
+      Promise.all([listIncomingRequests(user.id), listBlocked(user.id)])
+        .then(([reqs, blk]) => { if (!cancelled) setPendingRequests(reqs.filter((r) => !blk.includes(r.fromCode)).length); })
         .catch(() => {});
     } else {
       setPendingRequests(0);
@@ -394,25 +562,31 @@ export default function HomeScreen() {
       const next = new Set(prev);
       next.add(id);
       if (next.size === 3) {
-        // Capture the session now; once everything's dropped, fade out, play the
-        // loading screen, and only START the timer when the loading screen ends.
         const ds = dragSession;
         setTimeout(() => {
-          Animated.timing(fadeOverlay, { toValue: 1, duration: 800, useNativeDriver: true }).start(() => {
-            showLoadingScreen(() => {
-              if (ds) {
-                if (ds.moodValue && ds.moodLabel) {
-                  addMoodEntry({ value: ds.moodValue, label: ds.moodLabel, type: 'before', sessionMinutes: ds.durationMinutes, timestamp: new Date().toISOString() });
-                }
-                // Starting the session sets its start time to now → the timer
-                // begins exactly when the loading screen finishes.
-                startActiveSession({ durationMinutes: ds.durationMinutes, subjectName: ds.subjectName, taskId: ds.taskId, taskTitle: ds.taskTitle, breakMinutes: ds.breakMinutes });
-              }
-              setDragSession(null);
-              setDroppedIds(new Set());
-              fadeOverlay.setValue(0);
-            });
-          });
+          // Show the loading overlay, then START the session behind it (instead of
+          // in onDone). Previously the session only started once the overlay had
+          // lifted, so the studying view mounted onto a bare screen and its art
+          // popped in. Now the scene mounts and fully renders/decodes its art while
+          // the overlay still covers it, so it's ready the instant the loader ends.
+          //
+          // The session starts with a far-future start time so the timer stays
+          // frozen at full duration while the loader plays (getSessionSecondsLeft
+          // clamps via sessionNowMs — nothing ticks down behind the overlay). When
+          // the overlay lifts (onDone), we snap the start to *now* so the user gets
+          // the full duration from the moment they actually see the screen.
+          const FROZEN_START = new Date(Date.now() + 3_600_000).toISOString();
+          showLoadingScreen(() => {
+            if (ds) shiftSessionStart((Date.now() - new Date(FROZEN_START).getTime()) / 1000);
+            setDragSession(null);
+            setDroppedIds(new Set());
+          }, { until: preloadStudyAssets(studyCharacterSource) });
+          if (ds) {
+            if (ds.moodValue && ds.moodLabel) {
+              addMoodEntry({ value: ds.moodValue, label: ds.moodLabel, type: 'before', sessionMinutes: ds.durationMinutes, timestamp: new Date().toISOString() });
+            }
+            startActiveSession({ durationMinutes: ds.durationMinutes, subjectName: ds.subjectName, taskId: ds.taskId, taskTitle: ds.taskTitle, breakMinutes: ds.breakMinutes, startedAt: FROZEN_START });
+          }
         }, 300);
       }
       return next;
@@ -432,12 +606,25 @@ export default function HomeScreen() {
       : activeCompanion.imageSource;
   // Studying: Bun has a reading animation; other companions just stand for now.
   const studyCharacterSource = activeCompanion.type === 'starter' ? BUN_STUDYING : homeCompanionSource;
+  // Some companion art reads a touch small next to the others — nudge it up a bit,
+  // anchored at the feet so it stays planted on the desk. (Hanji's scale only hits
+  // her flat outfit skins; her default animated figure renders down a separate path.)
+  const companionScale =
+    activeCompanion.type === 'shop' && activeCompanion.id === 'companion_cocoa' ? 1.12
+    : activeCompanion.type === 'shop' && activeCompanion.id === 'companion_hanji' ? 1.02
+    : 1;
+  // Tablet character layer. Cocoa (every Cocoa skin keeps id `companion_cocoa`)
+  // sits higher in her art than the others, so drop her by an extra `cocoaY`.
+  const isCocoaCompanion = activeCompanion.type === 'shop' && activeCompanion.id === 'companion_cocoa';
+  const tCharLayer =
+    isTablet && { transform: [{ translateY: ht.charY + (isCocoaCompanion ? (ht.cocoaY ?? 0) : 0) }] };
   const reminderStyle = getReminderStyleEffect(equippedShopItems);
-  const nextUpcomingExam = [...examCountdowns]
+  // Home shows only the soonest still-upcoming exam (today or later). Passed
+  // exams are never featured here — if none are upcoming, the card shows its
+  // empty "add exam" state rather than a past-due one.
+  const featuredExam = [...examCountdowns]
     .filter((exam) => daysUntil(exam.dateISO) >= 0)
-    .sort((a, b) => a.dateISO.localeCompare(b.dateISO))[0];
-  const latestExam = [...examCountdowns].sort((a, b) => b.dateISO.localeCompare(a.dateISO))[0];
-  const featuredExam = nextUpcomingExam ?? latestExam ?? null;
+    .sort((a, b) => a.dateISO.localeCompare(b.dateISO))[0] ?? null;
   // Soonest still-pending task (by due date + time), shown on the home card.
   const nextTask =
     [...tasks]
@@ -548,27 +735,21 @@ export default function HomeScreen() {
   const handleStopSession = () => {
     if (!activeSession) return;
 
-    // 1 coin per minute actually studied (no coins under the minimum).
-    const cancelCoins =
-      sessionElapsedMinutes >= MIN_MINUTES_FOR_COINS ? coinsForMinutes(sessionElapsedMinutes) : 0;
-    const message =
-      cancelCoins > 0
-        ? t('home.studiedEarn', { minutes: sessionElapsedMinutes, coins: cancelCoins })
-        : t('home.lessThanMin', { min: MIN_MINUTES_FOR_COINS });
-
-    Alert.alert(t('home.stopSessionQ'), message, [
+    // Ending early earns NO coins — only finishing a full session does. Warn first.
+    showPopup(t('home.stopSessionQ'), t('home.endEarlyNoCoins'), [
       { text: t('home.keepStudying'), style: 'cancel' },
       {
         text: t('common.stop'),
         style: 'destructive',
         onPress: () => {
           const endedSession = activeSession;
+          // Play the loading overlay over the study→home transition.
+          showLoadingScreen(undefined, { quick: true });
           clearActiveSession();
 
-          // Ending midway skips the finish screen. Credit any earned coins and
-          // record the partial session here, then go straight back to home.
-          if (cancelCoins > 0) {
-            addCoins(cancelCoins);
+          // No coins for an early end, but still log the time studied toward
+          // streak/stats if they put in a meaningful chunk.
+          if (sessionElapsedMinutes >= MIN_MINUTES_FOR_COINS) {
             recordSession(sessionElapsedMinutes);
             addSubjectTime(endedSession.subjectName, sessionElapsedMinutes);
           }
@@ -577,10 +758,26 @@ export default function HomeScreen() {
     ]);
   };
 
+  // Force-stop with no confirmation — used when the player leaves the app mid-
+  // session and doesn't return within a minute (see StudyRoomView's away timer).
+  // Credits the partial time studied, same as a confirmed stop.
+  const handleAutoStopAway = () => {
+    if (!activeSession) return;
+    const endedSession = activeSession;
+    showLoadingScreen(undefined, { quick: true });
+    clearActiveSession();
+    // Leaving mid-session ends it early → no coins (same rule as a manual end),
+    // but still log the study time toward streak/stats.
+    if (sessionElapsedMinutes >= MIN_MINUTES_FOR_COINS) {
+      recordSession(sessionElapsedMinutes);
+      addSubjectTime(endedSession.subjectName, sessionElapsedMinutes);
+    }
+  };
+
   const handleBreakGame = () => {
     if (!activeSession) return;
 
-    Alert.alert(t('home.openBreakGameQ'), t('home.openBreakGameMsg'), [
+    showPopup(t('home.openBreakGameQ'), t('home.openBreakGameMsg'), [
       { text: t('home.keepStudying'), style: 'cancel' },
       {
         text: t('home.breakGameBtn'),
@@ -620,25 +817,41 @@ export default function HomeScreen() {
               <StudyRoomView
                 secondsLeft={sessionSecondsLeft}
                 onStop={handleStopSession}
+                onAway={handleAutoStopAway}
                 onBreakGame={handleBreakGame}
                 finishing={finishingSession}
               />
             </View>
           ) : (
             <>
-              {!dragSession && <View style={styles.topHud}>
+              {!dragSession && <View style={[styles.topHud, tTopHud]}>
                 <View style={styles.statusRow}>
-                  <View style={styles.statusChip}>
-                    <Image source={STREAK_FIRE_ICON} style={styles.statusStreakIcon} contentFit="contain" accessibilityLabel="" />
-                    <ThemedText type="smallBold" style={styles.statusChipText}>
-                      {streak.currentStreak} day streak
-                    </ThemedText>
+                  <View style={styles.streakChipWrap}>
+                    <Animated.View style={[styles.statusChip, tChip, { transform: [{ scale: streakPop.interpolate({ inputRange: [0, 1], outputRange: [1, 1.16] }) }] }]}>
+                      <Animated.View style={{ transform: [
+                        { scale: streakPop.interpolate({ inputRange: [0, 1], outputRange: [1, 1.4] }) },
+                        { rotate: streakPop.interpolate({ inputRange: [0, 0.5, 1], outputRange: ['0deg', '-14deg', '8deg'] }) },
+                      ] }}>
+                        <Image source={STREAK_FIRE_ICON} style={styles.statusStreakIcon} contentFit="contain" accessibilityLabel="" />
+                      </Animated.View>
+                      <ThemedText type="smallBold" style={styles.statusChipText}>
+                        {todayStreakDay} day streak
+                      </ThemedText>
+                    </Animated.View>
+                    <Animated.Text
+                      pointerEvents="none"
+                      style={[styles.streakPlusOne, {
+                        opacity: streakPlusOpacity,
+                        transform: [{ translateY: streakPlusY.interpolate({ inputRange: [0, 1], outputRange: [-2, -30] }) }],
+                      }]}>
+                      +1
+                    </Animated.Text>
                   </View>
                   <Pressable
                     onPress={() => router.push('/coin-shop')}
                     style={({ pressed }) => pressed && styles.cardPressed}
                     accessibilityLabel={t('home.a11yAddCoins')}>
-                    <View style={[styles.statusChip, styles.coinChip]}>
+                    <View style={[styles.statusChip, styles.coinChip, tChip]}>
                       <CoinIcon size={26} />
                       <ThemedText type="smallBold" style={styles.coinChipText}>
                         {coins}
@@ -650,9 +863,9 @@ export default function HomeScreen() {
                   </Pressable>
                 </View>
 
-                <View style={styles.metaRow}>
+                <View style={[styles.metaRow, tCards]}>
                   <Pressable
-                    style={({ pressed }) => [styles.metaCardPressable, pressed && styles.cardPressed]}
+                    style={({ pressed }) => [styles.metaCardPressable, tCardBox, tExam, pressed && styles.cardPressed]}
                     onPress={handleExamPress}>
                     <View
                       style={[
@@ -663,7 +876,7 @@ export default function HomeScreen() {
                       <View style={styles.metaCardHeader}>
                         <View style={styles.examTitleRow}>
                           <Image source={EXAM_BOOK_ICON} style={styles.examBookIcon} contentFit="contain" accessibilityLabel="" />
-                          <ThemedText style={styles.metaCardTitle}>{t('home.upcomingExam')}</ThemedText>
+                          <ThemedText style={[styles.metaCardTitle, cardFont(15, 19)]}>{t('home.upcomingExam')}</ThemedText>
                         </View>
                       </View>
                       <View style={styles.metaCardContent}>
@@ -672,17 +885,18 @@ export default function HomeScreen() {
                             <>
                               <View style={styles.examHeadlineRow}>
                                 <CountdownShape shape={featuredExam.shape} size={15} />
-                                <ThemedText style={[styles.metaHeadline, styles.examHeadlineText]} numberOfLines={1}>
+                                <ThemedText style={[styles.metaHeadline, styles.examHeadlineText, cardFont(12.5, 14)]} numberOfLines={1}>
                                   {featuredExam.name}
                                 </ThemedText>
                               </View>
-                              <ThemedText style={styles.metaSubline} numberOfLines={1}>{formatExamDate(featuredExam.dateISO)}</ThemedText>
+                              <ThemedText style={[styles.metaSubline, cardFont(10.5, 13)]} numberOfLines={1}>{formatExamDate(featuredExam.dateISO)}</ThemedText>
                               <View style={styles.examCountdownRow}>
                                 <ThemedText
                                   style={[
                                     styles.metaAccentText,
                                     examIsUrgent && styles.metaAccentTextUrgent,
                                     examIsPast && styles.metaAccentTextPast,
+                                    cardFont(10.5, 13),
                                   ]}
                                   numberOfLines={1}>
                                   {examCountdownText}
@@ -699,8 +913,8 @@ export default function HomeScreen() {
                             </>
                           ) : (
                             <>
-                              <ThemedText style={styles.metaHeadline}>{t('home.noExamYet')}</ThemedText>
-                              <ThemedText style={styles.metaSubline}>{t('home.tapToAdd')}</ThemedText>
+                              <ThemedText style={[styles.metaHeadline, cardFont(12.5, 14)]}>{t('home.noExamYet')}</ThemedText>
+                              <ThemedText style={[styles.metaSubline, cardFont(10.5, 13)]}>{t('home.tapToAdd')}</ThemedText>
                             </>
                           )}
                         </View>
@@ -709,21 +923,21 @@ export default function HomeScreen() {
                   </Pressable>
 
                   <Pressable
-                    style={({ pressed }) => [styles.metaCardPressable, pressed && styles.cardPressed]}
+                    style={({ pressed }) => [styles.metaCardPressable, tCardBox, tTask, pressed && styles.cardPressed]}
                     onPress={() => router.push(nextTask ? '/tasks' : '/add-task')}>
                     <View style={styles.metaCard}>
                       <View style={styles.metaCardHeader}>
                         <View style={styles.reminderTitleRow}>
                           <Image source={REMINDER_BELL_ICON} style={styles.reminderBellIcon} contentFit="contain" accessibilityLabel="" />
-                          <ThemedText style={styles.metaCardTitle}>{t('home.upcomingTask')}</ThemedText>
+                          <ThemedText style={[styles.metaCardTitle, cardFont(15, 19)]}>{t('home.upcomingTask')}</ThemedText>
                         </View>
                       </View>
                       <View style={styles.metaCardContent}>
                         <View style={styles.metaCardTextBlock}>
                           {nextTask ? (
                             <>
-                              <ThemedText style={styles.metaHeadline} numberOfLines={1}>{nextTask.title}</ThemedText>
-                              <ThemedText style={styles.metaSubline} numberOfLines={1}>{formatExamDate(nextTask.dueDate!)}</ThemedText>
+                              <ThemedText style={[styles.metaHeadline, cardFont(12.5, 14)]} numberOfLines={1}>{nextTask.title}</ThemedText>
+                              <ThemedText style={[styles.metaSubline, cardFont(10.5, 13)]} numberOfLines={1}>{formatExamDate(nextTask.dueDate!)}</ThemedText>
                               {nextTask.subjectId ? (
                                 <View style={styles.examSubjectChip}>
                                   <View style={[styles.examSubjectDot, { backgroundColor: nextTaskColor }]} />
@@ -735,8 +949,8 @@ export default function HomeScreen() {
                             </>
                           ) : (
                             <>
-                              <ThemedText style={styles.metaHeadline}>{t('home.noTaskYet')}</ThemedText>
-                              <ThemedText style={styles.metaSubline}>{t('home.tapToAdd')}</ThemedText>
+                              <ThemedText style={[styles.metaHeadline, cardFont(12.5, 14)]}>{t('home.noTaskYet')}</ThemedText>
+                              <ThemedText style={[styles.metaSubline, cardFont(10.5, 13)]}>{t('home.tapToAdd')}</ThemedText>
                             </>
                           )}
                         </View>
@@ -749,50 +963,50 @@ export default function HomeScreen() {
               {/* Switch character button — top left, below exam card */}
               {!dragSession && (
                 <Pressable
-                  style={({ pressed }) => [styles.switchCharBtn, pressed && styles.startButtonPressed]}
+                  style={({ pressed }) => [styles.switchCharBtn, tBtn(210, 0, 80), pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/companion-gallery')}
                   accessibilityLabel={t('home.a11ySwitchCharacter')}>
-                  <Image source={SWITCH_CHARACTER_BTN} style={styles.switchCharImg} contentFit="contain" />
+                  <Image source={SWITCH_CHARACTER_BTN} style={[styles.switchCharImg, tImg(80)]} contentFit="contain" />
                 </Pressable>
               )}
 
               {/* Food menu button — top left, below switch character */}
               {!dragSession && (
                 <Pressable
-                  style={({ pressed }) => [styles.foodMenuBtn, pressed && styles.startButtonPressed]}
+                  style={({ pressed }) => [styles.foodMenuBtn, tBtn(292, 1, 80), pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/food-gallery')}
                   accessibilityLabel={t('home.a11yFoodMenu')}>
-                  <Image source={FOOD_MENU_BTN} style={styles.foodMenuImg} contentFit="contain" />
+                  <Image source={FOOD_MENU_BTN} style={[styles.foodMenuImg, tImg(80)]} contentFit="contain" />
                 </Pressable>
               )}
 
               {/* Edit Room button — top left, above settings */}
               {!dragSession && (
                 <Pressable
-                  style={({ pressed }) => [styles.editRoomBtn, pressed && styles.startButtonPressed]}
+                  style={({ pressed }) => [styles.editRoomBtn, tBtn(376, 2, 72), pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/edit-room')}
                   accessibilityLabel={t('home.a11yEditRoom')}>
-                  <Image source={EDIT_ROOM_BTN} style={styles.editRoomImg} contentFit="contain" />
+                  <Image source={EDIT_ROOM_BTN} style={[styles.editRoomImg, tImg(72)]} contentFit="contain" />
                 </Pressable>
               )}
 
               {/* Settings button — top left, below food menu */}
               {!dragSession && (
                 <Pressable
-                  style={({ pressed }) => [styles.topSettingsBtn, pressed && styles.startButtonPressed]}
+                  style={({ pressed }) => [styles.topSettingsBtn, tBtn(452, 3, 72), pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/settings')}
                   accessibilityLabel={t('home.a11yOpenSettings')}>
-                  <Image source={SETTINGS_BTN} style={styles.topSettingsImg} contentFit="contain" />
+                  <Image source={SETTINGS_BTN} style={[styles.topSettingsImg, tImg(72)]} contentFit="contain" />
                 </Pressable>
               )}
 
               {/* Friend button — right side */}
               {!dragSession && (
                 <Pressable
-                  style={({ pressed }) => [styles.friendBtn, pressed && styles.startButtonPressed]}
+                  style={({ pressed }) => [styles.friendBtn, tFriend, pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/friends')}
                   accessibilityLabel={t('home.a11yFriends')}>
-                  <Image source={FRIEND_BTN} style={styles.friendBtnImg} contentFit="contain" />
+                  <Image source={FRIEND_BTN} style={[styles.friendBtnImg, tFriendImg]} contentFit="contain" />
                   {pendingRequests > 0 && (
                     <View style={styles.friendReqBadge} pointerEvents="none">
                       <ThemedText style={styles.friendReqBadgeText}>
@@ -803,15 +1017,15 @@ export default function HomeScreen() {
                 </Pressable>
               )}
 
-              <View style={styles.homeCharacterLayer} pointerEvents="none">
+              <View style={[styles.homeCharacterLayer, tCharLayer]} pointerEvents="none">
                 <Animated.View
                   style={{ transform: [{ translateY: charTranslateY }, { scaleX: charScaleX }, { scaleY: charScaleY }] }}>
-                  {isHanjiActiveId(activeCompanionId) ? (
-                    <HanjiFigure style={styles.homeCharacterImage} />
+                  {hanjiIsAnimated(activeCompanionId, companionSkins?.[activeCompanionId ?? '']) ? (
+                    <HanjiFigure style={[styles.homeCharacterImage, tCharImg]} />
                   ) : (
                     <RNImage
                       source={homeCompanionSource}
-                      style={styles.homeCharacterImage}
+                      style={[styles.homeCharacterImage, tCharImg, companionScale !== 1 && { transform: [{ scale: companionScale }], transformOrigin: 'center bottom' }]}
                       resizeMode="contain"
                     />
                   )}
@@ -822,16 +1036,16 @@ export default function HomeScreen() {
                   inset so the desk (not the room background) fills the very bottom strip. */}
               <RNImage
                 source={deskRoom.deskImage}
-                style={[styles.deskNewLayer, { bottom: -insets.bottom }, deskRoom.deskTint ? { backgroundColor: deskRoom.deskTint } : null]}
+                style={[styles.deskNewLayer, tDesk, { bottom: -insets.bottom }, deskRoom.deskTint ? { backgroundColor: deskRoom.deskTint } : null]}
                 resizeMode={deskRoom.deskFit ?? 'cover'}
                 pointerEvents="none"
               />
               {/* A hairline along the desk's top edge so it reads as a table edge
                   instead of a hard cut. Shares the desk's exact geometry (same
                   height + bottom inset) so its top border sits right on the edge. */}
-              <View style={[styles.deskTopEdge, { bottom: -insets.bottom }]} pointerEvents="none" />
+              <View style={[styles.deskTopEdge, { bottom: -insets.bottom }, tDeskEdge]} pointerEvents="none" />
               {/* Mixer on desk — matches the equipped dessert */}
-              <RNImage source={deskKit.mixer} style={[styles.deskMixer, deskKit.mixerStyle]} resizeMode="contain" pointerEvents="none" />
+              <RNImage source={deskKit.mixer} style={[styles.deskMixer, deskKit.mixerStyle, tMixer]} resizeMode="contain" pointerEvents="none" />
 
               {/* Ingredients — draggable in drag mode, static otherwise. The 3
                   ingredients fill the 3 fixed desk slots, by index. */}
@@ -844,6 +1058,10 @@ export default function HomeScreen() {
                         id={ing.id}
                         src={ing.src}
                         style={[DESK_SLOT_STYLES[idx], ing.style]}
+                        baseX={isTablet ? ht.ingX + (idx - 1) * ht.ingSpread : 0}
+                        baseY={isTablet ? ht.ingY : 0}
+                        baseScale={isTablet ? ht.ingScale : 1}
+                        dropRadius={isTablet ? 160 : 100}
                         onDropped={() => handleIngredientDropped(ing.id)}
                         mixerCenterX={MIXER_CX}
                         mixerCenterY={MIXER_CY_FROM_TOP}
@@ -858,25 +1076,23 @@ export default function HomeScreen() {
                       </ThemedText>
                     </View>
                   </View>
-                  {/* Fade to black */}
-                  <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#000', opacity: fadeOverlay, zIndex: 99 }]} />
                 </>
               ) : (
                 <>
                   {deskKit.ingredients.map((ing, idx) => (
-                    <RNImage key={ing.id} source={ing.src} style={[DESK_SLOT_STYLES[idx], ing.style]} resizeMode="contain" />
+                    <RNImage key={ing.id} source={ing.src} style={[DESK_SLOT_STYLES[idx], ing.style, tIngFor(idx)]} resizeMode="contain" />
                   ))}
                 </>
               )}
 
-              {!dragSession && <View style={[styles.startSessionPressable, { bottom: 155 }]}>
-                <Pressable
+              {!dragSession && <View style={[styles.startSessionPressable, { bottom: 155 }, tStart]}>
+                <SoundPressable
                   style={({ pressed }) => [styles.startSessionInner, pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/session-picker')}
                   accessibilityLabel={t('home.a11yStartSession')}>
                   <Image source={START_SESSION_BTN} style={styles.startSessionBg} contentFit="fill" />
                   <ThemedText style={styles.startSessionLabel}>{t('home.startSession')}</ThemedText>
-                </Pressable>
+                </SoundPressable>
                 <Pressable
                   style={({ pressed }) => [styles.settingsFloating, styles.gameFloating, pressed && styles.startButtonPressed]}
                   onPress={() => router.push({ pathname: '/break-game', params: { browse: '1' } })}
@@ -890,6 +1106,8 @@ export default function HomeScreen() {
       </SafeAreaView>
       <HanjiUnlockModal />
       {homeFocused && <RecipeBadgeModal />}
+      {homeFocused && <DailyRewardModal />}
+      <DevKnobs screen="home" knobs={homeKnobs} onChange={(key, value) => setHt((p) => ({ ...p, [key]: value }))} />
     </ThemedView>
   );
 }
@@ -1256,6 +1474,22 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     paddingHorizontal: META_ROW_INSET,
     width: '100%',
+  },
+  // Wrapper holds the streak chip + the floating "+1" (which must sit OUTSIDE the
+  // chip's `overflow: hidden`). No clipping here so the +1 can rise above the chip.
+  streakChipWrap: { position: 'relative' },
+  streakPlusOne: {
+    position: 'absolute',
+    top: -6,
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    fontSize: 17,
+    fontWeight: '900',
+    color: '#F2683C',
+    textShadowColor: 'rgba(255,255,255,0.9)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   statusChip: {
     flexDirection: 'row',

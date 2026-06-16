@@ -8,7 +8,8 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot';
 
@@ -17,6 +18,7 @@ const BEST_STREAK_ICON = require('@/assets/images/profile/best-streak-cupcake.pn
 const STUDIED_ICON = require('@/assets/images/profile/studied-book.png');
 const BIRTHDAY_ICON = require('@/assets/images/profile/birthday-candle.png');
 import { DateWheelPicker } from '@/components/date-wheel-picker';
+import { PlusCrown, isPlusFrame } from '@/components/avatar-frame';
 import { useApp } from '@/context/app-context';
 import i18n, { useTranslation } from '@/i18n';
 import { ROOM_PAIRS, backgroundOwned } from '@/constants/room-data';
@@ -62,6 +64,7 @@ export default function ProfileScreen() {
     profileBackgroundId,
     profileCompanionId,
     profileSkinId,
+    profileAvatarFrame,
     updateProfile,
     friendCode,
     streak,
@@ -121,7 +124,7 @@ export default function ProfileScreen() {
         await Share.share({ url: uri });
       }
     } catch {
-      Alert.alert(t('profileCard.shareFailTitle'), t('profileCard.shareFailMsg'));
+      showPopup(t('profileCard.shareFailTitle'), t('profileCard.shareFailMsg'));
     }
   };
 
@@ -138,7 +141,7 @@ export default function ProfileScreen() {
         await Share.share({ url: uri });
       }
     } catch {
-      Alert.alert(t('profileCard.saveFailTitle'), t('profileCard.saveFailMsg'));
+      showPopup(t('profileCard.saveFailTitle'), t('profileCard.saveFailMsg'));
     }
   };
 
@@ -160,7 +163,10 @@ export default function ProfileScreen() {
 
               {/* Right: info */}
               <View style={styles.infoPanel}>
-                <Text style={styles.name} numberOfLines={2}>{name}</Text>
+                <View style={styles.nameRow}>
+                  <Text style={styles.name} numberOfLines={2}>{name}</Text>
+                  {isPlusFrame(profileAvatarFrame) && <PlusCrown size={18} />}
+                </View>
 
                 <View style={styles.statRow}>
                   <Image source={STREAK_ICON} style={styles.statIcon} contentFit="contain" />
@@ -238,7 +244,7 @@ export default function ProfileScreen() {
               <DateWheelPicker
                 value={profileBirthday || '2008-01-01'}
                 onChange={(v) => updateProfile({ birthday: v })}
-                minYear={1950}
+                hideYear
               />
             ) : (
               <Pressable
@@ -362,7 +368,8 @@ const styles = StyleSheet.create({
   figureScrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,255,255,0.08)' },
   figureImg: { width: '116%', height: '92%', marginBottom: -6 },
   infoPanel: { flex: 1, gap: 7, paddingTop: 2 },
-  name: { fontSize: 20, fontWeight: '900', color: P.brown, lineHeight: 24 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  name: { fontSize: 20, fontWeight: '900', color: P.brown, lineHeight: 24, flexShrink: 1 },
   statRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   statEmojiFallback: { fontSize: 15, width: 16, textAlign: 'center' },
   statIcon: { width: 20, height: 20 },
@@ -445,6 +452,20 @@ const styles = StyleSheet.create({
   charThumb: { width: '132%', height: '132%', marginTop: -4 },
   charName: { fontSize: 11, fontWeight: '700', color: P.cocoa },
   bgHint: { fontSize: 11.5, color: P.muted, lineHeight: 16 },
+  // Frame swatches — paddingTop leaves room for the crown/ears overhang so it
+  // isn't clipped by the horizontal scroller.
+  frameItem: { alignItems: 'center', gap: 4, width: 72, paddingTop: 16 },
+  frameCircle: {
+    width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: 'transparent',
+  },
+  frameCircleSelected: { borderColor: P.pink },
+  frameAvatarClip: {
+    width: 44, height: 44, borderRadius: 22, overflow: 'hidden',
+    backgroundColor: P.pinkSoft, alignItems: 'center', justifyContent: 'flex-start',
+  },
+  frameAvatarImg: { width: '132%', height: '132%', marginTop: -3 },
+  frameLock: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
 
   doneBtn: {
     backgroundColor: '#F7A7B8',

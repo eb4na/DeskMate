@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,6 +10,7 @@ import {
   useColorScheme,
   View,
 } from 'react-native';
+import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
@@ -28,6 +28,7 @@ import {
   type ChatTurn,
 } from '@/context/app-context';
 import { sendCompanionChat } from '@/lib/companion-chat';
+import { track } from '@/lib/analytics';
 import { localizeCompanionName, resolveActiveCompanion } from '@/lib/companion-utils';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -108,6 +109,12 @@ export default function CompanionChatScreen() {
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
+  // Fire once when the chat screen opens.
+  useEffect(() => {
+    track('companion_chat_opened', { companionId: activeSlotId, isPlus });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Keep the cached thread in sync with the visible conversation.
   useEffect(() => {
     setChatThread(messages);
@@ -119,7 +126,7 @@ export default function CompanionChatScreen() {
 
   const handleClear = () => {
     if (messages.length === 0) return;
-    Alert.alert(
+    showPopup(
       t('chat.clearChatQ'),
       t('chat.clearChatMsg', { name: localizeCompanionName(companion.name, t) }),
       [
@@ -133,7 +140,7 @@ export default function CompanionChatScreen() {
     const text = input.trim();
     if (!text || isSending) return;
     if (chatTotal <= 0) {
-      Alert.alert(t('chat.outOfChats'), t('chat.outOfChatsMsg'));
+      showPopup(t('chat.outOfChats'), t('chat.outOfChatsMsg'));
       return;
     }
 
@@ -151,7 +158,7 @@ export default function CompanionChatScreen() {
       scrollToEnd();
     } catch (error) {
       const message = error instanceof Error ? error.message : t('chat.couldNotReply');
-      Alert.alert(t('chat.chatHiccup'), t('chat.chatHiccupMsg', { message }));
+      showPopup(t('chat.chatHiccup'), t('chat.chatHiccupMsg', { message }));
       setMessages((prev) => prev.slice(0, -1));
       setInput(text);
     } finally {

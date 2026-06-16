@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, TextInput, useColorScheme } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, TextInput, useColorScheme } from 'react-native';
+import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlusGateCard } from '@/components/plus-gate';
@@ -129,7 +130,7 @@ export default function ReminderSettingsScreen() {
     setSaving(false);
 
     if (!syncResult.granted) {
-      Alert.alert(
+      showPopup(
         t('reminder.notifsOff'),
         t('reminder.notifsOffMsg'),
       );
@@ -140,11 +141,11 @@ export default function ReminderSettingsScreen() {
 
   const handleAddReminder = () => {
     if (!isValidTime(newTime)) {
-      Alert.alert(t('reminder.invalidTime'), t('reminder.enterHHMM'));
+      showPopup(t('reminder.invalidTime'), t('reminder.enterHHMM'));
       return;
     }
     if (reminders.length >= MAX_EXTRA_REMINDERS) {
-      Alert.alert(t('reminder.limit'), t('reminder.limitMsg', { max: MAX_EXTRA_REMINDERS }));
+      showPopup(t('reminder.limit'), t('reminder.limitMsg', { max: MAX_EXTRA_REMINDERS }));
       return;
     }
     setReminders((prev) => [
@@ -214,7 +215,7 @@ export default function ReminderSettingsScreen() {
 
           {/* Daily reminder toggle */}
           <ThemedView type="backgroundElement" style={styles.toggleRow}>
-            <ThemedView style={styles.toggleInfo}>
+            <ThemedView type="transparent" style={styles.toggleInfo}>
               <ThemedText type="smallBold">{t('reminder.dailyReminder')}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 {t('reminder.dailyReminderHint')}
@@ -254,7 +255,7 @@ export default function ReminderSettingsScreen() {
 
               {reminders.map((r) => (
                 <ThemedView key={r.id} type="backgroundElement" style={styles.reminderRow}>
-                  <ThemedView style={styles.reminderInfo}>
+                  <ThemedView type="transparent" style={styles.reminderInfo}>
                     <ThemedText type="smallBold">{formatTimeLabel(r.time, use24HourTime)}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
                       {r.label?.trim() ? r.label : t('reminder.companionVoice', { name: voice.name })}
@@ -284,7 +285,7 @@ export default function ReminderSettingsScreen() {
                     placeholder={previewLine}
                     placeholderTextColor={colors.textSecondary}
                   />
-                  <ThemedView style={styles.weekdaysRow}>
+                  <ThemedView type="transparent" style={styles.weekdaysRow}>
                     <Switch
                       value={newWeekdays}
                       onValueChange={setNewWeekdays}

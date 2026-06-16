@@ -1,18 +1,26 @@
 import { Asset } from 'expo-asset';
 import { Image as ExpoImage } from 'expo-image';
-import { DarkTheme, DefaultTheme, ThemeProvider, Stack, router } from 'expo-router';
-import { Animated, Easing, StyleSheet, Text, useColorScheme, View } from 'react-native';
-import { useEffect, useRef, useState } from 'react';
+import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
+import { Animated, Easing, StyleSheet, Text, useColorScheme, useWindowDimensions, View } from 'react-native';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { I18nextProvider } from 'react-i18next';
+import { PostHogProvider } from 'posthog-react-native';
+
+import { useIsTablet } from '@/hooks/use-device-class';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { InviteListener } from '@/components/invite-listener';
+import { LegalConsentGate } from '@/components/legal-consent-gate';
+import { StarterChooser } from '@/components/starter-chooser';
+import { PopupHost } from '@/components/popup-host';
 import { AppProvider } from '@/context/app-context';
 import { useApp } from '@/context/app-context';
 import { StudyRoomProvider } from '@/lib/use-study-room';
-import { subscribeLoadingScreen, takeLoadingDone } from '@/lib/loading-signal';
+import { setTapSoundEnabled } from '@/lib/sounds';
+import { setLoadingActive, subscribeLoadingScreen, takeLoadingDone } from '@/lib/loading-signal';
 import { AuthProvider, useAuth } from '@/context/auth-context';
-import { Spacing } from '@/constants/theme';
+import { posthog, identifyUser, resetUser } from '@/lib/analytics';
+import { BakeryColors, Spacing } from '@/constants/theme';
 import '@/lib/notifications';
 import i18n, { useTranslation } from '@/i18n';
 
@@ -32,7 +40,7 @@ const LOADING_TEXT_WHITE = [true, true, true, true, true, false];
 // Full-screen loading splash shown OVER the app — the home screen mounts behind
 // it (loading its art) and stays hidden until everything is ready. Only when
 // `ready` flips true does the overlay fill its bar and fade away (then onDone).
-function LoadingScreen({ ready, onDone }: { ready: boolean; onDone: () => void }) {
+function LoadingScreen({ ready, quick, onDone }: { ready: boolean; quick?: boolean; onDone: () => void }) {
   const progress = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(1)).current;
   // Pick one of the loading artworks at random each time it shows.
@@ -43,21 +51,26 @@ function LoadingScreen({ ready, onDone }: { ready: boolean; onDone: () => void }
   const [slow, setSlow] = useState(false);
   const [minDone, setMinDone] = useState(false);
 
-  // Creep the bar toward ~92% over the 3s minimum; never completes on its own.
+  // Launch/login use the full 3s loader; quick in-app navigation uses a short
+  // minimum so it dismisses the moment the destination's assets are ready.
+  const minMs = quick ? 400 : 3000;
+  const barMs = quick ? 500 : 3000;
+
+  // Creep the bar toward ~92% over the minimum hold; never completes on its own.
   useEffect(() => {
     Animated.timing(progress, {
       toValue: 0.92,
-      duration: 3000,
+      duration: barMs,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
-    const minTimer = setTimeout(() => setMinDone(true), 3000);
+    const minTimer = setTimeout(() => setMinDone(true), minMs);
     const slowTimer = setTimeout(() => setSlow(true), 3000);
     return () => {
       clearTimeout(minTimer);
       clearTimeout(slowTimer);
     };
-  }, [progress]);
+  }, [progress, minMs, barMs]);
 
   // Finish only once the app is ready AND the 3s minimum has passed.
   const finished = ready && minDone;
@@ -103,11 +116,23 @@ const PRELOAD_ASSETS = [
 
 function RootNavigator() {
   const { initialized, isGuest, session } = useAuth();
-  const { loaded, languageSelected } = useApp();
+  const { loaded, legalAccepted, markLegalAccepted, setBirthday, soundEffectsEnabled, starterChosen } = useApp();
   const { t } = useTranslation();
+
+  // Keep the tap-sound helper's gate in sync with the user's setting.
+  useEffect(() => { setTapSoundEnabled(soundEffectsEnabled); }, [soundEffectsEnabled]);
+  // On a tablet, native iOS modals present on the window root and escape the
+  // LandscapeLetterbox transform (they'd stretch full-width). A `containedModal`
+  // presents within the stack container instead, so it inherits the letterbox.
+  const isTablet = useIsTablet();
+  const modalPresentation = isTablet ? 'containedModal' as const : 'modal' as const;
   const [assetsReady, setAssetsReady] = useState(false);
   // Loading overlay is shown on first launch and re-shown on every login/sign-in.
   const [loadingVisible, setLoadingVisible] = useState(true);
+  // Quick (readiness-based) vs the full 3s launch loader.
+  const [loadingQuick, setLoadingQuick] = useState(false);
+  // For quick loads, gates the overlay on a destination's asset preload promise.
+  const [taskReady, setTaskReady] = useState(true);
 
   // Preload the home-screen images once so the home screen is ready behind the
   // loading overlay.
@@ -126,22 +151,35 @@ function RootNavigator() {
     wasAuthed.current = authed;
   }, [authed]);
 
-  // Re-show the loading screen on demand (e.g. after finishing a study session).
-  useEffect(() => subscribeLoadingScreen(() => setLoadingVisible(true)), []);
-
-  useEffect(() => {
-    if (initialized && loaded && (session || isGuest) && !languageSelected) {
-      router.replace('/language-picker');
-    }
-  }, [initialized, loaded, session, isGuest, languageSelected]);
+  // Re-show the loading screen on demand (e.g. after finishing a study session,
+  // or when navigating to a heavy screen via navigateWithLoading).
+  useEffect(
+    () =>
+      subscribeLoadingScreen(({ quick, until }) => {
+        setLoadingQuick(!!quick);
+        setLoadingVisible(true);
+        if (until) {
+          setTaskReady(false);
+          until.finally(() => setTaskReady(true));
+        } else {
+          setTaskReady(true);
+        }
+      }),
+    [],
+  );
 
   // The home screen mounts immediately (and loads its art) behind the loading
-  // overlay; the overlay only lifts once everything is ready.
-  const appReady = initialized && loaded && assetsReady;
+  // overlay; the overlay only lifts once everything is ready. For quick loads,
+  // `taskReady` also waits on the destination's asset preload.
+  const appReady = initialized && loaded && assetsReady && taskReady;
+
+  // Mirror overlay visibility so screens can hold their own popups until the
+  // launch splash has actually lifted (see daily-reward-modal's delayed show).
+  useEffect(() => { setLoadingActive(loadingVisible); }, [loadingVisible]);
 
   return (
     <>
-    <Stack>
+    <Stack screenOptions={{ contentStyle: { backgroundColor: BakeryColors.frosting } }}>
       <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
 
@@ -174,7 +212,7 @@ function RootNavigator() {
         <Stack.Screen name="ambience-picker" options={{ presentation: 'modal', title: t('screens.ambience') }} />
         <Stack.Screen name="companion-gallery" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="edit-room" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="food-gallery" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="food-gallery" options={{ presentation: modalPresentation, headerShown: false }} />
         <Stack.Screen name="friends" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="profile" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="friend-card" options={{ presentation: 'modal', headerShown: false }} />
@@ -182,6 +220,7 @@ function RootNavigator() {
         <Stack.Screen name="companion-chat" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="companion-pfp" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="settings" options={{ presentation: 'modal', title: t('screens.settings') }} />
+        <Stack.Screen name="legal" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="coin-shop" options={{ presentation: 'modal', title: t('screens.getCoins') }} />
       </Stack.Protected>
     </Stack>
@@ -189,24 +228,96 @@ function RootNavigator() {
       <LoadingScreen
         key={authed ? 'authed' : 'launch'}
         ready={appReady}
+        quick={loadingQuick}
         onDone={() => {
           setLoadingVisible(false);
+          setLoadingQuick(false);
           // Run any pending completion callback (e.g. start the study timer only
           // now that the loading screen has finished).
           takeLoadingDone()?.();
         }}
       />
     )}
+    {/* First-launch consent: any new account or new guest must accept the
+        Privacy Policy + Terms before using the app. Shown once the launch
+        splash has lifted and the saved state is loaded. */}
+    {authed && loaded && !legalAccepted && !loadingVisible && (
+      <LegalConsentGate
+        onAgree={(birthday) => {
+          setBirthday(birthday);
+          markLegalAccepted();
+        }}
+      />
+    )}
+    {/* Starter pick: once consent is given, a new account/guest chooses one of
+        five companions for free (the other four go to the shop). Shown once. */}
+    {authed && loaded && legalAccepted && !starterChosen && !loadingVisible && (
+      <StarterChooser />
+    )}
     </>
+  );
+}
+
+// On a tablet held in landscape, keep the whole (portrait-designed) app in a
+// centred portrait-aspect column with dark bars filling the sides, instead of
+// stretching the UI across the wide screen. Phones and portrait tablets render
+// normally.
+function LandscapeLetterbox({ children }: { children: ReactNode }) {
+  const { width, height } = useWindowDimensions();
+  const isTablet = useIsTablet();
+  if (!isTablet || width <= height) return <>{children}</>;
+  // Render the app at its FULL portrait size, then shrink the whole thing with a
+  // transform so the layout is identical — just smaller — centred with dark sides.
+  const short = Math.min(width, height); // portrait width
+  const long = Math.max(width, height);  // portrait height
+  const scale = height / long;            // fit portrait height into the landscape height
+  return (
+    <View style={styles.letterboxRoot}>
+      <View style={{ width: short, height: long, transform: [{ scale }] }}>{children}</View>
+    </View>
+  );
+}
+
+// Tie PostHog events to the signed-in account, and clear the identity on
+// sign-out so the next person on the device isn't merged into it. Guests stay
+// anonymous. No-ops when analytics is disabled (posthog is null).
+function AnalyticsIdentity() {
+  const { user, isGuest } = useAuth();
+  useEffect(() => {
+    if (user) identifyUser(user.id, user.email ? { email: user.email } : undefined);
+    else if (!isGuest) resetUser();
+  }, [user, isGuest]);
+  return null;
+}
+
+// Wrap the app in PostHog's provider only when analytics is configured. App
+// lifecycle events (open/background) are enabled on the client itself; here we
+// turn OFF touch and screen autocapture — screen autocapture isn't supported for
+// expo-router, and we capture the meaningful moments manually via `track()`.
+function Analytics({ children }: { children: ReactNode }) {
+  if (!posthog) return <>{children}</>;
+  return (
+    <PostHogProvider
+      client={posthog}
+      autocapture={{ captureScreens: false, captureTouches: false }}
+    >
+      {children}
+    </PostHogProvider>
   );
 }
 
 function AppShell() {
   return (
-    <StudyRoomProvider>
-      <RootNavigator />
-      <InviteListener />
-    </StudyRoomProvider>
+    <Analytics>
+      <StudyRoomProvider>
+        <AnalyticsIdentity />
+        <LandscapeLetterbox>
+          <RootNavigator />
+        </LandscapeLetterbox>
+        <InviteListener />
+        <PopupHost />
+      </StudyRoomProvider>
+    </Analytics>
   );
 }
 
@@ -228,6 +339,13 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
+  letterboxRoot: {
+    flex: 1,
+    backgroundColor: '#1A1410', // dark side bars
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
   loadingRoot: {
     position: 'absolute',
     top: 0,

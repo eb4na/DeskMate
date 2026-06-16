@@ -95,6 +95,27 @@ export async function fetchCloudState(userId: string): Promise<CloudState | null
   }
 }
 
+// Like fetchCloudState but distinguishes a CONFIRMED-empty account
+// ({ ok: true, cloud: null }) from a failed/transient fetch ({ ok: false }).
+// The guest→account migration relies on this: it must never treat "couldn't
+// reach the cloud" as "brand-new account" and seed guest data over real data.
+export type CloudProbe = { ok: true; cloud: CloudState | null } | { ok: false };
+
+export async function probeCloudState(userId: string): Promise<CloudProbe> {
+  try {
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select('data')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) return { ok: false };
+    const blob = data ? (data as { data: Record<string, unknown> | null }).data : null;
+    return { ok: true, cloud: blob ? { data: blob, updatedAt: blobUpdatedAt(blob) } : null };
+  } catch {
+    return { ok: false };
+  }
+}
+
 /** Upsert the user's state row. Returns an error message or null. */
 export async function pushCloudState(userId: string, data: Record<string, unknown>): Promise<string | null> {
   if (kicked) return null; // kicked device must not clobber the surviving one

@@ -2,7 +2,6 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -10,19 +9,22 @@ import {
   Text,
   View,
 } from 'react-native';
+import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { CoinIcon } from '@/components/coin-icon';
+import { DevKnobs, type Knob } from '@/components/dev-knobs';
 import { LockOverlay } from '@/components/lock-badge';
+import { useIsTablet } from '@/hooks/use-device-class';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
-import { BUN_SKINS, getBunSkinImage, getCompanionSkinImage, getCompanionSkins, getStarterActiveId, localizeCompanionName, localizeOutfitName, SHOP_COMPANIONS } from '@/lib/companion-utils';
+import { BUN_SKINS, type BunSkin, getBunSkinImage, getCompanionSkinImage, getCompanionSkins, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, SHOP_COMPANIONS } from '@/lib/companion-utils';
 import { SHOP_ITEMS } from '@/constants/shop-data';
+import { roomById, isPairOwned } from '@/constants/room-data';
 
-const BAKERY_HEADER = require('@/assets/images/backgrounds/bakery-menu-header.png');
 
 const getShopItem = (id: string) => SHOP_ITEMS.find((s) => s.id === id);
 
@@ -66,6 +68,29 @@ function HangerIcon({ color = '#B06A50', size = 18 }: { color?: string; size?: n
   );
 }
 
+// Interlocking chain-link — marks an outfit that has a matched room (background
+// + desk). Tapping it sets that room so the look comes together.
+function ChainLinkIcon({ color = '#FFFFFF', size = 16 }: { color?: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 // Per-companion taglines shown under each name in the gallery (i18n keys).
 const TAGLINE_KEYS: Record<string, string> = {
   Bun: 'gallery.tagline_Bun',
@@ -86,12 +111,17 @@ type ObtainedCharacter = {
   deletable: boolean;
   onSelect: () => void;
   onDelete?: () => void;
+  // The skin the card is currently showing — used for the matched-room (pairing)
+  // chain button. null for generated slots (no wardrobe).
+  currentSkin?: BunSkin | null;
 };
 
 function GalleryContent() {
   const { t } = useTranslation();
+  const isTablet = useIsTablet();
   const {
     activeCompanionId,
+    starterCompanionId,
     companionSlots,
     deleteCompanionSlot,
     setDefaultCompanion,
@@ -104,7 +134,31 @@ function GalleryContent() {
     coins,
     isPlus,
     purchaseShopItem,
+    setEquippedBackground,
+    setEquippedDesk,
   } = useApp();
+
+  // Dev "design knobs" — live overrides for the companion grid's spacing/sizes.
+  // Defaults below match the StyleSheet; dial them in on-device, hit "Log
+  // values", then bake the numbers into the styles. No effect in production.
+  const [tweak, setTweak] = useState({
+    cardWidth: 47,    // companionCard width %
+    gridGap: 16,      // companionGrid gap
+    cardPad: 16,      // companionCard padding
+    cardRadius: 22,   // companionCard borderRadius
+    imgSize: 80,      // companionImageWrap width %
+    nameSize: 15,     // companionName fontSize
+    subSize: 11,      // companionSubtitle fontSize
+  });
+  const knobs: Knob[] = [
+    { key: 'cardWidth', label: 'Card width %', value: tweak.cardWidth, min: 30, max: 100, step: 1 },
+    { key: 'gridGap', label: 'Grid gap', value: tweak.gridGap, min: 0, max: 40, step: 1 },
+    { key: 'cardPad', label: 'Card padding', value: tweak.cardPad, min: 0, max: 32, step: 1 },
+    { key: 'cardRadius', label: 'Card radius', value: tweak.cardRadius, min: 0, max: 40, step: 1 },
+    { key: 'imgSize', label: 'Image size %', value: tweak.imgSize, min: 40, max: 100, step: 1 },
+    { key: 'nameSize', label: 'Name font', value: tweak.nameSize, min: 10, max: 24, step: 0.5 },
+    { key: 'subSize', label: 'Tagline font', value: tweak.subSize, min: 8, max: 18, step: 0.5 },
+  ];
 
   const [wardrobeFor, setWardrobeFor] = useState<{ id: string; name: string } | null>(null);
   // In-place unlock popup for a coin-priced item (a locked companion or skin).
@@ -130,12 +184,31 @@ function GalleryContent() {
     else if (wardrobeFor) setCompanionSkin(wardrobeFor.id, skinId);
   };
 
+  // The chain icon: set the outfit's matched room (background + desk) and wear the
+  // outfit so the whole look comes together. If the room isn't owned, point the
+  // player to the Shop instead of silently equipping an unbought room.
+  const equipMatchedRoom = (skin: BunSkin) => {
+    const pair = roomById(skin.roomId);
+    if (!pair) return;
+    const outfitName = localizeOutfitName(skin.name, t);
+    if (!isPairOwned(pair, ownedShopItems)) {
+      showPopup(t('gallery.roomLockedTitle'), t('gallery.roomLockedMsg', { room: pair.name, outfit: outfitName }));
+      return;
+    }
+    setEquippedBackground(pair.id);
+    setEquippedDesk(pair.id);
+    // Wear the outfit too — but only if it's unlocked (a locked skin can't be worn).
+    const skinLocked = !!skin.shopItemId && !ownedShopItems.includes(skin.shopItemId);
+    if (!skinLocked) equipWardrobeSkin(skin.id);
+    showPopup(t('gallery.matchedTitle'), t('gallery.matchedMsg', { outfit: outfitName, room: pair.name }));
+  };
+
   // Equipping a character drops you straight back to the home screen.
   const goHome = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   const handleUseSlot = (slotId: string, hasRenderableImage: boolean) => {
     if (!hasRenderableImage) {
-      Alert.alert(
+      showPopup(
         t('gallery.noArtTitle'),
         t('gallery.noArtMsg'),
       );
@@ -146,26 +219,32 @@ function GalleryContent() {
   };
 
   const confirmDelete = (slotId: string, name: string) => {
-    Alert.alert(t('gallery.removeCompanionQ'), t('gallery.removeCompanionMsg', { name }), [
+    showPopup(t('gallery.removeCompanionQ'), t('gallery.removeCompanionMsg', { name }), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('gallery.remove'), style: 'destructive', onPress: () => deleteCompanionSlot(slotId) },
     ]);
   };
 
-  // Owned characters — Bun (starter) plus saved slots. Grid grows with each one.
+  // Owned characters — the free starter + any companions bought (one of the five
+  // is the free starter; the rest are unlocked by purchase). Grid grows with each.
+  const ownsBun = isCompanionOwned('companion_bun', starterCompanionId, ownedShopItems);
   const obtainedCharacters: ObtainedCharacter[] = [
-    {
-      id: getStarterActiveId('girl'),
-      name: 'Bun',
-      image: getBunSkinImage(bunSkinId),
-      emoji: null,
-      isActive: activeCompanionId === getStarterActiveId('girl'),
-      isGenerated: false,
-      deletable: false,
-      onSelect: () => { setDefaultCompanion('girl'); goHome(); },
-    },
-    // Purchased shop companions you own.
-    ...SHOP_COMPANIONS.filter((item) => ownedShopItems.includes(item.id)).map((item) => ({
+    // Bun appears only when owned (the chosen starter, or bought from the shop).
+    ...(ownsBun
+      ? [{
+          id: getStarterActiveId('girl'),
+          name: 'Bun',
+          image: getBunSkinImage(bunSkinId),
+          emoji: null,
+          isActive: activeCompanionId === getStarterActiveId('girl'),
+          isGenerated: false,
+          deletable: false,
+          onSelect: () => { setDefaultCompanion('girl'); goHome(); },
+          currentSkin: BUN_SKINS.find((s) => s.id === (bunSkinId ?? 'classic')) ?? null,
+        }]
+      : []),
+    // Shop companions you own — bought, or granted free as your starter pick.
+    ...SHOP_COMPANIONS.filter((item) => isCompanionOwned(item.id, starterCompanionId, ownedShopItems)).map((item) => ({
       id: `shop:${item.id}`,
       name: item.name,
       image: getCompanionSkinImage(`shop:${item.id}`, companionSkins[`shop:${item.id}`]) ?? (item.image as number),
@@ -174,6 +253,7 @@ function GalleryContent() {
       isGenerated: false,
       deletable: false,
       onSelect: () => { setActiveCompanion(`shop:${item.id}`); goHome(); },
+      currentSkin: getCompanionSkins(`shop:${item.id}`).find((s) => s.id === (companionSkins[`shop:${item.id}`] ?? 'classic')) ?? null,
     })),
     ...companionSlots.map((slot) => ({
       id: slot.id,
@@ -189,27 +269,27 @@ function GalleryContent() {
   ];
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: P.cream }}>
+    <>
+    <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: P.cream }}>
       <SafeAreaView style={styles.safeArea}>
-        {/* Header — scalloped bakery banner with the title/subtitle overlaid. */}
+        {/* Header — a big bubbly title + subtitle (no banner frame). */}
         <View style={styles.headerRow}>
-          <View style={styles.headerPanel}>
-            <Image source={BAKERY_HEADER} style={styles.headerImg} contentFit="fill" />
-            <View style={styles.headerTextWrap}>
-              <Text style={styles.headerTitle}>{t('gallery.companionBakery')}</Text>
-              <Text style={styles.headerSubtitle}>{t('gallery.chooseToday')}</Text>
-            </View>
-          </View>
+          <Text style={[styles.headerTitle, isTablet && styles.headerTitleTablet]}>{t('gallery.companionBakery')}</Text>
+          <Text style={[styles.headerSubtitle, isTablet && styles.headerSubtitleTablet]}>{t('gallery.chooseToday')}</Text>
         </View>
 
         {/* My Companions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('gallery.myCompanions')}</Text>
-          <View style={styles.companionGrid}>
+          <View style={[styles.companionGrid, { gap: tweak.gridGap }]}>
             {obtainedCharacters.map((char) => (
               <View
                 key={char.id}
-                style={[styles.companionCard, char.isActive && styles.companionCardActive]}>
+                style={[
+                  styles.companionCard,
+                  { width: `${tweak.cardWidth}%`, padding: tweak.cardPad, borderRadius: tweak.cardRadius },
+                  char.isActive && styles.companionCardActive,
+                ]}>
                 {char.deletable && (
                   <Pressable
                     style={styles.cardDelete}
@@ -224,17 +304,26 @@ function GalleryContent() {
                   hitSlop={8}>
                   <HangerIcon color="#FFFFFF" size={22} />
                 </Pressable>
-                <View style={styles.companionImageWrap}>
+                {/* Pairing button — set the matched room when the worn outfit has one. */}
+                {char.currentSkin && roomById(char.currentSkin.roomId) && (
+                  <Pressable
+                    style={({ pressed }) => [styles.linkBadge, pressed && styles.pressed]}
+                    onPress={() => equipMatchedRoom(char.currentSkin!)}
+                    hitSlop={8}>
+                    <ChainLinkIcon color="#FFFFFF" size={15} />
+                  </Pressable>
+                )}
+                <View style={[styles.companionImageWrap, { width: `${tweak.imgSize}%` }]}>
                   {char.image ? (
                     <Image source={char.image} style={styles.companionImage} contentFit="contain" />
                   ) : (
                     <View style={styles.companionImagePlaceholder} />
                   )}
                 </View>
-                <Text style={styles.companionName} numberOfLines={1}>
+                <Text style={[styles.companionName, { fontSize: tweak.nameSize }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
                   {localizeCompanionName(char.name, t)}
                 </Text>
-                <Text style={styles.companionSubtitle} numberOfLines={2}>{TAGLINE_KEYS[char.name] ? t(TAGLINE_KEYS[char.name]) : t('gallery.defaultTagline')}</Text>
+                <Text style={[styles.companionSubtitle, { fontSize: tweak.subSize }]} numberOfLines={2}>{TAGLINE_KEYS[char.name] ? t(TAGLINE_KEYS[char.name]) : t('gallery.defaultTagline')}</Text>
                 {char.isActive ? (
                   <View style={styles.activePill}>
                     <Text style={styles.activePillText}>{t('gallery.active')}</Text>
@@ -259,6 +348,7 @@ function GalleryContent() {
         </Pressable>
       </SafeAreaView>
 
+
       {/* Wardrobe — per-companion outfit picker */}
       <Modal
         visible={!!wardrobeFor}
@@ -275,6 +365,8 @@ function GalleryContent() {
                   {wardrobeSkins.map((skin) => {
                     const equipped = wardrobeEquipped === skin.id;
                     const locked = !!skin.shopItemId && !ownedShopItems.includes(skin.shopItemId);
+                    // Outfits with a matched room get a chain icon that sets that room.
+                    const hasMatchedRoom = !!roomById(skin.roomId);
                     return (
                       <Pressable
                         key={skin.id}
@@ -293,6 +385,14 @@ function GalleryContent() {
                             equipWardrobeSkin(skin.id);
                           }
                         }}>
+                        {hasMatchedRoom && (
+                          <Pressable
+                            style={({ pressed }) => [styles.linkBadge, pressed && styles.pressed]}
+                            onPress={() => equipMatchedRoom(skin)}
+                            hitSlop={8}>
+                            <ChainLinkIcon color="#FFFFFF" size={15} />
+                          </Pressable>
+                        )}
                         <View style={styles.skinImageWrap}>
                           <Image
                             source={skin.image}
@@ -301,7 +401,7 @@ function GalleryContent() {
                           />
                           {locked && <LockOverlay size={34} radius={18} />}
                         </View>
-                        <Text style={styles.skinName} numberOfLines={1}>
+                        <Text style={styles.skinName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
                           {localizeOutfitName(skin.name, t)}
                         </Text>
                         {locked ? null : equipped ? (
@@ -403,6 +503,8 @@ function GalleryContent() {
         </Pressable>
       </Modal>
     </ScrollView>
+    <DevKnobs screen="companion-gallery" knobs={knobs} onChange={(key, value) => setTweak((p) => ({ ...p, [key]: value }))} />
+    </>
   );
 }
 
@@ -425,26 +527,14 @@ const styles = StyleSheet.create({
     backgroundColor: P.cream,
   },
 
-  // Header — scalloped bakery banner with the title/subtitle overlaid.
-  headerRow: { width: '100%', alignItems: 'center' },
-  headerPanel: { width: '100%', position: 'relative' },
-  headerImg: { width: '100%', aspectRatio: 891 / 287 },
-  headerTextWrap: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: '6%',
-    gap: 4,
-  },
+  // Header — big bubbly title + subtitle (no banner frame).
+  headerRow: { width: '100%', alignItems: 'center', gap: 4, marginTop: Spacing.two, marginBottom: Spacing.one },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '800',
+    fontFamily: Fonts.rounded,
+    fontSize: 32,
+    fontWeight: '900',
     color: P.brown,
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
     textAlign: 'center',
   },
   headerSubtitle: {
@@ -453,6 +543,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
   },
+  // Tablet: larger bakery-menu banner text (phones untouched).
+  headerTitleTablet: { fontSize: 34, letterSpacing: 0.3 },
+  headerSubtitleTablet: { fontSize: 19 },
 
   // Sections
   section: { gap: Spacing.two },
@@ -522,6 +615,21 @@ const styles = StyleSheet.create({
   skinCardLocked: {
     borderColor: P.pinkSoft,
     backgroundColor: '#FBF6F2',
+  },
+  // Chain badge — top-right of an outfit card that has a matched room.
+  linkBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: P.pink,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
   },
   skinImageWrap: { width: '85%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
   skinImage: { width: '100%', height: '100%' },

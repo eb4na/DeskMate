@@ -19,6 +19,9 @@ type DateWheelPickerProps = {
   maximumDateISO?: string;
   minYear?: number;
   maxYear?: number;
+  // Hide the year column and show only month + day (e.g. a shareable birthday
+  // where the year is private). The year in `value` is preserved untouched.
+  hideYear?: boolean;
 };
 
 const monthLabel = (m: number) => i18n.t(`pickers.month_${m}`);
@@ -90,6 +93,7 @@ export function DateWheelPicker({
   maximumDateISO,
   minYear,
   maxYear,
+  hideYear,
 }: DateWheelPickerProps) {
   const { t } = useTranslation();
   const scheme = useColorScheme();
@@ -150,6 +154,14 @@ export function DateWheelPicker({
   const selectedDay = String(selected.day);
   const selectedYear = String(selected.year);
 
+  // When the year is hidden, show only month + day (locale-aware) in the trigger
+  // and the "Selected" line, so the private year never appears.
+  const monthDayLabel = new Date(selected.year, selected.month - 1, selected.day).toLocaleDateString(
+    i18n.language || 'en-US',
+    { month: 'long', day: 'numeric' },
+  );
+  const displayLabel = hideYear ? monthDayLabel : formatDateLabel(normalizedSelectedISO);
+
   return (
     <>
       <Pressable onPress={() => setIsOpen(true)} style={({ pressed }) => [pressed && styles.pressed]}>
@@ -161,7 +173,7 @@ export function DateWheelPicker({
           <View style={styles.triggerTextWrap}>
             <ThemedText type="smallBold">{t('pickers.date')}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              {formatDateLabel(normalizedSelectedISO)}
+              {displayLabel}
             </ThemedText>
           </View>
           <ThemedText type="smallBold" style={styles.triggerChevron}>
@@ -236,34 +248,36 @@ export function DateWheelPicker({
                 </View>
               </View>
 
-              <View style={styles.column}>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.pickerLabel}>
-                  {t('pickers.year')}
-                </ThemedText>
-                <View
-                  style={[
-                    styles.pickerShell,
-                    { backgroundColor: theme.backgroundElement, borderColor: BakeryColors.border },
-                  ]}>
-                  <Picker
-                    selectedValue={selectedYear}
-                    onValueChange={(nextValue) => handleChange({ year: Number(nextValue) })}
-                    style={styles.picker}>
-                    {years.map((year) => (
-                      <Picker.Item
-                        key={year}
-                        label={String(year)}
-                        value={String(year)}
-                        style={pickerItemStyle}
-                      />
-                    ))}
-                  </Picker>
+              {!hideYear && (
+                <View style={styles.column}>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.pickerLabel}>
+                    {t('pickers.year')}
+                  </ThemedText>
+                  <View
+                    style={[
+                      styles.pickerShell,
+                      { backgroundColor: theme.backgroundElement, borderColor: BakeryColors.border },
+                    ]}>
+                    <Picker
+                      selectedValue={selectedYear}
+                      onValueChange={(nextValue) => handleChange({ year: Number(nextValue) })}
+                      style={styles.picker}>
+                      {years.map((year) => (
+                        <Picker.Item
+                          key={year}
+                          label={String(year)}
+                          value={String(year)}
+                          style={pickerItemStyle}
+                        />
+                      ))}
+                    </Picker>
+                  </View>
                 </View>
-              </View>
+              )}
             </View>
 
             <ThemedText type="small" themeColor="textSecondary">
-              Selected: {formatDateLabel(normalizedSelectedISO)}
+              Selected: {displayLabel}
             </ThemedText>
           </View>
         </View>

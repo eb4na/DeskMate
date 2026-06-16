@@ -141,3 +141,17 @@ export async function savePersistedState<T>(value: T, key = LEGACY_STORAGE_KEY):
 export function getStorageBackend(): StorageBackend {
   return resolveBackend();
 }
+
+/** Permanently delete a saved state (file + its .bak/.tmp). Used when wiping an
+ * account's local data on account deletion. */
+export async function clearPersistedState(key = LEGACY_STORAGE_KEY): Promise<void> {
+  if (resolveBackend() !== 'file') {
+    memoryStore.delete(key);
+    return;
+  }
+  const path = statePath(key);
+  if (!path) return;
+  for (const p of [path, `${path}.bak`, `${path}.tmp`]) {
+    await FileSystem.deleteAsync(p, { idempotent: true }).catch(() => {});
+  }
+}

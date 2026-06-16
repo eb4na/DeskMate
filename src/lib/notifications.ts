@@ -202,6 +202,42 @@ export async function cancelTaskNotification(notifId: string | null) {
   }
 }
 
+// Fired `delaySeconds` (default ~1s) after the app is backgrounded mid-study-session:
+// nudges the player to come back (the session auto-stops if they don't return within a
+// minute). A longer delay is used when the user stepped out on purpose — e.g. opening
+// the Spotify app. Returns the notification id so it can be cancelled on a quick return.
+export async function sendComeBackNudge(
+  title: string,
+  body: string,
+  delaySeconds = 1,
+): Promise<string | null> {
+  try {
+    await ensureReminderChannel();
+    const granted = await ensureNotificationPermission();
+    if (!granted) return null;
+    return await Notifications.scheduleNotificationAsync({
+      content: { title, body, sound: 'default', data: { kind: 'come-back' } },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: Math.max(1, delaySeconds),
+        repeats: false,
+        channelId: STUDY_REMINDER_CHANNEL_ID,
+      },
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function cancelComeBackNudge(notifId: string | null) {
+  if (!notifId) return;
+  try {
+    await Notifications.cancelScheduledNotificationAsync(notifId);
+  } catch {
+    // already fired or removed
+  }
+}
+
 export async function syncStudyReminders({
   enabled,
   time,

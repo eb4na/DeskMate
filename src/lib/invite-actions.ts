@@ -5,6 +5,7 @@
 import { router } from 'expo-router';
 
 import type { GameInvite, OnlineGameId } from '@/lib/game-net';
+import { navigateWithLoading, STUDY_ASSETS } from '@/lib/preload-nav';
 
 // Minimal shape of the study-room controller from `useStudyRoom()`.
 type StudyRoomLike = { joinRoom: (room: string, asHost: boolean) => void };
@@ -13,7 +14,7 @@ type StudyRoomLike = { joinRoom: (room: string, asHost: boolean) => void };
 export function acceptGameInvite(inv: GameInvite, studyRoom: StudyRoomLike): void {
   if (inv.game === 'study') {
     studyRoom.joinRoom(inv.room, false);
-    router.push('/study-lobby');
+    navigateWithLoading(() => router.push('/study-lobby'), { assets: STUDY_ASSETS });
   } else if (inv.game === 'batterdash') {
     router.push({ pathname: '/cake-game', params: { room: inv.room, role: 'guest', netmode: 'party' } });
   } else {
@@ -25,7 +26,7 @@ export function acceptGameInvite(inv: GameInvite, studyRoom: StudyRoomLike): voi
 export function hostGameInvite(game: OnlineGameId, room: string, studyRoom: StudyRoomLike): void {
   if (game === 'study') {
     studyRoom.joinRoom(room, true);
-    router.push('/study-lobby');
+    navigateWithLoading(() => router.push('/study-lobby'), { assets: STUDY_ASSETS });
   } else if (game === 'batterdash') {
     router.push({ pathname: '/cake-game', params: { room, role: 'host', netmode: 'party' } });
   } else {

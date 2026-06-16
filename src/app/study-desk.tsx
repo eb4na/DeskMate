@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DevKnobs } from '@/components/dev-knobs';
 import { SubjectPickerModal } from '@/components/subject-picker-modal';
+import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { useApp } from '@/context/app-context';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { useTranslation } from '@/i18n';
@@ -14,6 +16,14 @@ const BUN_STUDYING = require('@/assets/images/bun/bun-studying.png');
 const DESK = require('@/assets/images/home/desk-new.png');
 
 const C = BakeryColors;
+
+const DESK_ELEMENTS = [
+  { name: 'title', label: 'Title' },
+  { name: 'character', label: 'Character' },
+  { name: 'desk', label: 'Desk' },
+  { name: 'cta', label: 'Pick button' },
+  { name: 'backLink', label: 'Back link' },
+];
 
 /**
  * The "on a break" desk scene shown after a multiplayer session finishes and the
@@ -32,6 +42,7 @@ export default function StudyDeskScreen() {
   } = useApp();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('studydesk', DESK_ELEMENTS);
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const me = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
@@ -55,26 +66,27 @@ export default function StudyDeskScreen() {
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['bottom']}>
-        <View style={[styles.header, { paddingTop: insets.top + Spacing.three }]}>
+        <View style={[styles.header, { paddingTop: insets.top + Spacing.three }, tw('title')]}>
           <Text style={styles.title}>{t('studyDesk.title')}</Text>
           <Text style={styles.sub}>{t('studyDesk.subtitle')}</Text>
         </View>
 
         <View style={styles.scene}>
-          <Image source={character} style={styles.character} contentFit="contain" />
-          <Image source={DESK} style={styles.desk} contentFit="cover" pointerEvents="none" />
-          <View style={styles.deskEdge} pointerEvents="none" />
+          <Image source={character} style={[styles.character, tw('character')]} contentFit="contain" />
+          <Image source={DESK} style={[styles.desk, tw('desk')]} contentFit="cover" pointerEvents="none" />
+          <View style={[styles.deskEdge, tw('desk')]} pointerEvents="none" />
         </View>
 
-        <Pressable onPress={() => setPickerOpen(true)} style={({ pressed }) => [styles.cta, pressed && styles.pressed]}>
+        <Pressable onPress={() => setPickerOpen(true)} style={({ pressed }) => [styles.cta, tw('cta'), pressed && styles.pressed]}>
           <Text style={styles.ctaText}>{t('studyDesk.pickWhenReady')}</Text>
         </Pressable>
-        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} style={styles.backLink} hitSlop={8}>
+        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} style={[styles.backLink, tw('backLink')]} hitSlop={8}>
           <Text style={styles.backText}>{t('common.back')}</Text>
         </Pressable>
       </SafeAreaView>
 
       <SubjectPickerModal visible={pickerOpen} title={t('studyDesk.readyToStudy')} onPick={start} onClose={() => setPickerOpen(false)} />
+      <DevKnobs screen="studydesk" knobs={twKnobs} onChange={twChange} />
     </View>
   );
 }

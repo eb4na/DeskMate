@@ -109,3 +109,34 @@ export async function removeFriendLink(myUserId: string, otherCode: string): Pro
     .delete()
     .or(`and(from_user.eq.${myUserId},to_code.eq.${otherCode}),and(to_user.eq.${myUserId},from_code.eq.${otherCode})`);
 }
+
+// ── Blocking ─────────────────────────────────────────────────────────────────
+// Blocking is "hide them": the codes here are filtered out of incoming requests
+// and DMs on this account. Backed by the owner-only `blocked_codes` table.
+
+/** Friend codes this account has blocked. */
+export async function listBlocked(myUserId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('blocked_codes')
+    .select('blocked_code')
+    .eq('user_id', myUserId);
+  if (error || !data) return [];
+  return data.map((r: { blocked_code: string }) => r.blocked_code);
+}
+
+/** Block a code: removes any friend link, then adds them to the block list. */
+export async function blockFriend(myUserId: string, otherCode: string): Promise<void> {
+  const code = otherCode.trim().toUpperCase();
+  await removeFriendLink(myUserId, code);
+  await supabase
+    .from('blocked_codes')
+    .upsert({ user_id: myUserId, blocked_code: code }, { onConflict: 'user_id,blocked_code' });
+}
+
+export async function unblockFriend(myUserId: string, otherCode: string): Promise<void> {
+  await supabase
+    .from('blocked_codes')
+    .delete()
+    .eq('user_id', myUserId)
+    .eq('blocked_code', otherCode.trim().toUpperCase());
+}

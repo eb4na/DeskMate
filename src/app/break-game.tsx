@@ -7,11 +7,15 @@ import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { showPopup } from '@/lib/popup';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Companion } from '@/components/companion';
+import { DevKnobs } from '@/components/dev-knobs';
 import { SimpleHomeIcon } from '@/components/tab-icons';
+import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import {
+  getCompanionImage,
   resolveActiveCompanion,
   resolveProfileFigure,
   type CompanionImageSource,
@@ -22,7 +26,8 @@ import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 import { getCompanionLine } from '@/constants/companion-lines';
 import { Connect4Game } from '@/game/connect4/Connect4Game';
-import { joinGameRoom, type GameRoom } from '@/lib/game-net';
+import { joinGameRoom, type GameRoom, type PlayerMeta } from '@/lib/game-net';
+import { showLoadingScreen } from '@/lib/loading-signal';
 import { BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -225,6 +230,7 @@ function TicTacToeGame({
   const {
     profileCompanionId,
     profileSkinId,
+    profileDisplayName,
     activeCompanionId,
     defaultCompanionId,
     companionSlots,
@@ -271,6 +277,7 @@ function TicTacToeGame({
   // Online state — host plays Hearts (X, moves first), guest plays Stars (O).
   const [mySymbol, setMySymbol] = useState<'X' | 'O' | null>(online ? (online.isHost ? 'X' : 'O') : null);
   const [opponentPresent, setOpponentPresent] = useState(false);
+  const [oppMeta, setOppMeta] = useState<PlayerMeta | null>(null);
   const [connecting, setConnecting] = useState(externalInvite);
   const roomRef = useRef<GameRoom | null>(null);
   const screenRef = useRef<'mode' | 'lobby' | 'play'>(externalInvite ? 'lobby' : 'mode');
@@ -331,6 +338,14 @@ function TicTacToeGame({
           }
         }
       },
+      onOpponentMeta: (meta) => {
+        if (meta) setOppMeta(meta);
+      },
+    }, {
+      code: friendCode,
+      companionId: profileCompanionId ?? activeCompanionId ?? undefined,
+      skinId: profileSkinId ?? undefined,
+      name: profileDisplayName || undefined,
     });
     setScreen('lobby');
   };
@@ -507,8 +522,11 @@ function TicTacToeGame({
   const oIsYou = isOnline ? mySymbol === 'O' : false;
   // Avatars like Connect 4: human players show a silhouette placeholder; only
   // the companion (vs-AI opponent) and your own online card show real art.
-  const xAvatar = isOnline ? (xIsYou ? youAvatar : null) : null;
-  const oAvatar = isOnline ? (oIsYou ? youAvatar : null) : mode === 'ai' ? oppAvatar : null;
+  // The opponent's avatar from the companion they broadcast over presence; bundled
+  // companions resolve here, custom/AI-generated ones fall back to the placeholder.
+  const oppChar = oppMeta?.companionId ? getCompanionImage(oppMeta.companionId, oppMeta.skinId) : null;
+  const xAvatar = isOnline ? (xIsYou ? youAvatar : oppChar) : null;
+  const oAvatar = isOnline ? (oIsYou ? youAvatar : oppChar) : mode === 'ai' ? oppAvatar : null;
 
   return (
     <View style={tttStyles.screen}>
@@ -799,8 +817,19 @@ const ALLOWED_BREAK_MINUTES = [5, 10, 15];
 const CONNECT4_BG = require('@/assets/images/connect4/background.png');
 const TTT_BG = require('@/assets/images/tictactoe/background-clean.png');
 
+// Tablet move/resize targets for the break-game hub (chrome only — never the
+// game boards, which hit-test against raw coordinates).
+const BREAKGAME_ELEMENTS = [
+  { name: 'title', label: 'Title' },
+  { name: 'timerBar', label: 'Timer bar' },
+  { name: 'featured', label: 'Featured card' },
+  { name: 'homeBtn', label: 'Home btn' },
+  { name: 'endStudy', label: 'End-study btn' },
+];
+
 export default function BreakGameScreen() {
   const { t } = useTranslation();
+  const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('breakgame', BREAKGAME_ELEMENTS);
   const { breakMinutes, fromSession, browse, game, room, role } = useLocalSearchParams<{
     breakMinutes: string;
     fromSession?: string;
@@ -867,6 +896,7 @@ export default function BreakGameScreen() {
   }, [phase, validEntry]);
 
   const goHome = () => {
+    showLoadingScreen(undefined, { quick: true });
     returnToTabs();
   };
 
@@ -874,8 +904,9 @@ export default function BreakGameScreen() {
   const ss = secondsLeft % 60;
   const pct = totalSeconds > 0 ? (secondsLeft / totalSeconds) * 100 : 0;
 
-  const GAMES: { id: GameId; nameKey: string; emoji: string; free: boolean; shopItemId: string | null; route?: string; icon?: number; tint: string; featured?: boolean }[] = [
-    { id: 'cakekitchen', nameKey: 'friends.game_batterdash', emoji: '', free: true, shopItemId: null, route: '/cake-game', icon: require('@/assets/images/cake/batterdash-banner.png'), tint: '#FBE0E6', featured: true },
+  const GAMES: { id: GameId; nameKey: string; emoji: string; free: boolean; shopItemId: string | null; route?: string; icon?: number; tint: string; featured?: boolean; comingSoon?: boolean }[] = [
+    // BatterDash is hidden from the app for now. To bring it back, restore this entry:
+    // { id: 'cakekitchen', nameKey: 'friends.game_batterdash', emoji: '', free: true, shopItemId: null, route: '/cake-game', icon: require('@/assets/images/cake/batterdash-banner.png'), tint: '#FBE0E6', featured: true, comingSoon: true },
     { id: 'tictactoe', nameKey: 'friends.game_tictactoe', emoji: '', free: true, shopItemId: null, icon: require('@/assets/images/tictactoe/thumbnail.png'), tint: '#FBEAD2' },
     { id: 'connect4', nameKey: 'friends.game_connect4', emoji: '', free: true, shopItemId: null, icon: require('@/assets/images/games/connect4.png'), tint: '#DFEAF4' },
   ];
@@ -889,6 +920,10 @@ export default function BreakGameScreen() {
     return { unlocked, canOpen: unlocked || g.id === 'connect4' };
   };
   const openGame = (g: (typeof GAMES)[number], canOpen: boolean) => {
+    if (g.comingSoon) {
+      showPopup(t('games.comingSoon'), t('games.comingSoonMsg'));
+      return;
+    }
     if (!canOpen) return;
     if (g.route) {
       router.push(g.route as never);
@@ -960,10 +995,10 @@ export default function BreakGameScreen() {
       <SafeAreaView style={styles.safeArea}>
         {/* Break timer — only during a real study break, not when browsing */}
         {!isBrowse && (
-          <ThemedView type="backgroundElement" style={styles.timerBar}>
+          <ThemedView type="backgroundElement" style={[styles.timerBar, tw('timerBar')]}>
             <ThemedText style={styles.timerEmoji}></ThemedText>
-            <ThemedView style={styles.timerContent}>
-              <ThemedView style={styles.timerRow}>
+            <ThemedView type="transparent" style={styles.timerContent}>
+              <ThemedView type="transparent" style={styles.timerRow}>
                 <ThemedText type="smallBold">{t('games.breakEndsIn')}</ThemedText>
                 <ThemedText type="smallBold" style={styles.timerCount}>
                   {String(mm).padStart(2, '0')}:{String(ss).padStart(2, '0')}
@@ -985,7 +1020,7 @@ export default function BreakGameScreen() {
               contentContainerStyle={styles.selectScrollContent}>
               <ThemedView style={styles.selectContent}>
               <ThemedView style={styles.selectHeader}>
-                <ThemedText style={styles.selectTitle}>
+                <ThemedText style={[styles.selectTitle, tw('title')]}>
                   {t('games.chooseGame')}
                 </ThemedText>
                 {!isBrowse && (
@@ -1003,11 +1038,23 @@ export default function BreakGameScreen() {
                   <Pressable
                     style={({ pressed }) => [
                       styles.featuredCard,
-                      !canOpen && styles.gameCardLocked,
-                      pressed && canOpen && styles.pressed,
+                      tw('featured'),
+                      (!canOpen || g.comingSoon) && styles.gameCardLocked,
+                      pressed && canOpen && !g.comingSoon && styles.pressed,
                     ]}
                     onPress={() => openGame(g, canOpen)}>
                     <Image source={g.icon} style={styles.featuredArt} contentFit="cover" />
+                    {g.comingSoon && (
+                      <View style={styles.tapeOverlay} pointerEvents="none">
+                        {[styles.tapeStripA, styles.tapeStripB].map((strip, si) => (
+                          <View key={si} style={[styles.tapeStrip, strip]}>
+                            {Array.from({ length: 26 }).map((_, i) => (
+                              <View key={i} style={styles.tapeStripe} />
+                            ))}
+                          </View>
+                        ))}
+                      </View>
+                    )}
                   </Pressable>
                 );
               })()}
@@ -1057,7 +1104,7 @@ export default function BreakGameScreen() {
             <View style={styles.homeFooter}>
               <View style={styles.homeIndicator} />
               <Pressable
-                style={({ pressed }) => [styles.homeBtn, pressed && styles.pressed]}
+                style={({ pressed }) => [styles.homeBtn, tw('homeBtn'), pressed && styles.pressed]}
                 onPress={goHome}
                 hitSlop={8}
                 accessibilityLabel={t('nav.home')}>
@@ -1100,7 +1147,7 @@ export default function BreakGameScreen() {
             <View style={styles.homeFooter}>
               <View style={styles.homeIndicator} />
               <Pressable
-                style={({ pressed }) => [styles.homeBtn, pressed && styles.pressed]}
+                style={({ pressed }) => [styles.homeBtn, tw('homeBtn'), pressed && styles.pressed]}
                 onPress={goHome}
                 hitSlop={8}
                 accessibilityLabel={t('nav.home')}>
@@ -1109,7 +1156,7 @@ export default function BreakGameScreen() {
             </View>
           ) : (
             <Pressable
-              style={({ pressed }) => [styles.endStudyBtn, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.endStudyBtn, tw('endStudy'), pressed && styles.pressed]}
               onPress={goHome}>
               <ThemedText type="smallBold" style={styles.endStudyBtnText}>
                 End study
@@ -1117,6 +1164,7 @@ export default function BreakGameScreen() {
             </Pressable>
           ))}
       </SafeAreaView>
+      {!connect4Active && <DevKnobs screen="breakgame" knobs={twKnobs} onChange={twChange} />}
     </ThemedView>
   );
 }
@@ -1175,6 +1223,46 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 16 / 9,
     borderRadius: 20,
+  },
+  // "Under construction" tape across the parked BatterDash banner.
+  tapeOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(80,56,44,0.22)', // soft warm dim
+    borderRadius: 20,
+    overflow: 'hidden', // clip the crossed tape strips to the card
+  },
+  // Two pastel candy-stripe ribbons crossed into a soft X (cozy take on hazard tape).
+  tapeStrip: {
+    position: 'absolute',
+    left: -60,
+    right: -60,
+    top: '50%',
+    marginTop: -19,
+    height: 38,
+    backgroundColor: '#FFFFFF', // white ribbon
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#F6A9C4', // soft pink edge
+    flexDirection: 'row',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  tapeStripA: { transform: [{ rotate: '30deg' }] },
+  tapeStripB: { transform: [{ rotate: '-30deg' }] },
+  // Soft pink diagonal stripe with rounded ends — reads as a candy slash.
+  tapeStripe: {
+    width: 15,
+    height: 96,
+    borderRadius: 8,
+    backgroundColor: '#F6A9C4', // soft strawberry pink
+    transform: [{ rotate: '42deg' }],
+    marginRight: 15,
   },
   // Card grid for the remaining games
   gameGrid: {

@@ -186,15 +186,21 @@ function CalendarMonthCard({
         </Pressable>
       </View>
 
-      <View style={styles.weekRow}>
+      <View style={[styles.weekRow, { width: cellW * 7 }]}>
         {weekdayLetters().map((w, i) => (
           <Text key={i} style={[styles.weekday, { width: cellW }]}>{w}</Text>
         ))}
       </View>
 
-      <View style={styles.grid}>
+      <View style={[styles.grid, { width: cellW * 7 + 2 }]}>
         {cells.map((d, i) => {
-          if (d === null) return <View key={i} style={[styles.dayCell, { width: cellW, height: cellW }]} />;
+          // Internal gridlines only — skip the top edge on row 0 and the left
+          // edge on column 0 so the rounded frame border is the sole perimeter.
+          const cellBorder = {
+            borderTopWidth: i >= 7 ? 1 : 0,
+            borderLeftWidth: i % 7 !== 0 ? 1 : 0,
+          };
+          if (d === null) return <View key={i} style={[styles.dayCell, cellBorder, { width: cellW, height: cellW }]} />;
           const iso = toISO(year, month, d);
           const isToday = iso === today;
           const dayTasks = tasksByDay[iso] ?? [];
@@ -205,7 +211,7 @@ function CalendarMonthCard({
             <Pressable
               key={i}
               onPress={() => onPickDate(iso)}
-              style={[styles.dayCell, { width: cellW, height: cellW }]}>
+              style={[styles.dayCell, cellBorder, { width: cellW, height: cellW }]}>
               <View style={[styles.dayInner, isToday && styles.dayToday]}>
                 {hasExam && (
                   <View style={styles.examStar} pointerEvents="none">
@@ -465,24 +471,30 @@ const styles = StyleSheet.create({
   arrow: { fontSize: 26, color: C.jam, fontWeight: '800' },
   monthLabel: { fontSize: 16, fontWeight: '800', color: C.cocoaDark },
 
-  weekRow: { flexDirection: 'row', justifyContent: 'center' },
+  weekRow: { flexDirection: 'row', justifyContent: 'center', alignSelf: 'center' },
   weekday: { textAlign: 'center', fontSize: 12, color: C.mocha, fontWeight: '700' },
 
+  // Pin the grid to exactly 7 cells wide and center it so the cell borders form a
+  // symmetric box and stay aligned under the weekday header (full-width + center
+  // left the frame's left/bottom edges detached from the centered cells).
+  // The frame is one rounded bordered box; cells only draw the INTERNAL
+  // gridlines (borderTop/borderLeft, skipped on the first row/column) so the
+  // outer corners stay clean and circular with nothing cut off.
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    borderLeftWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: C.shortbread,
+    alignSelf: 'center',
+    borderWidth: 1,
+    borderColor: C.latte,
+    borderRadius: BakeryRadii.button,
+    overflow: 'hidden',
   },
   dayCell: {
     alignItems: 'center',
     justifyContent: 'center',
     padding: 2,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderRightWidth: StyleSheet.hairlineWidth,
-    borderColor: C.shortbread,
+    borderColor: C.latte,
   },
   dayInner: {
     flex: 1,

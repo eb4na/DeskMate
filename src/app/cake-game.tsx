@@ -28,6 +28,8 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedView } from '@/components/themed-view';
+import { DevKnobs } from '@/components/dev-knobs';
+import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { BakeryCakeEmoji, BakeryHeartEmoji, BakeryReceiptEmoji } from '@/components/bakery-emoji';
 import { BaseIcon, CakeBuildIcon, CakeIngredientIcon, type IngredientKind } from '@/components/cake-ingredients';
 import { useApp } from '@/context/app-context';
@@ -556,6 +558,13 @@ function SetupScreen({
   onHome: () => void;
 }) {
   const { t } = useTranslation();
+  // Setup screen is a normal scroll form (not the play surface), so chrome here is
+  // safe to tweak. The in-game kitchen is NOT instrumented (coordinate-mapped).
+  const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('cakesetup', [
+    { name: 'back', label: 'Back btn' },
+    { name: 'logo', label: 'Logo' },
+    { name: 'startBtn', label: 'Start btn' },
+  ]);
   const { cakeCharacter, setCakeCharacter, ownedShopItems } = useApp();
   const myCharacters = CHARACTERS.filter((c) => c.ownedItem === null || ownedShopItems.includes(c.ownedItem));
 
@@ -573,12 +582,12 @@ function SetupScreen({
           <Pressable
             hitSlop={14}
             onPress={goBack}
-            style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}>
+            style={({ pressed }) => [styles.backBtn, tw('back'), pressed && styles.pressed]}>
             <Image source={BACK_ARROW} style={styles.backImg} contentFit="contain" />
           </Pressable>
         </View>
         <View style={styles.header}>
-          <View style={styles.logoWrap}>
+          <View style={[styles.logoWrap, tw('logo')]}>
             {LOGO_OUTLINE.map((o, i) => (
               <Text key={i} style={[styles.logoStroke, { transform: [{ translateX: o[0] }, { translateY: o[1] }] }]}>
                 BatterDash
@@ -625,12 +634,13 @@ function SetupScreen({
         )}
 
         <Pressable
-          style={({ pressed }) => [styles.doneBtn, styles.secondaryBtnWide, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.doneBtn, styles.secondaryBtnWide, tw('startBtn'), pressed && styles.pressed]}
           onPress={crew === 'multi' ? onMultiplayer : onStart}>
           <Text style={styles.doneBtnText}>{crew === 'multi' ? t('cake.createLobby') : t('cake.startBaking')}</Text>
         </Pressable>
         </ScrollView>
       </SafeAreaView>
+      <DevKnobs screen="cakesetup" knobs={twKnobs} onChange={twChange} />
     </ThemedView>
   );
 }
