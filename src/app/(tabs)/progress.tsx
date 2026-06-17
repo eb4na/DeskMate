@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useMemo } from 'react';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -15,6 +16,7 @@ import { daysBetween, todayISO, useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
 import i18n, { useTranslation } from '@/i18n';
 import { FREE_HISTORY_MONTHS, historyCutoffISO } from '@/lib/history-window';
+import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { AFTER_SESSION_MOODS, BEFORE_SESSION_MOODS } from '@/constants/placeholder-data';
 
 const MOOD_IMAGE: Record<string, number> = {};
@@ -54,6 +56,8 @@ function daysSince(dateISO: string): number {
 
 export default function ProgressScreen() {
   const { t } = useTranslation();
+  const { scale, contentWidth } = useTabletScale();
+  const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const { isGuest, user, signOut } = useAuth();
   const {
     sessionsCompleted,
@@ -260,7 +264,7 @@ export default function ProgressScreen() {
           {(
             <ThemedView type="backgroundElement" style={styles.freezeCard}>
               <ThemedView type="transparent" style={styles.freezeRow}>
-                <StreakFreezeIcon size={52} style={styles.freezeIcon} />
+                <StreakFreezeIcon size={52 * scale} style={styles.freezeIcon} />
                 <ThemedView type="transparent" style={styles.freezeInfo}>
                   <ThemedText type="smallBold">{t('progress.streakFreeze')}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
@@ -358,7 +362,7 @@ export default function ProgressScreen() {
                 <Pressable
                   style={({ pressed }) => [styles.moodChartBtn, pressed && styles.pressed]}
                   onPress={() => router.push('/subject-chart')}>
-                  <ChartIcon size={14} />
+                  <ChartIcon size={14 * scale} />
                   <ThemedText type="small" themeColor="textSecondary">{t('progress.subjectChartBtn')}</ThemedText>
                 </Pressable>
                 <Pressable
@@ -406,14 +410,14 @@ export default function ProgressScreen() {
             {mostStudied && (
               <ThemedView type="transparent" style={styles.highlightRow}>
                 <View style={styles.highlightItem}>
-                  <BakeryTrophyEmoji size={15} />
+                  <BakeryTrophyEmoji size={15 * scale} />
                   <ThemedText type="small" themeColor="textSecondary">
                     {t('progress.mostStudied')}<ThemedText type="smallBold">{mostStudied[0]}</ThemedText>
                   </ThemedText>
                 </View>
                 {leastStudied && (
                   <View style={styles.highlightItem}>
-                    <BakerySleepEmoji size={15} />
+                    <BakerySleepEmoji size={15 * scale} />
                     <ThemedText type="small" themeColor="textSecondary">
                       {t('progress.leastStudied')}<ThemedText type="smallBold">{leastStudied[0]}</ThemedText>
                     </ThemedText>
@@ -430,7 +434,7 @@ export default function ProgressScreen() {
               <Pressable
                 style={({ pressed }) => [styles.moodChartBtn, pressed && styles.pressed]}
                 onPress={() => router.push('/mood-chart')}>
-                <ChartIcon size={14} />
+                <ChartIcon size={14 * scale} />
                 <ThemedText type="small" themeColor="textSecondary">{t('progress.moodChartBtn')}</ThemedText>
               </Pressable>
             </ThemedView>
@@ -497,46 +501,46 @@ export default function ProgressScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   container: { flex: 1, backgroundColor: BakeryColors.frosting },
   // Keep the whole scroll above the floating menu bar so it stays fully visible
   // and content never scrolls underneath it.
   scrollBox: { flex: 1, marginBottom: BottomTabClearance },
   safeArea: {
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.four,
-    maxWidth: MaxContentWidth,
+    paddingHorizontal: Spacing.four * s,
+    paddingTop: Spacing.four * s,
+    paddingBottom: Spacing.four * s,
+    maxWidth: contentWidth,
     width: '100%',
     alignSelf: 'center',
-    gap: Spacing.four,
+    gap: Spacing.four * s,
   },
-  title: { fontSize: 28, lineHeight: 34 },
+  title: { fontSize: 28 * s, lineHeight: 34 * s },
   accountCard: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
+    borderRadius: BakeryRadii.card * s,
+    padding: Spacing.three * s,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: Spacing.two * s,
     backgroundColor: BakeryColors.glass,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
     ...BakeryShadow,
   },
-  accountInfo: { flex: 1, gap: 2 },
+  accountInfo: { flex: 1, gap: 2 * s },
   signOutBtn: {
-    borderRadius: BakeryRadii.chip,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 6,
+    borderRadius: BakeryRadii.chip * s,
+    paddingHorizontal: Spacing.two * s,
+    paddingVertical: 6 * s,
     borderWidth: 1.5,
     borderColor: BakeryColors.border,
     backgroundColor: BakeryColors.cream,
   },
   signOutText: { color: BakeryColors.mocha },
   streakCard: {
-    borderRadius: BakeryRadii.panel,
-    padding: Spacing.four,
-    gap: Spacing.one,
+    borderRadius: BakeryRadii.panel * s,
+    padding: Spacing.four * s,
+    gap: Spacing.one * s,
     alignItems: 'center',
     backgroundColor: BakeryColors.glass,
     borderWidth: 1.5,
@@ -544,43 +548,43 @@ const styles = StyleSheet.create({
     ...BakeryShadow,
   },
   streakFireIcon: {
-    width: 52,
-    height: 58,
+    width: 52 * s,
+    height: 58 * s,
   },
-  streakNumber: { fontSize: 60, fontWeight: '800', lineHeight: 66, color: BakeryColors.honey },
+  streakNumber: { fontSize: 60 * s, fontWeight: '800', lineHeight: 66 * s, color: BakeryColors.honey },
   streakNumberPaused: { color: BakeryColors.mocha, opacity: 0.6 },
   streakAtRisk: { color: BakeryColors.rose, fontWeight: '700', textAlign: 'center' },
-  statsRow: { flexDirection: 'row', gap: Spacing.two },
+  statsRow: { flexDirection: 'row', gap: Spacing.two * s },
   statCard: {
     flex: 1,
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.two,
+    borderRadius: BakeryRadii.card * s,
+    padding: Spacing.two * s,
     alignItems: 'center',
-    gap: 2,
+    gap: 2 * s,
     backgroundColor: BakeryColors.glass,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
-  statValue: { fontSize: 26, fontWeight: '700', lineHeight: 32 },
-  statLabel: { textAlign: 'center', fontSize: 11 },
-  section: { gap: Spacing.two },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: Spacing.two },
-  insightRow: { flexDirection: 'row', gap: Spacing.two },
+  statValue: { fontSize: 26 * s, fontWeight: '700', lineHeight: 32 * s },
+  statLabel: { textAlign: 'center', fontSize: 11 * s },
+  section: { gap: Spacing.two * s },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: Spacing.two * s },
+  insightRow: { flexDirection: 'row', gap: Spacing.two * s },
   insightCard: {
     flex: 1,
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
+    borderRadius: BakeryRadii.card * s,
+    padding: Spacing.three * s,
     alignItems: 'center',
-    gap: 2,
+    gap: 2 * s,
     backgroundColor: BakeryColors.glass,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
-  insightValue: { fontSize: 24, fontWeight: '700', lineHeight: 30 },
-  insightLabel: { textAlign: 'center', fontSize: 12 },
+  insightValue: { fontSize: 24 * s, fontWeight: '700', lineHeight: 30 * s },
+  insightLabel: { textAlign: 'center', fontSize: 12 * s },
   manageSubjectsBtn: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 6,
+    paddingHorizontal: Spacing.three * s,
+    paddingVertical: 6 * s,
     borderRadius: BakeryRadii.pill,
     backgroundColor: BakeryColors.cream,
     borderWidth: 1.5,
@@ -589,71 +593,71 @@ const styles = StyleSheet.create({
   moodChartBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 6,
+    gap: 6 * s,
+    paddingHorizontal: Spacing.three * s,
+    paddingVertical: 6 * s,
     borderRadius: BakeryRadii.pill,
     backgroundColor: BakeryColors.cream,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
-  subjectHeaderBtns: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  subjectList: { gap: Spacing.two },
-  subjectRow: { borderRadius: BakeryRadii.card, padding: Spacing.two, gap: 6, backgroundColor: BakeryColors.glass, borderWidth: 1.5, borderColor: BakeryColors.shortbread },
+  subjectHeaderBtns: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two * s },
+  subjectList: { gap: Spacing.two * s },
+  subjectRow: { borderRadius: BakeryRadii.card * s, padding: Spacing.two * s, gap: 6 * s, backgroundColor: BakeryColors.glass, borderWidth: 1.5, borderColor: BakeryColors.shortbread },
   subjectRowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  subjectLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  subjectDot: { width: 10, height: 10, borderRadius: 5 },
-  subjectName: { fontSize: 13 },
-  subjectMinutes: { fontSize: 13 },
-  subjectBar: { height: 5, borderRadius: 3, backgroundColor: 'rgba(0,0,0,0.06)', overflow: 'hidden' },
-  subjectBarFill: { height: '100%', borderRadius: 3 },
-  highlightRow: { gap: 4, paddingTop: Spacing.one },
-  highlightItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  emptyCard: { borderRadius: BakeryRadii.card, padding: Spacing.four, alignItems: 'center', backgroundColor: BakeryColors.glass, borderWidth: 1.5, borderColor: BakeryColors.shortbread },
-  emptyText: { textAlign: 'center', lineHeight: 20 },
-  moodList: { gap: Spacing.two },
+  subjectLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 * s },
+  subjectDot: { width: 10 * s, height: 10 * s, borderRadius: 5 * s },
+  subjectName: { fontSize: 13 * s },
+  subjectMinutes: { fontSize: 13 * s },
+  subjectBar: { height: 5 * s, borderRadius: 3 * s, backgroundColor: 'rgba(0,0,0,0.06)', overflow: 'hidden' },
+  subjectBarFill: { height: '100%', borderRadius: 3 * s },
+  highlightRow: { gap: 4 * s, paddingTop: Spacing.one * s },
+  highlightItem: { flexDirection: 'row', alignItems: 'center', gap: 6 * s },
+  emptyCard: { borderRadius: BakeryRadii.card * s, padding: Spacing.four * s, alignItems: 'center', backgroundColor: BakeryColors.glass, borderWidth: 1.5, borderColor: BakeryColors.shortbread },
+  emptyText: { textAlign: 'center', lineHeight: 20 * s },
+  moodList: { gap: Spacing.two * s },
   // before+after of one session, joined by a short vertical connector line.
   moodPair: {},
   moodConnector: {
-    width: 3,
-    height: 12,
-    marginLeft: 34,
-    borderRadius: 2,
+    width: 3 * s,
+    height: 12 * s,
+    marginLeft: 34 * s,
+    borderRadius: 2 * s,
     backgroundColor: BakeryColors.latte,
   },
   moodRow: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
+    borderRadius: BakeryRadii.card * s,
+    padding: Spacing.three * s,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: Spacing.two * s,
     backgroundColor: BakeryColors.glass,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
-  moodType: { width: 40, fontSize: 11 },
-  moodImage: { width: 30, height: 30 },
+  moodType: { width: 40 * s, fontSize: 11 * s },
+  moodImage: { width: 30 * s, height: 30 * s },
   moodLabel: { flex: 1 },
-  moodMeta: { fontSize: 11 },
+  moodMeta: { fontSize: 11 * s },
   examCard: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
+    borderRadius: BakeryRadii.card * s,
+    padding: Spacing.three * s,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: Spacing.three * s,
     backgroundColor: BakeryColors.glass,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
-  examInfo: { flex: 1, gap: 2 },
-  examRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  examDays: { fontSize: 22, fontWeight: '700', color: BakeryColors.mocha },
+  examInfo: { flex: 1, gap: 2 * s },
+  examRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two * s },
+  examDays: { fontSize: 22 * s, fontWeight: '700', color: BakeryColors.mocha },
   examDaysUrgent: { color: BakeryColors.danger },
   examDaysPast: { color: '#999' },
-  removeBtn: { padding: 4 },
+  removeBtn: { padding: 4 * s },
   addExamBtn: {
-    borderRadius: BakeryRadii.button,
-    paddingVertical: Spacing.three,
+    borderRadius: BakeryRadii.button * s,
+    paddingVertical: Spacing.three * s,
     borderWidth: 1.5,
     borderColor: BakeryColors.border,
     alignItems: 'center',
@@ -663,22 +667,22 @@ const styles = StyleSheet.create({
   addExamBtnPressed: { opacity: 0.7 },
   addExamText: { color: BakeryColors.mocha },
   maxNote: { textAlign: 'center' },
-  freezeCard: { borderRadius: BakeryRadii.card, padding: Spacing.three, gap: Spacing.two, backgroundColor: BakeryColors.glass, borderWidth: 1.5, borderColor: BakeryColors.shortbread },
-  freezeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  freezeIcon: { width: 52 },
-  freezeInfo: { flex: 1, gap: 2 },
+  freezeCard: { borderRadius: BakeryRadii.card * s, padding: Spacing.three * s, gap: Spacing.two * s, backgroundColor: BakeryColors.glass, borderWidth: 1.5, borderColor: BakeryColors.shortbread },
+  freezeRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two * s },
+  freezeIcon: { width: 52 * s },
+  freezeInfo: { flex: 1, gap: 2 * s },
   freezeBtn: {
     backgroundColor: '#6FB7E0',
-    borderRadius: BakeryRadii.chip,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 6,
+    borderRadius: BakeryRadii.chip * s,
+    paddingHorizontal: Spacing.two * s,
+    paddingVertical: 6 * s,
   },
-  freezeBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+  freezeBtnText: { color: '#FFFFFF', fontSize: 13 * s, fontWeight: '700' },
   pressed: { opacity: 0.85 },
-  plusBadge: { color: BakeryColors.berry, fontSize: 11 },
+  plusBadge: { color: BakeryColors.berry, fontSize: 11 * s },
   upgradeExamCard: {
-    borderRadius: 12,
-    paddingVertical: Spacing.three,
+    borderRadius: 12 * s,
+    paddingVertical: Spacing.three * s,
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: `${BakeryColors.honey}55`,
@@ -687,23 +691,23 @@ const styles = StyleSheet.create({
   },
   upgradeExamText: { color: BakeryColors.mocha },
   plusShortcut: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
+    borderRadius: BakeryRadii.card * s,
+    padding: Spacing.three * s,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: Spacing.two * s,
     backgroundColor: BakeryColors.glass,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
-  plusShortcutIcon: { width: 34, alignItems: 'center', justifyContent: 'center' },
-  plusShortcutText: { flex: 1, gap: 2 },
-  arrowLink: { color: BakeryColors.mocha, fontWeight: '700', fontSize: 16 },
+  plusShortcutIcon: { width: 34 * s, alignItems: 'center', justifyContent: 'center' },
+  plusShortcutText: { flex: 1, gap: 2 * s },
+  arrowLink: { color: BakeryColors.mocha, fontWeight: '700', fontSize: 16 * s },
   weekCard: {},
   weekCardInner: {
-    borderRadius: BakeryRadii.card,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 12,
+    borderRadius: BakeryRadii.card * s,
+    paddingHorizontal: Spacing.three * s,
+    paddingVertical: 12 * s,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -711,19 +715,19 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
-  weekLeft: { gap: 2 },
+  weekLeft: { gap: 2 * s },
   weekRight: {},
   weekReportLink: { color: BakeryColors.mocha, fontWeight: '700' },
   moodInsightCard: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
+    borderRadius: BakeryRadii.card * s,
+    padding: Spacing.three * s,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: Spacing.two * s,
     backgroundColor: BakeryColors.glass,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
-  moodInsightEmoji: { fontSize: 28, lineHeight: 34 },
-  moodInsightText: { flex: 1, lineHeight: 20 },
+  moodInsightEmoji: { fontSize: 28 * s, lineHeight: 34 * s },
+  moodInsightText: { flex: 1, lineHeight: 20 * s },
 });

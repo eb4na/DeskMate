@@ -184,7 +184,7 @@ function RootNavigator() {
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
 
       <Stack.Protected guard={!!session || isGuest}>
-        <Stack.Screen name="language-picker" options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }} />
+        <Stack.Screen name="language-picker" options={{ headerShown: false, gestureEnabled: false, animation: 'none' }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         {/* Session flow */}
         <Stack.Screen name="session-picker" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />

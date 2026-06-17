@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -16,7 +16,7 @@ import Svg, { Path } from 'react-native-svg';
 import { CoinIcon } from '@/components/coin-icon';
 import { DevKnobs, type Knob } from '@/components/dev-knobs';
 import { LockOverlay } from '@/components/lock-badge';
-import { useIsTablet } from '@/hooks/use-device-class';
+import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { ThemedView } from '@/components/themed-view';
 import { Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
@@ -118,7 +118,8 @@ type ObtainedCharacter = {
 
 function GalleryContent() {
   const { t } = useTranslation();
-  const isTablet = useIsTablet();
+  const { scale, contentWidth } = useTabletScale();
+  const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const {
     activeCompanionId,
     starterCompanionId,
@@ -185,14 +186,18 @@ function GalleryContent() {
   };
 
   // The chain icon: set the outfit's matched room (background + desk) and wear the
-  // outfit so the whole look comes together. If the room isn't owned, point the
-  // player to the Shop instead of silently equipping an unbought room.
+  // outfit so the whole look comes together. If the room isn't owned, jump straight
+  // to the Shop's Backgrounds tab to buy it — this screen is a native modal, so a
+  // root-mounted popup can fail to present over it (same reason food-gallery routes
+  // locked recipes straight to the Shop rather than showing a dialog).
   const equipMatchedRoom = (skin: BunSkin) => {
     const pair = roomById(skin.roomId);
     if (!pair) return;
     const outfitName = localizeOutfitName(skin.name, t);
     if (!isPairOwned(pair, ownedShopItems)) {
-      showPopup(t('gallery.roomLockedTitle'), t('gallery.roomLockedMsg', { room: pair.name, outfit: outfitName }));
+      // Jump to the Shop and auto-open the buy popup for this exact room pair
+      // (background + desk). `buyPair` carries the background's shop item id.
+      router.replace({ pathname: '/shop', params: { category: 'background', buyPair: pair.backgroundId ?? '' } });
       return;
     }
     setEquippedBackground(pair.id);
@@ -274,8 +279,8 @@ function GalleryContent() {
       <SafeAreaView style={styles.safeArea}>
         {/* Header — a big bubbly title + subtitle (no banner frame). */}
         <View style={styles.headerRow}>
-          <Text style={[styles.headerTitle, isTablet && styles.headerTitleTablet]}>{t('gallery.companionBakery')}</Text>
-          <Text style={[styles.headerSubtitle, isTablet && styles.headerSubtitleTablet]}>{t('gallery.chooseToday')}</Text>
+          <Text style={styles.headerTitle}>{t('gallery.companionBakery')}</Text>
+          <Text style={styles.headerSubtitle}>{t('gallery.chooseToday')}</Text>
         </View>
 
         {/* My Companions */}
@@ -302,7 +307,7 @@ function GalleryContent() {
                   style={({ pressed }) => [styles.hangerBtn, pressed && styles.pressed]}
                   onPress={() => setWardrobeFor({ id: char.id, name: localizeCompanionName(char.name, t) })}
                   hitSlop={8}>
-                  <HangerIcon color="#FFFFFF" size={22} />
+                  <HangerIcon color="#FFFFFF" size={22 * scale} />
                 </Pressable>
                 {/* Pairing button — set the matched room when the worn outfit has one. */}
                 {char.currentSkin && roomById(char.currentSkin.roomId) && (
@@ -310,7 +315,7 @@ function GalleryContent() {
                     style={({ pressed }) => [styles.linkBadge, pressed && styles.pressed]}
                     onPress={() => equipMatchedRoom(char.currentSkin!)}
                     hitSlop={8}>
-                    <ChainLinkIcon color="#FFFFFF" size={15} />
+                    <ChainLinkIcon color="#FFFFFF" size={15 * scale} />
                   </Pressable>
                 )}
                 <View style={[styles.companionImageWrap, { width: `${tweak.imgSize}%` }]}>
@@ -390,7 +395,7 @@ function GalleryContent() {
                             style={({ pressed }) => [styles.linkBadge, pressed && styles.pressed]}
                             onPress={() => equipMatchedRoom(skin)}
                             hitSlop={8}>
-                            <ChainLinkIcon color="#FFFFFF" size={15} />
+                            <ChainLinkIcon color="#FFFFFF" size={15 * scale} />
                           </Pressable>
                         )}
                         <View style={styles.skinImageWrap}>
@@ -399,7 +404,7 @@ function GalleryContent() {
                             style={styles.skinImage}
                             contentFit="contain"
                           />
-                          {locked && <LockOverlay size={34} radius={18} />}
+                          {locked && <LockOverlay size={34 * scale} radius={18 * scale} />}
                         </View>
                         <Text style={styles.skinName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
                           {localizeOutfitName(skin.name, t)}
@@ -450,7 +455,7 @@ function GalleryContent() {
                 <View style={styles.buyBalanceRow}>
                   <Text style={styles.buyBalanceLabel}>{t('gallery.yourBalance')}</Text>
                   <View style={styles.buyBalanceValue}>
-                    <CoinIcon size={15} />
+                    <CoinIcon size={15 * scale} />
                     <Text style={styles.buyBalanceNum}>{coins}</Text>
                   </View>
                 </View>
@@ -510,65 +515,62 @@ function GalleryContent() {
 
 export default function CompanionGalleryScreen() {
   return (
-    <ThemedView style={[styles.container, { backgroundColor: P.cream }]}>
+    <ThemedView style={{ flex: 1, backgroundColor: P.cream }}>
       <GalleryContent />
     </ThemedView>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   container: { flex: 1 },
   safeArea: {
-    padding: Spacing.four,
-    maxWidth: MaxContentWidth,
+    padding: Spacing.four * s,
+    maxWidth: contentWidth,
     width: '100%',
     alignSelf: 'center',
-    gap: Spacing.four,
+    gap: Spacing.four * s,
     backgroundColor: P.cream,
   },
 
   // Header — big bubbly title + subtitle (no banner frame).
-  headerRow: { width: '100%', alignItems: 'center', gap: 4, marginTop: Spacing.two, marginBottom: Spacing.one },
+  headerRow: { width: '100%', alignItems: 'center', gap: 4 * s, marginTop: Spacing.two * s, marginBottom: Spacing.one * s },
   headerTitle: {
     fontFamily: Fonts.rounded,
-    fontSize: 32,
+    fontSize: 32 * s,
     fontWeight: '900',
     color: P.brown,
     letterSpacing: 0.3,
     textAlign: 'center',
   },
   headerSubtitle: {
-    fontSize: 13,
+    fontSize: 13 * s,
     color: P.mutedBrown,
     fontWeight: '500',
     textAlign: 'center',
   },
-  // Tablet: larger bakery-menu banner text (phones untouched).
-  headerTitleTablet: { fontSize: 34, letterSpacing: 0.3 },
-  headerSubtitleTablet: { fontSize: 19 },
 
   // Sections
-  section: { gap: Spacing.two },
+  section: { gap: Spacing.two * s },
   sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 16 * s,
     fontWeight: '800',
     color: P.brown,
   },
-  slotCount: { fontSize: 13, color: P.mutedBrown, fontWeight: '600' },
+  slotCount: { fontSize: 13 * s, color: P.mutedBrown, fontWeight: '600' },
   // Hanger button on each companion card — white hanger on a pink chip
   hangerBtn: {
     position: 'absolute',
-    top: 8,
-    left: 8,
+    top: 8 * s,
+    left: 8 * s,
     zIndex: 2,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 34 * s,
+    height: 34 * s,
+    borderRadius: 17 * s,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: P.pink,
@@ -584,29 +586,29 @@ const styles = StyleSheet.create({
   },
   wardrobeSheet: {
     backgroundColor: P.cream,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: Spacing.four,
-    gap: Spacing.three,
-    maxWidth: MaxContentWidth,
+    borderTopLeftRadius: 28 * s,
+    borderTopRightRadius: 28 * s,
+    padding: Spacing.four * s,
+    gap: Spacing.three * s,
+    maxWidth: contentWidth,
     width: '100%',
     alignSelf: 'center',
   },
-  wardrobeTitle: { fontSize: 20, fontWeight: '800', color: P.brown, textAlign: 'center' },
-  wardrobeSubtitle: { fontSize: 13, color: P.mutedBrown, fontWeight: '500', textAlign: 'center', marginTop: -6 },
-  wardrobeEmpty: { alignItems: 'center', gap: 6, paddingVertical: Spacing.four },
-  wardrobeEmptyTitle: { fontSize: 16, fontWeight: '800', color: P.brown },
-  wardrobeEmptyText: { fontSize: 13, color: P.mutedBrown, textAlign: 'center', lineHeight: 18, paddingHorizontal: Spacing.three },
-  skinGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three, justifyContent: 'center' },
+  wardrobeTitle: { fontSize: 20 * s, fontWeight: '800', color: P.brown, textAlign: 'center' },
+  wardrobeSubtitle: { fontSize: 13 * s, color: P.mutedBrown, fontWeight: '500', textAlign: 'center', marginTop: -6 * s },
+  wardrobeEmpty: { alignItems: 'center', gap: 6 * s, paddingVertical: Spacing.four * s },
+  wardrobeEmptyTitle: { fontSize: 16 * s, fontWeight: '800', color: P.brown },
+  wardrobeEmptyText: { fontSize: 13 * s, color: P.mutedBrown, textAlign: 'center', lineHeight: 18 * s, paddingHorizontal: Spacing.three * s },
+  skinGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three * s, justifyContent: 'center' },
   skinCard: {
     width: '47%',
     backgroundColor: P.card,
-    borderRadius: 20,
+    borderRadius: 20 * s,
     borderWidth: 2,
     borderColor: P.pinkSoft,
-    padding: Spacing.three,
+    padding: Spacing.three * s,
     alignItems: 'center',
-    gap: 4,
+    gap: 4 * s,
   },
   skinCardActive: {
     borderColor: P.pink,
@@ -619,12 +621,12 @@ const styles = StyleSheet.create({
   // Chain badge — top-right of an outfit card that has a matched room.
   linkBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
+    top: 8 * s,
+    right: 8 * s,
     zIndex: 2,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 28 * s,
+    height: 28 * s,
+    borderRadius: 14 * s,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: P.pink,
@@ -639,34 +641,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  skinName: { fontSize: 14, fontWeight: '800', color: P.brown, textAlign: 'center' },
+  skinName: { fontSize: 14 * s, fontWeight: '800', color: P.brown, textAlign: 'center' },
   skinPill: {
-    marginTop: 4,
+    marginTop: 4 * s,
     backgroundColor: P.pinkActiveSoft,
     borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 5,
+    paddingHorizontal: 14 * s,
+    paddingVertical: 5 * s,
     borderWidth: 1.5,
     borderColor: P.pinkActive,
   },
-  skinPillText: { fontSize: 11, color: P.pinkActiveText, fontWeight: '800' },
-  skinTap: { fontSize: 11, color: P.mutedBrown, fontWeight: '600', marginTop: 6 },
+  skinPillText: { fontSize: 11 * s, color: P.pinkActiveText, fontWeight: '800' },
+  skinTap: { fontSize: 11 * s, color: P.mutedBrown, fontWeight: '600', marginTop: 6 * s },
 
   // Companion grid
   companionGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.three,
+    gap: Spacing.three * s,
   },
   companionCard: {
     width: '47%',
     backgroundColor: P.card,
-    borderRadius: 22,
+    borderRadius: 22 * s,
     borderWidth: 2,
     borderColor: P.pinkSoft,
-    padding: Spacing.three,
+    padding: Spacing.three * s,
     alignItems: 'center',
-    gap: 4,
+    gap: 4 * s,
     shadowColor: '#C9A18A',
     shadowOpacity: 0.14,
     shadowRadius: 10,
@@ -682,81 +684,81 @@ const styles = StyleSheet.create({
   },
   cardDelete: {
     position: 'absolute',
-    top: 8,
-    right: 10,
+    top: 8 * s,
+    right: 10 * s,
     zIndex: 2,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 22 * s,
+    height: 22 * s,
+    borderRadius: 11 * s,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: P.pinkSoft,
   },
-  cardDeleteText: { fontSize: 11, color: P.brown, fontWeight: '700' },
+  cardDeleteText: { fontSize: 11 * s, color: P.brown, fontWeight: '700' },
   companionImageWrap: {
     width: '80%',
     aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
+    marginTop: 2 * s,
   },
   companionImage: { width: '100%', height: '100%' },
   companionImagePlaceholder: { width: '100%', height: '100%' },
   companionName: {
-    fontSize: 15,
+    fontSize: 15 * s,
     fontWeight: '800',
     color: P.brown,
     textAlign: 'center',
   },
   companionSubtitle: {
-    fontSize: 11,
+    fontSize: 11 * s,
     color: P.mutedBrown,
     fontWeight: '500',
   },
   activePill: {
-    marginTop: 6,
+    marginTop: 6 * s,
     backgroundColor: P.pinkActiveSoft,
     borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    paddingHorizontal: 16 * s,
+    paddingVertical: 6 * s,
     borderWidth: 1.5,
     borderColor: P.pinkActive,
   },
-  activePillText: { fontSize: 12, color: P.pinkActiveText, fontWeight: '800' },
+  activePillText: { fontSize: 12 * s, color: P.pinkActiveText, fontWeight: '800' },
   setActiveBtn: {
-    marginTop: 6,
+    marginTop: 6 * s,
     backgroundColor: P.pink,
     borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 7,
+    paddingHorizontal: 18 * s,
+    paddingVertical: 7 * s,
   },
-  setActiveBtnText: { fontSize: 12, color: '#FFF', fontWeight: '800' },
+  setActiveBtnText: { fontSize: 12 * s, color: '#FFF', fontWeight: '800' },
 
   // Locked companion cards
   companionCardLocked: { borderColor: P.pinkSoft, backgroundColor: '#FBF6F2' },
   companionImageLocked: { opacity: 0.5 },
   cardLockBadge: {
     position: 'absolute',
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 34 * s,
+    height: 34 * s,
+    borderRadius: 17 * s,
     backgroundColor: 'rgba(255,255,255,0.92)',
     borderWidth: 1.5,
     borderColor: P.pink,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cardLockBadgeText: { fontSize: 16 },
+  cardLockBadgeText: { fontSize: 16 * s },
   unlockBtn: {
-    marginTop: 6,
+    marginTop: 6 * s,
     backgroundColor: P.pink,
     borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 7,
+    paddingHorizontal: 16 * s,
+    paddingVertical: 7 * s,
   },
-  unlockBtnText: { fontSize: 12, color: '#FFF', fontWeight: '800' },
+  unlockBtnText: { fontSize: 12 * s, color: '#FFF', fontWeight: '800' },
   plusBtn: { backgroundColor: P.pinkActiveSoft, borderWidth: 1.5, borderColor: P.pinkActive },
-  plusBtnText: { fontSize: 12, color: P.pinkActiveText, fontWeight: '800' },
+  plusBtnText: { fontSize: 12 * s, color: P.pinkActiveText, fontWeight: '800' },
 
   // Unlock popup
   buyBackdrop: {
@@ -764,43 +766,43 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(91,58,46,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    padding: 24 * s,
   },
   buyCard: {
     width: '100%',
-    maxWidth: 340,
+    maxWidth: 340 * s,
     backgroundColor: P.card,
-    borderRadius: 26,
-    padding: Spacing.four,
-    gap: Spacing.three,
+    borderRadius: 26 * s,
+    padding: Spacing.four * s,
+    gap: Spacing.three * s,
     borderWidth: 1.5,
     borderColor: P.peach,
     alignItems: 'center',
   },
-  buyTitle: { fontSize: 19, fontWeight: '800', color: P.brown, textAlign: 'center' },
-  buyImage: { width: 120, height: 120 },
+  buyTitle: { fontSize: 19 * s, fontWeight: '800', color: P.brown, textAlign: 'center' },
+  buyImage: { width: 120 * s, height: 120 * s },
   buyBalanceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', alignSelf: 'stretch' },
-  buyBalanceValue: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  buyBalanceLabel: { fontSize: 13, fontWeight: '600', color: P.mutedBrown },
-  buyBalanceNum: { fontSize: 15, fontWeight: '800', color: P.brown },
-  buyShortfall: { fontSize: 12.5, color: P.pinkActiveText, fontWeight: '700', textAlign: 'center' },
-  buyBtn: { alignSelf: 'stretch', backgroundColor: P.pink, borderRadius: 18, paddingVertical: Spacing.three, alignItems: 'center' },
+  buyBalanceValue: { flexDirection: 'row', alignItems: 'center', gap: 4 * s },
+  buyBalanceLabel: { fontSize: 13 * s, fontWeight: '600', color: P.mutedBrown },
+  buyBalanceNum: { fontSize: 15 * s, fontWeight: '800', color: P.brown },
+  buyShortfall: { fontSize: 12.5 * s, color: P.pinkActiveText, fontWeight: '700', textAlign: 'center' },
+  buyBtn: { alignSelf: 'stretch', backgroundColor: P.pink, borderRadius: 18 * s, paddingVertical: Spacing.three * s, alignItems: 'center' },
   buyBtnDisabled: { backgroundColor: P.pinkSoft },
-  buyBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
-  buyCancel: { alignItems: 'center', paddingVertical: 2 },
-  buyCancelText: { fontSize: 13.5, color: P.mutedBrown, fontWeight: '700' },
-  plusAlertMsg: { fontSize: 14, color: P.mutedBrown, fontWeight: '600', textAlign: 'center', lineHeight: 20 },
-  plusOkBtn: { alignSelf: 'stretch', backgroundColor: '#E85C77', borderRadius: 18, paddingVertical: Spacing.three, alignItems: 'center', marginTop: Spacing.one },
-  plusOkText: { color: '#FFF', fontSize: 16, fontWeight: '900' },
+  buyBtnText: { color: '#FFF', fontSize: 16 * s, fontWeight: '800' },
+  buyCancel: { alignItems: 'center', paddingVertical: 2 * s },
+  buyCancelText: { fontSize: 13.5 * s, color: P.mutedBrown, fontWeight: '700' },
+  plusAlertMsg: { fontSize: 14 * s, color: P.mutedBrown, fontWeight: '600', textAlign: 'center', lineHeight: 20 * s },
+  plusOkBtn: { alignSelf: 'stretch', backgroundColor: '#E85C77', borderRadius: 18 * s, paddingVertical: Spacing.three * s, alignItems: 'center', marginTop: Spacing.one * s },
+  plusOkText: { color: '#FFF', fontSize: 16 * s, fontWeight: '900' },
 
   // Receipt card
   receiptCard: {
     backgroundColor: P.card,
-    borderRadius: 20,
-    padding: Spacing.three,
+    borderRadius: 20 * s,
+    padding: Spacing.three * s,
     borderWidth: 1.5,
     borderColor: P.peach,
-    gap: Spacing.two,
+    gap: Spacing.two * s,
     overflow: 'hidden',
     shadowColor: '#C9A18A',
     shadowOpacity: 0.14,
@@ -810,115 +812,115 @@ const styles = StyleSheet.create({
   },
   receiptNotchLeft: {
     position: 'absolute',
-    left: -10,
+    left: -10 * s,
     top: '46%',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 20 * s,
+    height: 20 * s,
+    borderRadius: 10 * s,
     backgroundColor: P.cream,
   },
   receiptNotchRight: {
     position: 'absolute',
-    right: -10,
+    right: -10 * s,
     top: '46%',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 20 * s,
+    height: 20 * s,
+    borderRadius: 10 * s,
     backgroundColor: P.cream,
   },
-  receiptRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  receiptEmoji: { fontSize: 34 },
-  receiptInfo: { flex: 1, gap: 2 },
-  receiptTitle: { fontSize: 15, fontWeight: '800', color: P.brown },
-  receiptCount: { fontSize: 13, color: P.mutedBrown, fontWeight: '600' },
+  receiptRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two * s },
+  receiptEmoji: { fontSize: 34 * s },
+  receiptInfo: { flex: 1, gap: 2 * s },
+  receiptTitle: { fontSize: 15 * s, fontWeight: '800', color: P.brown },
+  receiptCount: { fontSize: 13 * s, color: P.mutedBrown, fontWeight: '600' },
   generateBtn: {
     backgroundColor: P.pink,
     borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 16 * s,
+    paddingVertical: 8 * s,
   },
-  generateBtnText: { color: '#FFF', fontSize: 13, fontWeight: '800' },
+  generateBtnText: { color: '#FFF', fontSize: 13 * s, fontWeight: '800' },
   receiptDivider: {
     height: 1.5,
     borderRadius: 1,
     borderWidth: 1,
     borderColor: P.pinkSoft,
     borderStyle: 'dashed',
-    marginVertical: 2,
+    marginVertical: 2 * s,
   },
-  receiptDesc: { fontSize: 12, color: P.mutedBrown, lineHeight: 17 },
+  receiptDesc: { fontSize: 12 * s, color: P.mutedBrown, lineHeight: 17 * s },
   receiptLinks: { flexDirection: 'row', justifyContent: 'space-between' },
-  linkText: { fontSize: 13, color: P.pink, fontWeight: '700' },
+  linkText: { fontSize: 13 * s, color: P.pink, fontWeight: '700' },
 
   // Forms
   formCard: {
     backgroundColor: P.card,
-    borderRadius: 20,
-    padding: Spacing.three,
+    borderRadius: 20 * s,
+    padding: Spacing.three * s,
     borderWidth: 1.5,
     borderColor: P.peach,
-    gap: Spacing.two,
+    gap: Spacing.two * s,
   },
-  formTitle: { fontSize: 15, fontWeight: '800', color: P.brown },
-  promptInput: { minHeight: 80, textAlignVertical: 'top' },
+  formTitle: { fontSize: 15 * s, fontWeight: '800', color: P.brown },
+  promptInput: { minHeight: 80 * s, textAlignVertical: 'top' },
   formSubmitBtn: {
     backgroundColor: P.button,
-    borderRadius: 14,
-    paddingVertical: Spacing.two,
+    borderRadius: 14 * s,
+    paddingVertical: Spacing.two * s,
     alignItems: 'center',
-    marginTop: 2,
+    marginTop: 2 * s,
   },
-  formSubmitText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+  formSubmitText: { color: '#FFF', fontSize: 15 * s, fontWeight: '700' },
   disabledBtn: { opacity: 0.6 },
 
   // Extra slots
-  slotsHint: { fontSize: 12, color: P.mutedBrown, fontWeight: '500', lineHeight: 17 },
-  slotsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  slotsHint: { fontSize: 12 * s, color: P.mutedBrown, fontWeight: '500', lineHeight: 17 * s },
+  slotsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two * s },
   addSlotCard: {
     flex: 1,
-    minWidth: 92,
+    minWidth: 92 * s,
     aspectRatio: 0.95,
-    borderRadius: 18,
+    borderRadius: 18 * s,
     borderWidth: 2,
     borderColor: P.pink,
     borderStyle: 'dashed',
     backgroundColor: 'rgba(247,167,184,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 4 * s,
   },
-  addSlotPlus: { fontSize: 30, color: P.pink, fontWeight: '700', lineHeight: 34 },
-  addSlotText: { fontSize: 12, color: P.mutedBrown, fontWeight: '600' },
+  addSlotPlus: { fontSize: 30 * s, color: P.pink, fontWeight: '700', lineHeight: 34 * s },
+  addSlotText: { fontSize: 12 * s, color: P.mutedBrown, fontWeight: '600' },
   slotsFullNote: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 12 * s,
     color: P.mutedBrown,
     textAlign: 'center',
-    lineHeight: 18,
-    paddingVertical: Spacing.two,
+    lineHeight: 18 * s,
+    paddingVertical: Spacing.two * s,
   },
 
   // Info
   infoCard: {
     backgroundColor: P.pinkSoft,
-    borderRadius: 18,
-    padding: Spacing.three,
+    borderRadius: 18 * s,
+    padding: Spacing.three * s,
     borderWidth: 1.5,
     borderColor: P.pink,
   },
   infoText: {
-    fontSize: 12.5,
+    fontSize: 12.5 * s,
     color: P.brown,
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 18 * s,
     fontWeight: '500',
   },
 
   // Done
   doneButton: {
     backgroundColor: P.pink,
-    borderRadius: 18,
-    paddingVertical: Spacing.three,
+    borderRadius: 18 * s,
+    paddingVertical: Spacing.three * s,
     alignItems: 'center',
     shadowColor: '#C9A18A',
     shadowOpacity: 0.2,
@@ -926,7 +928,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
   },
-  doneButtonText: { color: '#FFF', fontSize: 17, fontWeight: '800' },
+  doneButtonText: { color: '#FFF', fontSize: 17 * s, fontWeight: '800' },
 
   pressed: { opacity: 0.85 },
 });

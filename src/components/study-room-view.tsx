@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import Svg, { Line } from 'react-native-svg';
 import { Animated, AppState, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { cancelComeBackNudge, sendComeBackNudge } from '@/lib/notifications';
@@ -8,7 +9,7 @@ import { cancelComeBackNudge, sendComeBackNudge } from '@/lib/notifications';
 import { CoinIcon } from '@/components/coin-icon';
 import { RecipePop } from '@/components/recipe-pop';
 import { StudyBook } from '@/components/study-book';
-import { StudyOven } from '@/components/study-oven';
+import { StudyOven, EYELET_FRAC } from '@/components/study-oven';
 import { StudyVinyl } from '@/components/study-vinyl';
 import { hasSoundPreview, playStudyMusic, stopStudyMusic } from '@/lib/ambience-audio';
 import { getPlayback, spotifyAppRecentlyOpened, spotifyConnected, spotifyPause, spotifyResume, subscribeSpotify, type Playback } from '@/lib/spotify';
@@ -20,6 +21,8 @@ import { ThemedText } from '@/components/themed-text';
 import { useApp } from '@/context/app-context';
 import { autoBreakMinutes, coinsForMinutes, SESSION_LENGTHS } from '@/constants/placeholder-data';
 import { SoundPickerModal } from '@/components/sound-picker-modal';
+import { DevKnobs } from '@/components/dev-knobs';
+import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { getCompanionImage, hanjiIsAnimated, isHanjiActiveId, resolveActiveCompanion } from '@/lib/companion-utils';
 import { HanjiFigure } from '@/components/hanji-figure';
 import { useStudyRoom, type StudyStatus } from '@/lib/use-study-room';
@@ -38,6 +41,23 @@ function format(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+// Pausing a Spotify track can make the device report as idle (a poll with no item),
+// which would blank the now-playing song + cover. Keep showing the last known track
+// when that happens — only its play state changes — so a paused song stays on screen.
+// A truly disconnected/empty result (`next` null) still clears it.
+function mergePlayback(prev: Playback | null, next: Playback | null): Playback | null {
+  if (!next) return null;
+  if (!next.track && prev?.track) {
+    return {
+      ...prev,
+      isPlaying: next.isPlaying,
+      hasDevice: next.hasDevice || prev.hasDevice,
+      progressMs: next.progressMs ?? prev.progressMs,
+    };
+  }
+  return next;
 }
 
 const DOT_COLOR: Record<StudyStatus, string> = {
@@ -76,6 +96,10 @@ function bookOffsetFor(companionId: string | null | undefined): { dx: number; dy
   return SOLO_BOOK_OFFSET[key] ?? DEFAULT_SOLO_BOOK_OFFSET;
 }
 
+// Tablet-only position knobs (🎛 design panel). Dial these live, hit "Get code",
+// and the values bake into TABLET_TWEAKS under `studysession.<name>`.
+const TABLET_ELEMENTS = [{ name: 'desk', label: 'Desk' }];
+
 /**
  * The "studying together" screen shown while a session runs. Works solo (one
  * participant) or in a synced study room (up to 4). The session lifecycle
@@ -103,6 +127,21 @@ export function StudyRoomView({
   // bottom buttons. Sizes only (no transforms) so the character's bounce animation
   // isn't disturbed.
   const isTablet = useIsTablet();
+  // Tablet-only live position tweaks; `tw('desk')` is a transform (identity until
+  // dialed + baked). Phone is unaffected.
+  const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('studysession', TABLET_ELEMENTS);
+  // The "NOW BAKING" sign hangs from two ropes that reach the real top of the screen.
+  // The sign's own SVG is only as tall as the card, so the ropes are drawn separately
+  // as a full-height overlay: we measure the card's on-screen rect, then run a rope
+  // from the screen top (y=0) straight down to each eyelet. Re-measured on layout so it
+  // tracks solo↔multiplayer and tablet size changes.
+  const timerCardRef = useRef<View>(null);
+  const [ropes, setRopes] = useState<{ top: number; width: number; eyeY: number } | null>(null);
+  const measureRopes = useCallback(() => {
+    timerCardRef.current?.measureInWindow((x, y, w, h) => {
+      if (w > 0 && y > 0) setRopes({ top: -y, width: w, eyeY: y + h * EYELET_FRAC.y });
+    });
+  }, []);
   const {
     activeSession,
     equippedDeskRoomId,
@@ -138,7 +177,8 @@ export function StudyRoomView({
   const [playback, setPlayback] = useState<Playback | null>(null);
   // On-demand refresh handed to the popup (called after its control taps).
   const refreshPlayback = async () => {
-    setPlayback(spotifyConnected() ? await getPlayback() : null);
+    const pb = spotifyConnected() ? await getPlayback() : null;
+    setPlayback((prev) => mergePlayback(prev, pb));
   };
   // What the vinyl's label shows: the Spotify cover when connected & it has art,
   // otherwise the equipped study sound's icon (or nothing).
@@ -238,7 +278,7 @@ export function StudyRoomView({
     let alive = true;
     const tick = async () => {
       const pb = spotifyConnected() ? await getPlayback() : null;
-      if (alive) setPlayback(pb);
+      if (alive) setPlayback((prev) => mergePlayback(prev, pb));
     };
     tick(); // immediate so the popup opens / vinyl shows already in sync
     if (!spotifyOn) return () => { alive = false; };
@@ -480,9 +520,24 @@ export function StudyRoomView({
       )}
 
       {/* Timer card */}
-      <View style={[styles.timerWrap, isSolo && styles.timerWrapSolo, isTablet && { width: isSolo ? '46%' : '38%' }]}>
+      <View ref={timerCardRef} onLayout={measureRopes} style={[styles.timerWrap, isSolo && styles.timerWrapSolo, isTablet && { width: isSolo ? '46%' : '38%' }]}>
+        {/* Ropes from the real top of the screen down to the sign's eyelets. Rendered
+            behind StudyOven so the sign body + eyelet circles cover the rope ends. */}
+        {ropes && (
+          <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: ropes.top, width: ropes.width, height: ropes.eyeY }}>
+            <Svg width="100%" height="100%" viewBox={`0 0 ${ropes.width} ${ropes.eyeY}`}>
+              {[EYELET_FRAC.left, EYELET_FRAC.right].map((f) => (
+                <Line key={`rope${f}`} x1={ropes.width * f} y1={0} x2={ropes.width * f} y2={ropes.eyeY} stroke="#B98E5E" strokeWidth={(10 * ropes.width) / 1032} strokeLinecap="round" />
+              ))}
+              {[EYELET_FRAC.left, EYELET_FRAC.right].map((f) => (
+                <Line key={`ropehi${f}`} x1={ropes.width * f} y1={0} x2={ropes.width * f} y2={ropes.eyeY} stroke="#D8B589" strokeWidth={(3.5 * ropes.width) / 1032} strokeLinecap="round" />
+              ))}
+            </Svg>
+          </View>
+        )}
         <StudyOven style={StyleSheet.absoluteFill} />
         <View style={styles.timerText}>
+          <Text style={[styles.nowBaking, isSolo && styles.nowBakingSolo]}>{t('studyRoom.nowBaking')}</Text>
           <Text style={[styles.timer, isSolo && styles.timerSolo]}>{format(displaySecs)}</Text>
           {!isSolo && (
             <View style={styles.studyingRow}>
@@ -587,7 +642,7 @@ export function StudyRoomView({
 
       {/* Desk surface — a full-width layer along the bottom. The character sits
           behind it; the book, controls and end-session button lie ON it. */}
-      <Image source={equippedDeskImage} style={[styles.studyDesk, isTablet && styles.studyDeskTablet, deskRoom?.deskTint ? { backgroundColor: deskRoom.deskTint } : null]} contentFit={deskRoom?.deskFit ?? 'cover'} pointerEvents="none" />
+      <Image source={equippedDeskImage} style={[styles.studyDesk, isTablet && styles.studyDeskTablet, deskRoom?.deskTint ? { backgroundColor: deskRoom.deskTint } : null, tw('desk')]} contentFit={deskRoom?.deskFit ?? 'cover'} pointerEvents="none" />
       <View style={[styles.deskEdge, isTablet && { bottom: 380 }]} pointerEvents="none" />
       {soloScene ? (
         <View
@@ -629,7 +684,7 @@ export function StudyRoomView({
         {/* Game button with the radio (sound picker) stacked directly above it.
             The game slot keeps its space even while studying (button hidden) so the
             radio is already in its final spot and doesn't jump up when break starts. */}
-        <View style={styles.gameCol}>
+        <View style={[styles.gameCol, isTablet && styles.gameColTablet]}>
           <Pressable onPress={() => setSoundOpen(true)} style={({ pressed }) => [styles.radioBtn, pressed && styles.pressed]} hitSlop={8}>
             <StudyVinyl size={isTablet ? 92 : 64} playing={musicPlaying} discColor={vinylColor} centerImage={vinylCenter} onSpin={onVinylSpin} />
           </Pressable>
@@ -725,6 +780,7 @@ export function StudyRoomView({
 
       {/* Radio: pick a bought sound to play while studying */}
       <SoundPickerModal visible={soundOpen} onClose={() => setSoundOpen(false)} playback={playback} onRefresh={refreshPlayback} />
+      <DevKnobs screen="studysession" knobs={twKnobs} onChange={twChange} />
     </View>
   );
 }
@@ -734,10 +790,12 @@ const styles = StyleSheet.create({
 
   // Timer card
   timerWrap: { alignSelf: 'center', width: '52%', aspectRatio: 1032 / 838, marginTop: -36 },
-  timerWrapSolo: { width: '72%' },
-  timerText: { position: 'absolute', left: '11%', right: '11%', top: '30%', bottom: '12%', alignItems: 'center', justifyContent: 'center' },
+  timerWrapSolo: { width: '88%' },
+  timerText: { position: 'absolute', left: '17%', right: '17%', top: '36%', bottom: '18%', alignItems: 'center', justifyContent: 'center' },
+  nowBaking: { fontSize: 9, fontWeight: '800', color: BakeryColors.mocha, letterSpacing: 2, marginBottom: 2 },
+  nowBakingSolo: { fontSize: 13 },
   timer: { fontSize: 32, fontWeight: '900', color: BakeryColors.cocoaDark, letterSpacing: 1 },
-  timerSolo: { fontSize: 46 },
+  timerSolo: { fontSize: 56 },
   bakeLabel: { fontSize: 11, fontWeight: '700', color: BakeryColors.mocha, marginTop: 1 },
   studyingRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 },
   pplIcon: { width: 13, height: 13 },
@@ -816,6 +874,8 @@ const styles = StyleSheet.create({
   // Radio sits directly above the game button so the two line up. Floated to the
   // left so the Break pill stays centered on screen.
   gameCol: { position: 'absolute', left: 0, bottom: -68, alignItems: 'center', gap: 6 },
+  // Tablet: nudge the radio/game column right a bit and higher up.
+  gameColTablet: { left: 16, bottom: -44 },
   // Fixed size so the slot reserves the game button's space even when it's hidden
   // (studying) — keeps the radio above it from shifting when break reveals it.
   gameBtnWrap: { width: 44, height: 38, alignItems: 'center', justifyContent: 'center' },

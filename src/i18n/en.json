@@ -86,7 +86,7 @@
     "or": "or",
     "continueWithGoogle": "Continue with Google",
     "continueWithApple": "Continue with Apple",
-    "connectedAccounts": "Connected accounts",
+    "connectedAccounts": "Connect accounts",
     "connectGoogle": "Connect Google",
     "connectApple": "Connect Apple",
     "connected": "Connected",
@@ -923,6 +923,7 @@
     "matchedMsg": "{{outfit}} with the {{room}} room — all set!",
     "roomLockedTitle": "Matching room locked",
     "roomLockedMsg": "Unlock the {{room}} room in the Shop to complete {{outfit}}'s look.",
+    "goToShop": "Go to Shop",
     "tagline_Bun": "Clumsy, but always here to help.",
     "tagline_Cocoa": "Work first, fun later.",
     "tagline_Bunny": "Bunny too cute to care.",
@@ -1005,6 +1006,7 @@
   },
   "studyRoom": {
     "friend": "Friend",
+    "nowBaking": "NOW BAKING",
     "full": "Full",
     "cakeBaking": "In the making…",
     "oneStudying": "1 studying",
@@ -1433,7 +1435,8 @@
     "bluePeony": "Blue Peony",
     "berryPrincess": "Berry Princess",
     "ivoryRose": "Ivory Rose",
-    "strawberryDreams": "Strawberry Dreams"
+    "strawberryDreams": "Strawberry Dreams",
+    "afternoonTrain": "Afternoon Train"
   },
   "studyDesk": {
     "title": "Taking a break",

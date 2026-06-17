@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,6 +30,7 @@ import { fetchProfileByCode, type SyncedProfile } from '@/lib/profile-sync';
 import { PlusCrown, isPlusFrame } from '@/components/avatar-frame';
 import { useTranslation } from '@/i18n';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useTabletScale } from '@/hooks/use-tablet-scale';
 
 function toFriendPatch(p: SyncedProfile): Partial<Friend> {
   return {
@@ -64,6 +65,8 @@ const INVITE_GAMES: { id: OnlineGameId; nameKey: string; emoji: string }[] = [
 
 export default function FriendsScreen() {
   const { t } = useTranslation();
+  const { scale, contentWidth } = useTabletScale();
+  const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const {
     friendCode, friends, addFriend, removeFriend, setFriendProfile, profileDisplayName, dmUnread,
     activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins,
@@ -239,7 +242,7 @@ export default function FriendsScreen() {
               disabled={upgrading}
               onPress={handleUpgrade}
               style={({ pressed }) => [styles.gateGoogleBtn, pressed && styles.pressed, upgrading && styles.gateBtnDisabled]}>
-              <GoogleGIcon size={20} />
+              <GoogleGIcon size={20 * scale} />
               <Text style={styles.gateGoogleText}>{t('auth.continueWithGoogle')}</Text>
             </Pressable>
             <Pressable style={({ pressed }) => [styles.gateLater, pressed && styles.pressed]} onPress={() => router.back()}>
@@ -277,7 +280,7 @@ export default function FriendsScreen() {
             <View style={styles.friendInfo}>
               <View style={styles.nameRow}>
                 <Text style={styles.friendName}>{profileDisplayName || t('friends.you')}</Text>
-                {isPlusFrame(profileAvatarFrame) && <PlusCrown size={16} />}
+                {isPlusFrame(profileAvatarFrame) && <PlusCrown size={16 * scale} />}
               </View>
               <Text style={styles.friendCode}>{friendCode}</Text>
             </View>
@@ -390,7 +393,7 @@ export default function FriendsScreen() {
                       <View style={styles.friendInfo}>
                         <View style={styles.nameRow}>
                           <Text style={styles.friendName}>{f.displayName || f.name}</Text>
-                          {isPlusFrame(f.avatarFrame) && <PlusCrown size={16} />}
+                          {isPlusFrame(f.avatarFrame) && <PlusCrown size={16 * scale} />}
                         </View>
                         <Text style={styles.friendCode}>{onlineCodes.has(f.code) ? t('friends.onlineNow') : f.code}</Text>
                       </View>
@@ -498,89 +501,89 @@ export default function FriendsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   container: { flex: 1 },
   safeArea: {
-    padding: Spacing.four,
-    maxWidth: MaxContentWidth,
+    padding: Spacing.four * s,
+    maxWidth: contentWidth,
     width: '100%',
     alignSelf: 'center',
-    gap: Spacing.four,
+    gap: Spacing.four * s,
     backgroundColor: P.cream,
   },
   headerPanel: {
     backgroundColor: P.card,
-    borderRadius: 26,
-    paddingVertical: Spacing.four,
-    paddingHorizontal: Spacing.four,
+    borderRadius: 26 * s,
+    paddingVertical: Spacing.four * s,
+    paddingHorizontal: Spacing.four * s,
     borderWidth: 1.5,
     borderColor: P.peach,
     alignItems: 'center',
-    gap: 4,
+    gap: 4 * s,
     shadowColor: '#C9A18A',
     shadowOpacity: 0.18,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 5 },
     elevation: 3,
   },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: P.brown, letterSpacing: 0.2 },
-  headerSubtitle: { fontSize: 13, color: P.mutedBrown, fontWeight: '500' },
+  headerTitle: { fontSize: 22 * s, fontWeight: '800', color: P.brown, letterSpacing: 0.2 },
+  headerSubtitle: { fontSize: 13 * s, color: P.mutedBrown, fontWeight: '500' },
 
   profileBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: P.pinkSoft,
-    borderRadius: 18,
+    borderRadius: 18 * s,
     borderWidth: 1.5,
     borderColor: P.pink,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
+    paddingVertical: 14 * s,
+    paddingHorizontal: 18 * s,
   },
-  profileBtnText: { fontSize: 16, fontWeight: '800', color: P.brown },
-  profileBtnChevron: { fontSize: 22, fontWeight: '800', color: P.pink },
+  profileBtnText: { fontSize: 16 * s, fontWeight: '800', color: P.brown },
+  profileBtnChevron: { fontSize: 22 * s, fontWeight: '800', color: P.pink },
   meRow: { borderColor: P.pink, borderWidth: 2 },
-  meTag: { backgroundColor: P.pink, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
-  meTagText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 },
+  meTag: { backgroundColor: P.pink, borderRadius: 999, paddingHorizontal: 12 * s, paddingVertical: 5 * s },
+  meTagText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 * s },
 
-  section: { gap: Spacing.two },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: P.brown },
+  section: { gap: Spacing.two * s },
+  sectionTitle: { fontSize: 16 * s, fontWeight: '800', color: P.brown },
 
   codeCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: P.card,
-    borderRadius: 18,
+    borderRadius: 18 * s,
     borderWidth: 2,
     borderColor: P.pinkSoft,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
+    paddingVertical: 14 * s,
+    paddingHorizontal: 18 * s,
   },
-  codeText: { fontSize: 26, fontWeight: '900', letterSpacing: 4, color: P.brown },
-  codeBtnRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  copyBtn: { backgroundColor: P.pink, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 7 },
-  copyBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
+  codeText: { fontSize: 26 * s, fontWeight: '900', letterSpacing: 4, color: P.brown },
+  codeBtnRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two * s },
+  copyBtn: { backgroundColor: P.pink, borderRadius: 999, paddingHorizontal: 16 * s, paddingVertical: 7 * s },
+  copyBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 * s },
   shareBtn: {
     backgroundColor: P.card,
     borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 7,
+    paddingHorizontal: 16 * s,
+    paddingVertical: 7 * s,
     borderWidth: 1.5,
     borderColor: P.pink,
   },
-  shareBtnText: { color: P.pink, fontWeight: '800', fontSize: 13 },
-  codeHint: { fontSize: 12, color: P.mutedBrown, textAlign: 'center' },
+  shareBtnText: { color: P.pink, fontWeight: '800', fontSize: 13 * s },
+  codeHint: { fontSize: 12 * s, color: P.mutedBrown, textAlign: 'center' },
 
-  addRow: { flexDirection: 'row', gap: Spacing.two },
+  addRow: { flexDirection: 'row', gap: Spacing.two * s },
   addInput: {
     flex: 1,
     borderWidth: 1.5,
     borderColor: P.peach,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    fontSize: 16,
+    borderRadius: 14 * s,
+    paddingHorizontal: 14 * s,
+    paddingVertical: 11 * s,
+    fontSize: 16 * s,
     fontWeight: '700',
     letterSpacing: 2,
     color: P.brown,
@@ -588,140 +591,140 @@ const styles = StyleSheet.create({
   },
   addBtn: {
     backgroundColor: P.pink,
-    borderRadius: 14,
-    paddingHorizontal: 22,
+    borderRadius: 14 * s,
+    paddingHorizontal: 22 * s,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  addBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 * s },
 
-  friendList: { gap: Spacing.two },
+  friendList: { gap: Spacing.two * s },
   friendRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: Spacing.two * s,
     backgroundColor: P.card,
-    borderRadius: 16,
+    borderRadius: 16 * s,
     borderWidth: 1.5,
     borderColor: P.pinkSoft,
-    padding: Spacing.two,
+    padding: Spacing.two * s,
   },
   friendAvatar: {
-    width: 44, height: 44, borderRadius: 22,
+    width: 44 * s, height: 44 * s, borderRadius: 22 * s,
     backgroundColor: P.pinkSoft, alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden',
   },
-  friendAvatarText: { fontSize: 18, fontWeight: '900', color: P.brown },
-  friendAvatarImg: { position: 'absolute', width: 72, height: 72, left: -14, top: -3 },
-  friendTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  avatarWrap: { width: 44, height: 44 },
+  friendAvatarText: { fontSize: 18 * s, fontWeight: '900', color: P.brown },
+  friendAvatarImg: { position: 'absolute', width: 72 * s, height: 72 * s, left: -14 * s, top: -3 * s },
+  friendTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two * s },
+  avatarWrap: { width: 44 * s, height: 44 * s },
   statusDot: {
-    position: 'absolute', right: -1, bottom: -1, width: 13, height: 13, borderRadius: 7,
+    position: 'absolute', right: -1, bottom: -1, width: 13 * s, height: 13 * s, borderRadius: 7 * s,
     borderWidth: 2, borderColor: '#fff',
   },
   statusOnline: { backgroundColor: '#5BC47B' },
   statusOffline: { backgroundColor: '#C9BBA8' },
   // marginLeft clears the enlarged avatar frame's right overhang (FRAME_SCALE 1.35
   // on a 44px avatar ≈ 7.7px past the avatarWrap) so the name/code never sits under it.
-  friendInfo: { flex: 1, marginLeft: 6 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  friendName: { fontSize: 15, fontWeight: '800', color: P.brown },
-  friendCode: { fontSize: 12, color: P.mutedBrown, letterSpacing: 1 },
-  friendRemove: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  friendRemoveText: { fontSize: 14, color: P.mutedBrown, fontWeight: '700' },
-  acceptBtn: { backgroundColor: P.pink, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
-  acceptBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
-  playBtn: { backgroundColor: P.peach, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
-  playBtnText: { color: P.brown, fontWeight: '800', fontSize: 13 },
-  chatBtn: { backgroundColor: P.pink, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
-  chatBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 13 },
+  friendInfo: { flex: 1, marginLeft: 6 * s },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 * s },
+  friendName: { fontSize: 15 * s, fontWeight: '800', color: P.brown },
+  friendCode: { fontSize: 12 * s, color: P.mutedBrown, letterSpacing: 1 },
+  friendRemove: { width: 30 * s, height: 30 * s, borderRadius: 15 * s, alignItems: 'center', justifyContent: 'center' },
+  friendRemoveText: { fontSize: 14 * s, color: P.mutedBrown, fontWeight: '700' },
+  acceptBtn: { backgroundColor: P.pink, borderRadius: 999, paddingHorizontal: 14 * s, paddingVertical: 7 * s },
+  acceptBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 * s },
+  playBtn: { backgroundColor: P.peach, borderRadius: 999, paddingHorizontal: 14 * s, paddingVertical: 7 * s },
+  playBtnText: { color: P.brown, fontWeight: '800', fontSize: 13 * s },
+  chatBtn: { backgroundColor: P.pink, borderRadius: 999, paddingHorizontal: 14 * s, paddingVertical: 7 * s },
+  chatBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 13 * s },
   unreadBadge: {
-    position: 'absolute', top: -5, right: -5, minWidth: 18, height: 18, borderRadius: 9,
-    backgroundColor: P.brown, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4,
+    position: 'absolute', top: -5, right: -5, minWidth: 18 * s, height: 18 * s, borderRadius: 9 * s,
+    backgroundColor: P.brown, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 * s,
     borderWidth: 1.5, borderColor: '#FFFFFF',
   },
-  unreadBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '900' },
+  unreadBadgeText: { color: '#FFFFFF', fontSize: 10 * s, fontWeight: '900' },
 
   sheetRoot: { flex: 1, justifyContent: 'flex-end' },
   sheetBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(48,32,24,0.4)' },
   sheetCard: {
     backgroundColor: P.card,
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
-    padding: Spacing.four,
-    gap: Spacing.two,
+    borderTopLeftRadius: 26 * s,
+    borderTopRightRadius: 26 * s,
+    padding: Spacing.four * s,
+    gap: Spacing.two * s,
     borderWidth: 1.5,
     borderColor: P.pinkSoft,
   },
-  sheetTitle: { fontSize: 17, fontWeight: '900', color: P.brown, marginBottom: 4 },
+  sheetTitle: { fontSize: 17 * s, fontWeight: '900', color: P.brown, marginBottom: 4 * s },
   sheetItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 12 * s,
     backgroundColor: P.cream,
-    borderRadius: 16,
+    borderRadius: 16 * s,
     borderWidth: 1.5,
     borderColor: P.pinkSoft,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: 14 * s,
+    paddingHorizontal: 16 * s,
   },
-  sheetEmoji: { fontSize: 22 },
-  sheetItemText: { flex: 1, fontSize: 16, fontWeight: '800', color: P.brown },
-  sheetChevron: { fontSize: 22, fontWeight: '800', color: P.pink },
-  sheetCancel: { alignItems: 'center', paddingVertical: 12, marginTop: 4 },
-  sheetCancelText: { color: P.mutedBrown, fontWeight: '800', fontSize: 15 },
+  sheetEmoji: { fontSize: 22 * s },
+  sheetItemText: { flex: 1, fontSize: 16 * s, fontWeight: '800', color: P.brown },
+  sheetChevron: { fontSize: 22 * s, fontWeight: '800', color: P.pink },
+  sheetCancel: { alignItems: 'center', paddingVertical: 12 * s, marginTop: 4 * s },
+  sheetCancelText: { color: P.mutedBrown, fontWeight: '800', fontSize: 15 * s },
 
   // "Request sent" confirmation modal — centered cozy card.
   sentRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
   sentBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(48,32,24,0.4)' },
   sentCard: {
-    width: '100%', maxWidth: 320, backgroundColor: P.card, borderRadius: 26,
-    borderWidth: 1.5, borderColor: P.pinkSoft, padding: Spacing.four, alignItems: 'center', gap: Spacing.two,
+    width: '100%', maxWidth: 320 * s, backgroundColor: P.card, borderRadius: 26 * s,
+    borderWidth: 1.5, borderColor: P.pinkSoft, padding: Spacing.four * s, alignItems: 'center', gap: Spacing.two * s,
   },
   sentCheck: {
-    width: 64, height: 64, borderRadius: 32, backgroundColor: P.pink,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 2,
+    width: 64 * s, height: 64 * s, borderRadius: 32 * s, backgroundColor: P.pink,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 2 * s,
   },
-  sentCheckMark: { color: '#fff', fontSize: 34, fontWeight: '900', lineHeight: 38 },
-  sentTitle: { fontSize: 19, fontWeight: '900', color: P.brown, textAlign: 'center' },
-  sentMsg: { fontSize: 13, color: P.mutedBrown, textAlign: 'center', lineHeight: 18 },
+  sentCheckMark: { color: '#fff', fontSize: 34 * s, fontWeight: '900', lineHeight: 38 * s },
+  sentTitle: { fontSize: 19 * s, fontWeight: '900', color: P.brown, textAlign: 'center' },
+  sentMsg: { fontSize: 13 * s, color: P.mutedBrown, textAlign: 'center', lineHeight: 18 * s },
   sentCodePill: {
     backgroundColor: P.cream, borderRadius: 999, borderWidth: 1.5, borderColor: P.pinkSoft,
-    paddingHorizontal: 18, paddingVertical: 8, marginTop: 2,
+    paddingHorizontal: 18 * s, paddingVertical: 8 * s, marginTop: 2 * s,
   },
-  sentCode: { fontSize: 18, fontWeight: '900', color: P.pink, letterSpacing: 2 },
+  sentCode: { fontSize: 18 * s, fontWeight: '900', color: P.pink, letterSpacing: 2 },
   sentDone: {
     alignSelf: 'stretch', alignItems: 'center', backgroundColor: P.pink,
-    borderRadius: 16, paddingVertical: 13, marginTop: Spacing.one,
+    borderRadius: 16 * s, paddingVertical: 13 * s, marginTop: Spacing.one * s,
   },
-  sentDoneText: { color: '#fff', fontSize: 16, fontWeight: '900' },
+  sentDoneText: { color: '#fff', fontSize: 16 * s, fontWeight: '900' },
 
   emptyCard: {
     backgroundColor: P.card,
-    borderRadius: 22,
+    borderRadius: 22 * s,
     borderWidth: 1.5,
     borderColor: P.pinkSoft,
-    paddingVertical: 28,
+    paddingVertical: 28 * s,
     alignItems: 'center',
-    gap: 6,
+    gap: 6 * s,
   },
-  emptyEmoji: { fontSize: 40 },
-  emptyTitle: { fontSize: 16, fontWeight: '800', color: P.brown },
-  emptyText: { fontSize: 13, color: P.mutedBrown, textAlign: 'center' },
+  emptyEmoji: { fontSize: 40 * s },
+  emptyTitle: { fontSize: 16 * s, fontWeight: '800', color: P.brown },
+  emptyText: { fontSize: 13 * s, color: P.mutedBrown, textAlign: 'center' },
 
   infoCard: {
     backgroundColor: P.pinkSoft,
-    borderRadius: 18,
-    padding: Spacing.three,
+    borderRadius: 18 * s,
+    padding: Spacing.three * s,
     borderWidth: 1.5,
     borderColor: P.pink,
   },
-  infoText: { fontSize: 12.5, color: P.brown, textAlign: 'center', lineHeight: 18, fontWeight: '500' },
+  infoText: { fontSize: 12.5 * s, color: P.brown, textAlign: 'center', lineHeight: 18 * s, fontWeight: '500' },
 
   doneButton: {
     backgroundColor: '#F7A7B8',
-    borderRadius: 18,
-    paddingVertical: Spacing.three,
+    borderRadius: 18 * s,
+    paddingVertical: Spacing.three * s,
     alignItems: 'center',
     shadowColor: '#C9A18A',
     shadowOpacity: 0.2,
@@ -729,29 +732,29 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
   },
-  doneButtonText: { color: '#fff', fontSize: 17, fontWeight: '800' },
+  doneButtonText: { color: '#fff', fontSize: 17 * s, fontWeight: '800' },
 
   // Guest gate
-  gateWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.three, paddingHorizontal: Spacing.four },
-  gateTitle: { fontSize: 22, fontWeight: '900', color: P.brown, textAlign: 'center' },
-  gateBody: { fontSize: 15, color: P.mutedBrown, textAlign: 'center', lineHeight: 21 },
+  gateWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.three * s, paddingHorizontal: Spacing.four * s },
+  gateTitle: { fontSize: 22 * s, fontWeight: '900', color: P.brown, textAlign: 'center' },
+  gateBody: { fontSize: 15 * s, color: P.mutedBrown, textAlign: 'center', lineHeight: 21 * s },
   gateGoogleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.two,
+    gap: Spacing.two * s,
     alignSelf: 'stretch',
     backgroundColor: '#fff',
-    borderRadius: 18,
-    paddingVertical: Spacing.three,
+    borderRadius: 18 * s,
+    paddingVertical: Spacing.three * s,
     borderWidth: 1.5,
     borderColor: P.pinkSoft,
-    marginTop: Spacing.two,
+    marginTop: Spacing.two * s,
   },
-  gateGoogleText: { fontSize: 16, fontWeight: '800', color: P.brown },
+  gateGoogleText: { fontSize: 16 * s, fontWeight: '800', color: P.brown },
   gateBtnDisabled: { opacity: 0.6 },
-  gateLater: { paddingVertical: Spacing.two },
-  gateLaterText: { fontSize: 14, fontWeight: '700', color: P.mutedBrown },
+  gateLater: { paddingVertical: Spacing.two * s },
+  gateLaterText: { fontSize: 14 * s, fontWeight: '700', color: P.mutedBrown },
 
   pressed: { opacity: 0.85 },
 });

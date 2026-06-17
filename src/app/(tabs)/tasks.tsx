@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { showPopup } from '@/lib/popup';
@@ -26,6 +26,7 @@ import {
   MaxContentWidth,
   Spacing,
 } from '@/constants/theme';
+import { useTabletScale } from '@/hooks/use-tablet-scale';
 
 function daysUntil(dateISO: string): number {
   const today = new Date();
@@ -45,6 +46,8 @@ function formatDueDate(dateISO: string): string {
 
 function SubjectBadge({ subjectId }: { subjectId: string | null }) {
   const { subjects } = useApp();
+  const { scale, contentWidth } = useTabletScale();
+  const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   if (!subjectId) return null;
   const subject = subjects.find((s) => s.id === subjectId);
   if (!subject) return null;
@@ -80,6 +83,8 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: {
   onDelete: () => void;
 }) {
   const { use24HourTime } = useApp();
+  const { scale, contentWidth } = useTabletScale();
+  const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const isDone = task.status === 'done';
 
   return (
@@ -127,7 +132,7 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: {
       {/* Actions */}
       <View style={styles.taskActions}>
         <Pressable style={styles.actionBtn} onPress={onDelete} hitSlop={8}>
-          <TrashIcon size={16} />
+          <TrashIcon size={16 * scale} />
         </Pressable>
       </View>
     </ThemedView>
@@ -136,6 +141,8 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: {
 
 export default function TasksScreen() {
   const { t } = useTranslation();
+  const { scale, contentWidth } = useTabletScale();
+  const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const {
     tasks,
     subjects,
@@ -324,14 +331,14 @@ export default function TasksScreen() {
                 <ThemedView key={exam.id} type="backgroundElement" style={styles.examCard}>
                   <View style={styles.examInfo}>
                     <View style={styles.examNameRow}>
-                      <CountdownShape shape={exam.shape} size={16} />
+                      <CountdownShape shape={exam.shape} size={16 * scale} />
                       <ThemedText type="smallBold">{exam.name}</ThemedText>
                     </View>
                     <View style={styles.examSubRow}>
                       <ThemedText type="small" themeColor="textSecondary">
                         {exam.subject ? `${exam.subject} · ` : ''}{exam.dateISO}
                       </ThemedText>
-                      {exam.reminderEnabled && <BakeryBellEmoji size={11} />}
+                      {exam.reminderEnabled && <BakeryBellEmoji size={11 * scale} />}
                     </View>
                   </View>
                   <View style={styles.examRight}>
@@ -344,7 +351,7 @@ export default function TasksScreen() {
                       {isPast ? t('tasks.past') : isToday ? t('tasks.today') : `${days}d`}
                     </ThemedText>
                     <Pressable onPress={() => removeExam(exam.id)} style={styles.removeBtn} hitSlop={8}>
-                      <TrashIcon size={16} />
+                      <TrashIcon size={16 * scale} />
                     </Pressable>
                   </View>
                 </ThemedView>
@@ -362,7 +369,7 @@ export default function TasksScreen() {
             ) : (
               <Pressable onPress={() => router.push('/plus-upgrade')}>
                 <ThemedView type="backgroundElement" style={styles.upgradeExamCard}>
-                  <LockBadge size={16} />
+                  <LockBadge size={16 * scale} />
                   <ThemedText type="small" style={styles.upgradeExamText}>
                     {t('tasks.unlimitedUpgrade')}
                   </ThemedText>
@@ -376,26 +383,26 @@ export default function TasksScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   container: { flex: 1, backgroundColor: BakeryColors.frosting },
   // Keep the whole scroll above the floating menu bar so it stays fully visible
   // and content never scrolls underneath it.
   scrollBox: { flex: 1, marginBottom: BottomTabClearance },
   safeArea: {
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.four,
-    maxWidth: MaxContentWidth,
+    paddingHorizontal: Spacing.four * s,
+    paddingTop: Spacing.four * s,
+    paddingBottom: Spacing.four * s,
+    maxWidth: contentWidth,
     width: '100%',
     alignSelf: 'center',
-    gap: Spacing.four,
+    gap: Spacing.four * s,
   },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { fontSize: 28, lineHeight: 34 },
-  headerActions: { flexDirection: 'row', gap: Spacing.two, alignItems: 'center' },
+  title: { fontSize: 28 * s, lineHeight: 34 * s },
+  headerActions: { flexDirection: 'row', gap: Spacing.two * s, alignItems: 'center' },
   manageBtn: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 7,
+    paddingHorizontal: Spacing.three * s,
+    paddingVertical: 7 * s,
     borderRadius: BakeryRadii.pill,
     backgroundColor: BakeryColors.cream,
     borderWidth: 1.5,
@@ -404,125 +411,125 @@ const styles = StyleSheet.create({
   addBtn: {
     backgroundColor: BakeryColors.jam,
     borderRadius: BakeryRadii.pill,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 8,
+    paddingHorizontal: Spacing.three * s,
+    paddingVertical: 8 * s,
     borderWidth: 1.5,
     borderColor: '#E0A33C',
     ...BakeryShadow,
   },
-  addBtnText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  addBtnText: { color: '#fff', fontSize: 14 * s, fontWeight: '800' },
   pressed: { opacity: 0.8 },
   welcomeCard: {
-    borderRadius: BakeryRadii.panel,
-    padding: Spacing.five,
+    borderRadius: BakeryRadii.panel * s,
+    padding: Spacing.five * s,
     alignItems: 'center',
-    gap: Spacing.two,
-    marginTop: Spacing.two,
+    gap: Spacing.two * s,
+    marginTop: Spacing.two * s,
     borderWidth: 1.5,
     borderColor: BakeryColors.border,
     backgroundColor: BakeryColors.glass,
     ...BakeryShadow,
   },
-  welcomeEmoji: { fontSize: 48, lineHeight: 56 },
-  welcomeTitle: { fontSize: 18 },
-  welcomeText: { textAlign: 'center', lineHeight: 20 },
-  welcomeAddBtn: { marginTop: Spacing.two },
-  section: { gap: Spacing.two },
-  sectionTitle: { fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 },
+  welcomeEmoji: { fontSize: 48 * s, lineHeight: 56 * s },
+  welcomeTitle: { fontSize: 18 * s },
+  welcomeText: { textAlign: 'center', lineHeight: 20 * s },
+  welcomeAddBtn: { marginTop: Spacing.two * s },
+  section: { gap: Spacing.two * s },
+  sectionTitle: { fontSize: 13 * s, textTransform: 'uppercase', letterSpacing: 0.5 },
   doneToggle: {},
-  taskList: { gap: Spacing.two },
+  taskList: { gap: Spacing.two * s },
   taskRow: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
+    borderRadius: BakeryRadii.card * s,
+    padding: Spacing.three * s,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: Spacing.two * s,
     borderWidth: 1,
     borderColor: BakeryColors.shortbread,
     backgroundColor: BakeryColors.glass,
   },
   taskRowDone: { opacity: 0.55 },
-  taskContent: { flex: 1, gap: 5 },
-  taskTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  taskTitle: { flex: 1, fontSize: 15, lineHeight: 20, fontWeight: '600' },
+  taskContent: { flex: 1, gap: 5 * s },
+  taskTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 * s },
+  taskTitle: { flex: 1, fontSize: 15 * s, lineHeight: 20 * s, fontWeight: '600' },
   taskTitleDone: { textDecorationLine: 'line-through' },
   // Finished / not-finished dot at the end of the title row.
-  statusDot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2 },
+  statusDot: { width: 16 * s, height: 16 * s, borderRadius: 8 * s, borderWidth: 2 },
   statusDotTodo: { backgroundColor: 'transparent', borderColor: BakeryColors.latte },
   statusDotDone: { backgroundColor: BakeryColors.success, borderColor: BakeryColors.success },
-  taskMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
-  metaText: { fontSize: 12 },
+  taskMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 * s, alignItems: 'center' },
+  metaText: { fontSize: 12 * s },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
+    gap: 4 * s,
+    paddingHorizontal: 8 * s,
+    paddingVertical: 2 * s,
+    borderRadius: 8 * s,
   },
-  badgeDot: { width: 6, height: 6, borderRadius: 3 },
-  badgeText: { fontSize: 11, fontWeight: '600' },
-  taskActions: { flexDirection: 'row', gap: 2, alignItems: 'center' },
-  actionBtn: { padding: 6 },
+  badgeDot: { width: 6 * s, height: 6 * s, borderRadius: 3 * s },
+  badgeText: { fontSize: 11 * s, fontWeight: '600' },
+  taskActions: { flexDirection: 'row', gap: 2 * s, alignItems: 'center' },
+  actionBtn: { padding: 6 * s },
   emptyCard: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
+    borderRadius: BakeryRadii.card * s,
+    padding: Spacing.three * s,
     alignItems: 'center',
     backgroundColor: BakeryColors.glass,
   },
-  emptyText: { textAlign: 'center', lineHeight: 20 },
+  emptyText: { textAlign: 'center', lineHeight: 20 * s },
   nudgeCard: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
-    gap: Spacing.two,
+    borderRadius: BakeryRadii.card * s,
+    padding: Spacing.three * s,
+    gap: Spacing.two * s,
     borderLeftWidth: 3,
     borderLeftColor: BakeryColors.honey,
     backgroundColor: BakeryColors.glass,
     ...BakeryShadow,
   },
-  nudgeTitle: { fontSize: 14 },
-  nudgeText: { lineHeight: 20, fontSize: 13 },
+  nudgeTitle: { fontSize: 14 * s },
+  nudgeText: { lineHeight: 20 * s, fontSize: 13 * s },
   nudgeBtn: {
     alignSelf: 'flex-start',
     backgroundColor: BakeryColors.cream,
-    borderRadius: BakeryRadii.chip,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 6,
+    borderRadius: BakeryRadii.chip * s,
+    paddingHorizontal: Spacing.three * s,
+    paddingVertical: 6 * s,
   },
   nudgeBtnText: { color: BakeryColors.mocha, fontWeight: '700' },
 
   // Exam countdowns
   examHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  examLimitRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  examNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  examSubRow: { flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' },
+  examLimitRow: { flexDirection: 'row', alignItems: 'center', gap: 4 * s },
+  examNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 * s },
+  examSubRow: { flexDirection: 'row', alignItems: 'center', gap: 5 * s, flexWrap: 'wrap' },
   examEmptyCard: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.four,
+    borderRadius: BakeryRadii.card * s,
+    padding: Spacing.four * s,
     alignItems: 'center',
     backgroundColor: BakeryColors.glass,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
   examCard: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
+    borderRadius: BakeryRadii.card * s,
+    padding: Spacing.three * s,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: Spacing.three * s,
     backgroundColor: BakeryColors.glass,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
-  examInfo: { flex: 1, gap: 2 },
-  examRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  examDays: { fontSize: 22, fontWeight: '700', color: BakeryColors.mocha },
+  examInfo: { flex: 1, gap: 2 * s },
+  examRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two * s },
+  examDays: { fontSize: 22 * s, fontWeight: '700', color: BakeryColors.mocha },
   examDaysUrgent: { color: BakeryColors.danger },
   examDaysPast: { color: '#999' },
-  removeBtn: { padding: 4 },
+  removeBtn: { padding: 4 * s },
   addExamBtn: {
-    borderRadius: BakeryRadii.button,
-    paddingVertical: Spacing.three,
+    borderRadius: BakeryRadii.button * s,
+    paddingVertical: Spacing.three * s,
     borderWidth: 1.5,
     borderColor: BakeryColors.border,
     alignItems: 'center',
@@ -531,12 +538,12 @@ const styles = StyleSheet.create({
   },
   addExamText: { color: BakeryColors.mocha },
   upgradeExamCard: {
-    borderRadius: 12,
-    paddingVertical: Spacing.three,
+    borderRadius: 12 * s,
+    paddingVertical: Spacing.three * s,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 6 * s,
     borderWidth: 1.5,
     borderColor: `${BakeryColors.honey}55`,
     borderStyle: 'dashed',

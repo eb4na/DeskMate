@@ -30,10 +30,10 @@ function ensureAudioMode() {
 
 type Pool = { players: AudioPlayer[]; next: number };
 
-function makePool(asset: number): Pool {
-  const players = Array.from({ length: POOL_SIZE }, () => {
+function makePool(asset: number, volume = VOLUME, size = POOL_SIZE): Pool {
+  const players = Array.from({ length: size }, () => {
     const p = createAudioPlayer(asset);
-    p.volume = VOLUME;
+    p.volume = volume;
     return p;
   });
   return { players, next: 0 };
@@ -41,6 +41,8 @@ function makePool(asset: number): Pool {
 
 let tapPool: Pool | null = null;
 let confirmPool: Pool | null = null;
+let swooshPool: Pool | null = null;
+let dingPool: Pool | null = null;
 
 function getTapPool() {
   if (!tapPool) tapPool = makePool(require('@/assets/sounds/tap.wav'));
@@ -50,6 +52,19 @@ function getTapPool() {
 function getConfirmPool() {
   if (!confirmPool) confirmPool = makePool(require('@/assets/sounds/tap-confirm.wav'));
   return confirmPool;
+}
+
+// Swoosh plays a touch louder than the UI taps so the ingredient-drop reads clearly.
+function getSwooshPool() {
+  if (!swooshPool) swooshPool = makePool(require('@/assets/sounds/swoosh.mp3'), 0.55);
+  return swooshPool;
+}
+
+// Session-finished "ding" (oven-timer feel). Fires once per completion, so a tiny
+// 2-player pool is plenty.
+function getDingPool() {
+  if (!dingPool) dingPool = makePool(require('@/assets/sounds/ding.wav'), 0.6, 2);
+  return dingPool;
 }
 
 function play(getPool: () => Pool) {
@@ -76,4 +91,14 @@ export function playTap() {
 /** Slightly fuller tap for positive confirmations (task complete, session start, purchase). */
 export function playTapConfirm() {
   play(getConfirmPool);
+}
+
+/** Swoosh for dropping a kitchen ingredient into the mixer. */
+export function playSwoosh() {
+  play(getSwooshPool);
+}
+
+/** Oven-timer "ding" for when a study session finishes. */
+export function playFinishDing() {
+  play(getDingPool);
 }

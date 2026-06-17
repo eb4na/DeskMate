@@ -81,22 +81,17 @@ export function StudyVinyl({
   // ── Finger-spin gesture (only when onSpin is provided) ──
   const onSpinRef = useRef(onSpin);
   onSpinRef.current = onSpin;
-  const wrapperRef = useRef<View>(null);
-  const center = useRef<{ x: number; y: number } | null>(null);
+  const sizeRef = useRef(size);
+  sizeRef.current = size;
   const lastAngle = useRef<number | null>(null);
   const manualVal = useRef(0);
   const spinAccum = useRef(0);
 
-  // Measure the (non-rotated) wrapper's centre in window coords, so angles read off
-  // absolute pageX/pageY are stable regardless of the disc's current rotation.
-  const measure = () => wrapperRef.current?.measureInWindow((x, y, w, h) => {
-    center.current = { x: x + w / 2, y: y + h / 2 };
-  });
-
   const pan = useRef(
     PanResponder.create({
-      // Never claim on touch-start (lets a tap reach a parent Pressable); claim only
-      // once the finger has moved enough to be a rotation.
+      // Never claim on touch-start (lets a tap reach a parent Pressable, e.g. the
+      // study-room radio that opens the popup); claim only once the finger has moved
+      // enough to read as a rotation.
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_e, g) =>
         !!onSpinRef.current && Math.abs(g.dx) + Math.abs(g.dy) > 4,
@@ -104,12 +99,13 @@ export function StudyVinyl({
         setDragging(true);
         spinAccum.current = 0;
         lastAngle.current = null;
-        measure();
       },
       onPanResponderMove: (e) => {
-        if (!center.current) { measure(); return; }
-        const { pageX, pageY } = e.nativeEvent;
-        const a = (Math.atan2(pageY - center.current.y, pageX - center.current.x) * 180) / Math.PI;
+        // locationX/Y are relative to the (non-rotated) wrapper — the inner disc is
+        // pointerEvents:none, so the wrapper is always the touched view and the
+        // centre is just size/2 (no measuring, no rotation skew).
+        const c = sizeRef.current / 2;
+        const a = (Math.atan2(e.nativeEvent.locationY - c, e.nativeEvent.locationX - c) * 180) / Math.PI;
         if (lastAngle.current == null) { lastAngle.current = a; return; }
         let d = a - lastAngle.current;
         if (d > 180) d -= 360; else if (d < -180) d += 360;
@@ -140,11 +136,11 @@ export function StudyVinyl({
 
   return (
     <View
-      ref={wrapperRef}
       style={{ width: size, height: size }}
-      onLayout={measure}
       {...(onSpin ? pan.panHandlers : {})}>
-    <Animated.View style={{ width: size, height: size, transform: [{ rotate }] }}>
+    <Animated.View
+      pointerEvents="none"
+      style={{ width: size, height: size, transform: [{ rotate }] }}>
       <Svg width={size} height={size} viewBox="0 0 100 100">
         {/* Disc */}
         <Circle cx={50} cy={50} r={48} fill={discColor} />

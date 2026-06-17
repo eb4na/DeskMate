@@ -10,6 +10,7 @@ import { DevKnobs } from '@/components/dev-knobs';
 import { PlusIcon } from '@/components/plus-icon';
 import { LockBadge } from '@/components/lock-badge';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
+import { useIsTablet } from '@/hooks/use-device-class';
 import { useApp } from '@/context/app-context';
 import { newRoomId } from '@/lib/game-net';
 import { useStudyRoom } from '@/lib/use-study-room';
@@ -49,6 +50,7 @@ const PICKER_ELEMENTS = [
 
 export default function SessionPickerScreen() {
   const insets = useSafeAreaInsets();
+  const isTablet = useIsTablet();
   const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('sessionpicker', PICKER_ELEMENTS);
   const { subjects, coins, isPlus, activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins } = useApp();
   const studyRoom = useStudyRoom();
@@ -114,45 +116,45 @@ export default function SessionPickerScreen() {
           </View>
 
           {/* One parchment "menu" — durations, subjects and custom all on one paper */}
-          <View style={[styles.card, styles.menuCard]}>
+          <View style={[styles.card, styles.menuCard, isTablet && styles.menuCardTablet]}>
             {/* Menu header */}
             <View style={styles.menuHeader}>
-              <Text style={styles.menuTitle}>{t('sessionPicker.title')}</Text>
-              <Text style={styles.menuSubtitle}>{t('sessionPicker.subtitle')}</Text>
+              <Text style={[styles.menuTitle, isTablet && styles.menuTitleTablet]}>{t('sessionPicker.title')}</Text>
+              <Text style={[styles.menuSubtitle, isTablet && styles.menuSubtitleTablet]}>{t('sessionPicker.subtitle')}</Text>
             </View>
 
             {/* Focus time — each duration is a menu line-item */}
-            <Text style={styles.sectionLabel}>{t('sessionPicker.chooseDuration')}</Text>
+            <Text style={[styles.sectionLabel, isTablet && styles.sectionLabelTablet]}>{t('sessionPicker.chooseDuration')}</Text>
             {SESSION_LENGTHS.map((opt, i) => {
               const isActive = selected === opt.minutes;
               const brk = autoBreakMinutes(opt.minutes);
               return (
                 <View key={opt.minutes}>
                   <Pressable
-                    style={({ pressed }) => [styles.menuRow, isActive && styles.menuRowActive, pressed && styles.pressed]}
+                    style={({ pressed }) => [styles.menuRow, isTablet && styles.menuRowTablet, isActive && styles.menuRowActive, pressed && styles.pressed]}
                     onPress={() => setSelected(opt.minutes)}>
-                    <Image source={CARD_IMG[opt.minutes]} style={styles.menuIcon} contentFit="contain" />
+                    <Image source={CARD_IMG[opt.minutes]} style={[styles.menuIcon, isTablet && styles.menuIconTablet]} contentFit="contain" />
                     <View style={styles.menuBody}>
                       <View style={styles.menuTopLine}>
-                        <Text style={[styles.menuName, isActive && styles.menuNameActive]} numberOfLines={1}>
+                        <Text style={[styles.menuName, isTablet && styles.menuNameTablet, isActive && styles.menuNameActive]} numberOfLines={1}>
                           {t(`sessionPicker.len_${opt.minutes}`)}
                         </Text>
                         <View style={styles.menuLeader} />
-                        <CoinIcon size={14} />
-                        <Text style={styles.menuPrice}>+{coinsForMinutes(opt.minutes)}</Text>
+                        <CoinIcon size={isTablet ? 18 : 14} />
+                        <Text style={[styles.menuPrice, isTablet && styles.menuPriceTablet]}>+{coinsForMinutes(opt.minutes)}</Text>
                       </View>
                       <View style={styles.menuSubLine}>
-                        <Text style={styles.menuCoinText}>{opt.minutes} {t('customTimer.min')}</Text>
+                        <Text style={[styles.menuCoinText, isTablet && styles.menuCoinTextTablet]}>{opt.minutes} {t('customTimer.min')}</Text>
                         {brk > 0 && (
-                          <View style={styles.breakChip}>
-                            <Text style={styles.breakChipText}>{t('sessionPicker.menuBreak', { min: brk })}</Text>
+                          <View style={[styles.breakChip, isTablet && styles.breakChipTablet]}>
+                            <Text style={[styles.breakChipText, isTablet && styles.breakChipTextTablet]}>{t('sessionPicker.menuBreak', { min: brk })}</Text>
                           </View>
                         )}
                       </View>
                     </View>
                     {isActive && (
-                      <View style={styles.checkBadge}>
-                        <Text style={styles.checkIcon}>✓</Text>
+                      <View style={[styles.checkBadge, isTablet && styles.checkBadgeTablet]}>
+                        <Text style={[styles.checkIcon, isTablet && styles.checkIconTablet]}>✓</Text>
                       </View>
                     )}
                   </Pressable>
@@ -164,7 +166,7 @@ export default function SessionPickerScreen() {
             <View style={styles.sectionRule} />
 
             {/* Subject — chips read as a little "add-ons" line on the menu */}
-            <Text style={styles.sectionLabel}>{t('sessionPicker.subjectHeader')}</Text>
+            <Text style={[styles.sectionLabel, isTablet && styles.sectionLabelTablet]}>{t('sessionPicker.subjectHeader')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
               {activeSubjects.map((s) => {
                 const isActive = selectedSubjectId === s.id;
@@ -173,17 +175,18 @@ export default function SessionPickerScreen() {
                     key={s.id}
                     style={[
                       styles.chip,
+                      isTablet && styles.chipTablet,
                       { borderColor: isActive ? s.color : C.shortbread, backgroundColor: isActive ? s.color + '2E' : 'rgba(255,255,255,0.6)' },
                     ]}
                     onPress={() => setSelectedSubjectId(isActive ? null : s.id)}>
-                    <Text style={[styles.chipText, isActive && { color: s.color }]}>
+                    <Text style={[styles.chipText, isTablet && styles.chipTextTablet, isActive && { color: s.color }]}>
                       {s.emoji ? `${s.emoji} ` : ''}{s.name}
                     </Text>
                   </Pressable>
                 );
               })}
-              <Pressable style={[styles.chip, styles.chipAdd]} onPress={() => router.push('/manage-subjects')}>
-                <Text style={[styles.chipText, { color: C.berry }]}>{t('common.addChip')}</Text>
+              <Pressable style={[styles.chip, isTablet && styles.chipTablet, styles.chipAdd]} onPress={() => router.push('/manage-subjects')}>
+                <Text style={[styles.chipText, isTablet && styles.chipTextTablet, { color: C.berry }]}>{t('common.addChip')}</Text>
               </Pressable>
             </ScrollView>
 
@@ -192,25 +195,25 @@ export default function SessionPickerScreen() {
             {/* Custom duration — a Plus feature, as a final menu row. Free users see
                 a lock and are sent to the paywall instead of the timer. */}
             <Pressable
-              style={({ pressed }) => [styles.menuRow, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.menuRow, isTablet && styles.menuRowTablet, pressed && styles.pressed]}
               onPress={() =>
                 isPlus
                   ? router.push({ pathname: '/custom-timer', params: { mode: 'focus' } })
                   : router.push('/plus-upgrade')
               }>
-              <View style={styles.customIconWrap}>
-                <PlusIcon size={32} />
+              <View style={[styles.customIconWrap, isTablet && styles.customIconWrapTablet]}>
+                <PlusIcon size={isTablet ? 42 : 32} />
               </View>
               <View style={styles.menuBody}>
-                <Text style={styles.menuName}>{t('sessionPicker.customTitle')}</Text>
-                <Text style={styles.menuCoinText}>{t('sessionPicker.customSub')}</Text>
+                <Text style={[styles.menuName, isTablet && styles.menuNameTablet]}>{t('sessionPicker.customTitle')}</Text>
+                <Text style={[styles.menuCoinText, isTablet && styles.menuCoinTextTablet]}>{t('sessionPicker.customSub')}</Text>
               </View>
               {isPlus ? (
-                <View style={styles.customPill}>
-                  <Text style={styles.customPillText}>{t('sessionPicker.customSet')}</Text>
+                <View style={[styles.customPill, isTablet && styles.customPillTablet]}>
+                  <Text style={[styles.customPillText, isTablet && styles.customPillTextTablet]}>{t('sessionPicker.customSet')}</Text>
                 </View>
               ) : (
-                <LockBadge size={30} />
+                <LockBadge size={isTablet ? 38 : 30} />
               )}
             </Pressable>
           </View>
@@ -351,4 +354,24 @@ const styles = StyleSheet.create({
   startBtnText: { fontSize: 17, fontWeight: '900', color: '#fff', letterSpacing: 0.3 },
 
   pressed: { opacity: 0.85 },
+
+  // ── Tablet: bigger menu paper + line-items, chips and custom row ──
+  menuCardTablet: { paddingHorizontal: Spacing.five, paddingVertical: Spacing.four },
+  menuTitleTablet: { fontSize: 32 },
+  menuSubtitleTablet: { fontSize: 16 },
+  sectionLabelTablet: { fontSize: 14, letterSpacing: 1.2, marginTop: Spacing.two },
+  menuRowTablet: { paddingVertical: Spacing.three, gap: Spacing.three },
+  menuIconTablet: { width: 82, height: 82 },
+  menuNameTablet: { fontSize: 21 },
+  menuPriceTablet: { fontSize: 20 },
+  menuCoinTextTablet: { fontSize: 16 },
+  breakChipTablet: { paddingHorizontal: 10, paddingVertical: 4 },
+  breakChipTextTablet: { fontSize: 14 },
+  checkBadgeTablet: { width: 30, height: 30, borderRadius: 15 },
+  checkIconTablet: { fontSize: 16 },
+  customIconWrapTablet: { width: 82 },
+  chipTablet: { paddingHorizontal: 18, paddingVertical: 12 },
+  chipTextTablet: { fontSize: 18 },
+  customPillTablet: { paddingHorizontal: 16, paddingVertical: 10 },
+  customPillTextTablet: { fontSize: 17 },
 });

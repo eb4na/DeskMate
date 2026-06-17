@@ -17,6 +17,7 @@ import { daysBetween, todayISO, useApp } from '@/context/app-context';
 import { AFTER_SESSION_MOODS, BREAK_LENGTHS, DAILY_EARN_CAP } from '@/constants/placeholder-data';
 import { getCompanionLine } from '@/constants/companion-lines';
 import { showLoadingScreen } from '@/lib/loading-signal';
+import { playFinishDing } from '@/lib/sounds';
 import { track } from '@/lib/analytics';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -141,6 +142,7 @@ export default function SessionCompleteScreen() {
   useEffect(() => {
     if (credited.current) return;
     credited.current = true;
+    playFinishDing(); // oven-timer "ding": your study session is done
     addCoins(earned);
     recordSession(minutes);
     addSubjectTime(subjectName, minutes);

@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -151,30 +152,38 @@ export function SoundPickerModal({
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   };
 
-  // The big record's centre: the Spotify cover when connected, else the equipped
-  // study sound's icon, else nothing (plain tinted label). Spin while playing.
+  // Which source the popup shows; the top-left button flips it. Always opens on the
+  // study Sounds (the free default) — Spotify is a Plus-only extra you switch into.
+  const [mode, setMode] = useState<'sounds' | 'spotify'>('sounds');
+
+  // The big record's centre + whether it spins, per the shown source.
   const equippedSound = sounds.find((s) => s.id === equipped);
   const centerImage: number | { uri: string } | undefined =
-    connected && playback?.coverUrl ? { uri: playback.coverUrl } : equippedSound?.image;
-  const spinning = connected ? !!playback?.isPlaying : equipped != null;
+    mode === 'spotify'
+      ? playback?.coverUrl ? { uri: playback.coverUrl } : undefined
+      : equippedSound?.image;
+  const spinning = mode === 'spotify' ? !!playback?.isPlaying : equipped != null;
 
-  // Remember the last-played study sound so spinning the record back on resumes it
-  // (rather than always jumping to the first owned sound).
+  // Remember the last-played study sound so the play button resumes it (rather than
+  // always jumping to the first owned sound).
   const lastSoundRef = useRef<string | null>(equipped);
   useEffect(() => { if (equipped) lastSoundRef.current = equipped; }, [equipped]);
 
-  // Spin the record to toggle play/stop. Spotify: pause/resume. Study sound:
-  // setEquippedSound is the single source of truth (the study screen's effect plays
+  // The record's spin gesture + the centre play/pause button toggle play/stop.
+  // Spotify: pause/resume (or open the app when there's no active device). Study
+  // sound: setEquippedSound is the source of truth (the study screen's effect plays
   // or stops the audio, and both vinyls spin off the equipped state).
   const handleSpin = () => {
-    if (connected) {
+    if (mode === 'spotify') {
+      if (!isPlus) return; // Spotify is Plus-only — the locked panel handles the upsell
+      if (playback?.hasDevice === false) { openInSpotify(); return; }
       control(playback?.isPlaying ? spotifyPause : spotifyResume);
       return;
     }
-    if (equipped) setEquippedSound(null);
+    if (equipped) { setEquippedSound(null); stopStudyMusic(); }
     else {
       const next = lastSoundRef.current ?? sounds[0]?.id ?? null;
-      if (next) setEquippedSound(next);
+      if (next) { setEquippedSound(next); playStudyMusic(next.replace('sound_', '')); }
     }
   };
 
@@ -183,108 +192,127 @@ export function SoundPickerModal({
       <Pressable style={styles.backdrop} onPress={onClose} />
       <View style={styles.centerWrap} pointerEvents="box-none">
         <View style={[styles.panel, isTablet && styles.panelTablet]}>
-          <Text style={[styles.title, isTablet && styles.titleTablet]}>{t('soundPicker.title')}</Text>
+          {/* Top-left button: switch between shop music and Spotify */}
+          <View style={styles.topRow}>
+            <Pressable
+              onPress={() => setMode((m) => (m === 'sounds' ? 'spotify' : 'sounds'))}
+              style={({ pressed }) => [styles.modeToggle, pressed && styles.pressed]}>
+              <Text style={styles.modeToggleText}>
+                {mode === 'sounds' ? `♪  Spotify${isPlus ? '' : ' 🔒'}  →` : `←  ${t('soundPicker.title')}`}
+              </Text>
+            </Pressable>
+          </View>
 
-          {/* Record on the left, a tall panel of option buttons on the right */}
-          <View style={styles.vinylRow}>
-            <View style={[styles.vinylCol, isTablet && styles.vinylColTablet]}>
-              <StudyVinyl size={isTablet ? 230 : 150} playing={spinning} discColor={vinylColor} centerImage={centerImage} onSpin={handleSpin} />
-              {/* Vinyl colour swatches under the record */}
-              <View style={[styles.swatchRow, isTablet && styles.swatchRowTablet]}>
-                {VINYL_COLORS.map((col) => {
-                  const selected = vinylColor === col;
-                  return (
+          {mode === 'sounds' ? (
+            /* Record + centre play/pause on the left, owned shop sounds on the right */
+            <View style={styles.soundsBody}>
+              <View style={styles.vinylSide}>
+                <StudyVinyl size={isTablet ? 200 : 140} playing={spinning} discColor={vinylColor} centerImage={centerImage} onSpin={handleSpin} />
+                <Pressable onPress={handleSpin} style={({ pressed }) => [styles.playBtn, isTablet && styles.playBtnTablet, pressed && styles.pressed]} hitSlop={8}>
+                  {spinning ? <PauseGlyph /> : <PlayGlyph />}
+                </Pressable>
+              </View>
+              <View style={[styles.trackCol, isTablet && styles.trackColTablet]}>
+                <ScrollView contentContainerStyle={styles.trackColContent} showsVerticalScrollIndicator={false}>
+                  {sounds.map((s) => (
                     <Pressable
-                      key={col}
-                      onPress={() => setVinylColor(col)}
-                      style={[styles.swatch, isTablet && styles.swatchTablet, { backgroundColor: col }, selected && styles.swatchSelected]}
-                      hitSlop={4}>
-                      {selected && <Text style={styles.swatchCheck}>✓</Text>}
+                      key={s.id}
+                      onPress={() => { setEquippedSound(s.id); playStudyMusic(s.id.replace('sound_', '')); }}
+                      style={[styles.trackBtn, isTablet && styles.trackBtnTablet, equipped === s.id && styles.trackBtnActive]}>
+                      <Image source={s.image} style={[styles.trackIcon, isTablet && styles.trackIconTablet]} contentFit="contain" />
                     </Pressable>
-                  );
-                })}
+                  ))}
+                  {sounds.length === 0 && <Text style={styles.empty}>{t('soundPicker.empty')}</Text>}
+                </ScrollView>
               </View>
             </View>
-
-            <View style={[styles.optionsPanel, isTablet && styles.optionsPanelTablet]}>
-              <ScrollView contentContainerStyle={{ gap: Spacing.one, padding: Spacing.two }} showsVerticalScrollIndicator={false}>
-                <Pressable onPress={() => { setEquippedSound(null); stopStudyMusic(); }} style={[styles.row, isTablet && styles.rowTablet, equipped == null && styles.rowActive]}>
-                  <Text style={[styles.rowText, isTablet && styles.rowTextTablet]}>{t('soundPicker.off')}</Text>
-                  {equipped == null && <Text style={styles.check}>✓</Text>}
-                </Pressable>
-                {sounds.map((s) => (
-                  <Pressable key={s.id} onPress={() => { setEquippedSound(s.id); playStudyMusic(s.id.replace('sound_', '')); }} style={[styles.row, isTablet && styles.rowTablet, equipped === s.id && styles.rowActive]}>
-                    <Image source={s.image} style={[styles.rowIcon, isTablet && styles.rowIconTablet]} contentFit="contain" />
-                    <Text style={[styles.rowText, isTablet && styles.rowTextTablet]} numberOfLines={1}>{s.name}</Text>
-                    {equipped === s.id && <Text style={styles.check}>✓</Text>}
+          ) : (
+            /* Record centred, transport controls below */
+            <View style={styles.spotifyBody}>
+              <StudyVinyl size={isTablet ? 220 : 150} playing={spinning} discColor={vinylColor} centerImage={centerImage} onSpin={handleSpin} />
+              {!isPlus ? (
+                /* Spotify control is a Memobun Plus perk — non-Plus gets the upsell. */
+                <View style={styles.spotifyControls}>
+                  <Text style={styles.notice}>{t('soundPicker.spotifyPlus')}</Text>
+                  <Pressable
+                    onPress={() => { onClose(); router.push('/plus-upgrade'); }}
+                    style={({ pressed }) => [styles.spotifyBtn, pressed && styles.pressed]}>
+                    <Text style={styles.spotifyBtnText}>{t('plusUpgrade.upgrade')}</Text>
                   </Pressable>
-                ))}
-                {sounds.length === 0 && <Text style={styles.empty}>{t('soundPicker.empty')}</Text>}
-
-                <View style={styles.rule} />
-
-                {/* Spotify */}
-                {!connected ? (
-                  <>
-                    <Pressable onPress={handleConnect} disabled={connecting} style={({ pressed }) => [styles.spotifyBtn, pressed && styles.pressed]}>
-                      <Text style={styles.spotifyBtnText}>{connecting ? t('soundPicker.connecting') : t('soundPicker.connectSpotify')}</Text>
-                    </Pressable>
-                    {notice ? <Text style={styles.notice}>{notice}</Text> : null}
-                  </>
-                ) : (
-                  <>
-                    <Pressable onPress={openInSpotify} style={({ pressed }) => [styles.nowPlaying, pressed && styles.pressed]}>
-                      <Text style={styles.npTrack} numberOfLines={1}>
-                        {playback?.track ?? (playback?.hasDevice === false ? t('soundPicker.noDevice') : t('soundPicker.connected'))}
-                      </Text>
-                      {!!playback?.artist && <Text style={styles.npArtist} numberOfLines={1}>{playback.artist}</Text>}
-                      <Text style={styles.openSpotify}>{t('soundPicker.openInSpotify')} ↗</Text>
-                    </Pressable>
-                    {dur > 0 && (
-                      <View style={styles.seekRow}>
-                        <View
-                          style={styles.seekTrack}
-                          onLayout={(e) => { trackW.current = e.nativeEvent.layout.width; }}
-                          onStartShouldSetResponder={() => true}
-                          onMoveShouldSetResponder={() => true}
-                          onResponderGrant={(e) => setScrub(fracFromX(e.nativeEvent.locationX))}
-                          onResponderMove={(e) => setScrub(fracFromX(e.nativeEvent.locationX))}
-                          onResponderRelease={(e) => commitSeek(e.nativeEvent.locationX)}
-                          onResponderTerminate={(e) => commitSeek(e.nativeEvent.locationX)}>
-                          {/* pointer-transparent so drag `locationX` stays measured
-                              against seekTrack, not the thumb/fill under the finger */}
-                          <View style={styles.seekBar} pointerEvents="none">
-                            <View style={[styles.seekFill, { width: pct }]} />
-                            <View style={[styles.seekThumb, { left: pct }]} />
-                          </View>
-                        </View>
-                        <View style={styles.seekTimes}>
-                          <Text style={styles.seekTime}>{fmtTime(frac * dur)}</Text>
-                          <Text style={styles.seekTime}>{fmtTime(dur)}</Text>
+                </View>
+              ) : !connected ? (
+                <View style={styles.spotifyControls}>
+                  <Pressable onPress={handleConnect} disabled={connecting} style={({ pressed }) => [styles.spotifyBtn, pressed && styles.pressed]}>
+                    <Text style={styles.spotifyBtnText}>{connecting ? t('soundPicker.connecting') : t('soundPicker.connectSpotify')}</Text>
+                  </Pressable>
+                  {notice ? <Text style={styles.notice}>{notice}</Text> : null}
+                </View>
+              ) : (
+                <View style={styles.spotifyControls}>
+                  <Pressable onPress={openInSpotify} style={({ pressed }) => [styles.nowPlaying, pressed && styles.pressed]}>
+                    <Text style={styles.npTrack} numberOfLines={1}>
+                      {playback?.track ?? (playback?.hasDevice === false ? t('soundPicker.noDevice') : t('soundPicker.connected'))}
+                    </Text>
+                    {!!playback?.artist && <Text style={styles.npArtist} numberOfLines={1}>{playback.artist}</Text>}
+                    <Text style={styles.openSpotify}>{t('soundPicker.openInSpotify')} ↗</Text>
+                  </Pressable>
+                  {dur > 0 && (
+                    <View style={styles.seekRow}>
+                      <View
+                        style={styles.seekTrack}
+                        onLayout={(e) => { trackW.current = e.nativeEvent.layout.width; }}
+                        onStartShouldSetResponder={() => true}
+                        onMoveShouldSetResponder={() => true}
+                        onResponderGrant={(e) => setScrub(fracFromX(e.nativeEvent.locationX))}
+                        onResponderMove={(e) => setScrub(fracFromX(e.nativeEvent.locationX))}
+                        onResponderRelease={(e) => commitSeek(e.nativeEvent.locationX)}
+                        onResponderTerminate={(e) => commitSeek(e.nativeEvent.locationX)}>
+                        {/* pointer-transparent so drag `locationX` stays measured
+                            against seekTrack, not the thumb/fill under the finger */}
+                        <View style={styles.seekBar} pointerEvents="none">
+                          <View style={[styles.seekFill, { width: pct }]} />
+                          <View style={[styles.seekThumb, { left: pct }]} />
                         </View>
                       </View>
-                    )}
-                    <View style={styles.controls}>
-                      <Pressable onPress={() => control(spotifyPrevious)} style={({ pressed }) => [styles.ctlBtn, pressed && styles.pressed]} hitSlop={6}>
-                        <PrevGlyph />
-                      </Pressable>
-                      <Pressable
-                        onPress={() => control(playback?.isPlaying ? spotifyPause : spotifyResume)}
-                        style={({ pressed }) => [styles.ctlBtn, styles.ctlPrimary, pressed && styles.pressed]}
-                        hitSlop={6}>
-                        {playback?.isPlaying ? <PauseGlyph /> : <PlayGlyph />}
-                      </Pressable>
-                      <Pressable onPress={() => control(spotifyNext)} style={({ pressed }) => [styles.ctlBtn, pressed && styles.pressed]} hitSlop={6}>
-                        <NextGlyph />
-                      </Pressable>
+                      <View style={styles.seekTimes}>
+                        <Text style={styles.seekTime}>{fmtTime(frac * dur)}</Text>
+                        <Text style={styles.seekTime}>{fmtTime(dur)}</Text>
+                      </View>
                     </View>
-                    <Pressable onPress={() => disconnectSpotify()} style={styles.disconnect}>
-                      <Text style={styles.disconnectText}>{t('soundPicker.disconnect')}</Text>
+                  )}
+                  <View style={styles.controls}>
+                    <Pressable onPress={() => control(spotifyPrevious)} style={({ pressed }) => [styles.ctlBtn, pressed && styles.pressed]} hitSlop={6}>
+                      <PrevGlyph />
                     </Pressable>
-                  </>
-                )}
-              </ScrollView>
+                    <Pressable onPress={handleSpin} style={({ pressed }) => [styles.ctlBtn, styles.ctlPrimary, pressed && styles.pressed]} hitSlop={6}>
+                      {playback?.isPlaying ? <PauseGlyph /> : <PlayGlyph />}
+                    </Pressable>
+                    <Pressable onPress={() => control(spotifyNext)} style={({ pressed }) => [styles.ctlBtn, pressed && styles.pressed]} hitSlop={6}>
+                      <NextGlyph />
+                    </Pressable>
+                  </View>
+                  <Pressable onPress={() => disconnectSpotify()} style={styles.disconnect}>
+                    <Text style={styles.disconnectText}>{t('soundPicker.disconnect')}</Text>
+                  </Pressable>
+                </View>
+              )}
             </View>
+          )}
+
+          {/* Vinyl colour picker — shared, along the bottom */}
+          <View style={[styles.colorRow, isTablet && styles.colorRowTablet]}>
+            {VINYL_COLORS.map((col) => {
+              const selected = vinylColor === col;
+              return (
+                <Pressable
+                  key={col}
+                  onPress={() => setVinylColor(col)}
+                  style={[styles.swatch, isTablet && styles.swatchTablet, { backgroundColor: col }, selected && styles.swatchSelected]}
+                  hitSlop={4}>
+                  {selected && <Text style={styles.swatchCheck}>✓</Text>}
+                </Pressable>
+              );
+            })}
           </View>
 
           <Pressable onPress={onClose} style={({ pressed }) => [styles.doneBtn, isTablet && styles.doneBtnTablet, pressed && styles.pressed]}>
@@ -372,13 +400,13 @@ const styles = StyleSheet.create({
   swatchSelected: { borderColor: C.berry, borderWidth: 3 },
   swatchCheck: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
 
-  spotifyBtn: { backgroundColor: '#1DB954', borderRadius: BakeryRadii.button, paddingVertical: 13, alignItems: 'center' },
+  spotifyBtn: { backgroundColor: '#F4A0A8', borderRadius: BakeryRadii.button, paddingVertical: 13, alignItems: 'center' },
   spotifyBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
   note: { fontSize: 11.5, color: C.mocha, lineHeight: 16 },
   notice: { fontSize: 12.5, color: C.berry, fontWeight: '700', lineHeight: 17 },
 
-  nowPlaying: { backgroundColor: '#fff', borderRadius: BakeryRadii.card, borderWidth: 1.5, borderColor: C.shortbread, paddingHorizontal: Spacing.three, paddingVertical: 10 },
-  seekRow: { paddingTop: 8, gap: 4 },
+  nowPlaying: { alignSelf: 'stretch', backgroundColor: '#fff', borderRadius: BakeryRadii.card, borderWidth: 1.5, borderColor: C.shortbread, paddingHorizontal: Spacing.three, paddingVertical: 10 },
+  seekRow: { alignSelf: 'stretch', paddingTop: 8, gap: 4 },
   // Transparent wrapper with vertical padding = a generous touch target around the
   // thin bar. Its width (measured via onLayout) maps 1:1 to the bar below it.
   seekTrack: { paddingVertical: 10, justifyContent: 'center' },
@@ -392,11 +420,49 @@ const styles = StyleSheet.create({
   openSpotify: { fontSize: 11.5, color: '#1DB954', fontWeight: '800', marginTop: 6 },
   controls: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: Spacing.three, paddingVertical: 4 },
   ctlBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#F4A0A8', alignItems: 'center', justifyContent: 'center' },
-  ctlPrimary: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#1DB954' },
+  ctlPrimary: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#F4A0A8' },
   disconnect: { alignItems: 'center', paddingVertical: 6 },
   disconnectText: { fontSize: 13, fontWeight: '700', color: C.mocha },
 
   doneBtn: { paddingVertical: 13, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: '#F7A7B8' },
   doneBtnText: { fontSize: 15, fontWeight: '900', color: C.cocoaDark },
   pressed: { opacity: 0.85 },
+
+  // ── Redesigned player ──
+  // Top-left source toggle (shop music ⇄ Spotify)
+  topRow: { flexDirection: 'row', alignItems: 'center' },
+  modeToggle: {
+    alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#fff', borderWidth: 1.5, borderColor: C.shortbread,
+    borderRadius: BakeryRadii.pill, paddingHorizontal: 14, paddingVertical: 8,
+  },
+  modeToggleText: { fontSize: 14, fontWeight: '800', color: C.cocoaDark },
+
+  // Sounds view: record + play/pause on the left, owned sounds on the right
+  soundsBody: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  vinylSide: { flex: 1, alignItems: 'center', gap: Spacing.two },
+  playBtn: {
+    width: 48, height: 48, borderRadius: 24, backgroundColor: '#F4A0A8',
+    alignItems: 'center', justifyContent: 'center', ...BakeryShadow,
+  },
+  playBtnTablet: { width: 60, height: 60, borderRadius: 30 },
+  trackCol: { width: 78, maxHeight: 264 },
+  trackColTablet: { width: 104, maxHeight: 372 },
+  trackColContent: { gap: Spacing.two, alignItems: 'center', paddingVertical: 2 },
+  trackBtn: {
+    width: 64, height: 64, borderRadius: 16, backgroundColor: '#fff',
+    borderWidth: 1.5, borderColor: C.shortbread, alignItems: 'center', justifyContent: 'center',
+  },
+  trackBtnTablet: { width: 88, height: 88, borderRadius: 20 },
+  trackBtnActive: { borderColor: C.jam, backgroundColor: C.jam + '1A' },
+  trackIcon: { width: 44, height: 44 },
+  trackIconTablet: { width: 60, height: 60 },
+
+  // Spotify view: record centred with the transport controls below
+  spotifyBody: { alignItems: 'center', gap: Spacing.two },
+  spotifyControls: { width: '100%', alignItems: 'center', gap: Spacing.two },
+
+  // Shared colour picker along the bottom
+  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', paddingHorizontal: Spacing.two },
+  colorRowTablet: { gap: 12 },
 });

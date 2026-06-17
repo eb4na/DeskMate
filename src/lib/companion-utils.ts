@@ -57,6 +57,7 @@ const OUTFIT_NAME_KEYS: Record<string, string> = {
   'Berry Princess': 'outfitNames.berryPrincess',
   'Ivory Rose': 'outfitNames.ivoryRose',
   'Strawberry Dreams': 'outfitNames.strawberryDreams',
+  'Afternoon Train': 'outfitNames.afternoonTrain',
 };
 
 /** Localize an outfit/skin name; returns the input unchanged if unmapped. */
@@ -112,6 +113,7 @@ export const COMPANION_SKINS: Record<string, BunSkin[]> = {
     { id: 'classic', name: 'Graceful Walk', emoji: '', image: require('@/assets/images/tira/tira.png'), shopItemId: null },
     { id: 'chocomint', name: 'Choco Mint', emoji: '', image: require('@/assets/images/tira/tira-chocomint.png'), shopItemId: 'outfit_tira_chocomint' },
     { id: 'sleepover', name: 'Sleepover', emoji: '', image: require('@/assets/images/tira/tira-sleepover.png'), shopItemId: 'outfit_tira_sleepover', roomId: 'tiras-room' },
+    { id: 'afternoontrain', name: 'Afternoon Train', emoji: '', image: require('@/assets/images/tira/tira-afternoon-train.png'), shopItemId: 'outfit_tira_afternoontrain', roomId: 'afternoon-train' },
   ],
   'shop:companion_honey': [
     { id: 'classic', name: 'Honey Bear', emoji: '', image: require('@/assets/images/honey/honey.png'), shopItemId: null },

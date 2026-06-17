@@ -90,7 +90,7 @@
     "or": "或",
     "continueWithGoogle": "使用 Google 继续",
     "continueWithApple": "使用 Apple 继续",
-    "connectedAccounts": "已连接账户",
+    "connectedAccounts": "连接账户",
     "connectGoogle": "连接 Google",
     "connectApple": "连接 Apple",
     "connected": "已连接",
@@ -917,6 +917,7 @@
     "matchedMsg": "已为{{outfit}}搭配{{room}}房间！",
     "roomLockedTitle": "配套房间未解锁",
     "roomLockedMsg": "在商店解锁{{room}}房间，完成{{outfit}}的造型。",
+    "goToShop": "前往商店",
     "tagline_Bun": "笨手笨脚，但总是随时帮忙。",
     "tagline_Cocoa": "先学习，之后再玩。",
     "tagline_Bunny": "可爱到不行。",
@@ -1427,7 +1428,8 @@
     "bluePeony": "蓝牡丹",
     "berryPrincess": "莓果公主",
     "ivoryRose": "象牙玫瑰",
-    "strawberryDreams": "草莓甜梦"
+    "strawberryDreams": "草莓甜梦",
+    "afternoonTrain": "午后列车"
   },
   "studyDesk": {
     "title": "正在休息",

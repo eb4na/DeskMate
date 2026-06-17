@@ -90,7 +90,7 @@
     "or": "または",
     "continueWithGoogle": "Googleで続ける",
     "continueWithApple": "Appleで続ける",
-    "connectedAccounts": "連携アカウント",
+    "connectedAccounts": "アカウントを連携",
     "connectGoogle": "Googleを連携",
     "connectApple": "Appleを連携",
     "connected": "連携済み",
@@ -917,6 +917,7 @@
     "matchedMsg": "{{outfit}}に{{room}}のお部屋をセットしました！",
     "roomLockedTitle": "おそろいのお部屋は未開放",
     "roomLockedMsg": "ショップで{{room}}のお部屋を手に入れて、{{outfit}}のコーデを完成させましょう。",
+    "goToShop": "ショップへ",
     "tagline_Bun": "おっちょこちょいだけど、いつでも助けてくれる。",
     "tagline_Cocoa": "まずは勉強、楽しむのはそのあと。",
     "tagline_Bunny": "可愛いからどうでもいい。",
@@ -1427,7 +1428,8 @@
     "bluePeony": "青い牡丹",
     "berryPrincess": "ベリープリンセス",
     "ivoryRose": "アイボリーローズ",
-    "strawberryDreams": "ストロベリードリーム"
+    "strawberryDreams": "ストロベリードリーム",
+    "afternoonTrain": "午後の列車"
   },
   "studyDesk": {
     "title": "休憩中",

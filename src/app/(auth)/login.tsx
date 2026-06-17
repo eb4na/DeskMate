@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SoundPressable } from '@/components/sound-pressable';
 
 import {
+  AppleLogoIcon,
   ChevronDownIcon,
   EyeIcon,
   EyeOffIcon,
@@ -281,6 +282,15 @@ export default function LoginScreen() {
                 disabled={submitting}>
                 <GoogleGIcon size={20} />
                 <Text style={styles.oauthText}>{t('auth.continueWithGoogle')}</Text>
+              </SoundPressable>
+
+              {/* Continue with Apple */}
+              <SoundPressable
+                style={({ pressed }) => [styles.oauthButton, (pressed || submitting) && styles.pressed]}
+                onPress={() => handleSocial(() => signInWithProvider('apple'))}
+                disabled={submitting}>
+                <AppleLogoIcon size={20} />
+                <Text style={styles.oauthText}>{t('auth.continueWithApple')}</Text>
               </SoundPressable>
 
               {/* Create account footer */}

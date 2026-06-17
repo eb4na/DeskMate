@@ -3,6 +3,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, AppState, Easing, Image as RNImage, ImageBackground, PanResponder, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
+import { playSwoosh } from '@/lib/sounds';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -29,6 +30,7 @@ import { useAuth } from '@/context/auth-context';
 import { listBlocked, listIncomingRequests } from '@/lib/friend-requests';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { takePendingDragSession, setDragActive, type DragSessionData } from '@/lib/drag-session';
+import { connectSpotify, spotifyConfigured, spotifyConnected } from '@/lib/spotify';
 import { showLoadingScreen } from '@/lib/loading-signal';
 import { preloadStudyAssets } from '@/lib/preload-nav';
 import { getAmbienceEmoji, getAmbienceName } from '@/app/ambience-picker';
@@ -70,7 +72,7 @@ const HOME_TABLET = {
   // Desk surface (marble) — height % from the bottom + texture zoom
   deskHeight: 46,
   deskZoom: 1.35,  // scales the desk image so the surface texture reads larger
-  deskY: 28,       // desk surface vertical nudge (− = up, + = down); dropped to sit on the hairline
+  deskY: 31,       // desk surface vertical nudge (− = up, + = down); dropped to sit on the hairline
   deskEdgeY: 30,   // table-edge hairline's OWN vertical nudge (independent of deskY); dropped to sit on the desk top
   // Streak & coin chips (top row)
   hudScale: 1.3,   // size of the streak + coin chips on tablet
@@ -312,6 +314,7 @@ function DraggableIngredient({
       const dist = Math.hypot(g.moveX - mixerCenterX, g.moveY - mixerCenterY);
       if (dist < dropRadius) {
         dropped.current = true;
+        playSwoosh(); // ingredient lands in the mixer
         Animated.parallel([
           Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: false }),
           Animated.spring(scale, { toValue: 0.5, useNativeDriver: false }),
@@ -732,6 +735,25 @@ export default function HomeScreen() {
     router.push('/add-exam');
   };
 
+  // Start Session. Plus members who haven't linked Spotify get a one-tap offer to
+  // connect it first (so they can play their own music while studying); everyone
+  // else — and anyone already connected — goes straight to the picker.
+  const handleStartSession = () => {
+    if (isPlus && spotifyConfigured() && !spotifyConnected()) {
+      showPopup(t('plus.f_spotify'), t('plus.f_spotifyDesc'), [
+        { text: t('shop.notNow'), style: 'cancel', onPress: () => router.push('/session-picker') },
+        {
+          text: t('soundPicker.connectSpotify'),
+          onPress: async () => {
+            try { await connectSpotify(); } finally { router.push('/session-picker'); }
+          },
+        },
+      ]);
+      return;
+    }
+    router.push('/session-picker');
+  };
+
   const handleStopSession = () => {
     if (!activeSession) return;
 
@@ -1088,7 +1110,7 @@ export default function HomeScreen() {
               {!dragSession && <View style={[styles.startSessionPressable, { bottom: 155 }, tStart]}>
                 <SoundPressable
                   style={({ pressed }) => [styles.startSessionInner, pressed && styles.startButtonPressed]}
-                  onPress={() => router.push('/session-picker')}
+                  onPress={handleStartSession}
                   accessibilityLabel={t('home.a11yStartSession')}>
                   <Image source={START_SESSION_BTN} style={styles.startSessionBg} contentFit="fill" />
                   <ThemedText style={styles.startSessionLabel}>{t('home.startSession')}</ThemedText>

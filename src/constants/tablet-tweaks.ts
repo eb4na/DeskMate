@@ -13,4 +13,5 @@ export type TabletTweak = { x?: number; y?: number; scale?: number };
 
 export const TABLET_TWEAKS: Record<string, TabletTweak> = {
   // e.g. 'breakgame.backBtn': { x: 0, y: -8, scale: 1.1 },
+  'studysession.desk': { y: 31 }, // nudge the desk down on tablet
 };

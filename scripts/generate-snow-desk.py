@@ -26,8 +26,8 @@ OUT = Path(__file__).resolve().parent.parent / "assets/images/desks/snow.png"
 # Palette — pulled to match the shrine's snow: bright white highlights, soft
 # periwinkle dips, a cool-blue base.
 SNOW_HI = np.array([255, 255, 255], dtype=np.float32)   # sun-lit snow
-SNOW_BASE = np.array([249, 252, 255], dtype=np.float32)  # general snow field
-SNOW_SHADOW = np.array([221, 233, 247], dtype=np.float32)  # faint periwinkle dips
+SNOW_BASE = np.array([236, 243, 251], dtype=np.float32)  # general snow field (a soft tone, not paper-white)
+SNOW_SHADOW = np.array([194, 213, 237], dtype=np.float32)  # periwinkle dips (deeper, so the drifts actually read)
 
 
 def smooth_noise(h, w, cells, rng):
@@ -48,19 +48,20 @@ def main():
         + 0.12 * smooth_noise(H, W, 34, rng)
     )
     n = (n - n.min()) / (np.ptp(n) + 1e-6)
-    # Gamma toward bright: snow is mostly white, dips are the exception.
-    n = n ** 0.6
+    # Gamma toward bright, but not so hard the drifts vanish — keep visible midtones
+    # so the surface reads as textured snow rather than a flat white void.
+    n = n ** 0.82
 
     # Interpolate shadow→base→highlight across the noise range.
     rgb = np.empty((H, W, 3), dtype=np.float32)
-    lo = np.clip(n * 2.6, 0, 1)[..., None]            # shadow → base (reaches base fast)
-    hi = np.clip((n - 0.45) * 1.9, 0, 1)[..., None]   # base → highlight
+    lo = np.clip(n * 1.7, 0, 1)[..., None]            # shadow → base (let the dips linger)
+    hi = np.clip((n - 0.6) * 1.7, 0, 1)[..., None]    # base → highlight (only the brightest crests blow out)
     rgb = SNOW_SHADOW * (1 - lo) + SNOW_BASE * lo
     rgb = rgb * (1 - hi) + SNOW_HI * hi
 
     # Gentle top-light gradient: snow brighter where light hits (upper area),
     # a touch cooler/deeper toward the bottom for depth.
-    grad = np.linspace(1.03, 0.95, H, dtype=np.float32)[:, None, None]
+    grad = np.linspace(1.04, 0.90, H, dtype=np.float32)[:, None, None]
     rgb = rgb * grad
     # Nudge the lower third slightly bluer so it recedes like packed snow.
     cool = np.clip(np.linspace(-0.0, 0.04, H, dtype=np.float32), 0, 1)[:, None, None]

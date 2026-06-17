@@ -195,6 +195,15 @@ export const SHOP_ITEMS: ShopItem[] = [
     image: require('@/assets/images/tira/tira-sleepover.png'),
   },
   {
+    id: 'outfit_tira_afternoontrain',
+    name: 'Afternoon Train Tira',
+    emoji: '',
+    description: "An elegant navy hakama with a floral kimono and a blossom hairpin. Tira gives graceful, composed study reminders while wearing it — wear it from Tira's Wardrobe.",
+    price: 600,
+    category: 'outfits',
+    image: require('@/assets/images/tira/tira-afternoon-train.png'),
+  },
+  {
     id: 'outfit_honey_champion',
     name: 'Champion Miel',
     emoji: '',
@@ -278,6 +287,15 @@ export const SHOP_ITEMS: ShopItem[] = [
     image: require('@/assets/images/backgrounds/buns-room.png'),
   },
   {
+    id: 'bg_afternoon_train',
+    name: 'Afternoon Train',
+    emoji: '',
+    description: "A vintage train cabin — big windows over rolling countryside, blue floral seats. Pairs with the Afternoon Train desk and Tira's hakama.",
+    price: 650,
+    category: 'background',
+    image: require('@/assets/images/backgrounds/afternoon-train.png'),
+  },
+  {
     id: 'bg_tranquil',
     name: 'Tranquil',
     emoji: '',
@@ -359,6 +377,15 @@ export const SHOP_ITEMS: ShopItem[] = [
     price: 300,
     category: 'desk',
     image: require('@/assets/images/desks/pale-wood.png'),
+  },
+  {
+    id: 'desk_afternoon_train',
+    name: 'Afternoon Train Desk',
+    emoji: '',
+    description: 'A navy floral cabin floor with gold trim — pairs with the Afternoon Train background.',
+    price: 300,
+    category: 'desk',
+    image: require('@/assets/images/desks/afternoon-train.png'),
   },
   {
     id: 'desk_maple',

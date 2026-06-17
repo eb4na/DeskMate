@@ -56,7 +56,7 @@ type Preview = 'auto' | 'phone' | 'tablet';
 // Master switch for the on-screen design-knobs UI. Off = the floating button and
 // panel never render anywhere (the knob plumbing stays wired so baked values keep
 // working and it can be re-enabled in one place). Flip to true to dial layouts.
-const ENABLED: boolean = false;
+const ENABLED: boolean = true;
 
 export function DevKnobs(props: Props) {
   // Hook-free gate so the hook-laden implementation only mounts when enabled

@@ -16,6 +16,8 @@ required credit text in the app's Credits screen.
 | night.m4a (converted from .wav) | bitlab_coop | Freesound.org | CC0 (public domain) | No | https://freesound.org/s/486875/ |
 | tap.wav (button tap) | pinto0lucas | Freesound.org | CC0 (public domain) | No | https://freesound.org/s/422811/ |
 | tap-confirm.wav (button confirm) | pinto0lucas | Freesound.org | CC0 (public domain) | No | https://freesound.org/s/422812/ |
+| swoosh.mp3 (ingredient → mixer) | lesaucisson | Freesound.org | CC0 (public domain) | No | https://freesound.org/s/585257/ |
+| ding.wav (study session finished) | chennes | Freesound.org | CC0 (public domain) | No | https://freesound.org/s/376807/ |
 
 Provided attribution text (optional for CC0, kept for the record):
 
@@ -25,6 +27,9 @@ Provided attribution text (optional for CC0, kept for the record):
 > Ambience Urban Night Plaça Primavera by bitlab_coop -- https://freesound.org/s/486875/ -- License: Creative Commons 0 (used as night.m4a)
 > bubble low.wav by pinto0lucas -- https://freesound.org/s/422811/ -- License: Creative Commons 0 (used as tap.wav)
 > bubble medium.wav by pinto0lucas -- https://freesound.org/s/422812/ -- License: Creative Commons 0 (used as tap-confirm.wav)
+> swoosh-1.mp3 by lesaucisson -- https://freesound.org/s/585257/ -- License: Creative Commons 0 (used as swoosh.mp3)
+> Ding.wav by chennes -- https://freesound.org/s/376807/ -- License: Creative Commons 0 (used as ding.wav)
+> (not used yet — no file provided) MicrowaveDing by Oddworld -- https://freesound.org/s/171252/ -- License: Creative Commons 0
 
 ## License quick-reference
 

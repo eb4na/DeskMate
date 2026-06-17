@@ -175,21 +175,21 @@ export default function ShopScreen() {
   const isTablet = useIsTablet();
   // Stop any sound preview when the shop tab loses focus (tabs don't unmount).
   useFocusEffect(useCallback(() => () => stopPreview(), []));
-  const tImgWrap = isTablet && { height: 170 };
-  const tImg = isTablet && { width: 132, height: 132 };
-  const tEmoji = isTablet && { fontSize: 96, lineHeight: 110 };
-  const tName = isTablet && { fontSize: 17 };
+  const tImgWrap = isTablet && { height: 210 };
+  const tImg = isTablet && { width: 168, height: 168 };
+  const tEmoji = isTablet && { fontSize: 116, lineHeight: 130 };
+  const tName = isTablet && { fontSize: 20 };
   // Tablet: the Bakery Menu coin packs read tiny on a wide screen — scale the card,
   // pack art, names, prices and coin amounts up so coin purchases are easy to tap.
   const tMenuCard = isTablet && { paddingHorizontal: Spacing.four, paddingVertical: Spacing.three };
-  const tMenuTitle = isTablet && { fontSize: 24 };
-  const tSectionLabel = isTablet && { fontSize: 19 };
-  const tSectionSub = isTablet && { fontSize: 14 };
+  const tMenuTitle = isTablet && { fontSize: 28 };
+  const tSectionLabel = isTablet && { fontSize: 22 };
+  const tSectionSub = isTablet && { fontSize: 16 };
   const tMenuRow = isTablet && { paddingVertical: Spacing.three, gap: Spacing.three };
-  const tMenuIcon = isTablet && { width: 84, height: 84 };
-  const tMenuName = isTablet && { fontSize: 22, lineHeight: 27 };
-  const tMenuPrice = isTablet && { fontSize: 22 };
-  const tMenuCoin = isTablet && { fontSize: 18 };
+  const tMenuIcon = isTablet && { width: 100, height: 100 };
+  const tMenuName = isTablet && { fontSize: 25, lineHeight: 30 };
+  const tMenuPrice = isTablet && { fontSize: 25 };
+  const tMenuCoin = isTablet && { fontSize: 20 };
   const {
     coins,
     earnedToday,
@@ -224,7 +224,7 @@ export default function ShopScreen() {
 
   // Open straight to a category when navigated with a `category` param (e.g. from
   // a locked recipe in the Bakery Menu). Consumed once so it doesn't stick.
-  const { category: categoryParam } = useLocalSearchParams<{ category?: string }>();
+  const { category: categoryParam, buyPair: buyPairParam } = useLocalSearchParams<{ category?: string; buyPair?: string }>();
   useEffect(() => {
     if (categoryParam && CATEGORIES.includes(categoryParam as ShopCategory)) {
       setActiveCategory(categoryParam as ShopCategory);
@@ -367,6 +367,19 @@ export default function ShopScreen() {
       equipName: pair.name,
     });
   };
+
+  // Arriving with a `buyPair` param (e.g. from an outfit's chain link) opens the
+  // matched room's buy popup straight away, on the right category tab.
+  useEffect(() => {
+    if (!buyPairParam) return;
+    const item = SHOP_ITEMS.find((s) => s.id === buyPairParam);
+    if (item) {
+      setActiveCategory(item.category as ShopCategory);
+      openPairBuy(item);
+    }
+    router.setParams({ buyPair: undefined });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buyPairParam]);
 
   // Confirm the popup: buy everything it lists, then ask whether to equip it now.
   const confirmBuy = () => {

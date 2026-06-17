@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -32,7 +32,9 @@ const SETTINGS_ICONS = {
 } as const;
 
 function SettingsIcon({ name, size = 34 }: { name: keyof typeof SETTINGS_ICONS; size?: number }) {
-  return <Image source={SETTINGS_ICONS[name]} style={{ width: size, height: size }} contentFit="contain" />;
+  const { scale } = useTabletScale();
+  const px = size * scale;
+  return <Image source={SETTINGS_ICONS[name]} style={{ width: px, height: px }} contentFit="contain" />;
 }
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -40,10 +42,12 @@ import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
 import { supabase } from '@/lib/supabase';
 import { linkProvider } from '@/lib/oauth';
+import { AppleLogoIcon, GoogleGIcon } from '@/components/auth-icons';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { getAmbienceName } from '@/app/ambience-picker';
 import { LANGUAGES, useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useTabletScale } from '@/hooks/use-tablet-scale';
 
 type RowProps = {
   icon: string | ReactNode;
@@ -55,6 +59,8 @@ type RowProps = {
 };
 
 function SettingRow({ icon, label, value, onPress, badge, lock }: RowProps) {
+  const { scale, contentWidth } = useTabletScale();
+  const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   return (
     <Pressable
       disabled={!onPress}
@@ -73,7 +79,7 @@ function SettingRow({ icon, label, value, onPress, badge, lock }: RowProps) {
           </ThemedText>
         ) : null}
       </View>
-      {lock ? <LockBadge size={26} /> : null}
+      {lock ? <LockBadge size={26 * scale} /> : null}
       {badge ? (
         <ThemedView style={styles.badge}>
           <ThemedText style={styles.badgeText}>{badge}</ThemedText>
@@ -90,6 +96,8 @@ function SettingRow({ icon, label, value, onPress, badge, lock }: RowProps) {
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
+  const { scale, contentWidth } = useTabletScale();
+  const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const { user, isGuest, signOut, deleteAccount, upgradeGuestWithGoogle } = useAuth();
   const [upgrading, setUpgrading] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -250,7 +258,7 @@ export default function SettingsScreen() {
                   onPress={handleUpgrade}
                   style={({ pressed }) => [styles.row, !upgrading && pressed && styles.rowPressed]}>
                   <View style={styles.rowIconImage}>
-                    <SettingsIcon name="google" />
+                    <GoogleGIcon size={28} />
                   </View>
                   <View style={styles.rowBody}>
                     <ThemedText type="smallBold">{t('auth.continueWithGoogle')}</ThemedText>
@@ -270,7 +278,7 @@ export default function SettingsScreen() {
                 {t('auth.connectedAccounts')}
               </ThemedText>
               <ThemedView type="backgroundElement" style={styles.group}>
-                {(['google'] as const).map((provider, idx) => {
+                {(['google', 'apple'] as const).map((provider, idx) => {
                   const connected = connectedProviders.includes(provider);
                   return (
                     <View key={provider}>
@@ -280,15 +288,17 @@ export default function SettingsScreen() {
                         onPress={() => handleConnect(provider)}
                         style={({ pressed }) => [styles.row, !connected && pressed && styles.rowPressed]}>
                         <View style={styles.rowIconImage}>
-                          <SettingsIcon name={provider} />
+                          {provider === 'apple' ? <AppleLogoIcon size={30} /> : <GoogleGIcon size={28} />}
                         </View>
                         <View style={styles.rowBody}>
                           <ThemedText type="smallBold">
-                            {provider === 'google' ? t('auth.connectGoogle') : t('auth.connectApple')}
+                            {connected
+                              ? provider === 'google' ? 'Google' : 'Apple'
+                              : provider === 'google' ? t('auth.connectGoogle') : t('auth.connectApple')}
                           </ThemedText>
                         </View>
-                        <ThemedText type="small" themeColor="textSecondary">
-                          {connected ? t('auth.connected') : '＋'}
+                        <ThemedText type="small" themeColor="textSecondary" style={connected ? styles.connectedTag : undefined}>
+                          {connected ? `✓ ${t('auth.connected')}` : '＋'}
                         </ThemedText>
                       </Pressable>
                     </View>
@@ -304,7 +314,7 @@ export default function SettingsScreen() {
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
             <SettingRow
-              icon={<PlusIcon size={38} />}
+              icon={<PlusIcon size={38 * scale} />}
               label={t('settings.plus')}
               value={isPlus ? t('settings.plusActive') : t('settings.freePlan')}
               badge={isPlus ? 'PLUS' : undefined}
@@ -313,7 +323,7 @@ export default function SettingsScreen() {
             <View style={styles.divider} />
             <View style={styles.row}>
               <View style={styles.rowIconImage}>
-                <MeasuringCupIcon size={32} />
+                <MeasuringCupIcon size={32 * scale} />
               </View>
               <View style={styles.rowBody}>
                 <ThemedText type="smallBold">{t('settings.plusTestToggle')}</ThemedText>
@@ -558,78 +568,79 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   container: { flex: 1 },
   safeArea: {
-    padding: Spacing.four,
-    maxWidth: MaxContentWidth,
+    padding: Spacing.four * s,
+    maxWidth: contentWidth,
     width: '100%',
     alignSelf: 'center',
-    gap: Spacing.two,
+    gap: Spacing.two * s,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.two,
+    marginBottom: Spacing.two * s,
   },
   closeBtn: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.three * s,
+    paddingVertical: Spacing.one * s,
     borderRadius: BakeryRadii.pill,
     backgroundColor: BakeryColors.jam,
   },
   closeText: { color: BakeryColors.cocoaDark },
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 12 * s,
     letterSpacing: 0.6,
-    marginTop: Spacing.three,
-    marginBottom: Spacing.one,
-    marginLeft: Spacing.two,
+    marginTop: Spacing.three * s,
+    marginBottom: Spacing.one * s,
+    marginLeft: Spacing.two * s,
   },
   group: {
-    borderRadius: BakeryRadii.card,
+    borderRadius: BakeryRadii.card * s,
     overflow: 'hidden',
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
+    gap: Spacing.three * s,
+    paddingHorizontal: Spacing.three * s,
+    paddingVertical: Spacing.three * s,
   },
   rowPressed: { opacity: 0.7 },
-  rowIcon: { fontSize: 22, lineHeight: 28, width: 28, textAlign: 'center' },
-  rowIconImage: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  rowBody: { flex: 1, gap: 2 },
-  chevron: { fontSize: 22, lineHeight: 24 },
+  rowIcon: { fontSize: 22 * s, lineHeight: 28 * s, width: 28 * s, textAlign: 'center' },
+  rowIconImage: { width: 44 * s, height: 44 * s, alignItems: 'center', justifyContent: 'center' },
+  rowBody: { flex: 1, gap: 2 * s },
+  connectedTag: { color: '#5BA86B', fontWeight: '700' },
+  chevron: { fontSize: 22 * s, lineHeight: 24 * s },
   divider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: BakeryColors.border,
     opacity: 0.4,
-    marginLeft: Spacing.five,
+    marginLeft: Spacing.five * s,
   },
   badge: {
     backgroundColor: BakeryColors.jam,
-    borderRadius: BakeryRadii.chip,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 2,
+    borderRadius: BakeryRadii.chip * s,
+    paddingHorizontal: Spacing.two * s,
+    paddingVertical: 2 * s,
   },
-  badgeText: { fontSize: 11, fontWeight: '800', color: BakeryColors.cocoaDark },
+  badgeText: { fontSize: 11 * s, fontWeight: '800', color: BakeryColors.cocoaDark },
   dangerText: { color: BakeryColors.danger },
   // Local reset-confirm modal
   resetBackdrop: { flex: 1, backgroundColor: 'rgba(48,32,24,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24 },
   resetCard: {
-    width: '100%', maxWidth: 360, backgroundColor: BakeryColors.frosting,
-    borderRadius: BakeryRadii.panel, borderWidth: 2, borderColor: '#E8A0A0',
-    padding: Spacing.four, gap: Spacing.two, ...BakeryShadow,
+    width: '100%', maxWidth: 360 * s, backgroundColor: BakeryColors.frosting,
+    borderRadius: BakeryRadii.panel * s, borderWidth: 2, borderColor: '#E8A0A0',
+    padding: Spacing.four * s, gap: Spacing.two * s, ...BakeryShadow,
   },
-  resetTitle: { fontSize: 20, fontWeight: '900', color: '#C0392B', textAlign: 'center' },
-  resetBody: { fontSize: 13.5, color: BakeryColors.cocoaDark, lineHeight: 19, textAlign: 'center' },
-  resetBtn: { paddingVertical: 14, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: '#D0392B', marginTop: Spacing.one },
-  resetBtnText: { fontSize: 16, fontWeight: '900', color: '#fff' },
-  resetCancel: { alignItems: 'center', paddingVertical: Spacing.one },
-  resetCancelText: { fontSize: 14, fontWeight: '800', color: BakeryColors.mocha },
+  resetTitle: { fontSize: 20 * s, fontWeight: '900', color: '#C0392B', textAlign: 'center' },
+  resetBody: { fontSize: 13.5 * s, color: BakeryColors.cocoaDark, lineHeight: 19 * s, textAlign: 'center' },
+  resetBtn: { paddingVertical: 14 * s, borderRadius: BakeryRadii.button * s, alignItems: 'center', backgroundColor: '#D0392B', marginTop: Spacing.one * s },
+  resetBtnText: { fontSize: 16 * s, fontWeight: '900', color: '#fff' },
+  resetCancel: { alignItems: 'center', paddingVertical: Spacing.one * s },
+  resetCancelText: { fontSize: 14 * s, fontWeight: '800', color: BakeryColors.mocha },
   pressed: { opacity: 0.85 },
-  footer: { height: Spacing.five },
+  footer: { height: Spacing.five * s },
 });

@@ -7,7 +7,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -35,6 +35,7 @@ import {
   SHOP_COMPANIONS,
 } from '@/lib/companion-utils';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useTabletScale } from '@/hooks/use-tablet-scale';
 
 const P = {
   cream: '#FFF8EF',
@@ -57,6 +58,8 @@ function formatBirthday(iso: string): string {
 
 export default function ProfileScreen() {
   const { t } = useTranslation();
+  const { scale, contentWidth } = useTabletScale();
+  const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const {
     profileDisplayName,
     profileDescription,
@@ -165,7 +168,7 @@ export default function ProfileScreen() {
               <View style={styles.infoPanel}>
                 <View style={styles.nameRow}>
                   <Text style={styles.name} numberOfLines={2}>{name}</Text>
-                  {isPlusFrame(profileAvatarFrame) && <PlusCrown size={18} />}
+                  {isPlusFrame(profileAvatarFrame) && <PlusCrown size={18 * scale} />}
                 </View>
 
                 <View style={styles.statRow}>
@@ -329,21 +332,21 @@ export default function ProfileScreen() {
 
 const CARD_RADIUS = 24;
 
-const styles = StyleSheet.create({
+const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   container: { flex: 1 },
   safeArea: {
-    padding: Spacing.four,
-    maxWidth: MaxContentWidth,
+    padding: Spacing.four * s,
+    maxWidth: contentWidth,
     width: '100%',
     alignSelf: 'center',
-    gap: Spacing.four,
+    gap: Spacing.four * s,
   },
-  screenTitle: { fontSize: 24, fontWeight: '900', color: P.brown },
+  screenTitle: { fontSize: 24 * s, fontWeight: '900', color: P.brown },
 
   // Card
   card: {
     backgroundColor: P.card,
-    borderRadius: CARD_RADIUS,
+    borderRadius: CARD_RADIUS * s,
     borderWidth: 2,
     borderColor: P.pinkSoft,
     overflow: 'hidden',
@@ -353,11 +356,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 4,
   },
-  cardInner: { flexDirection: 'row', padding: 12, gap: 12 },
+  cardInner: { flexDirection: 'row', padding: 12 * s, gap: 12 * s },
   figurePanel: {
-    width: 132,
-    height: 188,
-    borderRadius: 18,
+    width: 132 * s,
+    height: 188 * s,
+    borderRadius: 18 * s,
     overflow: 'hidden',
     backgroundColor: P.pinkSoft,
     borderWidth: 2,
@@ -367,80 +370,80 @@ const styles = StyleSheet.create({
   },
   figureScrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,255,255,0.08)' },
   figureImg: { width: '116%', height: '92%', marginBottom: -6 },
-  infoPanel: { flex: 1, gap: 7, paddingTop: 2 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  name: { fontSize: 20, fontWeight: '900', color: P.brown, lineHeight: 24, flexShrink: 1 },
-  statRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  statEmojiFallback: { fontSize: 15, width: 16, textAlign: 'center' },
-  statIcon: { width: 20, height: 20 },
-  statLabel: { fontSize: 12.5, color: P.muted, fontWeight: '600', flex: 1 },
-  statValue: { fontSize: 13, color: P.brown, fontWeight: '800' },
-  desc: { fontSize: 12.5, color: P.cocoa, fontStyle: 'italic', lineHeight: 17, marginTop: 2 },
+  infoPanel: { flex: 1, gap: 7 * s, paddingTop: 2 * s },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 * s },
+  name: { fontSize: 20 * s, fontWeight: '900', color: P.brown, lineHeight: 24 * s, flexShrink: 1 },
+  statRow: { flexDirection: 'row', alignItems: 'center', gap: 6 * s },
+  statEmojiFallback: { fontSize: 15 * s, width: 16 * s, textAlign: 'center' },
+  statIcon: { width: 20 * s, height: 20 * s },
+  statLabel: { fontSize: 12.5 * s, color: P.muted, fontWeight: '600', flex: 1 },
+  statValue: { fontSize: 13 * s, color: P.brown, fontWeight: '800' },
+  desc: { fontSize: 12.5 * s, color: P.cocoa, fontStyle: 'italic', lineHeight: 17 * s, marginTop: 2 * s },
 
   codeStrip: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 8 * s,
     backgroundColor: P.pink,
-    paddingVertical: 9,
+    paddingVertical: 9 * s,
   },
-  codeStripLabel: { fontSize: 11, fontWeight: '800', color: '#fff', letterSpacing: 1, opacity: 0.9 },
-  codeStripValue: { fontSize: 16, fontWeight: '900', color: '#fff', letterSpacing: 3 },
+  codeStripLabel: { fontSize: 11 * s, fontWeight: '800', color: '#fff', letterSpacing: 1, opacity: 0.9 },
+  codeStripValue: { fontSize: 16 * s, fontWeight: '900', color: '#fff', letterSpacing: 3 },
 
   shareBtn: {
     backgroundColor: P.pink,
-    borderRadius: 16,
-    paddingVertical: 13,
+    borderRadius: 16 * s,
+    paddingVertical: 13 * s,
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: '#E68299',
   },
-  shareBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
+  shareBtnText: { color: '#FFFFFF', fontSize: 16 * s, fontWeight: '900' },
   saveBtn: {
     backgroundColor: P.card,
-    borderRadius: 16,
-    paddingVertical: 12,
+    borderRadius: 16 * s,
+    paddingVertical: 12 * s,
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: P.pinkSoft,
-    marginTop: 8,
+    marginTop: 8 * s,
   },
-  saveBtnText: { color: P.pink, fontSize: 15, fontWeight: '800' },
+  saveBtnText: { color: P.pink, fontSize: 15 * s, fontWeight: '800' },
 
   // Editor
-  editTitle: { fontSize: 17, fontWeight: '800', color: P.brown, marginTop: Spacing.two },
-  field: { gap: 6 },
-  fieldLabel: { fontSize: 13, fontWeight: '700', color: P.cocoa },
+  editTitle: { fontSize: 17 * s, fontWeight: '800', color: P.brown, marginTop: Spacing.two * s },
+  field: { gap: 6 * s },
+  fieldLabel: { fontSize: 13 * s, fontWeight: '700', color: P.cocoa },
   input: {
     borderWidth: 1.5,
     borderColor: P.peach,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    fontSize: 15,
+    borderRadius: 14 * s,
+    paddingHorizontal: 14 * s,
+    paddingVertical: 11 * s,
+    fontSize: 15 * s,
     color: P.brown,
     backgroundColor: P.card,
   },
-  inputMultiline: { minHeight: 64, textAlignVertical: 'top' },
+  inputMultiline: { minHeight: 64 * s, textAlignVertical: 'top' },
   addBtn: {
     borderWidth: 1.5,
     borderColor: P.peach,
     borderStyle: 'dashed',
-    borderRadius: 14,
-    paddingVertical: 11,
+    borderRadius: 14 * s,
+    paddingVertical: 11 * s,
     alignItems: 'center',
     backgroundColor: P.card,
   },
   addBtnText: { color: P.cocoa, fontWeight: '700' },
-  bgRow: { gap: 10, paddingVertical: 2 },
-  bgThumb: { width: 84, height: 60, borderRadius: 12, borderWidth: 2, borderColor: '#fff' },
+  bgRow: { gap: 10 * s, paddingVertical: 2 * s },
+  bgThumb: { width: 84 * s, height: 60 * s, borderRadius: 12 * s, borderWidth: 2, borderColor: '#fff' },
   bgThumbSelected: { borderColor: P.pink, borderWidth: 3 },
-  charItem: { alignItems: 'center', gap: 4, width: 72 },
+  charItem: { alignItems: 'center', gap: 4 * s, width: 72 * s },
   charThumbWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
+    width: 64 * s,
+    height: 64 * s,
+    borderRadius: 16 * s,
     backgroundColor: P.pinkSoft,
     borderWidth: 2,
     borderColor: '#fff',
@@ -450,18 +453,18 @@ const styles = StyleSheet.create({
   },
   charThumbSelected: { borderColor: P.pink, borderWidth: 3 },
   charThumb: { width: '132%', height: '132%', marginTop: -4 },
-  charName: { fontSize: 11, fontWeight: '700', color: P.cocoa },
-  bgHint: { fontSize: 11.5, color: P.muted, lineHeight: 16 },
+  charName: { fontSize: 11 * s, fontWeight: '700', color: P.cocoa },
+  bgHint: { fontSize: 11.5 * s, color: P.muted, lineHeight: 16 * s },
   // Frame swatches — paddingTop leaves room for the crown/ears overhang so it
   // isn't clipped by the horizontal scroller.
-  frameItem: { alignItems: 'center', gap: 4, width: 72, paddingTop: 16 },
+  frameItem: { alignItems: 'center', gap: 4 * s, width: 72 * s, paddingTop: 16 * s },
   frameCircle: {
-    width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center',
+    width: 48 * s, height: 48 * s, borderRadius: 24 * s, alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: 'transparent',
   },
   frameCircleSelected: { borderColor: P.pink },
   frameAvatarClip: {
-    width: 44, height: 44, borderRadius: 22, overflow: 'hidden',
+    width: 44 * s, height: 44 * s, borderRadius: 22 * s, overflow: 'hidden',
     backgroundColor: P.pinkSoft, alignItems: 'center', justifyContent: 'flex-start',
   },
   frameAvatarImg: { width: '132%', height: '132%', marginTop: -3 },
@@ -469,11 +472,11 @@ const styles = StyleSheet.create({
 
   doneBtn: {
     backgroundColor: '#F7A7B8',
-    borderRadius: 18,
-    paddingVertical: 14,
+    borderRadius: 18 * s,
+    paddingVertical: 14 * s,
     alignItems: 'center',
-    marginTop: Spacing.two,
+    marginTop: Spacing.two * s,
   },
-  doneBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  doneBtnText: { color: '#fff', fontSize: 16 * s, fontWeight: '800' },
   pressed: { opacity: 0.85 },
 });

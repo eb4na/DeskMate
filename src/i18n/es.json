@@ -90,7 +90,7 @@
     "or": "o",
     "continueWithGoogle": "Continuar con Google",
     "continueWithApple": "Continuar con Apple",
-    "connectedAccounts": "Cuentas conectadas",
+    "connectedAccounts": "Conectar cuentas",
     "connectGoogle": "Conectar Google",
     "connectApple": "Conectar Apple",
     "connected": "Conectado",
@@ -917,6 +917,7 @@
     "matchedMsg": "¡{{outfit}} con la sala {{room}}, todo listo!",
     "roomLockedTitle": "Sala a juego bloqueada",
     "roomLockedMsg": "Desbloquea la sala {{room}} en la Tienda para completar el look de {{outfit}}.",
+    "goToShop": "Ir a la Tienda",
     "tagline_Bun": "Torpe, pero siempre lista para ayudar.",
     "tagline_Cocoa": "Primero el trabajo, luego la diversión.",
     "tagline_Bunny": "Demasiado linda para preocuparse.",
@@ -1427,7 +1428,8 @@
     "bluePeony": "Peonía Azul",
     "berryPrincess": "Princesa Berry",
     "ivoryRose": "Rosa Marfil",
-    "strawberryDreams": "Sueños de Fresa"
+    "strawberryDreams": "Sueños de Fresa",
+    "afternoonTrain": "Tren de la Tarde"
   },
   "studyDesk": {
     "title": "Tomando un descanso",

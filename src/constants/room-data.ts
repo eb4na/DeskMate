@@ -111,6 +111,20 @@ export const ROOM_PAIRS: RoomPair[] = [
     deskImage: require('@/assets/images/desks/strawberry.png'),
     deskTint: '#F3D7CA',
   },
+  {
+    // Matched set for Tira's Afternoon Train outfit — a vintage train cabin
+    // background + navy floral floor. deskTint is the navy base color as a safety
+    // net if the desk image is slow/stale to load.
+    id: 'afternoon-train',
+    name: 'Afternoon Train',
+    backgroundId: 'bg_afternoon_train',
+    deskId: 'desk_afternoon_train',
+    backgroundImage: require('@/assets/images/backgrounds/afternoon-train.png'),
+    deskImage: require('@/assets/images/desks/afternoon-train.png'),
+    // Plain cover desk (centered): a solid navy surface. deskTint matches the
+    // surface as a load-time safety net.
+    deskTint: '#384F64',
+  },
 ];
 
 /** The pair that contains the given shop item id (background or desk), if any. */

@@ -90,7 +90,7 @@
     "or": "ou",
     "continueWithGoogle": "Continuer avec Google",
     "continueWithApple": "Continuer avec Apple",
-    "connectedAccounts": "Comptes connectés",
+    "connectedAccounts": "Connecter des comptes",
     "connectGoogle": "Connecter Google",
     "connectApple": "Connecter Apple",
     "connected": "Connecté",
@@ -917,6 +917,7 @@
     "matchedMsg": "{{outfit}} avec la salle {{room}}, c'est prêt !",
     "roomLockedTitle": "Salle assortie verrouillée",
     "roomLockedMsg": "Débloque la salle {{room}} dans la Boutique pour compléter le look de {{outfit}}.",
+    "goToShop": "Aller à la Boutique",
     "tagline_Bun": "Maladroite, mais toujours là pour aider.",
     "tagline_Cocoa": "Le travail d'abord, le plaisir après.",
     "tagline_Bunny": "Trop mignonne pour s'en faire.",
@@ -1427,7 +1428,8 @@
     "bluePeony": "Pivoine Bleue",
     "berryPrincess": "Princesse Berry",
     "ivoryRose": "Rose Ivoire",
-    "strawberryDreams": "Rêves de Fraise"
+    "strawberryDreams": "Rêves de Fraise",
+    "afternoonTrain": "Train de l'Après-midi"
   },
   "studyDesk": {
     "title": "Petite pause",
