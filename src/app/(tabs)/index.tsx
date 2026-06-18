@@ -21,7 +21,9 @@ import { CookieChatIcon } from '@/components/settings-icons';
 import { getReminderStyleEffect } from '@/constants/shop-effects';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useApp } from '@/context/app-context';
+import { nextLoginReward, todayISO, useApp } from '@/context/app-context';
+import { HomeTutorial } from '@/components/home-tutorial';
+import { setTutorialTarget } from '@/lib/tutorial-targets';
 import i18n, { useTranslation } from '@/i18n';
 import { coinsForMinutes } from '@/constants/placeholder-data';
 import { hanjiIsAnimated, resolveActiveCompanion } from '@/lib/companion-utils';
@@ -30,7 +32,6 @@ import { useAuth } from '@/context/auth-context';
 import { listBlocked, listIncomingRequests } from '@/lib/friend-requests';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { takePendingDragSession, setDragActive, type DragSessionData } from '@/lib/drag-session';
-import { connectSpotify, spotifyConfigured, spotifyConnected } from '@/lib/spotify';
 import { showLoadingScreen } from '@/lib/loading-signal';
 import { preloadStudyAssets } from '@/lib/preload-nav';
 import { getAmbienceEmoji, getAmbienceName } from '@/app/ambience-picker';
@@ -68,7 +69,7 @@ const HOME_TABLET = {
   // Character (base 300×300, layer anchored bottom:38%)
   charScale: 1.5,  // character size multiplier
   charY: -6,       // character vertical shift (− = up) — nudged down a tiny bit
-  cocoaY: 12,      // EXTRA downward shift applied only to Cocoa (+ all Cocoa skins); she sits higher than the others, so drop her more
+  cocoaY: 30,      // EXTRA downward shift applied only to Cocoa (+ all Cocoa skins); she sits higher than the others, so drop her more
   // Desk surface (marble) — height % from the bottom + texture zoom
   deskHeight: 46,
   deskZoom: 1.35,  // scales the desk image so the surface texture reads larger
@@ -87,12 +88,12 @@ const HOME_TABLET = {
   taskY: 0,        // task card vertical nudge
   // Desk ingredients (berries / eggs / butter) — shared transform + per-item spread
   ingX: 250,        // group X (− = left); nudged left
-  ingY: -194,
+  ingY: -164,
   ingScale: 1.5,
   ingSpread: 50,    // extra px pushing the outer two apart (idx 0 ← left, idx 2 → right)
   // Mixer — shared transform (preserves per-recipe base position/size)
   mixerX: -105,     // nudged left
-  mixerY: -80,
+  mixerY: -50,
   mixerScale: 1.5,  // bigger mixer
   // Start Session button
   startX: 338,     // Start centered on screen (game icon stays to its right)
@@ -271,11 +272,11 @@ const DESK_KITS: Record<string, DeskKit> = {
   },
   'matcha-crepe': {
     mixer: DESK_MIXER_MATCHA,
-    mixerStyle: { right: 6, bottom: '40%', width: 116, height: 114 },
+    mixerStyle: { right: 6, bottom: '40%', width: 148, height: 145 },
     ingredients: [
-      { id: 'matcha', src: DESK_MATCHA },
-      { id: 'milk', src: DESK_MATCHA_MILK },
-      { id: 'eggFlour', src: DESK_EGGFLOUR },
+      { id: 'matcha', src: DESK_MATCHA, style: { width: 115, height: 95 } },
+      { id: 'milk', src: DESK_MATCHA_MILK, style: { width: 105, height: 88 } },
+      { id: 'eggFlour', src: DESK_EGGFLOUR, style: { width: 105, height: 88 } },
     ],
   },
 };
@@ -419,6 +420,12 @@ export default function HomeScreen() {
     streak,
     todayStreakDay,
     isPlus,
+    streakFreezes,
+    loginRewardDate,
+    starterChosen,
+    legalAccepted,
+    tutorialSeen,
+    markTutorialSeen,
     ambienceId,
     equippedShopItems,
     examCountdowns,
@@ -439,7 +446,10 @@ export default function HomeScreen() {
     selectedFoodId,
     recordSession,
     addSubjectTime,
+    dmUnread,
   } = useApp();
+  // Any unread friend DM → a red dot on the Home friend button.
+  const hasUnreadDM = Object.values(dmUnread ?? {}).some((n) => n > 0);
   const { user } = useAuth();
 
   // Count of pending friend requests → red badge on the friend button.
@@ -510,15 +520,18 @@ export default function HomeScreen() {
     loop.start();
   }, [charBounce]);
   useEffect(() => {
-    startBounce();
+    // Only run while the idle companion is actually on screen (it unmounts during
+    // an active session). Restart whenever it reappears — the native loop doesn't
+    // survive the unmount, so without this the bounce is gone after a session.
+    if (!activeSession) startBounce();
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') startBounce();
+      if (state === 'active' && !activeSession) startBounce();
     });
     return () => {
       sub.remove();
       bounceLoopRef.current?.stop();
     };
-  }, [startBounce]);
+  }, [startBounce, activeSession]);
   const charTranslateY = charBounce.interpolate({ inputRange: [0, 1], outputRange: [0, -7] });
   const charScaleY = charBounce.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1.02] });
   const charScaleX = charBounce.interpolate({ inputRange: [0, 1], outputRange: [1.02, 0.99] });
@@ -613,12 +626,15 @@ export default function HomeScreen() {
   // anchored at the feet so it stays planted on the desk. (Hanji's scale only hits
   // her flat outfit skins; her default animated figure renders down a separate path.)
   const companionScale =
-    activeCompanion.type === 'shop' && activeCompanion.id === 'companion_cocoa' ? 1.12
+    activeCompanion.type === 'shop' && activeCompanion.id === 'companion_cocoa' ? 1.08
     : activeCompanion.type === 'shop' && activeCompanion.id === 'companion_hanji' ? 1.02
     : 1;
   // Tablet character layer. Cocoa (every Cocoa skin keeps id `companion_cocoa`)
   // sits higher in her art than the others, so drop her by an extra `cocoaY`.
   const isCocoaCompanion = activeCompanion.type === 'shop' && activeCompanion.id === 'companion_cocoa';
+  // Cocoa's art reads tall — nudge every Cocoa skin down a little on phones too
+  // (the tablet has its own cocoaY knob above).
+  const companionTranslateY = isCocoaCompanion ? 30 : 0;
   const tCharLayer =
     isTablet && { transform: [{ translateY: ht.charY + (isCocoaCompanion ? (ht.cocoaY ?? 0) : 0) }] };
   const reminderStyle = getReminderStyleEffect(equippedShopItems);
@@ -739,18 +755,8 @@ export default function HomeScreen() {
   // connect it first (so they can play their own music while studying); everyone
   // else — and anyone already connected — goes straight to the picker.
   const handleStartSession = () => {
-    if (isPlus && spotifyConfigured() && !spotifyConnected()) {
-      showPopup(t('plus.f_spotify'), t('plus.f_spotifyDesc'), [
-        { text: t('shop.notNow'), style: 'cancel', onPress: () => router.push('/session-picker') },
-        {
-          text: t('soundPicker.connectSpotify'),
-          onPress: async () => {
-            try { await connectSpotify(); } finally { router.push('/session-picker'); }
-          },
-        },
-      ]);
-      return;
-    }
+    // No Spotify prompt here — Spotify is only offered from the study-room radio
+    // while a session is in progress.
     router.push('/session-picker');
   };
 
@@ -804,7 +810,9 @@ export default function HomeScreen() {
       {
         text: t('home.breakGameBtn'),
         onPress: () => {
-          clearActiveSession();
+          // Keep the session active (don't clearActiveSession) so the break game is
+          // pushed ON TOP of the still-mounted study room. Exiting the game dismisses
+          // back to the live session instead of dropping to an ended home screen.
           router.push({
             pathname: '/break-game',
             params: {
@@ -835,7 +843,10 @@ export default function HomeScreen() {
         <View style={styles.scene}>
 
           {activeSession ? (
-            <View style={[styles.studyRoomWrap, { paddingTop: insets.top + 4, paddingBottom: insets.bottom + 8 }]}>
+            // SafeAreaView (above) already insets the bottom — only add a small gap
+            // here, never the full inset again, or the desk gets lifted off the screen
+            // edge and the room background shows through underneath it.
+            <View style={[styles.studyRoomWrap, { paddingTop: insets.top + 4, paddingBottom: 8 }]}>
               <StudyRoomView
                 secondsLeft={sessionSecondsLeft}
                 onStop={handleStopSession}
@@ -848,7 +859,7 @@ export default function HomeScreen() {
             <>
               {!dragSession && <View style={[styles.topHud, tTopHud]}>
                 <View style={styles.statusRow}>
-                  <View style={styles.streakChipWrap}>
+                  <View style={styles.streakChipWrap} ref={(n) => setTutorialTarget('streak', n)}>
                     <Animated.View style={[styles.statusChip, tChip, { transform: [{ scale: streakPop.interpolate({ inputRange: [0, 1], outputRange: [1, 1.16] }) }] }]}>
                       <Animated.View style={{ transform: [
                         { scale: streakPop.interpolate({ inputRange: [0, 1], outputRange: [1, 1.4] }) },
@@ -873,7 +884,7 @@ export default function HomeScreen() {
                     onPress={() => router.push('/coin-shop')}
                     style={({ pressed }) => pressed && styles.cardPressed}
                     accessibilityLabel={t('home.a11yAddCoins')}>
-                    <View style={[styles.statusChip, styles.coinChip, tChip]}>
+                    <View style={[styles.statusChip, styles.coinChip, tChip]} ref={(n) => setTutorialTarget('coins', n)}>
                       <CoinIcon size={26} />
                       <ThemedText type="smallBold" style={styles.coinChipText}>
                         {coins}
@@ -1029,13 +1040,15 @@ export default function HomeScreen() {
                   onPress={() => router.push('/friends')}
                   accessibilityLabel={t('home.a11yFriends')}>
                   <Image source={FRIEND_BTN} style={[styles.friendBtnImg, tFriendImg]} contentFit="contain" />
-                  {pendingRequests > 0 && (
+                  {pendingRequests > 0 ? (
                     <View style={styles.friendReqBadge} pointerEvents="none">
                       <ThemedText style={styles.friendReqBadgeText}>
                         {pendingRequests > 9 ? '9+' : pendingRequests}
                       </ThemedText>
                     </View>
-                  )}
+                  ) : hasUnreadDM ? (
+                    <View style={styles.friendDmDot} pointerEvents="none" />
+                  ) : null}
                 </Pressable>
               )}
 
@@ -1047,7 +1060,7 @@ export default function HomeScreen() {
                   ) : (
                     <RNImage
                       source={homeCompanionSource}
-                      style={[styles.homeCharacterImage, tCharImg, companionScale !== 1 && { transform: [{ scale: companionScale }], transformOrigin: 'center bottom' }]}
+                      style={[styles.homeCharacterImage, tCharImg, (companionScale !== 1 || companionTranslateY !== 0) && { transform: [{ translateY: companionTranslateY }, { scale: companionScale }], transformOrigin: 'center bottom' }]}
                       resizeMode="contain"
                     />
                   )}
@@ -1108,13 +1121,15 @@ export default function HomeScreen() {
               )}
 
               {!dragSession && <View style={[styles.startSessionPressable, { bottom: 155 }, tStart]}>
-                <SoundPressable
-                  style={({ pressed }) => [styles.startSessionInner, pressed && styles.startButtonPressed]}
-                  onPress={handleStartSession}
-                  accessibilityLabel={t('home.a11yStartSession')}>
-                  <Image source={START_SESSION_BTN} style={styles.startSessionBg} contentFit="fill" />
-                  <ThemedText style={styles.startSessionLabel}>{t('home.startSession')}</ThemedText>
-                </SoundPressable>
+                <View ref={(n) => setTutorialTarget('start', n)}>
+                  <SoundPressable
+                    style={({ pressed }) => [styles.startSessionInner, pressed && styles.startButtonPressed]}
+                    onPress={handleStartSession}
+                    accessibilityLabel={t('home.a11yStartSession')}>
+                    <Image source={START_SESSION_BTN} style={styles.startSessionBg} contentFit="fill" />
+                    <ThemedText style={styles.startSessionLabel}>{t('home.startSession')}</ThemedText>
+                  </SoundPressable>
+                </View>
                 <Pressable
                   style={({ pressed }) => [styles.settingsFloating, styles.gameFloating, pressed && styles.startButtonPressed]}
                   onPress={() => router.push({ pathname: '/break-game', params: { browse: '1' } })}
@@ -1129,6 +1144,13 @@ export default function HomeScreen() {
       <HanjiUnlockModal />
       {homeFocused && <RecipeBadgeModal />}
       {homeFocused && <DailyRewardModal />}
+      {/* First-launch coachmark tour — only after onboarding, and only once the
+          daily-reward popup is out of the way (so the two never stack). Replaying
+          it from Settings just flips tutorialSeen back off. */}
+      {homeFocused && legalAccepted && starterChosen && !tutorialSeen &&
+        !nextLoginReward({ loginRewardDate, streak, isPlus, streakFreezes }, todayISO()).available && (
+          <HomeTutorial onDone={markTutorialSeen} />
+        )}
       <DevKnobs screen="home" knobs={homeKnobs} onChange={(key, value) => setHt((p) => ({ ...p, [key]: value }))} />
     </ThemedView>
   );
@@ -1225,12 +1247,24 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
+  // Plain red dot (no count) for unread friend DMs.
+  friendDmDot: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#FF4D5E',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
   friendReqBadgeText: { color: '#FFFFFF', fontSize: 11, lineHeight: 14, fontWeight: '900' },
   gameFloating: {
     backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: -18,
+    marginLeft: 6,
   },
   gameFloatingImg: { width: 72, height: 72 },
   dragPrompt: {
@@ -1818,7 +1852,7 @@ const styles = StyleSheet.create({
   },
   startSessionPressable: {
     position: 'absolute',
-    left: 40,
+    left: 60,
     right: Spacing.two,
     zIndex: 4,
     flexDirection: 'row',
@@ -1826,8 +1860,9 @@ const styles = StyleSheet.create({
   },
   startSessionInner: {
     marginRight: 10,
-    width: 262,
-    height: 87,
+    // 232 / 66 ≈ 3.51 — matches the button image's native ratio so 'fill' doesn't squish it.
+    width: 232,
+    height: 66,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1841,14 +1876,11 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   startSessionLabel: {
-    fontSize: 21,
-    lineHeight: 25,
+    fontSize: 20,
+    lineHeight: 24,
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.4,
-    textShadowColor: '#C97A12',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
     transform: [{ translateY: -2 }],
   },
   settingsFloating: {

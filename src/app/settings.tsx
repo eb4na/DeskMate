@@ -7,6 +7,7 @@ import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DeleteAccountModal } from '@/components/delete-account-modal';
+import { InstagramFollowRow } from '@/components/instagram-follow-row';
 import { PlusIcon } from '@/components/plus-icon';
 import { LockBadge } from '@/components/lock-badge';
 import { MeasuringCupIcon } from '@/components/settings-icons';
@@ -98,12 +99,15 @@ export default function SettingsScreen() {
   const { t } = useTranslation();
   const { scale, contentWidth } = useTabletScale();
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
-  const { user, isGuest, signOut, deleteAccount, upgradeGuestWithGoogle } = useAuth();
+  const { user, isGuest, signOut, deleteAccount, upgradeGuest } = useAuth();
   const [upgrading, setUpgrading] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   // Local confirm for the test "reset to new account" — a root showPopup can't
   // render over this native-modal screen (it just looked like nothing happened).
   const [resetOpen, setResetOpen] = useState(false);
+  // Leave-guest / sign-out confirm — a LOCAL modal (not root showPopup, which can't
+  // present over the Settings native modal — the tap just looked dead).
+  const [signOutOpen, setSignOutOpen] = useState(false);
   const {
     coins,
     isPlus,
@@ -125,6 +129,7 @@ export default function SettingsScreen() {
     setIsPlus,
     resetGameData,
     devGrantBadgesExceptCroissant,
+    replayTutorial,
   } = useApp();
 
   const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
@@ -138,6 +143,8 @@ export default function SettingsScreen() {
       if (res.ok) {
         await supabase.auth.refreshSession().catch(() => {});
         showPopup(t('auth.connected'));
+      } else if (res.alreadyLinked) {
+        showPopup(t('auth.providerLinkedTitle'), t('auth.providerLinkedMsg'));
       } else if (!res.cancelled) {
         showPopup(t('auth.connectFailed'), res.error ?? '');
       }
@@ -146,46 +153,43 @@ export default function SettingsScreen() {
     }
   };
 
-  // Guest → real account: connect Google, keeping the guest's progress. On
-  // success the auth listener flips us out of guest mode automatically.
-  const handleUpgrade = async () => {
+  // Guest → real account: connect Google or Apple, keeping the guest's progress.
+  // On success the auth listener flips us out of guest mode automatically.
+  const handleUpgrade = async (provider: 'google' | 'apple') => {
     setUpgrading(true);
-    const res = await upgradeGuestWithGoogle();
+    const res = await upgradeGuest(provider);
     setUpgrading(false);
     if (res.ok) {
       showPopup(t('auth.connected'));
+    } else if (res.alreadyLinked) {
+      showPopup(t('auth.providerLinkedTitle'), t('auth.providerLinkedMsg'));
     } else if (!res.cancelled) {
       showPopup(t('auth.connectFailed'), res.error ?? '');
     }
   };
 
-  const handleSignOut = () => {
-    showPopup(
-      isGuest ? t('settings.leaveGuestQ') : t('settings.signOutQ'),
-      isGuest ? t('settings.leaveGuestMsg') : t('settings.signOutMsg'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: isGuest ? t('settings.leaveGuestMode') : t('settings.signOut'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await signOut();
-              router.replace('/login');
-            } catch (error) {
-              showPopup(t('settings.signOutFailed'), error instanceof Error ? error.message : t('settings.tryAgain'));
-            }
-          },
-        },
-      ],
-    );
+  const handleSignOut = () => setSignOutOpen(true);
+
+  const doSignOut = async () => {
+    setSignOutOpen(false);
+    try {
+      await signOut();
+    } catch {
+      // signOut failures are rare (guest leave is purely local) and a root popup
+      // can't present over this modal anyway — swallow so the leave still proceeds.
+    }
+    // Auth state flips to unauthed → the root guard routes to /login; close the
+    // Settings modal if it's still mounted so login isn't stuck behind it.
+    if (router.canDismiss()) router.dismissAll();
   };
 
   const handleDeleteConfirm = async () => {
     try {
       await deleteAccount();
       setDeleteOpen(false);
-      router.replace('/login');
+      // Auth flips to unauthed → root guard routes to /login. Dismiss the Settings
+      // native modal so login isn't stuck behind it (router.replace can't escape it).
+      if (router.canDismiss()) router.dismissAll();
     } catch (error) {
       setDeleteOpen(false);
       showPopup(
@@ -231,19 +235,6 @@ export default function SettingsScreen() {
                 </ThemedText>
               </View>
             </Pressable>
-            <View style={styles.divider} />
-            <Pressable
-              onPress={() => setDeleteOpen(true)}
-              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
-              <View style={styles.rowIconImage}>
-                <SettingsIcon name="reset" />
-              </View>
-              <View style={styles.rowBody}>
-                <ThemedText type="smallBold" style={styles.dangerText}>
-                  {t('settings.deleteAccount', { defaultValue: 'Delete account' })}
-                </ThemedText>
-              </View>
-            </Pressable>
           </ThemedView>
 
           {/* Guests: create a real account (keeps progress, unlocks friends) */}
@@ -255,13 +246,28 @@ export default function SettingsScreen() {
               <ThemedView type="backgroundElement" style={styles.group}>
                 <Pressable
                   disabled={upgrading}
-                  onPress={handleUpgrade}
+                  onPress={() => handleUpgrade('google')}
                   style={({ pressed }) => [styles.row, !upgrading && pressed && styles.rowPressed]}>
                   <View style={styles.rowIconImage}>
                     <GoogleGIcon size={28} />
                   </View>
                   <View style={styles.rowBody}>
                     <ThemedText type="smallBold">{t('auth.continueWithGoogle')}</ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {t('auth.createAccountNote')}
+                    </ThemedText>
+                  </View>
+                </Pressable>
+                <View style={styles.divider} />
+                <Pressable
+                  disabled={upgrading}
+                  onPress={() => handleUpgrade('apple')}
+                  style={({ pressed }) => [styles.row, !upgrading && pressed && styles.rowPressed]}>
+                  <View style={styles.rowIconImage}>
+                    <AppleLogoIcon size={26} />
+                  </View>
+                  <View style={styles.rowBody}>
+                    <ThemedText type="smallBold">{t('auth.continueWithApple')}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
                       {t('auth.createAccountNote')}
                     </ThemedText>
@@ -320,6 +326,11 @@ export default function SettingsScreen() {
               badge={isPlus ? 'PLUS' : undefined}
               onPress={() => router.push('/plus-upgrade')}
             />
+            {/* DEV-ONLY test affordances. Gated behind __DEV__ so release builds
+                (TestFlight / App Store) can't grant Plus, coins, or badges for free —
+                that would defeat the real IAP flow. They stay available in Expo/dev. */}
+            {__DEV__ && (
+            <>
             <View style={styles.divider} />
             <View style={styles.row}>
               <View style={styles.rowIconImage}>
@@ -357,7 +368,7 @@ export default function SettingsScreen() {
               onPress={() =>
                 showPopup(
                   'Grant badges except croissant?',
-                  'TEST: gives you every recipe badge except the Berry Croissant, plus all recipe items. Bake the croissant to test the all-badges → Hanji unlock.',
+                  'TEST: grants all 5 badges + recipe items, then immediately fires the badge popup → Hanji unlock flow.',
                   [
                     { text: 'Cancel', style: 'cancel' },
                     { text: 'Grant', onPress: devGrantBadgesExceptCroissant },
@@ -370,9 +381,11 @@ export default function SettingsScreen() {
               </View>
               <View style={styles.rowBody}>
                 <ThemedText type="smallBold">All badges except croissant</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">Test button — leaves the croissant to bake</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">Test button — fires badge popup → Hanji unlock immediately</ThemedText>
               </View>
             </Pressable>
+            </>
+            )}
           </ThemedView>
 
           {/* Balances */}
@@ -483,6 +496,8 @@ export default function SettingsScreen() {
             {t('settings.secAbout')}
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
+            <InstagramFollowRow />
+            <View style={styles.divider} />
             <SettingRow
               icon={<SettingsIcon name="language" />}
               label={t('settings.language')}
@@ -491,6 +506,13 @@ export default function SettingsScreen() {
                 return lang ? `${lang.flag} ${lang.native}` : 'English';
               })()}
               onPress={() => router.push('/language-picker')}
+            />
+            <View style={styles.divider} />
+            <SettingRow
+              icon={<SettingsIcon name="reset" />}
+              label={t('tutorial.replay')}
+              value={t('tutorial.replayNote')}
+              onPress={() => { replayTutorial(); router.back(); }}
             />
             <View style={styles.divider} />
             <SettingRow
@@ -529,6 +551,22 @@ export default function SettingsScreen() {
             <SettingRow icon={<SettingsIcon name="info" />} label={t('settings.version')} value={t('settings.versionValue')} />
           </ThemedView>
 
+          {/* Delete account — pinned to the very bottom of Settings (danger zone). */}
+          <ThemedView type="backgroundElement" style={styles.group}>
+            <Pressable
+              onPress={() => setDeleteOpen(true)}
+              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
+              <View style={styles.rowIconImage}>
+                <SettingsIcon name="reset" />
+              </View>
+              <View style={styles.rowBody}>
+                <ThemedText type="smallBold" style={styles.dangerText}>
+                  {t('settings.deleteAccount', { defaultValue: 'Delete account' })}
+                </ThemedText>
+              </View>
+            </Pressable>
+          </ThemedView>
+
           <View style={styles.footer} />
         </SafeAreaView>
       </ScrollView>
@@ -538,6 +576,22 @@ export default function SettingsScreen() {
         onConfirm={handleDeleteConfirm}
         onClose={() => setDeleteOpen(false)}
       />
+
+      {/* Leave-guest / sign-out confirm — local modal so it shows over Settings. */}
+      <Modal visible={signOutOpen} transparent animationType="fade" onRequestClose={() => setSignOutOpen(false)}>
+        <View style={styles.resetBackdrop}>
+          <View style={styles.resetCard}>
+            <ThemedText style={styles.resetTitle}>{isGuest ? t('settings.leaveGuestQ') : t('settings.signOutQ')}</ThemedText>
+            <ThemedText style={styles.resetBody}>{isGuest ? t('settings.leaveGuestMsg') : t('settings.signOutMsg')}</ThemedText>
+            <Pressable style={({ pressed }) => [styles.resetBtn, pressed && styles.pressed]} onPress={doSignOut}>
+              <ThemedText style={styles.resetBtnText}>{isGuest ? t('settings.leaveGuestMode') : t('settings.signOut')}</ThemedText>
+            </Pressable>
+            <Pressable style={styles.resetCancel} onPress={() => setSignOutOpen(false)}>
+              <ThemedText style={styles.resetCancelText}>{t('common.cancel')}</ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       {/* TEST reset confirm — local modal so it shows over the Settings modal. */}
       <Modal visible={resetOpen} transparent animationType="fade" onRequestClose={() => setResetOpen(false)}>

@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Svg, { Line } from 'react-native-svg';
-import { Animated, AppState, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, AppState, Easing, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { cancelComeBackNudge, sendComeBackNudge } from '@/lib/notifications';
 
@@ -127,6 +127,7 @@ export function StudyRoomView({
   // bottom buttons. Sizes only (no transforms) so the character's bounce animation
   // isn't disturbed.
   const isTablet = useIsTablet();
+  const { height: winH } = useWindowDimensions();
   // Tablet-only live position tweaks; `tw('desk')` is a transform (identity until
   // dialed + baked). Phone is unaffected.
   const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('studysession', TABLET_ELEMENTS);
@@ -520,7 +521,7 @@ export function StudyRoomView({
       )}
 
       {/* Timer card */}
-      <View ref={timerCardRef} onLayout={measureRopes} style={[styles.timerWrap, isSolo && styles.timerWrapSolo, isTablet && { width: isSolo ? '46%' : '38%' }]}>
+      <View ref={timerCardRef} onLayout={measureRopes} style={[styles.timerWrap, isSolo && styles.timerWrapSolo, isTablet && { width: isSolo ? '62%' : '48%' }]}>
         {/* Ropes from the real top of the screen down to the sign's eyelets. Rendered
             behind StudyOven so the sign body + eyelet circles cover the rope ends. */}
         {ropes && (
@@ -537,8 +538,8 @@ export function StudyRoomView({
         )}
         <StudyOven style={StyleSheet.absoluteFill} />
         <View style={styles.timerText}>
-          <Text style={[styles.nowBaking, isSolo && styles.nowBakingSolo]}>{t('studyRoom.nowBaking')}</Text>
-          <Text style={[styles.timer, isSolo && styles.timerSolo]}>{format(displaySecs)}</Text>
+          <Text style={[styles.nowBaking, isSolo && styles.nowBakingSolo, isTablet && styles.nowBakingTablet]}>{t('studyRoom.nowBaking')}</Text>
+          <Text style={[styles.timer, isSolo && styles.timerSolo, isTablet && styles.timerTablet]}>{format(displaySecs)}</Text>
           {!isSolo && (
             <View style={styles.studyingRow}>
               <Image source={PPL_ICON} style={styles.pplIcon} contentFit="contain" />
@@ -643,7 +644,7 @@ export function StudyRoomView({
       {/* Desk surface — a full-width layer along the bottom. The character sits
           behind it; the book, controls and end-session button lie ON it. */}
       <Image source={equippedDeskImage} style={[styles.studyDesk, isTablet && styles.studyDeskTablet, deskRoom?.deskTint ? { backgroundColor: deskRoom.deskTint } : null, tw('desk')]} contentFit={deskRoom?.deskFit ?? 'cover'} pointerEvents="none" />
-      <View style={[styles.deskEdge, isTablet && { bottom: 380 }]} pointerEvents="none" />
+      <View style={[styles.deskEdge, isTablet && { bottom: winH * 0.43 - 100 }]} pointerEvents="none" />
       {soloScene ? (
         <View
           style={[
@@ -796,6 +797,9 @@ const styles = StyleSheet.create({
   nowBakingSolo: { fontSize: 13 },
   timer: { fontSize: 32, fontWeight: '900', color: BakeryColors.cocoaDark, letterSpacing: 1 },
   timerSolo: { fontSize: 56 },
+  // Tablet: bigger timer to fill the wider sign.
+  timerTablet: { fontSize: 84 },
+  nowBakingTablet: { fontSize: 18, marginBottom: 4 },
   bakeLabel: { fontSize: 11, fontWeight: '700', color: BakeryColors.mocha, marginTop: 1 },
   studyingRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 },
   pplIcon: { width: 13, height: 13 },
@@ -817,7 +821,7 @@ const styles = StyleSheet.create({
   // Solo: match the Home-screen companion size (300×300) so it feels prominent.
   characterSolo: { width: 300, height: 300, marginBottom: 40 },
   // Tablet: much bigger character, lifted more so it still sits on the desk.
-  characterSoloTablet: { width: 450, height: 450, marginBottom: 90 },
+  characterSoloTablet: { width: 450, height: 450, marginBottom: 140 },
   // Multiplayer party — characters evenly spaced (equal gaps incl. the ends),
   // lifted up so heads clear the desk edge (240) and tuck behind the table.
   partyLayer: {
@@ -839,16 +843,17 @@ const styles = StyleSheet.create({
   // (lifted up via characterSolo.marginBottom) and the book/buttons sit on top.
   // Desk surface layer along the bottom (behind character, under book/controls).
   studyDesk: { position: 'absolute', left: -Spacing.three, right: -Spacing.three, bottom: -60, height: 300, zIndex: 1 },
-  // Tablet: taller desk surface to match the bigger character/book. Nudged down a
-  // touch (bottom -80 → -92) so the desk tucks just under the thin desk-edge line.
-  studyDeskTablet: { height: 460, bottom: -92 },
+  // Tablet: taller desk surface that rises higher so the flat desk meets the room's
+  // own desk/furniture line instead of cutting across it on the sides. (Dial via the
+  // 🎛 desk knob in a live session if the seam needs nudging per room.)
+  studyDeskTablet: { height: '50%', left: -60, right: -60, bottom: -100 },
   deskEdge: { position: 'absolute', left: -Spacing.three, right: -Spacing.three, bottom: 240, height: 1.5, backgroundColor: 'rgba(120, 90, 70, 0.22)', zIndex: 1 },
   // Base position spans root's padded content box (same axis as the character
   // canvas) for a geometric center; a per-character transform (SOLO_BOOK_OFFSET)
   // then nudges it to sit right in front of each companion's visual center.
   bookOnDesk: { position: 'absolute', bottom: 150, left: 0, right: 0, alignItems: 'center', zIndex: 2 },
-  // Tablet: book sits higher, in front of the bigger/lifted character.
-  bookOnDeskTablet: { bottom: 250 },
+  // Tablet: book sits in front of the bigger/lifted character (lowered a bit).
+  bookOnDeskTablet: { bottom: 205 },
   breakBadge: { position: 'absolute', top: 6, zIndex: 4, backgroundColor: 'rgba(78,53,40,0.85)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
   breakBadgeText: { color: '#fff', fontSize: 12, fontWeight: '800' },
 

@@ -5,7 +5,7 @@ import { SHOP_ITEMS, type ShopCategory } from '@/constants/shop-data';
 import { dailyRewardCoins } from '@/constants/login-rewards';
 import { useAuth } from '@/context/auth-context';
 import { getAppStateScope, loadScopedAppState, saveScopedAppState, isGuestUpgradePending, clearGuestUpgradePending, loadGuestState } from '@/lib/app-state-repository';
-import { probeCloudState, pushCloudStateDebounced } from '@/lib/cloud-sync';
+import { probeCloudState, pushCloudState, pushCloudStateDebounced } from '@/lib/cloud-sync';
 import { getEffectiveBunSkinId, getEffectiveCompanionSkins } from '@/lib/companion-utils';
 import { maskProfanity } from '@/lib/profanity';
 import { computeTaskRollover } from '@/lib/task-recurrence';
@@ -118,6 +118,7 @@ export type Friend = {
   longestStreak?: number;
   totalMinutes?: number;
   avatarFrame?: string;
+  cardColor?: string;
 };
 
 // Short, shareable friend code. A–Z + 2–9, with ambiguous chars (I/O/0/1) removed.
@@ -263,6 +264,7 @@ type PersistedState = {
   profileDescription: string;
   profileBirthday: string; // YYYY-MM-DD or ''
   profileBackgroundId: string; // room id used as the card backdrop
+  profileCardColor: string; // pastel key for the card outline + friend-code strip (Plus)
   profileCompanionId: string; // chosen character for the card ('' = use active)
   profileSkinId: string; // chosen outfit/skin for that character
   profileAvatarFrame: string; // 'gold' while Plus (auto gold crown frame), else 'none'
@@ -278,6 +280,10 @@ type PersistedState = {
 
   // Legal: whether the user accepted the Privacy Policy + Terms of Service.
   legalAccepted: boolean;
+  // Whether the first-launch home tutorial (coachmark tour) has been shown.
+  tutorialSeen: boolean;
+  // Whether the user tapped the "Follow on Instagram" reward (one-time +100 coins).
+  instagramFollowClaimed: boolean;
   // Date of birth (ISO YYYY-MM-DD) captured at the consent gate for age check.
   birthday: string | null;
 
@@ -374,6 +380,7 @@ const DEFAULTS: PersistedState = {
   profileDescription: '',
   profileBirthday: '',
   profileBackgroundId: 'cozy',
+  profileCardColor: 'pink',
   profileCompanionId: '',
   profileSkinId: 'classic',
   profileAvatarFrame: 'none',
@@ -383,6 +390,8 @@ const DEFAULTS: PersistedState = {
   language: 'en',
   languageSelected: false,
   legalAccepted: false,
+  tutorialSeen: false,
+  instagramFollowClaimed: false,
   birthday: null,
   timezone: '',
 };
@@ -440,7 +449,10 @@ function yesterdayISO(): string {
 }
 
 const MAX_COMPANION_SLOTS = 3;
-const FREE_EXAM_LIMIT = 2;
+// Free tier: up to 3 future exam countdowns; past-due ones auto-erase (below) so
+// the cap always means "3 upcoming". Plus gets a high cap (effectively unlimited)
+// and keeps past-due countdowns. Exported so the UI gates read from one source.
+export const FREE_EXAM_LIMIT = 3;
 // Plus users get a high exam cap rather than truly unlimited (mirrors subjects).
 const MAX_EXAMS_PLUS = 50;
 // Total tasks a user can keep at once.
@@ -483,6 +495,21 @@ function nextStreakState(
   return { changed: true, next: 1, isComeback: true, useFreeze: false };
 }
 
+// True when a lapsed streak can STILL be rescued by a freeze: Plus, has ≥1 freeze,
+// and the gap since last activity is within the 2–4 day freeze window (mirrors the
+// session-complete rescue gate). The login reward + home streak display consult this
+// so neither shows nor commits a reset for a streak the freeze prompt can still save
+// — without it, claiming the daily reward before studying silently wastes the freeze.
+export function streakRescueAvailable(
+  s: { isPlus: boolean; streakFreezes: number; streak: StreakData },
+  today: string,
+): boolean {
+  const last = s.streak.lastStudyDate;
+  if (!last || !s.isPlus || s.streakFreezes <= 0) return false;
+  const gap = daysBetween(last, today);
+  return gap >= 2 && gap <= 4;
+}
+
 // Pure daily-login-reward transition. Single source of truth shared by the popup
 // (to preview today's reward) and claimLoginReward (to commit it) so the displayed
 // day/coins can never drift from what gets awarded. `available` is false once the
@@ -494,10 +521,13 @@ function nextStreakState(
 // `available` is false once it has already been claimed today.
 export type LoginReward = { available: boolean; day: number; coins: number };
 export function nextLoginReward(
-  s: { loginRewardDate: string; streak: StreakData },
+  s: { loginRewardDate: string; streak: StreakData; isPlus: boolean; streakFreezes: number },
   today: string,
 ): LoginReward {
-  const day = nextStreakState(s.streak, today).next;
+  // When a freeze could still rescue the streak, claiming the login reward must NOT
+  // reset it — preview (and later award) the preserved current streak day instead of
+  // the day-1 projection, leaving the rescue decision to the study-session flow.
+  const day = streakRescueAvailable(s, today) ? s.streak.currentStreak : nextStreakState(s.streak, today).next;
   return { available: s.loginRewardDate !== today, day, coins: dailyRewardCoins(day) };
 }
 
@@ -607,6 +637,9 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
   // Brand-new accounts/guests (legalAccepted not yet true) get starterChosen=false
   // so the picker runs once after consent.
   if (merged.starterChosen === undefined) merged.starterChosen = !!merged.legalAccepted;
+  // Existing users (already past the legal gate) shouldn't suddenly get the new
+  // first-launch tutorial; only brand-new accounts see it after onboarding.
+  if (merged.tutorialSeen === undefined) merged.tutorialSeen = !!merged.legalAccepted;
   if (!merged.starterCompanionId) merged.starterCompanionId = 'starter:girl';
 
   // Give every user a stable friend code the first time.
@@ -685,6 +718,8 @@ type AppContextType = {
   language: string;
   languageSelected: boolean;
   legalAccepted: boolean;
+  tutorialSeen: boolean;
+  instagramFollowClaimed: boolean;
   birthday: string | null;
   selectedFoodId: string;
   madeFoods: string[];
@@ -695,6 +730,17 @@ type AppContextType = {
   clearHanjiUnlock: () => void;
   recipeBadgePending: string | null;
   clearRecipeBadge: () => void;
+  // Shop SKU of a just-obtained companion → drives the one-shot "character
+  // obtained" celebration. Transient (not persisted); cleared on dismiss.
+  characterObtainedPending: string | null;
+  clearCharacterObtained: () => void;
+  // True once this account's saved state has been *reliably* loaded (local/cloud) —
+  // distinct from `loaded`, which also flips true when a load fails and saving is
+  // paused. Guards the abandoned-onboarding reset from acting on default fallbacks.
+  persistedStateReady: boolean;
+  // Onboarding bail-out: wipe the half-finished account (local + cloud) back to a
+  // fresh state so a later re-login restarts onboarding from scratch.
+  resetAccountForAbandonedOnboarding: () => Promise<void>;
   resetGameData: () => void;
   devGrantBadgesExceptCroissant: () => void;
   dayNotes: Record<string, string>;
@@ -713,6 +759,7 @@ type AppContextType = {
   profileDescription: string;
   profileBirthday: string;
   profileBackgroundId: string;
+  profileCardColor: string;
   profileCompanionId: string;
   profileSkinId: string;
   profileAvatarFrame: string;
@@ -721,6 +768,7 @@ type AppContextType = {
     description: string;
     birthday: string;
     backgroundId: string;
+    cardColor: string;
     companionId: string;
     skinId: string;
     avatarFrame: string;
@@ -733,6 +781,9 @@ type AppContextType = {
   setLanguage: (lang: string) => void;
   markLanguageSelected: () => void;
   markLegalAccepted: () => void;
+  markTutorialSeen: () => void;
+  replayTutorial: () => void;
+  claimInstagramFollow: () => void;
   setBirthday: (iso: string) => void;
 
   // Wave 1 actions
@@ -742,6 +793,7 @@ type AppContextType = {
   addMoodEntry: (entry: Omit<MoodEntry, 'id'>) => void;
   addExam: (exam: Omit<ExamCountdown, 'id'>) => string | null;
   removeExam: (id: string) => void;
+  updateExam: (id: string, patch: Partial<Omit<ExamCountdown, 'id'>>) => void;
   setReminder: (enabled: boolean, time: string) => void;
   setUse24HourTime: (value: boolean) => void;
   setSoundEffectsEnabled: (value: boolean) => void;
@@ -793,7 +845,7 @@ type AppContextType = {
   equipShopItem: (itemId: string) => boolean;
 
   // Wave 4 actions
-  setIsPlus: (value: boolean, plan?: 'monthly' | 'annual') => void;
+  setIsPlus: (value: boolean, plan?: 'monthly' | 'annual', untilOverride?: string) => void;
   useStreakFreeze: () => boolean;
   saveTimerPreset: (preset: Omit<TimerPreset, 'id'>) => void;
   deleteTimerPreset: (id: string) => void;
@@ -842,6 +894,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Recipe id whose badge was just earned — drives the transient home progress
   // popup. In-memory only (auto-dismisses after a few seconds).
   const [recipeBadgePending, setRecipeBadgePending] = useState<string | null>(null);
+  const [characterObtainedPending, setCharacterObtainedPending] = useState<string | null>(null);
   // Key the persistence scope on the *stable* identity (user id, or guest) — NOT
   // the session object. Supabase (autoRefreshToken) hands back a brand-new session
   // object on every token refresh; memoizing on the object would re-run the loader
@@ -991,6 +1044,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         skinId,
         backgroundId: s.profileBackgroundId,
         avatarFrame: s.profileAvatarFrame,
+        cardColor: s.profileCardColor,
         currentStreak: s.streak.currentStreak,
         longestStreak: s.streak.longestStreak,
         totalMinutes: s.totalMinutes,
@@ -1000,7 +1054,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [
     loaded, session?.user.id, s.friendCode,
     s.profileDisplayName, s.profileDescription, s.profileBirthday, s.profileBackgroundId,
-    s.profileAvatarFrame,
+    s.profileAvatarFrame, s.profileCardColor,
     s.profileCompanionId, s.profileSkinId, s.activeCompanionId, s.bunSkinId, s.companionSkins,
     s.streak.currentStreak, s.streak.longestStreak, s.totalMinutes,
   ]);
@@ -1033,17 +1087,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // the `lastStudyDate` gate with study sessions so the two can't both bump it.
       const r = nextStreakState(prev.streak, today);
       const countedToday = prev.streak.lastStudyDate === today;
-      const streak = countedToday
+      // But if the streak is still rescuable by a freeze, DON'T let the login reward
+      // reset it — leave it untouched so the session-complete freeze prompt can save
+      // it. Pay out the preserved streak day; the streak isn't advanced today.
+      const rescuePending = streakRescueAvailable(prev, today);
+      const streak = countedToday || rescuePending
         ? prev.streak
         : {
             currentStreak: r.next,
             longestStreak: Math.max(prev.streak.longestStreak, r.next),
             lastStudyDate: today,
           };
+      const day = rescuePending ? prev.streak.currentStreak : r.next;
       return {
         ...prev,
         streak,
-        coins: prev.coins + dailyRewardCoins(r.next),
+        coins: prev.coins + dailyRewardCoins(day),
         loginRewardDate: today,
       };
     });
@@ -1083,6 +1142,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       examCountdowns: prev.examCountdowns.filter((e) => e.id !== id),
     }));
 
+  // Edit an existing countdown in place (no cap check — count is unchanged).
+  const updateExam = (id: string, patch: Partial<Omit<ExamCountdown, 'id'>>) =>
+    setS((prev) => ({
+      ...prev,
+      examCountdowns: prev.examCountdowns.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+    }));
+
   const setReminder = (enabled: boolean, time: string) =>
     setS((prev) => ({ ...prev, reminderEnabled: enabled, reminderTime: time }));
 
@@ -1099,6 +1165,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     description: string;
     birthday: string;
     backgroundId: string;
+    cardColor: string;
     companionId: string;
     skinId: string;
     avatarFrame: string;
@@ -1109,6 +1176,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...(patch.description !== undefined ? { profileDescription: maskProfanity(patch.description) } : {}),
       ...(patch.birthday !== undefined ? { profileBirthday: patch.birthday } : {}),
       ...(patch.backgroundId !== undefined ? { profileBackgroundId: patch.backgroundId } : {}),
+      ...(patch.cardColor !== undefined ? { profileCardColor: patch.cardColor } : {}),
       ...(patch.companionId !== undefined ? { profileCompanionId: patch.companionId } : {}),
       ...(patch.skinId !== undefined ? { profileSkinId: patch.skinId } : {}),
       ...(patch.avatarFrame !== undefined ? { profileAvatarFrame: patch.avatarFrame } : {}),
@@ -1360,7 +1428,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ─── Wave 4 actions ───────────────────────────────────────────────────────
 
-  const setIsPlus = (value: boolean, plan: 'monthly' | 'annual' = 'monthly') => {
+  const setIsPlus = (value: boolean, plan: 'monthly' | 'annual' = 'monthly', untilOverride?: string) => {
     const month = new Date().toISOString().slice(0, 7);
     setS((prev) => {
       const updates: Partial<PersistedState> = { isPlus: value };
@@ -1368,12 +1436,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Plus lapses. Not equippable — it just mirrors Plus status.
       updates.profileAvatarFrame = value ? 'gold' : 'none';
       if (value) {
-        // Set the billing period + expiry: monthly lapses in a month, annual in a year.
-        const until = new Date();
-        if (plan === 'annual') until.setFullYear(until.getFullYear() + 1);
-        else until.setMonth(until.getMonth() + 1);
+        // Expiry: prefer the real RevenueCat entitlement expiry (untilOverride) so
+        // local state matches what the user actually paid for; otherwise fall back to
+        // monthly = +1 month, annual = +1 year.
+        let until: string;
+        if (untilOverride) {
+          until = untilOverride;
+        } else {
+          const d = new Date();
+          if (plan === 'annual') d.setFullYear(d.getFullYear() + 1);
+          else d.setMonth(d.getMonth() + 1);
+          until = d.toISOString();
+        }
         updates.plusPlan = plan;
-        updates.plusUntil = until.toISOString();
+        updates.plusUntil = until;
       } else {
         updates.plusPlan = null;
         updates.plusUntil = '';
@@ -1480,20 +1556,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // like any bought companion — `setActiveCompanion` and the shop both gate on
   // ownedShopItems), record it as the free starter, set it active, and close the
   // picker. Bun keeps its `starter:girl` active id; the others use `shop:<sku>`.
-  const chooseStarter = (activeId: ActiveCompanionId) =>
-    setS((prev) => {
-      const shopItemId = activeId === 'starter:girl' ? 'companion_bun' : activeId.slice(5);
-      return {
-        ...prev,
-        starterCompanionId: activeId,
-        starterChosen: true,
-        activeCompanionId: activeId,
-        defaultCompanionId: 'girl',
-        ownedShopItems: prev.ownedShopItems.includes(shopItemId)
-          ? prev.ownedShopItems
-          : [...prev.ownedShopItems, shopItemId],
-      };
-    });
+  const chooseStarter = (activeId: ActiveCompanionId) => {
+    const shopItemId = activeId === 'starter:girl' ? 'companion_bun' : activeId.slice(5);
+    setS((prev) => ({
+      ...prev,
+      starterCompanionId: activeId,
+      starterChosen: true,
+      activeCompanionId: activeId,
+      defaultCompanionId: 'girl',
+      ownedShopItems: prev.ownedShopItems.includes(shopItemId)
+        ? prev.ownedShopItems
+        : [...prev.ownedShopItems, shopItemId],
+    }));
+    // Celebrate the first companion the same way as a shop purchase.
+    setCharacterObtainedPending(shopItemId);
+  };
 
   const saveCompanionSlot = (slot: Omit<CompanionSlot, 'id'>): string | null => {
     const slotId = uid();
@@ -1641,6 +1718,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const clearHanjiUnlock = () => setS((prev) => ({ ...prev, hanjiUnlockPending: false }));
   const clearRecipeBadge = () => setRecipeBadgePending(null);
+  const clearCharacterObtained = () => setCharacterObtainedPending(null);
 
   // TEST/PLACEHOLDER: wipe everything back to a brand-new-account state so the
   // first-launch onboarding can be re-tested — clears consent (legal docs +
@@ -1661,21 +1739,56 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  // Only the saved state is reliable once the loaded scope key matches the active
+  // scope (the same gate the save effect uses); on a failed load it stays unset.
+  const persistedStateReady = loaded && loadedScopeKey === appStateScope.storageKey;
+
+  // Called when the player quits mid-onboarding (privacy / birthday / buddy picker)
+  // and relaunches: overwrite this account's saved state — local AND cloud — back to
+  // a brand-new state so re-logging in starts the whole onboarding flow over. The
+  // caller signs out afterwards, which drops them on the login screen.
+  const resetAccountForAbandonedOnboarding = async () => {
+    const fresh: PersistedState = {
+      ...DEFAULTS,
+      // Keep only the device's chosen language so the UI doesn't flip locales.
+      language: s.language,
+      languageSelected: s.languageSelected,
+    };
+    const stamped = { ...fresh, updatedAt: Date.now() } as Record<string, unknown>;
+    // Overwrite the SAVED copies only — don't mutate the live in-memory state. The
+    // caller signs out immediately after, which swaps the scope and reloads fresh;
+    // resetting `s` here would only flash the onboarding gate before login appears.
+    try {
+      await saveScopedAppState(appStateScope, stamped);
+    } catch {}
+    if (appStateScope.kind === 'user') {
+      try {
+        await pushCloudState(appStateScope.userId, stamped);
+      } catch {}
+    }
+  };
+
   // TEST: grant every recipe badge except the croissant, plus all recipe shop
   // items, so the final "bake the last recipe → unlock Hanji" flow can be tested
   // by baking just the croissant.
   const devGrantBadgesExceptCroissant = () => {
+    // Step 1: set 4/5 badges + all recipe shop items + strip Hanji so the unlock
+    // can fire fresh. Step 2: immediately simulate baking the croissant so the
+    // badge popup → Hanji popup flow triggers without needing a real session.
+    const recipeItemIds = SHOP_ITEMS.filter((i) => i.category === 'recipe').map((i) => i.id);
+    const allMade = [...RECIPE_IDS]; // all 5 including croissant
+    const allBadges = badgesFromMadeFoods(allMade);
     setS((prev) => {
-      const made = RECIPE_IDS.filter((id) => id !== 'berry-croissant');
-      const recipeItemIds = SHOP_ITEMS.filter((i) => i.category === 'recipe').map((i) => i.id);
-      const ownedShopItems = Array.from(new Set([...prev.ownedShopItems, ...recipeItemIds]));
+      const ownedShopItems = Array.from(new Set([...prev.ownedShopItems, ...recipeItemIds, HANJI_COMPANION_ID]));
       return {
         ...prev,
-        madeFoods: made,
-        bakedWith: badgesFromMadeFoods(made),
+        madeFoods: allMade,
+        bakedWith: allBadges,
         ownedShopItems,
+        hanjiUnlockPending: true,
       };
     });
+    setRecipeBadgePending('berry-croissant');
   };
 
   const setDayNote = (date: string, note: string) =>
@@ -1749,6 +1862,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const markLegalAccepted = () =>
     setS((prev) => ({ ...prev, legalAccepted: true }));
 
+  const markTutorialSeen = () =>
+    setS((prev) => ({ ...prev, tutorialSeen: true }));
+
+  // Re-arm the first-launch tutorial (used by the "Replay tutorial" Settings row);
+  // the home screen shows it again on next focus while tutorialSeen is false.
+  const replayTutorial = () =>
+    setS((prev) => ({ ...prev, tutorialSeen: false }));
+
+  // One-time +100 coins for tapping the Instagram follow button. Granted directly
+  // (bypasses the daily earn cap, like the login reward); no-op once claimed.
+  const claimInstagramFollow = () =>
+    setS((prev) =>
+      prev.instagramFollowClaimed
+        ? prev
+        : { ...prev, instagramFollowClaimed: true, coins: prev.coins + 100 },
+    );
+
   const setBirthday = (iso: string) =>
     setS((prev) => ({ ...prev, birthday: iso }));
 
@@ -1770,6 +1900,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ownedShopItems: [...prev.ownedShopItems, itemId],
       };
     });
+    // Only companions get the "character obtained" celebration (not outfits/desks/etc.).
+    if (item.category === 'companion') setCharacterObtainedPending(itemId);
     return true;
   };
 
@@ -1810,7 +1942,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // even before the user has claimed/studied. So a fresh login shows day 1, a
         // continued one shows N+1, and a lapsed one shows 1 — the chip never sits at
         // a stale number while you're looking at it.
-        todayStreakDay: nextStreakState(s.streak, todayISO()).next,
+        todayStreakDay: streakRescueAvailable(s, todayISO()) ? s.streak.currentStreak : nextStreakState(s.streak, todayISO()).next,
         earnedToday: s.earnedDate === todayISO() ? s.earnedToday : 0,
         loginStreak: s.loginStreak,
         loginRewardDate: s.loginRewardDate,
@@ -1828,6 +1960,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addMoodEntry,
         addExam,
         removeExam,
+        updateExam,
         setReminder,
         setUse24HourTime,
         setSoundEffectsEnabled,
@@ -1887,6 +2020,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         clearHanjiUnlock,
         recipeBadgePending,
         clearRecipeBadge,
+        characterObtainedPending,
+        clearCharacterObtained,
+        persistedStateReady,
+        resetAccountForAbandonedOnboarding,
         resetGameData,
         devGrantBadgesExceptCroissant,
         dayNotes: s.dayNotes ?? {},
@@ -1904,6 +2041,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         profileDescription: s.profileDescription ?? '',
         profileBirthday: s.profileBirthday ?? '',
         profileBackgroundId: s.profileBackgroundId ?? 'cozy',
+        profileCardColor: s.profileCardColor ?? 'pink',
         profileCompanionId: s.profileCompanionId ?? '',
         profileSkinId: s.profileSkinId ?? 'classic',
         profileAvatarFrame: s.profileAvatarFrame ?? 'none',
@@ -1944,10 +2082,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         language: s.language ?? 'en',
         languageSelected: s.languageSelected ?? false,
         legalAccepted: s.legalAccepted ?? false,
+        tutorialSeen: s.tutorialSeen ?? false,
+        instagramFollowClaimed: s.instagramFollowClaimed ?? false,
         birthday: s.birthday ?? null,
         setLanguage,
         markLanguageSelected,
         markLegalAccepted,
+        markTutorialSeen,
+        replayTutorial,
+        claimInstagramFollow,
         setBirthday,
       }}>
       {children}
