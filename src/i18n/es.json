@@ -930,6 +930,8 @@
     "wardrobeTitle": "Armario de {{name}}",
     "pickOutfit": "Elige un traje — {{name}} lo lleva en todas partes",
     "tapToUnlock": "Toca para desbloquear",
+    "buyInShop": "Comprar en tienda",
+    "plusOnlyHint": "Solo Plus",
     "wearing": "Puesto",
     "tapToWear": "Toca para ponértelo",
     "noOutfitsYet": "Aún no hay trajes",
@@ -1458,7 +1460,7 @@
     "berryPrincess": "Princesa Berry",
     "ivoryRose": "Rosa Marfil",
     "strawberryDreams": "Sueños de Fresa",
-    "afternoonTrain": "Tren de la Tarde"
+    "afternoonTrain": "Carefree Days"
   },
   "studyDesk": {
     "title": "Tomando un descanso",

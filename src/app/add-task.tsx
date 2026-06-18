@@ -9,7 +9,6 @@ import { SoundPressable } from '@/components/sound-pressable';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BakeryBellEmoji } from '@/components/bakery-emoji';
 import { DateWheelPicker, getTodayISO } from '@/components/date-wheel-picker';
 import { TimeWheelPicker } from '@/components/time-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
@@ -344,7 +343,6 @@ export default function AddTaskScreen() {
                 {REMINDER_OFFSETS.map((off) => (
                   <Pressable key={off} onPress={() => setNotifyOffset(off)} style={({ pressed }) => [pressed && styles.pressed]}>
                     <ThemedView type={notifyOffset === off ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
-                      <BakeryBellEmoji size={14} />
                       <ThemedText type="small">{off} min before</ThemedText>
                     </ThemedView>
                   </Pressable>

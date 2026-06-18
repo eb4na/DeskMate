@@ -930,6 +930,8 @@
     "wardrobeTitle": "{{name}} 的衣橱",
     "pickOutfit": "挑选一套服装 — {{name}} 会随处穿着它",
     "tapToUnlock": "点击解锁",
+    "buyInShop": "去商店购买",
+    "plusOnlyHint": "仅限Plus",
     "wearing": "穿着中",
     "tapToWear": "点击穿上",
     "noOutfitsYet": "还没有服装",
@@ -1458,7 +1460,7 @@
     "berryPrincess": "莓果公主",
     "ivoryRose": "象牙玫瑰",
     "strawberryDreams": "草莓甜梦",
-    "afternoonTrain": "午后列车"
+    "afternoonTrain": "Carefree Days"
   },
   "studyDesk": {
     "title": "正在休息",

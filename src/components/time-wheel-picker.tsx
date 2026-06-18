@@ -4,6 +4,7 @@ import { Modal, Platform, Pressable, StyleSheet, useColorScheme, View } from 're
 
 import { ThemedText } from '@/components/themed-text';
 import i18n, { useTranslation } from '@/i18n';
+import { playTick } from '@/lib/sounds';
 import { BakeryColors, BakeryRadii, BakeryShadow, Colors, Spacing } from '@/constants/theme';
 
 type TimeWheelPickerProps = {
@@ -56,6 +57,7 @@ export function TimeWheelPicker({ value, onChange, use24Hour = false }: TimeWhee
   const minutes = range(0, 59);
 
   const commit = (next: { hour?: number; minute?: number; period?: 'AM' | 'PM'; hour12?: number }) => {
+    playTick();
     let nextHour = hour;
     const nextMinute = next.minute ?? minute;
 

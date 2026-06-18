@@ -166,6 +166,8 @@ function GalleryContent() {
   const [buyItem, setBuyItem] = useState<{ id: string; name: string; image: number | null; price: number } | null>(null);
   // Plus-exclusive outfit popup (custom — replaces the native alert).
   const [plusAlertName, setPlusAlertName] = useState<string | null>(null);
+  // Outfit lore popup.
+  const [lorePopup, setLorePopup] = useState<{ name: string; text: string } | null>(null);
   const buyDiscount = isPlus ? 0.75 : 1;
   const buyPrice = buyItem ? Math.floor(buyItem.price * buyDiscount) : 0;
   const canAffordBuy = coins >= buyPrice;
@@ -195,9 +197,13 @@ function GalleryContent() {
     if (!pair) return;
     const outfitName = localizeOutfitName(skin.name, t);
     if (!isPairOwned(pair, ownedShopItems)) {
-      // Jump to the Shop and auto-open the buy popup for this exact room pair
-      // (background + desk). `buyPair` carries the background's shop item id.
-      router.replace({ pathname: '/shop', params: { category: 'background', buyPair: pair.backgroundId ?? '' } });
+      // Jump to the Shop and auto-open the buy popup for this whole look: the room
+      // pair (background + desk) PLUS the outfit itself. `buyPair` carries the
+      // background's shop item id; `buyOutfit` carries the outfit's (if it's paid).
+      router.replace({
+        pathname: '/shop',
+        params: { category: 'background', buyPair: pair.backgroundId ?? '', buyOutfit: skin.shopItemId ?? '' },
+      });
       return;
     }
     setEquippedBackground(pair.id);
@@ -359,7 +365,7 @@ function GalleryContent() {
         visible={!!wardrobeFor}
         animationType="slide"
         transparent
-        onRequestClose={() => setWardrobeFor(null)}>
+        onRequestClose={() => { if (lorePopup) { setLorePopup(null); } else { setWardrobeFor(null); } }}>
         <View style={styles.wardrobeBackdrop}>
           <View style={styles.wardrobeSheet}>
             <Text style={styles.wardrobeTitle}>{t('gallery.wardrobeTitle', { name: wardrobeFor?.name ?? '' })}</Text>
@@ -370,53 +376,65 @@ function GalleryContent() {
                   {wardrobeSkins.map((skin) => {
                     const equipped = wardrobeEquipped === skin.id;
                     const locked = !!skin.shopItemId && !ownedShopItems.includes(skin.shopItemId);
-                    // Outfits with a matched room get a chain icon that sets that room.
                     const hasMatchedRoom = !!roomById(skin.roomId);
                     return (
-                      <Pressable
-                        key={skin.id}
-                        style={[styles.skinCard, equipped && styles.skinCardActive, locked && styles.skinCardLocked]}
-                        onPress={() => {
-                          if (locked) {
-                            const item = skin.shopItemId ? getShopItem(skin.shopItemId) : null;
-                            if (item?.plusOnly) {
-                              // Plus-exclusive skins can't be bought with coins — they're
-                              // granted with Plus. Point the player to upgrading instead.
-                              setPlusAlertName(localizeOutfitName(skin.name, t));
-                            } else if (item) {
-                              setBuyItem({ id: item.id, name: localizeOutfitName(skin.name, t), image: skin.image, price: item.price });
+                      <View key={skin.id} style={styles.skinSlot}>
+                        <Pressable
+                          style={[styles.skinCard, equipped && styles.skinCardActive, locked && styles.skinCardLocked]}
+                          onPress={() => {
+                            if (locked) {
+                              const item = skin.shopItemId ? getShopItem(skin.shopItemId) : null;
+                              if (item?.plusOnly) {
+                                setPlusAlertName(localizeOutfitName(skin.name, t));
+                              } else if (item) {
+                                setBuyItem({ id: item.id, name: localizeOutfitName(skin.name, t), image: skin.image, price: item.price });
+                              }
+                            } else {
+                              equipWardrobeSkin(skin.id);
                             }
-                          } else {
-                            equipWardrobeSkin(skin.id);
-                          }
-                        }}>
-                        {hasMatchedRoom && (
+                          }}>
+                          {hasMatchedRoom && (
+                            <Pressable
+                              style={({ pressed }) => [styles.linkBadge, pressed && styles.pressed]}
+                              onPress={() => equipMatchedRoom(skin)}
+                              hitSlop={8}>
+                              <ChainLinkIcon color="#FFFFFF" size={15 * scale} />
+                            </Pressable>
+                          )}
+                          <View style={styles.skinImageWrap}>
+                            <Image
+                              source={skin.image}
+                              style={styles.skinImage}
+                              contentFit="contain"
+                            />
+                            {locked && <LockOverlay size={34 * scale} radius={18 * scale} />}
+                          </View>
+                          <Text style={styles.skinName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
+                            {localizeOutfitName(skin.name, t)}
+                          </Text>
+                          {locked ? (
+                            <Text style={styles.skinTap}>
+                              {skin.shopItemId && getShopItem(skin.shopItemId)?.plusOnly
+                                ? t('gallery.plusOnlyHint')
+                                : t('gallery.buyInShop')}
+                            </Text>
+                          ) : equipped ? (
+                            <View style={styles.skinPill}>
+                              <Text style={styles.skinPillText}>{t('gallery.wearing')}</Text>
+                            </View>
+                          ) : (
+                            <Text style={styles.skinTap}>{t('gallery.tapToWear')}</Text>
+                          )}
+                        </Pressable>
+                        {skin.lore && (
                           <Pressable
-                            style={({ pressed }) => [styles.linkBadge, pressed && styles.pressed]}
-                            onPress={() => equipMatchedRoom(skin)}
+                            style={({ pressed }) => [styles.loreBadge, pressed && styles.pressed]}
+                            onPress={() => setLorePopup({ name: localizeOutfitName(skin.name, t), text: skin.lore! })}
                             hitSlop={8}>
-                            <ChainLinkIcon color="#FFFFFF" size={15 * scale} />
+                            <Text style={styles.loreBadgeText}>i</Text>
                           </Pressable>
                         )}
-                        <View style={styles.skinImageWrap}>
-                          <Image
-                            source={skin.image}
-                            style={styles.skinImage}
-                            contentFit="contain"
-                          />
-                          {locked && <LockOverlay size={34 * scale} radius={18 * scale} />}
-                        </View>
-                        <Text style={styles.skinName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
-                          {localizeOutfitName(skin.name, t)}
-                        </Text>
-                        {locked ? null : equipped ? (
-                          <View style={styles.skinPill}>
-                            <Text style={styles.skinPillText}>{t('gallery.wearing')}</Text>
-                          </View>
-                        ) : (
-                          <Text style={styles.skinTap}>{t('gallery.tapToWear')}</Text>
-                        )}
-                      </Pressable>
+                      </View>
                     );
                   })}
                 </View>
@@ -434,6 +452,18 @@ function GalleryContent() {
               onPress={() => setWardrobeFor(null)}>
               <Text style={styles.doneButtonText}>{t('common.done')}</Text>
             </Pressable>
+
+            {lorePopup && (
+              <Pressable style={styles.loreBackdrop} onPress={() => setLorePopup(null)}>
+                <Pressable style={styles.loreCard} onPress={() => {}}>
+                  <Text style={styles.loreTitle}>{lorePopup.name}</Text>
+                  <Text style={styles.loreText}>{lorePopup.text}</Text>
+                  <Pressable style={({ pressed }) => [styles.loreClose, pressed && styles.pressed]} onPress={() => setLorePopup(null)}>
+                    <Text style={styles.loreCloseText}>{t('common.close')}</Text>
+                  </Pressable>
+                </Pressable>
+              </Pressable>
+            )}
           </View>
         </View>
       </Modal>
@@ -507,6 +537,7 @@ function GalleryContent() {
           </Pressable>
         </Pressable>
       </Modal>
+
     </ScrollView>
     <DevKnobs screen="companion-gallery" knobs={knobs} onChange={(key, value) => setTweak((p) => ({ ...p, [key]: value }))} />
     </>
@@ -600,8 +631,9 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   wardrobeEmptyTitle: { fontSize: 16 * s, fontWeight: '800', color: P.brown },
   wardrobeEmptyText: { fontSize: 13 * s, color: P.mutedBrown, textAlign: 'center', lineHeight: 18 * s, paddingHorizontal: Spacing.three * s },
   skinGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three * s, justifyContent: 'center' },
+  skinSlot: { width: '47%', position: 'relative' },
   skinCard: {
-    width: '47%',
+    width: '100%',
     backgroundColor: P.card,
     borderRadius: 20 * s,
     borderWidth: 2,
@@ -931,4 +963,28 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   doneButtonText: { color: '#FFF', fontSize: 17 * s, fontWeight: '800' },
 
   pressed: { opacity: 0.85 },
+
+  loreBadge: {
+    position: 'absolute', top: 8 * s, left: 8 * s, zIndex: 10,
+    width: 22 * s, height: 22 * s, borderRadius: 11 * s,
+    backgroundColor: 'rgba(91,58,46,0.55)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  loreBadgeText: { color: '#fff', fontSize: 11 * s, fontWeight: '800', lineHeight: 14 * s },
+  loreBackdrop: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100,
+    backgroundColor: 'rgba(48,32,24,0.45)',
+    alignItems: 'center', justifyContent: 'center', padding: 28 * s,
+    borderRadius: 28 * s,
+  },
+  loreCard: {
+    backgroundColor: '#FFFDF8', borderRadius: 24 * s,
+    padding: 24 * s, gap: 12 * s, alignItems: 'center',
+    maxWidth: 320 * s, width: '100%',
+    shadowColor: '#5B3A2E', shadowOpacity: 0.18, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
+  },
+  loreTitle: { fontSize: 17 * s, fontWeight: '900', color: P.brown, textAlign: 'center' },
+  loreText: { fontSize: 14 * s, color: P.mutedBrown, lineHeight: 21 * s, textAlign: 'center', fontStyle: 'italic' },
+  loreClose: { marginTop: 4 * s, backgroundColor: P.pink, borderRadius: 18 * s, paddingVertical: 10 * s, paddingHorizontal: 28 * s },
+  loreCloseText: { color: '#fff', fontSize: 14 * s, fontWeight: '800' },
 });

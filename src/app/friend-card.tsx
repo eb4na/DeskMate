@@ -10,10 +10,11 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useApp } from '@/context/app-context';
-import { PlusCrown, isPlusFrame } from '@/components/avatar-frame';
 import { getCompanionImage } from '@/lib/companion-utils';
 import { fetchProfileByCode } from '@/lib/profile-sync';
 import { ROOM_PAIRS } from '@/constants/room-data';
+import { cardColors } from '@/constants/card-colors';
+import { isPlusFrame } from '@/components/avatar-frame';
 import i18n, { useTranslation } from '@/i18n';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
@@ -52,6 +53,7 @@ export default function FriendCardScreen() {
           skinId: p.skinId,
           backgroundId: p.backgroundId,
           avatarFrame: p.avatarFrame,
+          cardColor: p.cardColor,
           description: p.description,
           birthday: p.birthday,
           currentStreak: p.currentStreak,
@@ -70,6 +72,9 @@ export default function FriendCardScreen() {
   const totalMinutes = friend?.totalMinutes ?? 0;
   const hours = Math.floor(totalMinutes / 60);
   const hoursLabel = hours > 0 ? `${hours}h ${totalMinutes % 60}m` : `${totalMinutes}m`;
+  // Show the friend's chosen card colour — but only while they're Plus (custom
+  // colours lapse with Plus, like the avatar frame); everyone else stays pink.
+  const cc = cardColors(isPlusFrame(friend?.avatarFrame) ? (friend?.cardColor || 'pink') : 'pink');
 
   return (
     <View style={[styles.container, { backgroundColor: P.cream }]}>
@@ -77,7 +82,7 @@ export default function FriendCardScreen() {
         <SafeAreaView style={styles.safeArea}>
           <Text style={styles.screenTitle}>{t('friendCard.cardTitle', { name })}</Text>
 
-          <View style={styles.card}>
+          <View style={[styles.card, { borderColor: cc.strip }]}>
             <View style={styles.cardInner}>
               <View style={styles.figurePanel}>
                 <Image source={bgRoom.backgroundImage} style={StyleSheet.absoluteFill} contentFit="cover" />
@@ -86,7 +91,6 @@ export default function FriendCardScreen() {
               <View style={styles.infoPanel}>
                 <View style={styles.nameRow}>
                   <Text style={styles.name} numberOfLines={2}>{name}</Text>
-                  {isPlusFrame(friend?.avatarFrame) && <PlusCrown size={18} />}
                 </View>
                 <Row label={t('friendCard.currentStreak')} value={`${friend?.currentStreak ?? 0}d`} />
                 <Row label={t('friendCard.bestStreak')} value={`${friend?.longestStreak ?? 0}d`} />
@@ -97,7 +101,7 @@ export default function FriendCardScreen() {
                 ) : null}
               </View>
             </View>
-            <View style={styles.codeStrip}>
+            <View style={[styles.codeStrip, { backgroundColor: cc.strip }]}>
               <Text style={styles.codeStripLabel}>{t('friendCard.friendCodeLabel')}</Text>
               <Text style={styles.codeStripValue}>{code}</Text>
             </View>

@@ -10,6 +10,7 @@ import { useIsTablet } from '@/hooks/use-device-class';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { InviteListener } from '@/components/invite-listener';
+import { CharacterObtainedModal } from '@/components/character-obtained-modal';
 import { LegalConsentGate } from '@/components/legal-consent-gate';
 import { StarterChooser } from '@/components/starter-chooser';
 import { PopupHost } from '@/components/popup-host';
@@ -20,6 +21,7 @@ import { setTapSoundEnabled } from '@/lib/sounds';
 import { setLoadingActive, subscribeLoadingScreen, takeLoadingDone } from '@/lib/loading-signal';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { posthog, identifyUser, resetUser } from '@/lib/analytics';
+import { configurePurchases, currentPlusExpiry } from '@/lib/purchases';
 import { BakeryColors, Spacing } from '@/constants/theme';
 import '@/lib/notifications';
 import i18n, { useTranslation } from '@/i18n';
@@ -115,8 +117,8 @@ const PRELOAD_ASSETS = [
 ];
 
 function RootNavigator() {
-  const { initialized, isGuest, session } = useAuth();
-  const { loaded, legalAccepted, markLegalAccepted, setBirthday, soundEffectsEnabled, starterChosen } = useApp();
+  const { initialized, isGuest, session, signOut, sessionRestoredAtLaunch } = useAuth();
+  const { loaded, legalAccepted, markLegalAccepted, setBirthday, soundEffectsEnabled, starterChosen, isPlus, plusPlan, setIsPlus, persistedStateReady, resetAccountForAbandonedOnboarding } = useApp();
   const { t } = useTranslation();
 
   // Keep the tap-sound helper's gate in sync with the user's setting.
@@ -151,6 +153,28 @@ function RootNavigator() {
     wasAuthed.current = authed;
   }, [authed]);
 
+  // Abandoned-onboarding guard: if the player quit the app on the privacy/birthday
+  // gate or the buddy picker and relaunches, send them back to the login screen and
+  // erase the half-finished account. We only act on a session that was *restored at
+  // launch* (a returning user) — never on a login/signup that happens later in this
+  // run (incl. the email-confirmation deep link), so a brand-new user can complete
+  // onboarding normally the first time through.
+  const abandonHandledRef = useRef(false);
+  useEffect(() => {
+    if (abandonHandledRef.current) return;
+    if (!initialized || !sessionRestoredAtLaunch) return;
+    // Wait until this account's saved state is *reliably* loaded (not a failed-load
+    // fallback to defaults, which would falsely look like unfinished onboarding).
+    if (!persistedStateReady || !authed) return;
+    if (legalAccepted && starterChosen) return; // onboarding finished — nothing to do
+    abandonHandledRef.current = true;
+    (async () => {
+      await resetAccountForAbandonedOnboarding();
+      await signOut().catch(() => {});
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- functions are stable enough; guarded by abandonHandledRef
+  }, [initialized, sessionRestoredAtLaunch, persistedStateReady, authed, legalAccepted, starterChosen]);
+
   // Re-show the loading screen on demand (e.g. after finishing a study session,
   // or when navigating to a heavy screen via navigateWithLoading).
   useEffect(
@@ -167,6 +191,25 @@ function RootNavigator() {
       }),
     [],
   );
+
+  // Configure RevenueCat once auth is known (ties purchases to the account so Plus
+  // follows the user across devices), then reconcile Plus against the real
+  // entitlement: a subscription cancelled/renewed off-device is corrected here on
+  // launch. No-ops entirely when IAP is unavailable (pre-rebuild / no API key) —
+  // currentPlusExpiry returns undefined and local Plus state is left untouched.
+  const plusReconciled = useRef(false);
+  useEffect(() => {
+    if (!initialized || !loaded || !authed || plusReconciled.current) return;
+    plusReconciled.current = true;
+    (async () => {
+      await configurePurchases(session?.user?.id);
+      const until = await currentPlusExpiry();
+      if (until === undefined) return; // IAP unavailable — leave local state as-is
+      if (until) setIsPlus(true, plusPlan ?? 'monthly', until);
+      else if (isPlus) setIsPlus(false);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialized, loaded, authed, session?.user?.id]);
 
   // The home screen mounts immediately (and loads its art) behind the loading
   // overlay; the overlay only lifts once everything is ready. For quick loads,
@@ -241,7 +284,7 @@ function RootNavigator() {
     {/* First-launch consent: any new account or new guest must accept the
         Privacy Policy + Terms before using the app. Shown once the launch
         splash has lifted and the saved state is loaded. */}
-    {authed && loaded && !legalAccepted && !loadingVisible && (
+    {authed && loaded && !legalAccepted && (
       <LegalConsentGate
         onAgree={(birthday) => {
           setBirthday(birthday);
@@ -251,7 +294,7 @@ function RootNavigator() {
     )}
     {/* Starter pick: once consent is given, a new account/guest chooses one of
         five companions for free (the other four go to the shop). Shown once. */}
-    {authed && loaded && legalAccepted && !starterChosen && !loadingVisible && (
+    {authed && loaded && legalAccepted && !starterChosen && (
       <StarterChooser />
     )}
     </>
@@ -316,6 +359,7 @@ function AppShell() {
         </LandscapeLetterbox>
         <InviteListener />
         <PopupHost />
+        <CharacterObtainedModal />
       </StudyRoomProvider>
     </Analytics>
   );
@@ -353,7 +397,9 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: '#F7DDE4',
-    zIndex: 999,
+    // Above the consent gate / starter chooser (zIndex 1000) so those can mount
+    // underneath the splash and be revealed when it lifts — no home-screen flash.
+    zIndex: 1001,
   },
   loadingBarWrap: {
     position: 'absolute',

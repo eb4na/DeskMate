@@ -1,8 +1,7 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, TextInput, useColorScheme } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
-import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BakeryWrenchEmoji } from '@/components/bakery-emoji';
@@ -12,7 +11,7 @@ import { DateWheelPicker, getTodayISO } from '@/components/date-wheel-picker';
 import { TimeWheelPicker } from '@/components/time-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useApp } from '@/context/app-context';
+import { useApp, FREE_EXAM_LIMIT } from '@/context/app-context';
 import { type AdvancedExamFields } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -35,70 +34,73 @@ const CONFIDENCE_LABEL_KEYS: Record<number, string> = {
 
 export default function AddExamScreen() {
   const { t } = useTranslation();
-  const { examCountdowns, addExam, isPlus, updateAdvancedExam, use24HourTime, subjects } = useApp();
+  const { examCountdowns, addExam, updateExam, isPlus, updateAdvancedExam, advancedExamMap, use24HourTime, subjects } = useApp();
   const activeSubjects = subjects.filter((s) => !s.archived);
-  const [name, setName] = useState('');
-  const [subject, setSubject] = useState('');
-  const [date, setDate] = useState(getTodayISO());
-  const [time, setTime] = useState('09:00');
-  const [reminderEnabled, setReminderEnabled] = useState(false);
-  const [shape, setShape] = useState<CountdownShapeKey>(DEFAULT_COUNTDOWN_SHAPE);
+
+  // When opened with ?examId=… we're editing an existing countdown; pre-fill from it.
+  const { examId: examIdParam } = useLocalSearchParams<{ examId?: string }>();
+  const existing = examIdParam ? examCountdowns.find((e) => e.id === examIdParam) : undefined;
+  const editing = !!existing;
+  const existingAdvanced = existing ? advancedExamMap[existing.id] : undefined;
+
+  const [name, setName] = useState(existing?.name ?? '');
+  const [subject, setSubject] = useState(existing?.subject ?? '');
+  const [date, setDate] = useState(existing?.dateISO ?? getTodayISO());
+  const [time, setTime] = useState(existing?.time ?? '09:00');
+  const [reminderEnabled, setReminderEnabled] = useState(existing?.reminderEnabled ?? false);
+  const [shape, setShape] = useState<CountdownShapeKey>((existing?.shape as CountdownShapeKey) ?? DEFAULT_COUNTDOWN_SHAPE);
   // Plus advanced fields
-  const [topics, setTopics] = useState('');
-  const [targetHours, setTargetHours] = useState('');
-  const [confidence, setConfidence] = useState<1 | 2 | 3 | 4 | 5>(3);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [topics, setTopics] = useState(existingAdvanced?.topics ?? '');
+  const [targetHours, setTargetHours] = useState(existingAdvanced?.targetHours != null ? String(existingAdvanced.targetHours) : '');
+  const [confidence, setConfidence] = useState<1 | 2 | 3 | 4 | 5>(existingAdvanced?.confidenceLevel ?? 3);
+  const [showAdvanced, setShowAdvanced] = useState(!!existingAdvanced);
+  // Inline validation error. This screen is a native modal, so a root showPopup
+  // can't present over it (the tap looked dead — "can't add"). Show the reason here.
+  const [error, setError] = useState<string | null>(null);
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
-  const canAdd = isPlus || examCountdowns.length < 2;
+  // Editing never adds a row, so the cap can't block a save.
+  const canAdd = editing || isPlus || examCountdowns.length < FREE_EXAM_LIMIT;
 
   const handleSave = () => {
     const trimmedName = name.trim();
     const trimmedDate = date.trim();
+    setError(null);
 
     if (!trimmedName) {
-      showPopup(t('addExam.missingName'), t('addExam.enterExamName'));
+      setError(t('addExam.enterExamName'));
       return;
     }
     if (!isValidDateISO(trimmedDate)) {
-      showPopup(t('addExam.invalidDate'), t('addExam.chooseValidDate'));
+      setError(t('addExam.chooseValidDate'));
       return;
     }
     if (!canAdd) {
-      showPopup(
-        t('addExam.limitReached'),
-        t('addExam.limitMsgFree'),
-        [
-          { text: t('addExam.notNow'), style: 'cancel' },
-          { text: t('addExam.seePlusFeatures'), onPress: () => router.push('/plus-upgrade') },
-        ],
-      );
+      // At the free cap — send them to the paywall (the limit copy explains it there).
+      router.push('/plus-upgrade');
       return;
     }
 
-    const examId = addExam({
+    const fields = {
       name: trimmedName,
       subject: subject.trim(),
       dateISO: trimmedDate,
       time,
       reminderEnabled,
       shape,
-    });
+    };
+
+    const examId = editing ? existing!.id : addExam(fields);
 
     if (!examId) {
-      showPopup(
-        t('addExam.limitReached'),
-        t('addExam.limitMsgTier'),
-        [
-          { text: t('addExam.notNow'), style: 'cancel' },
-          { text: t('addExam.seePlusFeatures'), onPress: () => router.push('/plus-upgrade') },
-        ],
-      );
+      router.push('/plus-upgrade');
       return;
     }
 
-    if (isPlus && (topics.trim() || targetHours || confidence !== 3)) {
+    if (editing) updateExam(examId, fields);
+
+    if (isPlus) {
       const advanced: AdvancedExamFields = {
         topics: topics.trim(),
         targetHours: targetHours ? parseInt(targetHours, 10) : null,
@@ -194,7 +196,9 @@ export default function AddExamScreen() {
 
         <ThemedView style={styles.field}>
           <ThemedText type="smallBold">{t('addExam.examDateReq')}</ThemedText>
-          <DateWheelPicker value={date} onChange={setDate} minimumDateISO={getTodayISO()} />
+          {/* Plus can set past dates (count-up / keeping a past exam); free users are
+              floored at today since their past-due countdowns auto-erase anyway. */}
+          <DateWheelPicker value={date} onChange={setDate} minimumDateISO={isPlus ? undefined : getTodayISO()} />
         </ThemedView>
 
         <ThemedView style={styles.field}>
@@ -286,7 +290,7 @@ export default function AddExamScreen() {
               </ThemedView>
             )}
           </ThemedView>
-        ) : examCountdowns.length >= 3 ? (
+        ) : examCountdowns.length >= FREE_EXAM_LIMIT ? (
           <Pressable onPress={() => router.push('/plus-upgrade')}>
             <ThemedView type="backgroundElement" style={[styles.upgradeCard, styles.noticeRow]}>
               <LockBadge size={16} />
@@ -298,12 +302,13 @@ export default function AddExamScreen() {
         ) : null}
 
         <ThemedView style={styles.actions}>
+          {error ? <ThemedText type="small" style={styles.errorText}>{error}</ThemedText> : null}
           <SoundPressable
             sound="confirm"
             style={({ pressed }) => [styles.saveBtn, pressed && styles.saveBtnPressed]}
             onPress={handleSave}>
             <ThemedText type="smallBold" style={styles.saveBtnText}>
-              {t('addExam.addCountdown')}
+              {editing ? t('addExam.saveChanges') : t('addExam.addCountdown')}
             </ThemedText>
           </SoundPressable>
           <Pressable onPress={() => router.back()} style={styles.cancelBtn}>
@@ -374,6 +379,7 @@ const styles = StyleSheet.create({
   },
   saveBtnPressed: { opacity: 0.85 },
   saveBtnText: { color: '#FFFFFF', fontSize: 16 },
+  errorText: { color: '#C0392B', fontWeight: '700', textAlign: 'center', marginBottom: 4 },
   cancelBtn: { alignItems: 'center', paddingVertical: Spacing.two },
   note: { textAlign: 'center' },
   advancedSection: { gap: Spacing.two },

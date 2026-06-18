@@ -1,7 +1,10 @@
 import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { showPopup } from '@/lib/popup';
+import { track } from '@/lib/analytics';
+import { PRODUCT_IDS, fetchPrices, purchaseProduct, purchasesReady, type PriceMap } from '@/lib/purchases';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinAmount, CoinIcon } from '@/components/coin-icon';
@@ -18,11 +21,11 @@ import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } fro
 type CoinPack = { id: string; nameKey: string; coins: number; price: string; popular?: boolean };
 
 const COIN_PACKS: CoinPack[] = [
-  { id: 'pouch', nameKey: 'coinShop.pack_pouch', coins: 200, price: '$1.00' },
-  { id: 'bag', nameKey: 'coinShop.pack_bag', coins: 600, price: '$3.00' },
+  { id: 'pouch', nameKey: 'coinShop.pack_pouch', coins: 200, price: '$0.99' },
+  { id: 'bag', nameKey: 'coinShop.pack_bag', coins: 600, price: '$2.99' },
   { id: 'chest', nameKey: 'coinShop.pack_chest', coins: 1444, price: '$6.70', popular: true },
-  { id: 'vault', nameKey: 'coinShop.pack_vault', coins: 5000, price: '$20.00' },
-  { id: 'treasury', nameKey: 'coinShop.pack_treasury', coins: 50000, price: '$100.00' },
+  { id: 'vault', nameKey: 'coinShop.pack_vault', coins: 5000, price: '$19.99' },
+  { id: 'treasury', nameKey: 'coinShop.pack_treasury', coins: 50000, price: '$99.99' },
 ];
 
 // Coin packs are tiered desserts — bigger pack, bigger cake.
@@ -39,39 +42,69 @@ export default function CoinShopScreen() {
   const { coins, earnedToday, addPurchasedCoins, isPlus, addStreakFreeze, streakFreezes } = useApp();
   const capRemaining = Math.max(0, DAILY_EARN_CAP - earnedToday);
 
+  // Live App Store prices (localized currency). Falls back to the hardcoded pack
+  // strings when IAP is unavailable / fetch fails. Mirrors (tabs)/shop.tsx.
+  const [storePrices, setStorePrices] = useState<PriceMap>({});
+  useEffect(() => {
+    let alive = true;
+    fetchPrices([...COIN_PACKS.map((p) => PRODUCT_IDS[p.id as keyof typeof PRODUCT_IDS]), PRODUCT_IDS.streakFreeze]).then((m) => {
+      if (alive) setStorePrices(m);
+    });
+    return () => { alive = false; };
+  }, []);
+  const packPrice = (pack: CoinPack) => storePrices[PRODUCT_IDS[pack.id as keyof typeof PRODUCT_IDS]] ?? pack.price;
+  const freezePrice = storePrices[PRODUCT_IDS.streakFreeze] ?? '$1.99';
+
   const handleBuyFreeze = () => {
-    showPopup(
-      t('shop.streakFreezeName'),
-      t('shop.streakFreezeDesc'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('shop.buyForMock', { price: '$2.00' }),
-          onPress: () => {
-            addStreakFreeze(1);
-            showPopup(t('shop.freezeAdded'), t('shop.mockComplete'));
-          },
-        },
-      ],
-    );
+    const productId = PRODUCT_IDS.streakFreeze;
+    const grant = () => {
+      addStreakFreeze(1);
+      track('shop_purchase', { kind: 'freeze' });
+      showPopup(t('shop.freezeAdded'), t('shop.purchaseComplete', { defaultValue: 'Thanks for your purchase!' }));
+    };
+    // Fail closed: dev mock-grants, production refuses when the store is unavailable.
+    if (!purchasesReady()) {
+      if (__DEV__) {
+        showPopup(t('shop.streakFreezeName'), t('shop.streakFreezeDesc'), [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('shop.buyForMock', { price: freezePrice }), onPress: grant },
+        ]);
+      } else {
+        showPopup(t('shop.storeUnavailable', { defaultValue: 'Store unavailable' }), t('shop.storeUnavailableMsg', { defaultValue: 'Purchases are temporarily unavailable. Please try again later.' }));
+      }
+      return;
+    }
+    purchaseProduct(productId).then((res) => {
+      if (res.ok) grant();
+      else if (!res.cancelled) showPopup(t('shop.purchaseFailed', { defaultValue: 'Purchase failed' }), t('shop.purchaseFailedMsg', { defaultValue: 'Something went wrong and you were not charged. Please try again.' }));
+    });
   };
 
   const handleCoinPack = (pack: CoinPack) => {
     const name = t(pack.nameKey);
-    showPopup(
-      t('coinShop.buyPackQ', { name }),
-      t('coinShop.packDetail', { coins: pack.coins, price: pack.price }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('coinShop.buyForMock', { price: pack.price }),
-          onPress: () => {
-            addPurchasedCoins(pack.coins);
-            showPopup(t('shop.coinsAdded', { coins: pack.coins }), t('shop.mockComplete'));
-          },
-        },
-      ],
-    );
+    const price = packPrice(pack);
+    const productId = PRODUCT_IDS[pack.id as keyof typeof PRODUCT_IDS];
+    const grant = () => {
+      addPurchasedCoins(pack.coins);
+      track('shop_purchase', { kind: 'coins', pack: pack.id, coins: pack.coins });
+      showPopup(t('shop.coinsAdded', { coins: pack.coins }), t('shop.purchaseComplete', { defaultValue: 'Thanks for your purchase!' }));
+    };
+    // Fail closed: never hand out coins for free in production.
+    if (!purchasesReady()) {
+      if (__DEV__) {
+        showPopup(t('coinShop.buyPackQ', { name }), t('coinShop.packDetail', { coins: pack.coins, price }), [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('coinShop.buyForMock', { price }), onPress: grant },
+        ]);
+      } else {
+        showPopup(t('shop.storeUnavailable', { defaultValue: 'Store unavailable' }), t('shop.storeUnavailableMsg', { defaultValue: 'Purchases are temporarily unavailable. Please try again later.' }));
+      }
+      return;
+    }
+    purchaseProduct(productId).then((res) => {
+      if (res.ok) grant();
+      else if (!res.cancelled) showPopup(t('shop.purchaseFailed', { defaultValue: 'Purchase failed' }), t('shop.purchaseFailedMsg', { defaultValue: 'Something went wrong and you were not charged. Please try again.' }));
+    });
   };
 
   return (
@@ -129,7 +162,7 @@ export default function CoinShopScreen() {
                     <View style={styles.menuTopLine}>
                       <ThemedText style={styles.menuName} numberOfLines={1}>{t(pack.nameKey)}</ThemedText>
                       <View style={styles.menuLeader} />
-                      <ThemedText style={styles.menuPrice}>{pack.price}</ThemedText>
+                      <ThemedText style={styles.menuPrice}>{packPrice(pack)}</ThemedText>
                     </View>
                     <View style={styles.menuSubLine}>
                       <CoinAmount amount={pack.coins} size={18} textStyle={styles.menuCoinText} />
@@ -156,7 +189,7 @@ export default function CoinShopScreen() {
                   <View style={styles.menuTopLine}>
                     <ThemedText style={styles.menuName} numberOfLines={1}>{t('shop.streakFreezeName')}</ThemedText>
                     <View style={styles.menuLeader} />
-                    <ThemedText style={styles.menuPrice}>$2.00</ThemedText>
+                    <ThemedText style={styles.menuPrice}>{freezePrice}</ThemedText>
                   </View>
                   <View style={styles.menuSubLine}>
                     <ThemedText style={styles.menuCoinText}>{t('shop.streakFreezeDesc')}</ThemedText>

@@ -936,6 +936,8 @@
     "wardrobeTitle": "{{name}}'s Wardrobe",
     "pickOutfit": "Pick an outfit — {{name}} wears it everywhere",
     "tapToUnlock": "Tap to unlock",
+    "buyInShop": "Buy in shop",
+    "plusOnlyHint": "Plus only",
     "wearing": "Wearing",
     "tapToWear": "Tap to wear",
     "noOutfitsYet": "No outfits yet",
@@ -1465,7 +1467,7 @@
     "berryPrincess": "Berry Princess",
     "ivoryRose": "Ivory Rose",
     "strawberryDreams": "Strawberry Dreams",
-    "afternoonTrain": "Afternoon Train"
+    "afternoonTrain": "Carefree Days"
   },
   "studyDesk": {
     "title": "Taking a break",

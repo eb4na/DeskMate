@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
+import { playTick } from '@/lib/sounds';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/coin-icon';
@@ -132,7 +133,7 @@ export default function SessionPickerScreen() {
                 <View key={opt.minutes}>
                   <Pressable
                     style={({ pressed }) => [styles.menuRow, isTablet && styles.menuRowTablet, isActive && styles.menuRowActive, pressed && styles.pressed]}
-                    onPress={() => setSelected(opt.minutes)}>
+                    onPress={() => { playTick(); setSelected(opt.minutes); }}>
                     <Image source={CARD_IMG[opt.minutes]} style={[styles.menuIcon, isTablet && styles.menuIconTablet]} contentFit="contain" />
                     <View style={styles.menuBody}>
                       <View style={styles.menuTopLine}>

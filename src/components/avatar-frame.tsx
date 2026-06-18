@@ -17,15 +17,11 @@ export function isPlusFrame(frame?: string): boolean {
 }
 
 /**
- * The Plus crown badge — sized by `size` (its height); width follows the PNG's
- * aspect ratio. Drop it next to a name with a small gap.
+ * The Plus crown badge is hidden — Plus members no longer show a crown next to
+ * their name. Kept as a no-op (rather than removing every call site) so the
+ * `isPlusFrame(...) && <PlusCrown />` usages and the Plus gold-card styling stay
+ * intact; restore the <Image> below to bring the crown back.
  */
-export function PlusCrown({ size }: { size: number }) {
-  return (
-    <Image
-      source={CROWN}
-      style={{ width: size * CROWN_RATIO, height: size, backgroundColor: 'transparent' }}
-      contentFit="contain"
-    />
-  );
+export function PlusCrown(_props: { size: number }) {
+  return null;
 }

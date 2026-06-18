@@ -1,12 +1,13 @@
 import { Image } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 import { localizeCompanionName, STARTER_CHOICES } from '@/lib/companion-utils';
+import { playSwoosh, playTapConfirm } from '@/lib/sounds';
 
 // Per-character tagline i18n keys (shared with the gallery), keyed by the
 // canonical English name in STARTER_CHOICES.
@@ -39,7 +40,7 @@ function Chevron({ dir, size = 30 }: { dir: 'left' | 'right'; size?: number }) {
   );
 }
 
-// First-launch starter picker: a one-of-five carousel. Click the right arrow to
+// First-launch starter picker: a one-of-five carousel. Swipe or tap the arrows to
 // advance (wraps Tira → Bun); the chosen character is granted free and the other
 // four go to the shop. Shown once, after the legal consent gate, for any new
 // account or guest (gated on !starterChosen).
@@ -67,8 +68,23 @@ export function StarterChooser() {
   const scaleY = bounce.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1.02] });
   const scaleX = bounce.interpolate({ inputRange: [0, 1], outputRange: [1.02, 0.99] });
 
-  const step = (delta: number) =>
+  const step = (delta: number) => {
+    playSwoosh();
     setIndex((i) => (i + delta + STARTER_CHOICES.length) % STARTER_CHOICES.length);
+  };
+
+  // Swipe the carousel left/right to flip companions (in addition to the arrows).
+  // Only claims the gesture on a clear horizontal drag, so taps on the arrows and
+  // the confirm button still work. Created once — `step` reads no stale state.
+  const swipe = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 14 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+      onPanResponderRelease: (_, g) => {
+        if (g.dx <= -40) step(1); // swipe left → next
+        else if (g.dx >= 40) step(-1); // swipe right → previous
+      },
+    }),
+  ).current;
 
   const name = localizeCompanionName(choice.name, t);
 
@@ -80,8 +96,8 @@ export function StarterChooser() {
           <Text style={styles.subtitle}>{t('starter.subtitle')}</Text>
         </View>
 
-        {/* Carousel — left/right arrows flank the bouncing character. */}
-        <View style={styles.stage}>
+        {/* Carousel — swipe to flip, or use the left/right arrows. */}
+        <View style={styles.stage} {...swipe.panHandlers}>
           <Pressable
             onPress={() => step(-1)}
             hitSlop={12}
@@ -119,7 +135,7 @@ export function StarterChooser() {
         <View style={styles.footer}>
           <Text style={styles.hint}>{t('starter.hint')}</Text>
           <Pressable
-            onPress={() => chooseStarter(choice.activeId)}
+            onPress={() => { playTapConfirm(); chooseStarter(choice.activeId); }}
             style={({ pressed }) => [styles.confirmBtn, pressed && styles.pressed]}>
             <Text style={styles.confirmText}>{t('starter.choose', { name })}</Text>
           </Pressable>

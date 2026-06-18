@@ -4,6 +4,7 @@ import { Modal, Platform, Pressable, StyleSheet, useColorScheme, View } from 're
 
 import { ThemedText } from '@/components/themed-text';
 import i18n, { useTranslation } from '@/i18n';
+import { playTick } from '@/lib/sounds';
 import { BakeryColors, BakeryRadii, BakeryShadow, Colors, Spacing } from '@/constants/theme';
 
 type DateParts = {
@@ -133,6 +134,7 @@ export function DateWheelPicker({
   const days = range(dayStart, dayEnd);
 
   const handleChange = (patch: Partial<DateParts>) => {
+    playTick();
     const next = clampDateParts(
       {
         year: patch.year ?? selected.year,
@@ -299,7 +301,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    ...BakeryShadow,
   },
   triggerTextWrap: {
     gap: 2,

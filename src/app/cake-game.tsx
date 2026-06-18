@@ -277,6 +277,8 @@ const LOGO_OUTLINE = [
 // Station artwork. Mixer/oven have an "empty" and a "full" (something inside) look.
 const STATION_IMG = {
   ingredient: require('@/assets/images/cake/ingredients.png'),
+  ingredientPudding: require('@/assets/images/cake/ingredients-pudding.png'),
+  ingredientCroissant: require('@/assets/images/cake/ingredients-croissant.png'),
   assembly: require('@/assets/images/cake/assembly.png'),
   decoration: require('@/assets/images/cake/decorate.png'),
   mixerEmpty: require('@/assets/images/cake/mixer-empty.png'),
@@ -293,6 +295,8 @@ const STATION_IMG = {
 function stationImage(kind: Station['kind'], hasContent: boolean, recipe: RecipeId = 'cake') {
   switch (kind) {
     case 'ingredient':
+      if (recipe === 'pudding') return STATION_IMG.ingredientPudding;
+      if (recipe === 'croissant') return STATION_IMG.ingredientCroissant;
       return STATION_IMG.ingredient;
     case 'assembly':
       return STATION_IMG.assembly;

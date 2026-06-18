@@ -1,12 +1,12 @@
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Modal, Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedView } from '@/components/themed-view';
-import { GoogleGIcon } from '@/components/auth-icons';
+import { GoogleGIcon, AppleLogoIcon, MailIcon } from '@/components/auth-icons';
 import { useApp } from '@/context/app-context';
 import type { Friend } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
@@ -27,7 +27,8 @@ import {
   type IncomingRequest,
 } from '@/lib/friend-requests';
 import { fetchProfileByCode, type SyncedProfile } from '@/lib/profile-sync';
-import { PlusCrown, isPlusFrame } from '@/components/avatar-frame';
+import { isPlusFrame } from '@/components/avatar-frame';
+import { cardColors } from '@/constants/card-colors';
 import { useTranslation } from '@/i18n';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
@@ -39,6 +40,7 @@ function toFriendPatch(p: SyncedProfile): Partial<Friend> {
     skinId: p.skinId,
     backgroundId: p.backgroundId,
     avatarFrame: p.avatarFrame,
+    cardColor: p.cardColor,
     description: p.description,
     birthday: p.birthday,
     currentStreak: p.currentStreak,
@@ -56,7 +58,12 @@ const P = {
   brown: '#5B3A2E',
   mutedBrown: '#9A7B6D',
   button: '#8A7A60',
+  blue: '#9CC2E8',
 } as const;
+
+// Fancy gold-bordered card shown behind a Plus friend's row (replaces the plain
+// white/pink card). Transparent PNG → the row background is set transparent.
+const PLUS_CARD = require('@/assets/images/friends/plus-card.png');
 
 const INVITE_GAMES: { id: OnlineGameId; nameKey: string; emoji: string }[] = [
   { id: 'connect4', nameKey: 'friends.game_connect4', emoji: '' },
@@ -70,7 +77,7 @@ export default function FriendsScreen() {
   const {
     friendCode, friends, addFriend, removeFriend, setFriendProfile, profileDisplayName, dmUnread,
     activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins,
-    profileAvatarFrame, profileCompanionId, profileSkinId,
+    profileAvatarFrame, profileCompanionId, profileSkinId, profileCardColor, isPlus,
   } = useApp();
   // My friend-list avatar = the character I pinned on my Profile card, NOT whoever
   // I'm currently using. Only falls back to the active companion if I've never set
@@ -79,7 +86,7 @@ export default function FriendsScreen() {
     profileCompanionId, profileSkinId,
     activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins,
   });
-  const { user, isGuest, upgradeGuestWithGoogle } = useAuth();
+  const { user, isGuest, upgradeGuest, upgradeGuestEmail } = useAuth();
   const studyRoom = useStudyRoom();
   const [input, setInput] = useState('');
   const [upgrading, setUpgrading] = useState(false);
@@ -90,6 +97,7 @@ export default function FriendsScreen() {
   const [playFor, setPlayFor] = useState<Friend | null>(null);
   const [onlineCodes, setOnlineCodes] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (!friendCode) return;
@@ -126,14 +134,18 @@ export default function FriendsScreen() {
     setIncoming(reqs.filter((r) => !blk.includes(r.fromCode))); // hide blocked senders
   };
 
-  useEffect(() => {
-    refresh();
-    friends.forEach(async (f) => {
-      const p = await fetchProfileByCode(f.code);
-      if (p) setFriendProfile(f.code, toFriendPatch(p));
-    });
+  // Re-fetch incoming requests and friend profiles every time this screen is opened
+  // so avatars are never stale when someone changed their companion since last visit.
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+      friends.forEach(async (f) => {
+        const p = await fetchProfileByCode(f.code);
+        if (p) setFriendProfile(f.code, toFriendPatch(p));
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+    }, [user?.id]),
+  );
 
   const handleAdd = async () => {
     if (!user?.id) {
@@ -221,9 +233,9 @@ export default function FriendsScreen() {
   // Guests can't add friends until they create an account. Connecting Google
   // converts them in place (keeping their progress) — the screen then re-renders
   // as the real friends list.
-  const handleUpgrade = async () => {
+  const handleUpgrade = async (provider: 'google' | 'apple') => {
     setUpgrading(true);
-    const res = await upgradeGuestWithGoogle();
+    const res = await upgradeGuest(provider);
     setUpgrading(false);
     if (!res.ok && !res.cancelled) {
       showPopup(t('auth.connectFailed'), res.error ?? t('friends.tryAgain'));
@@ -240,10 +252,27 @@ export default function FriendsScreen() {
             <Text style={styles.gateBody}>{t('friends.guestGateBody')}</Text>
             <Pressable
               disabled={upgrading}
-              onPress={handleUpgrade}
+              onPress={() => handleUpgrade('google')}
               style={({ pressed }) => [styles.gateGoogleBtn, pressed && styles.pressed, upgrading && styles.gateBtnDisabled]}>
               <GoogleGIcon size={20 * scale} />
               <Text style={styles.gateGoogleText}>{t('auth.continueWithGoogle')}</Text>
+            </Pressable>
+            <Pressable
+              disabled={upgrading}
+              onPress={() => handleUpgrade('apple')}
+              style={({ pressed }) => [styles.gateGoogleBtn, pressed && styles.pressed, upgrading && styles.gateBtnDisabled]}>
+              <AppleLogoIcon size={20 * scale} />
+              <Text style={styles.gateGoogleText}>{t('auth.continueWithApple')}</Text>
+            </Pressable>
+            <Pressable
+              disabled={upgrading}
+              onPress={async () => {
+                await upgradeGuestEmail();
+                router.push('/signup');
+              }}
+              style={({ pressed }) => [styles.gateGoogleBtn, pressed && styles.pressed, upgrading && styles.gateBtnDisabled]}>
+              <MailIcon size={20 * scale} />
+              <Text style={styles.gateGoogleText}>{t('auth.continueWithEmail')}</Text>
             </Pressable>
             <Pressable style={({ pressed }) => [styles.gateLater, pressed && styles.pressed]} onPress={() => router.back()}>
               <Text style={styles.gateLaterText}>{t('friends.guestGateLater')}</Text>
@@ -256,7 +285,27 @@ export default function FriendsScreen() {
 
   return (
     <ThemedView style={[styles.container, { backgroundColor: P.cream }]}>
-      <ScrollView showsVerticalScrollIndicator={false} style={{ backgroundColor: P.cream }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={{ backgroundColor: P.cream }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={async () => {
+              setRefreshing(true);
+              await Promise.all([
+                refresh(),
+                ...friends.map(async (f) => {
+                  const p = await fetchProfileByCode(f.code);
+                  if (p) setFriendProfile(f.code, toFriendPatch(p));
+                }),
+              ]);
+              setRefreshing(false);
+            }}
+            tintColor={P.pink}
+          />
+        }
+      >
         <SafeAreaView style={styles.safeArea}>
           {/* Header */}
           <View style={styles.headerPanel}>
@@ -265,30 +314,38 @@ export default function FriendsScreen() {
           </View>
 
           {/* My profile card — my avatar, name, and code, the way friends see me. */}
-          <Pressable
-            style={({ pressed }) => [styles.friendRow, styles.meRow, pressed && styles.pressed]}
-            onPress={() => router.push('/profile')}>
-            <View style={styles.avatarWrap}>
-              <View style={styles.friendAvatar}>
-                <Image
-                  source={meSource}
-                  style={[styles.friendAvatarImg, bunAvatarNudge(profileCompanionId)]}
-                  contentFit="contain"
-                />
-              </View>
-            </View>
-            <View style={styles.friendInfo}>
-              <View style={styles.nameRow}>
-                <Text style={styles.friendName}>{profileDisplayName || t('friends.you')}</Text>
-                {isPlusFrame(profileAvatarFrame) && <PlusCrown size={16 * scale} />}
-              </View>
-              <Text style={styles.friendCode}>{friendCode}</Text>
-            </View>
-            <View style={styles.meTag}>
-              <Text style={styles.meTagText}>{t('friends.you')}</Text>
-            </View>
-            <Text style={styles.profileBtnChevron}>›</Text>
-          </Pressable>
+          {(() => {
+            const myCC = isPlus && isPlusFrame(profileAvatarFrame) ? cardColors(profileCardColor) : null;
+            return (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.friendRow, styles.meRow,
+                  myCC && { borderColor: myCC.strip },
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => router.push('/profile')}>
+                <View style={styles.avatarWrap}>
+                  <View style={[styles.friendAvatar, myCC && { borderWidth: 2.5, borderColor: myCC.strip }]}>
+                    <Image
+                      source={meSource}
+                      style={[styles.friendAvatarImg, bunAvatarNudge(profileCompanionId)]}
+                      contentFit="contain"
+                    />
+                  </View>
+                </View>
+                <View style={styles.friendInfo}>
+                  <View style={styles.nameRow}>
+                    <Text style={styles.friendName}>{profileDisplayName || t('friends.you')}</Text>
+                  </View>
+                  <Text style={styles.friendCode}>{friendCode}</Text>
+                </View>
+                <View style={[styles.meTag, myCC && { backgroundColor: myCC.strip }]}>
+                  <Text style={styles.meTagText}>{t('friends.you')}</Text>
+                </View>
+                <Text style={styles.profileBtnChevron}>›</Text>
+              </Pressable>
+            );
+          })()}
 
           {/* Your code */}
           <View style={styles.section}>
@@ -339,27 +396,30 @@ export default function FriendsScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>{t('friends.friendRequests', { count: incoming.length })}</Text>
               <View style={styles.friendList}>
-                {incoming.map((req) => (
-                  <View key={req.id} style={styles.friendRow}>
-                    <View style={styles.friendAvatar}>
-                      <Image
-                        source={getCompanionImage(req.profile?.companionId, req.profile?.skinId)}
-                        style={[styles.friendAvatarImg, bunAvatarNudge(req.profile?.companionId)]}
-                        contentFit="contain"
-                      />
+                {incoming.map((req) => {
+                  const rCC = isPlusFrame(req.profile?.avatarFrame) ? cardColors(req.profile?.cardColor) : null;
+                  return (
+                    <View key={req.id} style={[styles.friendRow, rCC && { borderColor: rCC.strip }]}>
+                      <View style={[styles.friendAvatar, rCC && { borderWidth: 2.5, borderColor: rCC.strip }]}>
+                        <Image
+                          source={getCompanionImage(req.profile?.companionId, req.profile?.skinId)}
+                          style={[styles.friendAvatarImg, bunAvatarNudge(req.profile?.companionId)]}
+                          contentFit="contain"
+                        />
+                      </View>
+                      <View style={styles.friendInfo}>
+                        <Text style={styles.friendName}>{req.profile?.displayName || t('friendCard.friendFallback', { code: req.fromCode })}</Text>
+                        <Text style={styles.friendCode}>{req.fromCode}</Text>
+                      </View>
+                      <Pressable style={({ pressed }) => [styles.acceptBtn, pressed && styles.pressed]} onPress={() => handleAccept(req)}>
+                        <Text style={styles.acceptBtnText}>{t('friends.accept')}</Text>
+                      </Pressable>
+                      <Pressable hitSlop={8} onPress={() => handleDecline(req)} style={styles.friendRemove}>
+                        <Text style={styles.friendRemoveText}>✕</Text>
+                      </Pressable>
                     </View>
-                    <View style={styles.friendInfo}>
-                      <Text style={styles.friendName}>{req.profile?.displayName || t('friendCard.friendFallback', { code: req.fromCode })}</Text>
-                      <Text style={styles.friendCode}>{req.fromCode}</Text>
-                    </View>
-                    <Pressable style={({ pressed }) => [styles.acceptBtn, pressed && styles.pressed]} onPress={() => handleAccept(req)}>
-                      <Text style={styles.acceptBtnText}>{t('friends.accept')}</Text>
-                    </Pressable>
-                    <Pressable hitSlop={8} onPress={() => handleDecline(req)} style={styles.friendRemove}>
-                      <Text style={styles.friendRemoveText}>✕</Text>
-                    </Pressable>
-                  </View>
-                ))}
+                  );
+                })}
               </View>
             </View>
           )}
@@ -375,49 +435,51 @@ export default function FriendsScreen() {
               </View>
             ) : (
               <View style={styles.friendList}>
-                {friends.map((f) => (
-                  <View key={f.code} style={styles.friendRow}>
-                    <Pressable
-                      style={({ pressed }) => [styles.friendTap, pressed && styles.pressed]}
-                      onPress={() => router.push({ pathname: '/friend-card', params: { code: f.code } })}>
-                      <View style={styles.avatarWrap}>
-                        <View style={styles.friendAvatar}>
-                          <Image
-                            source={getCompanionImage(f.companionId, f.skinId)}
-                            style={[styles.friendAvatarImg, bunAvatarNudge(f.companionId)]}
-                            contentFit="contain"
-                          />
+                {friends.map((f) => {
+                  const fCC = isPlusFrame(f.avatarFrame) ? cardColors(f.cardColor) : null;
+                  return (
+                    <View key={f.code} style={[styles.friendRow, fCC && { borderColor: fCC.strip }]}>
+                      <Pressable
+                        style={({ pressed }) => [styles.friendTap, pressed && styles.pressed]}
+                        onPress={() => router.push({ pathname: '/friend-card', params: { code: f.code } })}>
+                        <View style={styles.avatarWrap}>
+                          <View style={[styles.friendAvatar, fCC && { borderWidth: 2.5, borderColor: fCC.strip }]}>
+                            <Image
+                              source={getCompanionImage(f.companionId, f.skinId)}
+                              style={[styles.friendAvatarImg, bunAvatarNudge(f.companionId)]}
+                              contentFit="contain"
+                            />
+                          </View>
+                          <View style={[styles.statusDot, onlineCodes.has(f.code) ? styles.statusOnline : styles.statusOffline]} />
                         </View>
-                        <View style={[styles.statusDot, onlineCodes.has(f.code) ? styles.statusOnline : styles.statusOffline]} />
-                      </View>
-                      <View style={styles.friendInfo}>
-                        <View style={styles.nameRow}>
-                          <Text style={styles.friendName}>{f.displayName || f.name}</Text>
-                          {isPlusFrame(f.avatarFrame) && <PlusCrown size={16 * scale} />}
+                        <View style={styles.friendInfo}>
+                          <View style={styles.nameRow}>
+                            <Text style={styles.friendName}>{f.displayName || f.name}</Text>
+                          </View>
+                          <Text style={styles.friendCode}>{onlineCodes.has(f.code) ? t('friends.onlineNow') : f.code}</Text>
                         </View>
-                        <Text style={styles.friendCode}>{onlineCodes.has(f.code) ? t('friends.onlineNow') : f.code}</Text>
-                      </View>
-                    </Pressable>
-                    <Pressable
-                      style={({ pressed }) => [styles.chatBtn, pressed && styles.pressed]}
-                      onPress={() => router.push({ pathname: '/dm-chat', params: { code: f.code } })}>
-                      <Text style={styles.chatBtnText}>{t('friends.chat')}</Text>
-                      {(dmUnread[f.code] ?? dmUnread[f.code.toUpperCase()] ?? 0) > 0 && (
-                        <View style={styles.unreadBadge}>
-                          <Text style={styles.unreadBadgeText}>
-                            {dmUnread[f.code] ?? dmUnread[f.code.toUpperCase()]}
-                          </Text>
-                        </View>
-                      )}
-                    </Pressable>
-                    <Pressable style={({ pressed }) => [styles.playBtn, pressed && styles.pressed]} onPress={() => setPlayFor(f)}>
-                      <Text style={styles.playBtnText}>{t('friends.play')}</Text>
-                    </Pressable>
-                    <Pressable hitSlop={8} onPress={() => confirmRemove(f.code, f.name)} style={styles.friendRemove}>
-                      <Text style={styles.friendRemoveText}>✕</Text>
-                    </Pressable>
-                  </View>
-                ))}
+                      </Pressable>
+                      <Pressable
+                        style={({ pressed }) => [styles.chatBtn, fCC && { backgroundColor: fCC.strip }, pressed && styles.pressed]}
+                        onPress={() => router.push({ pathname: '/dm-chat', params: { code: f.code } })}>
+                        <Text style={styles.chatBtnText}>{t('friends.chat')}</Text>
+                        {(dmUnread[f.code] ?? dmUnread[f.code.toUpperCase()] ?? 0) > 0 && (
+                          <View style={styles.unreadBadge}>
+                            <Text style={styles.unreadBadgeText}>
+                              {dmUnread[f.code] ?? dmUnread[f.code.toUpperCase()]}
+                            </Text>
+                          </View>
+                        )}
+                      </Pressable>
+                      <Pressable style={({ pressed }) => [styles.playBtn, pressed && styles.pressed]} onPress={() => setPlayFor(f)}>
+                        <Text style={styles.playBtnText}>{t('friends.play')}</Text>
+                      </Pressable>
+                      <Pressable hitSlop={8} onPress={() => confirmRemove(f.code, f.name)} style={styles.friendRemove}>
+                        <Text style={styles.friendRemoveText}>✕</Text>
+                      </Pressable>
+                    </View>
+                  );
+                })}
               </View>
             )}
           </View>
@@ -615,7 +677,11 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     overflow: 'hidden',
   },
   friendAvatarText: { fontSize: 18 * s, fontWeight: '900', color: P.brown },
-  friendAvatarImg: { position: 'absolute', width: 72 * s, height: 72 * s, left: -14 * s, top: -3 * s },
+  friendAvatarImg: { width: 72 * s, height: 72 * s, marginTop: 16 * s },
+  // Plus friend: drop the white card + pink border; the gold PLUS_CARD image fills
+  // behind the row instead. Keep padding/radius so the content still sits inset.
+  friendRowPlus: { backgroundColor: 'transparent', borderColor: 'transparent' },
+  friendRowPlusBg: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   friendTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two * s },
   avatarWrap: { width: 44 * s, height: 44 * s },
   statusDot: {

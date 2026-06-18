@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ImageBackground, NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
+import { playTick } from '@/lib/sounds';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -36,7 +37,22 @@ function WheelColumn({ values, value, unit, onChange, loop = false }: { values: 
   const mid = loop ? LOOP_CENTER * len : 0;
   const base = Math.max(0, values.indexOf(value));
   const idx = mid + base;
+  // Click once per number that rolls past, but only while the user is actually
+  // dragging — programmatic scrolls (quick-picks, loop recenter) must stay silent
+  // so they don't machine-gun the tick.
+  const draggingRef = useRef(false);
+  const lastTickIdxRef = useRef(idx);
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (!draggingRef.current) return;
+    const i = Math.round(e.nativeEvent.contentOffset.y / ITEM_H);
+    if (i !== lastTickIdxRef.current) {
+      lastTickIdxRef.current = i;
+      playTick();
+    }
+  };
   const commit = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    // Stop ticking before the loop recenter below scrolls us back to the middle.
+    draggingRef.current = false;
     const i = Math.max(0, Math.min(data.length - 1, Math.round(e.nativeEvent.contentOffset.y / ITEM_H)));
     const v = data[i];
     if (v !== value) onChange(v);
@@ -62,6 +78,12 @@ function WheelColumn({ values, value, unit, onChange, loop = false }: { values: 
         decelerationRate="fast"
         nestedScrollEnabled
         contentOffset={{ x: 0, y: idx * ITEM_H }}
+        scrollEventThrottle={16}
+        onScrollBeginDrag={(e) => {
+          draggingRef.current = true;
+          lastTickIdxRef.current = Math.round(e.nativeEvent.contentOffset.y / ITEM_H);
+        }}
+        onScroll={onScroll}
         onMomentumScrollEnd={commit}
         onScrollEndDrag={commit}>
         {data.map((v, i) => (
@@ -155,7 +177,7 @@ export default function CustomTimerScreen() {
           </View>
           <View style={styles.pickRow}>
             {(isBreakMode ? BREAK_PICKS : FOCUS_PICKS).map((m) => (
-              <Pressable key={m} onPress={() => setFocusTotal(m)} style={[styles.pick, focusMins === m && styles.pickActive]}>
+              <Pressable key={m} onPress={() => { playTick(); setFocusTotal(m); }} style={[styles.pick, focusMins === m && styles.pickActive]}>
                 <Text style={[styles.pickText, focusMins === m && styles.pickTextActive]}>{m}m</Text>
               </Pressable>
             ))}
@@ -173,7 +195,7 @@ export default function CustomTimerScreen() {
               </View>
               <View style={styles.pickRow}>
                 {BREAK_PICKS.map((m) => (
-                  <Pressable key={m} onPress={() => setBreakTotal(m)} style={[styles.pick, breakMins === m && styles.pickActive]}>
+                  <Pressable key={m} onPress={() => { playTick(); setBreakTotal(m); }} style={[styles.pick, breakMins === m && styles.pickActive]}>
                     <Text style={[styles.pickText, breakMins === m && styles.pickTextActive]}>{m}m</Text>
                   </Pressable>
                 ))}

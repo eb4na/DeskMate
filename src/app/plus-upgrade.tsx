@@ -1,9 +1,8 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
-import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlusIcon } from '@/components/plus-icon';
@@ -12,6 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
+import { PRODUCT_IDS, fetchPrices, purchasePlus, purchasesReady, restorePlus, type PriceMap } from '@/lib/purchases';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 // Each feature shows the same in-game art used for that feature elsewhere, so the
@@ -31,11 +31,9 @@ const FEATURES: {
   { titleKey: 'plus.f_unlimitedExams', descKey: 'plus.f_unlimitedExamsDesc', art: require('@/assets/images/home/exam-calendar-icon.png') },
   { titleKey: 'plus.f_streakFreezes', descKey: 'plus.f_streakFreezesDesc', art: require('@/assets/images/home/streak-freeze-icon.png') },
   { titleKey: 'plus.f_advancedReports', descKey: 'plus.f_advancedReportsDesc', art: require('@/assets/images/settings/progress.png') },
-  { titleKey: 'plus.f_ambience', descKey: 'plus.f_ambienceDesc', art: require('@/assets/images/shop/icon-sound.png') },
-  { titleKey: 'plus.f_spotify', descKey: 'plus.f_spotifyDesc', art: require('@/assets/images/settings/radio.png') },
+  { titleKey: 'plus.f_spotify', descKey: 'plus.f_spotifyDesc', art: require('@/assets/images/settings/spotify-logo.png') },
   { titleKey: 'plus.f_exclusiveSkin', descKey: 'plus.f_exclusiveSkinDesc', art: require('@/assets/images/bun/bun-strawberry.png'), noteKey: 'plus.noteKeep', noteKind: 'keep' },
   { titleKey: 'plus.f_goldenTeahouse', descKey: 'plus.f_goldenTeahouseDesc', art: require('@/assets/images/backgrounds/strawberry-palace.png'), noteKey: 'plus.noteKeep', noteKind: 'keep' },
-  { titleKey: 'plus.f_avatarFrame', descKey: 'plus.f_avatarFrameDesc', crown: true, noteKey: 'plus.noteExpire', noteKind: 'expire' },
   { titleKey: 'plus.f_shopDiscount', descKey: 'plus.f_shopDiscountDesc', art: require('@/assets/images/tabIcons/gen-shop.png') },
   { titleKey: 'plus.f_streakCoins', descKey: 'plus.f_streakCoinsDesc', art: require('@/assets/images/home/coin-icon.png') },
 ];
@@ -57,13 +55,62 @@ export default function PlusUpgradeScreen() {
   // "Plus member" state and the user closes the screen themselves.
   // 'rewardSkin' → 'rewardRoom' are the two first-time-Plus unlock popups, shown
   // back-to-back only when the perks were actually newly granted.
-  const [confirm, setConfirm] = useState<null | 'activate' | 'deactivate' | 'rewardSkin' | 'rewardRoom'>(null);
+  // 'activate' is the DEV-only mock-purchase confirm; the 'msg*' states are simple
+  // info panels (store unavailable / failed / restore result) rendered as a local
+  // modal because a root showPopup can fail to present over this native-modal screen.
+  const [confirm, setConfirm] = useState<
+    null | 'activate' | 'deactivate' | 'rewardSkin' | 'rewardRoom' | 'msgUnavailable' | 'msgFailed' | 'msgRestored' | 'msgNoRestore'
+  >(null);
+
+  // Live App Store subscription prices (localized). Falls back to the hardcoded
+  // i18n price strings when IAP is unavailable / fetch fails.
+  const [prices, setPrices] = useState<PriceMap>({});
+  useEffect(() => {
+    let alive = true;
+    fetchPrices([PRODUCT_IDS.plusMonthly, PRODUCT_IDS.plusAnnual]).then((m) => {
+      if (alive) setPrices(m);
+    });
+    return () => { alive = false; };
+  }, []);
+  const monthlyPrice = prices[PRODUCT_IDS.plusMonthly] ?? t('plus.monthlyPrice');
+  const yearlyPrice = prices[PRODUCT_IDS.plusAnnual] ?? t('plus.yearlyPrice');
+
+  // Flip the app into its Plus state and show the first-time unlock popups. `until`
+  // is the real RevenueCat entitlement expiry when we have it.
+  const activatePlus = (until?: string) => {
+    // Perks are kept forever, so they're only newly granted the first time → only
+    // then show the reward popups.
+    const firstTime = !ownedShopItems.includes('outfit_bun_strawberry');
+    setIsPlus(true, plan, until);
+    setConfirm(firstTime ? 'rewardSkin' : null);
+  };
+
+  // "Start Plus" CTA. Real StoreKit purchase when available; DEV mock otherwise;
+  // production with no store fails closed (never grants Plus for free).
+  const startPlus = () => {
+    if (!purchasesReady()) {
+      setConfirm(__DEV__ ? 'activate' : 'msgUnavailable');
+      return;
+    }
+    purchasePlus(plan).then((res) => {
+      if (res.ok) activatePlus(res.until ?? undefined);
+      else if (!res.cancelled) setConfirm('msgFailed');
+    });
+  };
 
   const handleRestore = () => {
-    showPopup(
-      t('plus.restorePurchases'),
-      t('plus.restoreMsg'),
-    );
+    if (!purchasesReady()) {
+      setConfirm('msgUnavailable');
+      return;
+    }
+    restorePlus().then((res) => {
+      if (res.ok && res.until) {
+        setIsPlus(true, plan, res.until);
+        setConfirm('msgRestored');
+      } else {
+        setConfirm('msgNoRestore');
+      }
+    });
   };
 
   return (
@@ -141,7 +188,7 @@ export default function PlusUpgradeScreen() {
                     </ThemedText>
                   </View>
                 </ThemedView>
-                <ThemedText style={styles.priceValue}>{t('plus.monthlyPrice')}</ThemedText>
+                <ThemedText style={styles.priceValue}>{monthlyPrice}</ThemedText>
               </Pressable>
               <ThemedView style={styles.divider} />
               <Pressable
@@ -161,7 +208,7 @@ export default function PlusUpgradeScreen() {
                     </ThemedText>
                   </View>
                 </ThemedView>
-                <ThemedText style={styles.priceValue}>{t('plus.yearlyPrice')}</ThemedText>
+                <ThemedText style={styles.priceValue}>{yearlyPrice}</ThemedText>
               </Pressable>
             </ThemedView>
           )}
@@ -184,7 +231,7 @@ export default function PlusUpgradeScreen() {
               <SoundPressable
                 sound="confirm"
                 style={({ pressed }) => [styles.upgradeBtn, pressed && styles.pressed]}
-                onPress={() => setConfirm('activate')}>
+                onPress={startPlus}>
                 <ThemedText type="smallBold" style={styles.upgradeBtnText}>
                   {t('plus.startPlus')}
                 </ThemedText>
@@ -196,10 +243,21 @@ export default function PlusUpgradeScreen() {
                 </ThemedText>
               </Pressable>
             </>
-          ) : (
+          ) : __DEV__ ? (
+            // DEV-only: locally flip Plus off for testing. In production Apple owns
+            // cancellation, so there's no local "deactivate" — see the Manage link below.
             <Pressable onPress={() => setConfirm('deactivate')} style={styles.deactivateBtn}>
               <ThemedText type="small" themeColor="textSecondary">
                 {t('plus.deactivatePlus')}
+              </ThemedText>
+            </Pressable>
+          ) : (
+            // Apple-correct subscription management: deep-link to the App Store
+            // subscriptions screen rather than flipping local state (which the launch
+            // reconcile would just restore from the live entitlement).
+            <Pressable onPress={() => Linking.openURL('https://apps.apple.com/account/subscriptions')} style={styles.deactivateBtn}>
+              <ThemedText type="small" themeColor="textSecondary">
+                {t('plus.manageSubscription')}
               </ThemedText>
             </Pressable>
           )}
@@ -207,6 +265,14 @@ export default function PlusUpgradeScreen() {
           <ThemedText type="small" themeColor="textSecondary" style={styles.disclaimer}>
             {t('plus.disclaimer')}
           </ThemedText>
+
+          {/* App Store Guideline 3.1.2: an auto-renewing-subscription paywall must
+              link to functional Terms (EULA) + Privacy Policy from the screen. */}
+          <Pressable onPress={() => router.push('/legal')} style={styles.legalLink}>
+            <ThemedText type="small" style={styles.legalLinkText}>
+              {t('plus.termsPrivacy', { defaultValue: 'Terms of Service & Privacy Policy' })}
+            </ThemedText>
+          </Pressable>
         </SafeAreaView>
       </ScrollView>
 
@@ -220,13 +286,7 @@ export default function PlusUpgradeScreen() {
                 <ThemedText style={styles.confirmMsg}>{t('plus.mockUpgradeMsg')}</ThemedText>
                 <Pressable
                   style={({ pressed }) => [styles.confirmPrimary, pressed && styles.pressed]}
-                  onPress={() => {
-                    // The perks are kept forever, so they're only newly granted the
-                    // first time you go Plus — show the reward popups only then.
-                    const firstTime = !ownedShopItems.includes('outfit_bun_strawberry');
-                    setIsPlus(true, plan);
-                    setConfirm(firstTime ? 'rewardSkin' : null);
-                  }}>
+                  onPress={() => activatePlus()}>
                   <ThemedText style={styles.confirmPrimaryText}>{t('plus.activatePlus')}</ThemedText>
                 </Pressable>
               </>
@@ -280,8 +340,34 @@ export default function PlusUpgradeScreen() {
                   </ThemedText>
                 </Pressable>
               </>
+            ) : confirm?.startsWith('msg') ? (
+              <>
+                <ThemedText style={styles.confirmTitle}>
+                  {confirm === 'msgUnavailable'
+                    ? t('plus.storeUnavailable', { defaultValue: 'Store unavailable' })
+                    : confirm === 'msgFailed'
+                    ? t('plus.purchaseFailed', { defaultValue: 'Purchase failed' })
+                    : confirm === 'msgRestored'
+                    ? t('plus.restored', { defaultValue: 'Plus restored 🎉' })
+                    : t('plus.nothingToRestore', { defaultValue: 'Nothing to restore' })}
+                </ThemedText>
+                <ThemedText style={styles.confirmMsg}>
+                  {confirm === 'msgUnavailable'
+                    ? t('plus.storeUnavailableMsg', { defaultValue: 'Purchases are temporarily unavailable. Please try again later.' })
+                    : confirm === 'msgFailed'
+                    ? t('plus.purchaseFailedMsg', { defaultValue: 'Something went wrong and you were not charged. Please try again.' })
+                    : confirm === 'msgRestored'
+                    ? t('plus.restoredMsg', { defaultValue: 'Your Memobun Plus subscription has been restored.' })
+                    : t('plus.nothingToRestoreMsg', { defaultValue: "We couldn't find an active subscription on your Apple ID." })}
+                </ThemedText>
+                <Pressable
+                  style={({ pressed }) => [styles.confirmPrimary, pressed && styles.pressed]}
+                  onPress={() => setConfirm(null)}>
+                  <ThemedText style={styles.confirmPrimaryText}>{t('common.ok', { defaultValue: 'OK' })}</ThemedText>
+                </Pressable>
+              </>
             ) : null}
-            {confirm !== 'rewardSkin' && confirm !== 'rewardRoom' && (
+            {(confirm === 'activate' || confirm === 'deactivate') && (
               <Pressable style={styles.confirmCancel} onPress={() => setConfirm(null)}>
                 <ThemedText style={styles.confirmCancelText}>{t('common.cancel')}</ThemedText>
               </Pressable>
@@ -371,6 +457,8 @@ const styles = StyleSheet.create({
   restoreBtn: { alignItems: 'center', paddingVertical: Spacing.two },
   deactivateBtn: { alignItems: 'center', paddingVertical: Spacing.two },
   disclaimer: { textAlign: 'center', lineHeight: 18, fontSize: 11 },
+  legalLink: { alignItems: 'center', paddingVertical: Spacing.one },
+  legalLinkText: { textDecorationLine: 'underline', color: '#7C6F5A', fontWeight: '700' },
 
   // Local confirm dialog (activate / deactivate Plus).
   confirmBackdrop: {

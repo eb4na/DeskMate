@@ -930,6 +930,8 @@
     "wardrobeTitle": "{{name}}のワードローブ",
     "pickOutfit": "衣装を選ぼう — {{name}}がどこでも着ます",
     "tapToUnlock": "タップで解除",
+    "buyInShop": "ショップで購入",
+    "plusOnlyHint": "Plusのみ",
     "wearing": "着用中",
     "tapToWear": "タップで着る",
     "noOutfitsYet": "まだ衣装がありません",
@@ -1458,7 +1460,7 @@
     "berryPrincess": "ベリープリンセス",
     "ivoryRose": "アイボリーローズ",
     "strawberryDreams": "ストロベリードリーム",
-    "afternoonTrain": "午後の列車"
+    "afternoonTrain": "Carefree Days"
   },
   "studyDesk": {
     "title": "休憩中",

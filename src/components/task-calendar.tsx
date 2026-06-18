@@ -123,11 +123,21 @@ function CalendarMonthCard({
   const today = todayISO();
 
   // Map each exam day to its subject colour (falls back to pink) + chosen shape.
+  // When a day has MORE than one countdown, the cell shows the one closest to the
+  // current time; the next-closest one's colour becomes a small dot (`otherColor`)
+  // in the cell's top-right corner so the extra countdown isn't hidden.
   const examByDay = useMemo(() => {
-    const map: Record<string, { color: string; shape?: string }> = {};
-    for (const e of examCountdowns) {
-      const subj = e.subject ? subjects.find((s) => s.name === e.subject) : null;
-      map[e.dateISO.slice(0, 10)] = { color: subj?.color ?? '#F4A8C0', shape: e.shape };
+    const now = Date.now();
+    const colorOf = (e: (typeof examCountdowns)[number]) =>
+      (e.subject ? subjects.find((s) => s.name === e.subject)?.color : null) ?? '#F4A8C0';
+    const at = (e: (typeof examCountdowns)[number]) =>
+      new Date(`${e.dateISO.slice(0, 10)}T${e.time ?? '00:00'}:00`).getTime();
+    const groups: Record<string, (typeof examCountdowns)[number][]> = {};
+    for (const e of examCountdowns) (groups[e.dateISO.slice(0, 10)] ??= []).push(e);
+    const map: Record<string, { color: string; shape?: string; otherColor?: string }> = {};
+    for (const day of Object.keys(groups)) {
+      const sorted = groups[day].sort((a, b) => Math.abs(at(a) - now) - Math.abs(at(b) - now));
+      map[day] = { color: colorOf(sorted[0]), shape: sorted[0].shape, otherColor: sorted[1] ? colorOf(sorted[1]) : undefined };
     }
     return map;
   }, [examCountdowns, subjects]);
@@ -215,8 +225,11 @@ function CalendarMonthCard({
               <View style={[styles.dayInner, isToday && styles.dayToday]}>
                 {hasExam && (
                   <View style={styles.examStar} pointerEvents="none">
-                    <CountdownShape shape={exam.shape} color={exam.color} size={cellW * 0.92} />
+                    <CountdownShape shape={exam.shape} color={exam.color} size={cellW * 1.12} />
                   </View>
+                )}
+                {hasExam && exam.otherColor && (
+                  <View style={[styles.examOtherDot, { backgroundColor: exam.otherColor }]} pointerEvents="none" />
                 )}
                 <Text style={[styles.dayNum, hasExam && styles.dayNumExam]}>{d}</Text>
                 {dayTasks.length > 0 && <Text style={styles.taskCount}>{dayTasks.length}</Text>}
@@ -506,6 +519,8 @@ const styles = StyleSheet.create({
   dayToday: { backgroundColor: '#FAD4E0' },
   daySelected: { backgroundColor: C.jam },
   examStar: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
+  // Small dot (top-right) marking a second same-day countdown, in its subject colour.
+  examOtherDot: { position: 'absolute', top: 2, right: 2, width: 7, height: 7, borderRadius: 3.5, borderWidth: 1, borderColor: '#fff' },
   dayNum: { fontSize: 14, color: C.cocoaDark, fontWeight: '600' },
   dayNumExam: { color: '#fff', fontWeight: '800' },
   dayNumSelected: { color: '#fff', fontWeight: '800' },

@@ -930,6 +930,8 @@
     "wardrobeTitle": "{{name}}의 옷장",
     "pickOutfit": "의상을 고르세요 — {{name}}이(가) 어디서나 그것을 입습니다",
     "tapToUnlock": "탭하여 잠금 해제",
+    "buyInShop": "상점에서 구매",
+    "plusOnlyHint": "Plus 전용",
     "wearing": "착용 중",
     "tapToWear": "탭하여 입기",
     "noOutfitsYet": "아직 의상이 없습니다",
@@ -1458,7 +1460,7 @@
     "berryPrincess": "베리 프린세스",
     "ivoryRose": "아이보리 로즈",
     "strawberryDreams": "딸기 꿈",
-    "afternoonTrain": "오후의 기차"
+    "afternoonTrain": "Carefree Days"
   },
   "studyDesk": {
     "title": "잠시 휴식 중",

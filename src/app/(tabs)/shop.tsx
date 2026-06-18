@@ -7,6 +7,7 @@ import type { StyleProp, TextStyle } from 'react-native';
 import { showPopup } from '@/lib/popup';
 import { stopPreview } from '@/lib/ambience-audio';
 import { track } from '@/lib/analytics';
+import { PRODUCT_IDS, fetchPrices, purchaseProduct, purchasesReady, type PriceMap } from '@/lib/purchases';
 import { useIsTablet } from '@/hooks/use-device-class';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -96,11 +97,11 @@ const CARD = Math.floor((PAGE_W - H_PAD * 2 - GAP) / COLS);
 
 type CoinPack = { id: string; name: string; coins: number; price: string; popular?: boolean };
 const COIN_PACKS: CoinPack[] = [
-  { id: 'pouch', name: 'Strawberry Cupcake', coins: 200, price: '$1.00' },
-  { id: 'bag', name: 'Lemon Slice', coins: 600, price: '$3.00' },
+  { id: 'pouch', name: 'Strawberry Cupcake', coins: 200, price: '$0.99' },
+  { id: 'bag', name: 'Lemon Slice', coins: 600, price: '$2.99' },
   { id: 'chest', name: 'Chocolate Cake', coins: 1444, price: '$6.70', popular: true },
-  { id: 'vault', name: 'Red Velvet', coins: 5000, price: '$20.00' },
-  { id: 'treasury', name: 'Together With You', coins: 50000, price: '$100.00' },
+  { id: 'vault', name: 'Red Velvet', coins: 5000, price: '$19.99' },
+  { id: 'treasury', name: 'Together With You', coins: 50000, price: '$99.99' },
 ];
 
 
@@ -175,10 +176,10 @@ export default function ShopScreen() {
   const isTablet = useIsTablet();
   // Stop any sound preview when the shop tab loses focus (tabs don't unmount).
   useFocusEffect(useCallback(() => () => stopPreview(), []));
-  const tImgWrap = isTablet && { height: 210 };
-  const tImg = isTablet && { width: 168, height: 168 };
-  const tEmoji = isTablet && { fontSize: 116, lineHeight: 130 };
-  const tName = isTablet && { fontSize: 20 };
+  const tImgWrap = isTablet && { height: 130 };
+  const tImg = isTablet && { width: 110, height: 110 };
+  const tEmoji = isTablet && { fontSize: 80, lineHeight: 92 };
+  const tName = isTablet && { fontSize: 14 };
   // Tablet: the Bakery Menu coin packs read tiny on a wide screen — scale the card,
   // pack art, names, prices and coin amounts up so coin purchases are easy to tap.
   const tMenuCard = isTablet && { paddingHorizontal: Spacing.four, paddingVertical: Spacing.three };
@@ -224,7 +225,7 @@ export default function ShopScreen() {
 
   // Open straight to a category when navigated with a `category` param (e.g. from
   // a locked recipe in the Bakery Menu). Consumed once so it doesn't stick.
-  const { category: categoryParam, buyPair: buyPairParam } = useLocalSearchParams<{ category?: string; buyPair?: string }>();
+  const { category: categoryParam, buyPair: buyPairParam, buyOutfit: buyOutfitParam } = useLocalSearchParams<{ category?: string; buyPair?: string; buyOutfit?: string }>();
   useEffect(() => {
     if (categoryParam && CATEGORIES.includes(categoryParam as ShopCategory)) {
       setActiveCategory(categoryParam as ShopCategory);
@@ -233,10 +234,24 @@ export default function ShopScreen() {
   }, [categoryParam]);
   const [outfitCharId, setOutfitCharId] = useState<string | null>(null);
   const [itemPage, setItemPage] = useState(0);
+  const [lorePop, setLorePop] = useState<{ name: string; text: string } | null>(null);
   // The purchase the white confirm popup is currently asking about.
   const [buyReq, setBuyReq] = useState<BuyReq | null>(null);
   // After a successful buy, ask whether to equip the new item now.
   const [equipPrompt, setEquipPrompt] = useState<{ name: string; equip: () => void } | null>(null);
+
+  // Live App Store prices keyed by product id (localized currency). Falls back to
+  // the hardcoded pack.price strings when IAP is unavailable / fetch fails.
+  const [storePrices, setStorePrices] = useState<PriceMap>({});
+  useEffect(() => {
+    let alive = true;
+    fetchPrices([...COIN_PACKS.map((p) => PRODUCT_IDS[p.id as keyof typeof PRODUCT_IDS]), PRODUCT_IDS.streakFreeze]).then((m) => {
+      if (alive) setStorePrices(m);
+    });
+    return () => { alive = false; };
+  }, []);
+  // The price to show for a pack: the store's localized price if we have it.
+  const packPrice = (pack: CoinPack) => storePrices[PRODUCT_IDS[pack.id as keyof typeof PRODUCT_IDS]] ?? pack.price;
 
   // Characters the user owns (for the Outfits tab). Bun is only owned when it's
   // the chosen starter or was bought from the shop.
@@ -280,37 +295,58 @@ export default function ShopScreen() {
   const previewDeskRoom = ROOM_PAIRS.find((r) => r.id === equippedDeskRoomId) ?? ROOM_PAIRS[0];
 
   const handleBuyFreeze = () => {
-    showPopup(
-      t('shop.streakFreezeName'),
-      t('shop.streakFreezeDesc'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('shop.buyForMock', { price: '$2.00' }),
-          onPress: () => {
-            addStreakFreeze(1);
-            showPopup(t('shop.freezeAdded'), t('shop.mockComplete'));
-          },
-        },
-      ],
-    );
+    const productId = PRODUCT_IDS.streakFreeze;
+    const price = storePrices[productId] ?? '$1.99';
+    const grant = () => {
+      addStreakFreeze(1);
+      track('shop_purchase', { kind: 'freeze' });
+      showPopup(t('shop.freezeAdded'), t('shop.purchaseComplete', { defaultValue: 'Thanks for your purchase!' }));
+    };
+    // Same fail-closed rule as coin packs: dev mock-grants, production refuses when
+    // the store is unavailable so a freeze is never handed out for free.
+    if (!purchasesReady()) {
+      if (__DEV__) {
+        showPopup(t('shop.streakFreezeName'), t('shop.streakFreezeDesc'), [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('shop.buyForMock', { price }), onPress: grant },
+        ]);
+      } else {
+        showPopup(t('shop.storeUnavailable', { defaultValue: 'Store unavailable' }), t('shop.storeUnavailableMsg', { defaultValue: 'Purchases are temporarily unavailable. Please try again later.' }));
+      }
+      return;
+    }
+    purchaseProduct(productId).then((res) => {
+      if (res.ok) grant();
+      else if (!res.cancelled) showPopup(t('shop.purchaseFailed', { defaultValue: 'Purchase failed' }), t('shop.purchaseFailedMsg', { defaultValue: 'Something went wrong and you were not charged. Please try again.' }));
+    });
   };
 
   const handleCoinPack = (pack: CoinPack) => {
-    showPopup(
-      t('shop.buyPackQ', { name: pack.name }),
-      t('shop.packDetail', { coins: pack.coins, price: pack.price }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('shop.buyForMock', { price: pack.price }),
-          onPress: () => {
-            addPurchasedCoins(pack.coins);
-            showPopup(t('shop.coinsAdded', { coins: pack.coins }), t('shop.mockComplete'));
-          },
-        },
-      ],
-    );
+    const price = packPrice(pack);
+    const productId = PRODUCT_IDS[pack.id as keyof typeof PRODUCT_IDS];
+    const grant = () => {
+      addPurchasedCoins(pack.coins);
+      track('shop_purchase', { kind: 'coins', pack: pack.id, coins: pack.coins });
+      showPopup(t('shop.coinsAdded', { coins: pack.coins }), t('shop.purchaseComplete', { defaultValue: 'Thanks for your purchase!' }));
+    };
+    // No real store available. In dev we mock-grant so the app stays testable; in a
+    // production build we MUST refuse — never hand out coins for free.
+    if (!purchasesReady()) {
+      if (__DEV__) {
+        showPopup(t('shop.buyPackQ', { name: pack.name }), t('shop.packDetail', { coins: pack.coins, price }), [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('shop.buyForMock', { price }), onPress: grant },
+        ]);
+      } else {
+        showPopup(t('shop.storeUnavailable', { defaultValue: 'Store unavailable' }), t('shop.storeUnavailableMsg', { defaultValue: 'Purchases are temporarily unavailable. Please try again later.' }));
+      }
+      return;
+    }
+    // Real purchase: StoreKit shows its own confirmation sheet, so go straight to it.
+    purchaseProduct(productId).then((res) => {
+      if (res.ok) grant();
+      else if (!res.cancelled) showPopup(t('shop.purchaseFailed', { defaultValue: 'Purchase failed' }), t('shop.purchaseFailedMsg', { defaultValue: 'Something went wrong and you were not charged. Please try again.' }));
+    });
   };
 
 
@@ -346,16 +382,22 @@ export default function ShopScreen() {
 
   // The pair button buys + equips the WHOLE matched set (background + desk) so the
   // finished room shows up at once. If both halves are already owned, just equip.
-  const openPairBuy = (item: ShopItemT) => {
+  // `outfitId` (optional) is the paid outfit that triggered this pair-buy from the
+  // wardrobe chain link — it's listed in the popup + worn on equip, so the popup
+  // shows EVERYTHING the look needs (outfit + background + desk), not just the room.
+  const openPairBuy = (item: ShopItemT, outfitId?: string) => {
     const pair = pairForItem(item.id);
     if (!pair) return;
-    if (isPairOwned(pair, ownedShopItems)) {
+    const outfitNeeded = !!outfitId && !ownedShopItems.includes(outfitId);
+    // Fully owned (room + outfit) → just equip the whole look.
+    if (isPairOwned(pair, ownedShopItems) && !outfitNeeded) {
       setEquippedBackground(pair.id);
       setEquippedDesk(pair.id);
+      if (outfitId) equipShopItem(outfitId);
       showPopup(t('shop.equippedTitle'), t('shop.nowActive', { name: pair.name }));
       return;
     }
-    const need = [pair.backgroundId, pair.deskId]
+    const need = [pair.backgroundId, pair.deskId, outfitId]
       .filter((id): id is string => !!id && !ownedShopItems.includes(id))
       .map((id) => SHOP_ITEMS.find((s) => s.id === id))
       .filter((it): it is ShopItemT => !!it);
@@ -363,7 +405,7 @@ export default function ShopScreen() {
       title: t('editRoom.unlockPair', { name: pair.name }),
       items: need,
       total: need.reduce((sum, it) => sum + Math.floor(it.price * discount), 0),
-      equip: () => { setEquippedBackground(pair.id); setEquippedDesk(pair.id); },
+      equip: () => { setEquippedBackground(pair.id); setEquippedDesk(pair.id); if (outfitId) equipShopItem(outfitId); },
       equipName: pair.name,
     });
   };
@@ -375,9 +417,9 @@ export default function ShopScreen() {
     const item = SHOP_ITEMS.find((s) => s.id === buyPairParam);
     if (item) {
       setActiveCategory(item.category as ShopCategory);
-      openPairBuy(item);
+      openPairBuy(item, buyOutfitParam || undefined);
     }
-    router.setParams({ buyPair: undefined });
+    router.setParams({ buyPair: undefined, buyOutfit: undefined });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buyPairParam]);
 
@@ -392,7 +434,13 @@ export default function ShopScreen() {
     });
     const { equip, equipName, items } = buyReq;
     setBuyReq(null);
-    if (equip) {
+    // Companions get the full-screen "character obtained" celebration (mounted at
+    // the app root, fired from purchaseShopItem) instead of the small equip prompt —
+    // its "Meet" button sets the companion active in the gallery.
+    const boughtCompanion = items.some((it) => it.category === 'companion');
+    if (boughtCompanion) {
+      // handled by CharacterObtainedModal
+    } else if (equip) {
       setEquipPrompt({ name: equipName ?? '', equip });
     } else if (items.some((it) => it.category === 'recipe')) {
       // Recipes aren't equipped — they're baked from the Bakery Menu. Confirm the
@@ -532,7 +580,7 @@ export default function ShopScreen() {
                         )}
                         {!mystery && (
                           <>
-                            <ThemedText style={[styles.itemName, tName]} numberOfLines={1}>{localizeCompanionName(c.name, t)}</ThemedText>
+                            <ThemedText style={[styles.itemName, tName]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.75}>{localizeCompanionName(c.name, t)}</ThemedText>
                             <View style={[styles.charBadge, c.owned ? styles.badgeOwned : styles.charLockedBadge]}>
                               <ThemedText style={c.owned ? styles.badgeText : styles.charLockedText}>
                                 {c.owned ? t('shop.ownedBadge') : t('shop.lockedBadge')}
@@ -569,67 +617,68 @@ export default function ShopScreen() {
                       const charOwned = outfitChar.owned;
                       const owned = o.price === 0 || ownedShopItems.includes(o.id);
                       const canAfford = coins >= o.price;
+                      const isBun = outfitChar.id === getStarterActiveId('girl');
+                      const skin = (isBun ? BUN_SKINS : getCompanionSkins(outfitChar.id)).find((s) => s.shopItemId === o.id);
                       return (
-                        <Pressable
-                          key={o.id}
-                          // View-only cards stay tappable (they open the preview);
-                          // owned-character cards disable when already owned/unaffordable.
-                          disabled={charOwned && (owned || !canAfford)}
-                          onPress={() => {
-                            if (!charOwned) {
-                              // Don't own the character yet → show the costume on the
-                              // player's current desk setup instead of buying it.
-                              setOutfitPreview({ image: o.image ?? null, name: o.name, charName: outfitChar.name });
-                              return;
-                            }
-                            // Map the outfit to its wardrobe skin so the confirm
-                            // popup's "Equip now?" step can wear it after purchase.
-                            const isBun = outfitChar.id === getStarterActiveId('girl');
-                            const skin = (isBun ? BUN_SKINS : getCompanionSkins(outfitChar.id)).find((s) => s.shopItemId === o.id);
-                            const equip = skin
-                              ? () => { if (isBun) setBunSkin(skin.id); else setCompanionSkin(outfitChar.id, skin.id); }
-                              : undefined;
-                            // Route through the same confirm-buy popup every other item uses.
-                            setBuyReq({
-                              title: t('shop.buyItemQ', { name: localizeOutfitName(o.name, t) }),
-                              items: [{ id: o.id, name: o.name, emoji: o.emoji, description: '', price: o.price, category: 'outfits', image: o.image }],
-                              total: Math.floor(o.price * discount),
-                              equip,
-                              equipName: localizeOutfitName(o.name, t),
-                            });
-                          }}>
-                          <View style={[styles.itemCard, charOwned && owned && styles.itemOwned, charOwned && !owned && !canAfford && styles.itemDim]}>
-                            {o.image ? (
-                              <>
-                                <RNImage source={o.image} style={[styles.outfitItemImg, tImg]} resizeMode="contain" />
-                                <Pressable
-                                  style={styles.zoomBtn}
-                                  hitSlop={8}
-                                  onPress={(e) => {
-                                    e.stopPropagation?.();
-                                    setZoomImage(o.image ?? null);
-                                  }}>
-                                  <RNImage source={MAGNIFIER_ICON} style={styles.zoomIcon} resizeMode="contain" />
-                                </Pressable>
-                              </>
-                            ) : (
-                              <ThemedText style={[styles.itemEmoji, tEmoji]}>{o.emoji}</ThemedText>
-                            )}
-                            {!charOwned ? (
-                              // View-only: a lock, not a price (can't buy without the character).
-                              <View style={[styles.priceBadge, styles.charLockedBadge]}>
-                                <ThemedText style={styles.charLockedText}>{t('shop.lockedBadge')}</ThemedText>
-                              </View>
-                            ) : owned ? (
-                              <View style={[styles.priceBadge, styles.badgeOwned]}>
-                                <ThemedText style={styles.badgeText}>{o.price === 0 ? t('shop.defaultBadge') : t('shop.ownedBadge')}</ThemedText>
-                              </View>
-                            ) : (
-                              <PriceTag price={o.price} discount={discount} size={22} textStyle={[styles.priceText, !canAfford && styles.priceTextDim]} />
-                            )}
-                            <ThemedText style={[styles.itemName, tName]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>{localizeOutfitName(o.name, t)}</ThemedText>
-                          </View>
-                        </Pressable>
+                        <View key={o.id} style={styles.outfitSlot}>
+                          <Pressable
+                            disabled={charOwned && (owned || !canAfford)}
+                            onPress={() => {
+                              if (!charOwned) {
+                                setOutfitPreview({ image: o.image ?? null, name: o.name, charName: outfitChar.name });
+                                return;
+                              }
+                              const equip = skin
+                                ? () => { if (isBun) setBunSkin(skin.id); else setCompanionSkin(outfitChar.id, skin.id); }
+                                : undefined;
+                              setBuyReq({
+                                title: t('shop.buyItemQ', { name: localizeOutfitName(o.name, t) }),
+                                items: [{ id: o.id, name: o.name, emoji: o.emoji, description: '', price: o.price, category: 'outfits', image: o.image }],
+                                total: Math.floor(o.price * discount),
+                                equip,
+                                equipName: localizeOutfitName(o.name, t),
+                              });
+                            }}>
+                            <View style={[styles.itemCard, charOwned && owned && styles.itemOwned, charOwned && !owned && !canAfford && styles.itemDim]}>
+                              {o.image ? (
+                                <>
+                                  <RNImage source={o.image} style={[styles.outfitItemImg, tImg]} resizeMode="contain" />
+                                  <Pressable
+                                    style={styles.zoomBtn}
+                                    hitSlop={8}
+                                    onPress={(e) => {
+                                      e.stopPropagation?.();
+                                      setZoomImage(o.image ?? null);
+                                    }}>
+                                    <RNImage source={MAGNIFIER_ICON} style={styles.zoomIcon} resizeMode="contain" />
+                                  </Pressable>
+                                </>
+                              ) : (
+                                <ThemedText style={[styles.itemEmoji, tEmoji]}>{o.emoji}</ThemedText>
+                              )}
+                              {!charOwned ? (
+                                <View style={[styles.priceBadge, styles.charLockedBadge]}>
+                                  <ThemedText style={styles.charLockedText}>{t('shop.lockedBadge')}</ThemedText>
+                                </View>
+                              ) : owned ? (
+                                <View style={[styles.priceBadge, styles.badgeOwned]}>
+                                  <ThemedText style={styles.badgeText}>{o.price === 0 ? t('shop.defaultBadge') : t('shop.ownedBadge')}</ThemedText>
+                                </View>
+                              ) : (
+                                <PriceTag price={o.price} discount={discount} size={22} textStyle={[styles.priceText, !canAfford && styles.priceTextDim]} />
+                              )}
+                              <ThemedText style={[styles.itemName, tName]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>{localizeOutfitName(o.name, t)}</ThemedText>
+                            </View>
+                          </Pressable>
+                          {skin?.lore && (
+                            <Pressable
+                              style={({ pressed }) => [styles.outfitLoreBadge, pressed && { opacity: 0.7 }]}
+                              hitSlop={8}
+                              onPress={() => setLorePop({ name: localizeOutfitName(o.name, t), text: skin.lore! })}>
+                              <ThemedText style={styles.outfitLoreBadgeText}>i</ThemedText>
+                            </Pressable>
+                          )}
+                        </View>
                       );
                     })}
                   </View>
@@ -775,7 +824,7 @@ export default function ShopScreen() {
                             textStyle={[styles.priceText, !canAfford && styles.priceTextDim]}
                           />
                         )}
-                        <ThemedText style={[styles.itemName, tName]} numberOfLines={1}>{localizeCompanionName(item.name, t)}</ThemedText>
+                        <ThemedText style={[styles.itemName, tName]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.75}>{localizeCompanionName(item.name, t)}</ThemedText>
                         {item.category === 'recipe' && item.owner && (
                           <ThemedText style={styles.useHint} numberOfLines={1}>{t('foodGallery.ownerTag', { name: localizeCompanionName(item.owner, t) })}</ThemedText>
                         )}
@@ -822,7 +871,7 @@ export default function ShopScreen() {
                     <View style={styles.menuTopLine}>
                       <ThemedText style={[styles.menuName, tMenuName]} numberOfLines={1}>{pack.name}</ThemedText>
                       <View style={styles.menuLeader} />
-                      <ThemedText style={[styles.menuPrice, tMenuPrice]}>{pack.price}</ThemedText>
+                      <ThemedText style={[styles.menuPrice, tMenuPrice]}>{packPrice(pack)}</ThemedText>
                     </View>
                     <View style={styles.menuSubLine}>
                       <CoinAmount amount={pack.coins} size={isTablet ? 28 : 20} textStyle={[styles.menuCoinText, tMenuCoin]} />
@@ -847,7 +896,7 @@ export default function ShopScreen() {
                   <View style={styles.menuTopLine}>
                     <ThemedText style={[styles.menuName, tMenuName]} numberOfLines={1}>{t('shop.streakFreezeName')}</ThemedText>
                     <View style={styles.menuLeader} />
-                    <ThemedText style={[styles.menuPrice, tMenuPrice]}>$2.00</ThemedText>
+                    <ThemedText style={[styles.menuPrice, tMenuPrice]}>{storePrices[PRODUCT_IDS.streakFreeze] ?? '$1.99'}</ThemedText>
                   </View>
                   <View style={styles.menuSubLine}>
                     <ThemedText style={[styles.menuCoinText, tMenuCoin]}>{t('shop.streakFreezeDesc')}</ThemedText>
@@ -998,6 +1047,19 @@ export default function ShopScreen() {
                 </Pressable>
               </>
             )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Outfit lore popup */}
+      <Modal visible={lorePop !== null} transparent animationType="fade" onRequestClose={() => setLorePop(null)}>
+        <Pressable style={styles.loreBackdrop} onPress={() => setLorePop(null)}>
+          <Pressable style={styles.loreCard} onPress={() => {}}>
+            <ThemedText style={styles.loreTitle}>{lorePop?.name}</ThemedText>
+            <ThemedText style={styles.loreText}>{lorePop?.text}</ThemedText>
+            <Pressable style={({ pressed }) => [styles.loreClose, pressed && { opacity: 0.75 }]} onPress={() => setLorePop(null)}>
+              <ThemedText style={styles.loreCloseText}>{t('common.close')}</ThemedText>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
@@ -1453,4 +1515,28 @@ const styles = StyleSheet.create({
   tipCoins: { color: BakeryColors.honey, fontSize: 12, lineHeight: 17 },
 
   pressed: { opacity: 0.75 },
+
+  outfitSlot: { width: CARD, position: 'relative' },
+  outfitLoreBadge: {
+    position: 'absolute', top: 8, right: 8, zIndex: 10,
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: 'rgba(91,58,46,0.55)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  outfitLoreBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', lineHeight: 14 },
+
+  loreBackdrop: {
+    flex: 1, backgroundColor: 'rgba(48,32,24,0.45)',
+    alignItems: 'center', justifyContent: 'center', padding: 28,
+  },
+  loreCard: {
+    backgroundColor: '#FFFDF8', borderRadius: 24,
+    padding: 24, gap: 12, alignItems: 'center',
+    maxWidth: 320, width: '100%',
+    shadowColor: '#5B3A2E', shadowOpacity: 0.18, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
+  },
+  loreTitle: { fontSize: 17, fontWeight: '900', textAlign: 'center' },
+  loreText: { fontSize: 14, lineHeight: 21, textAlign: 'center', fontStyle: 'italic' },
+  loreClose: { marginTop: 4, backgroundColor: '#F0739A', borderRadius: 18, paddingVertical: 10, paddingHorizontal: 28 },
+  loreCloseText: { color: '#fff', fontSize: 14, fontWeight: '800' },
 });

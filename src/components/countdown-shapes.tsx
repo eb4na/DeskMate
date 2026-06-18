@@ -25,22 +25,29 @@ export function CountdownShape({ shape, size = 18, color = BakeryColors.jam }: P
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       {key === 'star' && (
+        // Bubbly star: each point is a rounded bulge (quadratic curves arcing out
+        // past the tip), with a soft waist between them — a puffy sticker look.
         <Path
-          d="M12 2 L14.6 8.9 L22 9.3 L16.2 14 L18.2 21 L12 16.9 L5.8 21 L7.8 14 L2 9.3 L9.4 8.9 Z"
+          d="M8.9 7.8 Q12 1 15.1 7.8 Q22.5 8.6 17 13.6 Q18.5 20.9 12 17.2 Q5.5 20.9 7 13.6 Q1.5 8.6 8.9 7.8 Z"
           fill={fill}
+          strokeLinejoin="round"
         />
       )}
       {key === 'heart' && (
+        // Bubbly heart: full, puffy top lobes and a ROUNDED bottom (the two sides meet
+        // with a horizontal tangent, so it's a soft round instead of a sharp point).
+        // Sized a touch smaller and sat slightly lower in the 24×24 box.
         <Path
-          d="M12 21 C12 21 3 13.8 3 8.6 A4.6 4.6 0 0 1 12 6 A4.6 4.6 0 0 1 21 8.6 C21 13.8 12 21 12 21 Z"
+          d="M12 19.8 C13.3 19.8 14.6 18.7 16 17.3 C18 15.3 19.5 13 19.5 10.2 C19.5 7 17.6 5.2 15.3 5.2 C13.7 5.2 12.5 6.2 12 7.6 C11.5 6.2 10.3 5.2 8.7 5.2 C6.4 5.2 4.5 7 4.5 10.2 C4.5 13 6 15.3 8 17.3 C9.4 18.7 10.7 19.8 12 19.8 Z"
           fill={fill}
+          strokeLinejoin="round"
         />
       )}
       {key === 'tear' && (
-        // Symmetric classic water-drop: a sharp top point tapering into a full,
-        // round bulb (circle r6 centred at 12,15) — mirror-balanced left/right.
+        // Symmetric classic water-drop: a sharp top point tapering into a round bulb
+        // (circle r5.4 centred at 12,12.8) — sitting high, a touch larger than before.
         <Path
-          d="M12 2.5 C9 8 6 11 6 15 a6 6 0 1 0 12 0 C18 11 15 8 12 2.5 Z"
+          d="M12 2.6 C9.2 7.6 6.6 10.3 6.6 12.8 a5.4 5.4 0 1 0 10.8 0 C17.4 10.3 14.8 7.6 12 2.6 Z"
           fill={fill}
         />
       )}

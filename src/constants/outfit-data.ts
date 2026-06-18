@@ -30,7 +30,7 @@ export const CHARACTER_OUTFITS: Record<string, Outfit[]> = {
   'shop:companion_tira': [
     { id: 'outfit_tira_chocomint', name: 'Choco Mint', emoji: '', price: 600, characterId: 'shop:companion_tira', image: require('@/assets/images/tira/tira-chocomint.png') },
     { id: 'outfit_tira_sleepover', name: 'Sleepover', emoji: '', price: 600, characterId: 'shop:companion_tira', image: require('@/assets/images/tira/tira-sleepover.png') },
-    { id: 'outfit_tira_afternoontrain', name: 'Afternoon Train', emoji: '', price: 600, characterId: 'shop:companion_tira', image: require('@/assets/images/tira/tira-afternoon-train.png') },
+    { id: 'outfit_tira_afternoontrain', name: 'Carefree Days', emoji: '', price: 600, characterId: 'shop:companion_tira', image: require('@/assets/images/tira/tira-afternoon-train.png') },
   ],
   'shop:companion_honey': [
     { id: 'outfit_honey_champion', name: 'Champion', emoji: '', price: 600, characterId: 'shop:companion_honey', image: require('@/assets/images/honey/honey-champion.png') },

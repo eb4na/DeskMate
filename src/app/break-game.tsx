@@ -27,6 +27,7 @@ import { useTranslation } from '@/i18n';
 import { getCompanionLine } from '@/constants/companion-lines';
 import { Connect4Game } from '@/game/connect4/Connect4Game';
 import { joinGameRoom, type GameRoom, type PlayerMeta } from '@/lib/game-net';
+import { playTap } from '@/lib/sounds';
 import { showLoadingScreen } from '@/lib/loading-signal';
 import { BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
@@ -101,7 +102,7 @@ const AVATAR_DY = 0.14; // fraction of the avatar diameter to shift the head dow
 function Silhouette({ size }: { size: number }) {
   return (
     <View style={[plateStyles.sil, { width: size, height: size }]}>
-      <View style={{ width: size * 0.4, height: size * 0.4, borderRadius: 999, backgroundColor: '#D8C3B0' }} />
+      <View style={{ width: size * 0.4, height: size * 0.4, borderRadius: 999, backgroundColor: '#F2A0B5' }} />
       <View
         style={{
           width: size * 0.7,
@@ -109,7 +110,7 @@ function Silhouette({ size }: { size: number }) {
           marginTop: size * 0.06,
           borderTopLeftRadius: size * 0.4,
           borderTopRightRadius: size * 0.4,
-          backgroundColor: '#D8C3B0',
+          backgroundColor: '#F2A0B5',
         }}
       />
     </View>
@@ -343,8 +344,14 @@ function TicTacToeGame({
       },
     }, {
       code: friendCode,
-      companionId: profileCompanionId ?? activeCompanionId ?? undefined,
-      skinId: profileSkinId ?? undefined,
+      // profileCompanionId defaults to '' (empty string, not null) — use || not ??
+      // so a non-Bun active companion isn't swallowed by the falsy empty string.
+      companionId: profileCompanionId || (activeCompanionId?.startsWith('shop:') ? activeCompanionId : undefined),
+      skinId: profileCompanionId
+        ? profileSkinId || undefined
+        : activeCompanionId?.startsWith('shop:')
+          ? (companionSkins[activeCompanionId] ?? 'classic')
+          : bunSkinId || undefined,
       name: profileDisplayName || undefined,
     });
     setScreen('lobby');
@@ -421,6 +428,7 @@ function TicTacToeGame({
     if (isOnline) {
       if (!mySymbol || !myTurnOnline || !opponentPresent) return;
       applyMove(idx, mySymbol);
+      playTap();
       roomRef.current?.send('move', { idx, symbol: mySymbol });
       return;
     }
@@ -428,6 +436,7 @@ function TicTacToeGame({
     const newBoard = [...board];
     newBoard[idx] = isPlayerTurn ? 'X' : 'O';
     setBoard(newBoard);
+    playTap();
     setIsPlayerTurn((turn) => !turn);
   };
 
@@ -1100,15 +1109,20 @@ export default function BreakGameScreen() {
               )}
               </ThemedView>
             </ScrollView>
-            {/* Home button + phone-style home indicator line above it */}
+            {/* During a real study break this returns to the session (back arrow);
+                when just browsing from Home it's a home button. */}
             <View style={styles.homeFooter}>
               <View style={styles.homeIndicator} />
               <Pressable
                 style={({ pressed }) => [styles.homeBtn, tw('homeBtn'), pressed && styles.pressed]}
                 onPress={goHome}
                 hitSlop={8}
-                accessibilityLabel={t('nav.home')}>
-                <SimpleHomeIcon color="#D86F9C" size={34} />
+                accessibilityLabel={isBrowse ? t('nav.home') : t('games.backToStudying')}>
+                {isBrowse ? (
+                  <SimpleHomeIcon color="#D86F9C" size={34} />
+                ) : (
+                  <ThemedText style={styles.backArrow}>‹</ThemedText>
+                )}
               </Pressable>
             </View>
           </>
@@ -1366,6 +1380,7 @@ const styles = StyleSheet.create({
     borderColor: '#F2A0B5',
     backgroundColor: 'rgba(242,160,181,0.16)',
   },
+  backArrow: { fontSize: 40, lineHeight: 44, fontWeight: '800', color: '#D86F9C', marginTop: -4 },
   pressed: { opacity: 0.8 },
   // Over phase
   overBlock: { alignItems: 'center', gap: Spacing.three },

@@ -32,9 +32,10 @@ export function DailyRewardModal() {
     loginRewardDate, streak, claimLoginReward,
     hanjiUnlockPending, recipeBadgePending,
     legalAccepted, starterChosen,
+    isPlus, streakFreezes,
   } = useApp();
 
-  const reward = nextLoginReward({ loginRewardDate, streak }, todayISO());
+  const reward = nextLoginReward({ loginRewardDate, streak, isPlus, streakFreezes }, todayISO());
 
   // Hold the popup until the launch splash has lifted, then wait ~1.5s so it
   // greets the player once they're settled on Home — not stacked under the splash.

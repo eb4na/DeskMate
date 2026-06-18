@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  Image,
   ImageBackground,
   Pressable,
   ScrollView,
@@ -21,7 +20,6 @@ import {
 import { Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 
 const BAKERY_BG = require('@/assets/images/backgrounds/bakery-menu.png');
-const BUN_BIRTHDAY = require('@/assets/images/bun/bun-birthday.png');
 
 // Patisserie palette — mirrors the Bakery Menu / Companion Bakery screens.
 const P = {
@@ -168,8 +166,6 @@ export function LegalConsentGate({ onAgree }: { onAgree: (birthday: string) => v
               <Text style={styles.checkLabel}>I confirm the date above is my date of birth.</Text>
             </Pressable>
           </View>
-
-          <Image source={BUN_BIRTHDAY} style={styles.bunBirthday} resizeMode="contain" />
         </ScrollView>
 
         <View style={styles.footerBtns}>
@@ -249,9 +245,8 @@ const styles = StyleSheet.create({
   checkLabel: { flex: 1, fontSize: 13.5, color: P.mutedBrown, lineHeight: 19 },
 
   ageScroll: { flex: 1 },
-  ageScrollContent: { paddingBottom: Spacing.two },
-  // Cute princess bun under the birthday picker (transparent PNG — no background).
-  bunBirthday: { width: 320, height: 320, alignSelf: 'center', marginTop: Spacing.six * 1.6, backgroundColor: 'transparent' },
+  // Center the birthday card vertically in the space between the title and footer.
+  ageScrollContent: { flexGrow: 1, justifyContent: 'center', paddingBottom: Spacing.two },
   footerBtns: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingTop: Spacing.three },
   backBtn: {
     paddingVertical: 15, paddingHorizontal: 20, borderRadius: 999,

@@ -930,6 +930,8 @@
     "wardrobeTitle": "Garde-robe de {{name}}",
     "pickOutfit": "Choisis une tenue — {{name}} la porte partout",
     "tapToUnlock": "Touche pour débloquer",
+    "buyInShop": "Acheter en boutique",
+    "plusOnlyHint": "Plus uniquement",
     "wearing": "Portée",
     "tapToWear": "Touche pour la porter",
     "noOutfitsYet": "Pas encore de tenues",
@@ -1458,7 +1460,7 @@
     "berryPrincess": "Princesse Berry",
     "ivoryRose": "Rose Ivoire",
     "strawberryDreams": "Rêves de Fraise",
-    "afternoonTrain": "Train de l'Après-midi"
+    "afternoonTrain": "Carefree Days"
   },
   "studyDesk": {
     "title": "Petite pause",

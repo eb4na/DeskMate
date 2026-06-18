@@ -57,7 +57,7 @@ const OUTFIT_NAME_KEYS: Record<string, string> = {
   'Berry Princess': 'outfitNames.berryPrincess',
   'Ivory Rose': 'outfitNames.ivoryRose',
   'Strawberry Dreams': 'outfitNames.strawberryDreams',
-  'Afternoon Train': 'outfitNames.afternoonTrain',
+  'Carefree Days': 'outfitNames.afternoonTrain',
 };
 
 /** Localize an outfit/skin name; returns the input unchanged if unmapped. */
@@ -75,13 +75,13 @@ export const STARTER_COMPANION_IMAGES: Record<DefaultCompanionId, number> = {
 // `shopItemId: null` means free/owned by default; otherwise it must be purchased.
 // `roomId` (optional) ties an outfit to a matched room (ROOM_PAIRS id); the
 // wardrobe shows a chain/link icon that sets that background+desk to match.
-export type BunSkin = { id: string; name: string; emoji: string; image: number; shopItemId: string | null; roomId?: string };
+export type BunSkin = { id: string; name: string; emoji: string; image: number; shopItemId: string | null; roomId?: string; lore?: string };
 export const BUN_SKINS: BunSkin[] = [
-  { id: 'classic', name: 'Strawberry', emoji: '', image: require('@/assets/images/bun/bun-home.png'), shopItemId: null },
-  { id: 'angel', name: 'Angel', emoji: '', image: require('@/assets/images/bun/bun-angel.png'), shopItemId: 'outfit_bun_angel' },
-  { id: 'strawberry', name: 'Berry Princess', emoji: '', image: require('@/assets/images/bun/bun-strawberry.png'), shopItemId: 'outfit_bun_strawberry' },
-  { id: 'snowrabbit', name: 'Snow Rabbit', emoji: '', image: require('@/assets/images/bun/bun-snowrabbit.png'), shopItemId: 'outfit_bun_snowrabbit', roomId: 'frostbloom-shrine' },
-  { id: 'dreams', name: 'Strawberry Dreams', emoji: '', image: require('@/assets/images/bun/bun-dreams.png'), shopItemId: 'outfit_bun_dreams', roomId: 'buns-room' },
+  { id: 'classic', name: 'Strawberry', emoji: '', image: require('@/assets/images/bun/bun-home.png'), shopItemId: null, lore: "She showed up and never quite left. Warm and familiar, like something you didn't know you were missing." },
+  { id: 'angel', name: 'Angel', emoji: '', image: require('@/assets/images/bun/bun-angel.png'), shopItemId: 'outfit_bun_angel', lore: "There is a kind of kindness that doesn't announce itself. It's just there — between one breath and the next, quiet and sure." },
+  { id: 'strawberry', name: 'Berry Princess', emoji: '', image: require('@/assets/images/bun/bun-strawberry.png'), shopItemId: 'outfit_bun_strawberry', lore: "She didn't need the crown to make the room feel warmer. But she wore it anyway." },
+  { id: 'snowrabbit', name: 'Snow Rabbit', emoji: '', image: require('@/assets/images/bun/bun-snowrabbit.png'), shopItemId: 'outfit_bun_snowrabbit', roomId: 'frostbloom-shrine', lore: "Some things belong to winter the way winter belongs to silence. She arrived with the cold and decided it was enough of a reason to stay." },
+  { id: 'dreams', name: 'Strawberry Dreams', emoji: '', image: require('@/assets/images/bun/bun-dreams.png'), shopItemId: 'outfit_bun_dreams', roomId: 'buns-room', lore: "The kind of evening that asks nothing of you. Just be still. That's enough." },
 ];
 
 export function getBunSkinImage(skinId: string | null | undefined): number {
@@ -105,29 +105,29 @@ export function getEffectiveBunSkinId(
 // companion id (`shop:<itemId>`). The first entry is the default look.
 export const COMPANION_SKINS: Record<string, BunSkin[]> = {
   'shop:companion_cocoa': [
-    { id: 'classic', name: 'Top Tier', emoji: '', image: require('@/assets/images/cocoa/cocoa.png'), shopItemId: null },
-    { id: 'relax', name: 'Relax', emoji: '', image: require('@/assets/images/cocoa/cocoa-relax.png'), shopItemId: 'outfit_cocoa_relax' },
-    { id: 'demon', name: 'Demon', emoji: '', image: require('@/assets/images/cocoa/cocoa-demon.png'), shopItemId: 'outfit_cocoa_demon' },
+    { id: 'classic', name: 'Top Tier', emoji: '', image: require('@/assets/images/cocoa/cocoa.png'), shopItemId: null, lore: "He doesn't try to be what you need. He just is. That's rarer than you think." },
+    { id: 'relax', name: 'Relax', emoji: '', image: require('@/assets/images/cocoa/cocoa-relax.png'), shopItemId: 'outfit_cocoa_relax', lore: "Time slows near him, somehow. Not lazily — just right. Like the afternoon remembered what it was for." },
+    { id: 'demon', name: 'Demon', emoji: '', image: require('@/assets/images/cocoa/cocoa-demon.png'), shopItemId: 'outfit_cocoa_demon', lore: "He's not all edges. But he knows how to be, when it matters. The kind of presence that straightens you up before you realize you'd slouched." },
   ],
   'shop:companion_tira': [
-    { id: 'classic', name: 'Graceful Walk', emoji: '', image: require('@/assets/images/tira/tira.png'), shopItemId: null },
-    { id: 'chocomint', name: 'Choco Mint', emoji: '', image: require('@/assets/images/tira/tira-chocomint.png'), shopItemId: 'outfit_tira_chocomint' },
-    { id: 'sleepover', name: 'Sleepover', emoji: '', image: require('@/assets/images/tira/tira-sleepover.png'), shopItemId: 'outfit_tira_sleepover', roomId: 'tiras-room' },
-    { id: 'afternoontrain', name: 'Afternoon Train', emoji: '', image: require('@/assets/images/tira/tira-afternoon-train.png'), shopItemId: 'outfit_tira_afternoontrain', roomId: 'afternoon-train' },
+    { id: 'classic', name: 'Graceful Walk', emoji: '', image: require('@/assets/images/tira/tira.png'), shopItemId: null, lore: "Composed, deliberate, never in a hurry. She moves like she already knows how this ends." },
+    { id: 'chocomint', name: 'Choco Mint', emoji: '', image: require('@/assets/images/tira/tira-chocomint.png'), shopItemId: 'outfit_tira_chocomint', lore: "There's a kind of sweetness that holds firm when you lean on it. She's that — sweet on purpose, steady underneath." },
+    { id: 'sleepover', name: 'Sleepover', emoji: '', image: require('@/assets/images/tira/tira-sleepover.png'), shopItemId: 'outfit_tira_sleepover', roomId: 'tiras-room', lore: "She says the night is just the day turned down low. She's been saying it for years. She might be right." },
+    { id: 'afternoontrain', name: 'Carefree Days', emoji: '', image: require('@/assets/images/tira/tira-afternoon-train.png'), shopItemId: 'outfit_tira_afternoontrain', roomId: 'afternoon-train', lore: "A floral kimono and navy hakama with a blossom hairpin. She wore this the day she stopped counting stops and started watching the light." },
   ],
   'shop:companion_honey': [
-    { id: 'classic', name: 'Honey Bear', emoji: '', image: require('@/assets/images/honey/honey.png'), shopItemId: null },
-    { id: 'champion', name: 'Champion', emoji: '', image: require('@/assets/images/honey/honey-champion.png'), shopItemId: 'outfit_honey_champion' },
-    { id: 'zzz', name: 'ZZZ', emoji: '', image: require('@/assets/images/honey/honey-zzz.png'), shopItemId: 'outfit_honey_zzz' },
+    { id: 'classic', name: 'Honey Bear', emoji: '', image: require('@/assets/images/honey/honey.png'), shopItemId: null, lore: "Some people make the space around them warmer just by being in it. He's been doing that since before you walked in." },
+    { id: 'champion', name: 'Champion', emoji: '', image: require('@/assets/images/honey/honey-champion.png'), shopItemId: 'outfit_honey_champion', lore: "He didn't do it to be seen. He did it because he decided to. There's a difference, and he knows it." },
+    { id: 'zzz', name: 'ZZZ', emoji: '', image: require('@/assets/images/honey/honey-zzz.png'), shopItemId: 'outfit_honey_zzz', lore: "Even in the quiet, even asleep, he's rooting for something. You can feel it." },
   ],
   'shop:companion_bunny': [
-    { id: 'classic', name: 'Cutest Thing Ever', emoji: '', image: require('@/assets/images/bunny/bunny.png'), shopItemId: null },
-    { id: 'jiraikei', name: 'Jirai Kei', emoji: '', image: require('@/assets/images/bunny/bunny-jiraikei.png'), shopItemId: 'outfit_bunny_jiraikei', roomId: 'landmine' },
-    { id: 'palace', name: 'Blue Peony', emoji: '', image: require('@/assets/images/bunny/bunny-palace.png'), shopItemId: 'outfit_bunny_palace' },
+    { id: 'classic', name: 'Cutest Thing Ever', emoji: '', image: require('@/assets/images/bunny/bunny.png'), shopItemId: null, lore: "Don't be fooled. It's adorable and it knows exactly what it's doing." },
+    { id: 'jiraikei', name: 'Jirai Kei', emoji: '', image: require('@/assets/images/bunny/bunny-jiraikei.png'), shopItemId: 'outfit_bunny_jiraikei', roomId: 'landmine', lore: "It doesn't explain itself. It doesn't need to. The look says enough — and the look says plenty." },
+    { id: 'palace', name: 'Blue Peony', emoji: '', image: require('@/assets/images/bunny/bunny-palace.png'), shopItemId: 'outfit_bunny_palace', lore: "It speaks softly. It doesn't have to speak twice." },
   ],
   'shop:companion_hanji': [
-    { id: 'classic', name: 'Quiet Lavender', emoji: '', image: require('@/assets/images/hanji/hanji.png'), shopItemId: null, roomId: 'lavender-palace' },
-    { id: 'ivoryrose', name: 'Ivory Rose', emoji: '', image: require('@/assets/images/hanji/hanji-ivoryrose.png'), shopItemId: 'outfit_hanji_ivoryrose' },
+    { id: 'classic', name: 'Quiet Lavender', emoji: '', image: require('@/assets/images/hanji/hanji.png'), shopItemId: null, roomId: 'lavender-palace', lore: "She arrived quietly. She stayed. That's all you need to know." },
+    { id: 'ivoryrose', name: 'Ivory Rose', emoji: '', image: require('@/assets/images/hanji/hanji-ivoryrose.png'), shopItemId: 'outfit_hanji_ivoryrose', lore: "She dressed like the day mattered before she knew what it would bring. That's a kind of faith." },
   ],
 };
 
@@ -173,14 +173,20 @@ export type StarterChoice = {
   shopItemId: string;          // the SKU granted/checked for ownership
   name: string;                // canonical English name (localize at display)
   image: number;
+  bg: string;                  // solid background color for the "obtained" celebration
 };
 export const STARTER_CHOICES: StarterChoice[] = [
-  { activeId: 'starter:girl', shopItemId: 'companion_bun', name: 'Bun', image: require('@/assets/images/bun/bun-home.png') },
-  { activeId: 'shop:companion_cocoa', shopItemId: 'companion_cocoa', name: 'Cocoa', image: require('@/assets/images/cocoa/cocoa.png') },
-  { activeId: 'shop:companion_bunny', shopItemId: 'companion_bunny', name: 'Bunny', image: require('@/assets/images/bunny/bunny.png') },
-  { activeId: 'shop:companion_honey', shopItemId: 'companion_honey', name: 'Miel', image: require('@/assets/images/honey/honey.png') },
-  { activeId: 'shop:companion_tira', shopItemId: 'companion_tira', name: 'Tira', image: require('@/assets/images/tira/tira.png') },
+  { activeId: 'starter:girl', shopItemId: 'companion_bun', name: 'Bun', image: require('@/assets/images/bun/bun-home.png'), bg: '#ffc9d0' },
+  { activeId: 'shop:companion_cocoa', shopItemId: 'companion_cocoa', name: 'Cocoa', image: require('@/assets/images/cocoa/cocoa.png'), bg: '#c99a73' },
+  { activeId: 'shop:companion_bunny', shopItemId: 'companion_bunny', name: 'Bunny', image: require('@/assets/images/bunny/bunny.png'), bg: '#ffc2df' },
+  { activeId: 'shop:companion_honey', shopItemId: 'companion_honey', name: 'Miel', image: require('@/assets/images/honey/honey.png'), bg: '#ffcd8c' },
+  { activeId: 'shop:companion_tira', shopItemId: 'companion_tira', name: 'Tira', image: require('@/assets/images/tira/tira.png'), bg: '#a3d6ff' },
 ];
+
+/** Look up a starter/companion by its shop SKU (for the "character obtained" screen). */
+export function companionByShopItemId(shopItemId: string): StarterChoice | undefined {
+  return STARTER_CHOICES.find((c) => c.shopItemId === shopItemId);
+}
 
 /** The active-companion id a companion SKU maps to (Bun is the starter id). */
 export function starterActiveIdForItem(itemId: string): ActiveCompanionId {
@@ -296,9 +302,12 @@ export function getCompanionImage(
 const AVATAR_FACE_NUDGE: Record<string, number> = {
   'shop:companion_cocoa': -3,
   'shop:companion_bunny': -1,
-  'shop:companion_honey': 7,
+  // honey/hanji recentred 2026-06-17: their old +7/+9 dropped the face well below the
+  // circle centre (art had changed). Re-measured by rendering the exact 72px-in-44px
+  // crop offline (scripts-free, square arts) until the eyes sat on the centre line.
+  'shop:companion_honey': -2,
   'shop:companion_tira': -8,
-  'shop:companion_hanji': 9,
+  'shop:companion_hanji': -3,
 };
 const BUN_FACE_NUDGE = -8;
 

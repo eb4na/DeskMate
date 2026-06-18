@@ -3,6 +3,7 @@
  * Mounted once in the root navigator so it works on any screen.
  */
 import { Image } from 'expo-image';
+import { router, usePathname } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -23,12 +24,31 @@ const GAME_LABEL_KEY: Record<OnlineGameId, string> = {
   study: 'invite.game_study',
 };
 
+// This invite popup is a root-level <Modal>, which iOS will NOT present over a
+// modally-presented screen (the same limitation that makes Settings use its own
+// local modals). So if an invite arrives while one of these modal screens is open
+// — including `friends` / `dm-chat`, where you're most likely chatting with the
+// inviter — we pop back to the base first so the popup is actually visible.
+// Deliberately EXCLUDES the study flow (study-lobby/study-desk) and the games
+// (break-game/cake-game, which aren't modal anyway), so a live session or an
+// in-progress match is never interrupted.
+const SURFACE_INVITE_OVER = new Set([
+  '/settings', '/friends', '/profile', '/friend-card', '/dm-chat', '/companion-chat', '/companion-pfp',
+  '/session-picker', '/subject-picker', '/add-task', '/add-exam', '/reminder-settings', '/manage-subjects',
+  '/weekly-report', '/mood-chart', '/subject-chart', '/plus-upgrade', '/coin-shop', '/ambience-picker',
+  '/companion-gallery', '/edit-room', '/food-gallery', '/legal', '/party-invite', '/custom-timer',
+]);
+
 export function InviteListener() {
   const { t } = useTranslation();
   const { friendCode, friends, setDmUnreadCounts, bumpDmUnread } = useApp();
   const { user } = useAuth();
   const studyRoom = useStudyRoom();
   const [invite, setInvite] = useState<GameInvite | null>(null);
+  // Current route, kept in a ref so the realtime invite callback reads it live.
+  const pathname = usePathname();
+  const pathRef = useRef(pathname);
+  useEffect(() => { pathRef.current = pathname; }, [pathname]);
   // Blocked codes (in a ref so the realtime subscriptions don't need to re-bind).
   const blockedRef = useRef<string[]>([]);
   useEffect(() => {
@@ -40,7 +60,14 @@ export function InviteListener() {
     if (!friendCode) return;
     return subscribeToInvites(friendCode, (inv) => {
       if (blockedRef.current.includes(inv.fromCode)) return; // hide blocked
-      setInvite(inv);
+      // On a modal screen the root <Modal> can't present — pop back first, then
+      // show the popup once the dismissal animation has settled.
+      if (SURFACE_INVITE_OVER.has(pathRef.current) && router.canDismiss()) {
+        router.dismissAll();
+        setTimeout(() => setInvite(inv), 350);
+      } else {
+        setInvite(inv);
+      }
     });
   }, [friendCode]);
 

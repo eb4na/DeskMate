@@ -28,6 +28,7 @@ import { DevKnobs, type Knob } from '@/components/dev-knobs';
 import { BakeryColors, BakeryRadii, BakeryShadow, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
+import { showPopup } from '@/lib/popup';
 import { useIsTablet } from '@/hooks/use-device-class';
 import { supabase } from '@/lib/supabase';
 import { signInWithProvider } from '@/lib/oauth';
@@ -46,7 +47,7 @@ const LOGIN_TABLET = {
   signTop: -80,             // signHang.top (was signHangTablet)
   signHeight: 560,          // signHang.height
   catSize: 214,             // cat width & height
-  catBottom: 2,             // catWrap.bottom offset
+  catBottom: -14,           // catWrap.bottom offset (nudged down so the cat clears the "Continue as guest" text)
   formTop: 373,             // scrollContent.paddingTop (form distance from top)
   formWidth: 716,           // inner.maxWidth (how wide the input/button column gets)
   formScale: 1.06,          // visual scale of the whole form column (inputs + buttons together)
@@ -61,7 +62,7 @@ const FLAGS: Partial<Record<SupportedLanguage, number>> = {
 
 export default function LoginScreen() {
   const { email: emailParam, notice } = useLocalSearchParams<{ email?: string; notice?: string }>();
-  const { kickedReason, clearKickedReason } = useAuth();
+  const { kickedReason, clearKickedReason, continueAsGuest } = useAuth();
   const { t } = useTranslation();
   const { language, setLanguage, markLanguageSelected } = useApp();
   // iPad's taller screen leaves the hanging sign sitting low, so lift it up there.
@@ -167,6 +168,20 @@ export default function LoginScreen() {
       setErrorMessage(res.error ?? t('errors.signInFailed'));
     }
     setSubmitting(false);
+  };
+
+  const handleGuest = () => {
+    showPopup(t('auth.guestWarnTitle'), t('auth.guestWarnMsg'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('auth.continueAsGuest'),
+        style: 'destructive',
+        onPress: () => {
+          continueAsGuest();
+          router.replace('/');
+        },
+      },
+    ]);
   };
 
   return (
@@ -302,12 +317,12 @@ export default function LoginScreen() {
                 <ChevronDownIcon color={BakeryColors.berry} size={14} />
               </Pressable>
 
-              {/* Resend verification (subtle) */}
+              {/* Continue as guest (no account — progress stays on this device) */}
               <Pressable
                 hitSlop={8}
                 style={styles.resendRow}
-                onPress={() => router.push('/resend-confirmation')}>
-                <Text style={styles.resendText}>{t('auth.resendVerification')}</Text>
+                onPress={handleGuest}>
+                <Text style={styles.guestText}>{t('auth.continueAsGuest')}</Text>
               </Pressable>
             </View>
           </View>
@@ -356,7 +371,6 @@ export default function LoginScreen() {
         onRequestClose={() => setShowKickModal(false)}>
         <View style={styles.kickBackdrop}>
           <View style={styles.kickCard}>
-            <Text style={styles.kickEmoji}>🐰</Text>
             <Text style={styles.kickTitle}>{t('auth.signedOutTitle')}</Text>
             <Text style={styles.kickMsg}>{t('auth.signedOutOtherDevice')}</Text>
             <Pressable
@@ -382,7 +396,7 @@ const styles = StyleSheet.create({
   catWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center' },
   cat: { width: 150, height: 150 },
   safeArea: { flex: 1 },
-  scrollContent: { flexGrow: 1, justifyContent: 'flex-start', paddingTop: 185 },
+  scrollContent: { flexGrow: 1, justifyContent: 'flex-start', paddingTop: 162 },
   inner: {
     width: '100%',
     maxWidth: MaxContentWidth,
@@ -391,7 +405,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.four,
     gap: Spacing.two,
   },
-  signHang: { position: 'absolute', top: 0, left: 0, right: 0, height: 360, alignItems: 'center', zIndex: 2 },
+  signHang: { position: 'absolute', top: -55, left: 0, right: 0, height: 360, alignItems: 'center', zIndex: 2 },
   // iPad sign position/height is tablet-gated via LOGIN_TABLET (signTop/signHeight).
   signHangImg: { width: '100%', height: '100%' },
 
@@ -498,6 +512,7 @@ const styles = StyleSheet.create({
 
   resendRow: { alignSelf: 'center', marginTop: Spacing.two, paddingVertical: 4 },
   resendText: { fontSize: 12, color: BakeryColors.mocha, opacity: 0.75 },
+  guestText: { fontSize: 13, fontWeight: '700', color: BakeryColors.berry },
 
   // Messages
   errorText: { color: BakeryColors.danger, fontSize: 13, lineHeight: 18, textAlign: 'center' },

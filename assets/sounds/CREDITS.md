@@ -18,6 +18,8 @@ required credit text in the app's Credits screen.
 | tap-confirm.wav (button confirm) | pinto0lucas | Freesound.org | CC0 (public domain) | No | https://freesound.org/s/422812/ |
 | swoosh.mp3 (ingredient → mixer) | lesaucisson | Freesound.org | CC0 (public domain) | No | https://freesound.org/s/585257/ |
 | ding.wav (study session finished) | chennes | Freesound.org | CC0 (public domain) | No | https://freesound.org/s/376807/ |
+| tick.wav (picker wheel / duration click) | CAT-FOX_ALEX | Freesound.org | CC0 (public domain) | No | https://freesound.org/s/827133/ |
+| piece-drop.wav (Connect 4 move) | pbimal | Freesound.org | CC0 (public domain) | No | https://freesound.org/s/646781/ |
 
 Provided attribution text (optional for CC0, kept for the record):
 
@@ -29,6 +31,8 @@ Provided attribution text (optional for CC0, kept for the record):
 > bubble medium.wav by pinto0lucas -- https://freesound.org/s/422812/ -- License: Creative Commons 0 (used as tap-confirm.wav)
 > swoosh-1.mp3 by lesaucisson -- https://freesound.org/s/585257/ -- License: Creative Commons 0 (used as swoosh.mp3)
 > Ding.wav by chennes -- https://freesound.org/s/376807/ -- License: Creative Commons 0 (used as ding.wav)
+> Click 2 by CAT-FOX_ALEX -- https://freesound.org/s/827133/ -- License: Creative Commons 0 (used as tick.wav)
+> chess-piece-bounce.ogg by pbimal -- https://freesound.org/s/646781/ -- License: Creative Commons 0 (used as piece-drop.wav)
 > (not used yet — no file provided) MicrowaveDing by Oddworld -- https://freesound.org/s/171252/ -- License: Creative Commons 0
 
 ## License quick-reference

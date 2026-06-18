@@ -18,10 +18,11 @@ const BEST_STREAK_ICON = require('@/assets/images/profile/best-streak-cupcake.pn
 const STUDIED_ICON = require('@/assets/images/profile/studied-book.png');
 const BIRTHDAY_ICON = require('@/assets/images/profile/birthday-candle.png');
 import { DateWheelPicker } from '@/components/date-wheel-picker';
-import { PlusCrown, isPlusFrame } from '@/components/avatar-frame';
 import { useApp } from '@/context/app-context';
 import i18n, { useTranslation } from '@/i18n';
 import { ROOM_PAIRS, backgroundOwned } from '@/constants/room-data';
+import { cardColors, CARD_COLOR_ORDER, CARD_COLORS } from '@/constants/card-colors';
+import { LockBadge } from '@/components/lock-badge';
 import {
   BUN_SKINS,
   type BunSkin,
@@ -65,9 +66,11 @@ export default function ProfileScreen() {
     profileDescription,
     profileBirthday,
     profileBackgroundId,
+    profileCardColor,
     profileCompanionId,
     profileSkinId,
     profileAvatarFrame,
+    isPlus,
     updateProfile,
     friendCode,
     streak,
@@ -79,7 +82,11 @@ export default function ProfileScreen() {
     companionSkins,
     ownedShopItems,
   } = useApp();
-
+  // Resolved card palette (outline + strip). The custom colour only applies while
+  // Plus is active (like the avatar frame); free / lapsed users fall back to pink.
+  const activeCardColor = isPlus ? (profileCardColor || 'pink') : 'pink';
+  const cc = cardColors(activeCardColor);
+  const pinkStrip = cardColors('pink').strip;
   const cardRef = useRef<View>(null);
   const [editingBirthday, setEditingBirthday] = useState(!!profileBirthday);
 
@@ -155,7 +162,7 @@ export default function ProfileScreen() {
           <Text style={styles.screenTitle}>{t('profileCard.myCard')}</Text>
 
           {/* ── The ID card (captured for sharing) ───────────────────────── */}
-          <View ref={cardRef} collapsable={false} style={styles.card}>
+          <View ref={cardRef} collapsable={false} style={[styles.card, { borderColor: cc.strip }]}>
             <View style={styles.cardInner}>
               {/* Left: scene */}
               <View style={styles.figurePanel}>
@@ -168,7 +175,6 @@ export default function ProfileScreen() {
               <View style={styles.infoPanel}>
                 <View style={styles.nameRow}>
                   <Text style={styles.name} numberOfLines={2}>{name}</Text>
-                  {isPlusFrame(profileAvatarFrame) && <PlusCrown size={18 * scale} />}
                 </View>
 
                 <View style={styles.statRow}>
@@ -198,15 +204,16 @@ export default function ProfileScreen() {
               </View>
             </View>
 
-            {/* Bottom: friend code */}
-            <View style={styles.codeStrip}>
+            {/* Bottom: friend code — a plain background bar; the chosen colour only
+                drives the card outline + the buttons, NOT this strip. */}
+            <View style={[styles.codeStrip, { backgroundColor: cc.strip }]}>
               <Text style={styles.codeStripLabel}>{t('friendCard.friendCodeLabel')}</Text>
               <Text style={styles.codeStripValue}>{friendCode}</Text>
             </View>
           </View>
 
-          {/* Share + save */}
-          <Pressable style={({ pressed }) => [styles.shareBtn, pressed && styles.pressed]} onPress={shareCard}>
+          {/* Share button always pink; save button follows the chosen card colour. */}
+          <Pressable style={({ pressed }) => [styles.shareBtn, { backgroundColor: pinkStrip }, pressed && styles.pressed]} onPress={shareCard}>
             <Text style={styles.shareBtnText}>{t('profileCard.shareMyCard')}</Text>
           </Pressable>
           <Pressable style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]} onPress={saveToAlbum}>
@@ -215,6 +222,33 @@ export default function ProfileScreen() {
 
           {/* ── Editor ────────────────────────────────────────────────────── */}
           <Text style={styles.editTitle}>{t('profileCard.editProfile')}</Text>
+
+          {/* Card colour — Plus members pick the outline + friend-code strip palette;
+              free users tap a locked swatch and get sent to the Plus paywall. */}
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>
+              {t('profileCard.cardColor', { defaultValue: 'Card color' })}{!isPlus ? '  ·  Plus' : ''}
+            </Text>
+            <View style={styles.swatchRow}>
+              {CARD_COLOR_ORDER.map((key) => {
+                const c = CARD_COLORS[key];
+                const selected = activeCardColor === key;
+                return (
+                  <Pressable
+                    key={key}
+                    onPress={() => (isPlus ? updateProfile({ cardColor: key }) : router.push('/plus-upgrade'))}
+                    style={({ pressed }) => [
+                      styles.swatch,
+                      { backgroundColor: c.strip, borderColor: selected ? P.brown : '#fff' },
+                      selected && styles.swatchSelected,
+                      pressed && styles.pressed,
+                    ]}>
+                    {!isPlus && key !== 'pink' ? <LockBadge size={20 * scale} /> : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
 
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>{t('profileCard.displayName')}</Text>
@@ -415,6 +449,10 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   editTitle: { fontSize: 17 * s, fontWeight: '800', color: P.brown, marginTop: Spacing.two * s },
   field: { gap: 6 * s },
   fieldLabel: { fontSize: 13 * s, fontWeight: '700', color: P.cocoa },
+  swatchRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 * s, marginTop: 2 * s },
+  swatch: { width: 38 * s, height: 38 * s, borderRadius: 19 * s, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' },
+  swatchSelected: { borderWidth: 3.5 },
+  swatchLock: { fontSize: 13 * s },
   input: {
     borderWidth: 1.5,
     borderColor: P.peach,

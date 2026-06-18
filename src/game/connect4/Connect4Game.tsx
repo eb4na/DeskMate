@@ -12,6 +12,7 @@ import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { useTranslation } from '@/i18n';
 import { getCompanionImage, resolveActiveCompanion, resolveProfileFigure } from '@/lib/companion-utils';
 import { joinConnect4Room, type Connect4Room, type PlayerMeta } from '@/lib/connect4-room';
+import { playPieceDrop } from '@/lib/sounds';
 import { BakeryColors, Spacing } from '@/constants/theme';
 import {
   applyMove,
@@ -90,7 +91,7 @@ function FallingPiece({ player, left, top, row, win }: { player: Player; left: n
 function Silhouette({ size }: { size: number }) {
   return (
     <View style={[styles.silWrap, { width: size, height: size }]}>
-      <View style={{ width: size * 0.42, height: size * 0.42, borderRadius: 999, backgroundColor: '#C7B2A1' }} />
+      <View style={{ width: size * 0.42, height: size * 0.42, borderRadius: 999, backgroundColor: '#F2A0B5' }} />
       <View
         style={{
           width: size * 0.72,
@@ -98,7 +99,7 @@ function Silhouette({ size }: { size: number }) {
           marginTop: size * 0.05,
           borderTopLeftRadius: size * 0.4,
           borderTopRightRadius: size * 0.4,
-          backgroundColor: '#C7B2A1',
+          backgroundColor: '#F2A0B5',
         }}
       />
     </View>
@@ -196,6 +197,9 @@ export function Connect4Game({
     if (resultRef.current) return false;
     const res = applyMove(boardRef.current, col, player);
     if (!res) return false;
+    // Sound every applied move here (not at the tap site) so the AI's and a remote
+    // opponent's drops click too, exactly like your own.
+    playPieceDrop();
     boardRef.current = res.board;
     setBoard(res.board);
     const win = checkWin(res.board, player);
@@ -283,8 +287,14 @@ export function Connect4Game({
         }
       },
     }, {
-      companionId: profileCompanionId ?? activeCompanionId ?? undefined,
-      skinId: profileSkinId ?? undefined,
+      // profileCompanionId defaults to '' (empty string, not null) — use || not ??
+      // so a non-Bun active companion isn't swallowed by the falsy empty string.
+      companionId: profileCompanionId || (activeCompanionId?.startsWith('shop:') ? activeCompanionId : undefined),
+      skinId: profileCompanionId
+        ? profileSkinId || undefined
+        : activeCompanionId?.startsWith('shop:')
+          ? (companionSkins[activeCompanionId] ?? 'classic')
+          : bunSkinId || undefined,
       name: profileDisplayName || undefined,
     });
     setScreen('lobby');
@@ -537,15 +547,18 @@ export function Connect4Game({
         </View>
       </View>
 
-      {/* Footer actions — only once the game is over */}
+      {/* Footer actions — only once the game is over. Hide Rematch when it can't
+          actually be played (online opponent left / not present); Leave stays. */}
       {gameOver && (
         <View style={styles.footerRow}>
-          <Pressable
-            style={({ pressed }) => [tw('rematch'), pressed && styles.pressed]}
-            onPress={rematch}
-            accessibilityLabel={t('connect4.rematch')}>
-            <Image source={BTN_REMATCH} style={[styles.btnImg, { aspectRatio: BTN_REMATCH_AR }]} contentFit="contain" />
-          </Pressable>
+          {(opp !== 'online' || (opponentPresent && !oppLeft)) && (
+            <Pressable
+              style={({ pressed }) => [tw('rematch'), pressed && styles.pressed]}
+              onPress={rematch}
+              accessibilityLabel={t('connect4.rematch')}>
+              <Image source={BTN_REMATCH} style={[styles.btnImg, { aspectRatio: BTN_REMATCH_AR }]} contentFit="contain" />
+            </Pressable>
+          )}
           <Pressable
             style={({ pressed }) => [tw('leave'), pressed && styles.pressed]}
             onPress={() => onLeave?.()}

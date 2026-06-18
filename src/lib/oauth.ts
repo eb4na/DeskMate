@@ -19,13 +19,27 @@ import type { Provider } from '@supabase/supabase-js';
 
 import { supabase, authCallbackUrl } from '@/lib/supabase';
 
-export type OAuthResult = { ok: boolean; cancelled?: boolean; error?: string };
+export type OAuthResult = { ok: boolean; cancelled?: boolean; error?: string; alreadyLinked?: boolean };
 
 type UrlResult = { url: string | null; error: { message: string } | null };
 
+// Supabase reports a provider identity that already belongs to a different user
+// (e.g. linking Google when that Google is on another Memobun account) with a
+// message/code like "Identity is already linked to another user" /
+// "identity_already_exists". Detect it so the UI can give a clear popup.
+function isAlreadyLinked(msg?: string | null): boolean {
+  if (!msg) return false;
+  const m = msg.toLowerCase();
+  return (
+    m.includes('identity_already_exists') ||
+    (m.includes('already') &&
+      (m.includes('linked') || m.includes('registered') || m.includes('associated') || m.includes('exists')))
+  );
+}
+
 async function runOAuth(getUrl: () => Promise<UrlResult>): Promise<OAuthResult> {
   const { url, error } = await getUrl();
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: error.message, alreadyLinked: isAlreadyLinked(error.message) };
   if (!url) return { ok: false, error: 'No sign-in URL was returned.' };
 
   // Opens the provider's login in a secure in-app browser and resolves once it
@@ -36,13 +50,13 @@ async function runOAuth(getUrl: () => Promise<UrlResult>): Promise<OAuthResult> 
 
   const back = new URL(result.url);
   const errDesc = back.searchParams.get('error_description');
-  if (errDesc) return { ok: false, error: errDesc };
+  if (errDesc) return { ok: false, error: errDesc, alreadyLinked: isAlreadyLinked(errDesc) };
 
   const code = back.searchParams.get('code');
   if (!code) return { ok: false, error: 'No authorization code was returned.' };
 
   const { error: exErr } = await supabase.auth.exchangeCodeForSession(code);
-  if (exErr) return { ok: false, error: exErr.message };
+  if (exErr) return { ok: false, error: exErr.message, alreadyLinked: isAlreadyLinked(exErr.message) };
   return { ok: true };
 }
 

@@ -13,7 +13,7 @@ import { TaskCalendar } from '@/components/task-calendar';
 import { formatTimeLabel } from '@/components/time-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useApp } from '@/context/app-context';
+import { useApp, FREE_EXAM_LIMIT } from '@/context/app-context';
 import type { Task } from '@/context/app-context';
 import { computeTaskRollover } from '@/lib/task-recurrence';
 import { cancelTaskNotification, scheduleTaskNotification } from '@/lib/notifications';
@@ -64,14 +64,13 @@ function SubjectBadge({ subjectId }: { subjectId: string | null }) {
 const TRASH_PASTEL = '#E89B9B';
 function TrashIcon({ size = 16, color = TRASH_PASTEL }: { size?: number; color?: string }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      {/* lid */}
-      <Path d="M4 7 h16" />
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
       {/* handle */}
-      <Path d="M9.5 7 V5.5 a1.5 1.5 0 0 1 1.5 -1.5 h2 a1.5 1.5 0 0 1 1.5 1.5 V7" />
-      {/* body */}
-      <Path d="M6.5 7 l0.9 11.4 a1.6 1.6 0 0 0 1.6 1.5 h6 a1.6 1.6 0 0 0 1.6 -1.5 L18.5 7" />
+      <Path d="M9.2 2.2 h5.6 a1 1 0 0 1 1 1 V4.4 H8.2 V3.2 a1 1 0 0 1 1 -1 Z" />
+      {/* lid */}
+      <Path d="M4 4.4 h16 a1.1 1.1 0 0 1 0 2.2 H4 a1.1 1.1 0 0 1 0 -2.2 Z" />
+      {/* body (filled) */}
+      <Path d="M5.8 7.6 h12.4 l-0.9 11.7 A2.2 2.2 0 0 1 15.1 21.4 H8.9 A2.2 2.2 0 0 1 6.7 19.3 Z" />
     </Svg>
   );
 }
@@ -97,11 +96,6 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: {
             numberOfLines={2}>
             {task.title}
           </ThemedText>
-          {/* Finished / not-finished toggle. Plays the confirm sound only when
-              completing a task (not when un-completing one). */}
-          <SoundPressable sound={isDone ? 'none' : 'confirm'} onPress={onToggle} hitSlop={12}>
-            <View style={[styles.statusDot, isDone ? styles.statusDotDone : styles.statusDotTodo]} />
-          </SoundPressable>
         </View>
 
         <View style={styles.taskMeta}>
@@ -129,10 +123,19 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: {
         </View>
       </Pressable>
 
-      {/* Actions */}
+      {/* Actions — completion toggle + delete, matched size, side by side. */}
       <View style={styles.taskActions}>
-        <Pressable style={styles.actionBtn} onPress={onDelete} hitSlop={8}>
-          <TrashIcon size={16 * scale} />
+        {/* Finished / not-finished toggle. Plays the confirm sound only when
+            completing a task (not when un-completing one). */}
+        <SoundPressable
+          sound={isDone ? 'none' : 'confirm'}
+          style={styles.actionBtn}
+          onPress={onToggle}
+          hitSlop={8}>
+          <View style={[styles.statusDot, isDone ? styles.statusDotDone : styles.statusDotTodo]} />
+        </SoundPressable>
+        <Pressable style={[styles.actionBtn, styles.trashBtn]} onPress={onDelete} hitSlop={8}>
+          <TrashIcon size={18 * scale} />
         </Pressable>
       </View>
     </ThemedView>
@@ -155,8 +158,8 @@ export default function TasksScreen() {
   } = useApp();
   const [showDone, setShowDone] = useState(false);
 
-  const canAddExam = isPlus || examCountdowns.length < 2;
-  const examLimitText = isPlus ? t('tasks.examsCount', { count: examCountdowns.length }) : `${examCountdowns.length}/2`;
+  const canAddExam = isPlus || examCountdowns.length < FREE_EXAM_LIMIT;
+  const examLimitText = isPlus ? t('tasks.examsCount', { count: examCountdowns.length }) : `${examCountdowns.length}/${FREE_EXAM_LIMIT}`;
 
   const todo = tasks.filter((t) => t.status !== 'done');
   const done = tasks.filter((t) => t.status === 'done');
@@ -329,7 +332,9 @@ export default function TasksScreen() {
               const isToday = days === 0;
               return (
                 <ThemedView key={exam.id} type="backgroundElement" style={styles.examCard}>
-                  <View style={styles.examInfo}>
+                  <Pressable
+                    style={({ pressed }) => [styles.examInfo, pressed && styles.pressed]}
+                    onPress={() => router.push({ pathname: '/add-exam', params: { examId: exam.id } })}>
                     <View style={styles.examNameRow}>
                       <CountdownShape shape={exam.shape} size={16 * scale} />
                       <ThemedText type="smallBold">{exam.name}</ThemedText>
@@ -340,7 +345,7 @@ export default function TasksScreen() {
                       </ThemedText>
                       {exam.reminderEnabled && <BakeryBellEmoji size={11 * scale} />}
                     </View>
-                  </View>
+                  </Pressable>
                   <View style={styles.examRight}>
                     <ThemedText
                       style={[
@@ -454,7 +459,7 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   taskTitle: { flex: 1, fontSize: 15 * s, lineHeight: 20 * s, fontWeight: '600' },
   taskTitleDone: { textDecorationLine: 'line-through' },
   // Finished / not-finished dot at the end of the title row.
-  statusDot: { width: 16 * s, height: 16 * s, borderRadius: 8 * s, borderWidth: 2 },
+  statusDot: { width: 18 * s, height: 18 * s, borderRadius: 9 * s, borderWidth: 2 },
   statusDotTodo: { backgroundColor: 'transparent', borderColor: BakeryColors.latte },
   statusDotDone: { backgroundColor: BakeryColors.success, borderColor: BakeryColors.success },
   taskMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 * s, alignItems: 'center' },
@@ -469,8 +474,9 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   },
   badgeDot: { width: 6 * s, height: 6 * s, borderRadius: 3 * s },
   badgeText: { fontSize: 11 * s, fontWeight: '600' },
-  taskActions: { flexDirection: 'row', gap: 2 * s, alignItems: 'center' },
-  actionBtn: { padding: 6 * s },
+  taskActions: { flexDirection: 'row', gap: 0, alignItems: 'center' },
+  actionBtn: { padding: 4 * s, alignItems: 'center', justifyContent: 'center' },
+  trashBtn: { transform: [{ translateY: -0.5 * s }] },
   emptyCard: {
     borderRadius: BakeryRadii.card * s,
     padding: Spacing.three * s,

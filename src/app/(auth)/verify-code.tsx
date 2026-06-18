@@ -16,6 +16,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/context/auth-context';
 import { BakeryColors, BakeryRadii, BakeryShadow, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
+import { showPopup } from '@/lib/popup';
 import { useTranslation } from '@/i18n';
 
 type VerifyMode = 'login' | 'signup';
@@ -128,8 +129,17 @@ export default function VerifyCodeScreen() {
   };
 
   const handleGuest = () => {
-    continueAsGuest();
-    router.replace('/');
+    showPopup(t('auth.guestWarnTitle'), t('auth.guestWarnMsg'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('auth.continueAsGuest'),
+        style: 'destructive',
+        onPress: () => {
+          continueAsGuest();
+          router.replace('/');
+        },
+      },
+    ]);
   };
 
   return (

@@ -14,6 +14,7 @@ export type SyncedProfile = {
   skinId: string;
   backgroundId: string;
   avatarFrame: string;
+  cardColor: string;
   currentStreak: number;
   longestStreak: number;
   totalMinutes: number;
@@ -31,6 +32,7 @@ export async function uploadProfile(userId: string, p: SyncedProfile): Promise<b
       skin_id: p.skinId,
       background_id: p.backgroundId,
       avatar_frame: p.avatarFrame,
+      card_color: p.cardColor,
       current_streak: p.currentStreak,
       longest_streak: p.longestStreak,
       total_minutes: p.totalMinutes,
@@ -67,6 +69,7 @@ export async function fetchProfileByCode(code: string): Promise<SyncedProfile | 
     skinId: data.skin_id ?? 'classic',
     backgroundId: data.background_id ?? 'cozy',
     avatarFrame: data.avatar_frame ?? 'none',
+    cardColor: data.card_color ?? 'pink',
     currentStreak: data.current_streak ?? 0,
     longestStreak: data.longest_streak ?? 0,
     totalMinutes: data.total_minutes ?? 0,

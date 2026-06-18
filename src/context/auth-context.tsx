@@ -22,11 +22,20 @@ const GUEST_KEY = 'deskmate.guestMode';
 
 type AuthContextType = {
   continueAsGuest: () => void;
-  // Convert the current guest into a real account by signing in with Google. On
-  // success their guest progress is migrated to the new account (see app-context).
-  upgradeGuestWithGoogle: () => Promise<OAuthResult>;
+  // Convert the current guest into a real account by signing in with Google or
+  // Apple. On success their guest progress is migrated to the new account (see
+  // app-context). Apple is offered alongside Google for App Store Guideline 4.8.
+  upgradeGuest: (provider: 'google' | 'apple') => Promise<OAuthResult>;
+  // Guest → real account via email: flag the upgrade so progress migrates when the
+  // new account loads, then the caller routes to the sign-up screen.
+  upgradeGuestEmail: () => Promise<void>;
   isGuest: boolean;
   initialized: boolean;
+  // True when a session (or guest mode) was already persisted and restored at app
+  // launch — i.e. a returning user — as opposed to a login/signup that happens during
+  // this run. Lets the onboarding guard tell "relaunched mid-onboarding" from "first
+  // time reaching the gate". Authoritative (sourced from the launch getSession()).
+  sessionRestoredAtLaunch: boolean;
   session: Session | null;
   user: User | null;
   signOut: () => Promise<void>;
@@ -43,6 +52,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isGuest, setIsGuest] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [sessionRestoredAtLaunch, setSessionRestoredAtLaunch] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [kickedReason, setKickedReason] = useState<'otherDevice' | null>(null);
 
@@ -116,6 +126,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data } = await supabase.auth.getSession();
       if (!mounted) return;
       if (data.session) {
+        // A persisted session present at launch → a returning user.
+        setSessionRestoredAtLaunch(true);
         setSession(data.session);
         setIsGuest(false);
         AsyncStorage.removeItem(GUEST_KEY).catch(() => {});
@@ -124,6 +136,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // No Supabase session — restore guest mode if it was chosen before.
         const guest = await AsyncStorage.getItem(GUEST_KEY).catch(() => null);
         if (!mounted) return;
+        // A restored guest also counts as "returning"; a fresh launch (no session,
+        // no guest) stays false so a login/signup later this run isn't misread.
+        setSessionRestoredAtLaunch(guest === 'true');
         setSession(null);
         setIsGuest(guest === 'true');
       }
@@ -175,17 +190,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setInitialized(true);
         AsyncStorage.setItem(GUEST_KEY, 'true').catch(() => {});
       },
-      upgradeGuestWithGoogle: async () => {
+      upgradeGuest: async (provider: 'google' | 'apple') => {
         // Flag the upgrade BEFORE the OAuth round-trip so app-context can migrate
         // the guest's progress once the new session loads. On success,
         // onAuthStateChange flips us out of guest mode automatically.
         await markGuestUpgradePending();
-        const res = await signInWithProvider('google');
+        const res = await signInWithProvider(provider);
         if (!res.ok) await clearGuestUpgradePending();
         return res;
       },
+      upgradeGuestEmail: async () => {
+        // Same migration flag as the OAuth upgrade; the new email account adopts the
+        // guest's saved progress on first load (see app-context).
+        await markGuestUpgradePending();
+      },
       isGuest,
       initialized,
+      sessionRestoredAtLaunch,
       session,
       user: session?.user ?? null,
       kickedReason,
@@ -219,7 +240,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
       },
     }),
-    [initialized, isGuest, session, kickedReason],
+    [initialized, isGuest, sessionRestoredAtLaunch, session, kickedReason],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

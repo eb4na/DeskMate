@@ -4,6 +4,7 @@ import { router, Tabs } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, type ImageStyle, type StyleProp } from 'react-native';
 import { subscribeDragActive } from '@/lib/drag-session';
+import { setTutorialTarget } from '@/lib/tutorial-targets';
 import { SoundPressable } from '@/components/sound-pressable';
 import { DevKnobs } from '@/components/dev-knobs';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
@@ -47,7 +48,7 @@ const LEFT_ROUTES = ['index', 'tasks'];
 const RIGHT_ROUTES = ['progress', 'shop'];
 const ROUTE_INDEX: Record<string, number> = { index: 0, tasks: 1, progress: 2, shop: 3 };
 
-function TabItem({ name, isFocused, onPress, iconStyle }: { name: string; isFocused: boolean; onPress: () => void; iconStyle?: StyleProp<ImageStyle> }) {
+function TabItem({ name, isFocused, onPress, iconStyle, targetId }: { name: string; isFocused: boolean; onPress: () => void; iconStyle?: StyleProp<ImageStyle>; targetId?: string }) {
   const { t } = useTranslation();
   return (
     <SoundPressable
@@ -60,7 +61,9 @@ function TabItem({ name, isFocused, onPress, iconStyle }: { name: string; isFocu
       ]}
       onPress={onPress}
     >
-      <View style={[styles.iconWrap, isFocused && name !== 'index' && name !== 'tasks' && name !== 'progress' && name !== 'shop' && styles.iconWrapActive]}>
+      <View
+        ref={targetId ? (n) => setTutorialTarget(targetId, n) : undefined}
+        style={[styles.iconWrap, isFocused && name !== 'index' && name !== 'tasks' && name !== 'progress' && name !== 'shop' && styles.iconWrapActive]}>
         <Image
           source={
             name === 'index' && isFocused ? HOME_ICON_ACTIVE :
@@ -103,6 +106,7 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
               name={name}
               isFocused={isFocused}
               iconStyle={tw(name)}
+              targetId={name === 'tasks' || name === 'shop' ? name : undefined}
               onPress={() => {
                 const route = state.routes[index];
                 const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
