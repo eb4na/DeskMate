@@ -8,7 +8,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot';
@@ -21,7 +21,8 @@ import { DateWheelPicker } from '@/components/date-wheel-picker';
 import { useApp } from '@/context/app-context';
 import i18n, { useTranslation } from '@/i18n';
 import { ROOM_PAIRS, backgroundOwned } from '@/constants/room-data';
-import { cardColors, CARD_COLOR_ORDER, CARD_COLORS } from '@/constants/card-colors';
+import { cardColors, CARD_COLORS, type CardColorKey } from '@/constants/card-colors';
+import { ColorWheelPicker, hslToHex } from '@/components/color-wheel-picker';
 import { LockBadge } from '@/components/lock-badge';
 import {
   BUN_SKINS,
@@ -82,13 +83,15 @@ export default function ProfileScreen() {
     companionSkins,
     ownedShopItems,
   } = useApp();
-  // Resolved card palette (outline + strip). The custom colour only applies while
-  // Plus is active (like the avatar frame); free / lapsed users fall back to pink.
-  const activeCardColor = isPlus ? (profileCardColor || 'pink') : 'pink';
+  const activeCardColor = profileCardColor || 'pink';
   const cc = cardColors(activeCardColor);
   const pinkStrip = cardColors('pink').strip;
   const cardRef = useRef<View>(null);
-  const [editingBirthday, setEditingBirthday] = useState(!!profileBirthday);
+  // Birthday is set-once: a saved birthday renders locked (read-only). Editing is
+  // only entered via the "Add birthday" flow, and committed through a confirm popup.
+  const [editingBirthday, setEditingBirthday] = useState(false);
+  const [birthdayDraft, setBirthdayDraft] = useState('2008-01-01');
+  const [showColorPicker, setShowColorPicker] = useState(false);
 
   // Cloud profile sync (name + current character + stats) runs app-wide in
   // app-context now, so friends see my character even without opening this screen.
@@ -223,32 +226,49 @@ export default function ProfileScreen() {
           {/* ── Editor ────────────────────────────────────────────────────── */}
           <Text style={styles.editTitle}>{t('profileCard.editProfile')}</Text>
 
-          {/* Card colour — Plus members pick the outline + friend-code strip palette;
-              free users tap a locked swatch and get sent to the Plus paywall. */}
+          {/* Card colour */}
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>
-              {t('profileCard.cardColor', { defaultValue: 'Card color' })}{!isPlus ? '  ·  Plus' : ''}
+              {t('profileCard.cardColor', { defaultValue: 'Card color' })}
             </Text>
-            <View style={styles.swatchRow}>
-              {CARD_COLOR_ORDER.map((key) => {
-                const c = CARD_COLORS[key];
-                const selected = activeCardColor === key;
-                return (
-                  <Pressable
-                    key={key}
-                    onPress={() => (isPlus ? updateProfile({ cardColor: key }) : router.push('/plus-upgrade'))}
-                    style={({ pressed }) => [
-                      styles.swatch,
-                      { backgroundColor: c.strip, borderColor: selected ? P.brown : '#fff' },
-                      selected && styles.swatchSelected,
-                      pressed && styles.pressed,
-                    ]}>
-                    {!isPlus && key !== 'pink' ? <LockBadge size={20 * scale} /> : null}
-                  </Pressable>
-                );
-              })}
+            <View style={styles.colorRow}>
+              <View style={[styles.colorDot, { backgroundColor: cc.strip, borderColor: cc.outline }]} />
+              <Pressable
+                style={({ pressed }) => [styles.changeColorBtn, pressed && styles.pressed]}
+                onPress={() => isPlus ? setShowColorPicker(true) : router.push('/plus-upgrade')}>
+                {!isPlus && <LockBadge size={16 * scale} />}
+                <Text style={styles.changeColorText}>
+                  {t('profileCard.changeColor', { defaultValue: 'Change color' })}
+                </Text>
+              </Pressable>
             </View>
           </View>
+
+          {/* Colour wheel modal */}
+          <Modal visible={showColorPicker} transparent animationType="fade" onRequestClose={() => setShowColorPicker(false)}>
+            <Pressable style={styles.modalOverlay} onPress={() => setShowColorPicker(false)}>
+              <Pressable style={styles.modalCard}>
+                <Text style={styles.modalTitle}>
+                  {t('profileCard.cardColor', { defaultValue: 'Card color' })}
+                </Text>
+                <ColorWheelPicker
+                  size={Math.round(216 * scale)}
+                  value={
+                    activeCardColor.startsWith('#')
+                      ? activeCardColor
+                      : (CARD_COLORS[activeCardColor as CardColorKey]?.strip ?? '#F7A7B8')
+                  }
+                  onChange={(hex) => updateProfile({ cardColor: hex })}
+                />
+                <View style={[styles.modalPreview, { backgroundColor: cc.strip }]} />
+                <Pressable
+                  style={({ pressed }) => [styles.modalDoneBtn, pressed && styles.pressed]}
+                  onPress={() => setShowColorPicker(false)}>
+                  <Text style={styles.modalDoneText}>{t('common.done', { defaultValue: 'Done' })}</Text>
+                </Pressable>
+              </Pressable>
+            </Pressable>
+          </Modal>
 
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>{t('profileCard.displayName')}</Text>
@@ -277,12 +297,40 @@ export default function ProfileScreen() {
 
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>{t('profileCard.birthday')}</Text>
-            {editingBirthday ? (
-              <DateWheelPicker
-                value={profileBirthday || '2008-01-01'}
-                onChange={(v) => updateProfile({ birthday: v })}
-                hideYear
-              />
+            {profileBirthday ? (
+              // Set-once: once saved, the birthday is locked and can't be changed.
+              <>
+                <Text style={styles.lockedValue}>{formatBirthday(profileBirthday)}</Text>
+                <Text style={styles.fieldHint}>{t('profileCard.birthdayLockedNote')}</Text>
+              </>
+            ) : editingBirthday ? (
+              <>
+                <DateWheelPicker
+                  value={birthdayDraft}
+                  onChange={setBirthdayDraft}
+                  hideYear
+                />
+                <Pressable
+                  style={({ pressed }) => [styles.bdaySaveBtn, pressed && styles.pressed]}
+                  onPress={() =>
+                    showPopup(
+                      t('profileCard.birthdaySetOnceTitle'),
+                      t('profileCard.birthdaySetOnceMsg', { date: formatBirthday(birthdayDraft) }),
+                      [
+                        { text: t('common.cancel'), style: 'cancel' },
+                        {
+                          text: t('profileCard.birthdaySetOnceConfirm'),
+                          onPress: () => {
+                            updateProfile({ birthday: birthdayDraft });
+                            setEditingBirthday(false);
+                          },
+                        },
+                      ],
+                    )
+                  }>
+                  <Text style={styles.bdaySaveBtnText}>{t('profileCard.birthdaySave')}</Text>
+                </Pressable>
+              </>
             ) : (
               <Pressable
                 style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
@@ -452,6 +500,24 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   swatchRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 * s, marginTop: 2 * s },
   swatch: { width: 38 * s, height: 38 * s, borderRadius: 19 * s, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' },
   swatchSelected: { borderWidth: 3.5 },
+  colorRow: { flexDirection: 'row', alignItems: 'center', gap: 12 * s, marginTop: 4 * s },
+  colorDot: { width: 36 * s, height: 36 * s, borderRadius: 18 * s, borderWidth: 3 },
+  changeColorBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6 * s,
+    paddingHorizontal: 16 * s, paddingVertical: 8 * s,
+    borderRadius: 20 * s, backgroundColor: P.pinkSoft,
+  },
+  changeColorText: { fontSize: 13 * s, fontWeight: '700', color: P.brown },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center' },
+  modalCard: {
+    backgroundColor: '#FFF9F5', borderRadius: 24 * s, padding: 28 * s,
+    alignItems: 'center', gap: 16 * s,
+    shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 24, shadowOffset: { width: 0, height: 8 },
+  },
+  modalTitle: { fontSize: 17 * s, fontWeight: '900', color: P.brown },
+  modalPreview: { width: 52 * s, height: 52 * s, borderRadius: 26 * s, borderWidth: 3, borderColor: '#fff' },
+  modalDoneBtn: { paddingHorizontal: 36 * s, paddingVertical: 10 * s, borderRadius: 20 * s, backgroundColor: P.pink },
+  modalDoneText: { fontSize: 15 * s, fontWeight: '800', color: '#fff' },
   swatchLock: { fontSize: 13 * s },
   input: {
     borderWidth: 1.5,
@@ -474,6 +540,16 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     backgroundColor: P.card,
   },
   addBtnText: { color: P.cocoa, fontWeight: '700' },
+  lockedValue: { fontSize: 15 * s, fontWeight: '700', color: P.brown },
+  fieldHint: { fontSize: 11 * s, color: P.muted, marginTop: 3 * s },
+  bdaySaveBtn: {
+    marginTop: 8 * s,
+    borderRadius: 14 * s,
+    paddingVertical: 11 * s,
+    alignItems: 'center',
+    backgroundColor: P.pink,
+  },
+  bdaySaveBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 * s },
   bgRow: { gap: 10 * s, paddingVertical: 2 * s },
   bgThumb: { width: 84 * s, height: 60 * s, borderRadius: 12 * s, borderWidth: 2, borderColor: '#fff' },
   bgThumbSelected: { borderColor: P.pink, borderWidth: 3 },

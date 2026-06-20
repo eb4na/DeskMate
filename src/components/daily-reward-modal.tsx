@@ -11,10 +11,11 @@
  * player on Home rather than flashing under the splash.
  */
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { nextLoginReward, todayISO, useApp } from '@/context/app-context';
+import { birthdayRewardAvailable, nextLoginReward, todayISO, useApp } from '@/context/app-context';
 import { DAILY_REWARD_CAP } from '@/constants/login-rewards';
 import { isLoadingActive, subscribeLoadingDone } from '@/lib/loading-signal';
 import { useTranslation } from '@/i18n';
@@ -33,9 +34,13 @@ export function DailyRewardModal() {
     hanjiUnlockPending, recipeBadgePending,
     legalAccepted, starterChosen,
     isPlus, streakFreezes,
+    profileBirthday, birthdayRewardYear,
   } = useApp();
 
   const reward = nextLoginReward({ loginRewardDate, streak, isPlus, streakFreezes }, todayISO());
+  // On the player's birthday the birthday gift shows first — hold the daily reward
+  // until it's claimed so the two cards never stack.
+  const birthdayPending = birthdayRewardAvailable({ profileBirthday, birthdayRewardYear }, todayISO());
 
   // Hold the popup until the launch splash has lifted, then wait ~1.5s so it
   // greets the player once they're settled on Home — not stacked under the splash.
@@ -53,8 +58,13 @@ export function DailyRewardModal() {
   // gate's plain-View overlay regardless of zIndex, so without this it could pop
   // over the Privacy/age screens. (starterChosen is grandfathered true for anyone
   // who already passed the legal gate, so this never suppresses it for them.)
+  // Dismiss the native Modal in the same commit as navigating to the paywall — RN
+  // Modals can't reliably present a `presentation: 'modal'` route from underneath
+  // (matches sound-picker-modal). `leaving` self-resets: Home remounts this on focus.
+  const [leaving, setLeaving] = useState(false);
+
   const onboarded = legalAccepted && starterChosen;
-  const visible = reward.available && armed && onboarded && !hanjiUnlockPending && !recipeBadgePending;
+  const visible = reward.available && armed && onboarded && !hanjiUnlockPending && !recipeBadgePending && !birthdayPending && !leaving;
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -62,7 +72,7 @@ export function DailyRewardModal() {
         <View style={styles.backdrop} />
         <View style={styles.card}>
           <Text style={styles.title}>{t('dailyReward.title')}</Text>
-          <Text style={styles.subtitle}>{t('dailyReward.subtitle', { max: DAILY_REWARD_CAP })}</Text>
+          <Text style={styles.subtitle}>{t('dailyReward.subtitle', { max: isPlus ? DAILY_REWARD_CAP * 2 : DAILY_REWARD_CAP })}</Text>
 
           {/* Today's reward: streak day N pays N coins (capped at 200). */}
           <View style={styles.hero}>
@@ -79,6 +89,18 @@ export function DailyRewardModal() {
             <Image source={COIN} style={styles.btnCoin} contentFit="contain" />
             <Text style={styles.buttonText}>{t('dailyReward.claim', { coins: reward.coins })}</Text>
           </Pressable>
+
+          {/* Free users: upsell to Plus, which doubles this reward. Navigating away
+              blurs Home, so the modal unmounts and re-shows (doubled) on return. */}
+          {!isPlus && (
+            <Pressable
+              style={({ pressed }) => [styles.upsell, pressed && styles.pressed]}
+              onPress={() => { setLeaving(true); router.push('/plus-upgrade'); }}>
+              <Text style={styles.upsellText}>
+                {t('dailyReward.get2x', { coins: reward.baseCoins * 2 })}
+              </Text>
+            </Pressable>
+          )}
         </View>
       </View>
     </Modal>
@@ -129,5 +151,12 @@ const styles = StyleSheet.create({
   },
   btnCoin: { width: 22, height: 22 },
   buttonText: { color: '#fff', fontWeight: '900', fontSize: 15 },
+  // Secondary upsell button: gold outline so it reads as a bonus, not the main claim.
+  upsell: {
+    alignSelf: 'stretch', marginTop: 8, paddingVertical: 11, borderRadius: 16,
+    backgroundColor: P.goldSoft, borderWidth: 1.5, borderColor: P.gold,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  upsellText: { color: P.gold, fontWeight: '900', fontSize: 13.5 },
   pressed: { opacity: 0.85 },
 });

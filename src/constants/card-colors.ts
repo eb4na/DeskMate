@@ -19,7 +19,16 @@ export const CARD_COLORS: Record<CardColorKey, { outline: string; strip: string 
 
 export const CARD_COLOR_ORDER: CardColorKey[] = ['pink', 'lavender', 'mint', 'peach', 'sky', 'butter'];
 
-// Resolve a stored key (or anything unknown/legacy) to a colour pair.
+// Resolve a stored key or arbitrary hex from the colour wheel to a colour pair.
 export function cardColors(key?: string | null): { outline: string; strip: string } {
+  if (!key) return CARD_COLORS[DEFAULT_CARD_COLOR];
+  if (key.startsWith('#') && key.length >= 7) {
+    // Hex from wheel — outline is a 25% tint of the strip against white.
+    const r = parseInt(key.slice(1, 3), 16);
+    const g = parseInt(key.slice(3, 5), 16);
+    const b = parseInt(key.slice(5, 7), 16);
+    const blend = (c: number) => Math.round(c * 0.28 + 255 * 0.72).toString(16).padStart(2, '0');
+    return { outline: `#${blend(r)}${blend(g)}${blend(b)}`, strip: key };
+  }
   return CARD_COLORS[(key as CardColorKey)] ?? CARD_COLORS[DEFAULT_CARD_COLOR];
 }

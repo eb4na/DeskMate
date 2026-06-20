@@ -5,7 +5,29 @@
 // "First 10 seconds then repeats": we play the clip and, once playback passes the
 // 10s mark, seek back to 0. `loop` also covers files shorter than the window.
 
-import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
+type AudioPlayer = {
+  volume: number;
+  loop: boolean;
+  playing: boolean;
+  isLoaded: boolean;
+  currentTime: number;
+  play(): void;
+  pause(): void;
+  remove(): void;
+  seekTo(pos: number): Promise<void>;
+  addListener(event: string, cb: (status: any) => void): { remove(): void };
+};
+type ExpoAudioMod = {
+  createAudioPlayer(source: unknown): AudioPlayer;
+  setAudioModeAsync(opts: Record<string, unknown>): Promise<void>;
+};
+let _ea: ExpoAudioMod | null = null;
+try { _ea = require('expo-audio') as ExpoAudioMod; } catch {}
+function createAudioPlayer(source: unknown): AudioPlayer { return _ea!.createAudioPlayer(source); }
+function setAudioModeAsync(opts: Record<string, unknown>): Promise<void> {
+  return _ea ? _ea.setAudioModeAsync(opts) : Promise.resolve();
+}
+function audioAvailable(): boolean { return !!_ea; }
 
 const PREVIEW_SECONDS = 10;
 const VOLUME = 0.8;
@@ -68,7 +90,7 @@ export function stopPreview() {
 /** Start (or restart) a sound's 10s looping preview. No-op + false if no audio. */
 export function startPreview(id: string): boolean {
   const asset = SOUND_ASSETS[id];
-  if (!asset) return false;
+  if (!asset || !audioAvailable()) return false;
   stopPreview();
   // Previews are an explicit tap, so play even with the silent switch on.
   setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
@@ -126,6 +148,7 @@ export function stopStudyMusic() {
 /** Loop a sound (by ambience id, e.g. 'rain') as study music. `null` or a sound
  *  with no audio file → silence. Switching ids swaps the track. */
 export function playStudyMusic(ambienceId: string | null) {
+  if (!audioAvailable()) return;
   const target = ambienceId && SOUND_ASSETS[ambienceId] ? ambienceId : null;
   // Already playing the desired track → leave it alone. But only short-circuit
   // when the player is *actually* playing: musicAmbId can still name a track whose

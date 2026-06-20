@@ -23,6 +23,7 @@
     "skip": "Passer",
     "save": "Enregistrer",
     "delete": "Supprimer",
+    "inappropriateLanguage": "Merci de retirer le langage inapproprié.",
     "back": "Retour",
     "add": "Ajouter",
     "edit": "Modifier",
@@ -819,7 +820,7 @@
     "studyRoomName": "Salle d'étude",
     "connecting": "Connexion… ({{status}})",
     "starting": "démarrage",
-    "roomStatus": "{{inRoom}} dans la salle · {{connected}} connectés",
+    "roomStatus": "{{inRoom}}/{{max}} dans la salle · {{connected}} connectés",
     "you": "(toi)",
     "sessionLength": "Durée de la session",
     "min": "min",
@@ -897,6 +898,11 @@
     "description": "Description",
     "descPlaceholder": "Dis quelque chose sur toi…",
     "addBirthday": "＋ Ajouter un anniversaire",
+    "birthdaySave": "Enregistrer l'anniversaire",
+    "birthdaySetOnceTitle": "Une seule fois",
+    "birthdaySetOnceMsg": "Définir ton anniversaire au {{date}} ? Tu ne peux le définir qu'une seule fois — il ne pourra pas être modifié ensuite.",
+    "birthdaySetOnceConfirm": "Définir l'anniversaire",
+    "birthdayLockedNote": "Ton anniversaire est défini et ne peut pas être modifié.",
     "character": "Personnage",
     "outfit": "Tenue",
     "ownedOutfitsHint": "Seules les tenues que tu possèdes s'affichent ici. Obtiens-en plus dans la Boutique.",
@@ -1500,12 +1506,18 @@
     "signInNeeded": "Tu dois être connecté pour envoyer des messages.",
     "friendNotReachable": "Impossible de joindre {{name}} pour l'instant — il doit ouvrir l'app une fois pour synchroniser son profil."
   },
+  "birthdayReward": {
+    "title": "Joyeux anniversaire !",
+    "subtitle": "On te souhaite une merveilleuse journée ! Voici un petit cadeau de notre part.",
+    "claim": "Réclamer {{coins}}"
+  },
   "dailyReward": {
     "title": "Récompense quotidienne",
     "subtitle": "Chaque jour, gagne des pièces égales à ta série, jusqu'à {{max}}.",
     "day": "Jour {{n}}",
     "claim": "Réclamer {{coins}}",
-    "plusBonus": "Les membres Plus gagnent le double !"
+    "plusBonus": "Les membres Plus gagnent le double !",
+    "get2x": "Obtiens 2× ({{coins}}) avec Plus"
   },
   "hanjiUnlock": {
     "title": "Tu as débloqué Hanji !",

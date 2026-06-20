@@ -72,12 +72,19 @@ export default function SignupScreen() {
       return;
     }
 
+    // Supabase signals a duplicate email in three ways:
+    // 1. error.message "user already registered" (enumeration protection OFF)
+    // 2. data.user.identities === [] (unconfirmed duplicate, protection OFF)
+    // 3. data.user === null with no error (enumeration protection ON)
+    // 4. data.user.email_confirmed_at set (confirmed account already exists)
     const looksLikeExistingAccount =
-      Array.isArray(data.user?.identities) && data.user.identities.length === 0;
+      !data.user ||
+      (Array.isArray(data.user.identities) && data.user.identities.length === 0) ||
+      !!data.user.email_confirmed_at;
 
     setSubmitting(false);
 
-    if (looksLikeExistingAccount || data.user?.email_confirmed_at) {
+    if (looksLikeExistingAccount) {
       setExistingAccountMessage(t('errors.emailAlreadyRegisteredLong'));
       return;
     }
@@ -136,8 +143,8 @@ export default function SignupScreen() {
                 </ThemedText>
               ) : null}
 
-              {!errorMessage && existingAccountMessage ? (
-                <ThemedText type="small" style={styles.noticeText}>
+              {existingAccountMessage ? (
+                <ThemedText type="small" style={styles.errorText}>
                   {existingAccountMessage}
                 </ThemedText>
               ) : null}

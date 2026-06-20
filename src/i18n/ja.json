@@ -23,6 +23,7 @@
     "skip": "スキップ",
     "save": "保存",
     "delete": "削除",
+    "inappropriateLanguage": "不適切な言葉を削除してください。",
     "back": "戻る",
     "add": "追加",
     "edit": "編集",
@@ -819,7 +820,7 @@
     "studyRoomName": "スタディルーム",
     "connecting": "接続中…（{{status}}）",
     "starting": "開始中",
-    "roomStatus": "ルームに{{inRoom}}人 · {{connected}}人接続中",
+    "roomStatus": "ルームに{{inRoom}}/{{max}}人 · {{connected}}人接続中",
     "you": "（あなた）",
     "sessionLength": "セッションの長さ",
     "min": "分",
@@ -897,6 +898,11 @@
     "description": "自己紹介",
     "descPlaceholder": "自分について書いてみよう…",
     "addBirthday": "＋ 誕生日を追加",
+    "birthdaySave": "誕生日を保存",
+    "birthdaySetOnceTitle": "設定は一度だけ",
+    "birthdaySetOnceMsg": "誕生日を{{date}}に設定しますか？設定できるのは一度だけで、後から変更できません。",
+    "birthdaySetOnceConfirm": "誕生日を設定",
+    "birthdayLockedNote": "誕生日は設定済みで、変更できません。",
     "character": "キャラクター",
     "outfit": "衣装",
     "ownedOutfitsHint": "所持している衣装のみ表示されます。ショップで増やせます。",
@@ -1500,12 +1506,18 @@
     "signInNeeded": "メッセージを送るにはサインインが必要です。",
     "friendNotReachable": "{{name}}にまだ接続できません。プロフィールを同期するため、相手が一度アプリを開く必要があります。"
   },
+  "birthdayReward": {
+    "title": "お誕生日おめでとう！",
+    "subtitle": "素敵な一日になりますように！みんなからのささやかな贈り物です。",
+    "claim": "{{coins}}を受け取る"
+  },
   "dailyReward": {
     "title": "デイリーボーナス",
     "subtitle": "毎日、連続日数ぶんのコインがもらえます（最大{{max}}）。",
     "day": "{{n}}日目",
     "claim": "{{coins}} 受け取る",
-    "plusBonus": "Plus会員は2倍！"
+    "plusBonus": "Plus会員は2倍！",
+    "get2x": "Plusで2倍（{{coins}}）"
   },
   "hanjiUnlock": {
     "title": "ハンジを解放しました！",

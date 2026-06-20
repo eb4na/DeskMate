@@ -23,6 +23,7 @@
     "skip": "건너뛰기",
     "save": "저장",
     "delete": "삭제",
+    "inappropriateLanguage": "부적절한 표현을 삭제해 주세요.",
     "back": "뒤로",
     "add": "추가",
     "edit": "편집",
@@ -819,7 +820,7 @@
     "studyRoomName": "스터디룸",
     "connecting": "연결 중…({{status}})",
     "starting": "시작 중",
-    "roomStatus": "방에 {{inRoom}}명 · {{connected}}명 연결됨",
+    "roomStatus": "방에 {{inRoom}}/{{max}}명 · {{connected}}명 연결됨",
     "you": "(나)",
     "sessionLength": "세션 길이",
     "min": "분",
@@ -897,6 +898,11 @@
     "description": "소개",
     "descPlaceholder": "자신에 대해 적어보세요…",
     "addBirthday": "＋ 생일 추가",
+    "birthdaySave": "생일 저장",
+    "birthdaySetOnceTitle": "한 번만 설정 가능",
+    "birthdaySetOnceMsg": "생일을 {{date}}(으)로 설정할까요? 한 번만 설정할 수 있으며 나중에 변경할 수 없습니다.",
+    "birthdaySetOnceConfirm": "생일 설정",
+    "birthdayLockedNote": "생일이 설정되어 변경할 수 없습니다.",
     "character": "캐릭터",
     "outfit": "의상",
     "ownedOutfitsHint": "보유한 의상만 여기에 표시됩니다. 상점에서 더 받으세요.",
@@ -1500,12 +1506,18 @@
     "signInNeeded": "메시지를 보내려면 로그인해야 해요.",
     "friendNotReachable": "아직 {{name}}에게 연결할 수 없어요 — 프로필이 동기화되도록 상대가 앱을 한 번 열어야 해요."
   },
+  "birthdayReward": {
+    "title": "생일 축하해요!",
+    "subtitle": "멋진 하루 보내세요! 우리 모두가 준비한 작은 선물이에요.",
+    "claim": "{{coins}} 받기"
+  },
   "dailyReward": {
     "title": "출석 보상",
     "subtitle": "매일 연속 일수만큼 코인을 받아요 (최대 {{max}}).",
     "day": "{{n}}일차",
     "claim": "{{coins}} 받기",
-    "plusBonus": "Plus 회원은 2배!"
+    "plusBonus": "Plus 회원은 2배!",
+    "get2x": "Plus로 2배 받기 ({{coins}})"
   },
   "hanjiUnlock": {
     "title": "한지를 해금했어요!",

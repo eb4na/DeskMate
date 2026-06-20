@@ -11,6 +11,16 @@ export type ThemedTextProps = TextProps & {
 export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
   const theme = useTheme();
 
+  // When a caller overrides fontSize but not lineHeight, derive a proportional
+  // lineHeight so scaled-up text (e.g. tablet sizing) can never clip against a
+  // preset's fixed lineHeight (which caused top/bottom-cut glyphs). Texts that don't
+  // override fontSize keep their preset lineHeight; explicit lineHeights are respected.
+  const flat = StyleSheet.flatten(style) as { fontSize?: number; lineHeight?: number } | undefined;
+  const autoLineHeight =
+    flat && typeof flat.fontSize === 'number' && flat.lineHeight == null
+      ? { lineHeight: Math.round(flat.fontSize * 1.35) }
+      : null;
+
   return (
     <Text
       style={[
@@ -24,6 +34,7 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
         type === 'linkPrimary' && styles.linkPrimary,
         type === 'code' && styles.code,
         style,
+        autoLineHeight,
       ]}
       {...rest}
     />

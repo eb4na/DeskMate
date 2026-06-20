@@ -6,8 +6,13 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+const STREAK_ICON = require('@/assets/images/profile/streak-cupcake.png');
+const BEST_STREAK_ICON = require('@/assets/images/profile/best-streak-cupcake.png');
+const STUDIED_ICON = require('@/assets/images/profile/studied-book.png');
+const BIRTHDAY_ICON = require('@/assets/images/profile/birthday-candle.png');
 
 import { useApp } from '@/context/app-context';
 import { getCompanionImage } from '@/lib/companion-utils';
@@ -92,10 +97,10 @@ export default function FriendCardScreen() {
                 <View style={styles.nameRow}>
                   <Text style={styles.name} numberOfLines={2}>{name}</Text>
                 </View>
-                <Row label={t('friendCard.currentStreak')} value={`${friend?.currentStreak ?? 0}d`} />
-                <Row label={t('friendCard.bestStreak')} value={`${friend?.longestStreak ?? 0}d`} />
-                <Row label={t('friendCard.studied')} value={hoursLabel} />
-                <Row label={t('friendCard.birthday')} value={formatBirthday(friend?.birthday)} />
+                <Row icon={STREAK_ICON} label={t('friendCard.currentStreak')} value={`${friend?.currentStreak ?? 0}d`} />
+                <Row icon={BEST_STREAK_ICON} label={t('friendCard.bestStreak')} value={`${friend?.longestStreak ?? 0}d`} />
+                <Row icon={STUDIED_ICON} label={t('friendCard.studied')} value={hoursLabel} />
+                <Row icon={BIRTHDAY_ICON} label={t('friendCard.birthday')} value={formatBirthday(friend?.birthday)} />
                 {friend?.description ? (
                   <Text style={styles.desc} numberOfLines={3}>“{friend.description}”</Text>
                 ) : null}
@@ -116,9 +121,10 @@ export default function FriendCardScreen() {
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ icon, label, value }: { icon: ImageSourcePropType; label: string; value: string }) {
   return (
     <View style={styles.statRow}>
+      <Image source={icon} style={styles.statIcon} contentFit="contain" />
       <Text style={styles.statLabel}>{label}</Text>
       <Text style={styles.statValue}>{value}</Text>
     </View>
@@ -146,7 +152,8 @@ const styles = StyleSheet.create({
   infoPanel: { flex: 1, gap: 8, paddingTop: 2 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   name: { fontSize: 20, fontWeight: '900', color: P.brown, lineHeight: 24, flexShrink: 1 },
-  statRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
+  statRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statIcon: { width: 20, height: 20 },
   statLabel: { fontSize: 12.5, color: P.muted, fontWeight: '600', flex: 1 },
   statValue: { fontSize: 13, color: P.brown, fontWeight: '800' },
   desc: { fontSize: 12.5, color: P.cocoa, fontStyle: 'italic', lineHeight: 17, marginTop: 2 },

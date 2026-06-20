@@ -10,7 +10,7 @@ import { ThemedView } from '@/components/themed-view';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { SESSION_LENGTHS } from '@/constants/placeholder-data';
 import { bunAvatarNudge, getCompanionImage } from '@/lib/companion-utils';
-import { useStudyRoom } from '@/lib/use-study-room';
+import { useStudyRoom, STUDY_ROOM_MAX } from '@/lib/use-study-room';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
@@ -73,7 +73,7 @@ export default function StudyLobbyScreen() {
             <Text style={styles.subtitle}>
               {connecting
                 ? t('lobby.connecting', { status: netStatus || t('lobby.starting') })
-                : t('lobby.roomStatus', { inRoom: roster.length, connected: presentCodes.length })}
+                : t('lobby.roomStatus', { inRoom: roster.length, max: STUDY_ROOM_MAX, connected: presentCodes.length })}
             </Text>
           </View>
 

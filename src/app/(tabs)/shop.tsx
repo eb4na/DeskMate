@@ -9,7 +9,7 @@ import { stopPreview } from '@/lib/ambience-audio';
 import { track } from '@/lib/analytics';
 import { PRODUCT_IDS, fetchPrices, purchaseProduct, purchasesReady, type PriceMap } from '@/lib/purchases';
 import { useIsTablet } from '@/hooks/use-device-class';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CoinAmount, CoinIcon } from '@/components/coin-icon';
 import { STREAK_FREEZE_ICON } from '@/components/streak-freeze-icon';
@@ -174,6 +174,7 @@ export default function ShopScreen() {
   const { t } = useTranslation();
   // Tablet: bigger item pictures + cards so the wide cards aren't mostly white space.
   const isTablet = useIsTablet();
+  const insets = useSafeAreaInsets();
   // Stop any sound preview when the shop tab loses focus (tabs don't unmount).
   useFocusEffect(useCallback(() => () => stopPreview(), []));
   const tImgWrap = isTablet && { height: 130 };
@@ -182,7 +183,7 @@ export default function ShopScreen() {
   const tName = isTablet && { fontSize: 14 };
   // Tablet: the Bakery Menu coin packs read tiny on a wide screen — scale the card,
   // pack art, names, prices and coin amounts up so coin purchases are easy to tap.
-  const tMenuCard = isTablet && { paddingHorizontal: Spacing.four, paddingVertical: Spacing.three };
+  const tMenuCard = isTablet && { paddingHorizontal: Spacing.four, paddingTop: 48, paddingBottom: Spacing.three };
   const tMenuTitle = isTablet && { fontSize: 28 };
   const tSectionLabel = isTablet && { fontSize: 22 };
   const tSectionSub = isTablet && { fontSize: 16 };
@@ -470,44 +471,43 @@ export default function ShopScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} stickyHeaderIndices={[0]} style={styles.scrollBox}>
-
-        {/* ── Sticky header: balance + daily cap ── */}
-        <ThemedView style={styles.header}>
-          <ThemedView style={styles.headerInner}>
-            <ThemedText type="subtitle" style={styles.title}>{t('shop.title')}</ThemedText>
-            <View style={styles.headerRight}>
-              {/* Old "★ Plus −25%" star pill hidden — the new Plus asset is the
-                  chocolate box. Restore by switching `false` back to `!isPlus`. */}
-              {false && (
-                <Pressable onPress={() => router.push('/plus-upgrade')}>
-                  <ThemedView style={styles.plusPill}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <BakeryStarEmoji size={14} />
-                      <ThemedText style={styles.plusPillText}>{t('shop.plusDiscount')}</ThemedText>
-                    </View>
-                  </ThemedView>
-                </Pressable>
-              )}
-              <ThemedView style={styles.balancePill}>
-                <CoinIcon size={32} />
-                <ThemedText style={styles.balanceNum}>{coins}</ThemedText>
-              </ThemedView>
-            </View>
-          </ThemedView>
-
-          {/* Earn progress bar */}
-          <ThemedView style={styles.capRow}>
-            <ThemedText style={styles.capLabel}>{t('shop.dailyEarn', { earned: earnedToday, cap: DAILY_EARN_CAP })}</ThemedText>
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${Math.min(100, (earnedToday / DAILY_EARN_CAP) * 100)}%` }]} />
-            </View>
-            <ThemedText style={styles.capLabel}>
-              {capRemaining > 0 ? t('shop.leftAmount', { count: capRemaining }) : t('shop.full')}
-            </ThemedText>
-          </ThemedView>
+      {/* ── Fixed header: balance + daily cap ── */}
+      <ThemedView style={[styles.header, { paddingTop: (styles.header.paddingTop as number) + insets.top }]}>
+        <ThemedView style={styles.headerInner}>
+          <ThemedText type="subtitle" style={styles.title}>{t('shop.title')}</ThemedText>
+          <View style={styles.headerRight}>
+            {/* Old "★ Plus −25%" star pill hidden — the new Plus asset is the
+                chocolate box. Restore by switching `false` back to `!isPlus`. */}
+            {false && (
+              <Pressable onPress={() => router.push('/plus-upgrade')}>
+                <ThemedView style={styles.plusPill}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <BakeryStarEmoji size={14} />
+                    <ThemedText style={styles.plusPillText}>{t('shop.plusDiscount')}</ThemedText>
+                  </View>
+                </ThemedView>
+              </Pressable>
+            )}
+            <ThemedView style={styles.balancePill}>
+              <CoinIcon size={32} />
+              <ThemedText style={styles.balanceNum}>{coins}</ThemedText>
+            </ThemedView>
+          </View>
         </ThemedView>
 
+        {/* Earn progress bar */}
+        <ThemedView style={styles.capRow}>
+          <ThemedText style={styles.capLabel}>{t('shop.dailyEarn', { earned: earnedToday, cap: DAILY_EARN_CAP })}</ThemedText>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${Math.min(100, (earnedToday / DAILY_EARN_CAP) * 100)}%` }]} />
+          </View>
+          <ThemedText style={styles.capLabel}>
+            {capRemaining > 0 ? t('shop.leftAmount', { count: capRemaining }) : t('shop.full')}
+          </ThemedText>
+        </ThemedView>
+      </ThemedView>
+
+      <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollBox}>
         <SafeAreaView edges={['bottom']} style={styles.body}>
 
           {/* ── Category icon strip ── */}
@@ -856,7 +856,7 @@ export default function ShopScreen() {
           )}
 
           {/* ── Bakery Menu — Coins + Items on one paper, split by a rule ── */}
-          <View style={[styles.menuCard, tMenuCard]}>
+          <View style={[styles.menuCard, tMenuCard, isTablet && { marginTop: Spacing.three }]}>
             <View style={styles.menuHeader}>
               <ThemedText style={[styles.menuTitle, tMenuTitle]}>{t('shop.bakeryMenu')}</ThemedText>
             </View>
@@ -869,7 +869,7 @@ export default function ShopScreen() {
                   <RNImage source={PACK_IMAGES[pack.id] ?? PACK_IMAGES.pouch} style={[styles.menuIcon, tMenuIcon]} resizeMode="contain" />
                   <View style={styles.menuBody}>
                     <View style={styles.menuTopLine}>
-                      <ThemedText style={[styles.menuName, tMenuName]} numberOfLines={1}>{pack.name}</ThemedText>
+                      <ThemedText style={[styles.menuName, tMenuName]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{pack.name}</ThemedText>
                       <View style={styles.menuLeader} />
                       <ThemedText style={[styles.menuPrice, tMenuPrice]}>{packPrice(pack)}</ThemedText>
                     </View>
@@ -894,7 +894,7 @@ export default function ShopScreen() {
                 <RNImage source={STREAK_FREEZE_ICON} style={[styles.menuIcon, tMenuIcon]} resizeMode="contain" />
                 <View style={styles.menuBody}>
                   <View style={styles.menuTopLine}>
-                    <ThemedText style={[styles.menuName, tMenuName]} numberOfLines={1}>{t('shop.streakFreezeName')}</ThemedText>
+                    <ThemedText style={[styles.menuName, tMenuName]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{t('shop.streakFreezeName')}</ThemedText>
                     <View style={styles.menuLeader} />
                     <ThemedText style={[styles.menuPrice, tMenuPrice]}>{storePrices[PRODUCT_IDS.streakFreeze] ?? '$1.99'}</ThemedText>
                   </View>
@@ -968,7 +968,7 @@ export default function ShopScreen() {
                     ) : (
                       <ThemedText style={styles.buyHeroEmoji}>{buyReq.items[0].emoji}</ThemedText>
                     )}
-                    <ThemedText style={styles.buyItemName} numberOfLines={1}>{localizeCompanionName(buyReq.items[0].name, t)}</ThemedText>
+                    <ThemedText style={styles.buyItemName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{localizeCompanionName(buyReq.items[0].name, t)}</ThemedText>
                     {!!buyReq.items[0].description && (
                       <ThemedText style={styles.buyHeroDesc} numberOfLines={3}>{buyReq.items[0].description}</ThemedText>
                     )}
@@ -984,7 +984,7 @@ export default function ShopScreen() {
                           <ThemedText style={styles.buyItemEmoji}>{it.emoji}</ThemedText>
                         )}
                         <View style={styles.buyItemInfo}>
-                          <ThemedText style={styles.buyItemName} numberOfLines={1}>{localizeCompanionName(it.name, t)}</ThemedText>
+                          <ThemedText style={styles.buyItemName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{localizeCompanionName(it.name, t)}</ThemedText>
                           {!!it.description && (
                             <ThemedText style={styles.buyItemDesc} numberOfLines={2}>{it.description}</ThemedText>
                           )}
@@ -1424,7 +1424,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    paddingTop: Spacing.four,
+    paddingBottom: Spacing.two,
     ...BakeryShadow,
   },
   menuHeader: {

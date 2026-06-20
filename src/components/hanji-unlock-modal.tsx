@@ -57,10 +57,10 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: P.purpleSoft, padding: 22, alignItems: 'center', gap: 8,
   },
   avatar: {
-    width: 96, height: 96, borderRadius: 48, backgroundColor: P.purpleSoft,
-    overflow: 'hidden', alignItems: 'center', justifyContent: 'center', marginBottom: 2,
+    width: 100, height: 100, borderRadius: 50, backgroundColor: P.purpleSoft,
+    overflow: 'hidden', marginBottom: 2,
   },
-  avatarImg: { width: '88%', height: '88%' },
+  avatarImg: { width: 180, height: 180, position: 'absolute', top: 0, left: -40 },
   title: { fontSize: 18, fontWeight: '900', color: P.brown, textAlign: 'center' },
   message: { fontSize: 14, color: P.muted, fontWeight: '600', textAlign: 'center', lineHeight: 20 },
   button: {

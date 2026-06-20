@@ -7,6 +7,7 @@ import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DeleteAccountModal } from '@/components/delete-account-modal';
+import { DateWheelPicker } from '@/components/date-wheel-picker';
 import { InstagramFollowRow } from '@/components/instagram-follow-row';
 import { PlusIcon } from '@/components/plus-icon';
 import { LockBadge } from '@/components/lock-badge';
@@ -108,6 +109,10 @@ export default function SettingsScreen() {
   // Leave-guest / sign-out confirm — a LOCAL modal (not root showPopup, which can't
   // present over the Settings native modal — the tap just looked dead).
   const [signOutOpen, setSignOutOpen] = useState(false);
+  // Placeholder "change birthday" — the profile birthday is normally set-once/locked,
+  // so this lets it be changed (stand-in until a proper birthday-change flow exists).
+  const [birthdayOpen, setBirthdayOpen] = useState(false);
+  const [bdayDraft, setBdayDraft] = useState('2008-01-01');
   const {
     coins,
     isPlus,
@@ -128,8 +133,9 @@ export default function SettingsScreen() {
     companionSkins,
     setIsPlus,
     resetGameData,
-    devGrantBadgesExceptCroissant,
     replayTutorial,
+    profileBirthday,
+    updateProfile,
   } = useApp();
 
   const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
@@ -233,6 +239,19 @@ export default function SettingsScreen() {
                 <ThemedText type="smallBold" style={styles.dangerText}>
                   {isGuest ? t('settings.leaveGuestMode') : t('settings.signOut')}
                 </ThemedText>
+              </View>
+            </Pressable>
+            <View style={styles.divider} />
+            {/* Placeholder: change birthday (normally set-once / locked). */}
+            <Pressable
+              onPress={() => { setBdayDraft(profileBirthday || '2008-01-01'); setBirthdayOpen(true); }}
+              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
+              <View style={styles.rowIconImage}>
+                <SettingsIcon name="account" />
+              </View>
+              <View style={styles.rowBody}>
+                <ThemedText type="smallBold">Change birthday</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">{profileBirthday || 'Not set'}</ThemedText>
               </View>
             </Pressable>
           </ThemedView>
@@ -360,28 +379,6 @@ export default function SettingsScreen() {
               <View style={styles.rowBody}>
                 <ThemedText type="smallBold" style={styles.dangerText}>Reset to new account</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">Test button — restarts onboarding (legal, birthday, character), grants 1M coins</ThemedText>
-              </View>
-            </Pressable>
-            <View style={styles.divider} />
-            {/* TEST — grant all recipe badges except croissant (test the final unlock). */}
-            <Pressable
-              onPress={() =>
-                showPopup(
-                  'Grant badges except croissant?',
-                  'TEST: grants all 5 badges + recipe items, then immediately fires the badge popup → Hanji unlock flow.',
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Grant', onPress: devGrantBadgesExceptCroissant },
-                  ],
-                )
-              }
-              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
-              <View style={styles.rowIconImage}>
-                <SettingsIcon name="reset" />
-              </View>
-              <View style={styles.rowBody}>
-                <ThemedText type="smallBold">All badges except croissant</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">Test button — fires badge popup → Hanji unlock immediately</ThemedText>
               </View>
             </Pressable>
             </>
@@ -587,6 +584,24 @@ export default function SettingsScreen() {
               <ThemedText style={styles.resetBtnText}>{isGuest ? t('settings.leaveGuestMode') : t('settings.signOut')}</ThemedText>
             </Pressable>
             <Pressable style={styles.resetCancel} onPress={() => setSignOutOpen(false)}>
+              <ThemedText style={styles.resetCancelText}>{t('common.cancel')}</ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Change-birthday placeholder — local modal with a date picker. */}
+      <Modal visible={birthdayOpen} transparent animationType="fade" onRequestClose={() => setBirthdayOpen(false)}>
+        <View style={styles.resetBackdrop}>
+          <View style={styles.resetCard}>
+            <ThemedText style={styles.resetTitle}>Change birthday</ThemedText>
+            <DateWheelPicker value={bdayDraft} onChange={setBdayDraft} hideYear />
+            <Pressable
+              style={({ pressed }) => [styles.resetBtn, pressed && styles.pressed]}
+              onPress={() => { updateProfile({ birthday: bdayDraft }); setBirthdayOpen(false); }}>
+              <ThemedText style={styles.resetBtnText}>Save</ThemedText>
+            </Pressable>
+            <Pressable style={styles.resetCancel} onPress={() => setBirthdayOpen(false)}>
               <ThemedText style={styles.resetCancelText}>{t('common.cancel')}</ThemedText>
             </Pressable>
           </View>

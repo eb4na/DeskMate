@@ -848,6 +848,7 @@ export default function BreakGameScreen() {
     role?: string;
   }>();
   const { ownedShopItems, isPlus } = useApp();
+  const { width: winW } = useWindowDimensions();
 
   // Online entry — opened from a friend invite straight into a networked game.
   const onlineSession =
@@ -1112,7 +1113,7 @@ export default function BreakGameScreen() {
             {/* During a real study break this returns to the session (back arrow);
                 when just browsing from Home it's a home button. */}
             <View style={styles.homeFooter}>
-              <View style={styles.homeIndicator} />
+              <View style={[styles.homeIndicator, { marginHorizontal: -(Spacing.four + Math.max(0, (winW - MaxContentWidth) / 2)) }]} />
               <Pressable
                 style={({ pressed }) => [styles.homeBtn, tw('homeBtn'), pressed && styles.pressed]}
                 onPress={goHome}
@@ -1159,7 +1160,7 @@ export default function BreakGameScreen() {
         {phase !== 'playing' && phase !== 'select' &&
           (isBrowse ? (
             <View style={styles.homeFooter}>
-              <View style={styles.homeIndicator} />
+              <View style={[styles.homeIndicator, { marginHorizontal: -(Spacing.four + Math.max(0, (winW - MaxContentWidth) / 2)) }]} />
               <Pressable
                 style={({ pressed }) => [styles.homeBtn, tw('homeBtn'), pressed && styles.pressed]}
                 onPress={goHome}
@@ -1364,7 +1365,6 @@ const styles = StyleSheet.create({
   // past the safeArea's horizontal padding (Spacing.four) to the true screen edges.
   homeIndicator: {
     alignSelf: 'stretch',
-    marginHorizontal: -Spacing.four,
     height: 2.5,
     backgroundColor: '#F2A0B5',
     opacity: 0.7,

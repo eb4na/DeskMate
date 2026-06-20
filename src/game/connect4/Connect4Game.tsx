@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Dimensions, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
@@ -73,8 +73,14 @@ const FACE_ZOOM = 1.7; // zoom into the upper half of the companion body
 // A piece that drops in from above the board when it first appears, so both
 // players can see exactly where it is being placed.
 function FallingPiece({ player, left, top, row, win }: { player: Player; left: number; top: number; row: number; win: boolean }) {
-  const ty = useSharedValue(-(top + PIECE_D));
-  useEffect(() => {
+  // The piece RESTS at its hole (translateY 0) by default — the drop-in is a pure
+  // entrance applied in a layout effect. If that effect never runs or is interrupted,
+  // the piece still sits correctly in its hole rather than being left ABOVE it (which
+  // overflow:hidden clips away → "disappeared", or floats over an empty hole). The
+  // layout effect sets the start offset before paint, so there's no in-hole flash.
+  const ty = useSharedValue(0);
+  useLayoutEffect(() => {
+    ty.value = -(top + PIECE_D);
     ty.value = withTiming(0, { duration: 230 + row * 55, easing: Easing.bounce });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

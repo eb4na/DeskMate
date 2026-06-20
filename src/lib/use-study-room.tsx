@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { showPopup } from '@/lib/popup';
 
 import { useApp } from '@/context/app-context';
 import { joinGameRoom, type GameRoom } from '@/lib/game-net';
@@ -17,6 +18,8 @@ import {
 // BatterDash party. The connection lives here (mounted in the root layout) so it
 // survives the lobby → home transition.
 
+export const STUDY_ROOM_MAX = 3;
+
 export type StudyStatus = 'studying' | 'break' | 'idle';
 export type StudyRosterEntry = {
   code: string;
@@ -24,6 +27,12 @@ export type StudyRosterEntry = {
   isHost: boolean;
   companionId?: string;
   skinId?: string;
+  avatarFrame?: string;
+  // Each player's lobby choices, synced so everyone's avatar can show them.
+  // `minutes` = their chosen session length; `topic` = their chosen subject name
+  // (null/undefined = not chosen yet → they still pick a subject in-session).
+  minutes?: number;
+  topic?: string | null;
 };
 
 export type StudyStartOpts = {
@@ -53,9 +62,10 @@ type StudyRoomValue = {
   // clock (no broadcast). Used by the lobby's late-joiner Start button.
   startSelf: (opts: StudyStartOpts) => void;
   setStatus: (s: StudyStatus) => void;
-  // Each player picks their own session length up front; the host only triggers
-  // the synchronized start. Everyone then studies for their own chosen duration.
-  setPreferredMinutes: (minutes: number) => void;
+  // Each player picks their own session length + topic up front in the lobby; the
+  // host only triggers the synchronized start. The choice is broadcast so everyone's
+  // avatar shows it, and each player then studies for their own duration/topic.
+  setMyPrefs: (minutes: number, topic: string | null) => void;
 };
 
 const StudyRoomContext = createContext<StudyRoomValue | null>(null);
@@ -71,6 +81,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     equippedBackgroundRoomId,
     equippedDeskRoomId,
     isPlus,
+    profileAvatarFrame,
   } = useApp();
 
   const myCode = friendCode;
@@ -106,19 +117,22 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
   const isHostRef = useRef(isHost);
   isHostRef.current = isHost;
   // This player's own chosen session length (null until they pick one → falls
-  // back to the host's broadcast duration).
+  // back to the host's broadcast duration) and topic/subject (null = not chosen,
+  // so they pick a subject in-session). Read synchronously when the session begins,
+  // so a player's own session is never blocked on the prefs round-trip.
   const myPreferredMinutes = useRef<number | null>(null);
+  const myTopic = useRef<string | null>(null);
   const beginTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Mirror of `begun` for synchronous reads inside the realtime closure, plus the
   // last begin payload so the host can re-sync a late joiner.
   const begunRef = useRef(false);
   const lastBeginRef = useRef<{ startAt: number; opts: StudyStartOpts; bgRoomId: string | null; deskRoomId: string | null } | null>(null);
-  // Synchronous roster mirror so the host can enforce the 4-person cap without
+  // Synchronous roster mirror so the host can enforce the 3-person cap without
   // racing React state.
   const rosterRef = useRef<StudyRosterEntry[]>([]);
   // Latest identity, so the realtime closure (created on join) reads current values.
-  const meRef = useRef({ myCode, myName, myCompanionId, mySkinId, bgRoomId: equippedBackgroundRoomId, deskRoomId: equippedDeskRoomId });
-  meRef.current = { myCode, myName, myCompanionId, mySkinId, bgRoomId: equippedBackgroundRoomId, deskRoomId: equippedDeskRoomId };
+  const meRef = useRef({ myCode, myName, myCompanionId, mySkinId, myAvatarFrame: profileAvatarFrame, bgRoomId: equippedBackgroundRoomId, deskRoomId: equippedDeskRoomId });
+  meRef.current = { myCode, myName, myCompanionId, mySkinId, myAvatarFrame: profileAvatarFrame, bgRoomId: equippedBackgroundRoomId, deskRoomId: equippedDeskRoomId };
   const startRef = useRef(startActiveSession);
   startRef.current = startActiveSession;
 
@@ -135,8 +149,8 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     beginTimer.current = setTimeout(() => {
       startRef.current({
         durationMinutes: opts.durationMinutes,
-        // Subject is chosen per-player on the studying screen, not dictated by the host.
-        subjectName: null,
+        // Each player's own lobby topic (null → they pick a subject in-session).
+        subjectName: opts.subjectName ?? null,
         taskId: opts.taskId,
         taskTitle: opts.taskTitle,
         startedAt: new Date(startAt).toISOString(),
@@ -164,12 +178,13 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     setHostBackgroundId(host ? meRef.current.bgRoomId : null);
     setHostDeskId(host ? meRef.current.deskRoomId : null);
     myPreferredMinutes.current = null;
+    myTopic.current = null;
     begunRef.current = false;
     lastBeginRef.current = null;
     setCanStartSelf(false);
     mirrorRef.current = { uri: null, playing: false };
     const me = meRef.current;
-    const initialRoster = [{ code: me.myCode, name: me.myName, isHost: host, companionId: me.myCompanionId, skinId: me.mySkinId }];
+    const initialRoster = [{ code: me.myCode, name: me.myName, isHost: host, companionId: me.myCompanionId, skinId: me.mySkinId, avatarFrame: me.myAvatarFrame }];
     rosterRef.current = initialRoster;
     setRoster(initialRoster);
 
@@ -181,7 +196,13 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
           setNetStatus(s);
           if (s === 'SUBSCRIBED') {
             const m = meRef.current;
-            room.current?.send('hello', { code: m.myCode, name: m.myName, companionId: m.myCompanionId, skinId: m.mySkinId });
+            // Carry any prefs already chosen (e.g. the lobby's default minutes) so the
+            // host seeds my roster entry — `prefs` messages then handle live changes.
+            room.current?.send('hello', {
+              code: m.myCode, name: m.myName, companionId: m.myCompanionId, skinId: m.mySkinId, avatarFrame: m.myAvatarFrame,
+              minutes: myPreferredMinutes.current ?? undefined,
+              topic: myTopic.current ?? undefined,
+            });
           }
         },
         onPresence: () => {},
@@ -201,14 +222,23 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
         onMessage: (type, data) => {
           if (type === 'hello') {
             if (!isHostRef.current) return;
-            const d = data as { code: string; name: string; companionId?: string; skinId?: string };
+            const d = data as { code: string; name: string; companionId?: string; skinId?: string; avatarFrame?: string; minutes?: number; topic?: string | null };
             const prev = rosterRef.current;
             const exists = prev.some((e) => e.code === d.code);
-            // Cap the room at 4 — silently ignore a NEW person once full.
-            if (!exists && prev.length >= 4) return;
+            // Cap the room at STUDY_ROOM_MAX — tell the newcomer so they get feedback.
+            if (!exists && prev.length >= STUDY_ROOM_MAX) {
+              room.current?.send('room_full', {});
+              return;
+            }
+            // Only overwrite minutes/topic when the hello actually carries them, so a
+            // reconnect sent before re-picking can't blank a choice already synced.
             const next = exists
-              ? prev.map((e) => (e.code === d.code ? { ...e, name: d.name, companionId: d.companionId, skinId: d.skinId } : e))
-              : [...prev, { code: d.code, name: d.name, isHost: false, companionId: d.companionId, skinId: d.skinId }];
+              ? prev.map((e) => (e.code === d.code ? {
+                  ...e, name: d.name, companionId: d.companionId, skinId: d.skinId, avatarFrame: d.avatarFrame,
+                  ...(d.minutes !== undefined ? { minutes: d.minutes } : {}),
+                  ...(d.topic !== undefined ? { topic: d.topic } : {}),
+                } : e))
+              : [...prev, { code: d.code, name: d.name, isHost: false, companionId: d.companionId, skinId: d.skinId, avatarFrame: d.avatarFrame, minutes: d.minutes, topic: d.topic }];
             rosterRef.current = next;
             setRoster(next);
             broadcastRoster(next);
@@ -225,6 +255,16 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
             const players = (data as { players: StudyRosterEntry[] }).players;
             rosterRef.current = players;
             setRoster(players);
+          } else if (type === 'prefs') {
+            // A guest changed their lobby minutes/topic — the host folds it into the
+            // authoritative roster and re-broadcasts so everyone's avatar updates.
+            if (!isHostRef.current) return;
+            const d = data as { code: string; minutes?: number; topic?: string | null };
+            const prev = rosterRef.current;
+            const next = prev.map((e) => (e.code === d.code ? { ...e, minutes: d.minutes, topic: d.topic } : e));
+            rosterRef.current = next;
+            setRoster(next);
+            broadcastRoster(next);
           } else if (type === 'status') {
             const d = data as { code: string; status: StudyStatus };
             setStatusMap((prev) => ({ ...prev, [d.code]: d.status }));
@@ -284,10 +324,12 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
               return;
             }
             applyBeginRef.current(d.startAt, {
-              // Each player studies for their own chosen length; the host's start
-              // only sets the shared start moment. Fall back to host's if unset.
+              // Each player studies for their own chosen length + topic; the host's
+              // start only sets the shared start moment. Minutes fall back to the
+              // host's if unset; topic falls back to null (→ pick a subject in-session)
+              // since the host's topic isn't meaningful for this player.
               durationMinutes: myPreferredMinutes.current ?? d.durationMinutes,
-              subjectName: d.subjectName,
+              subjectName: myTopic.current ?? null,
               taskId: d.taskId,
               taskTitle: d.taskTitle,
             });
@@ -301,6 +343,12 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
               setRoster(next);
               broadcastRoster(next);
             }
+          } else if (type === 'room_full') {
+            if (isHostRef.current) return;
+            room.current?.leave();
+            room.current = null;
+            showPopup("Room is full", `This study room already has ${STUDY_ROOM_MAX} players. Try again when someone leaves.`);
+            if (router.canDismiss()) router.dismiss();
           }
         },
       },

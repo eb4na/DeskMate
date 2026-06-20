@@ -10,7 +10,7 @@ import { GoogleGIcon, AppleLogoIcon, MailIcon } from '@/components/auth-icons';
 import { useApp } from '@/context/app-context';
 import type { Friend } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
-import { bunAvatarNudge, getCompanionImage, resolveProfileFigure } from '@/lib/companion-utils';
+import { getCompanionImage, resolveProfileFigure } from '@/lib/companion-utils';
 import { joinPresence, newRoomId, sendInvite, type OnlineGameId } from '@/lib/game-net';
 import { hostGameInvite } from '@/lib/invite-actions';
 import { useStudyRoom } from '@/lib/use-study-room';
@@ -29,6 +29,7 @@ import {
 import { fetchProfileByCode, type SyncedProfile } from '@/lib/profile-sync';
 import { isPlusFrame } from '@/components/avatar-frame';
 import { cardColors } from '@/constants/card-colors';
+import { ROOM_PAIRS } from '@/constants/room-data';
 import { useTranslation } from '@/i18n';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
@@ -75,10 +76,11 @@ export default function FriendsScreen() {
   const { scale, contentWidth } = useTabletScale();
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const {
-    friendCode, friends, addFriend, removeFriend, setFriendProfile, profileDisplayName, dmUnread,
+    friendCode, friends: rawFriends, addFriend, removeFriend, setFriendProfile, profileDisplayName, dmUnread,
     activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins,
-    profileAvatarFrame, profileCompanionId, profileSkinId, profileCardColor, isPlus,
+    profileAvatarFrame, profileCompanionId, profileSkinId, profileCardColor, profileBackgroundId, isPlus,
   } = useApp();
+  const friends = rawFriends.filter((f, i, arr) => arr.findIndex((x) => x.code === f.code) === i);
   // My friend-list avatar = the character I pinned on my Profile card, NOT whoever
   // I'm currently using. Only falls back to the active companion if I've never set
   // a card pick (profileCompanionId === '').
@@ -98,6 +100,7 @@ export default function FriendsScreen() {
   const [onlineCodes, setOnlineCodes] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [friendSearch, setFriendSearch] = useState('');
 
   useEffect(() => {
     if (!friendCode) return;
@@ -285,6 +288,9 @@ export default function FriendsScreen() {
 
   return (
     <ThemedView style={[styles.container, { backgroundColor: P.cream }]}>
+      <View style={styles.dragHandleArea} pointerEvents="none">
+        <View style={styles.dragHandle} />
+      </View>
       <ScrollView
         showsVerticalScrollIndicator={false}
         style={{ backgroundColor: P.cream }}
@@ -324,15 +330,15 @@ export default function FriendsScreen() {
                   pressed && styles.pressed,
                 ]}
                 onPress={() => router.push('/profile')}>
-                <View style={styles.avatarWrap}>
-                  <View style={[styles.friendAvatar, myCC && { borderWidth: 2.5, borderColor: myCC.strip }]}>
-                    <Image
-                      source={meSource}
-                      style={[styles.friendAvatarImg, bunAvatarNudge(profileCompanionId)]}
-                      contentFit="contain"
-                    />
-                  </View>
-                </View>
+                {(() => {
+                  const myBg = ROOM_PAIRS.find((r) => r.id === profileBackgroundId) ?? ROOM_PAIRS[0];
+                  return (
+                    <View style={[styles.miniCard, myCC && { borderColor: myCC.strip }]}>
+                      <Image source={myBg.backgroundImage} style={StyleSheet.absoluteFill} contentFit="cover" />
+                      <Image source={meSource} style={styles.miniCardFig} contentFit="contain" />
+                    </View>
+                  );
+                })()}
                 <View style={styles.friendInfo}>
                   <View style={styles.nameRow}>
                     <Text style={styles.friendName}>{profileDisplayName || t('friends.you')}</Text>
@@ -400,13 +406,15 @@ export default function FriendsScreen() {
                   const rCC = isPlusFrame(req.profile?.avatarFrame) ? cardColors(req.profile?.cardColor) : null;
                   return (
                     <View key={req.id} style={[styles.friendRow, rCC && { borderColor: rCC.strip }]}>
-                      <View style={[styles.friendAvatar, rCC && { borderWidth: 2.5, borderColor: rCC.strip }]}>
-                        <Image
-                          source={getCompanionImage(req.profile?.companionId, req.profile?.skinId)}
-                          style={[styles.friendAvatarImg, bunAvatarNudge(req.profile?.companionId)]}
-                          contentFit="contain"
-                        />
-                      </View>
+                      {(() => {
+                        const reqBg = ROOM_PAIRS.find((r) => r.id === req.profile?.backgroundId) ?? ROOM_PAIRS[0];
+                        return (
+                          <View style={[styles.miniCard, rCC && { borderColor: rCC.strip }]}>
+                            <Image source={reqBg.backgroundImage} style={StyleSheet.absoluteFill} contentFit="cover" />
+                            <Image source={getCompanionImage(req.profile?.companionId, req.profile?.skinId)} style={styles.miniCardFig} contentFit="contain" />
+                          </View>
+                        );
+                      })()}
                       <View style={styles.friendInfo}>
                         <Text style={styles.friendName}>{req.profile?.displayName || t('friendCard.friendFallback', { code: req.fromCode })}</Text>
                         <Text style={styles.friendCode}>{req.fromCode}</Text>
@@ -427,6 +435,17 @@ export default function FriendsScreen() {
           {/* Friends list */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t('friends.myFriends', { count: friends.length })}</Text>
+            {friends.length > 0 && (
+              <TextInput
+                style={styles.friendSearchInput}
+                placeholder={t('friends.searchFriends', { defaultValue: 'Search friends…' })}
+                placeholderTextColor={P.mutedBrown}
+                value={friendSearch}
+                onChangeText={setFriendSearch}
+                autoCorrect={false}
+                clearButtonMode="while-editing"
+              />
+            )}
             {friends.length === 0 ? (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyEmoji}></Text>
@@ -435,21 +454,22 @@ export default function FriendsScreen() {
               </View>
             ) : (
               <View style={styles.friendList}>
-                {friends.map((f) => {
+                {friends.filter((f) => {
+                  if (!friendSearch.trim()) return true;
+                  const q = friendSearch.trim().toLowerCase();
+                  const name = (f.displayName || f.code).toLowerCase();
+                  return name.includes(q) || f.code.toLowerCase().includes(q);
+                }).map((f) => {
                   const fCC = isPlusFrame(f.avatarFrame) ? cardColors(f.cardColor) : null;
+                  const fBgRoom = ROOM_PAIRS.find((r) => r.id === f.backgroundId) ?? ROOM_PAIRS[0];
                   return (
                     <View key={f.code} style={[styles.friendRow, fCC && { borderColor: fCC.strip }]}>
                       <Pressable
                         style={({ pressed }) => [styles.friendTap, pressed && styles.pressed]}
                         onPress={() => router.push({ pathname: '/friend-card', params: { code: f.code } })}>
-                        <View style={styles.avatarWrap}>
-                          <View style={[styles.friendAvatar, fCC && { borderWidth: 2.5, borderColor: fCC.strip }]}>
-                            <Image
-                              source={getCompanionImage(f.companionId, f.skinId)}
-                              style={[styles.friendAvatarImg, bunAvatarNudge(f.companionId)]}
-                              contentFit="contain"
-                            />
-                          </View>
+                        <View style={[styles.miniCard, fCC && { borderColor: fCC.strip }]}>
+                          <Image source={fBgRoom.backgroundImage} style={StyleSheet.absoluteFill} contentFit="cover" />
+                          <Image source={getCompanionImage(f.companionId, f.skinId)} style={styles.miniCardFig} contentFit="contain" />
                           <View style={[styles.statusDot, onlineCodes.has(f.code) ? styles.statusOnline : styles.statusOffline]} />
                         </View>
                         <View style={styles.friendInfo}>
@@ -671,22 +691,20 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     borderColor: P.pinkSoft,
     padding: Spacing.two * s,
   },
-  friendAvatar: {
-    width: 44 * s, height: 44 * s, borderRadius: 22 * s,
-    backgroundColor: P.pinkSoft, alignItems: 'center', justifyContent: 'center',
-    overflow: 'hidden',
+  miniCard: {
+    width: 58 * s, height: 80 * s, borderRadius: 12 * s, overflow: 'hidden',
+    borderWidth: 2, borderColor: P.pinkSoft, backgroundColor: P.pinkSoft,
+    alignItems: 'center', justifyContent: 'flex-end',
   },
-  friendAvatarText: { fontSize: 18 * s, fontWeight: '900', color: P.brown },
-  friendAvatarImg: { width: 72 * s, height: 72 * s, marginTop: 16 * s },
+  miniCardFig: { width: '130%', height: '95%', marginBottom: -4 },
   // Plus friend: drop the white card + pink border; the gold PLUS_CARD image fills
   // behind the row instead. Keep padding/radius so the content still sits inset.
   friendRowPlus: { backgroundColor: 'transparent', borderColor: 'transparent' },
   friendRowPlusBg: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   friendTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two * s },
-  avatarWrap: { width: 44 * s, height: 44 * s },
   statusDot: {
-    position: 'absolute', right: -1, bottom: -1, width: 13 * s, height: 13 * s, borderRadius: 7 * s,
-    borderWidth: 2, borderColor: '#fff',
+    position: 'absolute', right: 4 * s, bottom: 4 * s, width: 11 * s, height: 11 * s, borderRadius: 6 * s,
+    borderWidth: 2, borderColor: P.pinkSoft,
   },
   statusOnline: { backgroundColor: '#5BC47B' },
   statusOffline: { backgroundColor: '#C9BBA8' },
@@ -764,6 +782,20 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     borderRadius: 16 * s, paddingVertical: 13 * s, marginTop: Spacing.one * s,
   },
   sentDoneText: { color: '#fff', fontSize: 16 * s, fontWeight: '900' },
+
+  dragHandleArea: { alignItems: 'center', paddingTop: 10 * s, paddingBottom: 2 * s },
+  dragHandle: { width: 36 * s, height: 4 * s, borderRadius: 2 * s, backgroundColor: 'rgba(91,58,46,0.18)' },
+  friendSearchInput: {
+    backgroundColor: P.card,
+    borderRadius: 14 * s,
+    borderWidth: 1.5,
+    borderColor: P.pinkSoft,
+    paddingHorizontal: 14 * s,
+    paddingVertical: 10 * s,
+    fontSize: 14 * s,
+    color: P.brown,
+    marginBottom: 10 * s,
+  },
 
   emptyCard: {
     backgroundColor: P.card,

@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, AppState, Easing, Image as RNImage, ImageBackground, PanResponder, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { playSwoosh } from '@/lib/sounds';
@@ -14,6 +14,7 @@ import { StudyRoomView } from '@/components/study-room-view';
 import { HanjiUnlockModal } from '@/components/hanji-unlock-modal';
 import { RecipeBadgeModal } from '@/components/recipe-badge-modal';
 import { DailyRewardModal } from '@/components/daily-reward-modal';
+import { BirthdayRewardModal } from '@/components/birthday-reward-modal';
 import { useStudyRoom } from '@/lib/use-study-room';
 import { BakeryGearEmoji } from '@/components/bakery-emoji';
 import { CountdownShape } from '@/components/countdown-shapes';
@@ -59,13 +60,13 @@ const DEFAULT_BREAK_MINUTES = 5;
 //   friend top:300 / right:12 (62px)
 const HOME_TABLET = {
   // Corner buttons
-  leftInset: -3,   // shared left inset for the 4 left-column buttons
+  leftInset: 10,   // gap from the SCREEN's left edge for the 4 left-column buttons (FIXED → same on every tablet)
   stackTop: 145,   // vertical shift applied to all 4 left-column buttons
-  btnScale: 1.3,   // size multiplier for every corner button
-  btnGap: 39,      // extra vertical spacing between the 4 left buttons (spreads them apart when zoomed)
+  btnScale: 1.3,   // size multiplier for every corner button (kept small enough that the 4 left buttons never overlap)
+  btnGap: 60,      // extra vertical spacing between the 4 left buttons (clear distance so they never touch)
   friendTop: 86,   // vertical shift for the friend button
-  friendRight: -2, // right inset for the friend button
-  friendScale: 1.4, // friend button size (independent of the left buttons' btnScale; was 1.3 via btnScale, bumped a bit)
+  friendRight: 10, // gap from the SCREEN's right edge for the friend button (FIXED → same on every tablet)
+  friendScale: 1.4, // friend button size (independent of the left buttons' btnScale)
   // Character (base 300×300, layer anchored bottom:38%)
   charScale: 1.5,  // character size multiplier
   charY: -6,       // character vertical shift (− = up) — nudged down a tiny bit
@@ -76,7 +77,7 @@ const HOME_TABLET = {
   deskY: 31,       // desk surface vertical nudge (− = up, + = down); dropped to sit on the hairline
   deskEdgeY: 30,   // table-edge hairline's OWN vertical nudge (independent of deskY); dropped to sit on the desk top
   // Streak & coin chips (top row)
-  hudScale: 1.3,   // size of the streak + coin chips on tablet
+  hudScale: 1.1,   // size of the streak + coin chips on tablet (small + ratio-based; scaled by tsW per device)
   // Top cards (Upcoming Exam / Task)
   cardsWidth: 780, // max width of the card row (centered) — bigger cards
   cardsTop: 24,    // vertical shift of the whole top HUD (streak/coins/cards)
@@ -344,7 +345,74 @@ export default function HomeScreen() {
   // the dev knob panel; in production it stays at the baked HOME_TABLET values.
   const isTablet = useIsTablet();
   const { width: winW, height: winH } = useWindowDimensions();
-  const [ht, setHt] = useState(HOME_TABLET);
+  // Dev-knob overrides only (empty in production). `ht` is recomputed from
+  // HOME_TABLET every render rather than trapped in useState, so edits to
+  // HOME_TABLET take effect on Fast Refresh — otherwise a hot-reload preserves the
+  // old state and layout tweaks appear to "do nothing" until a full cold restart.
+  const [dialed, setDialed] = useState<Partial<typeof HOME_TABLET>>({});
+  const ht = { ...HOME_TABLET, ...dialed };
+
+  // 11-inch iPad Pro (834 × 1194 pt portrait) is the tablet layout reference.
+  // We use SEPARATE horizontal (tsW) and vertical (tsH) factors because 11-inch
+  // and 13-inch iPads have slightly different aspect ratios — a single factor
+  // based on the shorter side would over-scale Y positions on the 13-inch.
+  // Corner pins (leftInset, friendRight) stay fixed regardless of screen size.
+  const TABLET_REF_W = 834;
+  const TABLET_REF_H = 1194;
+  const tsW = isTablet ? winW / TABLET_REF_W : 1; // horizontal: widths + X positions
+  const tsH = isTablet ? winH / TABLET_REF_H : 1; // vertical:   heights + Y positions
+  // Y-axis knob keys (scale by tsH); all other scalable keys use tsW.
+  const Y_KEYS = new Set([
+    'stackTop', 'btnGap', 'friendTop', 'charY', 'cocoaY',
+    'deskY', 'deskEdgeY', 'cardsTop', 'cardsGapTop',
+    'ingY', 'mixerY', 'startY', 'examY', 'taskY',
+  ]);
+  // These are ratios/percentages/corner-pins — never scaled.
+  const FIXED_KEYS = new Set(['leftInset', 'friendRight', 'deskHeight', 'deskZoom', 'cardRatio']);
+  const htScaled = useMemo(
+    () => Object.fromEntries(
+      Object.entries(ht).map(([k, v]) => {
+        if (FIXED_KEYS.has(k) || typeof v !== 'number') return [k, v];
+        const factor = Y_KEYS.has(k) ? tsH : tsW;
+        return [k, Math.round(v * factor * 10) / 10];
+      }),
+    ) as typeof ht,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ht, tsW, tsH],
+  );
+
+  // iPhone 17 Pro (≈393×852pt) is the phone layout reference. On any other phone
+  // size we compute linear scale factors and apply them to all pixel positions and
+  // sizes — except corner pins (left: 4, right: 12) which stay fixed so buttons
+  // always sit at the same distance from the screen edges.
+  // On tablet phW/phH are 1.0 (identity) so tBtn/tFriend take over as usual.
+  const PHONE_REF_W = 393;
+  const PHONE_REF_H = 852;
+  const phW = isTablet ? 1 : winW / PHONE_REF_W;
+  const phH = isTablet ? 1 : winH / PHONE_REF_H;
+  const ph = useMemo(() => {
+    const rnd = Math.round;
+    return {
+      // Left-column button tops (same corner-pin left: 4 stays in StyleSheet)
+      btnTops: [210, 292, 376, 452].map((t) => rnd(t * phH)),
+      // Sizes: large (80), medium (72), friend (62)
+      szLg: rnd(80 * phW),
+      szMd: rnd(72 * phW),
+      szFr: rnd(62 * phW),
+      // Friend button (corner-pin right: 12 stays in StyleSheet)
+      friendTop: rnd(300 * phH),
+      // Mixer — corner-pin right: -48 and bottom: '30%' stay in StyleSheet
+      mixerW: rnd(285 * phW),
+      mixerH: rnd(235 * phW),
+      // Ingredients
+      ingBottom: rnd(250 * phH),
+      berryLeft: rnd(96 * phW), berryW: rnd(92 * phW), berryH: rnd(76 * phW),
+      eggsLeft:  rnd(194 * phW), eggsW:  rnd(82 * phW), eggsH:  rnd(69 * phW),
+      butLeft:   rnd(284 * phW), butW:   rnd(82 * phW), butH:   rnd(69 * phW),
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phW, phH]);
+
   const homeKnobs: Knob[] = [
     { key: 'leftInset', label: 'Left buttons X', value: ht.leftInset, min: -20, max: 120, step: 1 },
     { key: 'stackTop', label: 'Left buttons Y', value: ht.stackTop, min: -120, max: 200, step: 1 },
@@ -380,38 +448,45 @@ export default function HomeScreen() {
     { key: 'startY', label: 'Start btn Y', value: ht.startY, min: -200, max: 300, step: 2 },
     { key: 'startScale', label: 'Start btn size', value: ht.startScale, min: 0.6, max: 2, step: 0.05 },
   ];
-  // Tablet-gated style overrides; falsy on phones so nothing changes there.
+  // Tablet-gated style overrides. htScaled values are already axis-scaled (X by
+  // tsW, Y by tsH). baseTop and the 300 in tFriend are phone-reference Y values
+  // that must also be scaled by tsH so the full top position stays proportional.
+  // The home content is centered and capped at MaxContentWidth (safeArea), so on a
+  // wide tablet there's an empty side margin. Subtract it from the corner buttons so
+  // they pin to the REAL screen edge — `leftInset`/`friendRight` then read as the gap
+  // from the screen edge, not from the centered column (which left them stuck mid-screen).
+  const sideMargin = isTablet ? Math.max(0, (winW - MaxContentWidth) / 2) : 0;
   const tBtn = (baseTop: number, index: number, base: number) =>
-    isTablet && { left: ht.leftInset, top: baseTop + ht.stackTop + index * ht.btnGap, width: base * ht.btnScale, height: base * ht.btnScale };
-  const tImg = (base: number) => (isTablet ? { width: base * ht.btnScale, height: base * ht.btnScale } : null);
-  const fScale = ht.friendScale ?? 1.4;
-  const tFriend = isTablet && { right: ht.friendRight, top: 300 + ht.friendTop, width: 62 * fScale, height: 62 * fScale };
+    isTablet && { left: htScaled.leftInset - sideMargin, top: Math.round(baseTop * tsH) + htScaled.stackTop + index * htScaled.btnGap, width: base * htScaled.btnScale, height: base * htScaled.btnScale };
+  const tImg = (base: number) => (isTablet ? { width: base * htScaled.btnScale, height: base * htScaled.btnScale } : null);
+  const fScale = htScaled.friendScale ?? 1.4;
+  const tFriend = isTablet && { right: htScaled.friendRight - sideMargin, top: Math.round(300 * tsH) + htScaled.friendTop, width: 62 * fScale, height: 62 * fScale };
   const tFriendImg = isTablet ? { width: 62 * fScale, height: 62 * fScale } : null;
   // Desk-scene tablet overrides (identity defaults compose cleanly with base styles).
-  const tCharImg = isTablet && { width: 300 * ht.charScale, height: 300 * ht.charScale };
+  const tCharImg = isTablet && { width: 300 * htScaled.charScale, height: 300 * htScaled.charScale };
   // tCharLayer is built lower down (it needs the resolved companion so Cocoa can
   // take an extra downward nudge — see `tCharLayer` near the character render).
-  const tDesk = isTablet && { height: `${ht.deskHeight}%`, transform: [{ translateY: ht.deskY ?? 0 }, { scale: ht.deskZoom }] };
+  const tDesk = isTablet && { height: `${htScaled.deskHeight}%`, transform: [{ translateY: htScaled.deskY ?? 0 }, { scale: htScaled.deskZoom }] };
   // Hairline (table edge). It gets its OWN vertical nudge (deskEdgeY) so the desk
   // can be dropped independently to meet it, and is scaled out horizontally by the
   // same deskZoom as the desk so the line spans the full (zoomed) desk width — on
   // tablet the desk is scaled wider, so an un-scaled line would stop short.
   const tDeskEdge =
-    isTablet && { transform: [{ translateY: ht.deskEdgeY ?? 0 }, { scaleX: ht.deskZoom }] };
-  const tCards = isTablet && { maxWidth: ht.cardsWidth, alignSelf: 'center' as const, gap: ht.cardsGap ?? 28, marginTop: ht.cardsGapTop ?? 0 };
-  const tChip = isTablet && { transform: [{ scale: ht.hudScale ?? 1 }] };
-  const tTopHud = isTablet && { transform: [{ translateY: ht.cardsTop }] };
-  const tExam = isTablet && { transform: [{ translateY: ht.examY ?? 0 }] };
-  const tTask = isTablet && { transform: [{ translateY: ht.taskY ?? 0 }] };
-  const tCardBox = isTablet && { aspectRatio: ht.cardRatio ?? 2.6 };
+    isTablet && { transform: [{ translateY: htScaled.deskEdgeY ?? 0 }, { scaleX: htScaled.deskZoom }] };
+  const tCards = isTablet && { maxWidth: htScaled.cardsWidth, alignSelf: 'center' as const, gap: htScaled.cardsGap ?? 28, marginTop: htScaled.cardsGapTop ?? 0 };
+  const tChip = isTablet && { transform: [{ scale: htScaled.hudScale ?? 1 }] };
+  const tTopHud = isTablet && { transform: [{ translateY: htScaled.cardsTop }] };
+  const tExam = isTablet && { transform: [{ translateY: htScaled.examY ?? 0 }] };
+  const tTask = isTablet && { transform: [{ translateY: htScaled.taskY ?? 0 }] };
+  const tCardBox = isTablet && { aspectRatio: htScaled.cardRatio ?? 2.6 };
   const cardFont = (sz: number, lh: number) =>
-    isTablet ? { fontSize: sz * (ht.cardTextScale ?? 1.3), lineHeight: lh * (ht.cardTextScale ?? 1.3) } : null;
+    isTablet ? { fontSize: sz * (htScaled.cardTextScale ?? 1.3), lineHeight: lh * (htScaled.cardTextScale ?? 1.3) } : null;
   // Per-ingredient: shared group shift/scale plus a spread that pushes the outer
   // two apart (idx 0 left, idx 1 centre, idx 2 right) so they don't bunch up.
   const tIngFor = (idx: number) =>
-    isTablet && { transform: [{ translateX: ht.ingX + (idx - 1) * ht.ingSpread }, { translateY: ht.ingY }, { scale: ht.ingScale }] };
-  const tMixer = isTablet && { transform: [{ translateX: ht.mixerX }, { translateY: ht.mixerY }, { scale: ht.mixerScale }] };
-  const tStart = isTablet && { transform: [{ translateX: ht.startX }, { translateY: ht.startY }, { scale: ht.startScale }] };
+    isTablet && { transform: [{ translateX: htScaled.ingX + (idx - 1) * htScaled.ingSpread }, { translateY: htScaled.ingY }, { scale: htScaled.ingScale }] };
+  const tMixer = isTablet && { transform: [{ translateX: htScaled.mixerX }, { translateY: htScaled.mixerY }, { scale: htScaled.mixerScale }] };
+  const tStart = isTablet && { transform: [{ translateX: htScaled.startX }, { translateY: htScaled.startY }, { scale: htScaled.startScale }] };
 
   const {
     coins,
@@ -459,7 +534,12 @@ export default function HomeScreen() {
   // Desk mixer + ingredients follow the equipped dessert. The 3 ingredients
   // drop into these 3 fixed desk-slot positions, by index.
   const deskKit = DESK_KITS[selectedFoodId] ?? DESK_KITS[DEFAULT_DESK_FOOD];
-  const DESK_SLOT_STYLES = [styles.deskStrawberries, styles.deskEggs, styles.deskButter];
+  // Phone-scaled ingredient slot styles; tIngFor(idx) overrides on tablet.
+  const DESK_SLOT_STYLES = [
+    [styles.deskStrawberries, { left: ph.berryLeft, bottom: ph.ingBottom, width: ph.berryW, height: ph.berryH }],
+    [styles.deskEggs,         { left: ph.eggsLeft,  bottom: ph.ingBottom, width: ph.eggsW,  height: ph.eggsH  }],
+    [styles.deskButter,       { left: ph.butLeft,   bottom: ph.ingBottom, width: ph.butW,   height: ph.butH   }],
+  ];
   const studyRoom = useStudyRoom();
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [didHomeImageFail, setDidHomeImageFail] = useState(false);
@@ -545,8 +625,8 @@ export default function HomeScreen() {
   // px and ingredients never register as dropped. (On phones sceneRight === winW,
   // so this is byte-identical to before.)
   const sceneRight = (winW + Math.min(winW, MaxContentWidth)) / 2;
-  const MIXER_CX = sceneRight - 30 - 285 / 2 + 285 * 0.35 + (isTablet ? ht.mixerX : 0);
-  const MIXER_CY_FROM_TOP = winH * (1 - 0.30) - 235 * 0.55 + (isTablet ? ht.mixerY : 0);
+  const MIXER_CX = sceneRight - 30 - 285 / 2 + 285 * 0.35 + (isTablet ? htScaled.mixerX : 0);
+  const MIXER_CY_FROM_TOP = winH * (1 - 0.30) - 235 * 0.55 + (isTablet ? htScaled.mixerY : 0);
 
   useFocusEffect(useCallback(() => {
     // Track Home focus so the recipe-badge popup waits until the player is back on
@@ -637,7 +717,7 @@ export default function HomeScreen() {
   // (the tablet has its own cocoaY knob above).
   const companionTranslateY = isCocoaCompanion ? 30 : 0;
   const tCharLayer =
-    isTablet && { transform: [{ translateY: ht.charY + (isCocoaCompanion ? (ht.cocoaY ?? 0) : 0) }] };
+    isTablet && { transform: [{ translateY: htScaled.charY + (isCocoaCompanion ? (htScaled.cocoaY ?? 0) : 0) }] };
   const reminderStyle = getReminderStyleEffect(equippedShopItems);
   // Home shows only the soonest still-upcoming exam (today or later). Passed
   // exams are never featured here — if none are upcoming, the card shows its
@@ -861,7 +941,7 @@ export default function HomeScreen() {
               {!dragSession && <View style={[styles.topHud, tTopHud]}>
                 <View style={styles.statusRow}>
                   <View style={styles.streakChipWrap} ref={(n) => setTutorialTarget('streak', n)}>
-                    <Animated.View style={[styles.statusChip, tChip, { transform: [{ scale: streakPop.interpolate({ inputRange: [0, 1], outputRange: [1, 1.16] }) }] }]}>
+                    <Animated.View style={[styles.statusChip, { transform: [{ scale: isTablet ? (htScaled.hudScale ?? 1) : 1 }, { scale: streakPop.interpolate({ inputRange: [0, 1], outputRange: [1, 1.16] }) }] }]}>
                       <Animated.View style={{ transform: [
                         { scale: streakPop.interpolate({ inputRange: [0, 1], outputRange: [1, 1.4] }) },
                         { rotate: streakPop.interpolate({ inputRange: [0, 0.5, 1], outputRange: ['0deg', '-14deg', '8deg'] }) },
@@ -997,58 +1077,58 @@ export default function HomeScreen() {
               {/* Switch character button — top left, below exam card */}
               {!dragSession && (
                 <Pressable
-                  style={({ pressed }) => [styles.switchCharBtn, tBtn(210, 0, 80), pressed && styles.startButtonPressed]}
+                  style={({ pressed }) => [styles.switchCharBtn, { top: ph.btnTops[0], width: ph.szLg, height: ph.szLg }, tBtn(210, 0, 80), pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/companion-gallery')}
                   accessibilityLabel={t('home.a11ySwitchCharacter')}>
-                  <Image source={SWITCH_CHARACTER_BTN} style={[styles.switchCharImg, tImg(80)]} contentFit="contain" />
+                  <Image source={SWITCH_CHARACTER_BTN} style={[styles.switchCharImg, { width: ph.szLg, height: ph.szLg }, tImg(80)]} contentFit="contain" />
                 </Pressable>
               )}
 
               {/* Food menu button — top left, below switch character */}
               {!dragSession && (
                 <Pressable
-                  style={({ pressed }) => [styles.foodMenuBtn, tBtn(292, 1, 80), pressed && styles.startButtonPressed]}
+                  style={({ pressed }) => [styles.foodMenuBtn, { top: ph.btnTops[1], width: ph.szLg, height: ph.szLg }, tBtn(292, 1, 80), pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/food-gallery')}
                   accessibilityLabel={t('home.a11yFoodMenu')}>
-                  <Image source={FOOD_MENU_BTN} style={[styles.foodMenuImg, tImg(80)]} contentFit="contain" />
+                  <Image source={FOOD_MENU_BTN} style={[styles.foodMenuImg, { width: ph.szLg, height: ph.szLg }, tImg(80)]} contentFit="contain" />
                 </Pressable>
               )}
 
               {/* Edit Room button — top left, above settings */}
               {!dragSession && (
                 <Pressable
-                  style={({ pressed }) => [styles.editRoomBtn, tBtn(376, 2, 72), pressed && styles.startButtonPressed]}
+                  style={({ pressed }) => [styles.editRoomBtn, { top: ph.btnTops[2], width: ph.szMd, height: ph.szMd }, tBtn(376, 2, 72), pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/edit-room')}
                   accessibilityLabel={t('home.a11yEditRoom')}>
-                  <Image source={EDIT_ROOM_BTN} style={[styles.editRoomImg, tImg(72)]} contentFit="contain" />
+                  <Image source={EDIT_ROOM_BTN} style={[styles.editRoomImg, { width: ph.szMd, height: ph.szMd }, tImg(72)]} contentFit="contain" />
                 </Pressable>
               )}
 
               {/* Settings button — top left, below food menu */}
               {!dragSession && (
                 <Pressable
-                  style={({ pressed }) => [styles.topSettingsBtn, tBtn(452, 3, 72), pressed && styles.startButtonPressed]}
+                  style={({ pressed }) => [styles.topSettingsBtn, { top: ph.btnTops[3], width: ph.szMd, height: ph.szMd }, tBtn(452, 3, 72), pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/settings')}
                   accessibilityLabel={t('home.a11yOpenSettings')}>
-                  <Image source={SETTINGS_BTN} style={[styles.topSettingsImg, tImg(72)]} contentFit="contain" />
+                  <Image source={SETTINGS_BTN} style={[styles.topSettingsImg, { width: ph.szMd, height: ph.szMd }, tImg(72)]} contentFit="contain" />
                 </Pressable>
               )}
 
               {/* Friend button — right side */}
               {!dragSession && (
                 <Pressable
-                  style={({ pressed }) => [styles.friendBtn, tFriend, pressed && styles.startButtonPressed]}
+                  style={({ pressed }) => [styles.friendBtn, { top: ph.friendTop, width: ph.szFr, height: ph.szFr }, tFriend, pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/friends')}
                   accessibilityLabel={t('home.a11yFriends')}>
-                  <Image source={FRIEND_BTN} style={[styles.friendBtnImg, tFriendImg]} contentFit="contain" />
+                  <Image source={FRIEND_BTN} style={[styles.friendBtnImg, { width: ph.szFr, height: ph.szFr }, tFriendImg]} contentFit="contain" />
                   {pendingRequests > 0 ? (
-                    <View style={styles.friendReqBadge} pointerEvents="none">
+                    <View style={[styles.friendReqBadge, isTablet && styles.friendReqBadgeTablet]} pointerEvents="none">
                       <ThemedText style={styles.friendReqBadgeText}>
                         {pendingRequests > 9 ? '9+' : pendingRequests}
                       </ThemedText>
                     </View>
                   ) : hasUnreadDM ? (
-                    <View style={styles.friendDmDot} pointerEvents="none" />
+                    <View style={[styles.friendDmDot, isTablet && styles.friendDmDotTablet]} pointerEvents="none" />
                   ) : null}
                 </Pressable>
               )}
@@ -1081,7 +1161,7 @@ export default function HomeScreen() {
                   height + bottom inset) so its top border sits right on the edge. */}
               <View style={[styles.deskTopEdge, { bottom: -insets.bottom }, tDeskEdge]} pointerEvents="none" />
               {/* Mixer on desk — matches the equipped dessert */}
-              <RNImage source={deskKit.mixer} style={[styles.deskMixer, deskKit.mixerStyle, tMixer]} resizeMode="contain" pointerEvents="none" />
+              <RNImage source={deskKit.mixer} style={[styles.deskMixer, { width: ph.mixerW, height: ph.mixerH }, deskKit.mixerStyle, tMixer]} resizeMode="contain" pointerEvents="none" />
 
               {/* Ingredients — draggable in drag mode, static otherwise. The 3
                   ingredients fill the 3 fixed desk slots, by index. */}
@@ -1093,10 +1173,10 @@ export default function HomeScreen() {
                         key={ing.id}
                         id={ing.id}
                         src={ing.src}
-                        style={[DESK_SLOT_STYLES[idx], ing.style]}
-                        baseX={isTablet ? ht.ingX + (idx - 1) * ht.ingSpread : 0}
-                        baseY={isTablet ? ht.ingY : 0}
-                        baseScale={isTablet ? ht.ingScale : 1}
+                        style={[...DESK_SLOT_STYLES[idx], ing.style]}
+                        baseX={isTablet ? htScaled.ingX + (idx - 1) * htScaled.ingSpread : 0}
+                        baseY={isTablet ? htScaled.ingY : 0}
+                        baseScale={isTablet ? htScaled.ingScale : 1}
                         dropRadius={isTablet ? 160 : 100}
                         onDropped={() => handleIngredientDropped(ing.id)}
                         mixerCenterX={MIXER_CX}
@@ -1116,7 +1196,7 @@ export default function HomeScreen() {
               ) : (
                 <>
                   {deskKit.ingredients.map((ing, idx) => (
-                    <RNImage key={ing.id} source={ing.src} style={[DESK_SLOT_STYLES[idx], ing.style, tIngFor(idx)]} resizeMode="contain" />
+                    <RNImage key={ing.id} source={ing.src} style={[...DESK_SLOT_STYLES[idx], ing.style, tIngFor(idx)]} resizeMode="contain" />
                   ))}
                 </>
               )}
@@ -1142,9 +1222,10 @@ export default function HomeScreen() {
           )}
         </View>
       </SafeAreaView>
-      <HanjiUnlockModal />
+<HanjiUnlockModal />
       {homeFocused && <RecipeBadgeModal />}
       {homeFocused && <DailyRewardModal />}
+      {homeFocused && <BirthdayRewardModal />}
       {/* First-launch coachmark tour — only after onboarding, and only once the
           daily-reward popup is out of the way (so the two never stack). Replaying
           it from Settings just flips tutorialSeen back off. */}
@@ -1152,7 +1233,7 @@ export default function HomeScreen() {
         !nextLoginReward({ loginRewardDate, streak, isPlus, streakFreezes }, todayISO()).available && (
           <HomeTutorial onDone={markTutorialSeen} />
         )}
-      <DevKnobs screen="home" knobs={homeKnobs} onChange={(key, value) => setHt((p) => ({ ...p, [key]: value }))} />
+      <DevKnobs screen="home" knobs={homeKnobs} onChange={(key, value) => setDialed((p) => ({ ...p, [key]: value }))} />
     </ThemedView>
   );
 }
@@ -1184,56 +1265,35 @@ const styles = StyleSheet.create({
   switchCharBtn: {
     position: 'absolute',
     left: 4,
-    top: 210,
     zIndex: 5,
-    width: 80,
-    height: 80,
   },
-  switchCharImg: {
-    width: 80,
-    height: 80,
-  },
+  switchCharImg: {},
   foodMenuBtn: {
     position: 'absolute',
     left: 4,
-    top: 292,
     zIndex: 5,
-    width: 80,
-    height: 80,
   },
-  foodMenuImg: {
-    width: 80,
-    height: 80,
-  },
+  foodMenuImg: {},
   topSettingsBtn: {
     position: 'absolute',
     left: 4,
-    top: 452,
     zIndex: 5,
-    width: 72,
-    height: 72,
   },
-  topSettingsImg: { width: 72, height: 72 },
+  topSettingsImg: {},
   editRoomBtn: {
     position: 'absolute',
     left: 4,
-    top: 376,
     zIndex: 5,
-    width: 72,
-    height: 72,
   },
-  editRoomImg: { width: 72, height: 72 },
+  editRoomImg: {},
   friendBtn: {
     position: 'absolute',
     right: 12,
-    top: 300,
     zIndex: 5,
-    width: 62,
-    height: 62,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  friendBtnImg: { width: 62, height: 62 },
+  friendBtnImg: {},
   friendReqBadge: {
     position: 'absolute',
     bottom: -2,
@@ -1260,6 +1320,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
+  friendReqBadgeTablet: { right: 16, bottom: 4 },
+  friendDmDotTablet: { right: 16, bottom: 4 },
   friendReqBadgeText: { color: '#FFFFFF', fontSize: 11, lineHeight: 14, fontWeight: '900' },
   gameFloating: {
     backgroundColor: 'transparent',
@@ -1317,21 +1379,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: -48,
     bottom: '30%',
-    width: 285,
-    height: 235,
     zIndex: 3,
   },
   deskStrawberries: {
-    position: 'absolute', left: 96, bottom: 250,
-    width: 92, height: 76, zIndex: 10,
+    position: 'absolute', zIndex: 10,
   },
   deskEggs: {
-    position: 'absolute', left: 194, bottom: 250,
-    width: 82, height: 69, zIndex: 10,
+    position: 'absolute', zIndex: 10,
   },
   deskButter: {
-    position: 'absolute', left: 284, bottom: 250,
-    width: 82, height: 69, zIndex: 10,
+    position: 'absolute', zIndex: 10,
   },
   deskNewLayer: {
     position: 'absolute',

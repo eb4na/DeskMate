@@ -23,6 +23,7 @@
     "skip": "Omitir",
     "save": "Guardar",
     "delete": "Eliminar",
+    "inappropriateLanguage": "Quita el lenguaje inapropiado, por favor.",
     "back": "Atrás",
     "add": "Agregar",
     "edit": "Editar",
@@ -819,7 +820,7 @@
     "studyRoomName": "Sala de estudio",
     "connecting": "Conectando… ({{status}})",
     "starting": "iniciando",
-    "roomStatus": "{{inRoom}} en la sala · {{connected}} conectados",
+    "roomStatus": "{{inRoom}}/{{max}} en la sala · {{connected}} conectados",
     "you": "(tú)",
     "sessionLength": "Duración de la sesión",
     "min": "min",
@@ -897,6 +898,11 @@
     "description": "Descripción",
     "descPlaceholder": "Di algo sobre ti…",
     "addBirthday": "＋ Añadir cumpleaños",
+    "birthdaySave": "Guardar cumpleaños",
+    "birthdaySetOnceTitle": "Solo se puede una vez",
+    "birthdaySetOnceMsg": "¿Establecer tu cumpleaños el {{date}}? Solo puedes configurarlo una vez; no se podrá cambiar después.",
+    "birthdaySetOnceConfirm": "Establecer cumpleaños",
+    "birthdayLockedNote": "Tu cumpleaños ya está configurado y no se puede cambiar.",
     "character": "Personaje",
     "outfit": "Traje",
     "ownedOutfitsHint": "Aquí solo se muestran los trajes que tienes. Consigue más en la Tienda.",
@@ -1500,12 +1506,18 @@
     "signInNeeded": "Debes iniciar sesión para enviar mensajes.",
     "friendNotReachable": "Aún no se puede contactar a {{name}}: debe abrir la app una vez para sincronizar su perfil."
   },
+  "birthdayReward": {
+    "title": "¡Feliz cumpleaños!",
+    "subtitle": "¡Te deseamos un día maravilloso! Aquí tienes un pequeño regalo de parte de todos.",
+    "claim": "Reclamar {{coins}}"
+  },
   "dailyReward": {
     "title": "Recompensa diaria",
     "subtitle": "Cada día ganas monedas iguales a tu racha, hasta {{max}}.",
     "day": "Día {{n}}",
     "claim": "Reclamar {{coins}}",
-    "plusBonus": "¡Los miembros Plus ganan el doble!"
+    "plusBonus": "¡Los miembros Plus ganan el doble!",
+    "get2x": "Consigue 2× ({{coins}}) con Plus"
   },
   "hanjiUnlock": {
     "title": "¡Desbloqueaste a Hanji!",

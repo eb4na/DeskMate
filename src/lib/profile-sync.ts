@@ -21,6 +21,7 @@ export type SyncedProfile = {
 };
 
 export async function uploadProfile(userId: string, p: SyncedProfile): Promise<boolean> {
+  console.log('[profile-sync] uploading', { userId, companionId: p.companionId, friendCode: p.friendCode });
   const { error } = await supabase.from('profiles').upsert(
     {
       user_id: userId,
@@ -40,6 +41,8 @@ export async function uploadProfile(userId: string, p: SyncedProfile): Promise<b
     },
     { onConflict: 'user_id' },
   );
+  if (error) console.warn('[profile-sync] UPLOAD FAILED:', error.message, error.details, error.hint);
+  else console.log('[profile-sync] upload OK for', p.friendCode, 'companionId:', p.companionId);
   return !error;
 }
 
@@ -59,7 +62,9 @@ export async function fetchProfileByCode(code: string): Promise<SyncedProfile | 
     .select('*')
     .eq('friend_code', code.trim().toUpperCase())
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) console.warn('[profile-sync] fetchProfileByCode error for', code, ':', error.message);
+  if (!data) { console.log('[profile-sync] no profile found for code:', code); return null; }
+  console.log('[profile-sync] fetched', code, '→ companionId:', data.companion_id, 'displayName:', data.display_name);
   return {
     friendCode: data.friend_code,
     displayName: data.display_name ?? '',

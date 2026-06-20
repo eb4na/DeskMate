@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ArrowUpIcon, ArrowDownIcon, RemoveIcon } from '@/components/subject-icons';
 import { useApp, MAX_SUBJECTS_FREE, MAX_SUBJECTS_PLUS } from '@/context/app-context';
+import { containsProfanity } from '@/lib/profanity';
 import { SUBJECT_COLORS } from '@/constants/placeholder-data';
 import { useTranslation } from '@/i18n';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -35,8 +36,16 @@ export default function ManageSubjectsScreen() {
     return SUBJECT_COLORS.find((c) => !used.includes(c)) ?? SUBJECT_COLORS[activeSubjects.length % SUBJECT_COLORS.length];
   };
 
+  // Flag bad words: block the add/rename and ask the user to fix it (rather than
+  // silently masking). The context layer still masks as a defensive net.
+  const nameHasProfanity = containsProfanity(newName);
+
   const handleAdd = () => {
     if (!newName.trim()) return;
+    if (containsProfanity(newName.trim())) {
+      showPopup(t('common.inappropriateLanguage'));
+      return;
+    }
     const added = addSubject(newName.trim(), selectedColor, newEmoji.trim());
     if (!added) {
       showPopup(
@@ -59,6 +68,11 @@ export default function ManageSubjectsScreen() {
 
   const handleRenameCommit = () => {
     if (editingId && editName.trim()) {
+      if (containsProfanity(editName.trim())) {
+        // Keep the editor open so they can fix it; don't commit or clear.
+        showPopup(t('common.inappropriateLanguage'));
+        return;
+      }
       renameSubject(editingId, editName.trim());
     }
     setEditingId(null);
@@ -174,6 +188,11 @@ export default function ManageSubjectsScreen() {
               returnKeyType="done"
               onSubmitEditing={handleAdd}
             />
+            {nameHasProfanity && (
+              <ThemedText type="small" style={styles.profanityWarn}>
+                {t('common.inappropriateLanguage')}
+              </ThemedText>
+            )}
 
             <TextInput
               style={inputStyle}
@@ -200,9 +219,9 @@ export default function ManageSubjectsScreen() {
             </ThemedView>
 
             <Pressable
-              style={({ pressed }) => [styles.addBtn, (!newName.trim() || activeSubjects.length >= subjectLimit) && styles.addBtnDisabled, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.addBtn, (!newName.trim() || nameHasProfanity || activeSubjects.length >= subjectLimit) && styles.addBtnDisabled, pressed && styles.pressed]}
               onPress={handleAdd}
-              disabled={!newName.trim() || activeSubjects.length >= subjectLimit}>
+              disabled={!newName.trim() || nameHasProfanity || activeSubjects.length >= subjectLimit}>
               <ThemedText type="smallBold" style={styles.addBtnText}>
                 {activeSubjects.length >= subjectLimit ? t('manageSubjects.limitReachedN', { limit: subjectLimit }) : t('manageSubjects.addSubjectBtn')}
               </ThemedText>
@@ -279,6 +298,7 @@ const styles = StyleSheet.create({
   },
   addBtnDisabled: { opacity: 0.5 },
   addBtnText: { color: '#FFF' },
+  profanityWarn: { color: '#C2536B', fontWeight: '700', marginTop: 2 },
   pressed: { opacity: 0.8 },
   doneBtn: { alignItems: 'center', paddingVertical: Spacing.two },
 });

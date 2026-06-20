@@ -109,20 +109,20 @@ export function HomeTutorial({ onDone }: { onDone: () => void }) {
               <ThemedText type="small" style={styles.navText}>{t('tutorial.back')}</ThemedText>
             </Pressable>
           ) : (
-            <View style={styles.navSpacer} />
+            <Pressable onPress={onDone} hitSlop={6}>
+              <ThemedText type="small" style={styles.skipText}>{t('tutorial.skip')}</ThemedText>
+            </Pressable>
           )}
           <View style={styles.dots}>
             {STEPS.map((_, i) => (
               <View key={i} style={[styles.dot, i === step && styles.dotActive]} />
             ))}
           </View>
-          {!isLast ? (
-            <Pressable onPress={onDone} hitSlop={6}>
-              <ThemedText type="small" style={styles.skipText}>{t('tutorial.skip')}</ThemedText>
-            </Pressable>
-          ) : (
-            <View style={styles.navSpacer} />
-          )}
+          <Pressable onPress={next} hitSlop={6}>
+            <ThemedText type="small" style={styles.navText}>
+              {isLast ? t('tutorial.done') : t('tutorial.next')}
+            </ThemedText>
+          </Pressable>
         </View>
       </Pressable>
     </View>

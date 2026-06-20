@@ -239,7 +239,7 @@ export default function TasksScreen() {
               <SoundPressable
                 style={({ pressed }) => [styles.manageBtn, pressed && styles.pressed]}
                 onPress={() => router.push(canAddExam ? '/add-exam' : '/plus-upgrade')}>
-                <ThemedText type="small" themeColor="textSecondary">{t('tasks.addExamShort')}</ThemedText>
+                <ThemedText themeColor="textSecondary" style={styles.manageBtnText}>{t('tasks.addExamShort')}</ThemedText>
               </SoundPressable>
               <SoundPressable
                 style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
@@ -407,12 +407,15 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   headerActions: { flexDirection: 'row', gap: Spacing.two * s, alignItems: 'center' },
   manageBtn: {
     paddingHorizontal: Spacing.three * s,
-    paddingVertical: 7 * s,
+    paddingVertical: 8 * s,
     borderRadius: BakeryRadii.pill,
     backgroundColor: BakeryColors.cream,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
+  // Exam-button text: scaled to match the Task button's text (was a fixed 14px via
+  // type="small", which left the Exam button smaller than Task on tablets).
+  manageBtnText: { fontSize: 14 * s, fontWeight: '700' },
   addBtn: {
     backgroundColor: BakeryColors.jam,
     borderRadius: BakeryRadii.pill,

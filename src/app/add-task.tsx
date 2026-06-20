@@ -15,6 +15,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp, MAX_TASKS } from '@/context/app-context';
 import type { TaskStatus } from '@/context/app-context';
+import { containsProfanity } from '@/lib/profanity';
 import { cancelTaskNotification, scheduleTaskNotification } from '@/lib/notifications';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -76,10 +77,16 @@ export default function AddTaskScreen() {
   }, [editing, existingTask]);
 
   const activeSubjects = subjects.filter((s) => !s.archived);
+  const titleHasProfanity = containsProfanity(title);
 
   const handleSave = async () => {
     if (!title.trim()) {
       showPopup(t('addTask.titleRequired'), t('addTask.enterTaskTitle'));
+      return;
+    }
+    // Flag bad words: block the save (task titles aren't masked elsewhere).
+    if (containsProfanity(title.trim())) {
+      showPopup(t('common.inappropriateLanguage'));
       return;
     }
     const dueDateValue = dueDateEnabled ? dueDate.trim() || todayISO : null;
@@ -161,6 +168,11 @@ export default function AddTaskScreen() {
               autoFocus={!editing}
               returnKeyType="next"
             />
+            {titleHasProfanity && (
+              <ThemedText type="small" style={styles.profanityWarn}>
+                {t('common.inappropriateLanguage')}
+              </ThemedText>
+            )}
           </ThemedView>
 
           {/* Subject */}
@@ -358,7 +370,8 @@ export default function AddTaskScreen() {
           {/* Save */}
           <SoundPressable
             sound="confirm"
-            style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
+            disabled={titleHasProfanity}
+            style={({ pressed }) => [styles.saveBtn, titleHasProfanity && styles.pressed, pressed && styles.pressed]}
             onPress={handleSave}>
             <ThemedText type="smallBold" style={styles.saveBtnText}>
               {editing ? t('addTask.saveChanges') : t('addTask.addTaskTitle')}
@@ -436,5 +449,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two,
   },
   saveBtnText: { color: BakeryColors.cocoaDark, fontSize: 15, fontWeight: '800' },
+  profanityWarn: { color: '#C2536B', fontWeight: '700', marginTop: 2 },
   cancelBtn: { alignItems: 'center', paddingVertical: Spacing.two },
 });

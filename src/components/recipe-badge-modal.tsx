@@ -20,12 +20,12 @@ const P = { card: '#FFFDF8', pink: '#F491A9', pinkSoft: '#FBDCE4', brown: '#5B3A
 // some heads. These per-companion translateY values (px, applied to the 72px
 // avatar inside the 48px circle) sit each character's head in the circle. Cocoa
 // is the reference (16); the others are raised so their heads aren't cut off.
-const SLOT_TRANSLATE_Y: Record<string, number> = {
-  '': 8, // Bun (starter)
-  'shop:companion_cocoa': 16,
-  'shop:companion_bunny': 8,
-  'shop:companion_honey': 10,
-  'shop:companion_tira': 5,
+const SLOT_OFFSETS: Record<string, { x?: number; y: number; scale?: number }> = {
+  '': { y: 8 },
+  'shop:companion_cocoa': { y: 16 },
+  'shop:companion_bunny': { y: 8 },
+  'shop:companion_honey': { x: 1, y: 10, scale: 0.93 },
+  'shop:companion_tira': { x: 1, y: 8, scale: 0.93 },
 };
 
 // A little drooping wisteria sprig — a tapering cluster of lavender blossoms on a
@@ -111,7 +111,11 @@ export function RecipeBadgeModal() {
                       source={getCompanionImage(b.companionId, 'classic')}
                       style={[
                         styles.slotImg,
-                        { transform: [{ translateY: SLOT_TRANSLATE_Y[b.companionId] ?? 16 }] },
+                        { transform: [
+                            { translateX: SLOT_OFFSETS[b.companionId]?.x ?? 0 },
+                            { translateY: SLOT_OFFSETS[b.companionId]?.y ?? 16 },
+                            { scale: SLOT_OFFSETS[b.companionId]?.scale ?? 1 },
+                          ] },
                         !collected && styles.imgMissing,
                       ]}
                       contentFit="contain"

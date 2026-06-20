@@ -202,6 +202,9 @@ type PersistedState = {
   // the player opened the app and claimed the coin bonus, + the last claimed day.
   loginStreak: number;
   loginRewardDate: string;
+  // Birthday gift: the calendar year (account timezone) the +1000-coin birthday
+  // reward was last claimed. 0 = never. Gates the reward to once per year.
+  birthdayRewardYear: number;
   // Wave 2
   subjects: Subject[];
   tasks: Task[];
@@ -322,6 +325,7 @@ const DEFAULTS: PersistedState = {
   earnedDate: '',
   loginStreak: 0,
   loginRewardDate: '',
+  birthdayRewardYear: 0,
   subjects: INITIAL_SUBJECTS,
   tasks: [],
   ownedShopItems: [],
@@ -517,9 +521,11 @@ export function streakRescueAvailable(
 // cycle to day 1.
 // The daily reward is tied to the streak: `day` is *today's* streak day — what the
 // streak becomes counting today, since showing up keeps the streak alive just like
-// studying does — and `coins` is that day's payout (day N = N coins, capped at 200).
-// `available` is false once it has already been claimed today.
-export type LoginReward = { available: boolean; day: number; coins: number };
+// studying does. `coins` is the actual payout: the day's base value (day N = N coins,
+// capped at 200), DOUBLED for Plus members. `baseCoins` is the undoubled value (what
+// free users see and what the upsell promises to 2x). `available` is false once it
+// has already been claimed today.
+export type LoginReward = { available: boolean; day: number; coins: number; baseCoins: number };
 export function nextLoginReward(
   s: { loginRewardDate: string; streak: StreakData; isPlus: boolean; streakFreezes: number },
   today: string,
@@ -528,7 +534,28 @@ export function nextLoginReward(
   // reset it — preview (and later award) the preserved current streak day instead of
   // the day-1 projection, leaving the rescue decision to the study-session flow.
   const day = streakRescueAvailable(s, today) ? s.streak.currentStreak : nextStreakState(s.streak, today).next;
-  return { available: s.loginRewardDate !== today, day, coins: dailyRewardCoins(day) };
+  const baseCoins = dailyRewardCoins(day);
+  return { available: s.loginRewardDate !== today, day, baseCoins, coins: s.isPlus ? baseCoins * 2 : baseCoins };
+}
+
+// Birthday gift: a flat coin bonus granted once on the player's birthday each year.
+export const BIRTHDAY_REWARD_COINS = 1000;
+
+// True when `today` (account-timezone ISO) falls on the player's profile birthday.
+// profileBirthday is stored with an arbitrary year (the picker hides the year), so
+// only the month + day (MM-DD) are compared. An unset birthday never matches.
+export function isBirthdayToday(profileBirthday: string, today: string): boolean {
+  if (!profileBirthday || profileBirthday.length < 10) return false;
+  return profileBirthday.slice(5, 10) === today.slice(5, 10);
+}
+
+// True when the birthday reward is claimable: it's the player's birthday today and
+// the reward hasn't already been claimed this calendar year.
+export function birthdayRewardAvailable(
+  s: { profileBirthday: string; birthdayRewardYear: number },
+  today: string,
+): boolean {
+  return isBirthdayToday(s.profileBirthday, today) && s.birthdayRewardYear !== Number(today.slice(0, 4));
 }
 
 function uid(): string {
@@ -652,6 +679,15 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
 
   // Users from before the language feature have no saved language — fall back to
   // their device language rather than forcing English.
+  // Deduplicate friends by code — duplicates can creep in via cloud sync merges.
+  if (merged.friends) {
+    const seen = new Set<string>();
+    merged.friends = merged.friends.filter((f: { code: string }) => {
+      if (seen.has(f.code)) return false;
+      seen.add(f.code);
+      return true;
+    });
+  }
   return { ...DEFAULTS, ...merged, language: merged.language ?? detectDeviceLanguage() };
 }
 
@@ -728,6 +764,7 @@ type AppContextType = {
   markFoodMade: (id: string) => void;
   hanjiUnlockPending: boolean;
   clearHanjiUnlock: () => void;
+  devTriggerHanjiUnlock: () => void;
   recipeBadgePending: string | null;
   clearRecipeBadge: () => void;
   // Shop SKU of a just-obtained companion → drives the one-shot "character
@@ -742,7 +779,6 @@ type AppContextType = {
   // fresh state so a later re-login restarts onboarding from scratch.
   resetAccountForAbandonedOnboarding: () => Promise<void>;
   resetGameData: () => void;
-  devGrantBadgesExceptCroissant: () => void;
   dayNotes: Record<string, string>;
   setDayNote: (date: string, note: string) => void;
   friendCode: string;
@@ -789,6 +825,9 @@ type AppContextType = {
   // Wave 1 actions
   addCoins: (amount: number) => void;
   claimLoginReward: () => void;
+  // Birthday gift (+1000 coins, once per year on the player's birthday).
+  birthdayRewardYear: number;
+  claimBirthdayReward: () => void;
   recordSession: (minutes: number) => void;
   addMoodEntry: (entry: Omit<MoodEntry, 'id'>) => void;
   addExam: (exam: Omit<ExamCountdown, 'id'>) => string | null;
@@ -1099,11 +1138,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
             lastStudyDate: today,
           };
       const day = rescuePending ? prev.streak.currentStreak : r.next;
+      // Plus members earn double the daily reward (matches the streak bonus + the
+      // "Get 2x with Plus" upsell on the daily-reward popup).
+      const payout = prev.isPlus ? dailyRewardCoins(day) * 2 : dailyRewardCoins(day);
       return {
         ...prev,
         streak,
-        coins: prev.coins + dailyRewardCoins(day),
+        coins: prev.coins + payout,
         loginRewardDate: today,
+      };
+    });
+  };
+
+  // Claim the birthday gift: +1000 coins (added directly, outside the daily earn
+  // cap, like the login reward). The once-a-year gate (birthdayRewardYear) is only
+  // burned when it's genuinely the player's birthday, so the home-screen test button
+  // can preview the popup on any day without consuming the real birthday reward.
+  const claimBirthdayReward = () => {
+    const today = todayISO();
+    setS((prev) => {
+      const realBirthday = isBirthdayToday(prev.profileBirthday, today);
+      const year = Number(today.slice(0, 4));
+      // On the real birthday, don't pay twice in one year.
+      if (realBirthday && prev.birthdayRewardYear === year) return prev;
+      return {
+        ...prev,
+        coins: prev.coins + BIRTHDAY_REWARD_COINS,
+        birthdayRewardYear: realBirthday ? year : prev.birthdayRewardYear,
       };
     });
   };
@@ -1717,6 +1778,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const clearHanjiUnlock = () => setS((prev) => ({ ...prev, hanjiUnlockPending: false }));
+  const devTriggerHanjiUnlock = () => {
+    setS((prev) => ({ ...prev, hanjiUnlockPending: true }));
+    setRecipeBadgePending('berry-croissant');
+  };
   const clearRecipeBadge = () => setRecipeBadgePending(null);
   const clearCharacterObtained = () => setCharacterObtainedPending(null);
 
@@ -1771,25 +1836,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // TEST: grant every recipe badge except the croissant, plus all recipe shop
   // items, so the final "bake the last recipe → unlock Hanji" flow can be tested
   // by baking just the croissant.
-  const devGrantBadgesExceptCroissant = () => {
-    // Step 1: set 4/5 badges + all recipe shop items + strip Hanji so the unlock
-    // can fire fresh. Step 2: immediately simulate baking the croissant so the
-    // badge popup → Hanji popup flow triggers without needing a real session.
-    const recipeItemIds = SHOP_ITEMS.filter((i) => i.category === 'recipe').map((i) => i.id);
-    const allMade = [...RECIPE_IDS]; // all 5 including croissant
-    const allBadges = badgesFromMadeFoods(allMade);
-    setS((prev) => {
-      const ownedShopItems = Array.from(new Set([...prev.ownedShopItems, ...recipeItemIds, HANJI_COMPANION_ID]));
-      return {
-        ...prev,
-        madeFoods: allMade,
-        bakedWith: allBadges,
-        ownedShopItems,
-        hanjiUnlockPending: true,
-      };
-    });
-    setRecipeBadgePending('berry-croissant');
-  };
 
   const setDayNote = (date: string, note: string) =>
     setS((prev) => {
@@ -1946,6 +1992,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         earnedToday: s.earnedDate === todayISO() ? s.earnedToday : 0,
         loginStreak: s.loginStreak,
         loginRewardDate: s.loginRewardDate,
+        birthdayRewardYear: s.birthdayRewardYear ?? 0,
         subjects: s.subjects,
         tasks: s.tasks,
         ownedShopItems: s.ownedShopItems,
@@ -1956,6 +2003,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         activeSession,
         addCoins,
         claimLoginReward,
+        claimBirthdayReward,
         recordSession,
         addMoodEntry,
         addExam,
@@ -2018,6 +2066,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         markFoodMade,
         hanjiUnlockPending: s.hanjiUnlockPending ?? false,
         clearHanjiUnlock,
+        devTriggerHanjiUnlock,
         recipeBadgePending,
         clearRecipeBadge,
         characterObtainedPending,
@@ -2025,7 +2074,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         persistedStateReady,
         resetAccountForAbandonedOnboarding,
         resetGameData,
-        devGrantBadgesExceptCroissant,
         dayNotes: s.dayNotes ?? {},
         setDayNote,
         friendCode: s.friendCode,

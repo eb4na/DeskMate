@@ -23,6 +23,7 @@
     "skip": "Skip",
     "save": "Save",
     "delete": "Delete",
+    "inappropriateLanguage": "Please remove inappropriate language.",
     "back": "Back",
     "add": "Add",
     "edit": "Edit",
@@ -797,7 +798,7 @@
     "enterEmailPasswordSignup": "Enter an email and password to create your account.",
     "passwordTooShort": "Use at least 6 characters for your password.",
     "emailAlreadyRegistered": "That email already has a Memobun account. Sign in instead.",
-    "emailAlreadyRegisteredLong": "That email already has a Memobun account. Sign in instead. If you still need a code, use Resend verification from the login screen.",
+    "emailAlreadyRegisteredLong": "An account with that email already exists. Sign in instead.",
     "emailExistsNotice": "This email already has an account. Sign in with your password instead.",
     "missingEmail": "Missing email address. Go back and try again.",
     "loginUsesPassword": "Login uses your password now. Go back and sign in there.",
@@ -825,7 +826,7 @@
     "studyRoomName": "Study Room",
     "connecting": "Connecting… ({{status}})",
     "starting": "starting",
-    "roomStatus": "{{inRoom}} in the room · {{connected}} connected",
+    "roomStatus": "{{inRoom}}/{{max}} in the room · {{connected}} connected",
     "you": "(you)",
     "sessionLength": "Session length",
     "min": "min",
@@ -903,6 +904,11 @@
     "description": "Description",
     "descPlaceholder": "Say something about you…",
     "addBirthday": "+ Add birthday",
+    "birthdaySave": "Save birthday",
+    "birthdaySetOnceTitle": "Set once only",
+    "birthdaySetOnceMsg": "Set your birthday to {{date}}? You can only set it once — it can't be changed later.",
+    "birthdaySetOnceConfirm": "Set birthday",
+    "birthdayLockedNote": "Your birthday is set and can't be changed.",
     "character": "Character",
     "outfit": "Outfit",
     "ownedOutfitsHint": "Only outfits you own show here. Get more in the Shop.",
@@ -1507,12 +1513,18 @@
     "signInNeeded": "You need to be signed in to send messages.",
     "friendNotReachable": "Can't reach {{name}} yet — they need to open the app once so their profile syncs."
   },
+  "birthdayReward": {
+    "title": "Happy Birthday!",
+    "subtitle": "Wishing you a wonderful day! Here's a little gift from all of us.",
+    "claim": "Claim {{coins}}"
+  },
   "dailyReward": {
     "title": "Daily Reward",
     "subtitle": "Each day you earn coins equal to your streak day — up to {{max}}.",
     "day": "Day {{n}}",
     "claim": "Claim {{coins}}",
-    "plusBonus": "Plus members earn double!"
+    "plusBonus": "Plus members earn double!",
+    "get2x": "Get 2× ({{coins}}) with Plus"
   },
   "hanjiUnlock": {
     "title": "You unlocked Hanji!",

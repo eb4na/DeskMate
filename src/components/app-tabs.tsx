@@ -1,13 +1,14 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Image } from 'expo-image';
 import { router, Tabs } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View, type ImageStyle, type StyleProp } from 'react-native';
 import { subscribeDragActive } from '@/lib/drag-session';
 import { setTutorialTarget } from '@/lib/tutorial-targets';
 import { SoundPressable } from '@/components/sound-pressable';
 import { DevKnobs } from '@/components/dev-knobs';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
+import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 
@@ -50,6 +51,8 @@ const ROUTE_INDEX: Record<string, number> = { index: 0, tasks: 1, progress: 2, s
 
 function TabItem({ name, isFocused, onPress, iconStyle, targetId }: { name: string; isFocused: boolean; onPress: () => void; iconStyle?: StyleProp<ImageStyle>; targetId?: string }) {
   const { t } = useTranslation();
+  const { scale } = useTabletScale();
+  const styles = useMemo(() => makeStyles(scale), [scale]);
   return (
     <SoundPressable
       style={[
@@ -84,6 +87,8 @@ function TabItem({ name, isFocused, onPress, iconStyle, targetId }: { name: stri
 const ALL_ROUTES = ['index', 'tasks', 'progress', 'shop'];
 
 function CustomTabBar({ state, navigation }: BottomTabBarProps) {
+  const { scale } = useTabletScale();
+  const styles = useMemo(() => makeStyles(scale), [scale]);
   // Tablet-only per-icon nudge so each icon centers in its lace segment.
   const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('menubar', [
     { name: 'index', label: 'Home icon' },
@@ -157,115 +162,120 @@ export default function AppTabs() {
   );
 }
 
-const styles = StyleSheet.create({
-  wrapper: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: TabBarBottomOffset,
-    height: TabBarTotalHeight,
-    justifyContent: 'flex-end',
-    backgroundColor: 'transparent',
-  },
-  laceSlot: {
-    position: 'absolute',
-    left: -26,
-    right: -26,
-    bottom: 60,
-    height: 100,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  lace: {
-    width: '100%',
-    height: 100,
-  },
-  dangleThread: {
-    position: 'absolute',
-    bottom: TabBarBowHeight - 2,
-    alignSelf: 'center',
-    width: 3,
-    height: 14,
-    backgroundColor: '#E8C4B8',
-    borderRadius: 2,
-  },
-  bowSlot: {
-    position: 'absolute',
-    bottom: 48,
-    left: 0,
-    right: 0,
-    height: TabBarBowHeight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bow: {
-    width: TabBarBowWidth,
-    height: TabBarBowHeight,
-  },
-  row: {
-    position: 'absolute',
-    left: '3%',
-    right: '3%',
-    bottom: 80,
-    height: 66,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-  },
-  tabHome: {},
-  tabTasks: {},
-  tabProgress: {},
-  tabShop: {},
-  heartButton: {
-    position: 'absolute',
-    alignSelf: 'center',
-    bottom: TabBarBowHeight + 52,
-    width: 62,
-    height: 62,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
-  },
-  heartButtonPressed: {
-    opacity: 0.75,
-  },
-  companionBtn: {
-    width: 62,
-    height: 62,
-  },
-  iconWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 0,
-  },
-  iconWrapActive: {
-    backgroundColor: 'rgba(255, 182, 205, 0.6)',
-  },
-  icon: {
-    width: 36,
-    height: 36,
-  },
-  iconHome: {
-    width: 36,
-    height: 36,
-    marginTop: 8,
-  },
-  label: {
-    fontSize: 12,
-    color: '#C4728A',
-    fontWeight: '500',
-    marginTop: -6,
-  },
-  labelActive: {
-    color: '#D94F72',
-    fontWeight: '700',
-  },
-});
+// Tablet scales the whole bar (icons, labels, white panel, vertical geometry) by the
+// shared proportional `scale` — so the bar reads the same on every iPad size instead
+// of fixed pixels that are tiny on a big screen. On phone `s === 1` (no-op).
+function makeStyles(s: number) {
+  return StyleSheet.create({
+    wrapper: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: TabBarBottomOffset * s,
+      height: TabBarTotalHeight * s,
+      justifyContent: 'flex-end',
+      backgroundColor: 'transparent',
+    },
+    laceSlot: {
+      position: 'absolute',
+      left: -26 * s,
+      right: -26 * s,
+      bottom: 60 * s,
+      height: 100 * s,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    lace: {
+      width: '100%',
+      height: 100 * s,
+    },
+    dangleThread: {
+      position: 'absolute',
+      bottom: TabBarBowHeight - 2,
+      alignSelf: 'center',
+      width: 3,
+      height: 14,
+      backgroundColor: '#E8C4B8',
+      borderRadius: 2,
+    },
+    bowSlot: {
+      position: 'absolute',
+      bottom: 48,
+      left: 0,
+      right: 0,
+      height: TabBarBowHeight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    bow: {
+      width: TabBarBowWidth,
+      height: TabBarBowHeight,
+    },
+    row: {
+      position: 'absolute',
+      left: '3%',
+      right: '3%',
+      bottom: 80 * s,
+      height: 66 * s,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    tab: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 2 * s,
+    },
+    tabHome: {},
+    tabTasks: {},
+    tabProgress: {},
+    tabShop: {},
+    heartButton: {
+      position: 'absolute',
+      alignSelf: 'center',
+      bottom: TabBarBowHeight + 52,
+      width: 62,
+      height: 62,
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 10,
+    },
+    heartButtonPressed: {
+      opacity: 0.75,
+    },
+    companionBtn: {
+      width: 62,
+      height: 62,
+    },
+    iconWrap: {
+      width: 46 * s,
+      height: 46 * s,
+      borderRadius: 14 * s,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 0,
+    },
+    iconWrapActive: {
+      backgroundColor: 'rgba(255, 182, 205, 0.6)',
+    },
+    icon: {
+      width: 36 * s,
+      height: 36 * s,
+    },
+    iconHome: {
+      width: 36 * s,
+      height: 36 * s,
+      marginTop: 8 * s,
+    },
+    label: {
+      fontSize: 12 * s,
+      color: '#C4728A',
+      fontWeight: '500',
+      marginTop: -6 * s,
+    },
+    labelActive: {
+      color: '#D94F72',
+      fontWeight: '700',
+    },
+  });
+}

@@ -256,7 +256,7 @@ function RootNavigator() {
         <Stack.Screen name="companion-gallery" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="edit-room" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="food-gallery" options={{ presentation: modalPresentation, headerShown: false }} />
-        <Stack.Screen name="friends" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="friends" options={{ presentation: 'modal', headerShown: false, gestureEnabled: true }} />
         <Stack.Screen name="profile" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="friend-card" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="dm-chat" options={{ presentation: 'modal', headerShown: false }} />

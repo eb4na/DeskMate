@@ -23,6 +23,7 @@
     "skip": "跳过",
     "save": "保存",
     "delete": "删除",
+    "inappropriateLanguage": "请删除不当用语。",
     "back": "返回",
     "add": "添加",
     "edit": "编辑",
@@ -819,7 +820,7 @@
     "studyRoomName": "自习室",
     "connecting": "连接中…（{{status}}）",
     "starting": "正在启动",
-    "roomStatus": "房间内 {{inRoom}} 人 · {{connected}} 人已连接",
+    "roomStatus": "房间内 {{inRoom}}/{{max}} 人 · {{connected}} 人已连接",
     "you": "（你）",
     "sessionLength": "专注时长",
     "min": "分钟",
@@ -897,6 +898,11 @@
     "description": "简介",
     "descPlaceholder": "介绍一下你自己…",
     "addBirthday": "＋ 添加生日",
+    "birthdaySave": "保存生日",
+    "birthdaySetOnceTitle": "仅可设置一次",
+    "birthdaySetOnceMsg": "将生日设为 {{date}}？只能设置一次，之后无法更改。",
+    "birthdaySetOnceConfirm": "设置生日",
+    "birthdayLockedNote": "生日已设置，无法更改。",
     "character": "角色",
     "outfit": "服装",
     "ownedOutfitsHint": "这里只显示你拥有的服装。去商店获取更多。",
@@ -1500,12 +1506,18 @@
     "signInNeeded": "需要登录后才能发送消息。",
     "friendNotReachable": "暂时无法联系到 {{name}}——对方需要打开一次应用以同步资料。"
   },
+  "birthdayReward": {
+    "title": "生日快乐！",
+    "subtitle": "祝你度过美好的一天！这是我们送给你的小礼物。",
+    "claim": "领取 {{coins}}"
+  },
   "dailyReward": {
     "title": "每日奖励",
     "subtitle": "每天领取与连续天数相同的金币（最多 {{max}} 枚）。",
     "day": "第{{n}}天",
     "claim": "领取 {{coins}}",
-    "plusBonus": "Plus 会员双倍奖励！"
+    "plusBonus": "Plus 会员双倍奖励！",
+    "get2x": "升级 Plus 领 2×（{{coins}}）"
   },
   "hanjiUnlock": {
     "title": "你解锁了韩姬！",

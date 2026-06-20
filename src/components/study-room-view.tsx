@@ -24,8 +24,9 @@ import { SoundPickerModal } from '@/components/sound-picker-modal';
 import { DevKnobs } from '@/components/dev-knobs';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { getCompanionImage, hanjiIsAnimated, isHanjiActiveId, resolveActiveCompanion } from '@/lib/companion-utils';
+import { isPlusFrame } from '@/components/avatar-frame';
 import { HanjiFigure } from '@/components/hanji-figure';
-import { useStudyRoom, type StudyStatus } from '@/lib/use-study-room';
+import { useStudyRoom, STUDY_ROOM_MAX, type StudyStatus } from '@/lib/use-study-room';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
@@ -85,24 +86,13 @@ const SOLO_BOOK_OFFSET: Record<string, { dx: number; dy: number }> = {
 };
 const DEFAULT_SOLO_BOOK_OFFSET = { dx: -0.026, dy: 0 };
 
-// Resolve any companion id to its SOLO_BOOK_OFFSET key so the book can sit under
-// that character's face in multiplayer too (shop ids keep their bare name).
-function bookOffsetFor(companionId: string | null | undefined): { dx: number; dy: number } {
-  const key = isHanjiActiveId(companionId ?? '')
-    ? 'hanji'
-    : companionId?.startsWith('shop:')
-      ? companionId.slice(5)
-      : 'bun';
-  return SOLO_BOOK_OFFSET[key] ?? DEFAULT_SOLO_BOOK_OFFSET;
-}
-
 // Tablet-only position knobs (🎛 design panel). Dial these live, hit "Get code",
 // and the values bake into TABLET_TWEAKS under `studysession.<name>`.
 const TABLET_ELEMENTS = [{ name: 'desk', label: 'Desk' }];
 
 /**
  * The "studying together" screen shown while a session runs. Works solo (one
- * participant) or in a synced study room (up to 4). The session lifecycle
+ * participant) or in a synced study room (up to 3). The session lifecycle
  * (completion → /session-complete) stays in the Home screen; this is the view.
  */
 export function StudyRoomView({
@@ -127,7 +117,7 @@ export function StudyRoomView({
   // bottom buttons. Sizes only (no transforms) so the character's bounce animation
   // isn't disturbed.
   const isTablet = useIsTablet();
-  const { height: winH } = useWindowDimensions();
+  const { width: winW, height: winH } = useWindowDimensions();
   // Tablet-only live position tweaks; `tw('desk')` is a transform (identity until
   // dialed + baked). Phone is unaffected.
   const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('studysession', TABLET_ELEMENTS);
@@ -374,15 +364,23 @@ export function StudyRoomView({
 
   // Multiplayer scene: everyone's character is shown, evenly spaced, and sized by
   // headcount — one person is biggest, more people shrink to share the row.
-  const partyCount = Math.min(participants.length, 4);
-  const partyCharSize = partyCount <= 1 ? 280 : partyCount === 2 ? 188 : partyCount === 3 ? 150 : 120;
+  const partyCount = Math.min(participants.length, STUDY_ROOM_MAX);
+  const PARTY_GAP = 4;
+  const FRAME_H_PAD = 16; // matches root paddingHorizontal (Spacing.three)
+  // Characters: fill full screen width with 4px gaps, no overlap.
+  const partyCharSize = partyCount <= 1 ? 280 : Math.floor((winW - PARTY_GAP * (partyCount - 1)) / partyCount);
+  // Avatar frames: capped at 90px wide so 2-player sessions don't balloon.
+  // Equal slots, 4px gap, centred.
+  const partFrameW = partyCount <= 1 ? 72 : Math.min(90, Math.floor((winW - 2 * FRAME_H_PAD - PARTY_GAP * (partyCount - 1)) / partyCount));
+  const partFrameH = Math.round(partFrameW * (969 / 814));
+  const partFontSize = Math.max(8, Math.round(partFrameW * 10 / 72));
   const partyBookSize = Math.round(partyCharSize * 0.52);
   // When you're the only one in the room (others left, or before they begin), the
   // party row would render a single oversized, off-center character/book that floats
   // off the desk — so render the solo scene (big centered character + desk book) instead.
   const soloScene = isSolo || participants.length <= 1;
-  // Rooms cap at 4 people — hide the invite button once full.
-  const roomFull = participants.length >= 4;
+  // Rooms cap at STUDY_ROOM_MAX — hide the invite button once full.
+  const roomFull = participants.length >= STUDY_ROOM_MAX;
 
   // Resolve a participant's live status (studying / break / idle).
   const participantStatus = (code: string | undefined): StudyStatus => {
@@ -506,7 +504,7 @@ export function StudyRoomView({
   return (
     <View style={styles.root}>
       {/* Invite-to-room button (top right) — multiplayer only, hidden once the
-          room is full at 4 (shows a "Full" chip instead). */}
+          room is full at 3 (shows a "Full" chip instead). */}
       {!isSolo && (
         roomFull ? (
           <View style={[styles.addFriendBtn, styles.roomFullBadge]}>
@@ -555,21 +553,20 @@ export function StudyRoomView({
 
       {/* Participant row (multiplayer only) */}
       {!isSolo && (
-      <View style={styles.participantRow}>
-        {participants.slice(0, 4).map((p) => {
+      <View style={[styles.participantRow, { gap: PARTY_GAP }]}>
+        {participants.slice(0, STUDY_ROOM_MAX).map((p) => {
           const present = p.code === friendCode || room.presentCodes.includes(p.code);
           const status: StudyStatus = !present ? 'idle' : p.code === friendCode ? (onBreak ? 'break' : 'studying') : room.statusMap[p.code] ?? 'studying';
           const img = p.code === friendCode ? bigCharacter : getCompanionImage(p.companionId, p.skinId);
+          const plusRing = isPlusFrame(p.avatarFrame) ? { borderWidth: 2.5, borderColor: '#D4A847' } : null;
           return (
-            <View key={p.code} style={styles.participant}>
-              {/* Frame first; the face circle sits on top of the frame's solid
-                  interior so the ring shows around it. */}
-              <Image source={AVATAR_FRAME} style={styles.partFrame} contentFit="fill" pointerEvents="none" />
-              <View style={styles.partFace}>
+            <View key={p.code} style={[styles.participant, { width: partFrameW, height: partFrameH }]}>
+              <Image source={AVATAR_FRAME} style={{ position: 'absolute', left: 0, top: 0, width: partFrameW, height: partFrameH }} contentFit="fill" pointerEvents="none" />
+              <View style={[styles.partFace, plusRing]}>
                 <Image source={img} style={styles.partFaceImg} contentFit="cover" contentPosition="top" />
               </View>
               <View style={[styles.partDot, { backgroundColor: DOT_COLOR[status] }]} />
-              <Text style={styles.partName} numberOfLines={1}>{p.code === friendCode ? t('studyRoom.you') : p.name}</Text>
+              <Text style={[styles.partName, { fontSize: partFontSize }]} numberOfLines={1}>{p.code === friendCode ? t('studyRoom.you') : p.name}</Text>
             </View>
           );
         })}
@@ -612,19 +609,15 @@ export function StudyRoomView({
           tucks behind the table, like the solo character. */}
       {!soloScene && (
         <View style={styles.partyLayer} pointerEvents="none">
-          {participants.slice(0, 4).map((p) => {
-            const status = participantStatus(p.code);
+          {participants.slice(0, STUDY_ROOM_MAX).map((p) => {
             const img = p.code === friendCode ? bigCharacter : getCompanionImage(p.companionId, p.skinId);
             const pIsHanji = p.code === friendCode
               ? hanjiIsAnimated(activeCompanionId, companionSkins?.[activeCompanionId ?? ''])
               : hanjiIsAnimated(p.companionId, p.skinId);
             return (
               <View key={p.code} style={[styles.partyMember, { width: partyCharSize }]}>
-                {status === 'break' ? (
-                  <View style={styles.partyStatusPill}><Text style={styles.partyStatusEmoji}></Text></View>
-                ) : (
-                  <View style={[styles.partyDot, { backgroundColor: DOT_COLOR[status] }]} />
-                )}
+                {/* No status dot above the character — status already shows on the
+                    top participant cards, so the dot here was redundant clutter. */}
                 {/* Same gentle idle bounce as the solo character (transform on an
                     Animated.View, not the image, to avoid per-second re-render stutter). */}
                 <Animated.View
@@ -660,23 +653,15 @@ export function StudyRoomView({
         </View>
       ) : (
         // One book per character. Book and character share identical columns (same
-        // row layout + partyCharSize slots); each book then gets ITS character's
-        // face offset (same measured values as solo, scaled to partyCharSize) so it
-        // sits under that character's face — book + character move as one object.
+        // row layout + partyCharSize slots), so the book sits dead-centre under each
+        // character. Like the solo scene, the per-character face dx is intentionally
+        // dropped — it read as off-to-the-side rather than "right in front".
         <View style={styles.partyBookRow} pointerEvents="none">
-          {participants.slice(0, 4).map((p) => {
-            const off = bookOffsetFor(p.code === friendCode ? activeCompanionId : p.companionId);
-            return (
-              <View
-                key={p.code}
-                style={[
-                  styles.partyBookSlot,
-                  { width: partyCharSize, transform: [{ translateX: partyCharSize * off.dx }, { translateY: partyCharSize * off.dy }] },
-                ]}>
-                <StudyBook active={participantStatus(p.code) !== 'break'} size={partyBookSize} />
-              </View>
-            );
-          })}
+          {participants.slice(0, STUDY_ROOM_MAX).map((p) => (
+            <View key={p.code} style={[styles.partyBookSlot, { width: partyCharSize }]}>
+              <StudyBook active={participantStatus(p.code) !== 'break'} size={partyBookSize} />
+            </View>
+          ))}
         </View>
       )}
 
@@ -826,13 +811,13 @@ const styles = StyleSheet.create({
   // lifted up so heads clear the desk edge (240) and tuck behind the table.
   partyLayer: {
     position: 'absolute', left: 0, right: 0, bottom: 184,
-    flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-evenly', zIndex: 1,
+    flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 4, zIndex: 1,
   },
   partyMember: { alignItems: 'center' },
   // One book per character, on the desk surface, columns aligned to partyLayer.
   partyBookRow: {
     position: 'absolute', left: 0, right: 0, bottom: 180,
-    flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-evenly', zIndex: 2,
+    flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 4, zIndex: 2,
   },
   partyBookSlot: { alignItems: 'center' },
   partyDot: { width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: '#fff', marginBottom: 3 },
@@ -851,9 +836,9 @@ const styles = StyleSheet.create({
   // Base position spans root's padded content box (same axis as the character
   // canvas) for a geometric center; a per-character transform (SOLO_BOOK_OFFSET)
   // then nudges it to sit right in front of each companion's visual center.
-  bookOnDesk: { position: 'absolute', bottom: 150, left: 0, right: 0, alignItems: 'center', zIndex: 2 },
+  bookOnDesk: { position: 'absolute', bottom: 168, left: 0, right: 0, alignItems: 'center', zIndex: 2 },
   // Tablet: book sits in front of the bigger/lifted character (lowered a bit).
-  bookOnDeskTablet: { bottom: 205 },
+  bookOnDeskTablet: { bottom: 280 },
   breakBadge: { position: 'absolute', top: 6, zIndex: 4, backgroundColor: 'rgba(78,53,40,0.85)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
   breakBadgeText: { color: '#fff', fontSize: 12, fontWeight: '800' },
 

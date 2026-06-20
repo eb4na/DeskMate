@@ -299,17 +299,8 @@ export function getCompanionImage(
  * Bun (the default, id '' or non-'shop:') uses the fallback. Do NOT use this for
  * the big home/profile figures.
  */
-const AVATAR_FACE_NUDGE: Record<string, number> = {
-  'shop:companion_cocoa': -3,
-  'shop:companion_bunny': -1,
-  // honey/hanji recentred 2026-06-17: their old +7/+9 dropped the face well below the
-  // circle centre (art had changed). Re-measured by rendering the exact 72px-in-44px
-  // crop offline (scripts-free, square arts) until the eyes sat on the centre line.
-  'shop:companion_honey': -2,
-  'shop:companion_tira': -8,
-  'shop:companion_hanji': -3,
-};
-const BUN_FACE_NUDGE = -8;
+const AVATAR_FACE_NUDGE: Record<string, number> = {};
+const BUN_FACE_NUDGE = 0;
 
 export function bunAvatarNudge(
   companionId: string | null | undefined,

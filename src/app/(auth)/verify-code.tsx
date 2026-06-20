@@ -62,6 +62,7 @@ export default function VerifyCodeScreen() {
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email: normalizedEmail,
+      options: { emailRedirectTo: 'deskmate://auth/callback' },
     });
 
     if (error) {
@@ -94,7 +95,7 @@ export default function VerifyCodeScreen() {
             } = await supabase.auth.verifyOtp({
               email: normalizedEmail,
               token,
-              type: 'email',
+              type: 'signup',
             });
 
     if (error) {

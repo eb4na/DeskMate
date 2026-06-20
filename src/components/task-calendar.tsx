@@ -25,6 +25,7 @@ import { useApp } from '@/context/app-context';
 import type { Task } from '@/context/app-context';
 import i18n from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useIsTablet } from '@/hooks/use-device-class';
 
 
 const C = BakeryColors;
@@ -198,7 +199,7 @@ function CalendarMonthCard({
 
       <View style={[styles.weekRow, { width: cellW * 7 }]}>
         {weekdayLetters().map((w, i) => (
-          <Text key={i} style={[styles.weekday, { width: cellW }]}>{w}</Text>
+          <Text key={i} style={[styles.weekday, { width: cellW, fontSize: Math.round(cellW * 0.26) }]}>{w}</Text>
         ))}
       </View>
 
@@ -231,7 +232,7 @@ function CalendarMonthCard({
                 {hasExam && exam.otherColor && (
                   <View style={[styles.examOtherDot, { backgroundColor: exam.otherColor }]} pointerEvents="none" />
                 )}
-                <Text style={[styles.dayNum, hasExam && styles.dayNumExam]}>{d}</Text>
+                <Text style={[styles.dayNum, { fontSize: Math.round(cellW * 0.3) }, hasExam && styles.dayNumExam]}>{d}</Text>
                 {dayTasks.length > 0 && <Text style={styles.taskCount}>{dayTasks.length}</Text>}
                 {hasNote && dayTasks.length === 0 && <View style={styles.noteDot} />}
               </View>
@@ -412,7 +413,12 @@ export function TaskCalendar() {
   const [modalDate, setModalDate] = useState<string | null>(null);
   const [searchMode, setSearchMode] = useState(false);
 
-  const gridW = Math.min(width, MaxContentWidth) - SCREEN_PAD * 2 - CARD_PAD * 2;
+  // On tablet, let the calendar fill the device (cap raised) instead of the 800px
+  // phone cap — so the grid grows with the screen. Cell size drives the day-number
+  // and weekday fonts below (cellW * ratio), so everything stays proportional to the
+  // phone at any size (ratio-based).
+  const isTablet = useIsTablet();
+  const gridW = Math.min(width, isTablet ? 1200 : MaxContentWidth) - SCREEN_PAD * 2 - CARD_PAD * 2;
   const cellW = Math.floor(gridW / 7);
 
   return (
