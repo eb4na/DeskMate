@@ -578,7 +578,7 @@
     "archiveSubjectQ": "¿Archivar asignatura?",
     "archiveMsg": "«{{name}}» se ocultará de los selectores, pero se conservará tu tiempo de estudio.",
     "deleteSubjectQ": "¿Eliminar asignatura?",
-    "deleteMsg": "«{{name}}» se eliminará. Las tareas vinculadas no se borrarán, pero perderán la etiqueta de asignatura."
+    "deleteMsg": "«{{name}}» se eliminará de tus asignaturas. Tus sesiones de estudio y tu progreso anteriores se mantienen en tus estadísticas, y las tareas vinculadas no se borrarán: solo perderán la etiqueta de asignatura."
   },
   "addExam": {
     "title": "Agregar cuenta regresiva",

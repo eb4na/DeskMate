@@ -584,7 +584,7 @@
     "archiveSubjectQ": "Archive subject?",
     "archiveMsg": "\"{{name}}\" will be hidden from pickers but your study time is kept.",
     "deleteSubjectQ": "Delete subject?",
-    "deleteMsg": "\"{{name}}\" will be removed. Tasks linked to it won't be deleted but will lose the subject tag."
+    "deleteMsg": "\"{{name}}\" will be removed from your subjects. Your past study sessions and progress stay in your stats, and linked tasks won't be deleted — they'll just lose the subject tag."
   },
   "addExam": {
     "title": "Add exam countdown",
