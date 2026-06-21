@@ -578,7 +578,7 @@
     "archiveSubjectQ": "Archiver la matière ?",
     "archiveMsg": "« {{name}} » sera masquée des sélecteurs, mais ton temps d'étude est conservé.",
     "deleteSubjectQ": "Supprimer la matière ?",
-    "deleteMsg": "« {{name}} » sera supprimée. Les tâches qui y sont liées ne seront pas supprimées mais perdront l'étiquette de matière."
+    "deleteMsg": "« {{name}} » sera supprimée de vos matières. Vos sessions d'étude et votre progression passées restent dans vos statistiques, et les tâches liées ne seront pas supprimées : elles perdront seulement l'étiquette de matière."
   },
   "addExam": {
     "title": "Ajouter un compte à rebours",
