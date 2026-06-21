@@ -39,7 +39,7 @@ LACE_PROMPT = (
     "large solid chroma-key green #00FF00 above and below the pill. "
     "LACE: Ornate scalloped white doily lace trim with warm blush-pink (#F5B8C4) tint on scallops. "
     "INTERIOR: Empty smooth cream-white (#FFFDF9) panel for four app tabs. "
-    "Three very faint vertical dashed lines dividing interior into four equal columns only. "
+    "No dividers, no dashed lines, no separators inside the panel — a single clean continuous interior. "
     "BOTTOM EDGE of pill: clean flat lace edge — absolutely nothing below the pill (no bow, no tails, no extras). "
     "STYLE: Soft watercolour kawaii patisserie princess café UI, pastel pink and cream. "
     "BACKGROUND: Only #00FF00 outside the pill. No shadow outside pill."

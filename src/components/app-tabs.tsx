@@ -212,9 +212,11 @@ function makeStyles(s: number) {
       height: TabBarBowHeight,
     },
     row: {
+      // Full-width so the four tabs split the screen into four equal segments,
+      // each item centered in its own quarter (even spacing relative to screen size).
       position: 'absolute',
-      left: '3%',
-      right: '3%',
+      left: 0,
+      right: 0,
       bottom: 80 * s,
       height: 66 * s,
       flexDirection: 'row',
