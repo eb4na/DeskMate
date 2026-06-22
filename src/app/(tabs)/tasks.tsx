@@ -84,6 +84,8 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: {
   const { use24HourTime } = useApp();
   const { scale, contentWidth } = useTabletScale();
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
+  // Match the cardS boost used for the task-card styles (see makeStyles / CARD_BOOST).
+  const cardScale = scale > 1 ? scale * 1.3 : scale;
   const isDone = task.status === 'done';
 
   return (
@@ -135,7 +137,7 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: {
           <View style={[styles.statusDot, isDone ? styles.statusDotDone : styles.statusDotTodo]} />
         </SoundPressable>
         <Pressable style={[styles.actionBtn, styles.trashBtn]} onPress={onDelete} hitSlop={8}>
-          <TrashIcon size={18 * scale} />
+          <TrashIcon size={18 * cardScale} />
         </Pressable>
       </View>
     </ThemedView>
@@ -145,6 +147,9 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: {
 export default function TasksScreen() {
   const { t } = useTranslation();
   const { scale, contentWidth } = useTabletScale();
+  // Same card boost as the task/exam card content (see makeStyles / CARD_BOOST), for
+  // the inline icons that can't read it from the stylesheet.
+  const cardScale = scale > 1 ? scale * 1.3 : scale;
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const {
     tasks,
@@ -336,14 +341,14 @@ export default function TasksScreen() {
                     style={({ pressed }) => [styles.examInfo, pressed && styles.pressed]}
                     onPress={() => router.push({ pathname: '/add-exam', params: { examId: exam.id } })}>
                     <View style={styles.examNameRow}>
-                      <CountdownShape shape={exam.shape} size={16 * scale} />
-                      <ThemedText type="smallBold">{exam.name}</ThemedText>
+                      <CountdownShape shape={exam.shape} size={16 * cardScale} />
+                      <ThemedText type="smallBold" style={styles.examName}>{exam.name}</ThemedText>
                     </View>
                     <View style={styles.examSubRow}>
-                      <ThemedText type="small" themeColor="textSecondary">
+                      <ThemedText type="small" themeColor="textSecondary" style={styles.examMeta}>
                         {exam.subject ? `${exam.subject} · ` : ''}{exam.dateISO}
                       </ThemedText>
-                      {exam.reminderEnabled && <BakeryBellEmoji size={11 * scale} />}
+                      {exam.reminderEnabled && <BakeryBellEmoji size={11 * cardScale} />}
                     </View>
                   </Pressable>
                   <View style={styles.examRight}>
@@ -356,7 +361,7 @@ export default function TasksScreen() {
                       {isPast ? t('tasks.past') : isToday ? t('tasks.today') : `${days}d`}
                     </ThemedText>
                     <Pressable onPress={() => removeExam(exam.id)} style={styles.removeBtn} hitSlop={8}>
-                      <TrashIcon size={16 * scale} />
+                      <TrashIcon size={16 * cardScale} />
                     </Pressable>
                   </View>
                 </ThemedView>
@@ -388,7 +393,14 @@ export default function TasksScreen() {
   );
 }
 
-const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
+const makeStyles = (s: number, contentWidth: number) => {
+  // Tablet-only boost so the task cards read large/prominent next to the calendar.
+  // It multiplies the proportional scale, so it stays the SAME fraction of the
+  // screen on every device (11" look, uniformly scaled). Phones are byte-identical
+  // (s === 1 → cardS === 1). Dial CARD_BOOST to taste.
+  const CARD_BOOST = 1.3;
+  const cardS = s > 1 ? s * CARD_BOOST : s;
+  return StyleSheet.create({
   container: { flex: 1, backgroundColor: BakeryColors.frosting },
   // Keep the whole scroll above the floating menu bar so it stays fully visible
   // and content never scrolls underneath it.
@@ -446,39 +458,40 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   sectionTitle: { fontSize: 13 * s, textTransform: 'uppercase', letterSpacing: 0.5 },
   doneToggle: {},
   taskList: { gap: Spacing.two * s },
+  // Task cards use cardS (slightly larger on tablet) so they balance the calendar.
   taskRow: {
-    borderRadius: BakeryRadii.card * s,
-    padding: Spacing.three * s,
+    borderRadius: BakeryRadii.card * cardS,
+    padding: Spacing.three * cardS,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two * s,
+    gap: Spacing.two * cardS,
     borderWidth: 1,
     borderColor: BakeryColors.shortbread,
     backgroundColor: BakeryColors.glass,
   },
   taskRowDone: { opacity: 0.55 },
-  taskContent: { flex: 1, gap: 5 * s },
-  taskTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 * s },
-  taskTitle: { flex: 1, fontSize: 15 * s, lineHeight: 20 * s, fontWeight: '600' },
+  taskContent: { flex: 1, gap: 5 * cardS },
+  taskTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 * cardS },
+  taskTitle: { flex: 1, fontSize: 15 * cardS, lineHeight: 20 * cardS, fontWeight: '600' },
   taskTitleDone: { textDecorationLine: 'line-through' },
   // Finished / not-finished dot at the end of the title row.
-  statusDot: { width: 18 * s, height: 18 * s, borderRadius: 9 * s, borderWidth: 2 },
+  statusDot: { width: 18 * cardS, height: 18 * cardS, borderRadius: 9 * cardS, borderWidth: 2 },
   statusDotTodo: { backgroundColor: 'transparent', borderColor: BakeryColors.latte },
   statusDotDone: { backgroundColor: BakeryColors.success, borderColor: BakeryColors.success },
-  taskMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 * s, alignItems: 'center' },
-  metaText: { fontSize: 12 * s },
+  taskMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 * cardS, alignItems: 'center' },
+  metaText: { fontSize: 12 * cardS },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4 * s,
-    paddingHorizontal: 8 * s,
-    paddingVertical: 2 * s,
-    borderRadius: 8 * s,
+    gap: 4 * cardS,
+    paddingHorizontal: 8 * cardS,
+    paddingVertical: 2 * cardS,
+    borderRadius: 8 * cardS,
   },
-  badgeDot: { width: 6 * s, height: 6 * s, borderRadius: 3 * s },
-  badgeText: { fontSize: 11 * s, fontWeight: '600' },
+  badgeDot: { width: 6 * cardS, height: 6 * cardS, borderRadius: 3 * cardS },
+  badgeText: { fontSize: 11 * cardS, fontWeight: '600' },
   taskActions: { flexDirection: 'row', gap: 0, alignItems: 'center' },
-  actionBtn: { padding: 4 * s, alignItems: 'center', justifyContent: 'center' },
+  actionBtn: { padding: 4 * cardS, alignItems: 'center', justifyContent: 'center' },
   trashBtn: { transform: [{ translateY: -0.5 * s }] },
   emptyCard: {
     borderRadius: BakeryRadii.card * s,
@@ -530,9 +543,15 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
-  examInfo: { flex: 1, gap: 2 * s },
+  examInfo: { flex: 1, gap: 2 * cardS },
+  // Exam name + date match the task-card title/meta sizes (cardS) so all the text
+  // under the calendar is consistent — not a tiny name next to a giant countdown.
+  examName: { fontSize: 15 * cardS, lineHeight: 20 * cardS, fontWeight: '700' },
+  examMeta: { fontSize: 12 * cardS, lineHeight: 16 * cardS },
   examRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two * s },
-  examDays: { fontSize: 22 * s, fontWeight: '700', color: BakeryColors.mocha },
+  // Countdown only slightly larger than the exam name (16 vs 15) so "Past"/"10d"
+  // no longer dwarfs the title.
+  examDays: { fontSize: 16 * cardS, fontWeight: '800', color: BakeryColors.mocha },
   examDaysUrgent: { color: BakeryColors.danger },
   examDaysPast: { color: '#999' },
   removeBtn: { padding: 4 * s },
@@ -559,4 +578,5 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     backgroundColor: BakeryColors.cream,
   },
   upgradeExamText: { color: BakeryColors.mocha },
-});
+  });
+};

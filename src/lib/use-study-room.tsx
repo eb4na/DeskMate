@@ -20,6 +20,11 @@ import {
 
 export const STUDY_ROOM_MAX = 3;
 
+// How long a player can drop out of presence (a transient Supabase reconnect /
+// network blip) before the host actually evicts them from the roster. Without
+// this grace window a momentary flicker silently kicks a guest mid-session.
+const PRESENCE_GRACE_MS = 6000;
+
 export type StudyStatus = 'studying' | 'break' | 'idle';
 export type StudyRosterEntry = {
   code: string;
@@ -130,6 +135,15 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
   // Synchronous roster mirror so the host can enforce the 3-person cap without
   // racing React state.
   const rosterRef = useRef<StudyRosterEntry[]>([]);
+  // Latest present codes (host reads this live inside grace-period removal timers
+  // so a member who reappeared before the timer fires isn't evicted), plus the
+  // per-code pending-removal timers themselves.
+  const presentCodesRef = useRef<string[]>([]);
+  const removalTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const clearRemovalTimers = () => {
+    Object.values(removalTimers.current).forEach(clearTimeout);
+    removalTimers.current = {};
+  };
   // Latest identity, so the realtime closure (created on join) reads current values.
   const meRef = useRef({ myCode, myName, myCompanionId, mySkinId, myAvatarFrame: profileAvatarFrame, bgRoomId: equippedBackgroundRoomId, deskRoomId: equippedDeskRoomId });
   meRef.current = { myCode, myName, myCompanionId, mySkinId, myAvatarFrame: profileAvatarFrame, bgRoomId: equippedBackgroundRoomId, deskRoomId: equippedDeskRoomId };
@@ -170,6 +184,8 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     // Tear down any previous connection first.
     room.current?.leave();
     if (beginTimer.current) clearTimeout(beginTimer.current);
+    clearRemovalTimers();
+    presentCodesRef.current = [];
     setRoomId(id);
     setIsHost(host);
     setBegun(false);
@@ -208,15 +224,47 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
         onPresence: () => {},
         onPresenceCodes: (codes) => {
           setPresentCodes(codes);
-          if (!isHostRef.current) return;
-          setRoster((prev) => {
-            const next = prev.filter((e) => e.code === meRef.current.myCode || codes.includes(e.code));
-            if (next.length !== prev.length) {
-              rosterRef.current = next;
-              broadcastRoster(next);
-              return next;
+          presentCodesRef.current = codes;
+          const myCodeNow = meRef.current.myCode;
+          if (!isHostRef.current) {
+            // Guest self-heal: if I'm present in the room but I'm missing from the
+            // host's roster (it dropped me on a presence flicker, or my own channel
+            // just reconnected), re-announce so the host re-adds me. Targeted to the
+            // actual mismatch so a healthy guest never re-floods `hello`.
+            if (codes.includes(myCodeNow) && !rosterRef.current.some((e) => e.code === myCodeNow)) {
+              const m = meRef.current;
+              room.current?.send('hello', {
+                code: m.myCode, name: m.myName, companionId: m.myCompanionId, skinId: m.mySkinId, avatarFrame: m.myAvatarFrame,
+                minutes: myPreferredMinutes.current ?? undefined,
+                topic: myTopic.current ?? undefined,
+              });
             }
-            return prev;
+            return;
+          }
+          // Host: anyone who's (re)appeared cancels their pending eviction.
+          for (const code of codes) {
+            if (removalTimers.current[code]) {
+              clearTimeout(removalTimers.current[code]);
+              delete removalTimers.current[code];
+            }
+          }
+          // Anyone now absent gets a grace timer rather than an immediate kick. The
+          // timer re-checks LIVE presence (presentCodesRef) before removing, so a
+          // transient flicker that resolves within PRESENCE_GRACE_MS leaves the
+          // roster untouched (no churned broadcast, no avatar blink for anyone).
+          rosterRef.current.forEach((e) => {
+            if (e.code === myCodeNow || codes.includes(e.code) || removalTimers.current[e.code]) return;
+            removalTimers.current[e.code] = setTimeout(() => {
+              delete removalTimers.current[e.code];
+              if (presentCodesRef.current.includes(e.code)) return; // came back in time
+              const prev = rosterRef.current;
+              const next = prev.filter((r) => r.code !== e.code);
+              if (next.length !== prev.length) {
+                rosterRef.current = next;
+                setRoster(next);
+                broadcastRoster(next);
+              }
+            }, PRESENCE_GRACE_MS);
           });
         },
         onMessage: (type, data) => {
@@ -362,6 +410,8 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     room.current?.leave();
     room.current = null;
     if (beginTimer.current) clearTimeout(beginTimer.current);
+    clearRemovalTimers();
+    presentCodesRef.current = [];
     setRoomId(null);
     setIsHost(false);
     setBegun(false);
@@ -403,8 +453,24 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     room.current?.send('status', { code: meRef.current.myCode, status: s });
   };
 
-  const setPreferredMinutes = (minutes: number) => {
+  const setMyPrefs = (minutes: number, topic: string | null) => {
     myPreferredMinutes.current = minutes;
+    myTopic.current = topic;
+    const code = meRef.current.myCode;
+    // Optimistically update my own roster entry so my avatar reflects the choice
+    // instantly on my screen, independent of the network round-trip.
+    setRoster((prev) => {
+      const next = prev.map((e) => (e.code === code ? { ...e, minutes, topic } : e));
+      if (isHostRef.current) {
+        rosterRef.current = next;
+        broadcastRoster(next);
+      }
+      return next;
+    });
+    // Guests tell the host, which folds it into the authoritative roster + rebroadcasts.
+    if (!isHostRef.current) {
+      room.current?.send('prefs', { code, minutes, topic });
+    }
   };
 
   // Host radio broadcast: while the host's synced session is live and their own
@@ -437,6 +503,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     return () => {
       room.current?.leave();
       if (beginTimer.current) clearTimeout(beginTimer.current);
+      clearRemovalTimers();
     };
   }, []);
 
@@ -459,7 +526,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
       start,
       startSelf,
       setStatus,
-      setPreferredMinutes,
+      setMyPrefs,
     }),
     // joinRoom/leaveRoom/start/setStatus are stable enough (read refs); deps are the state they expose.
     // eslint-disable-next-line react-hooks/exhaustive-deps

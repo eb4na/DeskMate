@@ -810,7 +810,9 @@
     "noFriendsYet": "还没有好友",
     "noFriendsHint": "在好友页面添加好友，然后在这里邀请他们。",
     "onlineNow": "在线",
+    "offline": "离线",
     "invited": "已邀请 ✓",
+    "alreadyIn": "已加入",
     "invite": "邀请",
     "backToLobby": "返回大厅",
     "playerName": "玩家 {{code}}"
@@ -824,6 +826,9 @@
     "you": "（你）",
     "sessionLength": "专注时长",
     "min": "分钟",
+    "topic": "主题",
+    "minShort": "{{n}}分钟",
+    "noSubjectsHint": "在「任务」中添加科目即可选择主题。",
     "hostPicks": "房主选择专注时长并开始。",
     "inviteFriend": "＋ 邀请好友",
     "startStudying": "开始学习",
@@ -1058,7 +1063,11 @@
     "minutesOption": "{{count}} 分钟",
     "exit": "退出",
     "defaultName": "你",
-    "justFocus": "专心就好"
+    "justFocus": "专心就好",
+    "friendLeft": "{{name}} 离开了",
+    "someoneLeft": "有人离开了",
+    "stillStudying": "还在一起学习",
+    "nowStudyingSolo": "现在你在独自学习"
   },
   "plus": {
     "f_customTimers": "自定义计时器",
@@ -1505,6 +1514,11 @@
     "sendFailed": "发送失败",
     "signInNeeded": "需要登录后才能发送消息。",
     "friendNotReachable": "暂时无法联系到 {{name}}——对方需要打开一次应用以同步资料。"
+  },
+  "notifications": {
+    "streakTitle": "别断了连续记录！🔥",
+    "streakAfternoonBody": "今天还没学习哦——快进来保持你的连续记录吧。",
+    "streakEveningBody": "最后机会！午夜前学习，别让连续记录清零。🔥"
   },
   "birthdayReward": {
     "title": "生日快乐！",

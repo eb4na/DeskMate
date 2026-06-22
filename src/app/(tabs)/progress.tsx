@@ -57,7 +57,13 @@ function daysSince(dateISO: string): number {
 export default function ProgressScreen() {
   const { t } = useTranslation();
   const { scale, contentWidth } = useTabletScale();
-  const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
+  // Boost so the whole Progress screen reads bigger on tablet. It multiplies the
+  // proportional scale, so everything stays the SAME fraction of the screen on every
+  // device (11" look, uniformly scaled). Phones are byte-identical (scale === 1).
+  // Dial PROGRESS_BOOST to taste.
+  const PROGRESS_BOOST = 1.2;
+  const ps = scale > 1 ? scale * PROGRESS_BOOST : scale;
+  const styles = useMemo(() => makeStyles(ps, contentWidth), [ps, contentWidth]);
   const { isGuest, user, signOut } = useAuth();
   const {
     sessionsCompleted,
@@ -264,7 +270,7 @@ export default function ProgressScreen() {
           {(
             <ThemedView type="backgroundElement" style={styles.freezeCard}>
               <ThemedView type="transparent" style={styles.freezeRow}>
-                <StreakFreezeIcon size={52 * scale} style={styles.freezeIcon} />
+                <StreakFreezeIcon size={52 * ps} style={styles.freezeIcon} />
                 <ThemedView type="transparent" style={styles.freezeInfo}>
                   <ThemedText type="smallBold">{t('progress.streakFreeze')}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
@@ -362,7 +368,7 @@ export default function ProgressScreen() {
                 <Pressable
                   style={({ pressed }) => [styles.moodChartBtn, pressed && styles.pressed]}
                   onPress={() => router.push('/subject-chart')}>
-                  <ChartIcon size={14 * scale} />
+                  <ChartIcon size={14 * ps} />
                   <ThemedText type="small" themeColor="textSecondary">{t('progress.subjectChartBtn')}</ThemedText>
                 </Pressable>
                 <Pressable
@@ -410,14 +416,14 @@ export default function ProgressScreen() {
             {mostStudied && (
               <ThemedView type="transparent" style={styles.highlightRow}>
                 <View style={styles.highlightItem}>
-                  <BakeryTrophyEmoji size={15 * scale} />
+                  <BakeryTrophyEmoji size={15 * ps} />
                   <ThemedText type="small" themeColor="textSecondary">
                     {t('progress.mostStudied')}<ThemedText type="smallBold">{mostStudied[0]}</ThemedText>
                   </ThemedText>
                 </View>
                 {leastStudied && (
                   <View style={styles.highlightItem}>
-                    <BakerySleepEmoji size={15 * scale} />
+                    <BakerySleepEmoji size={15 * ps} />
                     <ThemedText type="small" themeColor="textSecondary">
                       {t('progress.leastStudied')}<ThemedText type="smallBold">{leastStudied[0]}</ThemedText>
                     </ThemedText>
@@ -434,7 +440,7 @@ export default function ProgressScreen() {
               <Pressable
                 style={({ pressed }) => [styles.moodChartBtn, pressed && styles.pressed]}
                 onPress={() => router.push('/mood-chart')}>
-                <ChartIcon size={14 * scale} />
+                <ChartIcon size={14 * ps} />
                 <ThemedText type="small" themeColor="textSecondary">{t('progress.moodChartBtn')}</ThemedText>
               </Pressable>
             </ThemedView>

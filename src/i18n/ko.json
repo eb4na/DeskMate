@@ -810,7 +810,9 @@
     "noFriendsYet": "아직 친구가 없습니다",
     "noFriendsHint": "친구 화면에서 친구를 추가한 다음 여기서 초대하세요.",
     "onlineNow": "지금 온라인",
+    "offline": "오프라인",
     "invited": "초대됨 ✓",
+    "alreadyIn": "참여 중",
     "invite": "초대",
     "backToLobby": "로비로 돌아가기",
     "playerName": "플레이어 {{code}}"
@@ -824,6 +826,9 @@
     "you": "(나)",
     "sessionLength": "세션 길이",
     "min": "분",
+    "topic": "주제",
+    "minShort": "{{n}}분",
+    "noSubjectsHint": "할 일에서 과목을 추가하면 주제를 고를 수 있어요.",
     "hostPicks": "호스트가 세션 길이를 정하고 시작합니다.",
     "inviteFriend": "＋ 친구 초대",
     "startStudying": "공부 시작",
@@ -1058,7 +1063,11 @@
     "minutesOption": "{{count}}분",
     "exit": "나가기",
     "defaultName": "나",
-    "justFocus": "그냥 집중해요"
+    "justFocus": "그냥 집중해요",
+    "friendLeft": "{{name}} 님이 나갔어요",
+    "someoneLeft": "누군가 나갔어요",
+    "stillStudying": "아직 함께 공부 중",
+    "nowStudyingSolo": "이제 혼자 공부해요"
   },
   "plus": {
     "f_customTimers": "사용자 지정 타이머",
@@ -1505,6 +1514,11 @@
     "sendFailed": "보내지 못했어요",
     "signInNeeded": "메시지를 보내려면 로그인해야 해요.",
     "friendNotReachable": "아직 {{name}}에게 연결할 수 없어요 — 프로필이 동기화되도록 상대가 앱을 한 번 열어야 해요."
+  },
+  "notifications": {
+    "streakTitle": "연속 기록을 놓치지 마세요! 🔥",
+    "streakAfternoonBody": "아직 오늘 공부하지 않았어요 — 앱에 들러 연속 기록을 이어가요.",
+    "streakEveningBody": "마지막 기회! 자정 전에 공부해서 연속 기록이 초기화되지 않게 하세요. 🔥"
   },
   "birthdayReward": {
     "title": "생일 축하해요!",

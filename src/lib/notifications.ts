@@ -238,6 +238,75 @@ export async function cancelComeBackNudge(notifId: string | null) {
   }
 }
 
+const STREAK_REMINDER_KIND = 'streak-reminder';
+// How many upcoming days to pre-schedule streak nudges for. Kept small on purpose:
+// iOS silently caps at 64 pending notifications and drops the overflow, so we must
+// not crowd out task/study reminders. 3 days (×2 = 6 nudges) covers the realistic
+// window — if someone ignores 3 days of nudges, the streak is already gone.
+const STREAK_REMINDER_DAYS_AHEAD = 3;
+// Two nudges per un-opened day, spaced far apart but both before midnight (when the
+// streak day rolls over). Device-local hours: early afternoon + late evening.
+const STREAK_REMINDER_HOURS = [13, 21] as const;
+
+// Read-only permission check — NEVER requests. A re-engagement nudge must not trigger
+// a permission prompt; it piggybacks on permission already granted for tasks/reminders.
+async function hasNotificationPermission(): Promise<boolean> {
+  const settings = await Notifications.getPermissionsAsync();
+  return settings.granted || settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
+}
+
+async function cancelStreakReminders() {
+  const all = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.all(
+    all
+      .filter((n) => (n.content.data as { kind?: string } | undefined)?.kind === STREAK_REMINDER_KIND)
+      .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
+  );
+}
+
+// Streak-protection nudges: if the player doesn't OPEN the app on a given day, fire up
+// to 2 reminders that day so they come back before their streak resets at midnight.
+// Call on every launch + foreground — it cancels all pending streak nudges and
+// reschedules for the NEXT few days only (never today, since opening the app means
+// they've shown up today). So a nudge only ever fires on a day with no app open, which
+// is exactly "the user hasn't logged in yet". `enabled` is false when there's no streak
+// to protect (or onboarding isn't done); we still cancel so a stale set gets cleared.
+export async function syncStreakReminders(opts: {
+  enabled: boolean;
+  title: string;
+  afternoonBody: string;
+  eveningBody: string;
+}): Promise<void> {
+  await ensureReminderChannel();
+  await cancelStreakReminders();
+
+  if (!opts.enabled) return;
+  if (!(await hasNotificationPermission())) return;
+
+  const now = Date.now();
+  for (let day = 1; day <= STREAK_REMINDER_DAYS_AHEAD; day += 1) {
+    for (const hour of STREAK_REMINDER_HOURS) {
+      const when = new Date();
+      when.setDate(when.getDate() + day);
+      when.setHours(hour, 0, 0, 0);
+      if (when.getTime() <= now) continue; // defensive — all should be future
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: opts.title,
+          body: hour >= 18 ? opts.eveningBody : opts.afternoonBody,
+          sound: 'default',
+          data: { kind: STREAK_REMINDER_KIND },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: when,
+          channelId: STUDY_REMINDER_CHANNEL_ID,
+        },
+      });
+    }
+  }
+}
+
 export async function syncStudyReminders({
   enabled,
   time,

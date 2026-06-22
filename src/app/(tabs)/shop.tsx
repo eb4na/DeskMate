@@ -78,7 +78,18 @@ function CategoryIcon({ id, size }: { id: ShopCategory; size?: number }) {
 
 const MAGNIFIER_ICON = require('@/assets/images/shop/magnifier.png');
 
-const WIN_W = Math.min(Dimensions.get('window').width, MaxContentWidth);
+const _win = Dimensions.get('window');
+const _shortest = Math.min(_win.width, _win.height);
+const _isTabletDevice = _shortest >= 600;
+// Tablet shop scale: anchored so the 11" Pro (shortest side 834) is the design
+// reference (= the current look), and larger iPads render the SAME layout
+// proportionally bigger. The ×1.15 makes the whole shop a touch larger than the old
+// fixed tablet sizes ("so it's bigger"). 1.0 on phone — phone layout is unchanged.
+// Dial the 1.15 to taste.
+const SHOP_TS = _isTabletDevice ? Math.max(1, _shortest / 834) * 1.15 : 1;
+// On tablet the grid/menu may grow past the old 800px phone cap so the shop fills
+// more of the screen instead of a narrow centered column (capped at the device).
+const WIN_W = Math.min(_win.width, MaxContentWidth * SHOP_TS);
 // Outfit preview stage — a scaled phone-shaped pane that reproduces the home
 // screen's exact layout (desk fills the bottom 54%, the character's feet sit at
 // 38%, the character art is ~35% of the screen height). Sized in explicit px so
@@ -177,21 +188,23 @@ export default function ShopScreen() {
   const insets = useSafeAreaInsets();
   // Stop any sound preview when the shop tab loses focus (tabs don't unmount).
   useFocusEffect(useCallback(() => () => stopPreview(), []));
-  const tImgWrap = isTablet && { height: 130 };
-  const tImg = isTablet && { width: 110, height: 110 };
-  const tEmoji = isTablet && { fontSize: 80, lineHeight: 92 };
-  const tName = isTablet && { fontSize: 14 };
+  // All tablet sizes scale by SHOP_TS (1.0 at the 11" reference, larger on bigger
+  // iPads) so the whole shop stays proportional across devices.
+  const tImgWrap = isTablet && { height: 130 * SHOP_TS };
+  const tImg = isTablet && { width: 110 * SHOP_TS, height: 110 * SHOP_TS };
+  const tEmoji = isTablet && { fontSize: 80 * SHOP_TS, lineHeight: 92 * SHOP_TS };
+  const tName = isTablet && { fontSize: 14 * SHOP_TS };
   // Tablet: the Bakery Menu coin packs read tiny on a wide screen — scale the card,
   // pack art, names, prices and coin amounts up so coin purchases are easy to tap.
-  const tMenuCard = isTablet && { paddingHorizontal: Spacing.four, paddingTop: 48, paddingBottom: Spacing.three };
-  const tMenuTitle = isTablet && { fontSize: 28 };
-  const tSectionLabel = isTablet && { fontSize: 22 };
-  const tSectionSub = isTablet && { fontSize: 16 };
-  const tMenuRow = isTablet && { paddingVertical: Spacing.three, gap: Spacing.three };
-  const tMenuIcon = isTablet && { width: 100, height: 100 };
-  const tMenuName = isTablet && { fontSize: 25, lineHeight: 30 };
-  const tMenuPrice = isTablet && { fontSize: 25 };
-  const tMenuCoin = isTablet && { fontSize: 20 };
+  const tMenuCard = isTablet && { paddingHorizontal: Spacing.four * SHOP_TS, paddingTop: 48 * SHOP_TS, paddingBottom: Spacing.three * SHOP_TS };
+  const tMenuTitle = isTablet && { fontSize: 28 * SHOP_TS };
+  const tSectionLabel = isTablet && { fontSize: 22 * SHOP_TS };
+  const tSectionSub = isTablet && { fontSize: 16 * SHOP_TS };
+  const tMenuRow = isTablet && { paddingVertical: Spacing.three * SHOP_TS, gap: Spacing.three * SHOP_TS };
+  const tMenuIcon = isTablet && { width: 100 * SHOP_TS, height: 100 * SHOP_TS };
+  const tMenuName = isTablet && { fontSize: 25 * SHOP_TS, lineHeight: 30 * SHOP_TS };
+  const tMenuPrice = isTablet && { fontSize: 25 * SHOP_TS };
+  const tMenuCoin = isTablet && { fontSize: 20 * SHOP_TS };
   const {
     coins,
     earnedToday,
@@ -523,9 +536,9 @@ export default function ShopScreen() {
               const active = cat === activeCategory;
               return (
                 <Pressable key={cat} onPress={() => setActiveCategory(cat)} style={({ pressed }) => pressed && styles.pressed}>
-                  <View style={[styles.catSquare, isTablet && { width: 96, height: 104 }, active && styles.catSquareActive]}>
-                    <CategoryIcon id={cat} size={isTablet ? 60 : 36} />
-                    <ThemedText style={[styles.catLabel, isTablet && { fontSize: 15, lineHeight: 19 }, active && styles.catLabelActive]}>
+                  <View style={[styles.catSquare, isTablet && { width: 96 * SHOP_TS, height: 104 * SHOP_TS }, active && styles.catSquareActive]}>
+                    <CategoryIcon id={cat} size={isTablet ? 60 * SHOP_TS : 36} />
+                    <ThemedText style={[styles.catLabel, isTablet && { fontSize: 15 * SHOP_TS, lineHeight: 19 * SHOP_TS }, active && styles.catLabelActive]}>
                       {t(`shop.cat_${cat}`)}
                     </ThemedText>
                   </View>
@@ -856,7 +869,7 @@ export default function ShopScreen() {
           )}
 
           {/* ── Bakery Menu — Coins + Items on one paper, split by a rule ── */}
-          <View style={[styles.menuCard, tMenuCard, isTablet && { marginTop: Spacing.three }]}>
+          <View style={[styles.menuCard, tMenuCard, isTablet && { marginTop: Spacing.three * SHOP_TS }]}>
             <View style={styles.menuHeader}>
               <ThemedText style={[styles.menuTitle, tMenuTitle]}>{t('shop.bakeryMenu')}</ThemedText>
             </View>
@@ -874,7 +887,7 @@ export default function ShopScreen() {
                       <ThemedText style={[styles.menuPrice, tMenuPrice]}>{packPrice(pack)}</ThemedText>
                     </View>
                     <View style={styles.menuSubLine}>
-                      <CoinAmount amount={pack.coins} size={isTablet ? 28 : 20} textStyle={[styles.menuCoinText, tMenuCoin]} />
+                      <CoinAmount amount={pack.coins} size={isTablet ? 28 * SHOP_TS : 20} textStyle={[styles.menuCoinText, tMenuCoin]} />
                       {pack.popular && (
                         <View style={styles.chefBadge}><ThemedText style={styles.chefText}>{t('shop.chefsPick')}</ThemedText></View>
                       )}

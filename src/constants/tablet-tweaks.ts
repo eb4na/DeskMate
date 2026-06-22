@@ -13,5 +13,8 @@ export type TabletTweak = { x?: number; y?: number; scale?: number };
 
 export const TABLET_TWEAKS: Record<string, TabletTweak> = {
   // e.g. 'breakgame.backBtn': { x: 0, y: -8, scale: 1.1 },
-  'studysession.desk': { y: 31 }, // nudge the desk down on tablet
+  // Desk is now positioned by pure ratios in study-room-view (deskTopT), with the
+  // thin desk-edge line locked to the same transform — so leave this at identity.
+  // If you re-dial the 🎛 desk knob, the line follows the desk automatically.
+  'studysession.desk': {},
 };

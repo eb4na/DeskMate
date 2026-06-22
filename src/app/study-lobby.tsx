@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,11 +8,13 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { DevKnobs } from '@/components/dev-knobs';
 import { ThemedView } from '@/components/themed-view';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
+import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { SESSION_LENGTHS } from '@/constants/placeholder-data';
 import { bunAvatarNudge, getCompanionImage } from '@/lib/companion-utils';
+import { useApp } from '@/context/app-context';
 import { useStudyRoom, STUDY_ROOM_MAX } from '@/lib/use-study-room';
 import { useTranslation } from '@/i18n';
-import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, Spacing } from '@/constants/theme';
 
 // Lobby for a synced multiplayer study room: players gather, the host picks a
 // duration and starts. The realtime connection lives in StudyRoomProvider, so
@@ -27,26 +29,37 @@ const LOBBY_ELEMENTS = [
 export default function StudyLobbyScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  // Scale text + cards proportionally to the device (1× on phones, ~1.1–1.7× on
+  // tablets by screen ratio) so nothing renders tiny/clipped on larger screens.
+  const { scale, contentWidth } = useTabletScale();
+  const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('studylobby', LOBBY_ELEMENTS);
-  const { active, isHost, canStartSelf, myCode, roster, presentCodes, netStatus, roomId, start, startSelf, leaveRoom, setPreferredMinutes } = useStudyRoom();
+  const { active, isHost, canStartSelf, myCode, roster, presentCodes, netStatus, roomId, start, startSelf, leaveRoom, setMyPrefs } = useStudyRoom();
+  const { subjects } = useApp();
+  const activeSubjects = subjects.filter((s) => !s.archived).sort((a, b) => a.order - b.order);
 
-  // A length passed in from the Start Session screen — that choice carries over,
-  // so we use it and don't ask the player to pick again. Invite-flow joins
-  // arrive with no param and still see the picker.
+  // A length may be passed in from the Start Session screen; use it as the default
+  // but still show the picker here so this player can change it.
   const { minutes: minutesParam } = useLocalSearchParams<{ minutes?: string }>();
   const parsedPreset = Number(minutesParam);
   const presetMinutes = Number.isFinite(parsedPreset) && parsedPreset > 0 ? parsedPreset : null;
   const [minutes, setMinutes] = useState(presetMinutes ?? 30);
+  // This player's chosen topic (subject name), or null = not chosen yet.
+  const [topic, setTopic] = useState<string | null>(null);
 
-  // Everyone picks their own session length up front; remember this player's
-  // choice so their session runs for their chosen duration (not the host's).
-  const pickMinutes = (m: number) => {
-    setMinutes(m);
-    setPreferredMinutes(m);
+  // Everyone picks their own length + topic up front; broadcast the choice so every
+  // member's avatar shows it, and so this player's session runs with their picks.
+  const applyPrefs = (nextMinutes: number, nextTopic: string | null) => {
+    setMinutes(nextMinutes);
+    setTopic(nextTopic);
+    setMyPrefs(nextMinutes, nextTopic);
   };
+  const pickMinutes = (m: number) => applyPrefs(m, topic);
+  // Tapping the selected topic again clears it (back to "not chosen").
+  const pickTopic = (name: string) => applyPrefs(minutes, topic === name ? null : name);
   useEffect(() => {
-    setPreferredMinutes(minutes);
-    // Run once on mount so the default is recorded even if untouched.
+    // Run once on mount so the default length is recorded/broadcast even if untouched.
+    setMyPrefs(minutes, topic);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -77,13 +90,16 @@ export default function StudyLobbyScreen() {
             </Text>
           </View>
 
-          {/* Roster */}
+          {/* Roster — a row of circular avatars, each captioned with that member's
+              chosen length + topic (synced live from everyone's lobby picks). */}
           <View style={styles.roster}>
             {roster.map((e) => {
               const present = presentCodes.includes(e.code);
+              const minsLabel = e.minutes ? t('lobby.minShort', { n: e.minutes }) : null;
+              const pref = minsLabel && e.topic ? `${minsLabel} · ${e.topic}` : minsLabel ?? e.topic ?? '—';
               return (
-                <View key={e.code} style={styles.row}>
-                  <View style={styles.avatarWrap}>
+                <View key={e.code} style={styles.member}>
+                  <View style={styles.avatarCircle}>
                     {e.companionId !== undefined || e.skinId !== undefined ? (
                       <Image source={getCompanionImage(e.companionId, e.skinId)} style={[styles.avatarImg, bunAvatarNudge(e.companionId)]} contentFit="contain" />
                     ) : (
@@ -93,33 +109,45 @@ export default function StudyLobbyScreen() {
                     )}
                     <View style={[styles.dot, present ? styles.dotOn : styles.dotOff]} />
                   </View>
-                  <Text style={styles.name} numberOfLines={1}>
-                    {e.name}
-                    {e.isHost ? ' ' : ''}
-                    {e.code === myCode ? t('lobby.you') : ''}
+                  <Text style={styles.memberName} numberOfLines={1}>
+                    {e.name}{e.code === myCode ? ` ${t('lobby.you')}` : ''}
                   </Text>
+                  <Text style={styles.memberPref} numberOfLines={2}>{pref}</Text>
                 </View>
               );
             })}
           </View>
 
-          {/* Duration — everyone picks their own session length. Skipped when the
-              length was already chosen on the Start Session screen. */}
-          {presetMinutes == null && (
-            <>
-              <Text style={styles.label}>{t('lobby.sessionLength')}</Text>
-              <View style={styles.lenGrid}>
-                {SESSION_LENGTHS.map((opt) => (
-                  <Pressable
-                    key={opt.minutes}
-                    onPress={() => pickMinutes(opt.minutes)}
-                    style={[styles.lenCard, minutes === opt.minutes && styles.lenCardActive]}>
-                    <Text style={[styles.lenNum, minutes === opt.minutes && styles.lenNumActive]}>{opt.minutes}</Text>
-                    <Text style={styles.lenLabel}>{t('lobby.min')}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </>
+          {/* Session length — each player picks their own. */}
+          <Text style={styles.label}>{t('lobby.sessionLength')}</Text>
+          <View style={styles.lenGrid}>
+            {SESSION_LENGTHS.map((opt) => (
+              <Pressable
+                key={opt.minutes}
+                onPress={() => pickMinutes(opt.minutes)}
+                style={[styles.lenCard, minutes === opt.minutes && styles.lenCardActive]}>
+                <Text style={[styles.lenNum, minutes === opt.minutes && styles.lenNumActive]}>{opt.minutes}</Text>
+                <Text style={styles.lenLabel}>{t('lobby.min')}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {/* Topic — pick a subject to study; shows on your avatar. */}
+          <Text style={styles.label}>{t('lobby.topic')}</Text>
+          {activeSubjects.length === 0 ? (
+            <Text style={styles.hint}>{t('lobby.noSubjectsHint')}</Text>
+          ) : (
+            <View style={styles.topicRow}>
+              {activeSubjects.map((s) => (
+                <Pressable
+                  key={s.id}
+                  onPress={() => pickTopic(s.name)}
+                  style={[styles.topicChip, topic === s.name && styles.topicChipActive]}>
+                  {s.emoji ? <Text style={styles.topicEmoji}>{s.emoji}</Text> : null}
+                  <Text style={[styles.topicText, topic === s.name && styles.topicTextActive]} numberOfLines={1}>{s.name}</Text>
+                </Pressable>
+              ))}
+            </View>
           )}
         </ScrollView>
 
@@ -133,7 +161,7 @@ export default function StudyLobbyScreen() {
               </SoundPressable>
               <SoundPressable
                 sound="confirm"
-                onPress={() => start({ durationMinutes: minutes, subjectName: t('lobby.studyRoomName'), taskId: null, taskTitle: null })}
+                onPress={() => start({ durationMinutes: minutes, subjectName: topic, taskId: null, taskTitle: null })}
                 style={({ pressed }) => [styles.startBtn, tw('startBtn'), pressed && styles.pressed]}>
                 <Text style={styles.startText}>{t('lobby.startStudying')}</Text>
               </SoundPressable>
@@ -143,7 +171,7 @@ export default function StudyLobbyScreen() {
             // own session (their own clock + chosen length) whenever ready.
             <SoundPressable
               sound="confirm"
-              onPress={() => startSelf({ durationMinutes: minutes, subjectName: t('lobby.studyRoomName'), taskId: null, taskTitle: null })}
+              onPress={() => startSelf({ durationMinutes: minutes, subjectName: topic, taskId: null, taskTitle: null })}
               style={({ pressed }) => [styles.startBtn, tw('startBtn'), pressed && styles.pressed]}>
               <Text style={styles.startText}>{t('lobby.startStudying')}</Text>
             </SoundPressable>
@@ -160,33 +188,45 @@ export default function StudyLobbyScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// Sizes are multiplied by `s` (the tablet scale) so text + cards grow proportionally
+// with the screen and stay legible/visible on any device; `s` is 1 on phones (no-op).
+const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   container: { flex: 1, backgroundColor: BakeryColors.frosting },
-  safe: { flex: 1, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center', paddingHorizontal: Spacing.four },
-  scroll: { paddingTop: Spacing.three, gap: Spacing.three, paddingBottom: Spacing.three },
-  header: { gap: 4, alignItems: 'center' },
-  title: { fontSize: 24, fontWeight: '900', color: BakeryColors.cocoaDark },
-  subtitle: { fontSize: 13, color: BakeryColors.mocha },
-  roster: { gap: Spacing.two },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    backgroundColor: BakeryColors.glass,
-    borderRadius: BakeryRadii.card,
-    borderWidth: 1.5,
-    borderColor: BakeryColors.shortbread,
-    padding: Spacing.two,
+  safe: { flex: 1, width: '100%', maxWidth: contentWidth, alignSelf: 'center', paddingHorizontal: Spacing.four },
+  scroll: { paddingTop: Spacing.three, gap: Spacing.three * s, paddingBottom: Spacing.three },
+  header: { gap: 4 * s, alignItems: 'center' },
+  title: { fontSize: 24 * s, fontWeight: '900', color: BakeryColors.cocoaDark },
+  subtitle: { fontSize: 13 * s, color: BakeryColors.mocha },
+  roster: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: Spacing.three * s, paddingVertical: Spacing.two },
+  member: { alignItems: 'center', width: 96 * s, gap: 3 * s },
+  // The cream ring is just a backing "seat" — it must NOT clip the companion art
+  // (no overflow:hidden), so the full bunny/figure shows and isn't cut at the edges.
+  avatarCircle: {
+    width: 66 * s, height: 66 * s, borderRadius: 33 * s,
+    backgroundColor: BakeryColors.cream,
+    borderWidth: 2, borderColor: BakeryColors.shortbread,
+    alignItems: 'center', justifyContent: 'center',
   },
-  avatarWrap: { width: 44, height: 44 },
-  avatarImg: { width: 44, height: 44, borderRadius: 22, backgroundColor: BakeryColors.cream },
-  avatarFallback: { width: 44, height: 44, borderRadius: 22, backgroundColor: BakeryColors.shortbread, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 18, fontWeight: '900', color: BakeryColors.cocoaDark },
-  dot: { position: 'absolute', right: -1, bottom: -1, width: 13, height: 13, borderRadius: 7, borderWidth: 2, borderColor: BakeryColors.frosting },
+  avatarImg: { width: 66 * s, height: 66 * s },
+  avatarFallback: { width: 66 * s, height: 66 * s, backgroundColor: BakeryColors.shortbread, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 24 * s, fontWeight: '900', color: BakeryColors.cocoaDark },
+  dot: { position: 'absolute', right: 3 * s, bottom: 3 * s, width: 14 * s, height: 14 * s, borderRadius: 7 * s, borderWidth: 2, borderColor: BakeryColors.frosting },
   dotOn: { backgroundColor: '#5BC47B' },
   dotOff: { backgroundColor: BakeryColors.latte },
-  name: { flex: 1, fontSize: 15, fontWeight: '800', color: BakeryColors.cocoaDark },
-  label: { fontSize: 14, fontWeight: '800', color: BakeryColors.cocoaDark },
+  memberName: { fontSize: 13 * s, fontWeight: '800', color: BakeryColors.cocoaDark, maxWidth: 96 * s, textAlign: 'center' },
+  memberPref: { fontSize: 11 * s, fontWeight: '700', color: BakeryColors.mocha, maxWidth: 96 * s, textAlign: 'center' },
+  label: { fontSize: 14 * s, fontWeight: '800', color: BakeryColors.cocoaDark },
+  topicRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  topicChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5 * s,
+    paddingHorizontal: Spacing.three * s, paddingVertical: 9 * s,
+    borderRadius: BakeryRadii.pill, borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread, backgroundColor: BakeryColors.glass,
+  },
+  topicChipActive: { borderColor: '#F7A7B8', backgroundColor: BakeryColors.rose },
+  topicEmoji: { fontSize: 14 * s },
+  topicText: { fontSize: 13 * s, fontWeight: '700', color: BakeryColors.mocha },
+  topicTextActive: { color: BakeryColors.cocoaDark },
   lenGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   lenCard: {
     width: '47%',
@@ -194,24 +234,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'center',
-    gap: 4,
-    paddingVertical: Spacing.three,
+    gap: 4 * s,
+    paddingVertical: Spacing.three * s,
     borderRadius: BakeryRadii.card,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
     backgroundColor: BakeryColors.glass,
   },
-  lenCardActive: { borderColor: BakeryColors.honey, backgroundColor: BakeryColors.cream },
-  lenNum: { fontSize: 22, fontWeight: '900', color: BakeryColors.mocha },
+  lenCardActive: { borderColor: '#F7A7B8', backgroundColor: BakeryColors.rose },
+  lenNum: { fontSize: 22 * s, fontWeight: '900', color: BakeryColors.mocha },
   lenNumActive: { color: BakeryColors.cocoaDark },
-  lenLabel: { fontSize: 12, color: BakeryColors.mocha },
-  hint: { fontSize: 12, color: BakeryColors.mocha, textAlign: 'center' },
+  lenLabel: { fontSize: 12 * s, color: BakeryColors.mocha },
+  hint: { fontSize: 12 * s, color: BakeryColors.mocha, textAlign: 'center' },
   actions: { gap: Spacing.two, paddingVertical: Spacing.two },
-  inviteBtn: { paddingVertical: 11, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: BakeryColors.glass, borderWidth: 1.5, borderColor: BakeryColors.shortbread },
-  inviteText: { fontSize: 15, fontWeight: '800', color: BakeryColors.mocha },
-  startBtn: { paddingVertical: 14, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: BakeryColors.honey },
-  startText: { fontSize: 16, fontWeight: '900', color: BakeryColors.cocoaDark },
+  inviteBtn: { paddingVertical: 11 * s, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: BakeryColors.glass, borderWidth: 1.5, borderColor: BakeryColors.shortbread },
+  inviteText: { fontSize: 15 * s, fontWeight: '800', color: BakeryColors.mocha },
+  startBtn: { paddingVertical: 14 * s, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: '#F7A7B8' },
+  startText: { fontSize: 16 * s, fontWeight: '900', color: BakeryColors.cocoaDark },
   cancel: { alignItems: 'center', paddingVertical: Spacing.one },
-  cancelText: { fontSize: 13, fontWeight: '700', color: BakeryColors.mocha },
+  cancelText: { fontSize: 13 * s, fontWeight: '700', color: BakeryColors.mocha },
   pressed: { opacity: 0.85 },
 });

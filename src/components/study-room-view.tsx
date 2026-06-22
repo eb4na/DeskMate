@@ -262,6 +262,15 @@ export function StudyRoomView({
   const [mpSubjectPicked, setMpSubjectPicked] = useState(false);
   // Radio: pick a bought sound to play while studying.
   const [soundOpen, setSoundOpen] = useState(false);
+  // "Someone left" takeover: when a fellow studier leaves mid-session, a full-screen
+  // card lists everyone who's still here. `null` = not shown; a name = that friend
+  // left; '' = a generic "someone left" (multiple, or name unknown). The timer keeps
+  // running underneath — they're still studying — until they tap Continue.
+  const [leftNotice, setLeftNotice] = useState<string | null>(null);
+  // Previous snapshot of the OTHER participants' codes (≠ me) + a code→name lookup,
+  // so a leaver's name survives after they're already out of the roster.
+  const prevOtherCodesRef = useRef<string[] | null>(null);
+  const nameByCodeRef = useRef<Record<string, string>>({});
 
   // Poll Spotify's now-playing so the radio vinyl shows the live cover even with the
   // popup closed; a faster cadence while the popup is open keeps controls/scrub fresh.
@@ -382,6 +391,47 @@ export function StudyRoomView({
   // Rooms cap at STUDY_ROOM_MAX — hide the invite button once full.
   const roomFull = participants.length >= STUDY_ROOM_MAX;
 
+  // ── Tablet desk + character geometry ───────────────────────────────────────
+  // One shared anchor — `deskTopT`, the desk panel's top edge measured up from the
+  // screen bottom — so the desk surface, its front-edge line, the characters and
+  // the books all derive from the SAME point and can't drift apart between iPad
+  // sizes. Calibrated to the 11" Pro reference and written as pure winH/winW ratios,
+  // so a 13" iPad is an exact scale-up instead of a fixed-offset mismatch. (The
+  // desk PNGs are full-bleed textures rendered with `cover`, so the panel's visible
+  // top == the layout box top == deskTopT — that's why the line locks to it.)
+  // Phone keeps its own separate style constants; these only feed `isTablet` styles.
+  const deskTopT = winH * 0.416; // desk panel top edge / front-edge line
+  const deskBottomT = -winH * 0.084; // panel bleeds below the screen
+  // The study session renders full-width (the safeArea cap is dropped while a session
+  // is active — see index.tsx), so the root already spans the screen. The desk only
+  // needs to bleed a little past the root's horizontal padding so it always covers the
+  // corners on any device.
+  const deskSideT = -(Spacing.three + winW * 0.05); // panel bleeds past the screen sides
+  const soloCharSize = Math.round(winW * 0.54);
+  const soloBookSizeT = Math.round(winW * 0.21);
+  // Characters sit BEHIND the desk with their lower body tucked under the lip: a
+  // fixed fraction of the square hides below the line (the same proportion the
+  // phone layout uses), so head + torso always clear the desk on any iPad.
+  const partyCharBottomT = deskTopT - 0.44 * partyCharSize;
+  const soloCharBottomT = deskTopT - 0.42 * soloCharSize;
+
+  // Solo character content, reused by the phone (in-scene) and tablet (absolute,
+  // desk-anchored) layouts so only one ever mounts.
+  const soloCharContent = hanjiIsAnimated(activeCompanionId, companionSkins?.[activeCompanionId ?? ''])
+    ? <HanjiFigure style={styles.characterFill} />
+    : <Image source={bigCharacter} style={styles.characterFill} contentFit="contain" />;
+  const soloCharTransform = { transform: [{ translateY: charTranslateY }, { scaleX: charScaleX }, { scaleY: charScaleY }] };
+
+  // Face-center offset for ANY companion id (mirrors soloBookOffset, used to center
+  // each multiplayer book under its character's face). Ids arrive as `shop:<itemId>`,
+  // `starter:girl`/`dude`, '' (Bun) or a custom slot id.
+  const bookOffsetFor = (companionId: string | null | undefined) => {
+    if (isHanjiActiveId(companionId)) return SOLO_BOOK_OFFSET.hanji;
+    if (companionId?.startsWith('shop:')) return SOLO_BOOK_OFFSET[companionId.slice(5)] ?? DEFAULT_SOLO_BOOK_OFFSET;
+    if (companionId === 'starter:girl' || companionId === 'starter:dude' || !companionId) return SOLO_BOOK_OFFSET.bun;
+    return DEFAULT_SOLO_BOOK_OFFSET;
+  };
+
   // Resolve a participant's live status (studying / break / idle).
   const participantStatus = (code: string | undefined): StudyStatus => {
     const present = code === friendCode || room.presentCodes.includes(code ?? '');
@@ -424,8 +474,9 @@ export function StudyRoomView({
     }
   };
 
-  // Multiplayer: prompt each player to pick their own subject at the start.
-  const needStartSubject = !isSolo && room.begun && !mpSubjectPicked && !!activeSession;
+  // Multiplayer: prompt each player to pick their own subject at the start — unless
+  // they already chose a topic in the lobby (then activeSession.subjectName is set).
+  const needStartSubject = !isSolo && room.begun && !mpSubjectPicked && !!activeSession && !activeSession.subjectName;
   const pickStartSubject = (subjectName: string | null) => {
     setMpSubjectPicked(true);
     if (activeSession) {
@@ -478,6 +529,28 @@ export function StudyRoomView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mpFinished, activeSession?.id]);
+
+  // Detect when a fellow studier leaves the room mid-session and surface the
+  // "still studying together" takeover. Works for host AND guest: the host removes
+  // the leaver + rebroadcasts the roster, so every client sees `room.roster` shrink.
+  useEffect(() => {
+    // Keep a code→name lookup fresh so a leaver's name survives their removal.
+    for (const p of room.roster) nameByCodeRef.current[p.code] = p.name;
+    // Only watch during a live synced session — never on the lobby, the finish flow,
+    // or solo (and reset the snapshot so re-entering a session starts clean).
+    if (!(room.active && room.begun && !isSolo && !mpFinished)) {
+      prevOtherCodesRef.current = null;
+      return;
+    }
+    const otherCodes = room.roster.filter((p) => p.code !== friendCode).map((p) => p.code);
+    const prev = prevOtherCodesRef.current;
+    prevOtherCodesRef.current = otherCodes; // advance the snapshot this same tick (idempotent)
+    if (prev === null) return; // first run after the session began — nothing to diff yet
+    const gone = prev.filter((c) => !otherCodes.includes(c));
+    if (gone.length === 0) return;
+    const goneNames = gone.map((c) => nameByCodeRef.current[c]).filter(Boolean);
+    setLeftNotice(gone.length === 1 && goneNames[0] ? goneNames[0] : '');
+  }, [room.roster, room.active, room.begun, isSolo, mpFinished, friendCode]);
 
   const restartWithSubject = (subjectName: string | null) => {
     if (!activeSession) return;
@@ -577,22 +650,12 @@ export function StudyRoomView({
           shows everyone's character — evenly spaced, sized by headcount, each
           with a live status dot (or  on break). */}
       <View style={styles.scene}>
-        {soloScene && (
+        {soloScene && !isTablet && (
           // Transform lives on an Animated.View (like Home) — applying it to the
           // expo-image directly stutters because the study view re-renders every
           // second (the countdown), which re-attaches the native animation nodes.
-          <Animated.View
-            style={[
-              styles.character,
-              styles.characterSolo,
-              isTablet && styles.characterSoloTablet,
-              { transform: [{ translateY: charTranslateY }, { scaleX: charScaleX }, { scaleY: charScaleY }] },
-            ]}>
-            {hanjiIsAnimated(activeCompanionId, companionSkins?.[activeCompanionId ?? '']) ? (
-              <HanjiFigure style={styles.characterFill} />
-            ) : (
-              <Image source={bigCharacter} style={styles.characterFill} contentFit="contain" />
-            )}
+          <Animated.View style={[styles.character, styles.characterSolo, soloCharTransform]}>
+            {soloCharContent}
           </Animated.View>
         )}
         {isSolo && onBreak && (
@@ -604,11 +667,23 @@ export function StudyRoomView({
         )}
       </View>
 
+      {/* Tablet solo character — an absolute layer anchored to the desk top (the
+          SAME coordinate origin as the desk), so it always sits ON the desk no
+          matter the iPad size. Drawn before the desk Image so the lower body tucks
+          behind the table. Phone uses the in-scene flex layout above. */}
+      {soloScene && isTablet && (
+        <Animated.View
+          pointerEvents="none"
+          style={[{ position: 'absolute', left: 0, right: 0, bottom: soloCharBottomT, alignItems: 'center', zIndex: 1 }, soloCharTransform]}>
+          <View style={{ width: soloCharSize, height: soloCharSize }}>{soloCharContent}</View>
+        </Animated.View>
+      )}
+
       {/* Multiplayer characters — an absolute row lifted so heads clear the desk
           edge. Sits behind the desk (same zIndex, drawn before) so the lower body
           tucks behind the table, like the solo character. */}
       {!soloScene && (
-        <View style={styles.partyLayer} pointerEvents="none">
+        <View style={[styles.partyLayer, isTablet && { bottom: partyCharBottomT }]} pointerEvents="none">
           {participants.slice(0, STUDY_ROOM_MAX).map((p) => {
             const img = p.code === friendCode ? bigCharacter : getCompanionImage(p.companionId, p.skinId);
             const pIsHanji = p.code === friendCode
@@ -636,32 +711,69 @@ export function StudyRoomView({
 
       {/* Desk surface — a full-width layer along the bottom. The character sits
           behind it; the book, controls and end-session button lie ON it. */}
-      <Image source={equippedDeskImage} style={[styles.studyDesk, isTablet && styles.studyDeskTablet, deskRoom?.deskTint ? { backgroundColor: deskRoom.deskTint } : null, tw('desk')]} contentFit={deskRoom?.deskFit ?? 'cover'} pointerEvents="none" />
-      <View style={[styles.deskEdge, isTablet && { bottom: winH * 0.43 - 100 }]} pointerEvents="none" />
+      <Image source={equippedDeskImage} style={[styles.studyDesk, isTablet && { left: deskSideT, right: deskSideT, bottom: deskBottomT, height: deskTopT - deskBottomT }, deskRoom?.deskTint ? { backgroundColor: deskRoom.deskTint } : null, tw('desk')]} contentFit={deskRoom?.deskFit ?? 'cover'} pointerEvents="none" />
+      {/* The thin front-edge line sits at the desk's top edge AND carries the same
+          `tw('desk')` transform as the desk image, so the two can never separate —
+          re-dialing the desk knob moves the line with it. */}
+      <View style={[styles.deskEdge, isTablet && { left: deskSideT, right: deskSideT, bottom: deskTopT }, tw('desk')]} pointerEvents="none" />
       {soloScene ? (
-        <View
-          style={[
-            styles.bookOnDesk,
-            isTablet && styles.bookOnDeskTablet,
-            // Sit dead-center on screen — no per-character horizontal nudge. (Only
-            // the vertical dy is applied; dx is intentionally dropped so the book
-            // reads as centered rather than shifted under each face.)
-            { transform: [{ translateY: SOLO_BOOK_CANVAS * soloBookOffset.dy }] },
-          ]}
-          pointerEvents="none">
-          <StudyBook active={!onBreak} size={isTablet ? 176 : 118} />
-        </View>
+        isTablet ? (
+          // HARD CAP: the book can never cross the desk's top edge. This clip box
+          // spans the desk region only (bottom of root up to the desk line at
+          // deskTopT) with overflow:hidden, so any pixels above the line are cut.
+          // The book is then placed to rest just below the line, on the desk in
+          // front of the character — the clip is the guarantee, the `bottom` math
+          // only positions it. (StudyBook scales its 120×84 art around its centre
+          // from a flex-start wrap, so the visual top sits 1.05·size − 42 above the
+          // wrap's bottom; we offset for that, then drop it winH·0.012 below the line.)
+          <View
+            style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: deskTopT, overflow: 'hidden', zIndex: 2 }}
+            pointerEvents="none">
+            <View
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                bottom: deskTopT - 1.05 * soloBookSizeT + 42 - winH * 0.012,
+                alignItems: 'center',
+                // Center the book under the bunny's FACE, not the art's canvas center:
+                // each companion's face sits dx off-center in its square (measured in
+                // SOLO_BOOK_OFFSET), scaled here to the rendered character size.
+                transform: [{ translateX: soloCharSize * soloBookOffset.dx }],
+              }}>
+              <StudyBook active={!onBreak} size={soloBookSizeT} />
+            </View>
+          </View>
+        ) : (
+          <View
+            style={[
+              styles.bookOnDesk,
+              // Sit dead-center on screen — no per-character horizontal nudge. (Only
+              // the vertical dy is applied; dx is intentionally dropped so the book
+              // reads as centered rather than shifted under each face.)
+              { transform: [{ translateY: SOLO_BOOK_CANVAS * soloBookOffset.dy }] },
+            ]}
+            pointerEvents="none">
+            <StudyBook active={!onBreak} size={118} />
+          </View>
+        )
       ) : (
         // One book per character. Book and character share identical columns (same
         // row layout + partyCharSize slots), so the book sits dead-centre under each
         // character. Like the solo scene, the per-character face dx is intentionally
         // dropped — it read as off-to-the-side rather than "right in front".
-        <View style={styles.partyBookRow} pointerEvents="none">
-          {participants.slice(0, STUDY_ROOM_MAX).map((p) => (
-            <View key={p.code} style={[styles.partyBookSlot, { width: partyCharSize }]}>
-              <StudyBook active={participantStatus(p.code) !== 'break'} size={partyBookSize} />
-            </View>
-          ))}
+        <View style={[styles.partyBookRow, isTablet && { bottom: partyCharBottomT - 4 }]} pointerEvents="none">
+          {participants.slice(0, STUDY_ROOM_MAX).map((p) => {
+            // Center each book under its own character's face (see bookOffsetFor).
+            const off = p.code === friendCode ? soloBookOffset : bookOffsetFor(p.companionId);
+            return (
+              <View
+                key={p.code}
+                style={[styles.partyBookSlot, { width: partyCharSize }, isTablet && { transform: [{ translateX: partyCharSize * off.dx }] }]}>
+                <StudyBook active={participantStatus(p.code) !== 'break'} size={partyBookSize} />
+              </View>
+            );
+          })}
         </View>
       )}
 
@@ -738,6 +850,40 @@ export function StudyRoomView({
         </View>
       ))}
 
+      {/* "Someone left" takeover — a full-screen card listing everyone who's still
+          here. Sits above the live controls (same layer as the finish overlay) but
+          below it in priority: suppressed once the session itself finishes. The timer
+          keeps running underneath; Continue just dismisses back to the session. */}
+      {leftNotice !== null && !mpFinished && (
+        <View style={styles.finishOverlay}>
+          <View style={styles.finishCard}>
+            <Text style={styles.finishTitle}>
+              {leftNotice ? t('studyRoom.friendLeft', { name: leftNotice }) : t('studyRoom.someoneLeft')}
+            </Text>
+            <Text style={styles.leftSubtitle}>
+              {participants.length <= 1 ? t('studyRoom.nowStudyingSolo') : t('studyRoom.stillStudying')}
+            </Text>
+            <View style={styles.leftFacesRow}>
+              {participants.slice(0, STUDY_ROOM_MAX).map((p) => {
+                const img = p.code === friendCode ? bigCharacter : getCompanionImage(p.companionId, p.skinId);
+                const plusRing = isPlusFrame(p.avatarFrame) ? { borderWidth: 2.5, borderColor: '#D4A847' } : null;
+                return (
+                  <View key={p.code} style={styles.leftFace}>
+                    <View style={[styles.leftFaceCircle, plusRing]}>
+                      <Image source={img} style={styles.leftFaceImg} contentFit="cover" contentPosition="top" />
+                    </View>
+                    <Text style={styles.leftFaceName} numberOfLines={1}>{p.code === friendCode ? t('studyRoom.you') : p.name}</Text>
+                  </View>
+                );
+              })}
+            </View>
+            <SoundPressable sound="confirm" onPress={() => setLeftNotice(null)} style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
+              <Text style={styles.finishBtnText}>{t('sessionComplete.continue')}</Text>
+            </SoundPressable>
+          </View>
+        </View>
+      )}
+
       {/* Study-again step 1: pick a fresh session length. */}
       {durationPickerOpen && (
         <View style={styles.finishOverlay}>
@@ -805,8 +951,6 @@ const styles = StyleSheet.create({
   characterFill: { width: '100%', height: '100%' },
   // Solo: match the Home-screen companion size (300×300) so it feels prominent.
   characterSolo: { width: 300, height: 300, marginBottom: 40 },
-  // Tablet: much bigger character, lifted more so it still sits on the desk.
-  characterSoloTablet: { width: 450, height: 450, marginBottom: 140 },
   // Multiplayer party — characters evenly spaced (equal gaps incl. the ends),
   // lifted up so heads clear the desk edge (240) and tuck behind the table.
   partyLayer: {
@@ -828,17 +972,11 @@ const styles = StyleSheet.create({
   // (lifted up via characterSolo.marginBottom) and the book/buttons sit on top.
   // Desk surface layer along the bottom (behind character, under book/controls).
   studyDesk: { position: 'absolute', left: -Spacing.three, right: -Spacing.three, bottom: -60, height: 300, zIndex: 1 },
-  // Tablet: taller desk surface that rises higher so the flat desk meets the room's
-  // own desk/furniture line instead of cutting across it on the sides. (Dial via the
-  // 🎛 desk knob in a live session if the seam needs nudging per room.)
-  studyDeskTablet: { height: '50%', left: -60, right: -60, bottom: -100 },
   deskEdge: { position: 'absolute', left: -Spacing.three, right: -Spacing.three, bottom: 240, height: 1.5, backgroundColor: 'rgba(120, 90, 70, 0.22)', zIndex: 1 },
   // Base position spans root's padded content box (same axis as the character
   // canvas) for a geometric center; a per-character transform (SOLO_BOOK_OFFSET)
   // then nudges it to sit right in front of each companion's visual center.
   bookOnDesk: { position: 'absolute', bottom: 168, left: 0, right: 0, alignItems: 'center', zIndex: 2 },
-  // Tablet: book sits in front of the bigger/lifted character (lowered a bit).
-  bookOnDeskTablet: { bottom: 280 },
   breakBadge: { position: 'absolute', top: 6, zIndex: 4, backgroundColor: 'rgba(78,53,40,0.85)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
   breakBadgeText: { color: '#fff', fontSize: 12, fontWeight: '800' },
 
@@ -920,6 +1058,13 @@ const styles = StyleSheet.create({
   finishBtnText: { fontSize: 15, fontWeight: '900', color: '#fff' },
   finishBtnGhost: { paddingVertical: 11, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: BakeryColors.cream, borderWidth: 1.5, borderColor: BakeryColors.shortbread },
   finishBtnGhostText: { fontSize: 14, fontWeight: '800', color: BakeryColors.mocha },
+  // "Someone left" takeover card
+  leftSubtitle: { fontSize: 14, fontWeight: '700', color: BakeryColors.mocha, textAlign: 'center', marginTop: -Spacing.one },
+  leftFacesRow: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', gap: Spacing.three, marginVertical: Spacing.one },
+  leftFace: { alignItems: 'center', width: 76, gap: 5 },
+  leftFaceCircle: { width: 64, height: 64, borderRadius: 999, overflow: 'hidden', backgroundColor: BakeryColors.cream, borderWidth: 2, borderColor: BakeryColors.shortbread },
+  leftFaceImg: { width: '116%', height: '116%', marginLeft: '-8%' },
+  leftFaceName: { fontSize: 12, fontWeight: '800', color: BakeryColors.cocoaDark, textAlign: 'center' },
   endLinkText: { fontSize: 12, fontWeight: '700', color: BakeryColors.mocha, textDecorationLine: 'underline' },
   pressed: { opacity: 0.85 },
 });

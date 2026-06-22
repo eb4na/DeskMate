@@ -1,4 +1,5 @@
-import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import i18n, { detectDeviceLanguage } from '@/i18n';
 import { DAILY_EARN_CAP, MAX_FRIENDS, STATIC_SUBJECTS } from '@/constants/placeholder-data';
 import { SHOP_ITEMS, type ShopCategory } from '@/constants/shop-data';
@@ -8,6 +9,7 @@ import { getAppStateScope, loadScopedAppState, saveScopedAppState, isGuestUpgrad
 import { probeCloudState, pushCloudState, pushCloudStateDebounced } from '@/lib/cloud-sync';
 import { getEffectiveBunSkinId, getEffectiveCompanionSkins } from '@/lib/companion-utils';
 import { maskProfanity } from '@/lib/profanity';
+import { syncStreakReminders } from '@/lib/notifications';
 import { computeTaskRollover } from '@/lib/task-recurrence';
 import { uploadProfile } from '@/lib/profile-sync';
 import { HANJI_COMPANION_ID, recipeBadgeKey, badgesFromMadeFoods, hasAllCharacterBadges, RECIPE_IDS } from '@/constants/recipes';
@@ -1047,6 +1049,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
       pushCloudStateDebounced(appStateScope.userId, stamped as Record<string, unknown>);
     }
   }, [appStateScope, loaded, loadedScopeKey, s]);
+
+  // Streak-protection nudges: if the player doesn't OPEN the app on a given day, send
+  // up to 2 spaced-out reminders that day to come back before their streak resets at
+  // midnight. Resynced on launch AND every foreground — each open reschedules for the
+  // next few days only (never today, since opening = they've shown up), so a nudge
+  // only ever fires on a day with no app open. Gated on having a streak to protect +
+  // finished onboarding; read through a ref so foregrounds use the latest state/lang
+  // without re-subscribing. Permission is never *requested* here (see notifications.ts).
+  const streakNudgeEnabledRef = useRef(false);
+  streakNudgeEnabledRef.current =
+    loaded && (s.legalAccepted ?? false) && (s.starterChosen ?? false) && s.streak.currentStreak > 0;
+  useEffect(() => {
+    const sync = () =>
+      void syncStreakReminders({
+        enabled: streakNudgeEnabledRef.current,
+        title: i18n.t('notifications.streakTitle'),
+        afternoonBody: i18n.t('notifications.streakAfternoonBody'),
+        eveningBody: i18n.t('notifications.streakEveningBody'),
+      });
+    if (loaded) sync();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') sync();
+    });
+    return () => sub.remove();
+  }, [loaded]);
 
   // Free users: past-due exam countdowns auto-erase once the day is over, freeing
   // their slots. Plus users keep every countdown (even when "Past due"). Runs on

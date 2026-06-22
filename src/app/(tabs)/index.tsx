@@ -920,7 +920,11 @@ export default function HomeScreen() {
       {/* Soft sunlight shining from the top — kept gentle so the room stays clear */}
       <Image source={SUNLIGHT} style={styles.sunlight} contentFit="cover" pointerEvents="none" />
 
-      <SafeAreaView style={styles.safeArea}>
+      {/* The study session is a full-bleed immersive scene (desk + room fill the
+          screen), so it must NOT sit inside the 800px centered content column — on a
+          wide iPad that column left the desk unable to reach the edges. Drop the cap
+          while a session is active; the normal home content keeps it. */}
+      <SafeAreaView style={[styles.safeArea, activeSession && { maxWidth: 9999 }]}>
         <View style={styles.scene}>
 
           {activeSession ? (

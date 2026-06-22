@@ -810,7 +810,9 @@
     "noFriendsYet": "まだフレンドがいません",
     "noFriendsHint": "フレンド画面でフレンドを追加してから、ここで招待しましょう。",
     "onlineNow": "オンライン",
+    "offline": "オフライン",
     "invited": "招待済み ✓",
+    "alreadyIn": "参加済み",
     "invite": "招待",
     "backToLobby": "ロビーに戻る",
     "playerName": "プレイヤー {{code}}"
@@ -824,6 +826,9 @@
     "you": "（あなた）",
     "sessionLength": "セッションの長さ",
     "min": "分",
+    "topic": "トピック",
+    "minShort": "{{n}}分",
+    "noSubjectsHint": "「タスク」で科目を追加するとトピックを選べます。",
     "hostPicks": "ホストがセッションの長さを選んで開始します。",
     "inviteFriend": "＋ フレンドを招待",
     "startStudying": "勉強を始める",
@@ -1058,7 +1063,11 @@
     "minutesOption": "{{count}}分",
     "exit": "退出",
     "defaultName": "あなた",
-    "justFocus": "ただ集中"
+    "justFocus": "ただ集中",
+    "friendLeft": "{{name}}が退出しました",
+    "someoneLeft": "誰かが退出しました",
+    "stillStudying": "まだ一緒に勉強中",
+    "nowStudyingSolo": "今はひとりで勉強中"
   },
   "plus": {
     "f_customTimers": "カスタムタイマー",
@@ -1505,6 +1514,11 @@
     "sendFailed": "送信できませんでした",
     "signInNeeded": "メッセージを送るにはサインインが必要です。",
     "friendNotReachable": "{{name}}にまだ接続できません。プロフィールを同期するため、相手が一度アプリを開く必要があります。"
+  },
+  "notifications": {
+    "streakTitle": "連続記録を絶やさないで！🔥",
+    "streakAfternoonBody": "今日はまだ勉強していません。アプリを開いて連続記録をキープしよう。",
+    "streakEveningBody": "ラストチャンス！日付が変わる前に勉強して連続記録を守ろう。🔥"
   },
   "birthdayReward": {
     "title": "お誕生日おめでとう！",

@@ -25,7 +25,7 @@ import { useApp } from '@/context/app-context';
 import type { Task } from '@/context/app-context';
 import i18n from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useIsTablet } from '@/hooks/use-device-class';
+import { useTabletScale } from '@/hooks/use-tablet-scale';
 
 
 const C = BakeryColors;
@@ -114,11 +114,15 @@ function CalendarMonthCard({
   setMonthOffset,
   onPickDate,
   cellW,
+  scale = 1,
 }: {
   monthOffset: number;
   setMonthOffset: (next: number) => void;
   onPickDate: (iso: string) => void;
   cellW: number;
+  // Proportional tablet scale (1 on phone). Scales the card chrome (arrows, month
+  // label, padding) so the whole calendar grows at the same ratio as the grid.
+  scale?: number;
 }) {
   const { tasks, subjects, dayNotes, examCountdowns } = useApp();
   const today = todayISO();
@@ -186,14 +190,14 @@ function CalendarMonthCard({
   while (cells.length % 7 !== 0) cells.push(null);
 
   return (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
+    <View style={[styles.card, scale !== 1 && { width: cellW * 7 + 2 * CARD_PAD * scale, alignSelf: 'center', padding: CARD_PAD * scale, gap: Spacing.two * scale }]}>
+      <View style={[styles.cardHeader, scale !== 1 && { width: cellW * 7, alignSelf: 'center' }]}>
         <Pressable onPress={() => goMonth(-1)} hitSlop={10} style={styles.arrowBtn}>
-          <Text style={styles.arrow}>‹</Text>
+          <Text style={[styles.arrow, scale !== 1 && { fontSize: 26 * scale }]}>‹</Text>
         </Pressable>
-        <Text style={styles.monthLabel}>{monthLabel}</Text>
+        <Text style={[styles.monthLabel, scale !== 1 && { fontSize: 16 * scale }]}>{monthLabel}</Text>
         <Pressable onPress={() => goMonth(1)} hitSlop={10} style={styles.arrowBtn}>
-          <Text style={styles.arrow}>›</Text>
+          <Text style={[styles.arrow, scale !== 1 && { fontSize: 26 * scale }]}>›</Text>
         </Pressable>
       </View>
 
@@ -233,7 +237,7 @@ function CalendarMonthCard({
                   <View style={[styles.examOtherDot, { backgroundColor: exam.otherColor }]} pointerEvents="none" />
                 )}
                 <Text style={[styles.dayNum, { fontSize: Math.round(cellW * 0.3) }, hasExam && styles.dayNumExam]}>{d}</Text>
-                {dayTasks.length > 0 && <Text style={styles.taskCount}>{dayTasks.length}</Text>}
+                {dayTasks.length > 0 && <Text style={[styles.taskCount, scale !== 1 && { fontSize: 9 * scale, lineHeight: 10 * scale }]}>{dayTasks.length}</Text>}
                 {hasNote && dayTasks.length === 0 && <View style={styles.noteDot} />}
               </View>
             </Pressable>
@@ -248,6 +252,10 @@ function CalendarMonthCard({
 // ─── compact horizontal slider of upcoming tasks ─────────────────────────────
 function TaskSlider() {
   const { tasks, subjects } = useApp();
+  // Scale the upcoming-task chips by the same proportional factor as the rest of
+  // the screen so this row matches the calendar/cards on every device.
+  const { isTablet, scale } = useTabletScale();
+  const s = isTablet ? scale : 1;
 
   const open = useMemo(
     () =>
@@ -260,20 +268,20 @@ function TaskSlider() {
   if (open.length === 0) return null;
 
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sliderRow}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.sliderRow, s !== 1 && { gap: Spacing.two * s }]}>
       {open.map((t) => {
-        const subject = t.subjectId ? subjects.find((s) => s.id === t.subjectId) : null;
+        const subject = t.subjectId ? subjects.find((sub) => sub.id === t.subjectId) : null;
         return (
           <Pressable
             key={t.id}
-            style={({ pressed }) => [styles.sliderCard, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.sliderCard, s !== 1 && { width: 150 * s, borderRadius: BakeryRadii.card * s, paddingHorizontal: Spacing.three * s, paddingVertical: Spacing.two * s, gap: 4 * s }, pressed && styles.pressed]}
             onPress={() => router.push({ pathname: '/add-task', params: { taskId: t.id } })}>
-            <Text style={styles.sliderTitle} numberOfLines={1}>
+            <Text style={[styles.sliderTitle, s !== 1 && { fontSize: 13 * s }]} numberOfLines={1}>
               {t.title}
             </Text>
-            <View style={styles.sliderMeta}>
-              {subject && <View style={[styles.subjectDot, { backgroundColor: subject.color }]} />}
-              <Text style={styles.sliderMetaText} numberOfLines={1}>
+            <View style={[styles.sliderMeta, s !== 1 && { gap: 5 * s }]}>
+              {subject && <View style={[styles.subjectDot, s !== 1 && { width: 6 * s, height: 6 * s, borderRadius: 3 * s }, { backgroundColor: subject.color }]} />}
+              <Text style={[styles.sliderMetaText, s !== 1 && { fontSize: 11 * s }]} numberOfLines={1}>
                 {t.dueDate ? shortWeekday(t.dueDate.slice(0, 10)) : 'No date'}
               </Text>
             </View>
@@ -413,25 +421,31 @@ export function TaskCalendar() {
   const [modalDate, setModalDate] = useState<string | null>(null);
   const [searchMode, setSearchMode] = useState(false);
 
-  // On tablet, let the calendar fill the device (cap raised) instead of the 800px
-  // phone cap — so the grid grows with the screen. Cell size drives the day-number
-  // and weekday fonts below (cellW * ratio), so everything stays proportional to the
-  // phone at any size (ratio-based).
-  const isTablet = useIsTablet();
-  const gridW = Math.min(width, isTablet ? 1200 : MaxContentWidth) - SCREEN_PAD * 2 - CARD_PAD * 2;
+  // Size the calendar to fill most of the centered content column on tablet (so it
+  // isn't a tiny narrow grid on a big screen), while staying smaller than the old
+  // edge-to-edge version that dwarfed the cards. CALENDAR_FILL is the fraction of
+  // the column the calendar card spans — dial it to taste. Cell size drives the
+  // day-number/weekday fonts below (cellW * ratio), so they follow automatically.
+  // Phones keep the responsive fill behaviour (scale === 1).
+  const { isTablet, scale, contentWidth } = useTabletScale();
+  const CALENDAR_FILL = 0.82; // share of the content column the calendar card spans
+  const colInner = Math.min(width, contentWidth) - 2 * (SCREEN_PAD * scale); // matches the screen's scaled side padding
+  const gridW = isTablet
+    ? colInner * CALENDAR_FILL - 2 * CARD_PAD * scale
+    : Math.min(width, MaxContentWidth) - SCREEN_PAD * 2 - CARD_PAD * 2;
   const cellW = Math.floor(gridW / 7);
 
   return (
     <View style={styles.root}>
       <View style={styles.titleRow}>
         <View style={styles.titleLeft}>
-          <Text style={styles.title}>{i18n.t('calendar.calendar')}</Text>
+          <Text style={[styles.title, isTablet && { fontSize: 18 * scale }]}>{i18n.t('calendar.calendar')}</Text>
         </View>
         <Pressable
-          style={({ pressed }) => [styles.searchBtn, searchMode && styles.searchBtnActive, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.searchBtn, isTablet && { width: 36 * scale, height: 36 * scale, borderRadius: 18 * scale }, searchMode && styles.searchBtnActive, pressed && styles.pressed]}
           onPress={() => setSearchMode((v) => !v)}
           hitSlop={8}>
-          <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+          <Svg width={18 * scale} height={18 * scale} viewBox="0 0 24 24" fill="none">
             <Circle cx="10.5" cy="10.5" r="6.5" stroke={searchMode ? '#FFFFFF' : C.cocoaDark} strokeWidth={2.4} />
             <Path d="M15.6 15.6 L20.5 20.5" stroke={searchMode ? '#FFFFFF' : C.cocoaDark} strokeWidth={2.4} strokeLinecap="round" />
           </Svg>
@@ -447,6 +461,7 @@ export function TaskCalendar() {
             setMonthOffset={setMonthOffset}
             onPickDate={setModalDate}
             cellW={cellW}
+            scale={isTablet ? scale : 1}
           />
           <TaskSlider />
         </>
