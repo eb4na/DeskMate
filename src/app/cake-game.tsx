@@ -1496,8 +1496,14 @@ function KitchenView({
         </View>
 
 
-        {/* Top-down kitchen map — tap empty space to walk there */}
-        <Pressable style={styles.kitchen} onLayout={onLayout} onPress={moveFree}>
+        {/* Top-down kitchen map — tap empty space to walk there.
+            Using View + responder instead of Pressable so child station
+            Pressables claim the touch first; only untouched floor fires moveFree. */}
+        <View
+          style={styles.kitchen}
+          onLayout={onLayout}
+          onStartShouldSetResponder={() => true}
+          onResponderRelease={moveFree}>
           {/* Score + Highest score down the left */}
           {/* box-only: the badges absorb taps so they don't leak to moveFree */}
           <View style={[styles.leftStats, { top: 0.23 * size.h }]} pointerEvents="box-only">
@@ -1895,7 +1901,7 @@ function KitchenView({
               </View>
             </View>
           )}
-        </Pressable>
+        </View>
 
         {/* Current orders along the bottom — your taken orders (your claims in party) */}
         <View style={styles.ordersBar} pointerEvents="box-none">
