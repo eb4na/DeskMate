@@ -20,9 +20,19 @@ const PAGE_H = 62;
 const CREAM_L = '#FFF6E9';
 const CREAM_R = '#FFFDF8';
 const COVER = '#C2925E';
-const COVER_DARK = '#A9774A';
 const SPINE = '#E7D2B4';
 const TEXT_LINE = '#E7D2B4';
+
+// Darken a hex color by `factor` (0–1) for the cover's outer border, so the book
+// frame reads as one tinted cover regardless of which character color is passed.
+function darken(hex: string, factor: number) {
+  const h = hex.replace('#', '');
+  const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);
+  const r = Math.round(((n >> 16) & 255) * factor);
+  const g = Math.round(((n >> 8) & 255) * factor);
+  const b = Math.round((n & 255) * factor);
+  return `rgb(${r}, ${g}, ${b})`;
+}
 
 function pageLines(x0: number, x1: number) {
   return [24, 32, 40, 48, 56, 64].map((y) => (
@@ -30,8 +40,9 @@ function pageLines(x0: number, x1: number) {
   ));
 }
 
-export function StudyBook({ active, size = 110 }: { active: boolean; size?: number }) {
+export function StudyBook({ active, size = 110, coverColor = COVER }: { active: boolean; size?: number; coverColor?: string }) {
   const spin = useRef(new Animated.Value(0)).current;
+  const coverDark = darken(coverColor, 0.86);
 
   useEffect(() => {
     if (!active) {
@@ -67,8 +78,8 @@ export function StudyBook({ active, size = 110 }: { active: boolean; size?: numb
         {/* Static open book */}
         <Svg width={W} height={H} style={StyleSheet.absoluteFill}>
           {/* Cover */}
-          <Rect x={5} y={9} width={110} height={72} rx={9} fill={COVER_DARK} />
-          <Rect x={6} y={10} width={108} height={68} rx={8} fill={COVER} />
+          <Rect x={5} y={9} width={110} height={72} rx={9} fill={coverDark} />
+          <Rect x={6} y={10} width={108} height={68} rx={8} fill={coverColor} />
           {/* Pages */}
           <Rect x={9} y={PAGE_TOP} width={PAGE_W} height={PAGE_H} rx={3} fill={CREAM_L} />
           <Rect x={PAGE_X} y={PAGE_TOP} width={PAGE_W} height={PAGE_H} rx={3} fill={CREAM_R} />

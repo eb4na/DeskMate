@@ -1,4 +1,23 @@
 {
+  "report": {
+    "report": "報告",
+    "block": "ブロック",
+    "title": "{{name}}を報告しますか？",
+    "subtitle": "このユーザーを報告する理由は？",
+    "reason_harassment": "嫌がらせ・いじめ",
+    "reason_spam": "スパム",
+    "reason_inappropriate": "不適切なコンテンツ",
+    "reason_cheating": "不正行為",
+    "reason_underage": "年齢制限未満のユーザー",
+    "reason_other": "その他",
+    "sentTitle": "報告しました",
+    "sentMsg": "ありがとうございます。運営が確認します。",
+    "blockTitle": "{{name}}をブロックしますか？",
+    "blockMsg": "フレンドから削除され、どこでも表示されなくなります。",
+    "blockConfirm": "ブロック",
+    "failedTitle": "送信できませんでした",
+    "failedMsg": "接続を確認してもう一度お試しください。"
+  },
   "tutorial": {
     "start_title": "勉強セッション",
     "start_body": "タイマーを始めてコインを獲得。",
@@ -250,6 +269,12 @@
   "session": {
     "awayTitle": "勉強に戻ろう！",
     "awayBody": "1分以内に戻らないと、勉強セッションが終了します。",
+    "awayBody_bun": "Bunが待ってたよ…心配しちゃう前に戻ってきてね。",
+    "awayBody_companion_bunny": "今すぐ戻ってきて〜、じゃないとbunnyが蹴っちゃうぞ。",
+    "awayBody_companion_cocoa": "戻って。まだ終わってないし、集中力が冷めてきてる。",
+    "awayBody_hanji": "そっと席を取っておいたよ…静けさが寂しくなる前に、戻ってきて。",
+    "awayBody_companion_tira": "勉強画面から離れたの？私が中退したのは大学で、このセッションじゃないよ。戻って。",
+    "awayBody_companion_honey": "戻ってきて…Mielが寂しがってるよ。",
     "focusTime": "集中時間",
     "breakTime": "休憩時間",
     "sessionComplete": "セッション完了！",
@@ -352,7 +377,7 @@
     "fullReport": "詳細レポート →",
     "best": "最高: {{count}}日",
     "streakFreeze": "ストリークフリーズ",
-    "freezesRemaining": "今月の残りフリーズ {{count}}/3",
+    "freezesRemaining": "{{count}}個所持しています",
     "useFreezeQ": "ストリークフリーズを使いますか？",
     "useFreezeMsg": "欠けた日を補い、今日勉強すればストリークを継続できます。フリーズ1回で空白をすべてカバーします。コインは付与されません。",
     "useFreeze": "フリーズを使う",
@@ -810,6 +835,8 @@
     "noFriendsYet": "まだフレンドがいません",
     "noFriendsHint": "フレンド画面でフレンドを追加してから、ここで招待しましょう。",
     "onlineNow": "オンライン",
+    "studying": "勉強中",
+    "onBreak": "休憩中",
     "offline": "オフライン",
     "invited": "招待済み ✓",
     "alreadyIn": "参加済み",
@@ -828,6 +855,8 @@
     "min": "分",
     "topic": "トピック",
     "minShort": "{{n}}分",
+    "customLength": "カスタムの長さ",
+    "hostPlusCustom": "ホストがPlus会員のためカスタムタイマーを使えます",
     "noSubjectsHint": "「タスク」で科目を追加するとトピックを選べます。",
     "hostPicks": "ホストがセッションの長さを選んで開始します。",
     "inviteFriend": "＋ フレンドを招待",
@@ -955,6 +984,7 @@
     "maybeLater": "後で",
     "matchedTitle": "おそろいコーデ完成！",
     "matchedMsg": "{{outfit}}に{{room}}のお部屋をセットしました！",
+    "matchedRoomSub": "{{outfit}}に合う{{room}}のお部屋（背景＋机）を手に入れましょう。",
     "roomLockedTitle": "おそろいのお部屋は未開放",
     "roomLockedMsg": "ショップで{{room}}のお部屋を手に入れて、{{outfit}}のコーデを完成させましょう。",
     "goToShop": "ショップへ",
@@ -1014,6 +1044,61 @@
     "game_study": "勉強ルーム",
     "you": "あなた"
   },
+  "studyBuddy": {
+    "ctaTitle": "勉強仲間を見つける",
+    "endedTitle": "仲間とのマッチが終了しました",
+    "endedGhost": "仲間が数日間反応しなかったため、マッチが終了しました。新しい仲間を探しますか？",
+    "endedExpired": "一緒の1週間が終わりました！新しい仲間を探しますか？",
+    "endedLeft": "仲間がマッチから退出しました。新しい仲間を探しますか？",
+    "ctaSub": "1週間の勉強パートナーとマッチング",
+    "title": "勉強仲間",
+    "subtitle": "1週間の励まし合いパートナー",
+    "introTitle": "仕組み",
+    "introBody": "同じ年代の学生と1週間マッチングします。毎日、相手が勉強したか確認したり、応援を送ったりできます。1週間が終わるとマッチは終了します。",
+    "safetyNote": "あなたと同じ年齢層の勉強パートナーとマッチングします。名前やチャットなど個人情報は共有されません。勉強の確認だけです。いつでも報告・退出できます。",
+    "findBuddy": "仲間を探す",
+    "lookingTitle": "仲間を探しています…",
+    "lookingBody": "同じ年代の学生が見つかり次第マッチングします。この画面を離れても探し続けます。",
+    "couldNotMatch": "仲間が見つかりませんでした",
+    "errorBirthday": "同じ年代の学生とマッチングするため、まず設定で誕生日を登録してください。",
+    "errorRestricted": "現在このアカウントでは勉強仲間を利用できません。",
+    "errorGeneric": "問題が発生しました。もう一度お試しください。",
+    "buddyFallback": "あなたの仲間",
+    "streakLabel": "{{count}}日連続",
+    "daysLeft": "残り{{count}}日",
+    "studiedYes": "{{name}}は今日勉強しました！",
+    "studiedNo": "{{name}}はまだ今日勉強していません",
+    "buddyCheered": "{{name}}から応援が届きました：{{cheer}}",
+    "sendCheer": "応援を送る",
+    "cheerSent": "応援を送りました！明日また送れます。",
+    "alreadyCheered": "応援済み",
+    "alreadyCheeredMsg": "今日はもう応援を送りました。また明日！",
+    "cheer": {
+      "keep_going": "その調子！",
+      "you_got_this": "あなたならできる！",
+      "dont_break_streak": "連続記録を絶やさないで！",
+      "proud_of_you": "誇りに思うよ！"
+    },
+    "becomeFriends": "友達になる",
+    "friendPending": "相手の承認を待っています",
+    "nowFriends": "友達になりました！",
+    "nowFriendsMsg": "お互いに友達になることを選びました。相手のコードは{{code}}です。",
+    "friendRequested": "送信しました！",
+    "friendRequestedMsg": "相手も「友達になる」を押すと、友達として追加されます。",
+    "report": "報告",
+    "reportQ": "この仲間を報告しますか？",
+    "reportMsg": "マッチは終了し、再びペアになることはありません。何が問題ですか？",
+    "reportInappropriate": "不適切",
+    "reportHarassment": "嫌がらせ",
+    "reportSpam": "スパム",
+    "reportThanks": "ご報告ありがとうございます",
+    "reportThanksMsg": "マッチを終了しました。担当チームが確認します。",
+    "leave": "退出",
+    "leaveQ": "この仲間から退出しますか？",
+    "leaveMsg": "お互いのマッチが終了します。いつでも新しい仲間を見つけられます。",
+    "guestGateTitle": "勉強仲間にはアカウントが必要です",
+    "guestGateBody": "無料アカウントを作成して勉強仲間とマッチングしましょう。"
+  },
   "subjectChart": {
     "day": "今日",
     "week": "週",
@@ -1042,6 +1127,7 @@
     "friend": "フレンド",
     "full": "満員",
     "cakeBaking": "作成中…",
+    "nowBaking": "ベイク中",
     "oneStudying": "1人が勉強中",
     "studyingTogether": "{{count}}人が一緒に勉強中",
     "you": "あなた",
@@ -1546,5 +1632,114 @@
   "recipeBadge": {
     "title": "バッジ獲得！",
     "got": "{{name}}のレシピバッジ！"
+  },
+    "quests": {
+    "title": "デイリーゴール",
+    "resetsMidnight": "深夜0時にリセット",
+    "cardSubtitle": "ボーナスコインのゴール",
+    "cardOpen": "開く",
+    "previewReady": "{{name}} — 受け取れます！",
+    "previewProgress": "{{name}} · {{current}}/{{goal}}",
+    "cardClaim": "受け取る",
+    "allClaimed": "今日はすべて受け取り済み",
+    "claim": "{{coins}} を受け取る",
+    "claimed": "受取済み",
+    "progress": "{{current}}/{{goal}}",
+    "items": {
+      "g_study_60": {
+        "title": "パワーアワー",
+        "desc": "今日1時間勉強する"
+      },
+      "g_sessions_2": {
+        "title": "ダブルアップ",
+        "desc": "勉強セッションを2回完了する"
+      },
+      "g_before_noon": {
+        "title": "早起き",
+        "desc": "正午までに25分勉強する"
+      },
+      "g_task_1": {
+        "title": "チェック",
+        "desc": "今日タスクを1つ完了する"
+      }
+    }
+  },
+  "achievements": {
+    "categories": {
+      "study": "勉強",
+      "tasks": "タスク",
+      "streak": "連続",
+      "social": "友だち",
+      "recipes": "ベーキング"
+    },
+    "title": "実績",
+    "subtitle": "目標を達成してコインを獲得",
+    "allClaimed": "すべての実績を受け取り済み",
+    "cardSubtitle": "達成報酬",
+    "readyCount": "{{count}} 件受け取り可能",
+    "claim": "{{coins}} を受け取る",
+    "claimed": "受取済み",
+    "items": {
+      "a_first": {
+        "title": "最初の一歩",
+        "desc": "初めての勉強セッションを完了する"
+      },
+      "a_sessions_25": {
+        "title": "本気モード",
+        "desc": "勉強セッションを25回完了する"
+      },
+      "a_sessions_100": {
+        "title": "百戦の学者",
+        "desc": "勉強セッションを100回完了する"
+      },
+      "a_hours_10": {
+        "title": "10時間達成",
+        "desc": "合計10時間勉強する"
+      },
+      "a_hours_50": {
+        "title": "50時間達成",
+        "desc": "合計50時間勉強する"
+      },
+      "a_hours_100": {
+        "title": "センチュリオン",
+        "desc": "合計100時間勉強する"
+      },
+      "a_tasks_10": {
+        "title": "タスク使い",
+        "desc": "タスクを10個完了する"
+      },
+      "a_tasks_50": {
+        "title": "生産性の達人",
+        "desc": "タスクを50個完了する"
+      },
+      "a_tasks_200": {
+        "title": "止まらない",
+        "desc": "タスクを200個完了する"
+      },
+      "a_streak_7": {
+        "title": "週間戦士",
+        "desc": "7日連続を達成する"
+      },
+      "a_streak_30": {
+        "title": "月間の偉業",
+        "desc": "30日連続を達成する"
+      },
+      "a_streak_100": {
+        "title": "百日連続",
+        "desc": "100日連続を達成する"
+      },
+      "a_friend_1": {
+        "title": "一緒だともっと",
+        "desc": "友だちと一度勉強する"
+      },
+      "a_friend_10": {
+        "title": "チーム目標",
+        "desc": "友だちと10回セッションを完了する"
+      },
+      "a_all_recipes": {
+        "title": "マスターベイカー",
+        "desc": "5つのレシピを作る"
+      }
+    }
   }
 }

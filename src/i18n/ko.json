@@ -1,4 +1,23 @@
 {
+  "report": {
+    "report": "신고",
+    "block": "차단",
+    "title": "{{name}} 님을 신고할까요?",
+    "subtitle": "이 사용자를 신고하는 이유는?",
+    "reason_harassment": "괴롭힘 또는 따돌림",
+    "reason_spam": "스팸",
+    "reason_inappropriate": "부적절한 콘텐츠",
+    "reason_cheating": "부정행위",
+    "reason_underage": "미성년 사용자",
+    "reason_other": "기타",
+    "sentTitle": "신고가 접수되었어요",
+    "sentMsg": "감사합니다. 운영팀이 검토할게요.",
+    "blockTitle": "{{name}} 님을 차단할까요?",
+    "blockMsg": "친구에서 삭제되고 어디서도 보이지 않게 됩니다.",
+    "blockConfirm": "차단",
+    "failedTitle": "보내지 못했어요",
+    "failedMsg": "연결을 확인하고 다시 시도해 주세요."
+  },
   "tutorial": {
     "start_title": "공부 세션",
     "start_body": "타이머를 시작해 코인을 얻으세요.",
@@ -250,6 +269,12 @@
   "session": {
     "awayTitle": "공부하러 돌아오세요!",
     "awayBody": "1분 안에 돌아오지 않으면 학습 세션이 중단돼요.",
+    "awayBody_bun": "Bun이 기다리고 있었어… Bun이 걱정하기 전에 돌아와.",
+    "awayBody_companion_bunny": "지금 당장 돌아와, 안 그러면 bunny가 발로 차 버린다~",
+    "awayBody_companion_cocoa": "돌아와. 아직 안 끝났고, 네 집중력이 식고 있어.",
+    "awayBody_hanji": "네 자리를 조용히 맡아 뒀어… 고요가 너무 텅 비기 전에 돌아와 줘.",
+    "awayBody_companion_tira": "공부 화면을 떠났어? 내가 그만둔 건 대학이지 이 세션이 아니야. 돌아와.",
+    "awayBody_companion_honey": "돌아와… Miel이 보고 싶어 해.",
     "focusTime": "집중 시간",
     "breakTime": "휴식 시간",
     "sessionComplete": "세션 완료!",
@@ -352,7 +377,7 @@
     "fullReport": "전체 리포트 →",
     "best": "최고: {{count}}일",
     "streakFreeze": "연속 보호",
-    "freezesRemaining": "이번 달 {{count}}/3회 보호 남음",
+    "freezesRemaining": "{{count}}개 보유 중",
     "useFreezeQ": "연속 보호를 사용할까요?",
     "useFreezeMsg": "빠진 날을 메워 오늘 공부하면 연속 기록을 이어갈 수 있습니다. 보호 한 번으로 전체 공백을 메웁니다. 코인은 지급되지 않습니다.",
     "useFreeze": "보호 사용",
@@ -810,6 +835,8 @@
     "noFriendsYet": "아직 친구가 없습니다",
     "noFriendsHint": "친구 화면에서 친구를 추가한 다음 여기서 초대하세요.",
     "onlineNow": "지금 온라인",
+    "studying": "공부 중",
+    "onBreak": "쉬는 중",
     "offline": "오프라인",
     "invited": "초대됨 ✓",
     "alreadyIn": "참여 중",
@@ -828,6 +855,8 @@
     "min": "분",
     "topic": "주제",
     "minShort": "{{n}}분",
+    "customLength": "사용자 지정 길이",
+    "hostPlusCustom": "호스트가 Plus 회원이라 커스텀 타이머를 사용할 수 있어요",
     "noSubjectsHint": "할 일에서 과목을 추가하면 주제를 고를 수 있어요.",
     "hostPicks": "호스트가 세션 길이를 정하고 시작합니다.",
     "inviteFriend": "＋ 친구 초대",
@@ -955,6 +984,7 @@
     "maybeLater": "나중에",
     "matchedTitle": "세트 룩 완성!",
     "matchedMsg": "{{outfit}}에 {{room}} 방을 맞췄어요!",
+    "matchedRoomSub": "{{outfit}}에 어울리는 {{room}} 방(배경 + 책상)을 받아보세요.",
     "roomLockedTitle": "세트 방 잠김",
     "roomLockedMsg": "상점에서 {{room}} 방을 잠금 해제해 {{outfit}} 룩을 완성하세요.",
     "goToShop": "상점으로 가기",
@@ -1014,6 +1044,61 @@
     "game_study": "스터디 룸",
     "you": "나"
   },
+  "studyBuddy": {
+    "ctaTitle": "스터디 메이트 찾기",
+    "endedTitle": "메이트와의 매칭이 종료되었어요",
+    "endedGhost": "메이트가 며칠 동안 활동이 없어 매칭이 종료되었어요. 새 메이트를 찾을까요?",
+    "endedExpired": "함께한 일주일이 끝났어요! 새 메이트를 찾을까요?",
+    "endedLeft": "메이트가 매칭에서 나갔어요. 새 메이트를 찾을까요?",
+    "ctaSub": "일주일 동안 함께할 공부 파트너 매칭",
+    "title": "스터디 메이트",
+    "subtitle": "일주일 동안 서로 응원하는 파트너",
+    "introTitle": "이용 방법",
+    "introBody": "같은 또래의 학생과 일주일 동안 매칭해 드려요. 매일 메이트가 공부했는지 확인하고 응원을 보낼 수 있어요. 일주일이 지나면 매칭이 종료됩니다.",
+    "safetyNote": "같은 연령대의 공부 파트너와 매칭됩니다. 이름이나 채팅 등 개인정보는 공유되지 않아요. 공부 체크인만 가능합니다. 언제든 신고하거나 나갈 수 있어요.",
+    "findBuddy": "메이트 찾기",
+    "lookingTitle": "메이트를 찾고 있어요…",
+    "lookingBody": "같은 또래의 학생이 찾는 즉시 매칭해 드려요. 이 화면을 떠나도 계속 찾고 있을게요.",
+    "couldNotMatch": "메이트를 찾지 못했어요",
+    "errorBirthday": "같은 또래와 매칭하려면 먼저 설정에서 생일을 입력해 주세요.",
+    "errorRestricted": "지금은 이 계정에서 스터디 메이트를 이용할 수 없어요.",
+    "errorGeneric": "문제가 발생했어요. 다시 시도해 주세요.",
+    "buddyFallback": "나의 메이트",
+    "streakLabel": "{{count}}일 연속",
+    "daysLeft": "{{count}}일 남음",
+    "studiedYes": "{{name}}님이 오늘 공부했어요!",
+    "studiedNo": "{{name}}님이 아직 오늘 공부하지 않았어요",
+    "buddyCheered": "{{name}}님이 응원을 보냈어요: {{cheer}}",
+    "sendCheer": "응원 보내기",
+    "cheerSent": "응원을 보냈어요! 내일 또 보낼 수 있어요.",
+    "alreadyCheered": "이미 응원함",
+    "alreadyCheeredMsg": "오늘은 이미 응원을 보냈어요. 내일 다시 오세요!",
+    "cheer": {
+      "keep_going": "계속 화이팅!",
+      "you_got_this": "넌 할 수 있어!",
+      "dont_break_streak": "연속 기록을 끊지 마!",
+      "proud_of_you": "네가 자랑스러워!"
+    },
+    "becomeFriends": "친구 맺기",
+    "friendPending": "상대방이 추가하기를 기다리는 중",
+    "nowFriends": "이제 친구가 되었어요!",
+    "nowFriendsMsg": "둘 다 친구가 되기를 선택했어요. 상대방의 코드는 {{code}}예요.",
+    "friendRequested": "보냈어요!",
+    "friendRequestedMsg": "메이트도 '친구 맺기'를 누르면 친구로 추가돼요.",
+    "report": "신고",
+    "reportQ": "이 메이트를 신고할까요?",
+    "reportMsg": "매칭이 종료되고 다시 매칭되지 않아요. 무엇이 문제인가요?",
+    "reportInappropriate": "부적절함",
+    "reportHarassment": "괴롭힘",
+    "reportSpam": "스팸",
+    "reportThanks": "알려 주셔서 감사해요",
+    "reportThanksMsg": "매칭을 종료했어요. 담당 팀이 검토할게요.",
+    "leave": "나가기",
+    "leaveQ": "이 메이트에서 나갈까요?",
+    "leaveMsg": "두 사람의 매칭이 종료돼요. 언제든 새 메이트를 찾을 수 있어요.",
+    "guestGateTitle": "스터디 메이트는 계정이 필요해요",
+    "guestGateBody": "무료 계정을 만들고 스터디 메이트와 매칭해 보세요."
+  },
   "subjectChart": {
     "day": "오늘",
     "week": "주",
@@ -1042,6 +1127,7 @@
     "friend": "친구",
     "full": "꽉 참",
     "cakeBaking": "만드는 중…",
+    "nowBaking": "굽는 중",
     "oneStudying": "1명 공부 중",
     "studyingTogether": "{{count}}명이 함께 공부 중",
     "you": "나",
@@ -1546,5 +1632,114 @@
   "recipeBadge": {
     "title": "배지 획득!",
     "got": "{{name}}의 레시피 배지!"
+  },
+    "quests": {
+    "title": "일일 목표",
+    "resetsMidnight": "자정에 초기화",
+    "cardSubtitle": "보너스 코인 목표",
+    "cardOpen": "열기",
+    "previewReady": "{{name}} — 받을 수 있어요!",
+    "previewProgress": "{{name}} · {{current}}/{{goal}}",
+    "cardClaim": "받기",
+    "allClaimed": "오늘 모두 받음",
+    "claim": "{{coins}} 받기",
+    "claimed": "받음",
+    "progress": "{{current}}/{{goal}}",
+    "items": {
+      "g_study_60": {
+        "title": "파워 아워",
+        "desc": "오늘 1시간 공부하기"
+      },
+      "g_sessions_2": {
+        "title": "두 배로",
+        "desc": "공부 세션 2회 완료하기"
+      },
+      "g_before_noon": {
+        "title": "얼리버드",
+        "desc": "정오 전에 25분 공부하기"
+      },
+      "g_task_1": {
+        "title": "체크 완료",
+        "desc": "오늘 할 일 하나 완료하기"
+      }
+    }
+  },
+  "achievements": {
+    "categories": {
+      "study": "공부",
+      "tasks": "할 일",
+      "streak": "연속",
+      "social": "친구",
+      "recipes": "베이킹"
+    },
+    "title": "업적",
+    "subtitle": "목표를 달성해 코인을 받으세요",
+    "allClaimed": "모든 업적 받음",
+    "cardSubtitle": "마일스톤 보상",
+    "readyCount": "{{count}}개 받기 가능",
+    "claim": "{{coins}} 받기",
+    "claimed": "받음",
+    "items": {
+      "a_first": {
+        "title": "첫걸음",
+        "desc": "첫 공부 세션 완료하기"
+      },
+      "a_sessions_25": {
+        "title": "진지 모드",
+        "desc": "공부 세션 25회 완료하기"
+      },
+      "a_sessions_100": {
+        "title": "백전의 학자",
+        "desc": "공부 세션 100회 완료하기"
+      },
+      "a_hours_10": {
+        "title": "10시간 달성",
+        "desc": "총 10시간 공부하기"
+      },
+      "a_hours_50": {
+        "title": "50시간 달성",
+        "desc": "총 50시간 공부하기"
+      },
+      "a_hours_100": {
+        "title": "센추리온",
+        "desc": "총 100시간 공부하기"
+      },
+      "a_tasks_10": {
+        "title": "할 일 정복자",
+        "desc": "할 일 10개 완료하기"
+      },
+      "a_tasks_50": {
+        "title": "생산성 프로",
+        "desc": "할 일 50개 완료하기"
+      },
+      "a_tasks_200": {
+        "title": "멈출 수 없어",
+        "desc": "할 일 200개 완료하기"
+      },
+      "a_streak_7": {
+        "title": "주간 전사",
+        "desc": "7일 연속 달성하기"
+      },
+      "a_streak_30": {
+        "title": "월간의 기적",
+        "desc": "30일 연속 달성하기"
+      },
+      "a_streak_100": {
+        "title": "백일 연속",
+        "desc": "100일 연속 달성하기"
+      },
+      "a_friend_1": {
+        "title": "함께라서 좋아",
+        "desc": "친구와 한 번 공부하기"
+      },
+      "a_friend_10": {
+        "title": "팀워크",
+        "desc": "친구와 10회 세션 완료하기"
+      },
+      "a_all_recipes": {
+        "title": "마스터 베이커",
+        "desc": "레시피 5개 만들기"
+      }
+    }
   }
 }

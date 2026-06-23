@@ -140,7 +140,7 @@ const P = { card: '#FFFDF8', pink: '#F7A7B8', pinkSoft: '#FBD9E0', brown: '#5B3A
 
 const styles = StyleSheet.create({
   root: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
-  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(48,32,24,0.4)' },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
   card: {
     width: '100%',
     maxWidth: 320,

@@ -12,7 +12,8 @@ import { StudyBook } from '@/components/study-book';
 import { StudyOven, EYELET_FRAC } from '@/components/study-oven';
 import { StudyVinyl } from '@/components/study-vinyl';
 import { hasSoundPreview, playStudyMusic, stopStudyMusic } from '@/lib/ambience-audio';
-import { getPlayback, spotifyAppRecentlyOpened, spotifyConnected, spotifyPause, spotifyResume, subscribeSpotify, type Playback } from '@/lib/spotify';
+import { playPop } from '@/lib/sounds';
+import { getPlayback, spotifyAppRecentlyOpened, spotifyConnected, spotifyPause, spotifyPlay, subscribeSpotify, type Playback } from '@/lib/spotify';
 import { SHOP_ITEMS } from '@/constants/shop-data';
 import { useIsTablet } from '@/hooks/use-device-class';
 import { SubjectPickerModal } from '@/components/subject-picker-modal';
@@ -27,6 +28,7 @@ import { getCompanionImage, hanjiIsAnimated, isHanjiActiveId, resolveActiveCompa
 import { isPlusFrame } from '@/components/avatar-frame';
 import { HanjiFigure } from '@/components/hanji-figure';
 import { useStudyRoom, STUDY_ROOM_MAX, type StudyStatus } from '@/lib/use-study-room';
+import { joinPresence, setMyPresenceStatus } from '@/lib/game-net';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
@@ -85,6 +87,18 @@ const SOLO_BOOK_OFFSET: Record<string, { dx: number; dy: number }> = {
   hanji: { dx: -0.018, dy: 0 },
 };
 const DEFAULT_SOLO_BOOK_OFFSET = { dx: -0.026, dy: 0 };
+
+// The desk book's cover is tinted to each character's signature color, keyed the
+// same way as SOLO_BOOK_OFFSET. Custom companions keep the default brown cover.
+const BOOK_COVER_COLOR: Record<string, string> = {
+  bun: '#ffc9d0',
+  companion_cocoa: '#c99a73',
+  companion_bunny: '#ffc2df',
+  companion_honey: '#ffcd8c',
+  companion_tira: '#a3d6ff',
+  hanji: '#b7a0e0',
+};
+const DEFAULT_BOOK_COVER = '#C2925E';
 
 // Tablet-only position knobs (🎛 design panel). Dial these live, hit "Get code",
 // and the values bake into TABLET_TWEAKS under `studysession.<name>`.
@@ -148,6 +162,7 @@ export function StudyRoomView({
     clearActiveSession,
     addCoins,
     recordSession,
+    recordQuestSession,
     addSubjectTime,
     selectedFoodId,
     equippedShopItems,
@@ -192,7 +207,10 @@ export function StudyRoomView({
   useEffect(() => { if (equippedShopItems.sound) lastSoundRef.current = equippedShopItems.sound; }, [equippedShopItems.sound]);
   const onVinylSpin = () => {
     if (spotifyOn) {
-      (playback?.isPlaying ? spotifyPause : spotifyResume)();
+      // Pause is a simple toggle; play targets a device explicitly (a bare resume
+      // can't wake an idle Spotify) so the music actually starts.
+      if (playback?.isPlaying) spotifyPause();
+      else spotifyPlay();
       setTimeout(refreshPlayback, 700);
       return;
     }
@@ -262,11 +280,13 @@ export function StudyRoomView({
   const [mpSubjectPicked, setMpSubjectPicked] = useState(false);
   // Radio: pick a bought sound to play while studying.
   const [soundOpen, setSoundOpen] = useState(false);
-  // "Someone left" takeover: when a fellow studier leaves mid-session, a full-screen
-  // card lists everyone who's still here. `null` = not shown; a name = that friend
-  // left; '' = a generic "someone left" (multiple, or name unknown). The timer keeps
-  // running underneath — they're still studying — until they tap Continue.
+  // "Someone left" notice: when a fellow studier leaves mid-session we don't
+  // interrupt with a popup — a small line of text fades in under the participant
+  // row (with a bubble "pop"), then fades itself out a few seconds later. The
+  // timer never stops; nothing to dismiss. `null` = hidden, a string = the message.
   const [leftNotice, setLeftNotice] = useState<string | null>(null);
+  const leftFade = useRef(new Animated.Value(0)).current;
+  const leftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Previous snapshot of the OTHER participants' codes (≠ me) + a code→name lookup,
   // so a leaver's name survives after they're already out of the roster.
   const prevOtherCodesRef = useRef<string[] | null>(null);
@@ -294,6 +314,19 @@ export function StudyRoomView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room.active, room.begun]);
 
+  // Broadcast my study status to friends' online presence while a session is on
+  // screen, so they see me as "studying" (red) or "on break" (pink) on the game-invite
+  // list — and can only pull me into a break game when I'm on a break. Keep the
+  // presence channel up for the session; reset to "free" when the view goes away.
+  useEffect(() => {
+    const leave = joinPresence(friendCode);
+    return () => { setMyPresenceStatus('free'); leave(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [friendCode]);
+  useEffect(() => {
+    setMyPresenceStatus(onBreak ? 'break' : 'studying');
+  }, [onBreak]);
+
   // Leave the room when the session view goes away (session ended).
   useEffect(() => {
     return () => {
@@ -320,6 +353,7 @@ export function StudyRoomView({
   // warning). en.json holds the English copy; other locales fall back to it.
   awayBodyKeyRef.current = soloBookKey === 'custom' ? 'session.awayBody' : `session.awayBody_${soloBookKey}`;
   const soloBookOffset = SOLO_BOOK_OFFSET[soloBookKey] ?? DEFAULT_SOLO_BOOK_OFFSET;
+  const soloBookColor = BOOK_COVER_COLOR[soloBookKey] ?? DEFAULT_BOOK_COVER;
 
   // Equipped solo character: a gentle, slow bounce with a tiny squash-and-stretch
   // (same idle motion as the home screen). 0 = resting/lowest, 1 = apex.
@@ -376,14 +410,26 @@ export function StudyRoomView({
   const partyCount = Math.min(participants.length, STUDY_ROOM_MAX);
   const PARTY_GAP = 4;
   const FRAME_H_PAD = 16; // matches root paddingHorizontal (Spacing.three)
-  // Characters: fill full screen width with 4px gaps, no overlap.
-  const partyCharSize = partyCount <= 1 ? 280 : Math.floor((winW - PARTY_GAP * (partyCount - 1)) / partyCount);
-  // Avatar frames: capped at 90px wide so 2-player sessions don't balloon.
-  // Equal slots, 4px gap, centred.
-  const partFrameW = partyCount <= 1 ? 72 : Math.min(90, Math.floor((winW - 2 * FRAME_H_PAD - PARTY_GAP * (partyCount - 1)) / partyCount));
+  // Multiplayer characters: bigger than the plain width-fit AND clustered toward the
+  // middle so the outer ones do not get cut off at the screen edges. `partyCharSize`
+  // is the visible character/image size; `partySlotW` is the (narrower) column width
+  // that controls spacing — making it smaller pulls the row inward. Phone enlarges +
+  // pulls in MORE; tablet does the same, gentler. Solo (count<=1) is unaffected.
+  const baseFit = partyCount <= 1 ? 280 : Math.floor((winW - PARTY_GAP * (partyCount - 1)) / partyCount);
+  const MP_SIZE = partyCount <= 1 ? 1 : isTablet ? 1.1 : 1.2;
+  const MP_SPREAD = partyCount <= 1 ? 1 : isTablet ? 0.93 : 0.84;
+  const partyCharSize = Math.round(baseFit * MP_SIZE);
+  const partySlotW = Math.round(baseFit * MP_SPREAD);
+  // Avatar frames: capped so 2-player sessions don't balloon. Phones keep the
+  // flat 90px cap; tablets scale the cap with screen width so the frames don't
+  // look tiny on a big iPad (e.g. 13"). Solo always 72.
+  const frameCap = isTablet ? Math.round(winW * 0.13) : 90;
+  const partFrameW = partyCount <= 1 ? (isTablet ? frameCap : 72) : Math.min(frameCap, Math.floor((winW - 2 * FRAME_H_PAD - PARTY_GAP * (partyCount - 1)) / partyCount));
   const partFrameH = Math.round(partFrameW * (969 / 814));
   const partFontSize = Math.max(8, Math.round(partFrameW * 10 / 72));
-  const partyBookSize = Math.round(partyCharSize * 0.52);
+  // Book grows with the character; on phone bump the ratio a little more so the
+  // book reads bigger on the desk (tablet keeps the original 0.52).
+  const partyBookSize = Math.round(partyCharSize * (!isTablet ? 0.58 : 0.52));
   // When you're the only one in the room (others left, or before they begin), the
   // party row would render a single oversized, off-center character/book that floats
   // off the desk — so render the solo scene (big centered character + desk book) instead.
@@ -400,7 +446,11 @@ export function StudyRoomView({
   // desk PNGs are full-bleed textures rendered with `cover`, so the panel's visible
   // top == the layout box top == deskTopT — that's why the line locks to it.)
   // Phone keeps its own separate style constants; these only feed `isTablet` styles.
-  const deskTopT = winH * 0.416; // desk panel top edge / front-edge line
+  // The 11" and 13" iPads don't scale linearly for this composition: 0.34 reads
+  // right on the 13", but on the (relatively taller) 11" Pro that sits too low, so
+  // it gets a higher desk line. Split by the shortest edge (13"/12.9" ≥ 1000pt).
+  const isLargeTablet = Math.min(winW, winH) >= 1000;
+  const deskTopT = winH * (isLargeTablet ? 0.34 : 0.40); // desk top edge (lower = smaller)
   const deskBottomT = -winH * 0.084; // panel bleeds below the screen
   // The study session renders full-width (the safeArea cap is dropped while a session
   // is active — see index.tsx), so the root already spans the screen. The desk only
@@ -410,10 +460,22 @@ export function StudyRoomView({
   const soloCharSize = Math.round(winW * 0.54);
   const soloBookSizeT = Math.round(winW * 0.21);
   // Characters sit BEHIND the desk with their lower body tucked under the lip: a
-  // fixed fraction of the square hides below the line (the same proportion the
-  // phone layout uses), so head + torso always clear the desk on any iPad.
-  const partyCharBottomT = deskTopT - 0.44 * partyCharSize;
-  const soloCharBottomT = deskTopT - 0.42 * soloCharSize;
+  // fixed FRACTION (<0.5) of the square hides below the desk edge, so MORE THAN HALF
+  // the body is always visible on ANY screen. Tying the hide amount to the character
+  // size (not a fixed pixel offset) is what guarantees it — a fixed offset hid >half
+  // once the character shrank (e.g. a small phone in a 3-person room). Phone's desk
+  // edge is the fixed 240 (styles.deskEdge / studyDesk top); tablet's is deskTopT.
+  const deskEdgeY = isTablet ? deskTopT : 240;
+  // Baseline the BOOK row reads (book sits on the desk in front of each studier).
+  const partyCharBottom = deskEdgeY - 0.44 * partyCharSize;
+  // Characters are lifted higher than that baseline so more of the body shows above
+  // the desk — but ONLY the character layer uses this, so the books stay on the desk
+  // (don't float up with the characters).
+  const partyCharBottomRaised = partyCharBottom + 0.09 * partyCharSize;
+  // Hide fraction: how much of the solo character tucks below the desk lip. Lowered
+  // from 0.42 so ~75% of the body shows (paired with a lower deskTopT, the desk line
+  // drops while the character stays put — revealing more of them).
+  const soloCharBottomT = deskTopT - 0.31 * soloCharSize;
 
   // Solo character content, reused by the phone (in-scene) and tablet (absolute,
   // desk-anchored) layouts so only one ever mounts.
@@ -422,14 +484,12 @@ export function StudyRoomView({
     : <Image source={bigCharacter} style={styles.characterFill} contentFit="contain" />;
   const soloCharTransform = { transform: [{ translateY: charTranslateY }, { scaleX: charScaleX }, { scaleY: charScaleY }] };
 
-  // Face-center offset for ANY companion id (mirrors soloBookOffset, used to center
-  // each multiplayer book under its character's face). Ids arrive as `shop:<itemId>`,
-  // `starter:girl`/`dude`, '' (Bun) or a custom slot id.
-  const bookOffsetFor = (companionId: string | null | undefined) => {
-    if (isHanjiActiveId(companionId)) return SOLO_BOOK_OFFSET.hanji;
-    if (companionId?.startsWith('shop:')) return SOLO_BOOK_OFFSET[companionId.slice(5)] ?? DEFAULT_SOLO_BOOK_OFFSET;
-    if (companionId === 'starter:girl' || companionId === 'starter:dude' || !companionId) return SOLO_BOOK_OFFSET.bun;
-    return DEFAULT_SOLO_BOOK_OFFSET;
+  // Cover color per participant, keyed off the companion id.
+  const bookColorFor = (companionId: string | null | undefined) => {
+    if (isHanjiActiveId(companionId)) return BOOK_COVER_COLOR.hanji;
+    if (companionId?.startsWith('shop:')) return BOOK_COVER_COLOR[companionId.slice(5)] ?? DEFAULT_BOOK_COVER;
+    if (companionId === 'starter:girl' || companionId === 'starter:dude' || !companionId) return BOOK_COVER_COLOR.bun;
+    return DEFAULT_BOOK_COVER;
   };
 
   // Resolve a participant's live status (studying / break / idle).
@@ -462,8 +522,18 @@ export function StudyRoomView({
   const displaySecs = isSolo && onBreak && frozenSecs != null ? frozenSecs : secondsLeft;
 
   const handleLeave = () => {
-    if (room.active) room.leaveRoom();
-    onStop();
+    if (room.active) {
+      // Leaving a multiplayer room ENDS your session automatically — no confirm —
+      // since you've left the group (onAway is the no-prompt force-end path)...
+      room.leaveRoom();
+      onAway();
+      // ...and drops you straight back to the Home screen, clearing any routes/modals
+      // stacked over the tabs (same dismiss the synced session start uses).
+      if (router.canDismiss()) router.dismissAll();
+    } else {
+      // Solo: keep the normal End-session confirm (early-end forfeit-coins warning).
+      onStop();
+    }
   };
 
   const handleAddFriend = () => {
@@ -524,15 +594,37 @@ export function StudyRoomView({
       const earned = coinsForMinutes(activeSession.durationMinutes);
       addCoins(earned);
       recordSession(activeSession.durationMinutes);
+      // Multiplayer finish → counts toward daily quests/achievements, incl. the
+      // "study with a friend" quest + friend-session achievements.
+      recordQuestSession({ minutes: activeSession.durationMinutes, withFriend: true });
       addSubjectTime(activeSession.subjectName, activeSession.durationMinutes);
       setCoinsEarned(earned);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mpFinished, activeSession?.id]);
 
-  // Detect when a fellow studier leaves the room mid-session and surface the
-  // "still studying together" takeover. Works for host AND guest: the host removes
-  // the leaver + rebroadcasts the roster, so every client sees `room.roster` shrink.
+  // Flash the fading "someone left" line: pop sound, fade in, then auto fade out.
+  const showLeftNotice = useCallback((message: string) => {
+    if (leftTimerRef.current) clearTimeout(leftTimerRef.current);
+    setLeftNotice(message);
+    playPop();
+    leftFade.stopAnimation();
+    leftFade.setValue(0);
+    Animated.timing(leftFade, { toValue: 1, duration: 250, useNativeDriver: true }).start();
+    leftTimerRef.current = setTimeout(() => {
+      Animated.timing(leftFade, { toValue: 0, duration: 700, useNativeDriver: true }).start(({ finished }) => {
+        if (finished) setLeftNotice(null);
+      });
+    }, 3200);
+  }, [leftFade]);
+
+  // Clear the pending fade-out timeout if the view tears down (e.g. the session
+  // ends the instant someone leaves) so it can't setState on an unmounted view.
+  useEffect(() => () => { if (leftTimerRef.current) clearTimeout(leftTimerRef.current); }, []);
+
+  // Detect when a fellow studier leaves the room mid-session and flash the fading
+  // "someone left" line. Works for host AND guest: the host removes the leaver +
+  // rebroadcasts the roster, so every client sees `room.roster` shrink.
   useEffect(() => {
     // Keep a code→name lookup fresh so a leaver's name survives their removal.
     for (const p of room.roster) nameByCodeRef.current[p.code] = p.name;
@@ -549,8 +641,9 @@ export function StudyRoomView({
     const gone = prev.filter((c) => !otherCodes.includes(c));
     if (gone.length === 0) return;
     const goneNames = gone.map((c) => nameByCodeRef.current[c]).filter(Boolean);
-    setLeftNotice(gone.length === 1 && goneNames[0] ? goneNames[0] : '');
-  }, [room.roster, room.active, room.begun, isSolo, mpFinished, friendCode]);
+    const name = gone.length === 1 && goneNames[0] ? goneNames[0] : '';
+    showLeftNotice(name ? t('studyRoom.friendLeft', { name }) : t('studyRoom.someoneLeft'));
+  }, [room.roster, room.active, room.begun, isSolo, mpFinished, friendCode, showLeftNotice, t]);
 
   const restartWithSubject = (subjectName: string | null) => {
     if (!activeSession) return;
@@ -576,19 +669,14 @@ export function StudyRoomView({
 
   return (
     <View style={styles.root}>
-      {/* Invite-to-room button (top right) — multiplayer only, hidden once the
-          room is full at 3 (shows a "Full" chip instead). */}
-      {!isSolo && (
-        roomFull ? (
-          <View style={[styles.addFriendBtn, styles.roomFullBadge]}>
-            <Text style={styles.addFriendLabel}>{t('studyRoom.full')}</Text>
-          </View>
-        ) : (
-          <Pressable onPress={handleAddFriend} style={({ pressed }) => [styles.addFriendBtn, pressed && styles.pressed]} hitSlop={8}>
-            <Text style={styles.addFriendIcon}>＋</Text>
-            <Text style={styles.addFriendLabel}>{t('studyRoom.friend')}</Text>
-          </Pressable>
-        )
+      {/* Invite-friend button (top right) — shown whenever there's room for more
+          studiers (fewer than STUDY_ROOM_MAX, INCLUDING a solo session). Once a
+          multiplayer room fills to 3, the button is simply removed (no "Full" chip). */}
+      {!roomFull && (
+        <Pressable onPress={handleAddFriend} style={({ pressed }) => [styles.addFriendBtn, isTablet && styles.addFriendBtnTablet, pressed && styles.pressed]} hitSlop={8}>
+          <Text style={[styles.addFriendIcon, isTablet && styles.addFriendIconTablet]}>＋</Text>
+          <Text style={[styles.addFriendLabel, isTablet && styles.addFriendLabelTablet]}>{t('studyRoom.friend')}</Text>
+        </Pressable>
       )}
 
       {/* Timer card */}
@@ -609,8 +697,10 @@ export function StudyRoomView({
         )}
         <StudyOven style={StyleSheet.absoluteFill} />
         <View style={styles.timerText}>
-          <Text style={[styles.nowBaking, isSolo && styles.nowBakingSolo, isTablet && styles.nowBakingTablet]}>{t('studyRoom.nowBaking')}</Text>
-          <Text style={[styles.timer, isSolo && styles.timerSolo, isTablet && styles.timerTablet]}>{format(displaySecs)}</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.nowBaking, isSolo && styles.nowBakingSolo, isTablet && styles.nowBakingTablet]}>{t('studyRoom.nowBaking')}</Text>
+          {/* Auto-shrink to fit the sign's width so the timer can never overflow / pop
+              out the side on any screen or font size. */}
+          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.timer, isSolo && styles.timerSolo, isTablet && { fontSize: Math.round(winW * 0.081), width: "100%", textAlign: "center" }]}>{format(displaySecs)}</Text>
           {!isSolo && (
             <View style={styles.studyingRow}>
               <Image source={PPL_ICON} style={styles.pplIcon} contentFit="contain" />
@@ -626,7 +716,8 @@ export function StudyRoomView({
 
       {/* Participant row (multiplayer only) */}
       {!isSolo && (
-      <View style={[styles.participantRow, { gap: PARTY_GAP }]}>
+      <View style={styles.participantBlock}>
+      <View style={[styles.participantRow, !isTablet && styles.participantRowPhone, { gap: PARTY_GAP }]}>
         {participants.slice(0, STUDY_ROOM_MAX).map((p) => {
           const present = p.code === friendCode || room.presentCodes.includes(p.code);
           const status: StudyStatus = !present ? 'idle' : p.code === friendCode ? (onBreak ? 'break' : 'studying') : room.statusMap[p.code] ?? 'studying';
@@ -643,6 +734,16 @@ export function StudyRoomView({
             </View>
           );
         })}
+      </View>
+      {/* "Someone left" notice — a quiet line that fades in just under the
+          participant row (with a bubble "pop") and fades itself out a few seconds
+          later. No popup, no dismiss: the session never pauses. Absolutely
+          positioned below the row so the fade can't reflow the scene. */}
+      {leftNotice !== null && !mpFinished && (
+        <Animated.View pointerEvents="none" style={[styles.leftToast, { opacity: leftFade }]}>
+          <Text style={styles.leftToastText} numberOfLines={1}>{leftNotice}</Text>
+        </Animated.View>
+      )}
       </View>
       )}
 
@@ -683,14 +784,14 @@ export function StudyRoomView({
           edge. Sits behind the desk (same zIndex, drawn before) so the lower body
           tucks behind the table, like the solo character. */}
       {!soloScene && (
-        <View style={[styles.partyLayer, isTablet && { bottom: partyCharBottomT }]} pointerEvents="none">
+        <View style={[styles.partyLayer, { bottom: partyCharBottomRaised }]} pointerEvents="none">
           {participants.slice(0, STUDY_ROOM_MAX).map((p) => {
             const img = p.code === friendCode ? bigCharacter : getCompanionImage(p.companionId, p.skinId);
             const pIsHanji = p.code === friendCode
               ? hanjiIsAnimated(activeCompanionId, companionSkins?.[activeCompanionId ?? ''])
               : hanjiIsAnimated(p.companionId, p.skinId);
             return (
-              <View key={p.code} style={[styles.partyMember, { width: partyCharSize }]}>
+              <View key={p.code} style={[styles.partyMember, { width: partySlotW }]}>
                 {/* No status dot above the character — status already shows on the
                     top participant cards, so the dot here was redundant clutter. */}
                 {/* Same gentle idle bounce as the solo character (transform on an
@@ -735,42 +836,41 @@ export function StudyRoomView({
                 left: 0,
                 right: 0,
                 bottom: deskTopT - 1.05 * soloBookSizeT + 42 - winH * 0.012,
+                // Dead-center under the character (which is itself screen-centered).
                 alignItems: 'center',
-                // Center the book under the bunny's FACE, not the art's canvas center:
-                // each companion's face sits dx off-center in its square (measured in
-                // SOLO_BOOK_OFFSET), scaled here to the rendered character size.
-                transform: [{ translateX: soloCharSize * soloBookOffset.dx }],
               }}>
-              <StudyBook active={!onBreak} size={soloBookSizeT} />
+              <StudyBook active={!onBreak} size={soloBookSizeT} coverColor={soloBookColor} />
             </View>
           </View>
         ) : (
           <View
             style={[
               styles.bookOnDesk,
-              // Sit dead-center on screen — no per-character horizontal nudge. (Only
-              // the vertical dy is applied; dx is intentionally dropped so the book
-              // reads as centered rather than shifted under each face.)
+              // Dead-center under the character (which is itself screen-centered); only
+              // the vertical dy nudge is applied.
               { transform: [{ translateY: SOLO_BOOK_CANVAS * soloBookOffset.dy }] },
             ]}
             pointerEvents="none">
-            <StudyBook active={!onBreak} size={118} />
+            <StudyBook active={!onBreak} size={118} coverColor={soloBookColor} />
           </View>
         )
       ) : (
-        // One book per character. Book and character share identical columns (same
-        // row layout + partyCharSize slots), so the book sits dead-centre under each
-        // character. Like the solo scene, the per-character face dx is intentionally
-        // dropped — it read as off-to-the-side rather than "right in front".
-        <View style={[styles.partyBookRow, isTablet && { bottom: partyCharBottomT - 4 }]} pointerEvents="none">
+        // One book per character, DEAD-CENTERED under its character: the book row and
+        // the character row use identical columns (both full-width, center-justified,
+        // same `partyCharSize` slots in the same participant order), so simply centering
+        // each book in its slot lands it directly under that character. No per-face
+        // nudge here — in a row of small characters the face offset read as off-center.
+        // On phone, raise the book up toward the character so it sits closer — but
+        // keep the lift below the character's raised baseline so the book's base never
+        // rides up past/into the body.
+        <View style={[styles.partyBookRow, { bottom: partyCharBottom + (!isTablet ? 0.05 * partyCharSize : -4) }]} pointerEvents="none">
           {participants.slice(0, STUDY_ROOM_MAX).map((p) => {
-            // Center each book under its own character's face (see bookOffsetFor).
-            const off = p.code === friendCode ? soloBookOffset : bookOffsetFor(p.companionId);
+            const cover = p.code === friendCode ? soloBookColor : bookColorFor(p.companionId);
             return (
               <View
                 key={p.code}
-                style={[styles.partyBookSlot, { width: partyCharSize }, isTablet && { transform: [{ translateX: partyCharSize * off.dx }] }]}>
-                <StudyBook active={participantStatus(p.code) !== 'break'} size={partyBookSize} />
+                style={[styles.partyBookSlot, { width: partySlotW }]}>
+                <StudyBook active={participantStatus(p.code) !== 'break'} size={partyBookSize} coverColor={cover} />
               </View>
             );
           })}
@@ -784,7 +884,7 @@ export function StudyRoomView({
             radio is already in its final spot and doesn't jump up when break starts. */}
         <View style={[styles.gameCol, isTablet && styles.gameColTablet]}>
           <Pressable onPress={() => setSoundOpen(true)} style={({ pressed }) => [styles.radioBtn, pressed && styles.pressed]} hitSlop={8}>
-            <StudyVinyl size={isTablet ? 92 : 64} playing={musicPlaying} discColor={vinylColor} centerImage={vinylCenter} onSpin={onVinylSpin} />
+            <StudyVinyl size={isTablet ? 92 : 56} playing={musicPlaying} discColor={vinylColor} centerImage={vinylCenter} onSpin={onVinylSpin} />
           </Pressable>
           <Pressable
             onPress={onBreakGame}
@@ -804,7 +904,7 @@ export function StudyRoomView({
           </SoundPressable>
         )}
       </View>
-      <SoundPressable onPress={handleLeave} style={({ pressed }) => [styles.endBtn, isTablet && { paddingHorizontal: 34, paddingVertical: 14 }, pressed && styles.endBtnPressed]} hitSlop={8}>
+      <SoundPressable onPress={handleLeave} style={({ pressed }) => [styles.endBtn, isTablet && { paddingHorizontal: 34, paddingVertical: 14, marginBottom: 34 }, pressed && styles.endBtnPressed]} hitSlop={8}>
         <Text style={[styles.endBtnText, isTablet && { fontSize: 18 }]}>{room.active ? t('studyRoom.leaveRoom') : t('session.endSession')}</Text>
       </SoundPressable>
 
@@ -850,39 +950,6 @@ export function StudyRoomView({
         </View>
       ))}
 
-      {/* "Someone left" takeover — a full-screen card listing everyone who's still
-          here. Sits above the live controls (same layer as the finish overlay) but
-          below it in priority: suppressed once the session itself finishes. The timer
-          keeps running underneath; Continue just dismisses back to the session. */}
-      {leftNotice !== null && !mpFinished && (
-        <View style={styles.finishOverlay}>
-          <View style={styles.finishCard}>
-            <Text style={styles.finishTitle}>
-              {leftNotice ? t('studyRoom.friendLeft', { name: leftNotice }) : t('studyRoom.someoneLeft')}
-            </Text>
-            <Text style={styles.leftSubtitle}>
-              {participants.length <= 1 ? t('studyRoom.nowStudyingSolo') : t('studyRoom.stillStudying')}
-            </Text>
-            <View style={styles.leftFacesRow}>
-              {participants.slice(0, STUDY_ROOM_MAX).map((p) => {
-                const img = p.code === friendCode ? bigCharacter : getCompanionImage(p.companionId, p.skinId);
-                const plusRing = isPlusFrame(p.avatarFrame) ? { borderWidth: 2.5, borderColor: '#D4A847' } : null;
-                return (
-                  <View key={p.code} style={styles.leftFace}>
-                    <View style={[styles.leftFaceCircle, plusRing]}>
-                      <Image source={img} style={styles.leftFaceImg} contentFit="cover" contentPosition="top" />
-                    </View>
-                    <Text style={styles.leftFaceName} numberOfLines={1}>{p.code === friendCode ? t('studyRoom.you') : p.name}</Text>
-                  </View>
-                );
-              })}
-            </View>
-            <SoundPressable sound="confirm" onPress={() => setLeftNotice(null)} style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
-              <Text style={styles.finishBtnText}>{t('sessionComplete.continue')}</Text>
-            </SoundPressable>
-          </View>
-        </View>
-      )}
 
       {/* Study-again step 1: pick a fresh session length. */}
       {durationPickerOpen && (
@@ -920,13 +987,16 @@ export function StudyRoomView({
 const styles = StyleSheet.create({
   root: { flex: 1, paddingHorizontal: Spacing.three, paddingTop: Spacing.one, gap: Spacing.two },
 
-  // Timer card
-  timerWrap: { alignSelf: 'center', width: '52%', aspectRatio: 1032 / 838, marginTop: -36 },
+  // Timer card. The base width/`timer` font below are the phone-MULTIPLAYER values
+  // (solo + tablet override both). Widened from 52% so the multiplayer oven sign is
+  // bigger; it grows downward (top is pinned by marginTop), so the friend button —
+  // up in the rope zone above the sign body — still clears it.
+  timerWrap: { alignSelf: 'center', width: '62%', aspectRatio: 1032 / 838, marginTop: -36 },
   timerWrapSolo: { width: '88%' },
   timerText: { position: 'absolute', left: '17%', right: '17%', top: '36%', bottom: '18%', alignItems: 'center', justifyContent: 'center' },
   nowBaking: { fontSize: 9, fontWeight: '800', color: BakeryColors.mocha, letterSpacing: 2, marginBottom: 2 },
   nowBakingSolo: { fontSize: 13 },
-  timer: { fontSize: 32, fontWeight: '900', color: BakeryColors.cocoaDark, letterSpacing: 1 },
+  timer: { fontSize: 46, fontWeight: '900', color: BakeryColors.cocoaDark, letterSpacing: 1 },
   timerSolo: { fontSize: 56 },
   // Tablet: bigger timer to fill the wider sign.
   timerTablet: { fontSize: 84 },
@@ -939,6 +1009,10 @@ const styles = StyleSheet.create({
   // Participant frames (frame art is 814×969; face circle, status dot and
   // nameplate positions are measured from it)
   participantRow: { flexDirection: 'row', justifyContent: 'center', gap: Spacing.two },
+  // Phone multiplayer: drop the avatar circles down off the (now bigger) timer sign.
+  // Pure marginTop — the row is in flow, so it only eats scene space and can't
+  // overlap the party characters (absolutely anchored near the bottom).
+  participantRowPhone: { marginTop: Spacing.three },
   participant: { width: 72, height: 86, position: 'relative' },
   partFrame: { position: 'absolute', left: 0, top: 0, width: 72, height: 86 },
   partFace: { position: 'absolute', left: '8.8%', top: '7.4%', width: '82.2%', aspectRatio: 1, borderRadius: 999, overflow: 'hidden', backgroundColor: BakeryColors.cream },
@@ -1025,7 +1099,11 @@ const styles = StyleSheet.create({
 
   // Add-friend (top right)
   addFriendBtn: {
-    position: 'absolute', top: 4, right: 4, zIndex: 30,
+    // Phone value: tucked up near the top so it clears the timer sign's wide body
+    // (which sits low thanks to the card's -36 marginTop). Still below the notch —
+    // studyRoomWrap pads the whole view down past the safe-area inset. Tablet
+    // overrides `top` below.
+    position: 'absolute', top: 2, right: 18, zIndex: 30,
     flexDirection: 'row', alignItems: 'center', gap: 3,
     backgroundColor: BakeryColors.glass,
     borderWidth: 1.5, borderColor: BakeryColors.shortbread,
@@ -1036,16 +1114,20 @@ const styles = StyleSheet.create({
   addFriendIcon: { fontSize: 16, fontWeight: '900', color: BakeryColors.berry, marginTop: -1 },
   addFriendLabel: { fontSize: 12, fontWeight: '800', color: BakeryColors.cocoaDark },
   roomFullBadge: { paddingHorizontal: 11, opacity: 0.7 },
+  // Tablet: scale the friend button up so it's actually legible on a big iPad.
+  addFriendBtnTablet: { top: 22, right: 28, gap: 6, paddingLeft: 16, paddingRight: 22, paddingVertical: 11, borderWidth: 2 },
+  addFriendIconTablet: { fontSize: 28 },
+  addFriendLabelTablet: { fontSize: 21 },
 
   // Radio (sound picker) — stacked above the game button in the controls row.
   radioBtn: { alignItems: 'center', justifyContent: 'center' },
   radioImg: { width: 64, height: 64 },
 
   // Multiplayer finish menu
-  finishOverlay: { ...StyleSheet.absoluteFill, zIndex: 50, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(48,32,24,0.45)', padding: 28 },
+  finishOverlay: { ...StyleSheet.absoluteFill, zIndex: 50, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent', padding: 28 },
   // Unlimited-break backdrop — full-screen (still covers the live controls) but
   // light enough that the resting characters/desk show through behind the card.
-  finishOverlayLight: { ...StyleSheet.absoluteFill, zIndex: 50, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(48,32,24,0.18)', padding: 28 },
+  finishOverlayLight: { ...StyleSheet.absoluteFill, zIndex: 50, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent', padding: 28 },
   finishCard: {
     width: '100%', maxWidth: 320, backgroundColor: BakeryColors.frosting,
     borderRadius: BakeryRadii.panel, borderWidth: 2, borderColor: BakeryColors.shortbread,
@@ -1058,13 +1140,15 @@ const styles = StyleSheet.create({
   finishBtnText: { fontSize: 15, fontWeight: '900', color: '#fff' },
   finishBtnGhost: { paddingVertical: 11, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: BakeryColors.cream, borderWidth: 1.5, borderColor: BakeryColors.shortbread },
   finishBtnGhostText: { fontSize: 14, fontWeight: '800', color: BakeryColors.mocha },
-  // "Someone left" takeover card
-  leftSubtitle: { fontSize: 14, fontWeight: '700', color: BakeryColors.mocha, textAlign: 'center', marginTop: -Spacing.one },
-  leftFacesRow: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', gap: Spacing.three, marginVertical: Spacing.one },
-  leftFace: { alignItems: 'center', width: 76, gap: 5 },
-  leftFaceCircle: { width: 64, height: 64, borderRadius: 999, overflow: 'hidden', backgroundColor: BakeryColors.cream, borderWidth: 2, borderColor: BakeryColors.shortbread },
-  leftFaceImg: { width: '116%', height: '116%', marginLeft: '-8%' },
-  leftFaceName: { fontSize: 12, fontWeight: '800', color: BakeryColors.cocoaDark, textAlign: 'center' },
+  // "Someone left" fading notice — anchored just below the participant row.
+  participantBlock: { position: 'relative' },
+  leftToast: { position: 'absolute', top: '100%', left: 0, right: 0, alignItems: 'center', marginTop: 4 },
+  // Light halo so plain mocha text stays legible over dark/busy room backgrounds
+  // (Frostbloom, night themes) without needing a card behind it.
+  leftToastText: {
+    fontSize: 13, fontWeight: '800', color: BakeryColors.mocha, textAlign: 'center',
+    textShadowColor: 'rgba(255,250,244,0.95)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 4,
+  },
   endLinkText: { fontSize: 12, fontWeight: '700', color: BakeryColors.mocha, textDecorationLine: 'underline' },
   pressed: { opacity: 0.85 },
 });

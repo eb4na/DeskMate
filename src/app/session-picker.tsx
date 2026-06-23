@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { playTick } from '@/lib/sounds';
@@ -11,7 +11,7 @@ import { DevKnobs } from '@/components/dev-knobs';
 import { PlusIcon } from '@/components/plus-icon';
 import { LockBadge } from '@/components/lock-badge';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
-import { useIsTablet } from '@/hooks/use-device-class';
+import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { useApp } from '@/context/app-context';
 import { newRoomId } from '@/lib/game-net';
 import { useStudyRoom } from '@/lib/use-study-room';
@@ -22,7 +22,7 @@ import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 
 const C = BakeryColors;
-const SCREEN_BG = require('@/assets/images/home/session-bg.png');
+const SCREEN_BG = require('@/assets/images/home/session-bg-cakes.png');
 
 // One soft, consistent shadow shared by every card so the screen reads calm
 // instead of having each block carry its own heavy drop shadow.
@@ -51,7 +51,16 @@ const PICKER_ELEMENTS = [
 
 export default function SessionPickerScreen() {
   const insets = useSafeAreaInsets();
-  const isTablet = useIsTablet();
+  // Proportional tablet scaling: `scale` is anchored so the 11" Pro reproduces the
+  // tuned 1.3×. `grow` re-bases that against the 11" the tablet styles were authored
+  // at, so grow=1 on the 11" (zero regression) and ~1.23 on the 13" — everything
+  // (incl. the mode toggle / Start button / top bar, which have no tablet variant)
+  // grows together so nothing reads small on a bigger iPad.
+  const { isTablet, scale } = useTabletScale();
+  // Clamp to ≥1: smaller tablets (mini) keep the 11"-tuned look rather than shrinking
+  // base styles below phone size; only bigger iPads (13") grow past it.
+  const grow = isTablet ? Math.max(1, scale / 1.3) : 1;
+  const styles = useMemo(() => makeStyles(grow), [grow]);
   const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('sessionpicker', PICKER_ELEMENTS);
   const { subjects, coins, isPlus, activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins } = useApp();
   const studyRoom = useStudyRoom();
@@ -100,7 +109,7 @@ export default function SessionPickerScreen() {
           </Pressable>
           <View style={styles.topSpacer} />
           <Pressable style={({ pressed }) => [styles.coinPill, tw('coinPill'), pressed && styles.pressed]} onPress={() => router.push('/coin-shop')}>
-            <CoinIcon size={18} />
+            <CoinIcon size={Math.round(18 * grow)} />
             <Text style={styles.coinText}>{coins}</Text>
           </Pressable>
         </View>
@@ -141,7 +150,7 @@ export default function SessionPickerScreen() {
                           {t(`sessionPicker.len_${opt.minutes}`)}
                         </Text>
                         <View style={styles.menuLeader} />
-                        <CoinIcon size={isTablet ? 18 : 14} />
+                        <CoinIcon size={isTablet ? Math.round(18 * grow) : 14} />
                         <Text style={[styles.menuPrice, isTablet && styles.menuPriceTablet]}>+{coinsForMinutes(opt.minutes)}</Text>
                       </View>
                       <View style={styles.menuSubLine}>
@@ -203,7 +212,7 @@ export default function SessionPickerScreen() {
                   : router.push('/plus-upgrade')
               }>
               <View style={[styles.customIconWrap, isTablet && styles.customIconWrapTablet]}>
-                <PlusIcon size={isTablet ? 42 : 32} />
+                <PlusIcon size={isTablet ? Math.round(42 * grow) : 32} />
               </View>
               <View style={styles.menuBody}>
                 <Text style={[styles.menuName, isTablet && styles.menuNameTablet]}>{t('sessionPicker.customTitle')}</Text>
@@ -214,7 +223,7 @@ export default function SessionPickerScreen() {
                   <Text style={[styles.customPillText, isTablet && styles.customPillTextTablet]}>{t('sessionPicker.customSet')}</Text>
                 </View>
               ) : (
-                <LockBadge size={isTablet ? 38 : 30} />
+                <LockBadge size={isTablet ? Math.round(38 * grow) : 30} />
               )}
             </Pressable>
           </View>
@@ -241,91 +250,95 @@ export default function SessionPickerScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// `g` = the per-device grow factor (1 on phone AND the 11" reference, ~1.23 on the
+// 13"). Every size/spacing/font literal is multiplied by it so the whole screen
+// scales as one piece — the 11" reproduces its tuned look exactly (g=1), bigger
+// tablets grow proportionally. Non-size props (color/opacity/flex) are left alone.
+const makeStyles = (g: number) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.cream },
-  safe: { flex: 1, paddingHorizontal: Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' },
+  safe: { flex: 1, paddingHorizontal: Spacing.four * g, maxWidth: MaxContentWidth * g, width: '100%', alignSelf: 'center' },
   // Heavier cream wash so the strawberry art reads as a soft tint, not clutter.
-  bgOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,248,241,0.62)' },
-  scroll: { paddingBottom: Spacing.five, gap: Spacing.three },
+  bgOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,248,241,0.28)' },
+  scroll: { paddingBottom: Spacing.five * g, gap: Spacing.three * g },
 
   // Top bar
-  topBar: { flexDirection: 'row', alignItems: 'center', paddingTop: Spacing.one, paddingBottom: Spacing.two, gap: Spacing.two },
+  topBar: { flexDirection: 'row', alignItems: 'center', paddingTop: Spacing.one * g, paddingBottom: Spacing.two * g, gap: Spacing.two * g },
   iconBtn: {
-    width: 38, height: 38, borderRadius: 19,
+    width: 38 * g, height: 38 * g, borderRadius: 19 * g,
     backgroundColor: 'rgba(255,255,255,0.85)', borderWidth: 1.5, borderColor: C.shortbread,
     alignItems: 'center', justifyContent: 'center',
   },
-  backChevron: { fontSize: 22, fontWeight: '800', color: C.cocoaDark, marginTop: -2 },
+  backChevron: { fontSize: 22 * g, fontWeight: '800', color: C.cocoaDark, marginTop: -2 * g },
   topSpacer: { flex: 1 },
   coinPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
+    flexDirection: 'row', alignItems: 'center', gap: 5 * g,
     backgroundColor: 'rgba(255,255,255,0.85)', borderWidth: 1.5, borderColor: C.shortbread,
-    borderRadius: BakeryRadii.pill, paddingHorizontal: 9, paddingVertical: 6,
+    borderRadius: BakeryRadii.pill, paddingHorizontal: 9 * g, paddingVertical: 6 * g,
   },
-  coinText: { fontSize: 13, fontWeight: '800', color: C.cocoaDark },
+  coinText: { fontSize: 13 * g, fontWeight: '800', color: C.cocoaDark },
 
   // One shared surface for the menu paper.
   card: {
     backgroundColor: C.frosting,
-    borderRadius: BakeryRadii.card,
+    borderRadius: BakeryRadii.card * g,
     borderWidth: 1.5,
     borderColor: C.shortbread,
     ...SOFT_SHADOW,
   },
 
   // The bakery "menu" paper
-  menuCard: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
+  menuCard: { paddingHorizontal: Spacing.three * g, paddingVertical: Spacing.two * g },
   menuHeader: {
-    alignItems: 'center', gap: 2,
-    paddingBottom: Spacing.two, marginBottom: Spacing.one,
+    alignItems: 'center', gap: 2 * g,
+    paddingBottom: Spacing.two * g, marginBottom: Spacing.one * g,
     borderBottomWidth: 1.5, borderBottomColor: C.shortbread, borderStyle: 'dashed',
   },
-  menuTitle: { fontFamily: Fonts.serif, fontSize: 22, fontWeight: '800', color: C.cocoaDark, letterSpacing: 0.5 },
-  menuSubtitle: { fontSize: 12, color: C.mocha, fontWeight: '600' },
+  menuTitle: { fontFamily: Fonts.serif, fontSize: 22 * g, fontWeight: '800', color: C.cocoaDark, letterSpacing: 0.5 },
+  menuSubtitle: { fontSize: 12 * g, color: C.mocha, fontWeight: '600' },
 
   // In-menu section heading ("CHOOSE DURATION" / "SUBJECT")
-  sectionLabel: { fontSize: 11, fontWeight: '800', color: C.latte, letterSpacing: 1, marginTop: Spacing.one, marginBottom: 2 },
+  sectionLabel: { fontSize: 11 * g, fontWeight: '800', color: C.latte, letterSpacing: 1, marginTop: Spacing.one * g, marginBottom: 2 * g },
   // Dashed rule between menu sections
-  sectionRule: { borderBottomWidth: 1.5, borderBottomColor: C.shortbread, borderStyle: 'dashed', marginVertical: Spacing.two },
+  sectionRule: { borderBottomWidth: 1.5, borderBottomColor: C.shortbread, borderStyle: 'dashed', marginVertical: Spacing.two * g },
 
   // Menu line-item (duration / custom)
-  menuRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.two, paddingHorizontal: 4, borderRadius: BakeryRadii.chip },
+  menuRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two * g, paddingVertical: Spacing.two * g, paddingHorizontal: 4 * g, borderRadius: BakeryRadii.chip * g },
   menuRowActive: { backgroundColor: 'rgba(228,138,154,0.12)' },
-  menuIcon: { width: 54, height: 54 },
-  menuBody: { flex: 1, gap: 3 },
-  menuTopLine: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
-  menuName: { fontSize: 15.5, fontWeight: '800', color: C.cocoaDark },
+  menuIcon: { width: 54 * g, height: 54 * g },
+  menuBody: { flex: 1, gap: 3 * g },
+  menuTopLine: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 * g },
+  menuName: { fontSize: 15.5 * g, fontWeight: '800', color: C.cocoaDark },
   menuNameActive: { color: C.berry },
-  menuLeader: { flex: 1, marginHorizontal: 4, marginBottom: 4, borderBottomWidth: 1, borderStyle: 'dashed', borderColor: C.latte },
-  menuPrice: { fontSize: 15, fontWeight: '800', color: '#C98A2B' },
-  menuSubLine: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
-  menuCoinText: { fontSize: 12.5, color: C.mocha, fontWeight: '600' },
+  menuLeader: { flex: 1, marginHorizontal: 4 * g, marginBottom: 4 * g, borderBottomWidth: 1, borderStyle: 'dashed', borderColor: C.latte },
+  menuPrice: { fontSize: 15 * g, fontWeight: '800', color: '#C98A2B' },
+  menuSubLine: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one * g },
+  menuCoinText: { fontSize: 12.5 * g, color: C.mocha, fontWeight: '600' },
   breakChip: {
-    backgroundColor: `${C.honey}2E`, borderRadius: BakeryRadii.chip,
-    paddingHorizontal: 7, paddingVertical: 2,
+    backgroundColor: `${C.honey}2E`, borderRadius: BakeryRadii.chip * g,
+    paddingHorizontal: 7 * g, paddingVertical: 2 * g,
   },
-  breakChipText: { fontSize: 10.5, fontWeight: '700', color: C.mocha },
+  breakChipText: { fontSize: 10.5 * g, fontWeight: '700', color: C.mocha },
   menuDivider: { height: 1, backgroundColor: `${C.shortbread}99` },
   checkBadge: {
-    width: 22, height: 22, borderRadius: 11, backgroundColor: C.jam,
+    width: 22 * g, height: 22 * g, borderRadius: 11 * g, backgroundColor: C.jam,
     alignItems: 'center', justifyContent: 'center',
   },
-  checkIcon: { fontSize: 12, color: '#fff', fontWeight: '900' },
+  checkIcon: { fontSize: 12 * g, color: '#fff', fontWeight: '900' },
 
-  customIconWrap: { width: 54, alignItems: 'center', justifyContent: 'center' },
+  customIconWrap: { width: 54 * g, alignItems: 'center', justifyContent: 'center' },
 
   // Subject chips
-  chipRow: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingRight: 8, paddingVertical: 2 },
-  chip: { borderRadius: BakeryRadii.pill, borderWidth: 1.5, paddingHorizontal: 13, paddingVertical: 8 },
+  chipRow: { flexDirection: 'row', gap: 8 * g, alignItems: 'center', paddingRight: 8 * g, paddingVertical: 2 * g },
+  chip: { borderRadius: BakeryRadii.pill, borderWidth: 1.5, paddingHorizontal: 13 * g, paddingVertical: 8 * g },
   chipAdd: { borderColor: C.jam, borderStyle: 'dashed', backgroundColor: 'transparent' },
-  chipText: { fontSize: 13.5, color: C.mocha, fontWeight: '700' },
+  chipText: { fontSize: 13.5 * g, color: C.mocha, fontWeight: '700' },
 
   customPill: {
     backgroundColor: C.cream, borderRadius: BakeryRadii.pill,
     borderWidth: 1.5, borderColor: C.shortbread,
-    paddingHorizontal: 12, paddingVertical: 7,
+    paddingHorizontal: 12 * g, paddingVertical: 7 * g,
   },
-  customPillText: { fontSize: 13, fontWeight: '800', color: C.cocoaDark },
+  customPillText: { fontSize: 13 * g, fontWeight: '800', color: C.cocoaDark },
 
   // Mode toggle
   modeToggle: {
@@ -334,45 +347,45 @@ const styles = StyleSheet.create({
     borderRadius: BakeryRadii.pill,
     borderWidth: 1.5,
     borderColor: C.shortbread,
-    padding: 4,
+    padding: 4 * g,
   },
-  modeSeg: { flex: 1, paddingVertical: 11, alignItems: 'center', borderRadius: BakeryRadii.pill },
+  modeSeg: { flex: 1, paddingVertical: 11 * g, alignItems: 'center', borderRadius: BakeryRadii.pill },
   modeSegActive: { backgroundColor: C.jam },
-  modeText: { fontSize: 14, fontWeight: '800', color: C.mocha },
+  modeText: { fontSize: 14 * g, fontWeight: '800', color: C.mocha },
   modeTextActive: { color: '#fff' },
 
   // Start block — quiet caption + the single CTA
-  startBlock: { alignItems: 'center', gap: Spacing.two, marginTop: Spacing.one },
-  breakInfoText: { fontSize: 12, color: C.mocha, fontWeight: '600', textAlign: 'center' },
+  startBlock: { alignItems: 'center', gap: Spacing.two * g, marginTop: Spacing.one * g },
+  breakInfoText: { fontSize: 12 * g, color: C.mocha, fontWeight: '600', textAlign: 'center' },
   startBtn: {
     alignSelf: 'stretch',
     backgroundColor: C.berry,
     borderRadius: BakeryRadii.pill,
-    paddingVertical: 16,
+    paddingVertical: 16 * g,
     alignItems: 'center',
     ...SOFT_SHADOW,
   },
-  startBtnText: { fontSize: 17, fontWeight: '900', color: '#fff', letterSpacing: 0.3 },
+  startBtnText: { fontSize: 17 * g, fontWeight: '900', color: '#fff', letterSpacing: 0.3 },
 
   pressed: { opacity: 0.85 },
 
   // ── Tablet: bigger menu paper + line-items, chips and custom row ──
-  menuCardTablet: { paddingHorizontal: Spacing.five, paddingVertical: Spacing.four },
-  menuTitleTablet: { fontSize: 32 },
-  menuSubtitleTablet: { fontSize: 16 },
-  sectionLabelTablet: { fontSize: 14, letterSpacing: 1.2, marginTop: Spacing.two },
-  menuRowTablet: { paddingVertical: Spacing.three, gap: Spacing.three },
-  menuIconTablet: { width: 82, height: 82 },
-  menuNameTablet: { fontSize: 21 },
-  menuPriceTablet: { fontSize: 20 },
-  menuCoinTextTablet: { fontSize: 16 },
-  breakChipTablet: { paddingHorizontal: 10, paddingVertical: 4 },
-  breakChipTextTablet: { fontSize: 14 },
-  checkBadgeTablet: { width: 30, height: 30, borderRadius: 15 },
-  checkIconTablet: { fontSize: 16 },
-  customIconWrapTablet: { width: 82 },
-  chipTablet: { paddingHorizontal: 18, paddingVertical: 12 },
-  chipTextTablet: { fontSize: 18 },
-  customPillTablet: { paddingHorizontal: 16, paddingVertical: 10 },
-  customPillTextTablet: { fontSize: 17 },
+  menuCardTablet: { paddingHorizontal: Spacing.five * g, paddingVertical: Spacing.four * g },
+  menuTitleTablet: { fontSize: 32 * g },
+  menuSubtitleTablet: { fontSize: 16 * g },
+  sectionLabelTablet: { fontSize: 14 * g, letterSpacing: 1.2, marginTop: Spacing.two * g },
+  menuRowTablet: { paddingVertical: Spacing.three * g, gap: Spacing.three * g },
+  menuIconTablet: { width: 82 * g, height: 82 * g },
+  menuNameTablet: { fontSize: 21 * g },
+  menuPriceTablet: { fontSize: 20 * g },
+  menuCoinTextTablet: { fontSize: 16 * g },
+  breakChipTablet: { paddingHorizontal: 10 * g, paddingVertical: 4 * g },
+  breakChipTextTablet: { fontSize: 14 * g },
+  checkBadgeTablet: { width: 30 * g, height: 30 * g, borderRadius: 15 * g },
+  checkIconTablet: { fontSize: 16 * g },
+  customIconWrapTablet: { width: 82 * g },
+  chipTablet: { paddingHorizontal: 18 * g, paddingVertical: 12 * g },
+  chipTextTablet: { fontSize: 18 * g },
+  customPillTablet: { paddingHorizontal: 16 * g, paddingVertical: 10 * g },
+  customPillTextTablet: { fontSize: 17 * g },
 });

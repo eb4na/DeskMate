@@ -9,7 +9,7 @@ import { useApp } from '@/context/app-context';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { bunAvatarNudge, getCompanionImage } from '@/lib/companion-utils';
 import { useStudyRoom } from '@/lib/use-study-room';
-import { joinPresence, sendInvite, type OnlineGameId } from '@/lib/game-net';
+import { joinPresence, sendInvite, type OnlineGameId, type PresenceMap } from '@/lib/game-net';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
 
@@ -24,8 +24,11 @@ export default function PartyInviteScreen() {
   const { room, game } = useLocalSearchParams<{ room?: string; game?: string }>();
   const inviteGame = (game as OnlineGameId) || 'batterdash';
   const { friends, friendCode, profileDisplayName } = useApp();
-  const [onlineCodes, setOnlineCodes] = useState<Set<string>>(new Set());
+  const [onlineCodes, setOnlineCodes] = useState<PresenceMap>(new Map());
   const [invited, setInvited] = useState<Set<string>>(new Set());
+  // Game invites (not study-room invites) can only pull in a friend who's NOT
+  // heads-down studying — they must be on a break or free.
+  const isGameInvite = inviteGame !== 'study';
 
   // Friends already in this study room (synced roster) — they don't need an invite.
   // Only meaningful for the study room; batterdash uses a separate roster, so we skip.
@@ -76,8 +79,28 @@ export default function PartyInviteScreen() {
           ) : (
             sorted.map((f) => {
               const online = onlineCodes.has(f.code);
+              const status = onlineCodes.get(f.code); // 'studying' | 'break' | 'free' | undefined
+              const isStudying = status === 'studying';
               const isInvited = invited.has(f.code);
               const inRoom = inRoomCodes.has(f.code);
+              // For a break-game invite, a friend who's focused-studying can't be pulled
+              // in; on-break or free friends can. Study-room invites keep online-only.
+              const canInvite = online && (!isGameInvite || !isStudying);
+              const dotStyle = !online
+                ? styles.statusOffline
+                : isStudying ? styles.statusStudying
+                : status === 'break' ? styles.statusBreak
+                : styles.statusFree;
+              const textStyle = !online
+                ? styles.statusTextOffline
+                : isStudying ? styles.statusTextStudying
+                : status === 'break' ? styles.statusTextBreak
+                : styles.statusTextFree;
+              const statusLabel = !online
+                ? t('party.offline')
+                : isStudying ? t('party.studying')
+                : status === 'break' ? t('party.onBreak')
+                : t('party.onlineNow');
               return (
                 <View key={f.code} style={styles.row}>
                   <View style={styles.avatarWrap}>
@@ -88,36 +111,36 @@ export default function PartyInviteScreen() {
                         <Text style={styles.avatarText}>{(f.code[0] ?? '?').toUpperCase()}</Text>
                       </View>
                     )}
-                    <View style={[styles.statusDot, online ? styles.statusOnline : styles.statusOffline]} />
+                    <View style={[styles.statusDot, dotStyle]} />
                   </View>
                   <View style={styles.info}>
                     <Text style={styles.name} numberOfLines={1}>{f.displayName || f.name}</Text>
-                    <Text style={[styles.status, online ? styles.statusTextOnline : styles.statusTextOffline]}>
-                      {online ? t('party.onlineNow') : t('party.offline')}
-                    </Text>
+                    <Text style={[styles.status, textStyle]}>{statusLabel}</Text>
                   </View>
                   <Pressable
-                    disabled={inRoom || !online}
-                    onPress={() => invite(f.code, online)}
+                    disabled={inRoom || !canInvite}
+                    onPress={() => invite(f.code, canInvite)}
                     style={({ pressed }) => [
                       styles.inviteBtn,
                       (inRoom || isInvited) && styles.inviteBtnDone,
-                      !inRoom && !online && styles.inviteBtnDisabled,
-                      pressed && online && !inRoom && styles.pressed,
+                      !inRoom && !canInvite && styles.inviteBtnDisabled,
+                      pressed && canInvite && !inRoom && styles.pressed,
                     ]}>
                     <Text
                       style={[
                         styles.inviteText,
                         (inRoom || isInvited) && styles.inviteTextDone,
-                        !inRoom && !online && styles.inviteTextDisabled,
+                        !inRoom && !canInvite && styles.inviteTextDisabled,
                       ]}>
                       {inRoom
                         ? t('party.alreadyIn')
                         : isInvited
                           ? t('party.invited')
-                          : online
+                          : canInvite
                             ? t('party.invite')
-                            : t('party.offline')}
+                            : isStudying && isGameInvite
+                              ? t('party.studying')
+                              : t('party.offline')}
                     </Text>
                   </Pressable>
                 </View>
@@ -159,13 +182,18 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   avatarFallback: { width: 44 * s, height: 44 * s, borderRadius: 22 * s, backgroundColor: BakeryColors.shortbread, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 18 * s, fontWeight: '900', color: BakeryColors.cocoaDark },
   statusDot: { position: 'absolute', right: -1, bottom: -1, width: 13 * s, height: 13 * s, borderRadius: 7 * s, borderWidth: 2, borderColor: BakeryColors.frosting },
-  statusOnline: { backgroundColor: '#5BC47B' },
   statusOffline: { backgroundColor: BakeryColors.latte },
+  // Study-status dots: red = focused studying, pink = on break, green = online & free.
+  statusStudying: { backgroundColor: '#E0574E' },
+  statusBreak: { backgroundColor: '#EC7FA9' },
+  statusFree: { backgroundColor: '#5BC47B' },
   info: { flex: 1, gap: 3 * s },
   name: { fontSize: 15 * s, fontWeight: '800', color: BakeryColors.cocoaDark },
   status: { fontSize: 12 * s, fontWeight: '800' },
-  statusTextOnline: { color: '#3DA55F' },
   statusTextOffline: { color: BakeryColors.latte },
+  statusTextStudying: { color: '#C0463E' },
+  statusTextBreak: { color: '#D85F8C' },
+  statusTextFree: { color: '#3DA55F' },
   inviteBtn: { backgroundColor: '#F7A7B8', borderRadius: BakeryRadii.button, paddingHorizontal: Spacing.three * s, paddingVertical: 9 * s },
   inviteBtnDone: { backgroundColor: BakeryColors.cream, borderWidth: 1.5, borderColor: BakeryColors.success },
   inviteBtnDisabled: { backgroundColor: BakeryColors.cream, borderWidth: 1.5, borderColor: BakeryColors.shortbread },

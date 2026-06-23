@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   madeBadgeImg: { width: '100%', height: '100%' },
   // Zoomed-in badge viewer
   zoomBackdrop: {
-    flex: 1, backgroundColor: 'rgba(60,40,30,0.5)',
+    flex: 1, backgroundColor: 'transparent',
     alignItems: 'center', justifyContent: 'center', padding: Spacing.four,
   },
   zoomCard: {

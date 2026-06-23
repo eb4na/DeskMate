@@ -60,7 +60,14 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
   const autoLineHeight =
     flat && typeof flat.fontSize === 'number' && flat.lineHeight == null
       ? { lineHeight: Math.round(flat.fontSize * 1.35) }
-      : null;
+      : // Symmetric case: caller pins a lineHeight but NOT a fontSize, so the font
+        // comes from the (tablet-scaled) preset while the lineHeight stays at its
+        // phone value — on a big tablet the grown glyphs then clip top/bottom against
+        // the fixed line box. Scale the caller's lineHeight by the same factor so the
+        // line box grows with the text. (Phones: scale===1, so this is a no-op.)
+        scale !== 1 && flat && typeof flat.lineHeight === 'number' && flat.fontSize == null
+        ? { lineHeight: Math.round(flat.lineHeight * scale) }
+        : null;
 
   return (
     <Text

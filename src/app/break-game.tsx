@@ -14,6 +14,7 @@ import { Companion } from '@/components/companion';
 import { DevKnobs } from '@/components/dev-knobs';
 import { SimpleHomeIcon } from '@/components/tab-icons';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
+import { useIsTablet } from '@/hooks/use-device-class';
 import {
   getCompanionImage,
   resolveActiveCompanion,
@@ -240,7 +241,12 @@ function TicTacToeGame({
     friendCode,
   } = useApp();
   const { width: winW, height: winH } = useWindowDimensions();
-  const boardSize = Math.min(winW - 32, winH * 0.38, 340);
+  const isTablet = useIsTablet();
+  // Phones keep the flat 340 cap. On tablets the cap scales with the shorter
+  // screen edge so the board grows proportionally on larger iPads (e.g. 13")
+  // instead of staying the same absolute size it has on the 11".
+  const boardCap = isTablet ? Math.min(winW, winH) * 0.42 : 340;
+  const boardSize = Math.min(winW - 32, winH * 0.38, boardCap);
   // Player cards as wide as two fit side-by-side, so the name has real room.
   const cardW = Math.min((winW - 24) / 2, 200);
 

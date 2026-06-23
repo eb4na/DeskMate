@@ -23,7 +23,7 @@ import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 import { BUN_SKINS, type BunSkin, getBunSkinImage, getCompanionSkinImage, getCompanionSkins, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, SHOP_COMPANIONS } from '@/lib/companion-utils';
 import { SHOP_ITEMS } from '@/constants/shop-data';
-import { roomById, isPairOwned } from '@/constants/room-data';
+import { roomById, isPairOwned, type RoomPair } from '@/constants/room-data';
 
 
 const getShopItem = (id: string) => SHOP_ITEMS.find((s) => s.id === id);
@@ -166,6 +166,10 @@ function GalleryContent() {
   const [buyItem, setBuyItem] = useState<{ id: string; name: string; image: number | null; price: number } | null>(null);
   // Plus-exclusive outfit popup (custom — replaces the native alert).
   const [plusAlertName, setPlusAlertName] = useState<string | null>(null);
+  // Matched-room buy popup: purchase an outfit's paired room (background + desk,
+  // plus the outfit itself if it's still locked) right here, instead of jumping
+  // to the Shop. All chain-link-reachable rooms are plain coin items.
+  const [pairBuy, setPairBuy] = useState<{ pair: RoomPair; skin: BunSkin } | null>(null);
   // Outfit lore popup.
   const [lorePopup, setLorePopup] = useState<{ name: string; text: string } | null>(null);
   const buyDiscount = isPlus ? 0.75 : 1;
@@ -175,6 +179,27 @@ function GalleryContent() {
     if (!buyItem || !canAffordBuy) return;
     purchaseShopItem(buyItem.id, buyPrice);
     setBuyItem(null);
+  };
+
+  // Items still needed to complete the matched look: the room's background +
+  // desk, plus the outfit itself if it's locked. Owned halves drop out.
+  const pairNeedItems = pairBuy
+    ? [pairBuy.pair.backgroundId, pairBuy.pair.deskId, pairBuy.skin.shopItemId]
+        .filter((id): id is string => !!id && !ownedShopItems.includes(id))
+        .map((id) => getShopItem(id))
+        .filter((it): it is NonNullable<ReturnType<typeof getShopItem>> => !!it)
+    : [];
+  const pairTotal = pairNeedItems.reduce((sum, it) => sum + Math.floor(it.price * buyDiscount), 0);
+  const canAffordPair = coins >= pairTotal;
+  const confirmPairBuy = () => {
+    if (!pairBuy || !canAffordPair) return;
+    for (const it of pairNeedItems) purchaseShopItem(it.id, Math.floor(it.price * buyDiscount));
+    const { pair, skin } = pairBuy;
+    setEquippedBackground(pair.id);
+    setEquippedDesk(pair.id);
+    equipWardrobeSkin(skin.id);
+    setPairBuy(null);
+    showPopup(t('gallery.matchedTitle'), t('gallery.matchedMsg', { outfit: localizeOutfitName(skin.name, t), room: pair.name }));
   };
   const wardrobeIsBun = wardrobeFor?.id === getStarterActiveId('girl');
   // Skins for the open wardrobe (Bun uses its own list; shop companions use COMPANION_SKINS).
@@ -188,22 +213,16 @@ function GalleryContent() {
   };
 
   // The chain icon: set the outfit's matched room (background + desk) and wear the
-  // outfit so the whole look comes together. If the room isn't owned, jump straight
-  // to the Shop's Backgrounds tab to buy it — this screen is a native modal, so a
-  // root-mounted popup can fail to present over it (same reason food-gallery routes
-  // locked recipes straight to the Shop rather than showing a dialog).
+  // outfit so the whole look comes together. If the room isn't owned, open an
+  // in-place buy popup (an in-file <Modal>, which presents fine over this native-
+  // modal screen) so the player can purchase the whole look without leaving for
+  // the Shop.
   const equipMatchedRoom = (skin: BunSkin) => {
     const pair = roomById(skin.roomId);
     if (!pair) return;
     const outfitName = localizeOutfitName(skin.name, t);
     if (!isPairOwned(pair, ownedShopItems)) {
-      // Jump to the Shop and auto-open the buy popup for this whole look: the room
-      // pair (background + desk) PLUS the outfit itself. `buyPair` carries the
-      // background's shop item id; `buyOutfit` carries the outfit's (if it's paid).
-      router.replace({
-        pathname: '/shop',
-        params: { category: 'background', buyPair: pair.backgroundId ?? '', buyOutfit: skin.shopItemId ?? '' },
-      });
+      setPairBuy({ pair, skin });
       return;
     }
     setEquippedBackground(pair.id);
@@ -331,10 +350,10 @@ function GalleryContent() {
                     <View style={styles.companionImagePlaceholder} />
                   )}
                 </View>
-                <Text style={[styles.companionName, { fontSize: tweak.nameSize }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
+                <Text style={[styles.companionName, { fontSize: tweak.nameSize * scale }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
                   {localizeCompanionName(char.name, t)}
                 </Text>
-                <Text style={[styles.companionSubtitle, { fontSize: tweak.subSize }]} numberOfLines={2}>{TAGLINE_KEYS[char.name] ? t(TAGLINE_KEYS[char.name]) : t('gallery.defaultTagline')}</Text>
+                <Text style={[styles.companionSubtitle, { fontSize: tweak.subSize * scale }]} numberOfLines={2}>{TAGLINE_KEYS[char.name] ? t(TAGLINE_KEYS[char.name]) : t('gallery.defaultTagline')}</Text>
                 {char.isActive ? (
                   <View style={styles.activePill}>
                     <Text style={styles.activePillText}>{t('gallery.active')}</Text>
@@ -507,6 +526,55 @@ function GalleryContent() {
                   </Text>
                 </Pressable>
                 <Pressable style={styles.buyCancel} onPress={() => setBuyItem(null)}>
+                  <Text style={styles.buyCancelText}>{t('gallery.maybeLater')}</Text>
+                </Pressable>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Matched-room buy popup — purchase the outfit's paired room (background +
+          desk, plus the outfit itself if locked) directly from the wardrobe. */}
+      <Modal
+        visible={pairBuy !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPairBuy(null)}>
+        <Pressable style={styles.buyBackdrop} onPress={() => setPairBuy(null)}>
+          <Pressable style={styles.buyCard} onPress={(e) => e.stopPropagation?.()}>
+            {pairBuy && (
+              <>
+                <Text style={styles.buyTitle}>{t('editRoom.unlockPair', { name: pairBuy.pair.name })}</Text>
+                <Image source={pairBuy.pair.backgroundImage} style={styles.pairImage} contentFit="cover" />
+                <Text style={styles.plusAlertMsg}>
+                  {t('gallery.matchedRoomSub', { outfit: localizeOutfitName(pairBuy.skin.name, t), room: pairBuy.pair.name })}
+                </Text>
+                <View style={styles.buyBalanceRow}>
+                  <Text style={styles.buyBalanceLabel}>{t('gallery.yourBalance')}</Text>
+                  <View style={styles.buyBalanceValue}>
+                    <CoinIcon size={15 * scale} />
+                    <Text style={styles.buyBalanceNum}>{coins}</Text>
+                  </View>
+                </View>
+                {!canAffordPair && (
+                  <Text style={styles.buyShortfall}>
+                    {t('gallery.shortfall', { count: pairTotal - coins })}
+                  </Text>
+                )}
+                <Pressable
+                  disabled={!canAffordPair}
+                  style={({ pressed }) => [
+                    styles.buyBtn,
+                    !canAffordPair && styles.buyBtnDisabled,
+                    pressed && canAffordPair && styles.pressed,
+                  ]}
+                  onPress={confirmPairBuy}>
+                  <Text style={styles.buyBtnText}>
+                    {canAffordPair ? t('gallery.unlockForCoins', { price: pairTotal }) : t('gallery.notEnoughCoins')}
+                  </Text>
+                </Pressable>
+                <Pressable style={styles.buyCancel} onPress={() => setPairBuy(null)}>
                   <Text style={styles.buyCancelText}>{t('gallery.maybeLater')}</Text>
                 </Pressable>
               </>
@@ -813,6 +881,7 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   },
   buyTitle: { fontSize: 19 * s, fontWeight: '800', color: P.brown, textAlign: 'center' },
   buyImage: { width: 120 * s, height: 120 * s },
+  pairImage: { width: 220 * s, height: 132 * s, borderRadius: 14 * s },
   buyBalanceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', alignSelf: 'stretch' },
   buyBalanceValue: { flexDirection: 'row', alignItems: 'center', gap: 4 * s },
   buyBalanceLabel: { fontSize: 13 * s, fontWeight: '600', color: P.mutedBrown },
@@ -973,7 +1042,7 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   loreBadgeText: { color: '#fff', fontSize: 11 * s, fontWeight: '800', lineHeight: 14 * s },
   loreBackdrop: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100,
-    backgroundColor: 'rgba(48,32,24,0.45)',
+    backgroundColor: 'transparent',
     alignItems: 'center', justifyContent: 'center', padding: 28 * s,
     borderRadius: 28 * s,
   },

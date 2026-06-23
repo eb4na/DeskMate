@@ -508,7 +508,7 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     borderRadius: 20 * s, backgroundColor: P.pinkSoft,
   },
   changeColorText: { fontSize: 13 * s, fontWeight: '700', color: P.brown },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center' },
+  modalOverlay: { flex: 1, backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
   modalCard: {
     backgroundColor: '#FFF9F5', borderRadius: 24 * s, padding: 28 * s,
     alignItems: 'center', gap: 16 * s,

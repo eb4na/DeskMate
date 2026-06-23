@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Fragment, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,6 +8,7 @@ import { CoinAmount, CoinIcon } from '@/components/coin-icon';
 import { LockOverlay } from '@/components/lock-badge';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
+import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { useTranslation } from '@/i18n';
 import {
   ROOM_PAIRS,
@@ -18,7 +19,7 @@ import {
   type RoomPair,
 } from '@/constants/room-data';
 import { SHOP_ITEMS } from '@/constants/shop-data';
-import { Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Fonts, Spacing } from '@/constants/theme';
 
 type BuyTarget = { room: RoomPair; kind: 'background' | 'desk' | 'pair' };
 
@@ -38,6 +39,10 @@ const P = {
 
 export default function EditRoomScreen() {
   const { t } = useTranslation();
+  // Tablet: scale text + cards up, and widen the centered column so the 2-up room
+  // grid spreads out instead of sitting tiny in the middle of a 13" iPad.
+  const { scale, contentWidth } = useTabletScale();
+  const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const {
     equippedBackgroundRoomId,
     equippedDeskRoomId,
@@ -123,7 +128,7 @@ export default function EditRoomScreen() {
       <PairButton room={room} />
       <View style={styles.thumbImgWrap}>
         <Image source={image} style={styles.thumbImg} contentFit="cover" />
-        {!owned && <LockOverlay size={30} radius={12} />}
+        {!owned && <LockOverlay size={Math.round(30 * scale)} radius={Math.round(12 * scale)} />}
       </View>
       <Text style={styles.thumbName} numberOfLines={1}>{room.name}</Text>
       {active ? (
@@ -243,7 +248,7 @@ export default function EditRoomScreen() {
                           <Text style={styles.modalItemDesc} numberOfLines={2}>{it.description}</Text>
                         )}
                       </View>
-                      <CoinAmount amount={Math.floor(it.price * discount)} size={20} textStyle={styles.modalItemPrice} />
+                      <CoinAmount amount={Math.floor(it.price * discount)} size={Math.round(20 * scale)} textStyle={styles.modalItemPrice} />
                     </View>
                   ))}
                 </View>
@@ -251,7 +256,7 @@ export default function EditRoomScreen() {
                 <View style={styles.modalBalanceRow}>
                   <Text style={styles.modalBalanceLabel}>{t('editRoom.yourBalance')}</Text>
                   <View style={styles.modalBalance}>
-                    <CoinIcon size={20} />
+                    <CoinIcon size={Math.round(20 * scale)} />
                     <Text style={styles.modalBalanceNum}>{coins}</Text>
                   </View>
                 </View>
@@ -286,14 +291,17 @@ export default function EditRoomScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// `s` = shared tablet scale (1 on phone). Every font/card/image/spacing literal × s,
+// and the centered column uses the wider tablet `contentWidth`, so the 2-up room
+// grid + text scale up instead of sitting tiny on a 13" iPad.
+const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   container: { flex: 1 },
   safe: {
-    padding: Spacing.four,
-    maxWidth: MaxContentWidth,
+    padding: Spacing.four * s,
+    maxWidth: contentWidth,
     width: '100%',
     alignSelf: 'center',
-    gap: Spacing.three,
+    gap: Spacing.three * s,
   },
   // Header — big bubbly title + subtitle on the plain cream background.
   headerRow: { width: '100%', alignItems: 'center' },
@@ -301,115 +309,115 @@ const styles = StyleSheet.create({
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: Spacing.three,
-    paddingBottom: Spacing.two,
+    paddingTop: Spacing.three * s,
+    paddingBottom: Spacing.two * s,
     paddingHorizontal: '8%',
-    gap: 6,
+    gap: 6 * s,
   },
   title: {
     fontFamily: Fonts.rounded,
-    fontSize: 38,
+    fontSize: 38 * s,
     fontWeight: '900',
     color: P.brown,
     letterSpacing: 0.3,
     textAlign: 'center',
   },
-  subtitle: { fontSize: 12.5, color: P.mutedBrown, fontWeight: '500', textAlign: 'center', lineHeight: 17 },
+  subtitle: { fontSize: 12.5 * s, color: P.mutedBrown, fontWeight: '500', textAlign: 'center', lineHeight: 17 * s },
   // Subtitle laid out as a wrapping row so the real pair button can sit inline.
   subtitleRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' },
   // A mini copy of `pairBtn` rendered inline within the subtitle text.
   subtitleBtn: {
-    width: 26, height: 20, borderRadius: 10,
+    width: 26 * s, height: 20 * s, borderRadius: 10 * s,
     backgroundColor: 'rgba(255,255,255,0.92)', borderWidth: 1.5, borderColor: P.jam,
-    alignItems: 'center', justifyContent: 'center', marginHorizontal: 3,
+    alignItems: 'center', justifyContent: 'center', marginHorizontal: 3 * s,
   },
-  subtitleGlyph: { width: 16, height: 9, justifyContent: 'center' },
+  subtitleGlyph: { width: 16 * s, height: 9 * s, justifyContent: 'center' },
   subtitleRing: {
-    position: 'absolute', width: 9, height: 9, borderRadius: 5,
+    position: 'absolute', width: 9 * s, height: 9 * s, borderRadius: 5 * s,
     borderWidth: 1.6, borderColor: P.jam, left: 0,
   },
-  subtitleRing2: { left: 7 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: P.brown, marginTop: Spacing.one },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three },
+  subtitleRing2: { left: 7 * s },
+  sectionTitle: { fontSize: 16 * s, fontWeight: '800', color: P.brown, marginTop: Spacing.one * s },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three * s },
   thumbCard: {
     width: '47%',
     backgroundColor: P.card,
-    borderRadius: 18,
+    borderRadius: 18 * s,
     borderWidth: 2,
     borderColor: P.pinkSoft,
-    padding: Spacing.two,
+    padding: Spacing.two * s,
     alignItems: 'center',
-    gap: 4,
+    gap: 4 * s,
   },
   thumbCardActive: { borderColor: P.pink, backgroundColor: '#FFF4F6' },
   thumbCardLocked: { opacity: 0.92 },
-  thumbImgWrap: { width: '100%', height: 96, borderRadius: 12, overflow: 'hidden' },
+  thumbImgWrap: { width: '100%', height: 96 * s, borderRadius: 12 * s, overflow: 'hidden' },
   thumbImg: { width: '100%', height: '100%', backgroundColor: P.pinkSoft },
   // Pair button — top-left of a card that has a matching desk+background.
   pairBtn: {
-    position: 'absolute', top: 12, left: 12, zIndex: 2,
-    width: 30, height: 28, borderRadius: 14,
+    position: 'absolute', top: 12 * s, left: 12 * s, zIndex: 2,
+    width: 30 * s, height: 28 * s, borderRadius: 14 * s,
     backgroundColor: 'rgba(255,255,255,0.92)', borderWidth: 1.5, borderColor: P.jam,
     alignItems: 'center', justifyContent: 'center',
   },
-  pairGlyph: { width: 20, height: 12, justifyContent: 'center' },
+  pairGlyph: { width: 20 * s, height: 12 * s, justifyContent: 'center' },
   pairRing: {
-    position: 'absolute', width: 11, height: 11, borderRadius: 6,
+    position: 'absolute', width: 11 * s, height: 11 * s, borderRadius: 6 * s,
     borderWidth: 2, borderColor: P.jam, left: 0,
   },
-  pairRing2: { left: 8 },
-  thumbName: { fontSize: 13, fontWeight: '800', color: P.brown },
+  pairRing2: { left: 8 * s },
+  thumbName: { fontSize: 13 * s, fontWeight: '800', color: P.brown },
   activePill: {
-    backgroundColor: '#DCF3EF', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4,
+    backgroundColor: '#DCF3EF', borderRadius: 999, paddingHorizontal: 12 * s, paddingVertical: 4 * s,
     borderWidth: 1.5, borderColor: '#7FCFC4',
   },
-  activePillText: { fontSize: 11, color: '#2E9C8E', fontWeight: '800' },
-  tapText: { fontSize: 11.5, color: P.mutedBrown, fontWeight: '600' },
-  lockedText: { fontSize: 11.5, color: P.pink, fontWeight: '800' },
+  activePillText: { fontSize: 11 * s, color: '#2E9C8E', fontWeight: '800' },
+  tapText: { fontSize: 11.5 * s, color: P.mutedBrown, fontWeight: '600' },
+  lockedText: { fontSize: 11.5 * s, color: P.pink, fontWeight: '800' },
   comingSoon: {
-    backgroundColor: P.card, borderRadius: 18, borderWidth: 1.5, borderColor: P.pinkSoft,
-    padding: Spacing.four, alignItems: 'center', gap: 4,
+    backgroundColor: P.card, borderRadius: 18 * s, borderWidth: 1.5, borderColor: P.pinkSoft,
+    padding: Spacing.four * s, alignItems: 'center', gap: 4 * s,
   },
-  comingSoonTitle: { fontSize: 15, fontWeight: '800', color: P.brown },
-  comingSoonText: { fontSize: 12.5, color: P.mutedBrown, textAlign: 'center' },
+  comingSoonTitle: { fontSize: 15 * s, fontWeight: '800', color: P.brown },
+  comingSoonText: { fontSize: 12.5 * s, color: P.mutedBrown, textAlign: 'center' },
   doneBtn: {
-    backgroundColor: '#F7A7B8', borderRadius: 18, paddingVertical: Spacing.three,
-    alignItems: 'center', marginTop: Spacing.two,
+    backgroundColor: '#F7A7B8', borderRadius: 18 * s, paddingVertical: Spacing.three * s,
+    alignItems: 'center', marginTop: Spacing.two * s,
   },
-  doneText: { color: '#FFF', fontSize: 17, fontWeight: '800' },
+  doneText: { color: '#FFF', fontSize: 17 * s, fontWeight: '800' },
 
   // Purchase sheet
   modalBackdrop: {
-    flex: 1, backgroundColor: 'rgba(60,40,30,0.45)',
+    flex: 1, backgroundColor: 'transparent',
     alignItems: 'center', justifyContent: 'center', padding: 24,
   },
   modalCard: {
-    width: '100%', maxWidth: 360, backgroundColor: P.card, borderRadius: 26,
-    padding: Spacing.four, gap: Spacing.three, borderWidth: 1.5, borderColor: P.peach,
+    width: '100%', maxWidth: 360 * s, backgroundColor: P.card, borderRadius: 26 * s,
+    padding: Spacing.four * s, gap: Spacing.three * s, borderWidth: 1.5, borderColor: P.peach,
   },
-  modalTitle: { fontSize: 19, fontWeight: '800', color: P.brown, textAlign: 'center' },
-  modalItems: { gap: Spacing.two },
+  modalTitle: { fontSize: 19 * s, fontWeight: '800', color: P.brown, textAlign: 'center' },
+  modalItems: { gap: Spacing.two * s },
   modalItem: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.two,
-    backgroundColor: P.cream, borderRadius: 16, padding: Spacing.two,
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.two * s,
+    backgroundColor: P.cream, borderRadius: 16 * s, padding: Spacing.two * s,
     borderWidth: 1.5, borderColor: P.pinkSoft,
   },
-  modalItemImg: { width: 52, height: 52, borderRadius: 10, backgroundColor: P.pinkSoft },
-  modalItemEmoji: { fontSize: 40, width: 52, textAlign: 'center' },
-  modalItemInfo: { flex: 1, gap: 2 },
-  modalItemName: { fontSize: 14.5, fontWeight: '800', color: P.brown },
-  modalItemDesc: { fontSize: 11.5, color: P.mutedBrown, lineHeight: 15 },
-  modalItemPrice: { fontSize: 15, fontWeight: '800', color: P.brown },
+  modalItemImg: { width: 52 * s, height: 52 * s, borderRadius: 10 * s, backgroundColor: P.pinkSoft },
+  modalItemEmoji: { fontSize: 40 * s, width: 52 * s, textAlign: 'center' },
+  modalItemInfo: { flex: 1, gap: 2 * s },
+  modalItemName: { fontSize: 14.5 * s, fontWeight: '800', color: P.brown },
+  modalItemDesc: { fontSize: 11.5 * s, color: P.mutedBrown, lineHeight: 15 * s },
+  modalItemPrice: { fontSize: 15 * s, fontWeight: '800', color: P.brown },
   modalBalanceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  modalBalanceLabel: { fontSize: 13, fontWeight: '600', color: P.mutedBrown },
-  modalBalance: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  modalBalanceNum: { fontSize: 15, fontWeight: '800', color: P.brown },
-  modalShortfall: { fontSize: 12.5, color: P.jam, fontWeight: '700', textAlign: 'center' },
+  modalBalanceLabel: { fontSize: 13 * s, fontWeight: '600', color: P.mutedBrown },
+  modalBalance: { flexDirection: 'row', alignItems: 'center', gap: 4 * s },
+  modalBalanceNum: { fontSize: 15 * s, fontWeight: '800', color: P.brown },
+  modalShortfall: { fontSize: 12.5 * s, color: P.jam, fontWeight: '700', textAlign: 'center' },
   buyBtn: {
-    backgroundColor: P.pink, borderRadius: 18, paddingVertical: Spacing.three, alignItems: 'center',
+    backgroundColor: P.pink, borderRadius: 18 * s, paddingVertical: Spacing.three * s, alignItems: 'center',
   },
   buyBtnDisabled: { backgroundColor: P.pinkSoft },
-  buyBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
-  cancelBtn: { alignItems: 'center', paddingVertical: 4 },
-  cancelText: { fontSize: 13.5, color: P.mutedBrown, fontWeight: '700' },
+  buyBtnText: { color: '#FFF', fontSize: 16 * s, fontWeight: '800' },
+  cancelBtn: { alignItems: 'center', paddingVertical: 4 * s },
+  cancelText: { fontSize: 13.5 * s, color: P.mutedBrown, fontWeight: '700' },
 });

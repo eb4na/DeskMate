@@ -160,7 +160,7 @@ export default function CoinShopScreen() {
                   <Image source={PACK_IMAGES[pack.id] ?? PACK_IMAGES.pouch} style={styles.menuIcon} resizeMode="contain" />
                   <View style={styles.menuBody}>
                     <View style={styles.menuTopLine}>
-                      <ThemedText style={styles.menuName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{t(pack.nameKey)}</ThemedText>
+                      <ThemedText style={styles.menuName} numberOfLines={1}>{t(pack.nameKey)}</ThemedText>
                       <View style={styles.menuLeader} />
                       <ThemedText style={styles.menuPrice}>{packPrice(pack)}</ThemedText>
                     </View>
@@ -187,7 +187,7 @@ export default function CoinShopScreen() {
                 <Image source={STREAK_FREEZE_ICON} style={styles.menuIcon} resizeMode="contain" />
                 <View style={styles.menuBody}>
                   <View style={styles.menuTopLine}>
-                    <ThemedText style={styles.menuName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{t('shop.streakFreezeName')}</ThemedText>
+                    <ThemedText style={styles.menuName} numberOfLines={1}>{t('shop.streakFreezeName')}</ThemedText>
                     <View style={styles.menuLeader} />
                     <ThemedText style={styles.menuPrice}>{freezePrice}</ThemedText>
                   </View>
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
   menuIcon: { width: 54, height: 54 },
   menuBody: { flex: 1, gap: 3 },
   menuTopLine: { flexDirection: 'row', alignItems: 'flex-end' },
-  menuName: { fontSize: 15, fontWeight: '700', color: BakeryColors.cocoaDark },
+  menuName: { flexShrink: 1, fontSize: 15, fontWeight: '700', color: BakeryColors.cocoaDark },
   menuLeader: {
     flex: 1,
     marginHorizontal: 6,

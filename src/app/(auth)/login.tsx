@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -39,10 +40,12 @@ const LOGIN_CAT = require('@/assets/images/auth/login-cat.png');
 const LOGO = require('@/assets/images/auth/memobun-sign.png');
 
 // Tablet-only layout overrides for the login screen. Applied only when
-// useIsTablet() (phones stay byte-identical). Defaults equal today's values
-// (signTop:-120 is the old signHangTablet; the rest match the phone styles), so
-// nothing shifts until dialed. Author live via the 🎛 panel in Tablet mode,
-// "Log values", then paste the numbers here — they ship to all tablets.
+// useIsTablet() (phones stay byte-identical). These are 11-inch-REFERENCE values
+// (834×1194): at render they're scaled per-device by tsW/tsH so the whole login
+// scene keeps the same proportions on any tablet size (the 11-inch is untouched
+// since tsW=tsH=1 there; the 13-inch scales up, the mini scales down). Author live
+// via the 🎛 panel in Tablet mode — the knobs edit these raw 11-inch numbers, so
+// dialing on any device still bakes correct 11-inch-reference values.
 const LOGIN_TABLET = {
   signTop: -80,             // signHang.top (was signHangTablet)
   signHeight: 560,          // signHang.height
@@ -67,9 +70,35 @@ export default function LoginScreen() {
   const { language, setLanguage, markLanguageSelected } = useApp();
   // iPad's taller screen leaves the hanging sign sitting low, so lift it up there.
   const isTablet = useIsTablet();
+  // Proportional tablet scaling off the 11-inch reference (834×1194), same system
+  // as the Home screen: widths/sizes/X scale by tsW, heights/Y by tsH. Keeps the
+  // login scene the same proportion of the screen at any tablet size (fixes the
+  // form reading tiny on the 13-inch). Phones and the 11-inch are unaffected.
+  const { width: winW, height: winH } = useWindowDimensions();
+  const TABLET_REF_W = 834;
+  const TABLET_REF_H = 1194;
+  const tsW = isTablet ? winW / TABLET_REF_W : 1;
+  const tsH = isTablet ? winH / TABLET_REF_H : 1;
+  // The language pill is a small element, so strict tsW scaling still reads tiny on
+  // big tablets. Amplify the growth ABOVE the 11-inch reference (×3 the delta) so the
+  // 11-inch is untouched (tsW=1 → 1) but the 13-inch gets a clearly larger pill.
+  const langScale = 1 + (tsW - 1) * 3;
   // Tablet overrides (see LOGIN_TABLET). `lt` only changes via the dev knob
   // panel; production keeps the baked LOGIN_TABLET values.
   const [lt, setLt] = useState(LOGIN_TABLET);
+  // Per-device scaled values used for rendering. The knobs still edit the raw `lt`
+  // (11-inch reference); `lts` derives from it so each device scales correctly.
+  // formWidth stays the fixed layout cap — formScale·tsW carries the uniform growth
+  // (width + height + text together), so the two never double-count.
+  const lts = {
+    signTop: lt.signTop * tsH,
+    signHeight: lt.signHeight * tsH,
+    catSize: lt.catSize * tsW,
+    catBottom: lt.catBottom * tsH,
+    formTop: lt.formTop * tsH,
+    formWidth: lt.formWidth,
+    formScale: (lt.formScale ?? 1) * tsW,
+  };
   const loginKnobs: Knob[] = [
     { key: 'signTop', label: 'Sign Y', value: lt.signTop, min: -260, max: 100, step: 2 },
     { key: 'signHeight', label: 'Sign height', value: lt.signHeight, min: 200, max: 560, step: 4 },
@@ -187,16 +216,16 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <RNImage source={LOGIN_BG} style={styles.bg} resizeMode="stretch" />
-      <View style={[styles.catWrap, isTablet && { bottom: lt.catBottom }]} pointerEvents="none">
+      <View style={[styles.catWrap, isTablet && { bottom: lts.catBottom }]} pointerEvents="none">
         <RNImage
           source={LOGIN_CAT}
-          style={[styles.cat, isTablet && { width: lt.catSize, height: lt.catSize }]}
+          style={[styles.cat, isTablet && { width: lts.catSize, height: lts.catSize }]}
           resizeMode="contain"
         />
       </View>
       {/* Hanging Memobun sign — pinned to the very top so the strings meet the
           screen edge; the form below is padded down to clear it. */}
-      <View style={[styles.signHang, isTablet && { top: lt.signTop, height: lt.signHeight }]} pointerEvents="none">
+      <View style={[styles.signHang, isTablet && { top: lts.signTop, height: lts.signHeight }]} pointerEvents="none">
         <RNImage source={LOGO} style={styles.signHangImg} resizeMode="contain" />
       </View>
       <KeyboardAvoidingView
@@ -204,9 +233,16 @@ export default function LoginScreen() {
         behavior={Platform.select({ ios: 'padding', android: undefined })}>
         <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
           {/* Language dropdown — pinned top-right, independent of the centered form */}
-          <View style={styles.langBar}>
+          <View style={[styles.langBar, isTablet && { paddingTop: 34 * tsH }]}>
             <Pressable
-              style={({ pressed }) => [styles.langPill, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.langPill,
+                // The pill lives outside the scaled form column, so scale it here by
+                // the same tsW. Anchored top-right so it grows in place and stays
+                // pinned to the corner (11-inch unchanged at tsW=1).
+                isTablet && { transform: [{ scale: langScale }], transformOrigin: '100% 0%' },
+                pressed && styles.pressed,
+              ]}
               onPress={() => setLangMenuOpen(true)}>
               {FLAGS[activeLang.code] ? (
                 <RNImage source={FLAGS[activeLang.code]!} style={styles.langPillFlagImg} resizeMode="contain" />
@@ -218,8 +254,8 @@ export default function LoginScreen() {
             </Pressable>
           </View>
 
-          <View style={[styles.scrollContent, isTablet && { paddingTop: lt.formTop }]}>
-            <View style={[styles.inner, isTablet && { maxWidth: lt.formWidth, transform: [{ scale: lt.formScale ?? 1 }] }]}>
+          <View style={[styles.scrollContent, isTablet && { paddingTop: lts.formTop }]}>
+            <View style={[styles.inner, isTablet && { maxWidth: lts.formWidth, transform: [{ scale: lts.formScale }] }]}>
               {/* Email */}
               <View style={styles.inputRow}>
                 <MailIcon color={BakeryColors.jam} />
@@ -521,7 +557,7 @@ const styles = StyleSheet.create({
   // Language modal
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(78, 53, 40, 0.28)',
+    backgroundColor: 'transparent',
     justifyContent: 'flex-start',
     alignItems: 'flex-end',
     paddingTop: Platform.select({ ios: 96, android: 64 }),

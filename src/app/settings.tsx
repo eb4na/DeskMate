@@ -7,7 +7,6 @@ import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DeleteAccountModal } from '@/components/delete-account-modal';
-import { DateWheelPicker } from '@/components/date-wheel-picker';
 import { InstagramFollowRow } from '@/components/instagram-follow-row';
 import { PlusIcon } from '@/components/plus-icon';
 import { LockBadge } from '@/components/lock-badge';
@@ -109,10 +108,6 @@ export default function SettingsScreen() {
   // Leave-guest / sign-out confirm — a LOCAL modal (not root showPopup, which can't
   // present over the Settings native modal — the tap just looked dead).
   const [signOutOpen, setSignOutOpen] = useState(false);
-  // Placeholder "change birthday" — the profile birthday is normally set-once/locked,
-  // so this lets it be changed (stand-in until a proper birthday-change flow exists).
-  const [birthdayOpen, setBirthdayOpen] = useState(false);
-  const [bdayDraft, setBdayDraft] = useState('2008-01-01');
   const {
     coins,
     isPlus,
@@ -134,8 +129,6 @@ export default function SettingsScreen() {
     setIsPlus,
     resetGameData,
     replayTutorial,
-    profileBirthday,
-    updateProfile,
   } = useApp();
 
   const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
@@ -239,19 +232,6 @@ export default function SettingsScreen() {
                 <ThemedText type="smallBold" style={styles.dangerText}>
                   {isGuest ? t('settings.leaveGuestMode') : t('settings.signOut')}
                 </ThemedText>
-              </View>
-            </Pressable>
-            <View style={styles.divider} />
-            {/* Placeholder: change birthday (normally set-once / locked). */}
-            <Pressable
-              onPress={() => { setBdayDraft(profileBirthday || '2008-01-01'); setBirthdayOpen(true); }}
-              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
-              <View style={styles.rowIconImage}>
-                <SettingsIcon name="account" />
-              </View>
-              <View style={styles.rowBody}>
-                <ThemedText type="smallBold">Change birthday</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">{profileBirthday || 'Not set'}</ThemedText>
               </View>
             </Pressable>
           </ThemedView>
@@ -590,24 +570,6 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
-      {/* Change-birthday placeholder — local modal with a date picker. */}
-      <Modal visible={birthdayOpen} transparent animationType="fade" onRequestClose={() => setBirthdayOpen(false)}>
-        <View style={styles.resetBackdrop}>
-          <View style={styles.resetCard}>
-            <ThemedText style={styles.resetTitle}>Change birthday</ThemedText>
-            <DateWheelPicker value={bdayDraft} onChange={setBdayDraft} hideYear />
-            <Pressable
-              style={({ pressed }) => [styles.resetBtn, pressed && styles.pressed]}
-              onPress={() => { updateProfile({ birthday: bdayDraft }); setBirthdayOpen(false); }}>
-              <ThemedText style={styles.resetBtnText}>Save</ThemedText>
-            </Pressable>
-            <Pressable style={styles.resetCancel} onPress={() => setBirthdayOpen(false)}>
-              <ThemedText style={styles.resetCancelText}>{t('common.cancel')}</ThemedText>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
       {/* TEST reset confirm — local modal so it shows over the Settings modal. */}
       <Modal visible={resetOpen} transparent animationType="fade" onRequestClose={() => setResetOpen(false)}>
         <View style={styles.resetBackdrop}>
@@ -698,7 +660,7 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   badgeText: { fontSize: 11 * s, fontWeight: '800', color: BakeryColors.cocoaDark },
   dangerText: { color: BakeryColors.danger },
   // Local reset-confirm modal
-  resetBackdrop: { flex: 1, backgroundColor: 'rgba(48,32,24,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  resetBackdrop: { flex: 1, backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center', padding: 24 },
   resetCard: {
     width: '100%', maxWidth: 360 * s, backgroundColor: BakeryColors.frosting,
     borderRadius: BakeryRadii.panel * s, borderWidth: 2, borderColor: '#E8A0A0',

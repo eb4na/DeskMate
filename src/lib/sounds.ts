@@ -66,6 +66,7 @@ let swooshPool: Pool | null = null;
 let dingPool: Pool | null = null;
 let tickPool: Pool | null = null;
 let pieceDropPool: Pool | null = null;
+let popPool: Pool | null = null;
 
 function getTapPool() {
   if (!tapPool) tapPool = makePool(require('@/assets/sounds/tap.wav'));
@@ -95,6 +96,11 @@ function getTickPool() {
 function getPieceDropPool() {
   if (!pieceDropPool) pieceDropPool = makePool(require('@/assets/sounds/piece-drop.wav'), 0.6);
   return pieceDropPool;
+}
+
+function getPopPool() {
+  if (!popPool) popPool = makePool(require('@/assets/sounds/pop.wav'), 0.5, 4);
+  return popPool;
 }
 
 function play(getPool: () => Pool | null) {
@@ -142,3 +148,6 @@ export function playTick() { play(getTickPool); }
 
 /** Bouncy drop for a board-game piece move (Connect 4) — fires for every player. */
 export function playPieceDrop() { play(getPieceDropPool); }
+
+/** Soft bubble "pop" — used when a fellow studier leaves the room mid-session. */
+export function playPop() { play(getPopPool); }

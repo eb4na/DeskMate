@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ImageBackground, NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { playTick } from '@/lib/sounds';
@@ -8,11 +8,12 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { CoinIcon } from '@/components/coin-icon';
 import { useApp } from '@/context/app-context';
+import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { useTranslation } from '@/i18n';
-import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
 
 const C = BakeryColors;
-const SCREEN_BG = require('@/assets/images/home/session-bg.png');
+const SCREEN_BG = require('@/assets/images/home/session-bg-cakes.png');
 
 const FOCUS_PICKS = [15, 25, 45, 60, 90];
 const BREAK_PICKS = [5, 10, 15, 20, 30];
@@ -25,6 +26,20 @@ const MIN_VALUES = range(1, 59); // 1-minute steps, never 0
 const ITEM_H = 40;
 const LOOP_REPEAT = 7; // copies stacked to fake an endless (wrapping) wheel
 const LOOP_CENTER = Math.floor(LOOP_REPEAT / 2);
+
+// The scroll wheel keeps fixed sizes (so its ITEM_H snap math stays exact), so it
+// uses its own static stylesheet rather than the screen's tablet-scaled `makeStyles`.
+const wheelStyles = StyleSheet.create({
+  wheel: { alignItems: 'center', minWidth: 96 },
+  wheelHighlight: {
+    position: 'absolute', top: ITEM_H, height: ITEM_H, left: 6, right: 6,
+    borderRadius: 12, backgroundColor: 'rgba(195,143,114,0.12)',
+  },
+  wheelItem: { height: ITEM_H, alignItems: 'center', justifyContent: 'center' },
+  wheelNum: { fontSize: 24, fontWeight: '800', color: C.latte, lineHeight: 28 },
+  wheelNumActive: { fontSize: 32, fontWeight: '900', color: C.berry, lineHeight: 34 },
+  wheelUnit: { fontSize: 12, fontWeight: '700', color: C.mocha, marginTop: 2 },
+});
 
 // A flick-scrollable wheel column — snaps to whole values (no 5-min jumps).
 // When `loop` is set, the values wrap: scrolling past the last lands on the first (59 → 1).
@@ -67,8 +82,8 @@ function WheelColumn({ values, value, unit, onChange, loop = false }: { values: 
     ref.current?.scrollTo({ y: idx * ITEM_H, animated: true });
   }, [idx]);
   return (
-    <View style={styles.wheel}>
-      <View style={styles.wheelHighlight} pointerEvents="none" />
+    <View style={wheelStyles.wheel}>
+      <View style={wheelStyles.wheelHighlight} pointerEvents="none" />
       <ScrollView
         ref={ref}
         style={{ height: ITEM_H * 3 }}
@@ -87,12 +102,12 @@ function WheelColumn({ values, value, unit, onChange, loop = false }: { values: 
         onMomentumScrollEnd={commit}
         onScrollEndDrag={commit}>
         {data.map((v, i) => (
-          <View key={i} style={styles.wheelItem}>
-            <Text style={[styles.wheelNum, v === value && styles.wheelNumActive]}>{String(v).padStart(2, '0')}</Text>
+          <View key={i} style={wheelStyles.wheelItem}>
+            <Text style={[wheelStyles.wheelNum, v === value && wheelStyles.wheelNumActive]}>{String(v).padStart(2, '0')}</Text>
           </View>
         ))}
       </ScrollView>
-      <Text style={styles.wheelUnit}>{unit}</Text>
+      <Text style={wheelStyles.wheelUnit}>{unit}</Text>
     </View>
   );
 }
@@ -100,6 +115,10 @@ function WheelColumn({ values, value, unit, onChange, loop = false }: { values: 
 export default function CustomTimerScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  // Tablet: scale the buttons/chips/cards/text up (the wheel keeps its fixed item
+  // height so its scroll-snap math stays exact).
+  const { scale, contentWidth } = useTabletScale();
+  const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const { mode } = useLocalSearchParams<{ mode?: TimerMode }>();
   const isBreakMode = mode === 'break';
   const { subjects, saveTimerPreset, isPlus, coins } = useApp();
@@ -260,95 +279,88 @@ export default function CustomTimerScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// `s` = shared tablet scale (1 on phone). Buttons/chips/cards/text × s so they're not
+// phone-tiny on iPad; the wheel keeps its fixed ITEM_H so its scroll-snap stays exact.
+const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.cream },
-  safe: { flex: 1, paddingHorizontal: Spacing.four, maxWidth: MaxContentWidth, width: '100%', alignSelf: 'center' },
+  safe: { flex: 1, paddingHorizontal: Spacing.four * s, maxWidth: contentWidth, width: '100%', alignSelf: 'center' },
   bgOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,252,247,0.4)' },
-  scroll: { paddingBottom: Spacing.four, gap: Spacing.one },
+  scroll: { paddingBottom: Spacing.four * s, gap: Spacing.one * s },
 
   // Top bar
-  topBar: { flexDirection: 'row', alignItems: 'center', paddingBottom: Spacing.two, gap: Spacing.two },
+  topBar: { flexDirection: 'row', alignItems: 'center', paddingBottom: Spacing.two * s, gap: Spacing.two * s },
   iconBtn: {
-    width: 38, height: 38, borderRadius: 19,
+    width: 38 * s, height: 38 * s, borderRadius: 19 * s,
     backgroundColor: 'rgba(255,255,255,0.85)', borderWidth: 1.5, borderColor: C.shortbread,
     alignItems: 'center', justifyContent: 'center',
   },
-  backChevron: { fontSize: 22, fontWeight: '800', color: C.cocoaDark, marginTop: -2 },
+  backChevron: { fontSize: 22 * s, fontWeight: '800', color: C.cocoaDark, marginTop: -2 },
   titleWrap: { flex: 1, alignItems: 'center' },
-  title: { fontSize: 20, fontWeight: '900', color: C.cocoaDark, letterSpacing: 0.2 },
-  subtitle: { fontSize: 12, color: C.mocha, fontWeight: '600' },
+  title: { fontSize: 20 * s, fontWeight: '900', color: C.cocoaDark, letterSpacing: 0.2 },
+  subtitle: { fontSize: 12 * s, color: C.mocha, fontWeight: '600' },
   coinPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
+    flexDirection: 'row', alignItems: 'center', gap: 5 * s,
     backgroundColor: 'rgba(255,255,255,0.85)', borderWidth: 1.5, borderColor: C.shortbread,
-    borderRadius: BakeryRadii.pill, paddingHorizontal: 9, paddingVertical: 6,
+    borderRadius: BakeryRadii.pill, paddingHorizontal: 9 * s, paddingVertical: 6 * s,
   },
-  coinText: { fontSize: 13, fontWeight: '800', color: C.cocoaDark },
+  coinText: { fontSize: 13 * s, fontWeight: '800', color: C.cocoaDark },
 
   // Section labels
-  sectionLabel: { fontSize: 11, fontWeight: '800', color: C.latte, letterSpacing: 1, marginTop: Spacing.two },
-  sectionSub: { fontSize: 11, color: C.mocha, marginTop: -2 },
+  sectionLabel: { fontSize: 11 * s, fontWeight: '800', color: C.latte, letterSpacing: 1, marginTop: Spacing.two * s },
+  sectionSub: { fontSize: 11 * s, color: C.mocha, marginTop: -2 },
 
   // Duration card with steppers
   durCard: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#fff', borderRadius: BakeryRadii.card,
+    backgroundColor: '#fff', borderRadius: BakeryRadii.card * s,
     borderWidth: 1.5, borderColor: 'rgba(195,143,114,0.18)',
-    paddingVertical: Spacing.three, marginTop: 4, ...BakeryShadow,
+    paddingVertical: Spacing.three * s, marginTop: 4 * s, ...BakeryShadow,
   },
-  durDivider: { width: 1.5, height: 96, backgroundColor: C.shortbread, marginHorizontal: Spacing.four },
-  // Scroll wheel
-  wheel: { alignItems: 'center', minWidth: 96 },
-  wheelHighlight: {
-    position: 'absolute', top: ITEM_H, height: ITEM_H, left: 6, right: 6,
-    borderRadius: 12, backgroundColor: 'rgba(195,143,114,0.12)',
-  },
-  wheelItem: { height: ITEM_H, alignItems: 'center', justifyContent: 'center' },
-  wheelNum: { fontSize: 24, fontWeight: '800', color: C.latte, lineHeight: 28 },
-  wheelNumActive: { fontSize: 32, fontWeight: '900', color: C.berry, lineHeight: 34 },
-  wheelUnit: { fontSize: 12, fontWeight: '700', color: C.mocha, marginTop: 2 },
+  durDivider: { width: 1.5, height: 96, backgroundColor: C.shortbread, marginHorizontal: Spacing.four * s },
+  // (Scroll-wheel styles live in `wheelStyles` — unscaled so its snap math is exact.)
 
   // Quick picks
-  pickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, justifyContent: 'center' },
+  pickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 * s, marginTop: 8 * s, justifyContent: 'center' },
   pick: {
     borderRadius: BakeryRadii.pill, borderWidth: 1.5, borderColor: C.shortbread,
-    backgroundColor: 'rgba(255,255,255,0.9)', paddingHorizontal: 16, paddingVertical: 8,
+    backgroundColor: 'rgba(255,255,255,0.9)', paddingHorizontal: 16 * s, paddingVertical: 8 * s,
   },
   pickActive: { backgroundColor: C.jam, borderColor: C.jam },
-  pickText: { fontSize: 13, fontWeight: '800', color: C.mocha },
+  pickText: { fontSize: 13 * s, fontWeight: '800', color: C.mocha },
   pickTextActive: { color: '#fff' },
 
   // Subject card
   softCard: {
-    backgroundColor: '#fff', borderRadius: BakeryRadii.card,
+    backgroundColor: '#fff', borderRadius: BakeryRadii.card * s,
     borderWidth: 1.5, borderColor: 'rgba(195,143,114,0.18)',
-    paddingVertical: Spacing.two, paddingHorizontal: Spacing.two, marginTop: 4, ...BakeryShadow,
+    paddingVertical: Spacing.two * s, paddingHorizontal: Spacing.two * s, marginTop: 4 * s, ...BakeryShadow,
   },
-  chipRow: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingRight: 8 },
-  chip: { borderRadius: BakeryRadii.pill, borderWidth: 1.5, paddingHorizontal: 13, paddingVertical: 8 },
+  chipRow: { flexDirection: 'row', gap: 8 * s, alignItems: 'center', paddingRight: 8 * s },
+  chip: { borderRadius: BakeryRadii.pill, borderWidth: 1.5, paddingHorizontal: 13 * s, paddingVertical: 8 * s },
   chipAdd: { borderColor: C.jam, borderStyle: 'dashed', backgroundColor: 'transparent' },
-  chipText: { fontSize: 13.5, color: C.mocha, fontWeight: '700' },
+  chipText: { fontSize: 13.5 * s, color: C.mocha, fontWeight: '700' },
 
   // Save as preset
   presetCard: {
-    backgroundColor: '#fff', borderRadius: BakeryRadii.card,
+    backgroundColor: '#fff', borderRadius: BakeryRadii.card * s,
     borderWidth: 1.5, borderColor: 'rgba(195,143,114,0.18)',
-    padding: Spacing.three, marginTop: 4, gap: Spacing.two, ...BakeryShadow,
+    padding: Spacing.three * s, marginTop: 4 * s, gap: Spacing.two * s, ...BakeryShadow,
   },
   presetTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   presetTextWrap: { flex: 1 },
-  presetTitle: { fontSize: 12, fontWeight: '800', color: C.cocoaDark, letterSpacing: 0.5 },
-  presetSub: { fontSize: 11.5, color: C.mocha, marginTop: 1 },
+  presetTitle: { fontSize: 12 * s, fontWeight: '800', color: C.cocoaDark, letterSpacing: 0.5 },
+  presetSub: { fontSize: 11.5 * s, color: C.mocha, marginTop: 1 },
   presetInput: {
     borderWidth: 1.5, borderColor: C.shortbread, borderRadius: BakeryRadii.button,
-    paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: C.cocoaDark, backgroundColor: C.frosting,
+    paddingHorizontal: 12 * s, paddingVertical: 10 * s, fontSize: 14 * s, color: C.cocoaDark, backgroundColor: C.frosting,
   },
 
   // Start
   startBtn: {
     backgroundColor: '#F2A9BC', borderRadius: BakeryRadii.pill,
-    paddingVertical: 16, alignItems: 'center', marginTop: Spacing.three, ...BakeryShadow,
+    paddingVertical: 16 * s, alignItems: 'center', marginTop: Spacing.three * s, ...BakeryShadow,
   },
-  startBtnText: { fontSize: 17, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.3 },
+  startBtnText: { fontSize: 17 * s, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.3 },
 
   pressed: { opacity: 0.85 },
 });

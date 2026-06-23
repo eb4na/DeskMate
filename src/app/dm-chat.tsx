@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
   sendBtnDisabled: { opacity: 0.45 },
 
   sheetRoot: { flex: 1, justifyContent: 'flex-end' },
-  sheetBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(48,32,24,0.4)' },
+  sheetBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
   sheet: { backgroundColor: C.frosting, borderTopLeftRadius: BakeryRadii.panel, borderTopRightRadius: BakeryRadii.panel, padding: Spacing.four, gap: Spacing.two },
   sheetTitle: { fontSize: 16, fontWeight: '900', color: C.cocoaDark, marginBottom: Spacing.one },
   sheetRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: 12, paddingHorizontal: Spacing.three, borderRadius: BakeryRadii.card, backgroundColor: '#fff', borderWidth: 1.5, borderColor: C.shortbread },

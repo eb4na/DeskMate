@@ -17,6 +17,7 @@ import { DecoIcon, OutfitIcon, ThemeIcon, PoseIcon, GameIcon, ReminderIcon } fro
 import { BakeryStarEmoji } from '@/components/bakery-emoji';
 import { LockOverlay } from '@/components/lock-badge';
 import { ThemedText } from '@/components/themed-text';
+import { FitText } from '@/components/fit-text';
 import { ThemedView } from '@/components/themed-view';
 import { isEquipableCategory } from '@/constants/shop-effects';
 import { useApp } from '@/context/app-context';
@@ -87,6 +88,12 @@ const _isTabletDevice = _shortest >= 600;
 // fixed tablet sizes ("so it's bigger"). 1.0 on phone — phone layout is unchanged.
 // Dial the 1.15 to taste.
 const SHOP_TS = _isTabletDevice ? Math.max(1, _shortest / 834) * 1.15 : 1;
+// The unlock/buy confirm popup reads fine on the 11" Pro but tiny on the 13" (its
+// fixed sizes don't scale). Enlarge it on the 13" ONLY (shortest side ≥ 1000pt);
+// the 11" + phone keep the base sizes. Reuses SHOP_TS so it matches the rest of the
+// tablet shop scale; BUY_TS is 1 everywhere except the 13".
+const _isLargeTablet = _shortest >= 1000;
+const BUY_TS = _isLargeTablet ? SHOP_TS : 1;
 // On tablet the grid/menu may grow past the old 800px phone cap so the shop fills
 // more of the screen instead of a narrow centered column (capped at the device).
 const WIN_W = Math.min(_win.width, MaxContentWidth * SHOP_TS);
@@ -205,6 +212,29 @@ export default function ShopScreen() {
   const tMenuName = isTablet && { fontSize: 25 * SHOP_TS, lineHeight: 30 * SHOP_TS };
   const tMenuPrice = isTablet && { fontSize: 25 * SHOP_TS };
   const tMenuCoin = isTablet && { fontSize: 20 * SHOP_TS };
+  // Buy/unlock confirm popup — bigger on the 13" only (BUY_TS is 1 elsewhere, so
+  // these all collapse to `false` and the base styles apply unchanged on 11"/phone).
+  const bs = (n: number) => n * BUY_TS;
+  const big = _isLargeTablet;
+  const ltCard = big && { maxWidth: bs(360), padding: bs(Spacing.four), borderRadius: bs(26), gap: bs(Spacing.three) };
+  const ltTitle = big && { fontSize: bs(19) };
+  const ltHeroImg = big && { width: bs(150), height: bs(150) };
+  const ltHeroDesc = big && { fontSize: bs(13), lineHeight: bs(18) };
+  const ltHeroEmoji = big && { fontSize: bs(96) };
+  const ltItems = big && { gap: bs(Spacing.two) };
+  const ltItemRow = big && { borderRadius: bs(16), padding: bs(Spacing.two), gap: bs(Spacing.two) };
+  const ltItemImg = big && { width: bs(52), height: bs(52), borderRadius: bs(10) };
+  const ltItemEmoji = big && { fontSize: bs(40), width: bs(52) };
+  const ltItemName = big && { fontSize: bs(14.5) };
+  const ltItemDesc = big && { fontSize: bs(11.5), lineHeight: bs(15) };
+  const ltItemPrice = big && { fontSize: bs(15) };
+  const ltBalanceLabel = big && { fontSize: bs(13) };
+  const ltBalanceNum = big && { fontSize: bs(15) };
+  const ltShortfall = big && { fontSize: bs(12.5) };
+  const ltConfirmBtn = big && { borderRadius: bs(18), paddingVertical: bs(Spacing.three) };
+  const ltConfirmText = big && { fontSize: bs(16) };
+  const ltCancelText = big && { fontSize: bs(13.5) };
+  const buyIconSize = Math.round(bs(20));
   const {
     coins,
     earnedToday,
@@ -593,7 +623,7 @@ export default function ShopScreen() {
                         )}
                         {!mystery && (
                           <>
-                            <ThemedText style={[styles.itemName, tName]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.75}>{localizeCompanionName(c.name, t)}</ThemedText>
+                            <FitText style={[styles.itemName, tName]}>{localizeCompanionName(c.name, t)}</FitText>
                             <View style={[styles.charBadge, c.owned ? styles.badgeOwned : styles.charLockedBadge]}>
                               <ThemedText style={c.owned ? styles.badgeText : styles.charLockedText}>
                                 {c.owned ? t('shop.ownedBadge') : t('shop.lockedBadge')}
@@ -680,7 +710,7 @@ export default function ShopScreen() {
                               ) : (
                                 <PriceTag price={o.price} discount={discount} size={22} textStyle={[styles.priceText, !canAfford && styles.priceTextDim]} />
                               )}
-                              <ThemedText style={[styles.itemName, tName]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>{localizeOutfitName(o.name, t)}</ThemedText>
+                              <FitText style={[styles.itemName, tName]}>{localizeOutfitName(o.name, t)}</FitText>
                             </View>
                           </Pressable>
                           {skin?.lore && (
@@ -837,7 +867,7 @@ export default function ShopScreen() {
                             textStyle={[styles.priceText, !canAfford && styles.priceTextDim]}
                           />
                         )}
-                        <ThemedText style={[styles.itemName, tName]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.75}>{localizeCompanionName(item.name, t)}</ThemedText>
+                        <FitText style={[styles.itemName, tName]}>{localizeCompanionName(item.name, t)}</FitText>
                         {item.category === 'recipe' && item.owner && (
                           <ThemedText style={styles.useHint} numberOfLines={1}>{t('foodGallery.ownerTag', { name: localizeCompanionName(item.owner, t) })}</ThemedText>
                         )}
@@ -968,56 +998,56 @@ export default function ShopScreen() {
       {/* White confirm popup — shows the item picture + Buy / Cancel. */}
       <Modal visible={buyReq !== null} transparent animationType="fade" onRequestClose={() => setBuyReq(null)}>
         <Pressable style={styles.buyBackdrop} onPress={() => setBuyReq(null)}>
-          <Pressable style={styles.buyCard} onPress={(e) => e.stopPropagation?.()}>
+          <Pressable style={[styles.buyCard, ltCard]} onPress={(e) => e.stopPropagation?.()}>
             {buyReq && (
               <>
-                <ThemedText style={styles.buyTitle}>{buyReq.title}</ThemedText>
+                <ThemedText style={[styles.buyTitle, ltTitle]}>{buyReq.title}</ThemedText>
 
                 {buyReq.items.length === 1 ? (
                   // Single item: show a big zoomed-in preview.
                   <View style={styles.buyHero}>
                     {buyReq.items[0].image ? (
-                      <RNImage source={buyReq.items[0].image} style={styles.buyHeroImg} resizeMode="contain" />
+                      <RNImage source={buyReq.items[0].image} style={[styles.buyHeroImg, ltHeroImg]} resizeMode="contain" />
                     ) : (
-                      <ThemedText style={styles.buyHeroEmoji}>{buyReq.items[0].emoji}</ThemedText>
+                      <ThemedText style={[styles.buyHeroEmoji, ltHeroEmoji]}>{buyReq.items[0].emoji}</ThemedText>
                     )}
-                    <ThemedText style={styles.buyItemName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{localizeCompanionName(buyReq.items[0].name, t)}</ThemedText>
+                    <ThemedText style={[styles.buyItemName, ltItemName]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{localizeCompanionName(buyReq.items[0].name, t)}</ThemedText>
                     {!!buyReq.items[0].description && (
-                      <ThemedText style={styles.buyHeroDesc} numberOfLines={3}>{buyReq.items[0].description}</ThemedText>
+                      <ThemedText style={[styles.buyHeroDesc, ltHeroDesc]} numberOfLines={3}>{buyReq.items[0].description}</ThemedText>
                     )}
-                    <PriceTag price={buyReq.items[0].price} discount={discount} size={20} textStyle={styles.buyItemPrice} />
+                    <PriceTag price={buyReq.items[0].price} discount={discount} size={buyIconSize} textStyle={[styles.buyItemPrice, ltItemPrice]} />
                   </View>
                 ) : (
-                  <View style={styles.buyItems}>
+                  <View style={[styles.buyItems, ltItems]}>
                     {buyReq.items.map((it) => (
-                      <View key={it.id} style={styles.buyItemRow}>
+                      <View key={it.id} style={[styles.buyItemRow, ltItemRow]}>
                         {it.image ? (
-                          <RNImage source={it.image} style={styles.buyItemImg} resizeMode="cover" />
+                          <RNImage source={it.image} style={[styles.buyItemImg, ltItemImg]} resizeMode="cover" />
                         ) : (
-                          <ThemedText style={styles.buyItemEmoji}>{it.emoji}</ThemedText>
+                          <ThemedText style={[styles.buyItemEmoji, ltItemEmoji]}>{it.emoji}</ThemedText>
                         )}
                         <View style={styles.buyItemInfo}>
-                          <ThemedText style={styles.buyItemName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{localizeCompanionName(it.name, t)}</ThemedText>
+                          <ThemedText style={[styles.buyItemName, ltItemName]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{localizeCompanionName(it.name, t)}</ThemedText>
                           {!!it.description && (
-                            <ThemedText style={styles.buyItemDesc} numberOfLines={2}>{it.description}</ThemedText>
+                            <ThemedText style={[styles.buyItemDesc, ltItemDesc]} numberOfLines={2}>{it.description}</ThemedText>
                           )}
                         </View>
-                        <PriceTag price={it.price} discount={discount} size={20} textStyle={styles.buyItemPrice} />
+                        <PriceTag price={it.price} discount={discount} size={buyIconSize} textStyle={[styles.buyItemPrice, ltItemPrice]} />
                       </View>
                     ))}
                   </View>
                 )}
 
                 <View style={styles.buyBalanceRow}>
-                  <ThemedText style={styles.buyBalanceLabel}>{t('editRoom.yourBalance')}</ThemedText>
+                  <ThemedText style={[styles.buyBalanceLabel, ltBalanceLabel]}>{t('editRoom.yourBalance')}</ThemedText>
                   <View style={styles.buyBalance}>
-                    <CoinIcon size={20} />
-                    <ThemedText style={styles.buyBalanceNum}>{coins}</ThemedText>
+                    <CoinIcon size={buyIconSize} />
+                    <ThemedText style={[styles.buyBalanceNum, ltBalanceNum]}>{coins}</ThemedText>
                   </View>
                 </View>
 
                 {coins < buyReq.total && (
-                  <ThemedText style={styles.buyShortfall}>{t('gallery.shortfall', { count: buyReq.total - coins })}</ThemedText>
+                  <ThemedText style={[styles.buyShortfall, ltShortfall]}>{t('gallery.shortfall', { count: buyReq.total - coins })}</ThemedText>
                 )}
 
                 <SoundPressable
@@ -1025,16 +1055,17 @@ export default function ShopScreen() {
                   disabled={coins < buyReq.total}
                   style={({ pressed }) => [
                     styles.buyConfirmBtn,
+                    ltConfirmBtn,
                     coins < buyReq.total && styles.buyConfirmDisabled,
                     pressed && coins >= buyReq.total && { opacity: 0.85 },
                   ]}
                   onPress={confirmBuy}>
-                  <ThemedText style={styles.buyConfirmText}>
+                  <ThemedText style={[styles.buyConfirmText, ltConfirmText]}>
                     {coins >= buyReq.total ? t('gallery.unlockForCoins', { price: buyReq.total }) : t('gallery.notEnoughCoins')}
                   </ThemedText>
                 </SoundPressable>
                 <Pressable style={styles.buyCancelBtn} onPress={() => setBuyReq(null)}>
-                  <ThemedText style={styles.buyCancelText}>{t('gallery.maybeLater')}</ThemedText>
+                  <ThemedText style={[styles.buyCancelText, ltCancelText]}>{t('gallery.maybeLater')}</ThemedText>
                 </Pressable>
               </>
             )}
@@ -1045,18 +1076,18 @@ export default function ShopScreen() {
       {/* After a successful buy: ask whether to equip the new item now. */}
       <Modal visible={equipPrompt !== null} transparent animationType="fade" onRequestClose={() => setEquipPrompt(null)}>
         <Pressable style={styles.buyBackdrop} onPress={() => setEquipPrompt(null)}>
-          <Pressable style={styles.buyCard} onPress={(e) => e.stopPropagation?.()}>
+          <Pressable style={[styles.buyCard, ltCard]} onPress={(e) => e.stopPropagation?.()}>
             {equipPrompt && (
               <>
-                <ThemedText style={styles.buyTitle}>{t('shop.equipNowQ', { name: equipPrompt.name })}</ThemedText>
+                <ThemedText style={[styles.buyTitle, ltTitle]}>{t('shop.equipNowQ', { name: equipPrompt.name })}</ThemedText>
                 <SoundPressable
                   sound="confirm"
-                  style={({ pressed }) => [styles.buyConfirmBtn, pressed && { opacity: 0.85 }]}
+                  style={({ pressed }) => [styles.buyConfirmBtn, ltConfirmBtn, pressed && { opacity: 0.85 }]}
                   onPress={() => { equipPrompt.equip(); setEquipPrompt(null); }}>
-                  <ThemedText style={styles.buyConfirmText}>{t('shop.equipNow')}</ThemedText>
+                  <ThemedText style={[styles.buyConfirmText, ltConfirmText]}>{t('shop.equipNow')}</ThemedText>
                 </SoundPressable>
                 <Pressable style={styles.buyCancelBtn} onPress={() => setEquipPrompt(null)}>
-                  <ThemedText style={styles.buyCancelText}>{t('shop.notNow')}</ThemedText>
+                  <ThemedText style={[styles.buyCancelText, ltCancelText]}>{t('shop.notNow')}</ThemedText>
                 </Pressable>
               </>
             )}
@@ -1127,7 +1158,7 @@ const styles = StyleSheet.create({
   pairRing2: { left: 8 },
   zoomBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(60,40,30,0.6)',
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -1146,7 +1177,7 @@ const styles = StyleSheet.create({
 
   // White buy-confirmation popup
   buyBackdrop: {
-    flex: 1, backgroundColor: 'rgba(60,40,30,0.45)',
+    flex: 1, backgroundColor: 'transparent',
     alignItems: 'center', justifyContent: 'center', padding: 24,
   },
   buyCard: {
@@ -1398,7 +1429,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: BakeryColors.mocha,
-    lineHeight: 17,
+    // No fixed lineHeight: it breaks auto-shrink (see FitText). ThemedText derives a
+    // proportional one from the font so names scale + fit instead of clipping.
     textAlign: 'center',
   },
 
@@ -1540,7 +1572,7 @@ const styles = StyleSheet.create({
   outfitLoreBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', lineHeight: 14 },
 
   loreBackdrop: {
-    flex: 1, backgroundColor: 'rgba(48,32,24,0.45)',
+    flex: 1, backgroundColor: 'transparent',
     alignItems: 'center', justifyContent: 'center', padding: 28,
   },
   loreCard: {

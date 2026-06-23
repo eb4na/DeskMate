@@ -34,6 +34,7 @@ Provided attribution text (optional for CC0, kept for the record):
 > Click 2 by CAT-FOX_ALEX -- https://freesound.org/s/827133/ -- License: Creative Commons 0 (used as tick.wav)
 > chess-piece-bounce.ogg by pbimal -- https://freesound.org/s/646781/ -- License: Creative Commons 0 (used as piece-drop.wav)
 > (not used yet — no file provided) MicrowaveDing by Oddworld -- https://freesound.org/s/171252/ -- License: Creative Commons 0
+> pop.wav -- self-generated synth (scripted sine pop, ~100ms) -- License: original/public-domain (used as pop.wav, "someone left" notice). Safe to replace with any CC0 bubble-pop file.
 
 ## License quick-reference
 

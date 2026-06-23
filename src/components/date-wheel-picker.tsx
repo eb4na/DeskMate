@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(48, 32, 24, 0.35)',
+    backgroundColor: 'transparent',
   },
   modalCard: {
     borderRadius: BakeryRadii.panel,

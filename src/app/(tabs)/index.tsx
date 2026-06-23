@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, AppState, Easing, Image as RNImage, ImageBackground, PanResponder, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Animated, AppState, Easing, Image as RNImage, ImageBackground, type LayoutChangeEvent, PanResponder, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { playSwoosh } from '@/lib/sounds';
 import { showPopup } from '@/lib/popup';
@@ -61,7 +61,7 @@ const DEFAULT_BREAK_MINUTES = 5;
 const HOME_TABLET = {
   // Corner buttons
   leftInset: 10,   // gap from the SCREEN's left edge for the 4 left-column buttons (FIXED → same on every tablet)
-  stackTop: 145,   // vertical shift applied to all 4 left-column buttons
+  stackTop: 85,    // vertical shift applied to all 4 left-column buttons (raised so the stack sits more centered, not low/empty up top)
   btnScale: 1.3,   // size multiplier for every corner button (kept small enough that the 4 left buttons never overlap)
   btnGap: 60,      // extra vertical spacing between the 4 left buttons (clear distance so they never touch)
   friendTop: 86,   // vertical shift for the friend button
@@ -96,9 +96,10 @@ const HOME_TABLET = {
   mixerX: -105,     // nudged left
   mixerY: -50,
   mixerScale: 1.5,  // bigger mixer
-  // Start Session button
-  startX: 338,     // Start centered on screen (game icon stays to its right)
-  startY: -78,
+  // Start Session button — on tablet it's centered by LAYOUT (see tStartRow), so it
+  // sits dead-center on every tablet width with no hand-tuned X offset. The game icon
+  // floats just to its right of center (see tGame).
+  startY: -120,    // raised so Start Session + the game icon clear the bottom nav bar
   startScale: 1.5,
 };
 
@@ -444,7 +445,6 @@ export default function HomeScreen() {
     { key: 'mixerX', label: 'Mixer X', value: ht.mixerX, min: -300, max: 200, step: 2 },
     { key: 'mixerY', label: 'Mixer Y', value: ht.mixerY, min: -300, max: 300, step: 2 },
     { key: 'mixerScale', label: 'Mixer size', value: ht.mixerScale, min: 0.5, max: 3, step: 0.05 },
-    { key: 'startX', label: 'Start btn X', value: ht.startX, min: -200, max: 200, step: 2 },
     { key: 'startY', label: 'Start btn Y', value: ht.startY, min: -200, max: 300, step: 2 },
     { key: 'startScale', label: 'Start btn size', value: ht.startScale, min: 0.6, max: 2, step: 0.05 },
   ];
@@ -486,7 +486,27 @@ export default function HomeScreen() {
   const tIngFor = (idx: number) =>
     isTablet && { transform: [{ translateX: htScaled.ingX + (idx - 1) * htScaled.ingSpread }, { translateY: htScaled.ingY }, { scale: htScaled.ingScale }] };
   const tMixer = isTablet && { transform: [{ translateX: htScaled.mixerX }, { translateY: htScaled.mixerY }, { scale: htScaled.mixerScale }] };
-  const tStart = isTablet && { transform: [{ translateX: htScaled.startX }, { translateY: htScaled.startY }, { scale: htScaled.startScale }] };
+  // Tablet: the start button is centered by LAYOUT (full-width row, justified center)
+  // so it lands consistently on EVERY tablet width — not a fixed offset that only works
+  // on one size. `tStart` keeps just the vertical nudge + scale (no translateX).
+  const tStart = isTablet && { transform: [{ translateY: htScaled.startY }, { scale: htScaled.startScale }] };
+  // Sit slightly LEFT of center on every tablet: insetting the row's right edge by
+  // 2×LEFT_OF_CENTER makes `justifyContent:center` settle the content LEFT_OF_CENTER
+  // points left of true center — a constant shift on any width (no scale/size
+  // dependence), and the game icon (anchored to this row's 50%) follows along.
+  const LEFT_OF_CENTER = 40;
+  const tStartRow = isTablet && { left: 0, right: LEFT_OF_CENTER * 2, justifyContent: 'center' as const };
+  const tStartInner = isTablet && { marginRight: 0 }; // remove the phone gap so the centered child is truly centered
+  // Game icon: anchored to screen center and pushed just past the start button's right
+  // edge (the button is 232 wide; half = 116). GAME_GAP keeps it close ("not too far").
+  const GAME_GAP = 18;
+  const tGame = isTablet && {
+    position: 'absolute' as const,
+    left: '50%' as const,
+    marginLeft: 116 + GAME_GAP,
+    top: '50%' as const,
+    marginTop: -36, // vertically center the 72-tall icon on the row
+  };
 
   const {
     coins,
@@ -550,6 +570,16 @@ export default function HomeScreen() {
   const finishParamsRef = useRef<Record<string, string> | null>(null);
   const [homeFocused, setHomeFocused] = useState(false);
   const [dragSession, setDragSession] = useState<DragSessionData | null>(null);
+  // The streak + coin pills are two separate buttons that should always be the same
+  // width. Each reports its natural (content-sized) width; we take the larger and
+  // force both to it — so they match without stretching full-width, and it adapts to
+  // the coin count or translated label. Grow-only, so re-measuring the forced width
+  // never feeds back into a loop.
+  const [hudChipW, setHudChipW] = useState<number | undefined>(undefined);
+  const onHudChipLayout = (e: LayoutChangeEvent) => {
+    const w = e.nativeEvent.layout.width;
+    setHudChipW((prev) => (prev !== undefined && prev >= w ? prev : w));
+  };
   const [droppedIds, setDroppedIds] = useState<Set<DragId>>(new Set());
 
   // Celebrate the streak ticking up: a quick pop on the chip + flame, and a
@@ -945,7 +975,9 @@ export default function HomeScreen() {
               {!dragSession && <View style={[styles.topHud, tTopHud]}>
                 <View style={styles.statusRow}>
                   <View style={styles.streakChipWrap} ref={(n) => setTutorialTarget('streak', n)}>
-                    <Animated.View style={[styles.statusChip, { transform: [{ scale: isTablet ? (htScaled.hudScale ?? 1) : 1 }, { scale: streakPop.interpolate({ inputRange: [0, 1], outputRange: [1, 1.16] }) }] }]}>
+                    <Animated.View
+                      onLayout={onHudChipLayout}
+                      style={[styles.statusChip, hudChipW ? { width: hudChipW } : null, { transform: [{ scale: isTablet ? (htScaled.hudScale ?? 1) : 1 }, { scale: streakPop.interpolate({ inputRange: [0, 1], outputRange: [1, 1.16] }) }] }]}>
                       <Animated.View style={{ transform: [
                         { scale: streakPop.interpolate({ inputRange: [0, 1], outputRange: [1, 1.4] }) },
                         { rotate: streakPop.interpolate({ inputRange: [0, 0.5, 1], outputRange: ['0deg', '-14deg', '8deg'] }) },
@@ -969,9 +1001,9 @@ export default function HomeScreen() {
                     onPress={() => router.push('/coin-shop')}
                     style={({ pressed }) => pressed && styles.cardPressed}
                     accessibilityLabel={t('home.a11yAddCoins')}>
-                    <View style={[styles.statusChip, styles.coinChip, tChip]} ref={(n) => setTutorialTarget('coins', n)}>
-                      <CoinIcon size={26} />
-                      <ThemedText type="smallBold" style={styles.coinChipText}>
+                    <View onLayout={onHudChipLayout} style={[styles.statusChip, styles.coinChip, hudChipW ? { width: hudChipW } : null, tChip]} ref={(n) => setTutorialTarget('coins', n)}>
+                      <CoinIcon size={22} />
+                      <ThemedText type="smallBold" style={[styles.statusChipText, styles.coinChipText]}>
                         {coins}
                       </ThemedText>
                       <View style={styles.coinAddBtn}>
@@ -1205,10 +1237,10 @@ export default function HomeScreen() {
                 </>
               )}
 
-              {!dragSession && <View style={[styles.startSessionPressable, { bottom: 155 }, tStart]}>
+              {!dragSession && <View style={[styles.startSessionPressable, { bottom: 155 }, tStart, tStartRow]}>
                 <View ref={(n) => setTutorialTarget('start', n)}>
                   <SoundPressable
-                    style={({ pressed }) => [styles.startSessionInner, pressed && styles.startButtonPressed]}
+                    style={({ pressed }) => [styles.startSessionInner, tStartInner, pressed && styles.startButtonPressed]}
                     onPress={handleStartSession}
                     accessibilityLabel={t('home.a11yStartSession')}>
                     <Image source={START_SESSION_BTN} style={styles.startSessionBg} contentFit="fill" />
@@ -1216,7 +1248,7 @@ export default function HomeScreen() {
                   </SoundPressable>
                 </View>
                 <Pressable
-                  style={({ pressed }) => [styles.settingsFloating, styles.gameFloating, pressed && styles.startButtonPressed]}
+                  style={({ pressed }) => [styles.settingsFloating, styles.gameFloating, tGame, pressed && styles.startButtonPressed]}
                   onPress={() => router.push({ pathname: '/break-game', params: { browse: '1' } })}
                   accessibilityLabel={t('home.a11yPlayGame')}>
                   <Image source={GAME_BTN} style={styles.gameFloatingImg} contentFit="contain" />
@@ -1612,6 +1644,7 @@ const styles = StyleSheet.create({
   statusChip: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 9,

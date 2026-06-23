@@ -22,6 +22,8 @@ import { setLoadingActive, subscribeLoadingScreen, takeLoadingDone } from '@/lib
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { posthog, identifyUser, resetUser } from '@/lib/analytics';
 import { configurePurchases, currentPlusExpiry } from '@/lib/purchases';
+import { ROOM_PAIRS } from '@/constants/room-data';
+import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { BakeryColors, Spacing } from '@/constants/theme';
 import '@/lib/notifications';
 import i18n, { useTranslation } from '@/i18n';
@@ -118,16 +120,12 @@ const PRELOAD_ASSETS = [
 
 function RootNavigator() {
   const { initialized, isGuest, session, signOut, sessionRestoredAtLaunch } = useAuth();
-  const { loaded, legalAccepted, markLegalAccepted, setBirthday, soundEffectsEnabled, starterChosen, isPlus, plusPlan, setIsPlus, persistedStateReady, resetAccountForAbandonedOnboarding } = useApp();
+  const { loaded, legalAccepted, markLegalAccepted, setBirthday, soundEffectsEnabled, starterChosen, isPlus, plusPlan, setIsPlus, persistedStateReady, resetAccountForAbandonedOnboarding,
+    equippedBackgroundRoomId, equippedDeskRoomId, activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins } = useApp();
   const { t } = useTranslation();
 
   // Keep the tap-sound helper's gate in sync with the user's setting.
   useEffect(() => { setTapSoundEnabled(soundEffectsEnabled); }, [soundEffectsEnabled]);
-  // On a tablet, native iOS modals present on the window root and escape the
-  // LandscapeLetterbox transform (they'd stretch full-width). A `containedModal`
-  // presents within the stack container instead, so it inherits the letterbox.
-  const isTablet = useIsTablet();
-  const modalPresentation = isTablet ? 'containedModal' as const : 'modal' as const;
   const [assetsReady, setAssetsReady] = useState(false);
   // Loading overlay is shown on first launch and re-shown on every login/sign-in.
   const [loadingVisible, setLoadingVisible] = useState(true);
@@ -143,6 +141,34 @@ function RootNavigator() {
       .catch(() => {})
       .finally(() => setAssetsReady(true));
   }, []);
+
+  // PRELOAD_ASSETS only covers the DEFAULT room/desk/Bun. A player with an equipped
+  // room, desk, or companion would otherwise see those (full-screen bg + big
+  // character) pop in AFTER the splash lifts. So once saved state is loaded (the
+  // equipped ids are final), preload exactly what THIS home will render and gate the
+  // splash on it too — no half-painted home flash. Re-runs harmlessly if the player
+  // later changes their room/companion.
+  const [homeAssetsReady, setHomeAssetsReady] = useState(false);
+  useEffect(() => {
+    if (!loaded) return;
+    let cancelled = false;
+    try {
+      const bg = ROOM_PAIRS.find((r) => r.id === equippedBackgroundRoomId)?.backgroundImage ?? ROOM_PAIRS[0].backgroundImage;
+      const desk = ROOM_PAIRS.find((r) => r.id === equippedDeskRoomId)?.deskImage ?? ROOM_PAIRS[0].deskImage;
+      const char = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins)?.imageSource;
+      const numeric = [bg, desk, ...(typeof char === 'number' ? [char] : [])];
+      // Custom-art companions carry a {uri} image — prefetch those through expo-image.
+      const uri = char && typeof char === 'object' && 'uri' in char ? char.uri : undefined;
+      Promise.all([
+        Asset.loadAsync(numeric).catch(() => {}),
+        ...(uri ? [ExpoImage.prefetch(uri).catch(() => {})] : []),
+      ]).finally(() => { if (!cancelled) setHomeAssetsReady(true); });
+    } catch {
+      // Never let a resolution error wedge the splash on screen — fail open.
+      setHomeAssetsReady(true);
+    }
+    return () => { cancelled = true; };
+  }, [loaded, equippedBackgroundRoomId, equippedDeskRoomId, activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins]);
 
   // Re-show the loading screen whenever the user becomes authenticated — i.e.
   // every time they log in or finish signing in (a guest also counts).
@@ -214,7 +240,7 @@ function RootNavigator() {
   // The home screen mounts immediately (and loads its art) behind the loading
   // overlay; the overlay only lifts once everything is ready. For quick loads,
   // `taskReady` also waits on the destination's asset preload.
-  const appReady = initialized && loaded && assetsReady && taskReady;
+  const appReady = initialized && loaded && assetsReady && homeAssetsReady && taskReady;
 
   // Mirror overlay visibility so screens can hold their own popups until the
   // launch splash has actually lifted (see daily-reward-modal's delayed show).
@@ -254,9 +280,12 @@ function RootNavigator() {
         <Stack.Screen name="custom-timer" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="ambience-picker" options={{ presentation: 'modal', title: t('screens.ambience') }} />
         <Stack.Screen name="companion-gallery" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="daily-quests" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="achievements" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="edit-room" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="food-gallery" options={{ presentation: modalPresentation, headerShown: false }} />
+        <Stack.Screen name="food-gallery" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="friends" options={{ presentation: 'modal', headerShown: false, gestureEnabled: true }} />
+        <Stack.Screen name="study-buddy" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="profile" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="friend-card" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="dm-chat" options={{ presentation: 'modal', headerShown: false }} />

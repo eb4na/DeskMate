@@ -6,6 +6,7 @@ import { SoundPressable } from '@/components/sound-pressable';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DevKnobs } from '@/components/dev-knobs';
+import { DurationWheel } from '@/components/duration-wheel';
 import { ThemedView } from '@/components/themed-view';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
@@ -35,7 +36,16 @@ export default function StudyLobbyScreen() {
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('studylobby', LOBBY_ELEMENTS);
   const { active, isHost, canStartSelf, myCode, roster, presentCodes, netStatus, roomId, start, startSelf, leaveRoom, setMyPrefs } = useStudyRoom();
-  const { subjects } = useApp();
+  const { subjects, isPlus } = useApp();
+  // Custom length is a Plus perk. It's offered to everyone in the room when the
+  // HOST has Plus (the host shares their perk with guests) — or to a Plus member
+  // for their own session. Guests still can't save presets (the lobby has none).
+  const hostIsPlus = !!roster.find((e) => e.isHost)?.isPlus;
+  const canCustom = isPlus || hostIsPlus;
+  // Show the "thanks to your host" note only when it's unlocked BY the host (not
+  // by this player's own Plus).
+  const customViaHost = !isPlus && hostIsPlus;
+  const clampCustom = (m: number) => Math.max(5, Math.min(300, m));
   const activeSubjects = subjects.filter((s) => !s.archived).sort((a, b) => a.order - b.order);
 
   // A length may be passed in from the Start Session screen; use it as the default
@@ -118,19 +128,34 @@ export default function StudyLobbyScreen() {
             })}
           </View>
 
-          {/* Session length — each player picks their own. */}
+          {/* Session length — each player picks their own. Plus members (or anyone in
+              a Plus host's room) get the full hr/min wheel (same as the solo custom
+              timer); everyone else gets the preset cards. Either way the chosen value
+              rides the same per-player prefs sync. */}
           <Text style={styles.label}>{t('lobby.sessionLength')}</Text>
-          <View style={styles.lenGrid}>
-            {SESSION_LENGTHS.map((opt) => (
-              <Pressable
-                key={opt.minutes}
-                onPress={() => pickMinutes(opt.minutes)}
-                style={[styles.lenCard, minutes === opt.minutes && styles.lenCardActive]}>
-                <Text style={[styles.lenNum, minutes === opt.minutes && styles.lenNumActive]}>{opt.minutes}</Text>
-                <Text style={styles.lenLabel}>{t('lobby.min')}</Text>
-              </Pressable>
-            ))}
-          </View>
+          {canCustom ? (
+            <>
+              <DurationWheel
+                minutes={minutes}
+                onChange={(m) => pickMinutes(clampCustom(m))}
+                picks={SESSION_LENGTHS.map((o) => o.minutes)}
+                scale={scale}
+              />
+              {customViaHost && <Text style={styles.customNote}>{t('lobby.hostPlusCustom')}</Text>}
+            </>
+          ) : (
+            <View style={styles.lenGrid}>
+              {SESSION_LENGTHS.map((opt) => (
+                <Pressable
+                  key={opt.minutes}
+                  onPress={() => pickMinutes(opt.minutes)}
+                  style={[styles.lenCard, minutes === opt.minutes && styles.lenCardActive]}>
+                  <Text style={[styles.lenNum, minutes === opt.minutes && styles.lenNumActive]}>{opt.minutes}</Text>
+                  <Text style={styles.lenLabel}>{t('lobby.min')}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
 
           {/* Topic — pick a subject to study; shows on your avatar. */}
           <Text style={styles.label}>{t('lobby.topic')}</Text>
@@ -245,6 +270,17 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   lenNum: { fontSize: 22 * s, fontWeight: '900', color: BakeryColors.mocha },
   lenNumActive: { color: BakeryColors.cocoaDark },
   lenLabel: { fontSize: 12 * s, color: BakeryColors.mocha },
+  customRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.three * s },
+  stepBtn: {
+    width: 44 * s, height: 44 * s, borderRadius: 22 * s,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: BakeryColors.glass, borderWidth: 1.5, borderColor: BakeryColors.shortbread,
+  },
+  stepText: { fontSize: 24 * s, fontWeight: '900', color: BakeryColors.cocoaDark, marginTop: -2 },
+  customDisplay: { flexDirection: 'row', alignItems: 'baseline', gap: 4 * s, minWidth: 92 * s, justifyContent: 'center' },
+  customNum: { fontSize: 30 * s, fontWeight: '900', color: BakeryColors.cocoaDark },
+  customUnit: { fontSize: 13 * s, fontWeight: '700', color: BakeryColors.mocha },
+  customNote: { fontSize: 11.5 * s, fontWeight: '700', color: BakeryColors.mocha, textAlign: 'center' },
   hint: { fontSize: 12 * s, color: BakeryColors.mocha, textAlign: 'center' },
   actions: { gap: Spacing.two, paddingVertical: Spacing.two },
   inviteBtn: { paddingVertical: 11 * s, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: BakeryColors.glass, borderWidth: 1.5, borderColor: BakeryColors.shortbread },

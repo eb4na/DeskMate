@@ -254,6 +254,37 @@ export const spotifyNext = () => api('me/player/next', 'POST');
 export const spotifyPrevious = () => api('me/player/previous', 'POST');
 export const spotifyResume = () => api('me/player/play', 'PUT');
 export const spotifyPause = () => api('me/player/pause', 'PUT');
+
+// Result of a play attempt, so the UI can explain WHY nothing happened instead of
+// failing silently (the old bare-resume swallowed every error).
+export type PlayResult = 'ok' | 'no-device' | 'premium' | 'not-connected' | 'error';
+
+/**
+ * Start/resume playback robustly. A bare `PUT me/player/play` only works when a
+ * device is already ACTIVE — it 404s ("no active device") if the user's Spotify is
+ * merely open/idle. So we first list devices and target one explicitly by id, which
+ * wakes an idle device and resumes its context. Returns a reason on failure so the
+ * caller can show a notice (no device open / Premium required / etc.).
+ */
+export async function spotifyPlay(): Promise<PlayResult> {
+  const dr = await api('me/player/devices', 'GET');
+  if (!dr) return spotifyConnected() ? 'error' : 'not-connected';
+  if (dr.status === 403) return 'premium';
+  let devices: { id: string; is_active: boolean }[] = [];
+  try {
+    devices = (await dr.json()).devices ?? [];
+  } catch {
+    return 'error';
+  }
+  if (devices.length === 0) return 'no-device';
+  // Prefer the already-active device; otherwise wake the first available one.
+  const target = devices.find((d) => d.is_active) ?? devices[0];
+  const r = await api(`me/player/play?device_id=${encodeURIComponent(target.id)}`, 'PUT');
+  if (!r) return 'error';
+  if (r.status === 403) return 'premium';
+  if (r.status === 404) return 'no-device'; // device vanished / nothing to resume
+  return r.ok ? 'ok' : 'error';
+}
 /** Seek the active device to a position (ms) within the current track. */
 export const spotifySeek = (positionMs: number) =>
   api(`me/player/seek?position_ms=${Math.max(0, Math.floor(positionMs))}`, 'PUT');

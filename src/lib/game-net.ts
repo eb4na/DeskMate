@@ -54,15 +54,32 @@ export function newRoomId(): string {
 
 // ── Online presence ──────────────────────────────────────────────────────────
 // One shared, ref-counted `online-users` channel: everyone tracks their friend
-// code, and any number of subscribers can read the set of online codes. A single
-// channel avoids "can't add presence callbacks after subscribe()" from joining
-// the same topic twice in one client.
+// code + current study status, and any number of subscribers read the live
+// code→status map. `.has(code)` = online (any status); `.get(code)` = their status.
+// A single channel avoids "can't add presence callbacks after subscribe()" from
+// joining the same topic twice in one client.
+//   studying — in a study session, focused (not invitable to a break game)
+//   break    — in a study session, on a break (invitable)
+//   free     — online but not in a session (invitable)
+export type PresenceStatus = 'studying' | 'break' | 'free';
+export type PresenceMap = ReadonlyMap<string, PresenceStatus>;
+
 let presenceChannel: RealtimeChannel | null = null;
 let presenceCount = 0;
-let onlineCache = new Set<string>();
-const presenceSubs = new Set<(codes: Set<string>) => void>();
+let onlineCache = new Map<string, PresenceStatus>();
+// This client's broadcast study status, re-tracked whenever it changes. Defaults to
+// 'free' (online, not studying).
+let myPresenceStatus: PresenceStatus = 'free';
+const presenceSubs = new Set<(online: PresenceMap) => void>();
 
-export function joinPresence(myCode: string, onSync?: (onlineCodes: Set<string>) => void): () => void {
+function readPresence(): Map<string, PresenceStatus> {
+  const state = presenceChannel?.presenceState() as Record<string, { status?: PresenceStatus }[]> | undefined;
+  const m = new Map<string, PresenceStatus>();
+  if (state) for (const key in state) m.set(key, state[key]?.[0]?.status ?? 'free');
+  return m;
+}
+
+export function joinPresence(myCode: string, onSync?: (online: PresenceMap) => void): () => void {
   if (!myCode) return () => {};
   if (onSync) {
     presenceSubs.add(onSync);
@@ -76,11 +93,11 @@ export function joinPresence(myCode: string, onSync?: (onlineCodes: Set<string>)
     });
     presenceChannel
       .on('presence', { event: 'sync' }, () => {
-        onlineCache = new Set(Object.keys(presenceChannel!.presenceState()));
+        onlineCache = readPresence();
         presenceSubs.forEach((cb) => cb(onlineCache));
       })
       .subscribe((status) => {
-        if (status === 'SUBSCRIBED') presenceChannel!.track({ at: Date.now() });
+        if (status === 'SUBSCRIBED') presenceChannel!.track({ at: Date.now(), status: myPresenceStatus });
       });
   }
 
@@ -90,9 +107,18 @@ export function joinPresence(myCode: string, onSync?: (onlineCodes: Set<string>)
     if (presenceCount <= 0 && presenceChannel) {
       supabase.removeChannel(presenceChannel);
       presenceChannel = null;
-      onlineCache = new Set();
+      onlineCache = new Map();
     }
   };
+}
+
+// Update this client's broadcast study status. Re-tracks on the live presence
+// channel so friends see the change at once. Remembered even when not joined, so it
+// applies on the next join.
+export function setMyPresenceStatus(status: PresenceStatus) {
+  if (myPresenceStatus === status) return;
+  myPresenceStatus = status;
+  presenceChannel?.track({ at: Date.now(), status });
 }
 
 // ── Generic 2-player game room ───────────────────────────────────────────────

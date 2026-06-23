@@ -1,4 +1,23 @@
 {
+  "report": {
+    "report": "Signaler",
+    "block": "Bloquer",
+    "title": "Signaler {{name}} ?",
+    "subtitle": "Pourquoi signales-tu cet utilisateur ?",
+    "reason_harassment": "Harcèlement ou intimidation",
+    "reason_spam": "Spam",
+    "reason_inappropriate": "Contenu inapproprié",
+    "reason_cheating": "Triche",
+    "reason_underage": "Utilisateur mineur",
+    "reason_other": "Autre",
+    "sentTitle": "Signalement envoyé",
+    "sentMsg": "Merci, notre équipe va l’examiner.",
+    "blockTitle": "Bloquer {{name}} ?",
+    "blockMsg": "Il sera retiré de tes amis et masqué partout pour toi.",
+    "blockConfirm": "Bloquer",
+    "failedTitle": "Échec de l’envoi",
+    "failedMsg": "Vérifie ta connexion et réessaie."
+  },
   "tutorial": {
     "start_title": "Sessions d'étude",
     "start_body": "Lance un minuteur pour gagner des pièces.",
@@ -250,6 +269,12 @@
   "session": {
     "awayTitle": "Reviens étudier !",
     "awayBody": "Ta session d'étude s'arrêtera si tu ne reviens pas dans une minute.",
+    "awayBody_bun": "Bun t'attendait… reviens avant que Bun ne s'inquiète.",
+    "awayBody_companion_bunny": "Reviens tout de suiteuh ou bunny va te taper.",
+    "awayBody_companion_cocoa": "Reviens. On n'a pas fini, et ta concentration refroidit.",
+    "awayBody_hanji": "J'ai gardé ta place en silence… reviens avant que le silence ne devienne trop vide.",
+    "awayBody_companion_tira": "Tu as quitté l'écran d'étude ? Moi j'ai quitté la fac, pas cette session. Reviens.",
+    "awayBody_companion_honey": "Reviens… tu manques à Miel.",
     "focusTime": "Temps de concentration",
     "breakTime": "Temps de pause",
     "sessionComplete": "Session terminée !",
@@ -352,7 +377,7 @@
     "fullReport": "Rapport complet →",
     "best": "Meilleur : {{count}} jours",
     "streakFreeze": "Gel de série",
-    "freezesRemaining": "{{count}}/3 gels restants ce mois-ci",
+    "freezesRemaining": "Tu en as {{count}}",
     "useFreezeQ": "Utiliser le gel de série ?",
     "useFreezeMsg": "Cela sauve ta série après un jour manqué pour qu'elle continue quand tu étudies aujourd'hui. Un gel couvre tout l'écart. Aucune pièce n'est accordée.",
     "useFreeze": "Utiliser le gel",
@@ -810,6 +835,8 @@
     "noFriendsYet": "Pas encore d'amis",
     "noFriendsHint": "Ajoute des amis depuis l'écran Amis, puis invite-les ici.",
     "onlineNow": "En ligne",
+    "studying": "En train d’étudier",
+    "onBreak": "En pause",
     "offline": "Hors ligne",
     "invited": "Invité ✓",
     "alreadyIn": "Déjà là",
@@ -828,6 +855,8 @@
     "min": "min",
     "topic": "Sujet",
     "minShort": "{{n}}m",
+    "customLength": "Durée personnalisée",
+    "hostPlusCustom": "Minuteur personnalisé débloqué car ton hôte a Plus",
     "noSubjectsHint": "Ajoute des matières dans Tâches pour choisir un sujet.",
     "hostPicks": "L'hôte choisit la durée de la session et démarre.",
     "inviteFriend": "＋ Inviter un ami",
@@ -955,6 +984,7 @@
     "maybeLater": "Peut-être plus tard",
     "matchedTitle": "Tenue assortie prête !",
     "matchedMsg": "{{outfit}} avec la salle {{room}}, c'est prêt !",
+    "matchedRoomSub": "Obtenez la salle {{room}} (décor + bureau) pour accompagner {{outfit}}.",
     "roomLockedTitle": "Salle assortie verrouillée",
     "roomLockedMsg": "Débloque la salle {{room}} dans la Boutique pour compléter le look de {{outfit}}.",
     "goToShop": "Aller à la Boutique",
@@ -1014,6 +1044,61 @@
     "game_study": "Salle d'étude",
     "you": "Toi"
   },
+  "studyBuddy": {
+    "ctaTitle": "Trouver un binôme d'étude",
+    "endedTitle": "Ton jumelage a pris fin",
+    "endedGhost": "Ton binôme est resté inactif quelques jours, donc le jumelage a pris fin. Tu veux en trouver un nouveau ?",
+    "endedExpired": "Votre semaine ensemble est terminée ! Tu veux trouver un nouveau binôme ?",
+    "endedLeft": "Ton binôme a quitté le jumelage. Tu veux en trouver un nouveau ?",
+    "ctaSub": "Sois jumelé à un partenaire d'étude pour une semaine",
+    "title": "Binôme d'étude",
+    "subtitle": "Un partenaire de motivation pour une semaine",
+    "introTitle": "Comment ça marche",
+    "introBody": "Nous te jumellerons avec un autre élève de ton âge pendant une semaine. Chaque jour, tu peux voir si ton binôme a étudié et l'encourager. À la fin de la semaine, le jumelage prend fin.",
+    "safetyNote": "Tu seras jumelé à un partenaire d'étude de ta tranche d'âge. Aucune information personnelle n'est partagée : pas de noms, pas de messagerie, juste des points d'étude. Tu peux signaler ou partir à tout moment.",
+    "findBuddy": "Trouver un binôme",
+    "lookingTitle": "Recherche d'un binôme…",
+    "lookingBody": "Nous te jumellerons dès qu'un autre élève de ton âge cherchera aussi. Tu peux quitter cet écran ; nous continuerons à chercher.",
+    "couldNotMatch": "Aucun binôme trouvé",
+    "errorBirthday": "Ajoute ta date de naissance dans les réglages pour être jumelé avec des élèves de ton âge.",
+    "errorRestricted": "Le binôme d'étude n'est pas disponible sur ton compte pour le moment.",
+    "errorGeneric": "Une erreur est survenue. Réessaie.",
+    "buddyFallback": "Ton binôme",
+    "streakLabel": "Série de {{count}} jours",
+    "daysLeft": "Encore {{count}} jours ensemble",
+    "studiedYes": "{{name}} a étudié aujourd'hui !",
+    "studiedNo": "{{name}} n'a pas encore étudié aujourd'hui",
+    "buddyCheered": "{{name}} t'a encouragé : {{cheer}}",
+    "sendCheer": "Envoyer un encouragement",
+    "cheerSent": "Encouragement envoyé ! Tu pourras en renvoyer un demain.",
+    "alreadyCheered": "Déjà encouragé",
+    "alreadyCheeredMsg": "Tu as déjà envoyé un encouragement aujourd'hui. Reviens demain !",
+    "cheer": {
+      "keep_going": "Continue comme ça !",
+      "you_got_this": "Tu vas y arriver !",
+      "dont_break_streak": "Ne casse pas la série !",
+      "proud_of_you": "Fier de toi !"
+    },
+    "becomeFriends": "Devenir amis",
+    "friendPending": "En attente qu'il t'ajoute aussi",
+    "nowFriends": "Vous êtes maintenant amis !",
+    "nowFriendsMsg": "Vous avez tous les deux choisi de devenir amis. Son code est {{code}}.",
+    "friendRequested": "Envoyé !",
+    "friendRequestedMsg": "Si ton binôme appuie aussi sur « Devenir amis », vous serez ajoutés.",
+    "report": "Signaler",
+    "reportQ": "Signaler ce binôme ?",
+    "reportMsg": "Cela met fin au jumelage et vous ne serez plus jumelés. Quel est le problème ?",
+    "reportInappropriate": "Inapproprié",
+    "reportHarassment": "Harcèlement",
+    "reportSpam": "Spam",
+    "reportThanks": "Merci de nous avoir prévenus",
+    "reportThanksMsg": "Nous avons mis fin au jumelage et notre équipe l'examinera.",
+    "leave": "Quitter",
+    "leaveQ": "Quitter ce binôme ?",
+    "leaveMsg": "Cela met fin au jumelage pour vous deux. Tu peux trouver un nouveau binôme quand tu veux.",
+    "guestGateTitle": "Le binôme d'étude nécessite un compte",
+    "guestGateBody": "Crée un compte gratuit pour être jumelé à un binôme d'étude."
+  },
   "subjectChart": {
     "day": "Aujourd'hui",
     "week": "Semaine",
@@ -1042,6 +1127,7 @@
     "friend": "Ami",
     "full": "Complet",
     "cakeBaking": "En préparation…",
+    "nowBaking": "EN CUISSON",
     "oneStudying": "1 personne étudie",
     "studyingTogether": "{{count}} personnes étudient ensemble",
     "you": "Toi",
@@ -1546,5 +1632,114 @@
   "recipeBadge": {
     "title": "Badge obtenu !",
     "got": "Badge de recette de {{name}} !"
+  },
+    "quests": {
+    "title": "Objectifs quotidiens",
+    "resetsMidnight": "Réinitialisé à minuit",
+    "cardSubtitle": "Objectifs pour des pièces bonus",
+    "cardOpen": "Ouvrir",
+    "previewReady": "{{name}} — à réclamer !",
+    "previewProgress": "{{name}} · {{current}}/{{goal}}",
+    "cardClaim": "Réclamer",
+    "allClaimed": "Tout réclamé pour aujourd'hui",
+    "claim": "Réclamer {{coins}}",
+    "claimed": "Réclamé",
+    "progress": "{{current}}/{{goal}}",
+    "items": {
+      "g_study_60": {
+        "title": "Heure de pointe",
+        "desc": "Étudiez 1 heure aujourd'hui"
+      },
+      "g_sessions_2": {
+        "title": "En double",
+        "desc": "Terminez 2 sessions d'étude"
+      },
+      "g_before_noon": {
+        "title": "Lève-tôt",
+        "desc": "Étudiez 25 minutes avant midi"
+      },
+      "g_task_1": {
+        "title": "Coché",
+        "desc": "Terminez une tâche aujourd'hui"
+      }
+    }
+  },
+  "achievements": {
+    "categories": {
+      "study": "Étude",
+      "tasks": "Tâches",
+      "streak": "Séries",
+      "social": "Amis",
+      "recipes": "Pâtisserie"
+    },
+    "title": "Succès",
+    "subtitle": "Atteignez des paliers pour gagner des pièces",
+    "allClaimed": "Tous les succès réclamés",
+    "cardSubtitle": "Récompenses de palier",
+    "readyCount": "{{count}} à réclamer",
+    "claim": "Réclamer {{coins}}",
+    "claimed": "Réclamé",
+    "items": {
+      "a_first": {
+        "title": "Premiers pas",
+        "desc": "Terminez votre première session d'étude"
+      },
+      "a_sessions_25": {
+        "title": "Ça devient sérieux",
+        "desc": "Terminez 25 sessions d'étude"
+      },
+      "a_sessions_100": {
+        "title": "Érudit centenaire",
+        "desc": "Terminez 100 sessions d'étude"
+      },
+      "a_hours_10": {
+        "title": "10 heures",
+        "desc": "Étudiez 10 heures au total"
+      },
+      "a_hours_50": {
+        "title": "50 heures",
+        "desc": "Étudiez 50 heures au total"
+      },
+      "a_hours_100": {
+        "title": "Centurion",
+        "desc": "Étudiez 100 heures au total"
+      },
+      "a_tasks_10": {
+        "title": "Dompteur de tâches",
+        "desc": "Terminez 10 tâches"
+      },
+      "a_tasks_50": {
+        "title": "Pro de la productivité",
+        "desc": "Terminez 50 tâches"
+      },
+      "a_tasks_200": {
+        "title": "Inarrêtable",
+        "desc": "Terminez 200 tâches"
+      },
+      "a_streak_7": {
+        "title": "Guerrier de la semaine",
+        "desc": "Atteignez une série de 7 jours"
+      },
+      "a_streak_30": {
+        "title": "Merveille mensuelle",
+        "desc": "Atteignez une série de 30 jours"
+      },
+      "a_streak_100": {
+        "title": "Série centenaire",
+        "desc": "Atteignez une série de 100 jours"
+      },
+      "a_friend_1": {
+        "title": "Mieux ensemble",
+        "desc": "Étudiez une fois avec un ami"
+      },
+      "a_friend_10": {
+        "title": "Esprit d'équipe",
+        "desc": "Terminez 10 sessions avec des amis"
+      },
+      "a_all_recipes": {
+        "title": "Maître pâtissier",
+        "desc": "Préparez 5 recettes"
+      }
+    }
   }
 }

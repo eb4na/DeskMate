@@ -1,4 +1,23 @@
 {
+  "report": {
+    "report": "举报",
+    "block": "屏蔽",
+    "title": "举报 {{name}}？",
+    "subtitle": "你为什么举报这位用户？",
+    "reason_harassment": "骚扰或欺凌",
+    "reason_spam": "垃圾信息",
+    "reason_inappropriate": "不当内容",
+    "reason_cheating": "作弊",
+    "reason_underage": "未成年用户",
+    "reason_other": "其他",
+    "sentTitle": "举报已提交",
+    "sentMsg": "谢谢，我们会进行审核。",
+    "blockTitle": "屏蔽 {{name}}？",
+    "blockMsg": "他将从你的好友中移除，并在所有地方对你隐藏。",
+    "blockConfirm": "屏蔽",
+    "failedTitle": "发送失败",
+    "failedMsg": "请检查网络后重试。"
+  },
   "tutorial": {
     "start_title": "学习时段",
     "start_body": "开始专注计时来赚取金币。",
@@ -250,6 +269,12 @@
   "session": {
     "awayTitle": "快回来学习吧！",
     "awayBody": "如果你一分钟内不回来，学习时段就会停止。",
+    "awayBody_bun": "Bun一直在等你…在Bun担心之前快回来吧。",
+    "awayBody_companion_bunny": "快点回来啦，不然bunny要踢你咯～",
+    "awayBody_companion_cocoa": "回来。我们还没结束，你的专注力正在变凉。",
+    "awayBody_hanji": "我悄悄替你留着位置…在寂静变得太空旷之前，回来吧。",
+    "awayBody_companion_tira": "你离开学习页面了？我退的是大学，不是这次自习。回来。",
+    "awayBody_companion_honey": "回来吧…Miel想你了。",
     "focusTime": "专注时间",
     "breakTime": "休息时间",
     "sessionComplete": "学习完成！",
@@ -352,7 +377,7 @@
     "fullReport": "完整报告 →",
     "best": "最佳：{{count}} 天",
     "streakFreeze": "连续冻结",
-    "freezesRemaining": "本月还剩 {{count}}/3 次冻结",
+    "freezesRemaining": "你拥有 {{count}} 个",
     "useFreezeQ": "使用连续冻结？",
     "useFreezeMsg": "这会补上缺失的一天，让你今天学习后能延续连续记录。一次冻结可弥补整个缺口。不会获得金币。",
     "useFreeze": "使用冻结",
@@ -810,6 +835,8 @@
     "noFriendsYet": "还没有好友",
     "noFriendsHint": "在好友页面添加好友，然后在这里邀请他们。",
     "onlineNow": "在线",
+    "studying": "学习中",
+    "onBreak": "休息中",
     "offline": "离线",
     "invited": "已邀请 ✓",
     "alreadyIn": "已加入",
@@ -828,6 +855,8 @@
     "min": "分钟",
     "topic": "主题",
     "minShort": "{{n}}分钟",
+    "customLength": "自定义时长",
+    "hostPlusCustom": "因为房主拥有 Plus，已解锁自定义计时器",
     "noSubjectsHint": "在「任务」中添加科目即可选择主题。",
     "hostPicks": "房主选择专注时长并开始。",
     "inviteFriend": "＋ 邀请好友",
@@ -955,6 +984,7 @@
     "maybeLater": "以后再说",
     "matchedTitle": "搭配造型完成！",
     "matchedMsg": "已为{{outfit}}搭配{{room}}房间！",
+    "matchedRoomSub": "获得{{room}}房间（背景 + 桌子），与{{outfit}}相配。",
     "roomLockedTitle": "配套房间未解锁",
     "roomLockedMsg": "在商店解锁{{room}}房间，完成{{outfit}}的造型。",
     "goToShop": "前往商店",
@@ -1014,6 +1044,61 @@
     "game_study": "自习室",
     "you": "我"
   },
+  "studyBuddy": {
+    "ctaTitle": "寻找学习搭子",
+    "endedTitle": "你与搭子的匹配已结束",
+    "endedGhost": "你的搭子连续几天没有动静，匹配已结束。要找一位新搭子吗？",
+    "endedExpired": "你们一起的一周结束啦！要找一位新搭子吗？",
+    "endedLeft": "你的搭子离开了匹配。要找一位新搭子吗？",
+    "ctaSub": "匹配一位为期一周的学习伙伴",
+    "title": "学习搭子",
+    "subtitle": "为期一周的督促伙伴",
+    "introTitle": "玩法说明",
+    "introBody": "我们会为你匹配一位同龄学生，为期一周。每天你都能看到搭子今天有没有学习，并为TA加油。一周结束后，匹配自动结束。",
+    "safetyNote": "我们只会为你匹配同年龄段的学习伙伴。不会分享任何个人信息——没有姓名、没有聊天，只有学习打卡。你可以随时举报或离开。",
+    "findBuddy": "寻找搭子",
+    "lookingTitle": "正在寻找搭子…",
+    "lookingBody": "一旦有同龄学生也在寻找，我们就会立刻为你匹配。你可以离开此页面，我们会继续寻找。",
+    "couldNotMatch": "未能找到搭子",
+    "errorBirthday": "请先在设置中填写生日，以便我们为你匹配同龄学生。",
+    "errorRestricted": "你的账号目前无法使用学习搭子功能。",
+    "errorGeneric": "出错了，请重试。",
+    "buddyFallback": "你的搭子",
+    "streakLabel": "连续{{count}}天",
+    "daysLeft": "还剩{{count}}天",
+    "studiedYes": "{{name}}今天学习了！",
+    "studiedNo": "{{name}}今天还没有学习",
+    "buddyCheered": "{{name}}为你加油：{{cheer}}",
+    "sendCheer": "送上鼓励",
+    "cheerSent": "鼓励已送出！明天可以再送一次。",
+    "alreadyCheered": "今天已鼓励",
+    "alreadyCheeredMsg": "你今天已经送过鼓励啦，明天再来吧！",
+    "cheer": {
+      "keep_going": "继续加油！",
+      "you_got_this": "你一定行！",
+      "dont_break_streak": "别断了连续记录！",
+      "proud_of_you": "为你骄傲！"
+    },
+    "becomeFriends": "成为好友",
+    "friendPending": "等待对方也添加你",
+    "nowFriends": "你们成为好友啦！",
+    "nowFriendsMsg": "你们都选择了成为好友。TA的好友码是{{code}}。",
+    "friendRequested": "已发送！",
+    "friendRequestedMsg": "如果你的搭子也点击「成为好友」，你们就会互相添加。",
+    "report": "举报",
+    "reportQ": "举报这位搭子？",
+    "reportMsg": "这会结束匹配，且不会再次与TA配对。出了什么问题？",
+    "reportInappropriate": "内容不当",
+    "reportHarassment": "骚扰",
+    "reportSpam": "垃圾信息",
+    "reportThanks": "感谢你的反馈",
+    "reportThanksMsg": "我们已结束这次匹配，团队会进行审核。",
+    "leave": "离开",
+    "leaveQ": "离开这位搭子？",
+    "leaveMsg": "这会结束你们双方的匹配。你随时可以寻找新搭子。",
+    "guestGateTitle": "学习搭子需要账号",
+    "guestGateBody": "创建一个免费账号，即可匹配学习搭子。"
+  },
   "subjectChart": {
     "day": "今天",
     "week": "本周",
@@ -1042,6 +1127,7 @@
     "friend": "好友",
     "full": "已满",
     "cakeBaking": "制作中…",
+    "nowBaking": "烘焙中",
     "oneStudying": "1 人学习中",
     "studyingTogether": "{{count}} 人一起学习中",
     "you": "你",
@@ -1546,5 +1632,114 @@
   "recipeBadge": {
     "title": "获得徽章！",
     "got": "{{name}} 的食谱徽章！"
+  },
+    "quests": {
+    "title": "每日目标",
+    "resetsMidnight": "午夜重置",
+    "cardSubtitle": "赢取额外金币的目标",
+    "cardOpen": "打开",
+    "previewReady": "{{name}} — 可领取！",
+    "previewProgress": "{{name}} · {{current}}/{{goal}}",
+    "cardClaim": "领取",
+    "allClaimed": "今日已全部领取",
+    "claim": "领取 {{coins}}",
+    "claimed": "已领取",
+    "progress": "{{current}}/{{goal}}",
+    "items": {
+      "g_study_60": {
+        "title": "黄金一小时",
+        "desc": "今天学习 1 小时"
+      },
+      "g_sessions_2": {
+        "title": "加倍",
+        "desc": "完成 2 次学习时段"
+      },
+      "g_before_noon": {
+        "title": "早起鸟",
+        "desc": "中午前学习 25 分钟"
+      },
+      "g_task_1": {
+        "title": "打勾",
+        "desc": "今天完成一个任务"
+      }
+    }
+  },
+  "achievements": {
+    "categories": {
+      "study": "学习",
+      "tasks": "任务",
+      "streak": "连续",
+      "social": "好友",
+      "recipes": "烘焙"
+    },
+    "title": "成就",
+    "subtitle": "达成里程碑赢取金币",
+    "allClaimed": "已领取所有成就",
+    "cardSubtitle": "里程碑奖励",
+    "readyCount": "{{count}} 项可领取",
+    "claim": "领取 {{coins}}",
+    "claimed": "已领取",
+    "items": {
+      "a_first": {
+        "title": "第一步",
+        "desc": "完成你的第一次学习时段"
+      },
+      "a_sessions_25": {
+        "title": "渐入佳境",
+        "desc": "完成 25 次学习时段"
+      },
+      "a_sessions_100": {
+        "title": "百场学者",
+        "desc": "完成 100 次学习时段"
+      },
+      "a_hours_10": {
+        "title": "10 小时",
+        "desc": "累计学习 10 小时"
+      },
+      "a_hours_50": {
+        "title": "50 小时",
+        "desc": "累计学习 50 小时"
+      },
+      "a_hours_100": {
+        "title": "百时勇士",
+        "desc": "累计学习 100 小时"
+      },
+      "a_tasks_10": {
+        "title": "任务驯服者",
+        "desc": "完成 10 个任务"
+      },
+      "a_tasks_50": {
+        "title": "效率达人",
+        "desc": "完成 50 个任务"
+      },
+      "a_tasks_200": {
+        "title": "势不可挡",
+        "desc": "完成 200 个任务"
+      },
+      "a_streak_7": {
+        "title": "一周勇士",
+        "desc": "达成 7 天连续"
+      },
+      "a_streak_30": {
+        "title": "月度奇迹",
+        "desc": "达成 30 天连续"
+      },
+      "a_streak_100": {
+        "title": "百日连续",
+        "desc": "达成 100 天连续"
+      },
+      "a_friend_1": {
+        "title": "一起更好",
+        "desc": "和朋友一起学习一次"
+      },
+      "a_friend_10": {
+        "title": "团队目标",
+        "desc": "和朋友完成 10 次时段"
+      },
+      "a_all_recipes": {
+        "title": "烘焙大师",
+        "desc": "制作 5 个食谱"
+      }
+    }
   }
 }

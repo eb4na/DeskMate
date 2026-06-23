@@ -688,7 +688,7 @@ const styles = StyleSheet.create({
 
   // Tapped-day modal
   modalRoot: { flex: 1, justifyContent: 'center', padding: Spacing.four },
-  modalBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(48, 32, 24, 0.35)' },
+  modalBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
   modalCard: {
     backgroundColor: C.frosting,
     borderRadius: BakeryRadii.panel,

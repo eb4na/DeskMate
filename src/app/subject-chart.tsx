@@ -7,9 +7,10 @@ import Svg, { G, Path } from 'react-native-svg';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
+import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { useTranslation } from '@/i18n';
 import { historyCutoffISO } from '@/lib/history-window';
-import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
 
 const RANGES = ['day', 'week', 'month', 'year'] as const;
 type Range = (typeof RANGES)[number];
@@ -50,6 +51,10 @@ function slicePath(startAngle: number, endAngle: number): string {
 export default function SubjectChartScreen() {
   const { t } = useTranslation();
   const { sessionHistory, subjects, isPlus } = useApp();
+  // Tablet: scale every size by the shared factor so labels/percentages aren't
+  // phone-tiny (and the % stops wrapping in its box) on iPad.
+  const { scale, contentWidth } = useTabletScale();
+  const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
 
   const [range, setRange] = useState<Range>('week');
 
@@ -141,7 +146,7 @@ export default function SubjectChartScreen() {
 
               {/* Pie */}
               <ThemedView type="backgroundElement" style={styles.chartCard}>
-                <Svg width={PIE_SIZE} height={PIE_SIZE}>
+                <Svg width={PIE_SIZE * scale} height={PIE_SIZE * scale} viewBox={`0 0 ${PIE_SIZE} ${PIE_SIZE}`}>
                   <G>
                     {arcs.length === 1 ? (
                       // Single subject: a full disc (arc command can't draw 360°).
@@ -194,74 +199,77 @@ export default function SubjectChartScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// `s` = shared tablet scale (1 on phone). Every font/size/spacing literal × s so the
+// chart scales as one piece — the legend % box widens with the scaled text so it no
+// longer wraps, and labels aren't phone-tiny on iPad.
+const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   container: { flex: 1, backgroundColor: BakeryColors.frosting },
   scrollBox: { flex: 1 },
   safeArea: {
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.six,
-    maxWidth: MaxContentWidth,
+    paddingHorizontal: Spacing.four * s,
+    paddingTop: Spacing.four * s,
+    paddingBottom: Spacing.six * s,
+    maxWidth: contentWidth,
     width: '100%',
     alignSelf: 'center',
-    gap: Spacing.three,
+    gap: Spacing.three * s,
   },
-  title: { fontSize: 28, lineHeight: 34 },
-  pickerRow: { gap: Spacing.two, paddingVertical: 2, paddingRight: Spacing.four },
+  title: { fontSize: 28 * s, lineHeight: 34 * s },
+  pickerRow: { gap: Spacing.two * s, paddingVertical: 2 * s, paddingRight: Spacing.four * s },
   pill: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 6,
+    paddingHorizontal: Spacing.three * s,
+    paddingVertical: 6 * s,
     borderRadius: BakeryRadii.pill,
     backgroundColor: BakeryColors.cream,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
   pillActive: { backgroundColor: BakeryColors.rose, borderColor: BakeryColors.berry },
-  pillLabel: { fontSize: 13 },
+  pillLabel: { fontSize: 13 * s },
   pillLabelActive: { color: BakeryColors.cocoaDark, fontWeight: '700' },
   emptyCard: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.six,
+    borderRadius: BakeryRadii.card * s,
+    padding: Spacing.six * s,
     alignItems: 'center',
     backgroundColor: BakeryColors.glass,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
-  emptyText: { textAlign: 'center', lineHeight: 20 },
+  emptyText: { textAlign: 'center', lineHeight: 20 * s },
   headlineCard: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
-    gap: 2,
+    borderRadius: BakeryRadii.card * s,
+    padding: Spacing.three * s,
+    gap: 2 * s,
     backgroundColor: '#FBDCE4',
     borderWidth: 1.5,
     borderColor: BakeryColors.rose,
     ...BakeryShadow,
   },
-  headlineCount: { fontSize: 26, fontWeight: '800', lineHeight: 32, color: BakeryColors.berry },
+  headlineCount: { fontSize: 26 * s, fontWeight: '800', lineHeight: 32 * s, color: BakeryColors.berry },
   chartCard: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.four,
+    borderRadius: BakeryRadii.card * s,
+    padding: Spacing.four * s,
     alignItems: 'center',
     backgroundColor: BakeryColors.glass,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
-  legend: { gap: Spacing.two },
+  legend: { gap: Spacing.two * s },
   legendRow: {
-    borderRadius: BakeryRadii.card,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.three,
+    borderRadius: BakeryRadii.card * s,
+    paddingVertical: Spacing.two * s,
+    paddingHorizontal: Spacing.three * s,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: Spacing.two * s,
     backgroundColor: BakeryColors.glass,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
-  legendLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  dot: { width: 12, height: 12, borderRadius: 6 },
-  legendName: { fontSize: 13 },
-  legendPct: { width: 44, textAlign: 'right' },
-  legendMins: { width: 56, textAlign: 'right', fontSize: 13 },
-  backBtn: { alignItems: 'center', paddingVertical: Spacing.three },
+  legendLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 * s },
+  dot: { width: 12 * s, height: 12 * s, borderRadius: 6 * s },
+  legendName: { fontSize: 13 * s },
+  legendPct: { width: 48 * s, textAlign: 'right', fontSize: 13 * s },
+  legendMins: { width: 56 * s, textAlign: 'right', fontSize: 13 * s },
+  backBtn: { alignItems: 'center', paddingVertical: Spacing.three * s },
 });

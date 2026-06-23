@@ -93,7 +93,7 @@ export function DeleteAccountModal({
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(48,32,24,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  backdrop: { flex: 1, backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center', padding: 24 },
   card: {
     width: '100%', maxWidth: 360, backgroundColor: C.frosting,
     borderRadius: BakeryRadii.panel, borderWidth: 2, borderColor: '#E8A0A0',

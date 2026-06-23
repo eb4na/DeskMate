@@ -4,14 +4,17 @@ import i18n, { detectDeviceLanguage } from '@/i18n';
 import { DAILY_EARN_CAP, MAX_FRIENDS, STATIC_SUBJECTS } from '@/constants/placeholder-data';
 import { SHOP_ITEMS, type ShopCategory } from '@/constants/shop-data';
 import { dailyRewardCoins } from '@/constants/login-rewards';
+import { dailyGoalIds, getQuest, getAchievement } from '@/constants/quests';
 import { useAuth } from '@/context/auth-context';
 import { getAppStateScope, loadScopedAppState, saveScopedAppState, isGuestUpgradePending, clearGuestUpgradePending, loadGuestState } from '@/lib/app-state-repository';
 import { probeCloudState, pushCloudState, pushCloudStateDebounced } from '@/lib/cloud-sync';
 import { getEffectiveBunSkinId, getEffectiveCompanionSkins } from '@/lib/companion-utils';
 import { maskProfanity } from '@/lib/profanity';
+import { loadBlockedCodes, blockUserRemote, unblockUserRemote } from '@/lib/moderation';
 import { syncStreakReminders } from '@/lib/notifications';
 import { computeTaskRollover } from '@/lib/task-recurrence';
 import { uploadProfile } from '@/lib/profile-sync';
+import { uploadStudyDay } from '@/lib/study-buddy';
 import { HANJI_COMPANION_ID, recipeBadgeKey, badgesFromMadeFoods, hasAllCharacterBadges, RECIPE_IDS } from '@/constants/recipes';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -295,6 +298,27 @@ type PersistedState = {
   // IANA timezone captured once on first load and kept for the account's lifetime.
   // The streak "day" rolls at 12am in this zone. Never re-extracted after first set.
   timezone: string;
+
+  // Daily Quests: compact per-day counters (reset at 12am in the account timezone
+  // via rolledQuests) the day's three quests are measured against, plus which were
+  // claimed today. `day` is the todayISO the counters were last reset on.
+  quests: QuestState;
+  // Achievements: lifetime tallies not otherwise tracked, + which achievements have
+  // been claimed (one-time). sessionsCompleted/totalMinutes/streak.longestStreak
+  // already exist and back the rest.
+  lifetimeTasksCompleted: number;
+  lifetimeFriendSessions: number;
+  claimedAchievements: string[];
+};
+
+type QuestState = {
+  day: string;
+  sessionsToday: number;
+  minutesToday: number;
+  beforeNoonMinutesToday: number;
+  friendSessionsToday: number;
+  tasksToday: number;
+  claimedToday: string[];
 };
 
 // How many companion chat messages one AI generation ticket converts into.
@@ -400,6 +424,18 @@ const DEFAULTS: PersistedState = {
   instagramFollowClaimed: false,
   birthday: null,
   timezone: '',
+  quests: {
+    day: '',
+    sessionsToday: 0,
+    minutesToday: 0,
+    beforeNoonMinutesToday: 0,
+    friendSessionsToday: 0,
+    tasksToday: 0,
+    claimedToday: [],
+  },
+  lifetimeTasksCompleted: 0,
+  lifetimeFriendSessions: 0,
+  claimedAchievements: [],
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -442,6 +478,43 @@ function dateInTimeZone(date: Date, tz: string | null): string {
 
 export function todayISO(): string {
   return dateInTimeZone(new Date(), activeTimezone);
+}
+
+// Hour-of-day (0–23) of `date` as seen in the account timezone — used for the
+// "before noon" quest so it agrees with the account's day boundary (never the raw
+// device clock, which would drift for a travelling user). Mirrors dateInTimeZone.
+function hourInTimeZone(date: Date, tz: string | null): number {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz || undefined,
+      hour: '2-digit',
+      hour12: false,
+    }).formatToParts(date);
+    const h = parts.find((p) => p.type === 'hour')?.value;
+    // Intl may render midnight as '24' in some environments; fold it back to 0.
+    const n = h ? parseInt(h, 10) % 24 : date.getHours();
+    return Number.isFinite(n) ? n : date.getHours();
+  } catch {
+    return date.getHours();
+  }
+}
+
+// Daily quest counters reset at 12am in the account timezone. This pure helper
+// returns the quests block as it should read for `today`: untouched if it's still
+// the same day, otherwise zeroed with a cleared claim list. Both the mutations and
+// the Quests screen call this, so the screen never shows yesterday's progress while
+// waiting for the next study/task event to roll it over.
+function rolledQuests(quests: QuestState, today: string): QuestState {
+  if (quests.day === today) return quests;
+  return {
+    day: today,
+    sessionsToday: 0,
+    minutesToday: 0,
+    beforeNoonMinutesToday: 0,
+    friendSessionsToday: 0,
+    tasksToday: 0,
+    claimedToday: [],
+  };
 }
 
 // Shift a YYYY-MM-DD string by whole days via pure UTC calendar math (DST-safe).
@@ -715,6 +788,16 @@ type AppContextType = {
   loginStreak: number;
   loginRewardDate: string;
 
+  // Daily Quests + Achievements. `quests` is always rolled to today (counters read
+  // 0 on a new day even before the next event fires).
+  quests: QuestState;
+  lifetimeTasksCompleted: number;
+  lifetimeFriendSessions: number;
+  claimedAchievements: string[];
+  recordQuestSession: (opts: { minutes: number; withFriend?: boolean }) => void;
+  claimQuestReward: (id: string) => void;
+  claimAchievement: (id: string) => void;
+
   // Wave 2 state
   subjects: Subject[];
   tasks: Task[];
@@ -787,6 +870,11 @@ type AppContextType = {
   friends: Friend[];
   addFriend: (code: string) => { ok: boolean; error?: string };
   removeFriend: (code: string) => void;
+  // Moderation: codes this account has blocked, and block/unblock actions. Blocked
+  // friends are filtered out of `friends`.
+  blockedCodes: string[];
+  blockUser: (code: string) => void;
+  unblockUser: (code: string) => void;
   setFriendProfile: (code: string, data: Partial<Friend>) => void;
   // Unread DM counts by friend code, with setters used by the chat + inbox listener.
   dmUnread: Record<string, number>;
@@ -936,6 +1024,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // popup. In-memory only (auto-dismisses after a few seconds).
   const [recipeBadgePending, setRecipeBadgePending] = useState<string | null>(null);
   const [characterObtainedPending, setCharacterObtainedPending] = useState<string | null>(null);
+  // Friend codes this account has blocked (loaded from Supabase per account). Blocked
+  // codes are filtered out of the friends list, incoming requests and DMs.
+  const [blockedCodes, setBlockedCodes] = useState<string[]>([]);
   // Key the persistence scope on the *stable* identity (user id, or guest) — NOT
   // the session object. Supabase (autoRefreshToken) hands back a brand-new session
   // object on every token refresh; memoizing on the object would re-run the loader
@@ -1125,6 +1216,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     s.streak.currentStreak, s.streak.longestStreak, s.totalMinutes,
   ]);
 
+  // Mirror the streak's last-study date to the server so a Study Buddy's daily
+  // check-in can read "studied today". lastStudyDate is already account-timezone
+  // ISO (set by updateStreak via todayISO), so this is the canonical signal.
+  useEffect(() => {
+    if (!loaded || !session?.user.id || !s.streak.lastStudyDate) return;
+    const userId = session.user.id;
+    const date = s.streak.lastStudyDate;
+    const tz = s.timezone;
+    const timer = setTimeout(() => {
+      uploadStudyDay(userId, date, tz);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [loaded, session?.user.id, s.streak.lastStudyDate, s.timezone]);
+
   // ─── Wave 1 actions ──────────────────────────────────────────────────────
 
   const addCoins = (amount: number) => {
@@ -1202,6 +1307,62 @@ export function AppProvider({ children }: { children: ReactNode }) {
       sessionsCompleted: prev.sessionsCompleted + 1,
       totalMinutes: prev.totalMinutes + minutes,
     }));
+
+  // Record a FULLY-COMPLETED study session toward daily quests + achievements.
+  // Called only from the two real-completion funnels (solo session-complete and the
+  // multiplayer finish), deliberately NOT from recordSession — early-ended sessions
+  // go through recordSession too but pay no coins, so they must not advance quests.
+  const recordQuestSession = ({ minutes, withFriend }: { minutes: number; withFriend?: boolean }) =>
+    setS((prev) => {
+      const today = todayISO();
+      const q = rolledQuests(prev.quests, today);
+      const beforeNoon = hourInTimeZone(new Date(), activeTimezone) < 12;
+      return {
+        ...prev,
+        quests: {
+          ...q,
+          sessionsToday: q.sessionsToday + 1,
+          minutesToday: q.minutesToday + minutes,
+          beforeNoonMinutesToday: q.beforeNoonMinutesToday + (beforeNoon ? minutes : 0),
+          friendSessionsToday: q.friendSessionsToday + (withFriend ? 1 : 0),
+        },
+        lifetimeFriendSessions: prev.lifetimeFriendSessions + (withFriend ? 1 : 0),
+      };
+    });
+
+  // Claim a completed daily quest's bonus coins. Guards: it's one of today's three,
+  // its goal is met, and it isn't already claimed today. Coins are added directly
+  // (bypassing DAILY_EARN_CAP), like the login/birthday rewards.
+  const claimQuestReward = (id: string) =>
+    setS((prev) => {
+      const today = todayISO();
+      const q = rolledQuests(prev.quests, today);
+      if (!dailyGoalIds().includes(id) || q.claimedToday.includes(id)) return { ...prev, quests: q };
+      const def = getQuest(id);
+      if (!def || (q as any)[def.statKey] < def.goal) return { ...prev, quests: q };
+      return {
+        ...prev,
+        coins: prev.coins + def.reward,
+        quests: { ...q, claimedToday: [...q.claimedToday, id] },
+      };
+    });
+
+  // Claim a one-time achievement's bonus coins. Guards: its lifetime goal is met and
+  // it hasn't been claimed before. Coins bypass DAILY_EARN_CAP.
+  const claimAchievement = (id: string) =>
+    setS((prev) => {
+      if (prev.claimedAchievements.includes(id)) return prev;
+      const def = getAchievement(id);
+      if (!def) return prev;
+      const value =
+        def.statKey === 'longestStreak' ? prev.streak.longestStreak : (prev as any)[def.statKey];
+      if (value < def.goal) return prev;
+      return {
+        ...prev,
+        coins: prev.coins + def.reward,
+        claimedAchievements: [...prev.claimedAchievements, id],
+      };
+    });
 
   const addMoodEntry = (entry: Omit<MoodEntry, 'id'>) =>
     setS((prev) => ({
@@ -1408,12 +1569,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const task = prev.tasks.find((t) => t.id === id);
       if (!task || task.status === 'done') return prev;
 
+      // Both a one-off completion AND a repeating task's roll-forward count as a
+      // completion toward quests/achievements (repeating tasks never reach 'done',
+      // so deriving the count from the task list would miss them).
+      const today = todayISO();
+      const q = rolledQuests(prev.quests, today);
+      const questBump = {
+        quests: { ...q, tasksToday: q.tasksToday + 1 },
+        lifetimeTasksCompleted: prev.lifetimeTasksCompleted + 1,
+      };
+
       // Repeating task: instead of marking done, roll its due date forward to the
       // next selected weekday and reset it to not-started so it recurs.
       const rollover = computeTaskRollover(task);
       if (rollover) {
         return {
           ...prev,
+          ...questBump,
           tasks: prev.tasks.map((t) =>
             t.id === id
               ? {
@@ -1433,6 +1605,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       return {
         ...prev,
+        ...questBump,
         tasks: prev.tasks.map((t) =>
           t.id === id
             ? { ...t, status: 'done' as TaskStatus, completedAt: now, lastActivityAt: now }
@@ -1888,6 +2061,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const removeFriend = (code: string) =>
     setS((prev) => ({ ...prev, friends: prev.friends.filter((f) => f.code !== code) }));
 
+  // Block: drop the friendship, hide them everywhere (friends/requests/DMs are
+  // filtered by `blockedCodes`), and persist the block to Supabase. Optimistic.
+  const blockUser = (code: string) => {
+    setBlockedCodes((prev) => (prev.includes(code) ? prev : [...prev, code]));
+    setS((prev) => ({ ...prev, friends: prev.friends.filter((f) => f.code !== code) }));
+    blockUserRemote(code);
+  };
+  const unblockUser = (code: string) => {
+    setBlockedCodes((prev) => prev.filter((c) => c !== code));
+    unblockUserRemote(code);
+  };
+  // Load this account's block list once its state scope (user id) is established.
+  useEffect(() => {
+    if (!loadedScopeKey) { setBlockedCodes([]); return; }
+    loadBlockedCodes().then(setBlockedCodes);
+  }, [loadedScopeKey]);
+
   const setFriendProfile = (code: string, data: Partial<Friend>) =>
     setS((prev) => ({
       ...prev,
@@ -2019,6 +2209,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         earnedToday: s.earnedDate === todayISO() ? s.earnedToday : 0,
         loginStreak: s.loginStreak,
         loginRewardDate: s.loginRewardDate,
+        // Always hand the screen today's counters (reset at midnight) so progress
+        // never reads stale before the next study/task event rolls it over.
+        quests: rolledQuests(s.quests, todayISO()),
+        lifetimeTasksCompleted: s.lifetimeTasksCompleted,
+        lifetimeFriendSessions: s.lifetimeFriendSessions,
+        claimedAchievements: s.claimedAchievements,
+        recordQuestSession,
+        claimQuestReward,
+        claimAchievement,
         birthdayRewardYear: s.birthdayRewardYear ?? 0,
         subjects: s.subjects,
         tasks: s.tasks,
@@ -2104,9 +2303,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dayNotes: s.dayNotes ?? {},
         setDayNote,
         friendCode: s.friendCode,
-        friends: s.friends ?? [],
+        friends: (s.friends ?? []).filter((f) => !blockedCodes.includes(f.code)),
         addFriend,
         removeFriend,
+        blockedCodes,
+        blockUser,
+        unblockUser,
         setFriendProfile,
         dmUnread,
         setDmUnreadCounts,

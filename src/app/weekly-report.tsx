@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,9 +8,10 @@ import { PlusGateCard } from '@/components/plus-gate';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
+import { useTabletScale } from '@/hooks/use-tablet-scale';
 import i18n, { useTranslation } from '@/i18n';
 import { coinsForMinutes } from '@/constants/placeholder-data';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 
 function formatMinutes(total: number): string {
   const h = Math.floor(total / 60);
@@ -30,6 +32,10 @@ function formatDateRange(): string {
 export default function WeeklyReportScreen() {
   const { t } = useTranslation();
   const { sessionHistory, tasks, moodEntries, streak, subjects, isPlus } = useApp();
+  // Tablet: scale every size by ONE shared factor so all text (preset-based AND
+  // explicitly-sized) grows together and stays uniform — no more "some huge, some tiny."
+  const { scale, contentWidth } = useTabletScale();
+  const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
 
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -95,7 +101,7 @@ export default function WeeklyReportScreen() {
 
   const stats = [
     { label: t('weeklyReport.statSessions'), value: String(weekSessionCount), emoji: '' },
-    { label: t('weeklyReport.statStudyTime'), value: weekMinutes > 0 ? formatMinutes(weekMinutes) : '—', emoji: '⏱' },
+    { label: t('weeklyReport.statStudyTime'), value: weekMinutes > 0 ? formatMinutes(weekMinutes) : '—', emoji: '' },
     { label: t('weeklyReport.statDaysShowedUp'), value: String(weekDays), emoji: '' },
     { label: t('weeklyReport.statTasksDone'), value: String(weekTasks.length), emoji: '' },
     { label: t('weeklyReport.statStreakNow'), value: `${streak.currentStreak}d`, emoji: '' },
@@ -135,7 +141,7 @@ export default function WeeklyReportScreen() {
             {stats.map((s) => (
               <ThemedView key={s.label} type="backgroundElement" style={styles.statCard}>
                 {'coinIcon' in s && s.coinIcon ? (
-                  <CoinIcon size={48} style={styles.statCoinIcon} />
+                  <CoinIcon size={Math.round(48 * scale)} style={styles.statCoinIcon} />
                 ) : (
                   <ThemedText style={styles.statEmoji}>{'emoji' in s ? s.emoji : ''}</ThemedText>
                 )}
@@ -150,7 +156,7 @@ export default function WeeklyReportScreen() {
           {/* Subject breakdown */}
           {subjectEntries.length > 0 && (
             <ThemedView style={styles.section}>
-              <ThemedText type="smallBold">{t('weeklyReport.subjectBreakdown')}</ThemedText>
+              <ThemedText type="smallBold" style={styles.sectionTitle}>{t('weeklyReport.subjectBreakdown')}</ThemedText>
               <ThemedView style={styles.subjectList}>
                 {subjectEntries.map(([name, minutes]) => {
                   const subject = subjects.find((s) => s.name === name);
@@ -185,7 +191,7 @@ export default function WeeklyReportScreen() {
           {/* Mood insight */}
           {moodPct !== null && (
             <ThemedView style={styles.section}>
-              <ThemedText type="smallBold">{t('weeklyReport.moodInsight')}</ThemedText>
+              <ThemedText type="smallBold" style={styles.sectionTitle}>{t('weeklyReport.moodInsight')}</ThemedText>
               <ThemedView type="backgroundElement" style={styles.moodInsightCard}>
                 <ThemedText style={styles.moodInsightEmoji}></ThemedText>
                 <ThemedText type="small" style={styles.moodInsightText}>
@@ -197,7 +203,7 @@ export default function WeeklyReportScreen() {
 
           {/* Suggested goal */}
           <ThemedView style={styles.section}>
-            <ThemedText type="smallBold">{t('weeklyReport.goalNextWeek')}</ThemedText>
+            <ThemedText type="smallBold" style={styles.sectionTitle}>{t('weeklyReport.goalNextWeek')}</ThemedText>
             <ThemedView type="backgroundElement" style={styles.goalCard}>
               <ThemedText style={styles.goalEmoji}></ThemedText>
               <ThemedText type="small" style={styles.goalText}>
@@ -208,14 +214,14 @@ export default function WeeklyReportScreen() {
 
           {/* ── Plus advanced report sections ───────────────────────────── */}
           <ThemedView style={styles.section}>
-            <ThemedText type="smallBold">
+            <ThemedText type="smallBold" style={styles.sectionTitle}>
               {t('weeklyReport.advancedInsights')}
               {!isPlus && <ThemedText style={styles.plusTag}> — Plus</ThemedText>}
             </ThemedText>
             {isPlus ? (
               <>
                 <ThemedView type="backgroundElement" style={styles.advancedCard}>
-                  <ThemedText style={styles.advancedEmoji}>⏰</ThemedText>
+                  <ThemedText style={styles.advancedEmoji}></ThemedText>
                   <ThemedView type="transparent" style={styles.advancedText}>
                     <ThemedText type="smallBold">{t('weeklyReport.bestStudyHours')}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
@@ -245,7 +251,7 @@ export default function WeeklyReportScreen() {
             ) : (
               <>
                 <PlusGateCard
-                  emoji="⏰"
+                  emoji=""
                   title={t('weeklyReport.bestStudyHours')}
                   description={t('weeklyReport.bestStudyHoursDesc')}
                 />
@@ -272,84 +278,91 @@ export default function WeeklyReportScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// `s` = the shared tablet scale (1 on phone). Every font/spacing/size literal is
+// multiplied by it so the screen scales as one piece and text stays uniform — and
+// it scales by the SAME factor ThemedText scales its presets, so preset-based text
+// (e.g. the advanced-insight rows) and explicitly-sized text agree on tablet.
+const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   container: { flex: 1 },
   safeArea: {
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
-    paddingBottom: 40,
-    maxWidth: MaxContentWidth,
+    paddingHorizontal: Spacing.four * s,
+    paddingTop: Spacing.four * s,
+    paddingBottom: 40 * s,
+    maxWidth: contentWidth,
     width: '100%',
     alignSelf: 'center',
-    gap: Spacing.four,
+    gap: Spacing.four * s,
   },
-  header: { gap: 4 },
-  title: { fontSize: 26, lineHeight: 32 },
+  header: { gap: 4 * s },
+  title: { fontSize: 26 * s, lineHeight: 32 * s },
   summaryCard: {
-    borderRadius: 20,
-    padding: Spacing.four,
-    gap: Spacing.two,
+    borderRadius: 20 * s,
+    padding: Spacing.four * s,
+    gap: Spacing.two * s,
     alignItems: 'center',
   },
-  summaryEmoji: { fontSize: 40, lineHeight: 48 },
-  summaryText: { textAlign: 'center', lineHeight: 22 },
+  summaryEmoji: { fontSize: 40 * s, lineHeight: 48 * s },
+  // Explicit size (was the ThemedText default 16, which read oversized vs the rest);
+  // matches the body text so the screen's text stays uniform.
+  summaryText: { textAlign: 'center', fontSize: 14 * s, lineHeight: 21 * s },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.two,
+    gap: Spacing.two * s,
   },
   statCard: {
     width: '30.5%',
-    borderRadius: 14,
-    padding: Spacing.two,
+    borderRadius: 14 * s,
+    padding: Spacing.two * s,
     alignItems: 'center',
-    gap: 2,
+    gap: 2 * s,
   },
-  statEmoji: { fontSize: 20, lineHeight: 26 },
-  statCoinIcon: { marginBottom: 2 },
-  statValue: { fontSize: 20, fontWeight: '700', lineHeight: 26 },
-  statLabel: { textAlign: 'center', fontSize: 11 },
-  section: { gap: Spacing.two },
-  subjectList: { gap: Spacing.two },
-  subjectRow: { borderRadius: 12, padding: Spacing.two, gap: 6 },
-  subjectMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  subjectDot: { width: 10, height: 10, borderRadius: 5 },
-  subjectName: { flex: 1, fontSize: 13 },
-  subjectTime: { fontSize: 13 },
+  statEmoji: { fontSize: 20 * s, lineHeight: 26 * s },
+  statCoinIcon: { marginBottom: 2 * s },
+  statValue: { fontSize: 20 * s, fontWeight: '700', lineHeight: 26 * s },
+  statLabel: { textAlign: 'center', fontSize: 12 * s },
+  section: { gap: Spacing.two * s },
+  sectionTitle: { fontSize: 17 * s, fontWeight: '800' },
+  subjectList: { gap: Spacing.two * s },
+  subjectRow: { borderRadius: 12 * s, padding: Spacing.two * s, gap: 6 * s },
+  subjectMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 * s },
+  subjectDot: { width: 10 * s, height: 10 * s, borderRadius: 5 * s },
+  subjectName: { flex: 1, fontSize: 13 * s },
+  subjectTime: { fontSize: 13 * s },
   subjectBar: {
-    height: 4,
-    borderRadius: 2,
+    height: 4 * s,
+    borderRadius: 2 * s,
     backgroundColor: 'rgba(0,0,0,0.06)',
     overflow: 'hidden',
   },
-  subjectBarFill: { height: '100%', borderRadius: 2 },
+  subjectBarFill: { height: '100%', borderRadius: 2 * s },
   moodInsightCard: {
-    borderRadius: 16,
-    padding: Spacing.three,
+    borderRadius: 16 * s,
+    padding: Spacing.three * s,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: Spacing.two * s,
   },
-  moodInsightEmoji: { fontSize: 28, lineHeight: 34 },
-  moodInsightText: { flex: 1, lineHeight: 20 },
+  moodInsightEmoji: { fontSize: 28 * s, lineHeight: 34 * s },
+  moodInsightText: { flex: 1, fontSize: 13 * s, lineHeight: 20 * s },
   goalCard: {
-    borderRadius: 16,
-    padding: Spacing.three,
+    borderRadius: 16 * s,
+    padding: Spacing.three * s,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: Spacing.two,
+    gap: Spacing.two * s,
   },
-  goalEmoji: { fontSize: 22, lineHeight: 28 },
-  goalText: { flex: 1, lineHeight: 20 },
-  backBtn: { alignItems: 'center', paddingVertical: Spacing.two },
-  plusTag: { color: '#F5A623', fontSize: 12, fontWeight: '400' },
+  goalEmoji: { fontSize: 22 * s, lineHeight: 28 * s },
+  goalText: { flex: 1, fontSize: 13 * s, lineHeight: 20 * s },
+  backBtn: { alignItems: 'center', paddingVertical: Spacing.two * s },
+  plusTag: { color: '#F5A623', fontSize: 12 * s, fontWeight: '400' },
   advancedCard: {
-    borderRadius: 14,
-    padding: Spacing.three,
+    borderRadius: 14 * s,
+    padding: Spacing.three * s,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: Spacing.two,
+    gap: Spacing.two * s,
   },
-  advancedEmoji: { fontSize: 24, lineHeight: 30, width: 32 },
-  advancedText: { flex: 1, gap: 2 },
+  advancedEmoji: { fontSize: 24 * s, lineHeight: 30 * s, width: 32 * s },
+  advancedText: { flex: 1, gap: 2 * s },
 });

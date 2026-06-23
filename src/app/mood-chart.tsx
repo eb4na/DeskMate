@@ -7,10 +7,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
+import { useTabletScale } from '@/hooks/use-tablet-scale';
 import i18n, { useTranslation } from '@/i18n';
 import { historyCutoffISO } from '@/lib/history-window';
 import { AFTER_SESSION_MOODS, BEFORE_SESSION_MOODS } from '@/constants/placeholder-data';
-import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
 
 // Mood metadata (image + canonical label) keyed by value, deduped across the
 // before/after lists.
@@ -32,6 +33,10 @@ function mondayOf(d: Date): Date {
 export default function MoodChartScreen() {
   const { t } = useTranslation();
   const { moodEntries, isPlus } = useApp();
+  // Tablet: scale every size by the shared factor so the chart's text/labels grow
+  // with the rest of the app instead of staying phone-tiny on iPad.
+  const { scale, contentWidth } = useTabletScale();
+  const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
 
   // Free accounts only chart the last 3 months of moods; Plus sees the full log.
   const cutoff = historyCutoffISO(isPlus);
@@ -208,99 +213,102 @@ export default function MoodChartScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// `s` = shared tablet scale (1 on phone). Multiply every font/size/spacing literal
+// by it so the chart scales as one piece and its labels/text aren't phone-tiny on
+// iPad — and by the SAME factor ThemedText scales its presets (e.g. emptyText).
+const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   container: { flex: 1, backgroundColor: BakeryColors.frosting },
   scrollBox: { flex: 1 },
   safeArea: {
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.six,
-    maxWidth: MaxContentWidth,
+    paddingHorizontal: Spacing.four * s,
+    paddingTop: Spacing.four * s,
+    paddingBottom: Spacing.six * s,
+    maxWidth: contentWidth,
     width: '100%',
     alignSelf: 'center',
-    gap: Spacing.three,
+    gap: Spacing.three * s,
   },
-  title: { fontSize: 28, lineHeight: 34 },
+  title: { fontSize: 28 * s, lineHeight: 34 * s },
   emptyCard: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.six,
+    borderRadius: BakeryRadii.card * s,
+    padding: Spacing.six * s,
     alignItems: 'center',
     backgroundColor: BakeryColors.glass,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
-  emptyText: { textAlign: 'center', lineHeight: 20 },
-  pickerRow: { gap: Spacing.two, paddingVertical: 2, paddingRight: Spacing.four },
+  emptyText: { textAlign: 'center', lineHeight: 20 * s },
+  pickerRow: { gap: Spacing.two * s, paddingVertical: 2 * s, paddingRight: Spacing.four * s },
   moodPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 6,
+    gap: 6 * s,
+    paddingHorizontal: Spacing.two * s,
+    paddingVertical: 6 * s,
     borderRadius: BakeryRadii.pill,
     backgroundColor: BakeryColors.cream,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
   moodPillActive: { backgroundColor: BakeryColors.rose, borderColor: BakeryColors.berry },
-  pillImage: { width: 24, height: 24 },
-  pillLabel: { fontSize: 13 },
+  pillImage: { width: 24 * s, height: 24 * s },
+  pillLabel: { fontSize: 13 * s },
   pillLabelActive: { color: BakeryColors.cocoaDark, fontWeight: '700' },
   pillCount: {
-    fontSize: 12,
+    fontSize: 12 * s,
     fontWeight: '700',
     color: BakeryColors.mocha,
-    minWidth: 14,
+    minWidth: 14 * s,
     textAlign: 'center',
   },
   headlineCard: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
+    borderRadius: BakeryRadii.card * s,
+    padding: Spacing.three * s,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: Spacing.three * s,
     backgroundColor: '#FBDCE4',
     borderWidth: 1.5,
     borderColor: BakeryColors.rose,
     ...BakeryShadow,
   },
-  headlineImage: { width: 48, height: 48 },
-  headlineText: { flex: 1, gap: 2 },
-  headlineCount: { fontSize: 26, fontWeight: '800', lineHeight: 32, color: BakeryColors.berry },
-  section: { gap: Spacing.two },
+  headlineImage: { width: 48 * s, height: 48 * s },
+  headlineText: { flex: 1, gap: 2 * s },
+  headlineCount: { fontSize: 26 * s, fontWeight: '800', lineHeight: 32 * s, color: BakeryColors.berry },
+  section: { gap: Spacing.two * s },
   chartCard: {
-    borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
+    borderRadius: BakeryRadii.card * s,
+    padding: Spacing.three * s,
     backgroundColor: BakeryColors.glass,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
-  chart: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 160 },
-  barCol: { flex: 1, alignItems: 'center', gap: 4 },
-  barValue: { fontSize: 11, fontWeight: '700', color: BakeryColors.mocha, height: 14 },
+  chart: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 160 * s },
+  barCol: { flex: 1, alignItems: 'center', gap: 4 * s },
+  barValue: { fontSize: 11 * s, fontWeight: '700', color: BakeryColors.mocha, height: 14 * s },
   barTrack: {
-    width: 16,
+    width: 16 * s,
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: 8,
+    borderRadius: 8 * s,
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },
-  barFill: { width: '100%', borderRadius: 8, backgroundColor: BakeryColors.berry, minHeight: 0 },
-  barLabel: { fontSize: 10 },
-  list: { gap: Spacing.two },
+  barFill: { width: '100%', borderRadius: 8 * s, backgroundColor: BakeryColors.berry, minHeight: 0 },
+  barLabel: { fontSize: 10 * s },
+  list: { gap: Spacing.two * s },
   listRow: {
-    borderRadius: BakeryRadii.card,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.three,
+    borderRadius: BakeryRadii.card * s,
+    paddingVertical: Spacing.two * s,
+    paddingHorizontal: Spacing.three * s,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: Spacing.two * s,
     backgroundColor: BakeryColors.glass,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
-  listType: { width: 44, fontSize: 11 },
+  listType: { width: 44 * s, fontSize: 11 * s },
   listDate: { flex: 1 },
-  backBtn: { alignItems: 'center', paddingVertical: Spacing.three },
+  backBtn: { alignItems: 'center', paddingVertical: Spacing.three * s },
 });

@@ -13,6 +13,8 @@ import { StreakFreezeIcon } from '@/components/streak-freeze-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { daysBetween, todayISO, useApp } from '@/context/app-context';
+import { ACHIEVEMENTS, dailyGoalIds, getQuest } from '@/constants/quests';
+import { RECIPE_IDS } from '@/constants/recipes';
 import { useAuth } from '@/context/auth-context';
 import i18n, { useTranslation } from '@/i18n';
 import { FREE_HISTORY_MONTHS, historyCutoffISO } from '@/lib/history-window';
@@ -75,7 +77,140 @@ export default function ProgressScreen() {
     isPlus,
     streakFreezes,
     useStreakFreeze: applyStreakFreeze,
+    quests,
+    claimedAchievements,
+    lifetimeTasksCompleted,
+    lifetimeFriendSessions,
+    madeFoods,
   } = useApp();
+
+  const achievementStat = (key: string): number =>
+    key === 'longestStreak'
+      ? streak.longestStreak
+      : key === 'sessionsCompleted'
+        ? sessionsCompleted
+        : key === 'totalMinutes'
+          ? totalMinutes
+          : key === 'lifetimeTasksCompleted'
+            ? lifetimeTasksCompleted
+            : key === 'lifetimeFriendSessions'
+              ? lifetimeFriendSessions
+              : key === 'recipesMade'
+                ? RECIPE_IDS.filter((id) => madeFoods.includes(id)).length
+                : 0;
+
+  // Rank the unclaimed items for a card: ready-to-claim first, then closest-to-done
+  // (highest progress ratio). The card shows the top few so the user sees what to
+  // grab now and what's almost there.
+  type RankRow = { id: string; name: string; current: number; goal: number; ready: boolean };
+  const PREVIEW_COUNT = 3;
+  const rankItems = (
+    rows: { id: string; titleKey: string; current: number; goal: number; claimed: boolean }[],
+  ): RankRow[] =>
+    rows
+      .filter((r) => !r.claimed)
+      .map((r) => ({
+        id: r.id,
+        name: t(r.titleKey),
+        current: Math.min(r.current, r.goal),
+        goal: r.goal,
+        ready: r.current >= r.goal,
+        ratio: r.goal > 0 ? r.current / r.goal : 0,
+      }))
+      .sort((a, b) => Number(b.ready) - Number(a.ready) || b.ratio - a.ratio)
+      .slice(0, PREVIEW_COUNT)
+      .map(({ id, name, current, goal, ready }) => ({ id, name, current, goal, ready }));
+
+  const goalTop = rankItems(
+    dailyGoalIds().map((id) => {
+      const def = getQuest(id)!;
+      return {
+        id,
+        titleKey: `quests.items.${id}.title`,
+        current: (quests as any)[def.statKey] ?? 0,
+        goal: def.goal,
+        claimed: quests.claimedToday.includes(id),
+      };
+    }),
+  );
+  const achTop = rankItems(
+    ACHIEVEMENTS.map((a) => ({
+      id: a.id,
+      titleKey: `achievements.items.${a.id}.title`,
+      current: achievementStat(a.statKey),
+      goal: a.goal,
+      claimed: claimedAchievements.includes(a.id),
+    })),
+  );
+
+  const questClaimable = goalTop.some((r) => r.ready);
+  const achievementClaimable = achTop.some((r) => r.ready);
+
+  // One of the two side-by-side square cards: title + a ranked mini-list of items,
+  // each with a live progress bar, then an Open/Claim footer.
+  const renderProgressSquare = ({
+    title,
+    items,
+    claimable,
+    allClaimedKey,
+    onPress,
+  }: {
+    title: string;
+    items: RankRow[];
+    claimable: boolean;
+    allClaimedKey: string;
+    onPress: () => void;
+  }) => (
+    <Pressable
+      key={title}
+      style={({ pressed }) => [styles.dgCard, pressed && { opacity: 0.85 }]}
+      onPress={onPress}>
+      <ThemedView type="backgroundElement" style={styles.dgCardInner}>
+        <ThemedView type="transparent" style={styles.dgHead}>
+          <ThemedText type="smallBold" numberOfLines={1} style={styles.dgTitle}>
+            {title}
+          </ThemedText>
+          {claimable && <View style={styles.claimDot} />}
+        </ThemedView>
+
+        <ThemedView type="transparent" style={styles.dgList}>
+          {items.length === 0 ? (
+            <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
+              {t(allClaimedKey)}
+            </ThemedText>
+          ) : (
+            items.map((it) => {
+              const pct = Math.max(0, Math.min(1, it.current / it.goal));
+              return (
+                <ThemedView key={it.id} type="transparent" style={styles.dgItem}>
+                  <ThemedView type="transparent" style={styles.dgItemTop}>
+                    <ThemedText type="small" numberOfLines={1} style={styles.dgItemName}>
+                      {it.name}
+                    </ThemedText>
+                    <ThemedText
+                      type="small"
+                      themeColor="textSecondary"
+                      style={it.ready ? styles.dgItemReady : undefined}>
+                      {it.ready ? t('quests.cardClaim') : `${it.current}/${it.goal}`}
+                    </ThemedText>
+                  </ThemedView>
+                  <View style={styles.dgTrack}>
+                    <View style={[styles.dgFill, { width: `${pct * 100}%` }, it.ready && styles.dgFillDone]} />
+                  </View>
+                </ThemedView>
+              );
+            })
+          )}
+        </ThemedView>
+
+        <ThemedView type="transparent" style={styles.dgFoot}>
+          <ThemedText type="small" style={styles.weekReportLink}>
+            {claimable ? t('quests.cardClaim') : t('quests.cardOpen')}
+          </ThemedText>
+        </ThemedView>
+      </ThemedView>
+    </Pressable>
+  );
 
   // Free accounts only browse the last 3 months of history; Plus sees it all.
   // Lifetime counters (sessionsCompleted/totalMinutes/streak) stay uncapped.
@@ -234,6 +369,24 @@ export default function ProgressScreen() {
               </ThemedView>
             </ThemedView>
           </Pressable>
+
+          {/* ── Daily Goals + Achievements (two squares) ──────────────────── */}
+          <View style={styles.dgRow}>
+            {renderProgressSquare({
+              title: t('quests.title'),
+              items: goalTop,
+              claimable: questClaimable,
+              allClaimedKey: 'quests.allClaimed',
+              onPress: () => router.push('/daily-quests'),
+            })}
+            {renderProgressSquare({
+              title: t('achievements.title'),
+              items: achTop,
+              claimable: achievementClaimable,
+              allClaimedKey: 'achievements.allClaimed',
+              onPress: () => router.push('/achievements'),
+            })}
+          </View>
 
           {/* ── Streak ────────────────────────────────────────────────────── */}
           <ThemedView type="backgroundElement" style={styles.streakCard}>
@@ -721,9 +874,33 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
-  weekLeft: { gap: 2 * s },
-  weekRight: {},
+  weekLeft: { gap: 2 * s, flex: 1 },
+  weekRight: { flexDirection: 'row', alignItems: 'center', gap: 6 * s },
   weekReportLink: { color: BakeryColors.mocha, fontWeight: '700' },
+  // Pink "ready to claim" dot on the quests/achievements entry cards.
+  claimDot: { width: 9 * s, height: 9 * s, borderRadius: 5 * s, backgroundColor: '#F2607E' },
+  // Daily Goals + Achievements: two square cards side by side, each with a progress bar.
+  dgRow: { flexDirection: 'row', gap: Spacing.two * s },
+  dgCard: { flex: 1 },
+  dgCardInner: {
+    aspectRatio: 1,
+    borderRadius: BakeryRadii.card * s,
+    padding: Spacing.three * s,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+  },
+  dgHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 * s },
+  dgTitle: { flex: 1 },
+  // The ranked mini-list fills the middle of the square.
+  dgList: { flex: 1, justifyContent: 'center', gap: 10 * s, paddingVertical: 8 * s },
+  dgItem: { gap: 4 * s },
+  dgItemTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 * s },
+  dgItemName: { flex: 1 },
+  dgItemReady: { color: '#5FA85F', fontWeight: '800' },
+  dgTrack: { height: 8 * s, borderRadius: 5 * s, backgroundColor: '#F0E2D6', overflow: 'hidden' },
+  dgFill: { height: '100%', borderRadius: 5 * s, backgroundColor: '#F4A6B6' },
+  dgFillDone: { backgroundColor: '#8BCF8B' },
+  dgFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
   moodInsightCard: {
     borderRadius: BakeryRadii.card * s,
     padding: Spacing.three * s,

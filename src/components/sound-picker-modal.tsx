@@ -16,8 +16,8 @@ import {
   spotifyConnected,
   spotifyNext,
   spotifyPause,
+  spotifyPlay,
   spotifyPrevious,
-  spotifyResume,
   spotifySeek,
   subscribeSpotify,
   type Playback,
@@ -173,11 +173,20 @@ export function SoundPickerModal({
   // Spotify: pause/resume (or open the app when there's no active device). Study
   // sound: setEquippedSound is the source of truth (the study screen's effect plays
   // or stops the audio, and both vinyls spin off the equipped state).
-  const handleSpin = () => {
+  const handleSpin = async () => {
     if (mode === 'spotify') {
       if (!isPlus) return; // Spotify is Plus-only — the locked panel handles the upsell
-      if (playback?.hasDevice === false) { openInSpotify(); return; }
-      control(playback?.isPlaying ? spotifyPause : spotifyResume);
+      if (playback?.isPlaying) { control(spotifyPause); return; }
+      // Play: explicitly wake/target a device (a bare resume can't start an idle
+      // Spotify), and explain WHY if it can't instead of failing silently.
+      setNotice(null);
+      const res = await spotifyPlay();
+      if (res === 'ok') { setTimeout(refresh, 700); return; }
+      setNotice(
+        res === 'no-device' ? t('soundPicker.noDevice')
+        : res === 'premium' ? t('soundPicker.spotifyPremium')
+        : t('soundPicker.spotifyFailed'),
+      );
       return;
     }
     if (equipped) { setEquippedSound(null); stopStudyMusic(); }
@@ -342,7 +351,7 @@ const glyph = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
-  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(48,32,24,0.4)' },
+  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'transparent' },
   centerWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.three },
   panel: {
     width: '92%', maxWidth: 440, maxHeight: '90%', backgroundColor: C.frosting,

@@ -85,6 +85,7 @@ export default function SessionCompleteScreen() {
 
   const {
     recordSession,
+    recordQuestSession,
     addMoodEntry,
     updateStreak,
     addSubjectTime,
@@ -145,6 +146,8 @@ export default function SessionCompleteScreen() {
     playFinishDing(); // oven-timer "ding": your study session is done
     addCoins(earned);
     recordSession(minutes);
+    // Solo finish → counts toward daily quests/achievements (not friend quests).
+    recordQuestSession({ minutes });
     addSubjectTime(subjectName, minutes);
     if (selectedFoodId) markFoodMade(selectedFoodId);
     track('study_session_completed', { minutes, subject: subjectName, coins: earned });

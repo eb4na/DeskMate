@@ -75,7 +75,7 @@ export function BirthdayRewardModal() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(48,32,24,0.45)' },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
   card: {
     width: '100%', maxWidth: 340, backgroundColor: P.card, borderRadius: 24,
     borderWidth: 2, borderColor: P.pinkSoft, padding: 22, alignItems: 'center', gap: 6,

@@ -1,4 +1,23 @@
 {
+  "report": {
+    "report": "Report",
+    "block": "Block",
+    "title": "Report {{name}}?",
+    "subtitle": "Why are you reporting this user?",
+    "reason_harassment": "Harassment or bullying",
+    "reason_spam": "Spam",
+    "reason_inappropriate": "Inappropriate content",
+    "reason_cheating": "Cheating",
+    "reason_underage": "Underage user",
+    "reason_other": "Other",
+    "sentTitle": "Report sent",
+    "sentMsg": "Thanks — our team will review it.",
+    "blockTitle": "Block {{name}}?",
+    "blockMsg": "They’ll be removed from your friends and hidden from you everywhere.",
+    "blockConfirm": "Block",
+    "failedTitle": "Couldn’t send",
+    "failedMsg": "Please check your connection and try again."
+  },
   "tutorial": {
     "start_title": "Study sessions",
     "start_body": "Start a focus timer to earn coins.",
@@ -358,7 +377,7 @@
     "fullReport": "Full report →",
     "best": "Best: {{count}} days",
     "streakFreeze": "Streak Freeze",
-    "freezesRemaining": "{{count}}/3 freezes remaining this month",
+    "freezesRemaining": "You have {{count}}",
     "useFreezeQ": "Use Streak Freeze?",
     "useFreezeMsg": "This rescues your streak after a missed day so it continues when you study today. One freeze covers the whole gap. No coins are awarded.",
     "useFreeze": "Use Freeze",
@@ -816,6 +835,8 @@
     "noFriendsYet": "No friends yet",
     "noFriendsHint": "Add friends from the Friends screen, then invite them here.",
     "onlineNow": "Online now",
+    "studying": "Studying",
+    "onBreak": "On a break",
     "offline": "Offline",
     "invited": "Invited ✓",
     "alreadyIn": "Already in",
@@ -834,6 +855,8 @@
     "min": "min",
     "topic": "Topic",
     "minShort": "{{n}}m",
+    "customLength": "Custom length",
+    "hostPlusCustom": "Custom timer unlocked because your host has Plus",
     "noSubjectsHint": "Add subjects in Tasks to choose a topic.",
     "hostPicks": "The host picks the session length and starts.",
     "inviteFriend": "＋ Invite friend",
@@ -961,6 +984,7 @@
     "maybeLater": "Maybe later",
     "matchedTitle": "Matched look set!",
     "matchedMsg": "{{outfit}} with the {{room}} room — all set!",
+    "matchedRoomSub": "Get the {{room}} room (background + desk) to match {{outfit}}.",
     "roomLockedTitle": "Matching room locked",
     "roomLockedMsg": "Unlock the {{room}} room in the Shop to complete {{outfit}}'s look.",
     "goToShop": "Go to Shop",
@@ -1019,6 +1043,61 @@
     "chat": "Chat",
     "game_study": "Study Room",
     "you": "You"
+  },
+  "studyBuddy": {
+    "ctaTitle": "Find a Study Buddy",
+    "endedTitle": "Your buddy match ended",
+    "endedGhost": "Your buddy went quiet for a few days, so the match ended. Want to find a new one?",
+    "endedExpired": "Your week together is up! Want to find a new buddy?",
+    "endedLeft": "Your buddy left the match. Want to find a new one?",
+    "ctaSub": "Get matched with a study partner for a week",
+    "title": "Study Buddy",
+    "subtitle": "A one-week accountability partner",
+    "introTitle": "How it works",
+    "introBody": "We'll match you with another student your age for one week. Each day you can see if your buddy studied, and cheer them on. At the end of the week, the match ends.",
+    "safetyNote": "You'll be matched with a study partner in your age range. No personal info is shared — no names, no chat, just study check-ins. You can report or leave anytime.",
+    "findBuddy": "Find a buddy",
+    "lookingTitle": "Looking for a buddy…",
+    "lookingBody": "We'll match you as soon as another student your age is looking too. You can leave this screen — we'll keep looking.",
+    "couldNotMatch": "Couldn't find a buddy",
+    "errorBirthday": "Add your birthday in settings first so we can match you with students your age.",
+    "errorRestricted": "Study Buddy isn't available on your account right now.",
+    "errorGeneric": "Something went wrong. Please try again.",
+    "buddyFallback": "Your buddy",
+    "streakLabel": "{{count}}-day streak",
+    "daysLeft": "{{count}} days left together",
+    "studiedYes": "{{name}} studied today!",
+    "studiedNo": "{{name}} hasn't studied yet today",
+    "buddyCheered": "{{name}} cheered you: {{cheer}}",
+    "sendCheer": "Send a cheer",
+    "cheerSent": "Cheer sent! You can send another tomorrow.",
+    "alreadyCheered": "Already cheered",
+    "alreadyCheeredMsg": "You've already sent a cheer today. Come back tomorrow!",
+    "cheer": {
+      "keep_going": "Keep going!",
+      "you_got_this": "You got this!",
+      "dont_break_streak": "Don't break the streak!",
+      "proud_of_you": "Proud of you!"
+    },
+    "becomeFriends": "Become friends",
+    "friendPending": "Waiting for them to add you too",
+    "nowFriends": "You're now friends!",
+    "nowFriendsMsg": "You both chose to become friends. Their code is {{code}}.",
+    "friendRequested": "Sent!",
+    "friendRequestedMsg": "If your buddy also taps \"Become friends,\" you'll be added.",
+    "report": "Report",
+    "reportQ": "Report this buddy?",
+    "reportMsg": "This ends the match and you won't be paired again. What's wrong?",
+    "reportInappropriate": "Inappropriate",
+    "reportHarassment": "Harassment",
+    "reportSpam": "Spam",
+    "reportThanks": "Thanks for letting us know",
+    "reportThanksMsg": "We've ended the match and our team will review this.",
+    "leave": "Leave",
+    "leaveQ": "Leave this buddy?",
+    "leaveMsg": "This ends the match for both of you. You can find a new buddy anytime.",
+    "guestGateTitle": "Study Buddy needs an account",
+    "guestGateBody": "Create a free account to get matched with a study buddy."
   },
   "subjectChart": {
     "day": "Today",
@@ -1503,6 +1582,7 @@
     "spotifySetup": "Spotify isn't set up yet — add your Client ID to enable it.",
     "spotifyFailed": "Couldn't connect to Spotify. Please try again.",
     "noDevice": "Open Spotify and start a song to control it from here.",
+    "spotifyPremium": "Spotify control needs Spotify Premium.",
     "connected": "Connected",
     "disconnect": "Disconnect",
     "title": "Study sounds",
@@ -1553,5 +1633,114 @@
   "recipeBadge": {
     "title": "Badge collected!",
     "got": "{{name}}'s recipe badge!"
+  },
+    "quests": {
+    "title": "Daily Goals",
+    "resetsMidnight": "Resets at midnight",
+    "cardSubtitle": "Goals for bonus coins",
+    "cardOpen": "Open",
+    "previewReady": "{{name}} — ready to claim!",
+    "previewProgress": "{{name}} · {{current}}/{{goal}}",
+    "cardClaim": "Claim",
+    "allClaimed": "All claimed for today",
+    "claim": "Claim {{coins}}",
+    "claimed": "Claimed",
+    "progress": "{{current}}/{{goal}}",
+    "items": {
+      "g_study_60": {
+        "title": "Power Hour",
+        "desc": "Study 1 hour today"
+      },
+      "g_sessions_2": {
+        "title": "Double Up",
+        "desc": "Complete 2 study sessions"
+      },
+      "g_before_noon": {
+        "title": "Early Bird",
+        "desc": "Study 25 minutes before noon"
+      },
+      "g_task_1": {
+        "title": "Check It Off",
+        "desc": "Complete a task today"
+      }
+    }
+  },
+  "achievements": {
+    "categories": {
+      "study": "Study",
+      "tasks": "Tasks",
+      "streak": "Streaks",
+      "social": "Friends",
+      "recipes": "Baking"
+    },
+    "title": "Achievements",
+    "subtitle": "Reach milestones to earn coins",
+    "allClaimed": "All achievements claimed",
+    "cardSubtitle": "Milestone rewards",
+    "readyCount": "{{count}} ready to claim",
+    "claim": "Claim {{coins}}",
+    "claimed": "Claimed",
+    "items": {
+      "a_first": {
+        "title": "First Steps",
+        "desc": "Complete your first study session"
+      },
+      "a_sessions_25": {
+        "title": "Getting Serious",
+        "desc": "Complete 25 study sessions"
+      },
+      "a_sessions_100": {
+        "title": "Century Scholar",
+        "desc": "Complete 100 study sessions"
+      },
+      "a_hours_10": {
+        "title": "10 Hours In",
+        "desc": "Study for 10 hours total"
+      },
+      "a_hours_50": {
+        "title": "50 Hours In",
+        "desc": "Study for 50 hours total"
+      },
+      "a_hours_100": {
+        "title": "Centurion",
+        "desc": "Study for 100 hours total"
+      },
+      "a_tasks_10": {
+        "title": "To-Do Tamer",
+        "desc": "Complete 10 tasks"
+      },
+      "a_tasks_50": {
+        "title": "Productivity Pro",
+        "desc": "Complete 50 tasks"
+      },
+      "a_tasks_200": {
+        "title": "Unstoppable",
+        "desc": "Complete 200 tasks"
+      },
+      "a_streak_7": {
+        "title": "Week Warrior",
+        "desc": "Reach a 7-day streak"
+      },
+      "a_streak_30": {
+        "title": "Monthly Marvel",
+        "desc": "Reach a 30-day streak"
+      },
+      "a_streak_100": {
+        "title": "Century Streak",
+        "desc": "Reach a 100-day streak"
+      },
+      "a_friend_1": {
+        "title": "Better Together",
+        "desc": "Study with a friend once"
+      },
+      "a_friend_10": {
+        "title": "Squad Goals",
+        "desc": "Complete 10 sessions with friends"
+      },
+      "a_all_recipes": {
+        "title": "Master Baker",
+        "desc": "Bake 5 recipes"
+      }
+    }
   }
 }

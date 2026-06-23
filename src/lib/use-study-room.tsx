@@ -33,6 +33,10 @@ export type StudyRosterEntry = {
   companionId?: string;
   skinId?: string;
   avatarFrame?: string;
+  // Whether this member has Plus. Synced so the lobby can offer the custom-timer
+  // selector to everyone in the room when the HOST has Plus (a host perk shared
+  // with their guests — guests still can't save presets).
+  isPlus?: boolean;
   // Each player's lobby choices, synced so everyone's avatar can show them.
   // `minutes` = their chosen session length; `topic` = their chosen subject name
   // (null/undefined = not chosen yet → they still pick a subject in-session).
@@ -140,13 +144,17 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
   // per-code pending-removal timers themselves.
   const presentCodesRef = useRef<string[]>([]);
   const removalTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  // Host migration: if the host disappears, a guest waits out this same grace window
+  // (to ignore flickers) before electing a replacement.
+  const hostMigrateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clearRemovalTimers = () => {
     Object.values(removalTimers.current).forEach(clearTimeout);
     removalTimers.current = {};
+    if (hostMigrateTimer.current) { clearTimeout(hostMigrateTimer.current); hostMigrateTimer.current = null; }
   };
   // Latest identity, so the realtime closure (created on join) reads current values.
-  const meRef = useRef({ myCode, myName, myCompanionId, mySkinId, myAvatarFrame: profileAvatarFrame, bgRoomId: equippedBackgroundRoomId, deskRoomId: equippedDeskRoomId });
-  meRef.current = { myCode, myName, myCompanionId, mySkinId, myAvatarFrame: profileAvatarFrame, bgRoomId: equippedBackgroundRoomId, deskRoomId: equippedDeskRoomId };
+  const meRef = useRef({ myCode, myName, myCompanionId, mySkinId, myAvatarFrame: profileAvatarFrame, myIsPlus: isPlus, bgRoomId: equippedBackgroundRoomId, deskRoomId: equippedDeskRoomId });
+  meRef.current = { myCode, myName, myCompanionId, mySkinId, myAvatarFrame: profileAvatarFrame, myIsPlus: isPlus, bgRoomId: equippedBackgroundRoomId, deskRoomId: equippedDeskRoomId };
   const startRef = useRef(startActiveSession);
   startRef.current = startActiveSession;
 
@@ -200,7 +208,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     setCanStartSelf(false);
     mirrorRef.current = { uri: null, playing: false };
     const me = meRef.current;
-    const initialRoster = [{ code: me.myCode, name: me.myName, isHost: host, companionId: me.myCompanionId, skinId: me.mySkinId, avatarFrame: me.myAvatarFrame }];
+    const initialRoster = [{ code: me.myCode, name: me.myName, isHost: host, companionId: me.myCompanionId, skinId: me.mySkinId, avatarFrame: me.myAvatarFrame, isPlus: me.myIsPlus }];
     rosterRef.current = initialRoster;
     setRoster(initialRoster);
 
@@ -215,7 +223,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
             // Carry any prefs already chosen (e.g. the lobby's default minutes) so the
             // host seeds my roster entry — `prefs` messages then handle live changes.
             room.current?.send('hello', {
-              code: m.myCode, name: m.myName, companionId: m.myCompanionId, skinId: m.mySkinId, avatarFrame: m.myAvatarFrame,
+              code: m.myCode, name: m.myName, companionId: m.myCompanionId, skinId: m.mySkinId, avatarFrame: m.myAvatarFrame, isPlus: m.myIsPlus,
               minutes: myPreferredMinutes.current ?? undefined,
               topic: myTopic.current ?? undefined,
             });
@@ -226,6 +234,42 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
           setPresentCodes(codes);
           presentCodesRef.current = codes;
           const myCodeNow = meRef.current.myCode;
+          // ── Host migration ────────────────────────────────────────────────────
+          // If the roster's host is no longer present, the remaining members elect a
+          // replacement DETERMINISTICALLY (the smallest still-present code) so every
+          // client agrees without coordinating — effectively a "random" survivor. The
+          // elected client promotes itself and takes over the authoritative roster;
+          // the others adopt its next broadcast. Guarded by the same grace window as
+          // eviction so a brief host flicker never triggers a needless handover.
+          if (!isHostRef.current) {
+            const hostEntry = rosterRef.current.find((e) => e.isHost);
+            const hostPresent = !hostEntry || hostEntry.code === myCodeNow || codes.includes(hostEntry.code);
+            if (hostPresent) {
+              if (hostMigrateTimer.current) { clearTimeout(hostMigrateTimer.current); hostMigrateTimer.current = null; }
+            } else if (!hostMigrateTimer.current) {
+              hostMigrateTimer.current = setTimeout(() => {
+                hostMigrateTimer.current = null;
+                const live = presentCodesRef.current;
+                const hostE = rosterRef.current.find((e) => e.isHost);
+                if (!hostE || hostE.code === myCodeNow || live.includes(hostE.code)) return; // host came back
+                const survivors = rosterRef.current
+                  .filter((e) => e.code === myCodeNow || live.includes(e.code))
+                  .map((e) => e.code)
+                  .sort();
+                if (survivors[0] !== myCodeNow) return; // a different survivor is the elected host
+                // I'm elected — promote to host and take over the roster (dropping the
+                // departed host). The session's room/desk stay as the original host set them.
+                isHostRef.current = true;
+                setIsHost(true);
+                const next = rosterRef.current
+                  .filter((e) => e.code === myCodeNow || live.includes(e.code))
+                  .map((e) => ({ ...e, isHost: e.code === myCodeNow }));
+                rosterRef.current = next;
+                setRoster(next);
+                broadcastRoster(next);
+              }, PRESENCE_GRACE_MS);
+            }
+          }
           if (!isHostRef.current) {
             // Guest self-heal: if I'm present in the room but I'm missing from the
             // host's roster (it dropped me on a presence flicker, or my own channel
@@ -234,7 +278,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
             if (codes.includes(myCodeNow) && !rosterRef.current.some((e) => e.code === myCodeNow)) {
               const m = meRef.current;
               room.current?.send('hello', {
-                code: m.myCode, name: m.myName, companionId: m.myCompanionId, skinId: m.mySkinId, avatarFrame: m.myAvatarFrame,
+                code: m.myCode, name: m.myName, companionId: m.myCompanionId, skinId: m.mySkinId, avatarFrame: m.myAvatarFrame, isPlus: m.myIsPlus,
                 minutes: myPreferredMinutes.current ?? undefined,
                 topic: myTopic.current ?? undefined,
               });
@@ -270,7 +314,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
         onMessage: (type, data) => {
           if (type === 'hello') {
             if (!isHostRef.current) return;
-            const d = data as { code: string; name: string; companionId?: string; skinId?: string; avatarFrame?: string; minutes?: number; topic?: string | null };
+            const d = data as { code: string; name: string; companionId?: string; skinId?: string; avatarFrame?: string; isPlus?: boolean; minutes?: number; topic?: string | null };
             const prev = rosterRef.current;
             const exists = prev.some((e) => e.code === d.code);
             // Cap the room at STUDY_ROOM_MAX — tell the newcomer so they get feedback.
@@ -282,11 +326,11 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
             // reconnect sent before re-picking can't blank a choice already synced.
             const next = exists
               ? prev.map((e) => (e.code === d.code ? {
-                  ...e, name: d.name, companionId: d.companionId, skinId: d.skinId, avatarFrame: d.avatarFrame,
+                  ...e, name: d.name, companionId: d.companionId, skinId: d.skinId, avatarFrame: d.avatarFrame, isPlus: d.isPlus,
                   ...(d.minutes !== undefined ? { minutes: d.minutes } : {}),
                   ...(d.topic !== undefined ? { topic: d.topic } : {}),
                 } : e))
-              : [...prev, { code: d.code, name: d.name, isHost: false, companionId: d.companionId, skinId: d.skinId, avatarFrame: d.avatarFrame, minutes: d.minutes, topic: d.topic }];
+              : [...prev, { code: d.code, name: d.name, isHost: false, companionId: d.companionId, skinId: d.skinId, avatarFrame: d.avatarFrame, isPlus: d.isPlus, minutes: d.minutes, topic: d.topic }];
             rosterRef.current = next;
             setRoster(next);
             broadcastRoster(next);

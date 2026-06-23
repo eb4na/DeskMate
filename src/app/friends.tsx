@@ -11,7 +11,7 @@ import { useApp } from '@/context/app-context';
 import type { Friend } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
 import { getCompanionImage, resolveProfileFigure } from '@/lib/companion-utils';
-import { joinPresence, newRoomId, sendInvite, type OnlineGameId } from '@/lib/game-net';
+import { joinPresence, newRoomId, sendInvite, type OnlineGameId, type PresenceMap } from '@/lib/game-net';
 import { hostGameInvite } from '@/lib/invite-actions';
 import { useStudyRoom } from '@/lib/use-study-room';
 import {
@@ -97,7 +97,7 @@ export default function FriendsScreen() {
   const [busy, setBusy] = useState(false);
   const [sentTo, setSentTo] = useState<string | null>(null); // shows the "request sent" confirmation
   const [playFor, setPlayFor] = useState<Friend | null>(null);
-  const [onlineCodes, setOnlineCodes] = useState<Set<string>>(new Set());
+  const [onlineCodes, setOnlineCodes] = useState<PresenceMap>(new Map());
   const [copied, setCopied] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [friendSearch, setFriendSearch] = useState('');
@@ -318,6 +318,17 @@ export default function FriendsScreen() {
             <Text style={styles.headerTitle}>{t('friends.studyFriends')}</Text>
             <Text style={styles.headerSubtitle}>{t('friends.addAndStudy')}</Text>
           </View>
+
+          {/* Study Buddy matching — find a random accountability partner for a week. */}
+          <Pressable
+            style={({ pressed }) => [styles.buddyCta, pressed && styles.pressed]}
+            onPress={() => router.push('/study-buddy')}>
+            <View style={styles.buddyCtaText}>
+              <Text style={styles.buddyCtaTitle}>{t('studyBuddy.ctaTitle')}</Text>
+              <Text style={styles.buddyCtaSub}>{t('studyBuddy.ctaSub')}</Text>
+            </View>
+            <Text style={styles.profileBtnChevron}>›</Text>
+          </Pressable>
 
           {/* My profile card — my avatar, name, and code, the way friends see me. */}
           {(() => {
@@ -625,6 +636,20 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   profileBtnText: { fontSize: 16 * s, fontWeight: '800', color: P.brown },
   profileBtnChevron: { fontSize: 22 * s, fontWeight: '800', color: P.pink },
   meRow: { borderColor: P.pink, borderWidth: 2 },
+  buddyCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: P.pinkSoft,
+    borderRadius: 18 * s,
+    borderWidth: 1.5,
+    borderColor: P.pink,
+    paddingVertical: 14 * s,
+    paddingHorizontal: 18 * s,
+  },
+  buddyCtaText: { flex: 1, gap: 2 * s },
+  buddyCtaTitle: { fontSize: 16 * s, fontWeight: '900', color: P.brown },
+  buddyCtaSub: { fontSize: 12 * s, color: P.mutedBrown, fontWeight: '500' },
   meTag: { backgroundColor: P.pink, borderRadius: 999, paddingHorizontal: 12 * s, paddingVertical: 5 * s },
   meTagText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 * s },
 
@@ -730,7 +755,7 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   unreadBadgeText: { color: '#FFFFFF', fontSize: 10 * s, fontWeight: '900' },
 
   sheetRoot: { flex: 1, justifyContent: 'flex-end' },
-  sheetBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(48,32,24,0.4)' },
+  sheetBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
   sheetCard: {
     backgroundColor: P.card,
     borderTopLeftRadius: 26 * s,
@@ -760,7 +785,7 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
 
   // "Request sent" confirmation modal — centered cozy card.
   sentRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
-  sentBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(48,32,24,0.4)' },
+  sentBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
   sentCard: {
     width: '100%', maxWidth: 320 * s, backgroundColor: P.card, borderRadius: 26 * s,
     borderWidth: 1.5, borderColor: P.pinkSoft, padding: Spacing.four * s, alignItems: 'center', gap: Spacing.two * s,

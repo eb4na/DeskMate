@@ -1,4 +1,23 @@
 {
+  "report": {
+    "report": "Reportar",
+    "block": "Bloquear",
+    "title": "¿Reportar a {{name}}?",
+    "subtitle": "¿Por qué reportas a este usuario?",
+    "reason_harassment": "Acoso o intimidación",
+    "reason_spam": "Spam",
+    "reason_inappropriate": "Contenido inapropiado",
+    "reason_cheating": "Trampas",
+    "reason_underage": "Usuario menor de edad",
+    "reason_other": "Otro",
+    "sentTitle": "Reporte enviado",
+    "sentMsg": "Gracias, nuestro equipo lo revisará.",
+    "blockTitle": "¿Bloquear a {{name}}?",
+    "blockMsg": "Se eliminará de tus amigos y quedará oculto para ti en todas partes.",
+    "blockConfirm": "Bloquear",
+    "failedTitle": "No se pudo enviar",
+    "failedMsg": "Comprueba tu conexión e inténtalo de nuevo."
+  },
   "tutorial": {
     "start_title": "Sesiones de estudio",
     "start_body": "Inicia un temporizador para ganar monedas.",
@@ -250,6 +269,12 @@
   "session": {
     "awayTitle": "¡Vuelve a estudiar!",
     "awayBody": "Tu sesión de estudio se detendrá si no vuelves en un minuto.",
+    "awayBody_bun": "Bun te estaba esperando… vuelve antes de que Bun se preocupe.",
+    "awayBody_companion_bunny": "Vuelve ahowa mismo o bunny te va a patear.",
+    "awayBody_companion_cocoa": "Vuelve. Aún no hemos terminado, y tu concentración se está enfriando.",
+    "awayBody_hanji": "Guardé tu lugar en silencio… vuelve antes de que el silencio se sienta demasiado vacío.",
+    "awayBody_companion_tira": "¿Dejaste la pantalla de estudio? Yo dejé la uni, no esta sesión. Vuelve.",
+    "awayBody_companion_honey": "Vuelve… Miel te echa de menos.",
     "focusTime": "Tiempo de enfoque",
     "breakTime": "Tiempo de descanso",
     "sessionComplete": "¡Sesión completa!",
@@ -352,7 +377,7 @@
     "fullReport": "Informe completo →",
     "best": "Mejor: {{count}} días",
     "streakFreeze": "Congelar racha",
-    "freezesRemaining": "Quedan {{count}}/3 congelaciones este mes",
+    "freezesRemaining": "Tienes {{count}}",
     "useFreezeQ": "¿Usar congelar racha?",
     "useFreezeMsg": "Esto rescata tu racha tras un día perdido para que continúe cuando estudies hoy. Una congelación cubre todo el hueco. No se otorgan monedas.",
     "useFreeze": "Usar congelación",
@@ -810,6 +835,8 @@
     "noFriendsYet": "Aún no hay amigos",
     "noFriendsHint": "Añade amigos desde la pantalla de Amigos y luego invítalos aquí.",
     "onlineNow": "En línea ahora",
+    "studying": "Estudiando",
+    "onBreak": "En un descanso",
     "offline": "Desconectado",
     "invited": "Invitado ✓",
     "alreadyIn": "Ya en sala",
@@ -828,6 +855,8 @@
     "min": "min",
     "topic": "Tema",
     "minShort": "{{n}}m",
+    "customLength": "Duración personalizada",
+    "hostPlusCustom": "Temporizador personalizado disponible porque tu anfitrión tiene Plus",
     "noSubjectsHint": "Añade materias en Tareas para elegir un tema.",
     "hostPicks": "El anfitrión elige la duración de la sesión y empieza.",
     "inviteFriend": "＋ Invitar amigo",
@@ -955,6 +984,7 @@
     "maybeLater": "Quizás más tarde",
     "matchedTitle": "¡Conjunto a juego listo!",
     "matchedMsg": "¡{{outfit}} con la sala {{room}}, todo listo!",
+    "matchedRoomSub": "Consigue la sala {{room}} (fondo + escritorio) para combinar con {{outfit}}.",
     "roomLockedTitle": "Sala a juego bloqueada",
     "roomLockedMsg": "Desbloquea la sala {{room}} en la Tienda para completar el look de {{outfit}}.",
     "goToShop": "Ir a la Tienda",
@@ -1014,6 +1044,61 @@
     "game_study": "Sala de estudio",
     "you": "Tú"
   },
+  "studyBuddy": {
+    "ctaTitle": "Encuentra un compañero de estudio",
+    "endedTitle": "Tu emparejamiento terminó",
+    "endedGhost": "Tu compañero estuvo inactivo unos días, así que el emparejamiento terminó. ¿Quieres buscar uno nuevo?",
+    "endedExpired": "¡Se acabó tu semana juntos! ¿Quieres buscar un nuevo compañero?",
+    "endedLeft": "Tu compañero salió del emparejamiento. ¿Quieres buscar uno nuevo?",
+    "ctaSub": "Te emparejamos con un compañero por una semana",
+    "title": "Compañero de estudio",
+    "subtitle": "Un compañero de motivación por una semana",
+    "introTitle": "Cómo funciona",
+    "introBody": "Te emparejaremos con otro estudiante de tu edad durante una semana. Cada día puedes ver si tu compañero estudió y animarlo. Al final de la semana, el emparejamiento termina.",
+    "safetyNote": "Te emparejaremos con un compañero de tu rango de edad. No se comparte información personal: sin nombres, sin chat, solo registros de estudio. Puedes reportar o salir en cualquier momento.",
+    "findBuddy": "Buscar compañero",
+    "lookingTitle": "Buscando un compañero…",
+    "lookingBody": "Te emparejaremos en cuanto otro estudiante de tu edad también esté buscando. Puedes salir de esta pantalla; seguiremos buscando.",
+    "couldNotMatch": "No se encontró un compañero",
+    "errorBirthday": "Añade tu fecha de nacimiento en ajustes para emparejarte con estudiantes de tu edad.",
+    "errorRestricted": "Compañero de estudio no está disponible en tu cuenta ahora mismo.",
+    "errorGeneric": "Algo salió mal. Inténtalo de nuevo.",
+    "buddyFallback": "Tu compañero",
+    "streakLabel": "Racha de {{count}} días",
+    "daysLeft": "Quedan {{count}} días juntos",
+    "studiedYes": "¡{{name}} estudió hoy!",
+    "studiedNo": "{{name}} aún no ha estudiado hoy",
+    "buddyCheered": "{{name}} te animó: {{cheer}}",
+    "sendCheer": "Enviar ánimo",
+    "cheerSent": "¡Ánimo enviado! Puedes enviar otro mañana.",
+    "alreadyCheered": "Ya animaste",
+    "alreadyCheeredMsg": "Ya enviaste un ánimo hoy. ¡Vuelve mañana!",
+    "cheer": {
+      "keep_going": "¡Sigue así!",
+      "you_got_this": "¡Tú puedes!",
+      "dont_break_streak": "¡No rompas la racha!",
+      "proud_of_you": "¡Estoy orgulloso de ti!"
+    },
+    "becomeFriends": "Hacerse amigos",
+    "friendPending": "Esperando a que te añada también",
+    "nowFriends": "¡Ahora son amigos!",
+    "nowFriendsMsg": "Ambos eligieron hacerse amigos. Su código es {{code}}.",
+    "friendRequested": "¡Enviado!",
+    "friendRequestedMsg": "Si tu compañero también toca «Hacerse amigos», se añadirán.",
+    "report": "Reportar",
+    "reportQ": "¿Reportar a este compañero?",
+    "reportMsg": "Esto termina el emparejamiento y no volverán a emparejarse. ¿Qué pasa?",
+    "reportInappropriate": "Inapropiado",
+    "reportHarassment": "Acoso",
+    "reportSpam": "Spam",
+    "reportThanks": "Gracias por avisarnos",
+    "reportThanksMsg": "Terminamos el emparejamiento y nuestro equipo lo revisará.",
+    "leave": "Salir",
+    "leaveQ": "¿Salir de este compañero?",
+    "leaveMsg": "Esto termina el emparejamiento para ambos. Puedes buscar un nuevo compañero cuando quieras.",
+    "guestGateTitle": "Compañero de estudio necesita una cuenta",
+    "guestGateBody": "Crea una cuenta gratis para emparejarte con un compañero de estudio."
+  },
   "subjectChart": {
     "day": "Hoy",
     "week": "Semana",
@@ -1042,6 +1127,7 @@
     "friend": "Amigo",
     "full": "Lleno",
     "cakeBaking": "En preparación…",
+    "nowBaking": "HORNEANDO",
     "oneStudying": "1 estudiando",
     "studyingTogether": "{{count}} estudiando juntos",
     "you": "Tú",
@@ -1546,5 +1632,114 @@
   "recipeBadge": {
     "title": "¡Insignia conseguida!",
     "got": "¡Insignia de receta de {{name}}!"
+  },
+    "quests": {
+    "title": "Metas diarias",
+    "resetsMidnight": "Se reinicia a medianoche",
+    "cardSubtitle": "Metas por monedas extra",
+    "cardOpen": "Abrir",
+    "previewReady": "{{name}} — ¡lista para reclamar!",
+    "previewProgress": "{{name}} · {{current}}/{{goal}}",
+    "cardClaim": "Reclamar",
+    "allClaimed": "Todo reclamado por hoy",
+    "claim": "Reclamar {{coins}}",
+    "claimed": "Reclamado",
+    "progress": "{{current}}/{{goal}}",
+    "items": {
+      "g_study_60": {
+        "title": "Hora de poder",
+        "desc": "Estudia 1 hora hoy"
+      },
+      "g_sessions_2": {
+        "title": "Por partida doble",
+        "desc": "Completa 2 sesiones de estudio"
+      },
+      "g_before_noon": {
+        "title": "Madrugador",
+        "desc": "Estudia 25 minutos antes del mediodía"
+      },
+      "g_task_1": {
+        "title": "Tachado",
+        "desc": "Completa una tarea hoy"
+      }
+    }
+  },
+  "achievements": {
+    "categories": {
+      "study": "Estudio",
+      "tasks": "Tareas",
+      "streak": "Rachas",
+      "social": "Amigos",
+      "recipes": "Repostería"
+    },
+    "title": "Logros",
+    "subtitle": "Alcanza hitos para ganar monedas",
+    "allClaimed": "Todos los logros reclamados",
+    "cardSubtitle": "Recompensas por hitos",
+    "readyCount": "{{count}} listo(s) para reclamar",
+    "claim": "Reclamar {{coins}}",
+    "claimed": "Reclamado",
+    "items": {
+      "a_first": {
+        "title": "Primeros pasos",
+        "desc": "Completa tu primera sesión de estudio"
+      },
+      "a_sessions_25": {
+        "title": "Va en serio",
+        "desc": "Completa 25 sesiones de estudio"
+      },
+      "a_sessions_100": {
+        "title": "Erudito centenario",
+        "desc": "Completa 100 sesiones de estudio"
+      },
+      "a_hours_10": {
+        "title": "10 horas",
+        "desc": "Estudia 10 horas en total"
+      },
+      "a_hours_50": {
+        "title": "50 horas",
+        "desc": "Estudia 50 horas en total"
+      },
+      "a_hours_100": {
+        "title": "Centurión",
+        "desc": "Estudia 100 horas en total"
+      },
+      "a_tasks_10": {
+        "title": "Domador de tareas",
+        "desc": "Completa 10 tareas"
+      },
+      "a_tasks_50": {
+        "title": "Pro de la productividad",
+        "desc": "Completa 50 tareas"
+      },
+      "a_tasks_200": {
+        "title": "Imparable",
+        "desc": "Completa 200 tareas"
+      },
+      "a_streak_7": {
+        "title": "Guerrero semanal",
+        "desc": "Alcanza una racha de 7 días"
+      },
+      "a_streak_30": {
+        "title": "Maravilla mensual",
+        "desc": "Alcanza una racha de 30 días"
+      },
+      "a_streak_100": {
+        "title": "Racha centenaria",
+        "desc": "Alcanza una racha de 100 días"
+      },
+      "a_friend_1": {
+        "title": "Mejor juntos",
+        "desc": "Estudia con un amigo una vez"
+      },
+      "a_friend_10": {
+        "title": "Objetivos de equipo",
+        "desc": "Completa 10 sesiones con amigos"
+      },
+      "a_all_recipes": {
+        "title": "Maestro pastelero",
+        "desc": "Hornea 5 recetas"
+      }
+    }
   }
 }

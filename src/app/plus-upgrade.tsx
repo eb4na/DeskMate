@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
   // Local confirm dialog (activate / deactivate Plus).
   confirmBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(60,40,30,0.45)',
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     padding: Spacing.four,

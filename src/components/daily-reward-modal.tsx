@@ -12,12 +12,13 @@
  */
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { birthdayRewardAvailable, nextLoginReward, todayISO, useApp } from '@/context/app-context';
 import { DAILY_REWARD_CAP } from '@/constants/login-rewards';
 import { isLoadingActive, subscribeLoadingDone } from '@/lib/loading-signal';
+import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { useTranslation } from '@/i18n';
 
 const COIN = require('@/assets/images/home/coin-icon.png');
@@ -29,6 +30,10 @@ const P = {
 
 export function DailyRewardModal() {
   const { t } = useTranslation();
+  // Scale the whole card up on tablet (it was sized for phones) so it doesn't sit
+  // tiny in the middle of a 13" iPad.
+  const { scale } = useTabletScale();
+  const styles = useMemo(() => makeStyles(scale), [scale]);
   const {
     loginRewardDate, streak, claimLoginReward,
     hanjiUnlockPending, recipeBadgePending,
@@ -107,56 +112,58 @@ export function DailyRewardModal() {
   );
 }
 
-const TILE = 62;
-const styles = StyleSheet.create({
-  root: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(48,32,24,0.45)' },
-  card: {
-    width: '100%', maxWidth: 340, backgroundColor: P.card, borderRadius: 24,
-    borderWidth: 2, borderColor: P.pinkSoft, padding: 22, alignItems: 'center', gap: 6,
-  },
-  title: { fontSize: 19, fontWeight: '900', color: P.brown, textAlign: 'center' },
-  subtitle: { fontSize: 13, color: P.muted, fontWeight: '600', textAlign: 'center', lineHeight: 18, marginBottom: 6 },
-  // Single big reward card (streak day + its coins).
-  hero: {
-    alignSelf: 'stretch', alignItems: 'center', gap: 6, paddingVertical: 18, marginTop: 4,
-    borderRadius: 18, backgroundColor: P.goldSoft, borderWidth: 2, borderColor: P.gold,
-  },
-  heroDay: { fontSize: 13, fontWeight: '800', color: P.muted, letterSpacing: 0.3 },
-  heroCoinRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  heroCoin: { width: 34, height: 34 },
-  heroCoins: { fontSize: 32, fontWeight: '900', color: P.gold },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
-  tile: {
-    width: TILE, height: TILE, borderRadius: 14, backgroundColor: P.pinkSoft,
-    borderWidth: 1.5, borderColor: P.line, alignItems: 'center', justifyContent: 'center', gap: 1,
-  },
-  tileBig: { backgroundColor: P.goldSoft, borderColor: P.gold },
-  tileToday: { borderColor: P.pink, borderWidth: 2.5, transform: [{ scale: 1.04 }] },
-  tileClaimed: { opacity: 0.5 },
-  tileDay: { fontSize: 10, fontWeight: '800', color: P.muted },
-  tileCoin: { width: 20, height: 20 },
-  tileCoins: { fontSize: 13, fontWeight: '900', color: P.brown },
-  tileCoinsBig: { color: P.gold },
-  check: {
-    ...StyleSheet.absoluteFill, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(247,167,184,0.25)',
-  },
-  checkMark: { fontSize: 24, fontWeight: '900', color: P.pink },
-  plusNote: { fontSize: 11.5, color: P.gold, fontWeight: '800', textAlign: 'center', marginTop: 4 },
-  button: {
-    alignSelf: 'stretch', marginTop: 12, paddingVertical: 13, borderRadius: 16,
-    backgroundColor: P.pink, alignItems: 'center', justifyContent: 'center',
-    flexDirection: 'row', gap: 8,
-  },
-  btnCoin: { width: 22, height: 22 },
-  buttonText: { color: '#fff', fontWeight: '900', fontSize: 15 },
-  // Secondary upsell button: gold outline so it reads as a bonus, not the main claim.
-  upsell: {
-    alignSelf: 'stretch', marginTop: 8, paddingVertical: 11, borderRadius: 16,
-    backgroundColor: P.goldSoft, borderWidth: 1.5, borderColor: P.gold,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  upsellText: { color: P.gold, fontWeight: '900', fontSize: 13.5 },
-  pressed: { opacity: 0.85 },
-});
+const makeStyles = (s: number) => {
+  const TILE = 62 * s;
+  return StyleSheet.create({
+    root: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 * s },
+    backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
+    card: {
+      width: '100%', maxWidth: 340 * s, backgroundColor: P.card, borderRadius: 24 * s,
+      borderWidth: 2, borderColor: P.pinkSoft, padding: 22 * s, alignItems: 'center', gap: 6 * s,
+    },
+    title: { fontSize: 19 * s, fontWeight: '900', color: P.brown, textAlign: 'center' },
+    subtitle: { fontSize: 13 * s, color: P.muted, fontWeight: '600', textAlign: 'center', lineHeight: 18 * s, marginBottom: 6 * s },
+    // Single big reward card (streak day + its coins).
+    hero: {
+      alignSelf: 'stretch', alignItems: 'center', gap: 6 * s, paddingVertical: 18 * s, marginTop: 4 * s,
+      borderRadius: 18 * s, backgroundColor: P.goldSoft, borderWidth: 2, borderColor: P.gold,
+    },
+    heroDay: { fontSize: 13 * s, fontWeight: '800', color: P.muted, letterSpacing: 0.3 },
+    heroCoinRow: { flexDirection: 'row', alignItems: 'center', gap: 8 * s },
+    heroCoin: { width: 34 * s, height: 34 * s },
+    heroCoins: { fontSize: 32 * s, fontWeight: '900', color: P.gold },
+    grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 * s },
+    tile: {
+      width: TILE, height: TILE, borderRadius: 14 * s, backgroundColor: P.pinkSoft,
+      borderWidth: 1.5, borderColor: P.line, alignItems: 'center', justifyContent: 'center', gap: 1,
+    },
+    tileBig: { backgroundColor: P.goldSoft, borderColor: P.gold },
+    tileToday: { borderColor: P.pink, borderWidth: 2.5, transform: [{ scale: 1.04 }] },
+    tileClaimed: { opacity: 0.5 },
+    tileDay: { fontSize: 10 * s, fontWeight: '800', color: P.muted },
+    tileCoin: { width: 20 * s, height: 20 * s },
+    tileCoins: { fontSize: 13 * s, fontWeight: '900', color: P.brown },
+    tileCoinsBig: { color: P.gold },
+    check: {
+      ...StyleSheet.absoluteFill, borderRadius: 14 * s, alignItems: 'center', justifyContent: 'center',
+      backgroundColor: 'rgba(247,167,184,0.25)',
+    },
+    checkMark: { fontSize: 24 * s, fontWeight: '900', color: P.pink },
+    plusNote: { fontSize: 11.5 * s, color: P.gold, fontWeight: '800', textAlign: 'center', marginTop: 4 * s },
+    button: {
+      alignSelf: 'stretch', marginTop: 12 * s, paddingVertical: 13 * s, borderRadius: 16 * s,
+      backgroundColor: P.pink, alignItems: 'center', justifyContent: 'center',
+      flexDirection: 'row', gap: 8 * s,
+    },
+    btnCoin: { width: 22 * s, height: 22 * s },
+    buttonText: { color: '#fff', fontWeight: '900', fontSize: 15 * s },
+    // Secondary upsell button: gold outline so it reads as a bonus, not the main claim.
+    upsell: {
+      alignSelf: 'stretch', marginTop: 8 * s, paddingVertical: 11 * s, borderRadius: 16 * s,
+      backgroundColor: P.goldSoft, borderWidth: 1.5, borderColor: P.gold,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    upsellText: { color: P.gold, fontWeight: '900', fontSize: 13.5 * s },
+    pressed: { opacity: 0.85 },
+  });
+};

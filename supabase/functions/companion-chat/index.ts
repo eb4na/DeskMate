@@ -89,6 +89,18 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: 'Unauthorized.' }, 401);
   }
 
+  // Server-side daily rate limit — the client's ticket cap is bypassable, so enforce a
+  // per-user ceiling here too. Fail OPEN if the check itself errors (e.g. the migration
+  // isn't applied yet) so chat keeps working; enforce whenever the check succeeds.
+  const DAILY_CHAT_CAP = 150;
+  const { data: chatAllowed, error: rateError } = await authClient.rpc('bump_ai_usage', {
+    p_kind: 'chat',
+    p_cap: DAILY_CHAT_CAP,
+  });
+  if (!rateError && chatAllowed === false) {
+    return jsonResponse({ error: 'Daily chat limit reached. Please try again tomorrow.' }, 429);
+  }
+
   let body: ChatRequest;
   try {
     body = (await request.json()) as ChatRequest;

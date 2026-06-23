@@ -97,6 +97,18 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: 'Unauthorized.' }, 401);
   }
 
+  // Server-side daily rate limit. Image generation is the expensive endpoint, so a
+  // tighter cap. Fail OPEN if the check errors (e.g. migration not applied yet);
+  // enforce whenever it succeeds.
+  const DAILY_IMAGE_CAP = 20;
+  const { data: imageAllowed, error: rateError } = await authClient.rpc('bump_ai_usage', {
+    p_kind: 'image',
+    p_cap: DAILY_IMAGE_CAP,
+  });
+  if (!rateError && imageAllowed === false) {
+    return jsonResponse({ error: 'Daily image limit reached. Please try again tomorrow.' }, 429);
+  }
+
   let body: GenerateRequest;
   try {
     body = (await request.json()) as GenerateRequest;
