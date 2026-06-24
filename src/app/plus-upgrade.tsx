@@ -304,12 +304,12 @@ export default function PlusUpgradeScreen() {
               <>
                 <Image source={SKIN_ART} style={styles.confirmArt} contentFit="contain" />
                 <ThemedText style={styles.confirmTitle}>
-                  {t('plus.rewardSkinTitle', { defaultValue: "New outfit unlocked! 🍓" })}
+                  {t('plus.rewardSkinTitle', { defaultValue: 'New outfit unlocked!' })}
                 </ThemedText>
                 <ThemedText style={styles.confirmMsg}>
                   {t('plus.rewardSkinMsg', {
                     defaultValue:
-                      "You got Bun's Berry Princess outfit — yours to keep forever. Find it in Bun's Wardrobe.",
+                      "You got Bun's Berry Princess outfit — yours to keep forever. Find it in Bun's wardrobe.",
                   })}
                 </ThemedText>
                 <Pressable
@@ -324,12 +324,12 @@ export default function PlusUpgradeScreen() {
               <>
                 <Image source={ROOM_ART} style={styles.confirmArtWide} contentFit="cover" />
                 <ThemedText style={styles.confirmTitle}>
-                  {t('plus.rewardRoomTitle', { defaultValue: 'New room & desk unlocked! 🏯' })}
+                  {t('plus.rewardRoomTitle', { defaultValue: 'New room & desk unlocked!' })}
                 </ThemedText>
                 <ThemedText style={styles.confirmMsg}>
                   {t('plus.rewardRoomMsg', {
                     defaultValue:
-                      "You received the Strawberry Palace room and its matching desk — yours to keep forever. Find them in Edit Room.",
+                      "You received the Golden Teahouse room and its matching desk — yours to keep forever. Find them in Edit Room.",
                   })}
                 </ThemedText>
                 <Pressable

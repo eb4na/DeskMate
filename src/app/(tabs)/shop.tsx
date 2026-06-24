@@ -649,7 +649,7 @@ export default function ShopScreen() {
               ) : (
                 <>
                   <Pressable style={styles.outfitBack} onPress={() => setOutfitCharId(null)}>
-                    <ThemedText style={styles.outfitBackText}>{t('shop.charOutfits', { name: outfitChar.name })}</ThemedText>
+                    <ThemedText style={styles.outfitBackText}>{t('shop.charOutfits', { name: localizeCompanionName(outfitChar.name, t) })}</ThemedText>
                   </Pressable>
                   {/* Unowned character → wardrobe is view-only. Tapping a costume
                       previews it on the player's current desk; buying needs the
@@ -662,7 +662,7 @@ export default function ShopScreen() {
                   {outfitsForCharacter(outfitChar.id).length === 0 && (
                     <View style={styles.emptyCard}>
                       <ThemedText style={styles.emptyTitle}>{t('shop.noOutfitsYet')}</ThemedText>
-                      <ThemedText style={styles.emptyText}>{t('shop.wardrobeEmpty', { name: outfitChar.name })}</ThemedText>
+                      <ThemedText style={styles.emptyText}>{t('shop.wardrobeEmpty', { name: localizeCompanionName(outfitChar.name, t) })}</ThemedText>
                     </View>
                   )}
                   <View style={styles.outfitGrid}>

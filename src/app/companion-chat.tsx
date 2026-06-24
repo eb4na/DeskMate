@@ -152,7 +152,7 @@ export default function CompanionChatScreen() {
     scrollToEnd();
 
     try {
-      const { reply } = await sendCompanionChat({ companionName: companion.name, vibe, history });
+      const { reply } = await sendCompanionChat({ companionName: localizeCompanionName(companion.name, t), vibe, history });
       // Only charge a message once the companion actually replies.
       consumeChatMessage();
       setMessages((prev) => [...prev, { role: 'assistant', content: reply, at: Date.now() }]);

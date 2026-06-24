@@ -34,6 +34,12 @@
     },
     "generic": ["Héhé~ ça chatouille !", "On étudie ensemble bientôt ?", "Je suis si contente que tu sois là."]
   },
+  "suggestions": {
+    "title": "Joueurs suggérés",
+    "sub": "Des camarades d'étude de ton âge",
+    "add": "Ajouter",
+    "sent": "Envoyé"
+  },
   "report": {
     "report": "Signaler",
     "block": "Bloquer",
@@ -1220,6 +1226,10 @@
     "f_avatarFrame": "Cadre à couronne dorée",
     "f_avatarFrameDesc": "Un cadre doré et une couronne sur votre avatar — automatique pour les membres Plus",
     "noteKeep": "Déblocage unique — à vous pour toujours, même si Plus se termine",
+    "rewardSkinTitle": "Nouvelle tenue débloquée !",
+    "rewardSkinMsg": "Tu as obtenu la tenue Princesse Berry de Bun — à toi pour toujours. Retrouve-la dans la garde-robe de Bun.",
+    "rewardRoomTitle": "Nouvelle pièce et nouveau bureau débloqués !",
+    "rewardRoomMsg": "Tu as reçu la pièce Salon de Thé Royal et son bureau assorti — à toi pour toujours. Retrouve-les dans Modifier la pièce.",
     "noteExpire": "Actif tant que Plus est actif — retiré si Plus se termine",
     "f_allGames": "Tous les jeux de pause",
     "f_allGamesDesc": "Débloque Cartes mémoire, Jeu de mots et les futurs jeux",

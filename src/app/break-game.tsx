@@ -17,6 +17,7 @@ import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { useIsTablet } from '@/hooks/use-device-class';
 import {
   getCompanionImage,
+  localizeCompanionName,
   resolveActiveCompanion,
   resolveProfileFigure,
   type CompanionImageSource,
@@ -530,7 +531,7 @@ function TicTacToeGame({
       ? t('games.you')
       : t('games.friend')
     : mode === 'ai'
-      ? companion.name
+      ? localizeCompanionName(companion.name, t)
       : t('games.p2');
   // X is "you" except when online and you're playing O.
   const xIsYou = isOnline ? mySymbol === 'X' : true;

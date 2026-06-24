@@ -27,6 +27,7 @@ import {
   type IncomingRequest,
 } from '@/lib/friend-requests';
 import { fetchProfileByCode, type SyncedProfile } from '@/lib/profile-sync';
+import { fetchSuggestedPlayers, type SuggestedPlayer } from '@/lib/suggestions';
 import { isPlusFrame } from '@/components/avatar-frame';
 import { cardColors } from '@/constants/card-colors';
 import { ROOM_PAIRS } from '@/constants/room-data';
@@ -94,6 +95,8 @@ export default function FriendsScreen() {
   const [upgrading, setUpgrading] = useState(false);
   const [incoming, setIncoming] = useState<IncomingRequest[]>([]);
   const [blocked, setBlocked] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<SuggestedPlayer[]>([]);
+  const [requestedCodes, setRequestedCodes] = useState<string[]>([]); // suggestions I've just requested
   const [busy, setBusy] = useState(false);
   const [sentTo, setSentTo] = useState<string | null>(null); // shows the "request sent" confirmation
   const [playFor, setPlayFor] = useState<Friend | null>(null);
@@ -123,10 +126,11 @@ export default function FriendsScreen() {
   // refresh each friend's card.
   const refresh = async () => {
     if (!user?.id) return;
-    const [accepted, reqs, blk] = await Promise.all([
+    const [accepted, reqs, blk, suggested] = await Promise.all([
       listAcceptedFriends(user.id),
       listIncomingRequests(user.id),
       listBlocked(user.id),
+      fetchSuggestedPlayers(),
     ]);
     setBlocked(blk);
     for (const a of accepted) {
@@ -135,6 +139,24 @@ export default function FriendsScreen() {
       if (a.profile) setFriendProfile(a.code, toFriendPatch(a.profile));
     }
     setIncoming(reqs.filter((r) => !blk.includes(r.fromCode))); // hide blocked senders
+    // Server already excludes friends/requests/blocked; also drop anyone I've already
+    // requested this session so a card never lingers after I tapped Add.
+    setSuggestions(suggested.filter((s) => !blk.includes(s.friendCode)));
+  };
+
+  // Send a friend request straight from a suggestion card. Mark it requested so the
+  // card flips to "Sent" instead of vanishing (less jarring than a list reflow).
+  const handleSuggestAdd = async (player: SuggestedPlayer) => {
+    if (!user?.id) {
+      showPopup(t('friends.signInNeeded'), t('friends.signInToSend'));
+      return;
+    }
+    setRequestedCodes((prev) => (prev.includes(player.friendCode) ? prev : [...prev, player.friendCode]));
+    const res = await sendFriendRequest({ fromUser: user.id, fromCode: friendCode, toCode: player.friendCode });
+    if (!res.ok) {
+      setRequestedCodes((prev) => prev.filter((c) => c !== player.friendCode)); // let them retry
+      showPopup(t('friends.couldNotSend'), res.error ?? t('friends.tryAgain'));
+    }
   };
 
   // Re-fetch incoming requests and friend profiles every time this screen is opened
@@ -319,16 +341,44 @@ export default function FriendsScreen() {
             <Text style={styles.headerSubtitle}>{t('friends.addAndStudy')}</Text>
           </View>
 
-          {/* Study Buddy matching — find a random accountability partner for a week. */}
-          <Pressable
-            style={({ pressed }) => [styles.buddyCta, pressed && styles.pressed]}
-            onPress={() => router.push('/study-buddy')}>
-            <View style={styles.buddyCtaText}>
-              <Text style={styles.buddyCtaTitle}>{t('studyBuddy.ctaTitle')}</Text>
-              <Text style={styles.buddyCtaSub}>{t('studyBuddy.ctaSub')}</Text>
+          {/* Suggested players — a random sample of others your age you can friend.
+              Hidden entirely when there are none (e.g. RPC not deployed yet) so it
+              never shows a broken/empty shell. */}
+          {suggestions.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t('suggestions.title')}</Text>
+              <Text style={styles.suggestSub}>{t('suggestions.sub')}</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.suggestRow}>
+                {suggestions.map((s) => {
+                  const sBg = ROOM_PAIRS.find((r) => r.id === s.backgroundId) ?? ROOM_PAIRS[0];
+                  const sent = requestedCodes.includes(s.friendCode);
+                  return (
+                    <View key={s.friendCode} style={styles.suggestCard}>
+                      <View style={styles.miniCard}>
+                        <Image source={sBg.backgroundImage} style={StyleSheet.absoluteFill} contentFit="cover" />
+                        <Image source={getCompanionImage(s.companionId, s.skinId)} style={styles.miniCardFig} contentFit="contain" />
+                      </View>
+                      <Text style={styles.suggestName} numberOfLines={1}>
+                        {s.displayName || t('friendCard.friendFallback', { code: s.friendCode })}
+                      </Text>
+                      <Text style={styles.friendCode}>{s.friendCode}</Text>
+                      <Pressable
+                        disabled={sent}
+                        style={({ pressed }) => [styles.suggestAddBtn, sent && styles.suggestAddedBtn, pressed && !sent && styles.pressed]}
+                        onPress={() => handleSuggestAdd(s)}>
+                        <Text style={[styles.suggestAddText, sent && styles.suggestAddedText]}>
+                          {sent ? t('suggestions.sent') : t('suggestions.add')}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  );
+                })}
+              </ScrollView>
             </View>
-            <Text style={styles.profileBtnChevron}>›</Text>
-          </Pressable>
+          )}
 
           {/* My profile card — my avatar, name, and code, the way friends see me. */}
           {(() => {
@@ -636,20 +686,14 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   profileBtnText: { fontSize: 16 * s, fontWeight: '800', color: P.brown },
   profileBtnChevron: { fontSize: 22 * s, fontWeight: '800', color: P.pink },
   meRow: { borderColor: P.pink, borderWidth: 2 },
-  buddyCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: P.pinkSoft,
-    borderRadius: 18 * s,
-    borderWidth: 1.5,
-    borderColor: P.pink,
-    paddingVertical: 14 * s,
-    paddingHorizontal: 18 * s,
-  },
-  buddyCtaText: { flex: 1, gap: 2 * s },
-  buddyCtaTitle: { fontSize: 16 * s, fontWeight: '900', color: P.brown },
-  buddyCtaSub: { fontSize: 12 * s, color: P.mutedBrown, fontWeight: '500' },
+  suggestSub: { fontSize: 12 * s, color: P.mutedBrown, fontWeight: '500', marginTop: -2 * s },
+  suggestRow: { gap: 12 * s, paddingVertical: 4 * s, paddingRight: 8 * s },
+  suggestCard: { width: 72 * s, alignItems: 'center', gap: 3 * s },
+  suggestName: { fontSize: 12 * s, fontWeight: '800', color: P.brown, textAlign: 'center', maxWidth: 72 * s },
+  suggestAddBtn: { backgroundColor: P.pink, borderRadius: 999, paddingHorizontal: 16 * s, paddingVertical: 6 * s, marginTop: 2 * s },
+  suggestAddText: { color: '#fff', fontWeight: '800', fontSize: 12 * s },
+  suggestAddedBtn: { backgroundColor: P.pinkSoft },
+  suggestAddedText: { color: P.mutedBrown },
   meTag: { backgroundColor: P.pink, borderRadius: 999, paddingHorizontal: 12 * s, paddingVertical: 5 * s },
   meTagText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 * s },
 

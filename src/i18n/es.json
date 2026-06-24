@@ -34,6 +34,12 @@
     },
     "generic": ["¡Jaja~ me haces cosquillas!", "¿Estudiamos juntas prontito?", "Qué alegría que estés aquí."]
   },
+  "suggestions": {
+    "title": "Jugadores sugeridos",
+    "sub": "Compañeros de estudio de tu edad",
+    "add": "Añadir",
+    "sent": "Enviado"
+  },
   "report": {
     "report": "Reportar",
     "block": "Bloquear",
@@ -1220,6 +1226,10 @@
     "f_avatarFrame": "Marco con corona dorada",
     "f_avatarFrameDesc": "Un marco dorado y una corona en tu avatar, automático para miembros Plus",
     "noteKeep": "Desbloqueo único: es tuyo para siempre, aunque termine Plus",
+    "rewardSkinTitle": "¡Nuevo atuendo desbloqueado!",
+    "rewardSkinMsg": "Conseguiste el atuendo Princesa Berry de Bun: es tuyo para siempre. Encuéntralo en el armario de Bun.",
+    "rewardRoomTitle": "¡Nueva habitación y escritorio desbloqueados!",
+    "rewardRoomMsg": "Recibiste la habitación Salón de Té Real y su escritorio a juego: son tuyos para siempre. Encuéntralos en Editar habitación.",
     "noteExpire": "Activo mientras tengas Plus: se quita si Plus termina",
     "f_allGames": "Todos los juegos de descanso",
     "f_allGamesDesc": "Desbloquea Cartas de memoria, Crucigrama de palabras y futuros juegos",

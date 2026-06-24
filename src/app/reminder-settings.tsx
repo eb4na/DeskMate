@@ -19,7 +19,7 @@ import {
   getCompanionReminderLine,
   getCompanionReminderPool,
 } from '@/constants/companion-reminder-lines';
-import { resolveActiveCompanion } from '@/lib/companion-utils';
+import { localizeCompanionName, resolveActiveCompanion } from '@/lib/companion-utils';
 import { type Task } from '@/context/app-context';
 
 function isValidTime(t: string): boolean {
@@ -97,7 +97,7 @@ export default function ReminderSettingsScreen() {
       resolved.type === 'slot'
         ? resolved.slot.emoji || ''
         : getCompanionReminderEmoji(companionKey);
-    return { companionKey, name: resolved.name, emoji };
+    return { companionKey, name: localizeCompanionName(resolved.name, t), emoji };
   })();
   const reminderPool = getCompanionReminderPool(voice.companionKey);
   // Stable sample line for the screen (so it doesn't reshuffle on every render).

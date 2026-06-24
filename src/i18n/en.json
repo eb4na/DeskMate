@@ -34,6 +34,12 @@
     },
     "generic": ["Hehe~ that tickles!", "Let's study together soon?", "So glad you're here."]
   },
+  "suggestions": {
+    "title": "Suggested players",
+    "sub": "Study buddies around your age",
+    "add": "Add",
+    "sent": "Sent"
+  },
   "report": {
     "report": "Report",
     "block": "Block",
@@ -1220,6 +1226,10 @@
     "f_avatarFrame": "Gold crown frame",
     "f_avatarFrameDesc": "A gold frame & crown on your avatar — automatic for Plus members",
     "noteKeep": "One-time unlock — yours to keep even if Plus ends",
+    "rewardSkinTitle": "New outfit unlocked!",
+    "rewardSkinMsg": "You got Bun's Berry Princess outfit — yours to keep forever. Find it in Bun's wardrobe.",
+    "rewardRoomTitle": "New room & desk unlocked!",
+    "rewardRoomMsg": "You received the Golden Teahouse room and its matching desk — yours to keep forever. Find them in Edit Room.",
     "noteExpire": "Active while Plus is on — removed if Plus ends",
     "f_allGames": "All break games",
     "f_allGamesDesc": "Unlock Memory Cards, Word Puzzle, and future games",
