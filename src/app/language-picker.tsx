@@ -1,9 +1,10 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { useApp } from '@/context/app-context';
+import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { showLoadingScreen } from '@/lib/loading-signal';
 import { BakeryColors, BakeryRadii, BakeryShadow } from '@/constants/theme';
 import { LANGUAGES, type SupportedLanguage, useTranslation } from '@/i18n';
@@ -16,6 +17,9 @@ const FLAGS: Partial<Record<SupportedLanguage, number>> = {
 
 export default function LanguagePickerScreen() {
   const { width } = useWindowDimensions();
+  // Tablet: scale the whole popup up by one shared factor (it was tiny on iPad).
+  const { scale } = useTabletScale();
+  const styles = useMemo(() => makeStyles(scale), [scale]);
   const { setLanguage, markLanguageSelected, language, languageSelected } = useApp();
   const { t } = useTranslation();
 
@@ -47,7 +51,7 @@ export default function LanguagePickerScreen() {
     }
   };
 
-  const cardWidth = Math.min(width * 0.92, 430);
+  const cardWidth = Math.min(width * 0.92, 430 * scale);
 
   const card = (
     <View style={[styles.card, { width: cardWidth }]}>
@@ -111,101 +115,99 @@ export default function LanguagePickerScreen() {
     </View>
   );
 
-  // Always use the plain/normal backdrop — never swap in the login-room art (so
-  // an accidental/transient picker doesn't jarringly replace the app background).
-  return <View style={[styles.room, styles.plainBackdrop]}>{card}</View>;
+  // Transparent backdrop — the picker is just the floating popup, with no second
+  // full-screen background painted over whatever is behind it.
+  return <View style={styles.room}>{card}</View>;
 }
 
-const styles = StyleSheet.create({
-  room: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  plainBackdrop: {
-    backgroundColor: BakeryColors.frosting,
-  },
-  // Plain rounded card — replaces the old bow-frame PNG. Cream fill, soft pink
-  // border, gentle shadow; sizes to its content.
-  card: {
-    alignItems: 'stretch',
-    backgroundColor: '#FFFDF8',
-    borderRadius: 28,
-    borderWidth: 2,
-    borderColor: '#F4C2CC',
-    paddingVertical: 24,
-    paddingHorizontal: 22,
-    gap: 18,
-    ...BakeryShadow,
-  },
+const makeStyles = (s: number) =>
+  StyleSheet.create({
+    room: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'transparent',
+    },
+    // Plain rounded card — cream fill, soft pink border, gentle shadow.
+    card: {
+      alignItems: 'stretch',
+      backgroundColor: '#FFFDF8',
+      borderRadius: 28 * s,
+      borderWidth: 2,
+      borderColor: '#F4C2CC',
+      paddingVertical: 24 * s,
+      paddingHorizontal: 22 * s,
+      gap: 18 * s,
+      ...BakeryShadow,
+    },
 
-  header: { alignItems: 'center', gap: 4 },
-  title: { fontSize: 22, fontWeight: '800', color: BakeryColors.cocoaDark, textAlign: 'center' },
-  subtitle: { fontSize: 12, color: BakeryColors.berry, textAlign: 'center' },
+    header: { alignItems: 'center', gap: 4 * s },
+    title: { fontSize: 22 * s, fontWeight: '800', color: BakeryColors.cocoaDark, textAlign: 'center' },
+    subtitle: { fontSize: 12 * s, color: BakeryColors.berry, textAlign: 'center' },
 
-  langList: { gap: 8, flexShrink: 1, justifyContent: 'center' },
-  langBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.66)',
-    borderRadius: BakeryRadii.chip,
-    borderWidth: 1.5,
-    borderColor: BakeryColors.shortbread,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  langBtnActive: {
-    borderColor: BakeryColors.jam,
-    backgroundColor: 'rgba(246,200,194,0.38)',
-  },
+    langList: { gap: 8 * s, flexShrink: 1, justifyContent: 'center' },
+    langBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12 * s,
+      backgroundColor: 'rgba(255,255,255,0.66)',
+      borderRadius: BakeryRadii.chip,
+      borderWidth: 1.5,
+      borderColor: BakeryColors.shortbread,
+      paddingHorizontal: 12 * s,
+      paddingVertical: 9 * s,
+    },
+    langBtnActive: {
+      borderColor: BakeryColors.jam,
+      backgroundColor: 'rgba(246,200,194,0.38)',
+    },
 
-  flagWrap: {
-    width: 40,
-    height: 30,
-    borderRadius: 7,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  flagImg: { width: '100%', height: '100%' },
-  flagEmoji: { fontSize: 28, lineHeight: 30, textAlign: 'center' },
+    flagWrap: {
+      width: 40 * s,
+      height: 30 * s,
+      borderRadius: 7 * s,
+      overflow: 'hidden',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    flagImg: { width: '100%', height: '100%' },
+    flagEmoji: { fontSize: 28 * s, lineHeight: 30 * s, textAlign: 'center' },
 
-  langTextWrap: { flex: 1 },
-  langNative: { fontSize: 16, fontWeight: '700', color: BakeryColors.mocha },
-  langNativeActive: { color: BakeryColors.cocoaDark },
-  langEnglish: { fontSize: 11, color: BakeryColors.latte },
+    langTextWrap: { flex: 1 },
+    langNative: { fontSize: 16 * s, fontWeight: '700', color: BakeryColors.mocha },
+    langNativeActive: { color: BakeryColors.cocoaDark },
+    langEnglish: { fontSize: 11 * s, color: BakeryColors.latte },
 
-  radio: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    borderColor: BakeryColors.shortbread,
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioActive: {
-    backgroundColor: BakeryColors.jam,
-    borderColor: BakeryColors.jam,
-  },
-  radioCheck: { fontSize: 12, color: '#fff', fontWeight: '800' },
+    radio: {
+      width: 22 * s,
+      height: 22 * s,
+      borderRadius: 11 * s,
+      borderWidth: 1.5,
+      borderColor: BakeryColors.shortbread,
+      backgroundColor: 'transparent',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    radioActive: {
+      backgroundColor: BakeryColors.jam,
+      borderColor: BakeryColors.jam,
+    },
+    radioCheck: { fontSize: 12 * s, color: '#fff', fontWeight: '800' },
 
-  continueBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    backgroundColor: BakeryColors.jam,
-    borderRadius: BakeryRadii.pill,
-    paddingVertical: 14,
-    ...BakeryShadow,
-  },
-  continueSparkle: { fontSize: 13, color: 'rgba(255,255,255,0.85)' },
-  continueBtnText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#fff',
-  },
-});
+    continueBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10 * s,
+      backgroundColor: BakeryColors.jam,
+      borderRadius: BakeryRadii.pill,
+      paddingVertical: 14 * s,
+      ...BakeryShadow,
+    },
+    continueSparkle: { fontSize: 13 * s, color: 'rgba(255,255,255,0.85)' },
+    continueBtnText: {
+      fontSize: 16 * s,
+      fontWeight: '800',
+      color: '#fff',
+    },
+  });

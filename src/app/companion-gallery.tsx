@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { formatCoins } from '@/constants/placeholder-data';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
@@ -18,6 +19,7 @@ import { DevKnobs, type Knob } from '@/components/dev-knobs';
 import { LockOverlay } from '@/components/lock-badge';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { ThemedView } from '@/components/themed-view';
+import { CompanionLevel } from '@/components/companion-level';
 import { Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
@@ -137,6 +139,7 @@ function GalleryContent() {
     purchaseShopItem,
     setEquippedBackground,
     setEquippedDesk,
+    companionMinutes,
   } = useApp();
 
   // Dev "design knobs" — live overrides for the companion grid's spacing/sizes.
@@ -354,6 +357,7 @@ function GalleryContent() {
                   {localizeCompanionName(char.name, t)}
                 </Text>
                 <Text style={[styles.companionSubtitle, { fontSize: tweak.subSize * scale }]} numberOfLines={2}>{TAGLINE_KEYS[char.name] ? t(TAGLINE_KEYS[char.name]) : t('gallery.defaultTagline')}</Text>
+                <CompanionLevel minutes={companionMinutes?.[char.id] ?? 0} scale={scale} />
                 {char.isActive ? (
                   <View style={styles.activePill}>
                     <Text style={styles.activePillText}>{t('gallery.active')}</Text>
@@ -505,7 +509,7 @@ function GalleryContent() {
                   <Text style={styles.buyBalanceLabel}>{t('gallery.yourBalance')}</Text>
                   <View style={styles.buyBalanceValue}>
                     <CoinIcon size={15 * scale} />
-                    <Text style={styles.buyBalanceNum}>{coins}</Text>
+                    <Text style={styles.buyBalanceNum}>{formatCoins(coins)}</Text>
                   </View>
                 </View>
                 {!canAffordBuy && (
@@ -546,7 +550,12 @@ function GalleryContent() {
             {pairBuy && (
               <>
                 <Text style={styles.buyTitle}>{t('editRoom.unlockPair', { name: pairBuy.pair.name })}</Text>
-                <Image source={pairBuy.pair.backgroundImage} style={styles.pairImage} contentFit="cover" />
+                {/* Preview the whole room — background WITH the paired desk overlaid as a
+                    bottom band (mirrors the real study room), since the pair is both. */}
+                <View style={styles.pairImage}>
+                  <Image source={pairBuy.pair.backgroundImage} style={styles.pairBg} contentFit="cover" />
+                  <Image source={pairBuy.pair.deskImage} style={styles.pairDesk} contentFit="cover" />
+                </View>
                 <Text style={styles.plusAlertMsg}>
                   {t('gallery.matchedRoomSub', { outfit: localizeOutfitName(pairBuy.skin.name, t), room: pairBuy.pair.name })}
                 </Text>
@@ -554,7 +563,7 @@ function GalleryContent() {
                   <Text style={styles.buyBalanceLabel}>{t('gallery.yourBalance')}</Text>
                   <View style={styles.buyBalanceValue}>
                     <CoinIcon size={15 * scale} />
-                    <Text style={styles.buyBalanceNum}>{coins}</Text>
+                    <Text style={styles.buyBalanceNum}>{formatCoins(coins)}</Text>
                   </View>
                 </View>
                 {!canAffordPair && (
@@ -881,7 +890,10 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   },
   buyTitle: { fontSize: 19 * s, fontWeight: '800', color: P.brown, textAlign: 'center' },
   buyImage: { width: 120 * s, height: 120 * s },
-  pairImage: { width: 220 * s, height: 132 * s, borderRadius: 14 * s },
+  pairImage: { width: 220 * s, height: 132 * s, borderRadius: 14 * s, overflow: 'hidden' },
+  pairBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  // Desk sits as a full-width band along the bottom, matching the study room.
+  pairDesk: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '42%' },
   buyBalanceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', alignSelf: 'stretch' },
   buyBalanceValue: { flexDirection: 'row', alignItems: 'center', gap: 4 * s },
   buyBalanceLabel: { fontSize: 13 * s, fontWeight: '600', color: P.mutedBrown },

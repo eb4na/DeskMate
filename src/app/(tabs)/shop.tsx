@@ -31,7 +31,7 @@ import { outfitsForCharacter } from '@/constants/outfit-data';
 import { pairForItem, isPairOwned, partnerItemId, ROOM_PAIRS } from '@/constants/room-data';
 import { SHOP_COMPANIONS, STARTER_COMPANION_IMAGES, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, BUN_SKINS, getCompanionSkins } from '@/lib/companion-utils';
 import { RECIPE_IDS, hasAllRecipeBadges } from '@/app/food-gallery';
-import { DAILY_EARN_CAP } from '@/constants/placeholder-data';
+import { DAILY_EARN_CAP, formatCoins } from '@/constants/placeholder-data';
 import {
   BakeryColors,
   BakeryRadii,
@@ -201,17 +201,27 @@ export default function ShopScreen() {
   const tImg = isTablet && { width: 110 * SHOP_TS, height: 110 * SHOP_TS };
   const tEmoji = isTablet && { fontSize: 80 * SHOP_TS, lineHeight: 92 * SHOP_TS };
   const tName = isTablet && { fontSize: 14 * SHOP_TS };
-  // Tablet: the Bakery Menu coin packs read tiny on a wide screen — scale the card,
-  // pack art, names, prices and coin amounts up so coin purchases are easy to tap.
-  const tMenuCard = isTablet && { paddingHorizontal: Spacing.four * SHOP_TS, paddingTop: 48 * SHOP_TS, paddingBottom: Spacing.three * SHOP_TS };
-  const tMenuTitle = isTablet && { fontSize: 28 * SHOP_TS };
-  const tSectionLabel = isTablet && { fontSize: 22 * SHOP_TS };
-  const tSectionSub = isTablet && { fontSize: 16 * SHOP_TS };
-  const tMenuRow = isTablet && { paddingVertical: Spacing.three * SHOP_TS, gap: Spacing.three * SHOP_TS };
-  const tMenuIcon = isTablet && { width: 100 * SHOP_TS, height: 100 * SHOP_TS };
-  const tMenuName = isTablet && { fontSize: 25 * SHOP_TS, lineHeight: 30 * SHOP_TS };
-  const tMenuPrice = isTablet && { fontSize: 25 * SHOP_TS };
-  const tMenuCoin = isTablet && { fontSize: 20 * SHOP_TS };
+  // Tablet: the Bakery Menu coin packs are sized to the phone base × SHOP_TS so they
+  // stay proportional to the rest of the shop (the 11" Pro is the design reference).
+  // They were previously over-inflated (icon 100, name/price 25) which read huge on
+  // the 13". Dial these to taste.
+  const tMenuCard = isTablet && { paddingHorizontal: Spacing.four * SHOP_TS, paddingTop: Spacing.four * SHOP_TS, paddingBottom: Spacing.three * SHOP_TS };
+  const tMenuTitle = isTablet && { fontSize: 20 * SHOP_TS };
+  const tSectionLabel = isTablet && { fontSize: 16 * SHOP_TS };
+  const tSectionSub = isTablet && { fontSize: 12 * SHOP_TS };
+  const tMenuRow = isTablet && { paddingVertical: Spacing.two * SHOP_TS, gap: Spacing.two * SHOP_TS };
+  const tMenuIcon = isTablet && { width: 60 * SHOP_TS, height: 60 * SHOP_TS };
+  const tMenuName = isTablet && { fontSize: 16 * SHOP_TS, lineHeight: 21 * SHOP_TS };
+  const tMenuPrice = isTablet && { fontSize: 16 * SHOP_TS };
+  const tMenuCoin = isTablet && { fontSize: 13 * SHOP_TS };
+  // Header (balance + daily-earn) and the Chef's Pick badge were left unscaled, so
+  // they read tiny on tablet next to the scaled body. Scale them by SHOP_TS too.
+  const tTitle = isTablet && { fontSize: 24 * SHOP_TS, lineHeight: 30 * SHOP_TS };
+  const tBalancePill = isTablet && { paddingHorizontal: 10 * SHOP_TS, paddingVertical: 4 * SHOP_TS, gap: 4 * SHOP_TS };
+  const tBalanceNum = isTablet && { fontSize: 16 * SHOP_TS, lineHeight: 22 * SHOP_TS };
+  const tCapLabel = isTablet && { fontSize: 11 * SHOP_TS, lineHeight: 16 * SHOP_TS };
+  const tChefBadge = isTablet && { paddingHorizontal: 7 * SHOP_TS, paddingVertical: 2 * SHOP_TS };
+  const tChefText = isTablet && { fontSize: 10 * SHOP_TS };
   // Buy/unlock confirm popup — bigger on the 13" only (BUY_TS is 1 elsewhere, so
   // these all collapse to `false` and the base styles apply unchanged on 11"/phone).
   const bs = (n: number) => n * BUY_TS;
@@ -517,7 +527,7 @@ export default function ShopScreen() {
       {/* ── Fixed header: balance + daily cap ── */}
       <ThemedView style={[styles.header, { paddingTop: (styles.header.paddingTop as number) + insets.top }]}>
         <ThemedView style={styles.headerInner}>
-          <ThemedText type="subtitle" style={styles.title}>{t('shop.title')}</ThemedText>
+          <ThemedText type="subtitle" style={[styles.title, tTitle]}>{t('shop.title')}</ThemedText>
           <View style={styles.headerRight}>
             {/* Old "★ Plus −25%" star pill hidden — the new Plus asset is the
                 chocolate box. Restore by switching `false` back to `!isPlus`. */}
@@ -531,20 +541,20 @@ export default function ShopScreen() {
                 </ThemedView>
               </Pressable>
             )}
-            <ThemedView style={styles.balancePill}>
-              <CoinIcon size={32} />
-              <ThemedText style={styles.balanceNum}>{coins}</ThemedText>
+            <ThemedView style={[styles.balancePill, tBalancePill]}>
+              <CoinIcon size={isTablet ? 32 * SHOP_TS : 32} />
+              <ThemedText style={[styles.balanceNum, tBalanceNum]}>{formatCoins(coins)}</ThemedText>
             </ThemedView>
           </View>
         </ThemedView>
 
         {/* Earn progress bar */}
         <ThemedView style={styles.capRow}>
-          <ThemedText style={styles.capLabel}>{t('shop.dailyEarn', { earned: earnedToday, cap: DAILY_EARN_CAP })}</ThemedText>
+          <ThemedText style={[styles.capLabel, tCapLabel]}>{t('shop.dailyEarn', { earned: earnedToday, cap: DAILY_EARN_CAP })}</ThemedText>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${Math.min(100, (earnedToday / DAILY_EARN_CAP) * 100)}%` }]} />
           </View>
-          <ThemedText style={styles.capLabel}>
+          <ThemedText style={[styles.capLabel, tCapLabel]}>
             {capRemaining > 0 ? t('shop.leftAmount', { count: capRemaining }) : t('shop.full')}
           </ThemedText>
         </ThemedView>
@@ -917,9 +927,9 @@ export default function ShopScreen() {
                       <ThemedText style={[styles.menuPrice, tMenuPrice]}>{packPrice(pack)}</ThemedText>
                     </View>
                     <View style={styles.menuSubLine}>
-                      <CoinAmount amount={pack.coins} size={isTablet ? 28 * SHOP_TS : 20} textStyle={[styles.menuCoinText, tMenuCoin]} />
+                      <CoinAmount amount={pack.coins} size={isTablet ? 18 * SHOP_TS : 20} textStyle={[styles.menuCoinText, tMenuCoin]} />
                       {pack.popular && (
-                        <View style={styles.chefBadge}><ThemedText style={styles.chefText}>{t('shop.chefsPick')}</ThemedText></View>
+                        <View style={[styles.chefBadge, tChefBadge]}><ThemedText style={[styles.chefText, tChefText]}>{t('shop.chefsPick')}</ThemedText></View>
                       )}
                     </View>
                   </View>
@@ -1042,7 +1052,7 @@ export default function ShopScreen() {
                   <ThemedText style={[styles.buyBalanceLabel, ltBalanceLabel]}>{t('editRoom.yourBalance')}</ThemedText>
                   <View style={styles.buyBalance}>
                     <CoinIcon size={buyIconSize} />
-                    <ThemedText style={[styles.buyBalanceNum, ltBalanceNum]}>{coins}</ThemedText>
+                    <ThemedText style={[styles.buyBalanceNum, ltBalanceNum]}>{formatCoins(coins)}</ThemedText>
                   </View>
                 </View>
 

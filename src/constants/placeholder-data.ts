@@ -17,6 +17,11 @@ export function autoBreakMinutes(focusMinutes: number): number {
 export const COINS_PER_MINUTE = 2;
 export const coinsForMinutes = (minutes: number) => Math.floor(minutes * COINS_PER_MINUTE);
 
+// Display a coin/number value with thousands separators: 1142490 → "1,142,490".
+// Always commas (en-US) regardless of device locale.
+export const formatCoins = (n: number | string): string =>
+  Math.round(Number(n) || 0).toLocaleString('en-US');
+
 // Max coins a user can earn from studying in a single day.
 export const DAILY_EARN_CAP = 500;
 

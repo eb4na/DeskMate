@@ -883,7 +883,11 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   dgRow: { flexDirection: 'row', gap: Spacing.two * s },
   dgCard: { flex: 1 },
   dgCardInner: {
-    aspectRatio: 1,
+    // Tablet is wide enough that a square fits the whole list, so keep it there.
+    // On phone the square is shorter than header + 3-item list + footer, so the
+    // centered list overflowed up over the title and down over the footer — let the
+    // phone card grow to its content instead (both cards stretch to equal height).
+    ...(s > 1 ? { aspectRatio: 1 } : { minHeight: 150 }),
     borderRadius: BakeryRadii.card * s,
     padding: Spacing.three * s,
     borderWidth: 1.5,
@@ -896,10 +900,10 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   dgItem: { gap: 4 * s },
   dgItemTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 * s },
   dgItemName: { flex: 1 },
-  dgItemReady: { color: '#5FA85F', fontWeight: '800' },
+  dgItemReady: { color: '#F2607E', fontWeight: '800' },
   dgTrack: { height: 8 * s, borderRadius: 5 * s, backgroundColor: '#F0E2D6', overflow: 'hidden' },
   dgFill: { height: '100%', borderRadius: 5 * s, backgroundColor: '#F4A6B6' },
-  dgFillDone: { backgroundColor: '#8BCF8B' },
+  dgFillDone: { backgroundColor: '#F2607E' },
   dgFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
   moodInsightCard: {
     borderRadius: BakeryRadii.card * s,

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { formatCoins } from '@/constants/placeholder-data';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -209,7 +210,7 @@ export default function CompanionChatScreen() {
           <ThemedText style={styles.headerTitle}>{t('chat.chatCompanion')}</ThemedText>
           <View style={styles.coinPill}>
             <CoinIcon size={18} />
-            <ThemedText style={styles.coinText}>{coins}</ThemedText>
+            <ThemedText style={styles.coinText}>{formatCoins(coins)}</ThemedText>
           </View>
         </View>
 

@@ -26,9 +26,10 @@ import { nextLoginReward, todayISO, useApp } from '@/context/app-context';
 import { HomeTutorial } from '@/components/home-tutorial';
 import { setTutorialTarget } from '@/lib/tutorial-targets';
 import i18n, { useTranslation } from '@/i18n';
-import { coinsForMinutes } from '@/constants/placeholder-data';
+import { coinsForMinutes, formatCoins } from '@/constants/placeholder-data';
 import { hanjiIsAnimated, resolveActiveCompanion } from '@/lib/companion-utils';
 import { HanjiFigure } from '@/components/hanji-figure';
+import { CompanionPet, PetCloudHost } from '@/components/companion-pet';
 import { useAuth } from '@/context/auth-context';
 import { listBlocked, listIncomingRequests } from '@/lib/friend-requests';
 import { ROOM_PAIRS } from '@/constants/room-data';
@@ -540,9 +541,12 @@ export default function HomeScreen() {
     shiftSessionStart,
     selectedFoodId,
     recordSession,
+    petCompanion,
     addSubjectTime,
     dmUnread,
   } = useApp();
+  // Current pet speech-bubble line — lifted here so it can be drawn in a high-zIndex
+  // layer (above the desk/mixer), not trapped inside the low-z character layer.
   // Any unread friend DM → a red dot on the Home friend button.
   const hasUnreadDM = Object.values(dmUnread ?? {}).some((n) => n > 0);
   const { user } = useAuth();
@@ -725,6 +729,8 @@ export default function HomeScreen() {
   const bgRoom = activeSession?.isMultiplayer && hostBgRoom ? hostBgRoom : myBgRoom;
   const deskRoom = ROOM_PAIRS.find((r) => r.id === equippedDeskRoomId) ?? ROOM_PAIRS[0];
   const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
+  // Worn skin of the active companion — drives per-skin pet lines (Bun uses bunSkinId).
+  const activeSkinId = activeCompanionId === 'starter:girl' ? (bunSkinId ?? 'classic') : (companionSkins?.[activeCompanionId ?? ''] ?? 'classic');
   const homeCompanionSource =
     didHomeImageFail && activeCompanion.type === 'slot'
       ? resolveActiveCompanion(`starter:${defaultCompanionId}`, defaultCompanionId, companionSlots, bunSkinId, companionSkins)
@@ -1004,7 +1010,7 @@ export default function HomeScreen() {
                     <View onLayout={onHudChipLayout} style={[styles.statusChip, styles.coinChip, hudChipW ? { width: hudChipW } : null, tChip]} ref={(n) => setTutorialTarget('coins', n)}>
                       <CoinIcon size={22} />
                       <ThemedText type="smallBold" style={[styles.statusChipText, styles.coinChipText]}>
-                        {coins}
+                        {formatCoins(coins)}
                       </ThemedText>
                       <View style={styles.coinAddBtn}>
                         <ThemedText style={styles.coinAddText}>+</ThemedText>
@@ -1115,6 +1121,7 @@ export default function HomeScreen() {
                 <Pressable
                   style={({ pressed }) => [styles.switchCharBtn, { top: ph.btnTops[0], width: ph.szLg, height: ph.szLg }, tBtn(210, 0, 80), pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/companion-gallery')}
+                  ref={(n) => setTutorialTarget('switchChar', n)}
                   accessibilityLabel={t('home.a11ySwitchCharacter')}>
                   <Image source={SWITCH_CHARACTER_BTN} style={[styles.switchCharImg, { width: ph.szLg, height: ph.szLg }, tImg(80)]} contentFit="contain" />
                 </Pressable>
@@ -1125,6 +1132,7 @@ export default function HomeScreen() {
                 <Pressable
                   style={({ pressed }) => [styles.foodMenuBtn, { top: ph.btnTops[1], width: ph.szLg, height: ph.szLg }, tBtn(292, 1, 80), pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/food-gallery')}
+                  ref={(n) => setTutorialTarget('food', n)}
                   accessibilityLabel={t('home.a11yFoodMenu')}>
                   <Image source={FOOD_MENU_BTN} style={[styles.foodMenuImg, { width: ph.szLg, height: ph.szLg }, tImg(80)]} contentFit="contain" />
                 </Pressable>
@@ -1135,6 +1143,7 @@ export default function HomeScreen() {
                 <Pressable
                   style={({ pressed }) => [styles.editRoomBtn, { top: ph.btnTops[2], width: ph.szMd, height: ph.szMd }, tBtn(376, 2, 72), pressed && styles.startButtonPressed]}
                   onPress={() => router.push('/edit-room')}
+                  ref={(n) => setTutorialTarget('editRoom', n)}
                   accessibilityLabel={t('home.a11yEditRoom')}>
                   <Image source={EDIT_ROOM_BTN} style={[styles.editRoomImg, { width: ph.szMd, height: ph.szMd }, tImg(72)]} contentFit="contain" />
                 </Pressable>
@@ -1169,19 +1178,28 @@ export default function HomeScreen() {
                 </Pressable>
               )}
 
-              <View style={[styles.homeCharacterLayer, tCharLayer]} pointerEvents="none">
-                <Animated.View
-                  style={{ transform: [{ translateY: charTranslateY }, { scaleX: charScaleX }, { scaleY: charScaleY }] }}>
-                  {hanjiIsAnimated(activeCompanionId, companionSkins?.[activeCompanionId ?? '']) ? (
-                    <HanjiFigure style={[styles.homeCharacterImage, tCharImg]} />
-                  ) : (
-                    <RNImage
-                      source={homeCompanionSource}
-                      style={[styles.homeCharacterImage, tCharImg, (companionScale !== 1 || companionTranslateY !== 0) && { transform: [{ translateY: companionTranslateY }, { scale: companionScale }], transformOrigin: 'center bottom' }]}
-                      resizeMode="contain"
-                    />
-                  )}
-                </Animated.View>
+              <View style={[styles.homeCharacterLayer, tCharLayer]} pointerEvents="box-none">
+                <CompanionPet onPet={petCompanion} disabled={!!dragSession} scale={isTablet ? htScaled.charScale : 1} companionName={activeCompanion.name} skinId={activeSkinId}>
+                  <Animated.View
+                    style={{ transform: [{ translateY: charTranslateY }, { scaleX: charScaleX }, { scaleY: charScaleY }] }}>
+                    {hanjiIsAnimated(activeCompanionId, companionSkins?.[activeCompanionId ?? '']) ? (
+                      <HanjiFigure style={[styles.homeCharacterImage, tCharImg]} />
+                    ) : (
+                      <RNImage
+                        source={homeCompanionSource}
+                        style={[styles.homeCharacterImage, tCharImg, (companionScale !== 1 || companionTranslateY !== 0) && { transform: [{ translateY: companionTranslateY }, { scale: companionScale }], transformOrigin: 'center bottom' }]}
+                        resizeMode="contain"
+                      />
+                    )}
+                  </Animated.View>
+                </CompanionPet>
+              </View>
+
+              {/* Pet cloud bubble — own high-zIndex layer (so it floats over the desk).
+                  PetCloudHost manages its own state from the tap bus, so a tap doesn't
+                  re-render this big home component. */}
+              <View style={[styles.homeCharacterLayer, tCharLayer, styles.petBubbleLayer]} pointerEvents="none">
+                <PetCloudHost isTablet={isTablet} scale={isTablet ? htScaled.charScale : 1} />
               </View>
 
               {/* Desk surface — top edge fixed at 53%; bleeds past the bottom safe-area
@@ -1714,6 +1732,8 @@ const styles = StyleSheet.create({
     width: 300,
     height: 300,
   },
+  // Pet bubble sits above everything (desk/mixer/buttons) so it's never occluded.
+  petBubbleLayer: { zIndex: 80 },
   homeBreadButtonWrap: {
     alignSelf: 'center',
     width: '100%',

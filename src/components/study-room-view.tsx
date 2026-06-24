@@ -7,6 +7,7 @@ import { SoundPressable } from '@/components/sound-pressable';
 import { cancelComeBackNudge, sendComeBackNudge } from '@/lib/notifications';
 
 import { CoinIcon } from '@/components/coin-icon';
+import { CompanionLevel } from '@/components/companion-level';
 import { RecipePop } from '@/components/recipe-pop';
 import { StudyBook } from '@/components/study-book';
 import { StudyOven, EYELET_FRAC } from '@/components/study-oven';
@@ -20,7 +21,7 @@ import { SubjectPickerModal } from '@/components/subject-picker-modal';
 import { FOOD_ITEMS } from '@/app/food-gallery';
 import { ThemedText } from '@/components/themed-text';
 import { useApp } from '@/context/app-context';
-import { autoBreakMinutes, coinsForMinutes, SESSION_LENGTHS } from '@/constants/placeholder-data';
+import { autoBreakMinutes, coinsForMinutes, SESSION_LENGTHS, formatCoins } from '@/constants/placeholder-data';
 import { SoundPickerModal } from '@/components/sound-picker-modal';
 import { DevKnobs } from '@/components/dev-knobs';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
@@ -164,6 +165,7 @@ export function StudyRoomView({
     recordSession,
     recordQuestSession,
     addSubjectTime,
+    companionMinutes,
     selectedFoodId,
     equippedShopItems,
     ownedShopItems,
@@ -935,7 +937,12 @@ export function StudyRoomView({
             <Text style={styles.finishTitle}>{t('studyRoom.sessionComplete')}</Text>
             <View style={styles.coinRow}>
               <CoinIcon size={24} />
-              <Text style={styles.coinText}>+{coinsEarned}</Text>
+              <Text style={styles.coinText}>+{formatCoins(coinsEarned)}</Text>
+            </View>
+            {/* Companion bond — level earned by studying with this companion. */}
+            <View style={styles.bondBlock}>
+              <Text style={styles.bondLabel}>{t('sessionComplete.bondLabel')}</Text>
+              <CompanionLevel minutes={companionMinutes?.[activeCompanionId] ?? 0} scale={1.1} />
             </View>
             <SoundPressable onPress={() => setDurationPickerOpen(true)} style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
               <Text style={styles.finishBtnText}>{t('studyRoom.studyAgain')}</Text>
@@ -1136,6 +1143,8 @@ const styles = StyleSheet.create({
   finishTitle: { fontSize: 18, fontWeight: '900', color: BakeryColors.cocoaDark, textAlign: 'center' },
   coinRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: Spacing.one },
   coinText: { fontSize: 22, fontWeight: '900', color: BakeryColors.honey },
+  bondBlock: { width: '100%', alignItems: 'center', gap: 5, marginBottom: Spacing.one },
+  bondLabel: { fontSize: 13, fontWeight: '800', color: BakeryColors.cocoaDark, textAlign: 'center' },
   finishBtn: { paddingVertical: 13, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: BakeryColors.jam },
   finishBtnText: { fontSize: 15, fontWeight: '900', color: '#fff' },
   finishBtnGhost: { paddingVertical: 11, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: BakeryColors.cream, borderWidth: 1.5, borderColor: BakeryColors.shortbread },

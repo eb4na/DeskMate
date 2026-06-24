@@ -151,3 +151,10 @@ export function playPieceDrop() { play(getPieceDropPool); }
 
 /** Soft bubble "pop" — used when a fellow studier leaves the room mid-session. */
 export function playPop() { play(getPopPool); }
+
+/** Pre-create the pop pool (load the wav + audio players) up front, so the first
+ *  use (e.g. tapping the home character) doesn't pay that cost on the tap frame. */
+export function prewarmPop() {
+  if (!enabled || !ExpoAudio) return;
+  try { ensureAudioMode(); getPopPool(); } catch {}
+}

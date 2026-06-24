@@ -10,7 +10,6 @@ import { DeleteAccountModal } from '@/components/delete-account-modal';
 import { InstagramFollowRow } from '@/components/instagram-follow-row';
 import { PlusIcon } from '@/components/plus-icon';
 import { LockBadge } from '@/components/lock-badge';
-import { MeasuringCupIcon } from '@/components/settings-icons';
 
 // Cozy hand-drawn settings icon set (assets/images/settings/*.png).
 const SETTINGS_ICONS = {
@@ -126,7 +125,6 @@ export default function SettingsScreen() {
     companionSlots,
     bunSkinId,
     companionSkins,
-    setIsPlus,
     resetGameData,
     replayTutorial,
   } = useApp();
@@ -331,25 +329,7 @@ export default function SettingsScreen() {
             {__DEV__ && (
             <>
             <View style={styles.divider} />
-            <View style={styles.row}>
-              <View style={styles.rowIconImage}>
-                <MeasuringCupIcon size={32 * scale} />
-              </View>
-              <View style={styles.rowBody}>
-                <ThemedText type="smallBold">{t('settings.plusTestToggle')}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {t('settings.plusTestNote')}
-                </ThemedText>
-              </View>
-              <Switch
-                value={isPlus}
-                onValueChange={setIsPlus}
-                trackColor={{ true: BakeryColors.jam, false: BakeryColors.shortbread }}
-                thumbColor="#FFF"
-              />
-            </View>
-            <View style={styles.divider} />
-            {/* TEST/PLACEHOLDER — wipe progress, grant 1,000,000 coins. Remove before launch. */}
+            {/* TEST/PLACEHOLDER — wipe items/progress (keep the account), grant 1,000,000 coins. Remove before launch. */}
             <Pressable
               onPress={() => setResetOpen(true)}
               style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
@@ -357,8 +337,8 @@ export default function SettingsScreen() {
                 <SettingsIcon name="reset" />
               </View>
               <View style={styles.rowBody}>
-                <ThemedText type="smallBold" style={styles.dangerText}>Reset to new account</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">Test button — restarts onboarding (legal, birthday, character), grants 1M coins</ThemedText>
+                <ThemedText type="smallBold" style={styles.dangerText}>Reset items &amp; progress</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">Test button — keeps your account, removes everything owned (back to just Bun), grants 1M coins</ThemedText>
               </View>
             </Pressable>
             </>
@@ -574,20 +554,20 @@ export default function SettingsScreen() {
       <Modal visible={resetOpen} transparent animationType="fade" onRequestClose={() => setResetOpen(false)}>
         <View style={styles.resetBackdrop}>
           <View style={styles.resetCard}>
-            <ThemedText style={styles.resetTitle}>Reset to a new account?</ThemedText>
+            <ThemedText style={styles.resetTitle}>Reset items &amp; progress?</ThemedText>
             <ThemedText style={styles.resetBody}>
-              TEST: wipes ALL progress and drops you back to the new-account flow — Privacy Policy + Terms, birthday, then character selection. Keeps your friend code + language, and grants 1,000,000 coins once you finish.
+              TEST: keeps your account (you stay signed in — no onboarding restart) but removes everything you own — companions, backgrounds, desks, outfits, skins, recipes/badges — leaving just Bun. Wipes study progress too, and grants 1,000,000 coins.
             </ThemedText>
             <Pressable
               style={({ pressed }) => [styles.resetBtn, pressed && styles.pressed]}
               onPress={() => {
-                // Reset state, then close Settings (and any modals under it) so the
-                // root onboarding gates aren't hidden behind a native modal.
+                // Reset progress/purchases (account stays intact), then close
+                // Settings and drop back to Home.
                 resetGameData();
                 setResetOpen(false);
                 if (router.canDismiss()) router.dismissAll();
               }}>
-              <ThemedText style={styles.resetBtnText}>Reset to new account</ThemedText>
+              <ThemedText style={styles.resetBtnText}>Reset items &amp; progress</ThemedText>
             </Pressable>
             <Pressable style={styles.resetCancel} onPress={() => setResetOpen(false)}>
               <ThemedText style={styles.resetCancelText}>Cancel</ThemedText>

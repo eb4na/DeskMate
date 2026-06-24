@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { formatCoins } from '@/constants/placeholder-data';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ImageBackground, NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
@@ -182,7 +183,7 @@ export default function CustomTimerScreen() {
           </View>
           <Pressable style={({ pressed }) => [styles.coinPill, pressed && styles.pressed]} onPress={() => router.push('/coin-shop')}>
             <CoinIcon size={18} />
-            <Text style={styles.coinText}>{coins}</Text>
+            <Text style={styles.coinText}>{formatCoins(coins)}</Text>
           </Pressable>
         </View>
 

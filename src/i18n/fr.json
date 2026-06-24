@@ -1,4 +1,39 @@
 {
+  "pet": {
+    "bun": {
+      "classic": ["Bun a rendu ta journée toute douce. Maintenant, étudie juste un peu.", "D'abord une page, et puis Bun te fera le plus tendre des petits encouragements.", "Tu n'as pas à être parfaite. Reviens simplement et essaie avec Bun."],
+      "angel": ["Dépose tes soucis ici. Recommence tout doucement.", "Bun croit qu'un petit progrès brille quand même.", "Prends ton temps. Bun gardera la pièce paisible."],
+      "strawberry": ["Une petite érudite comme il faut retourne à ses études.", "Bun sollicite une séance de concentration de plus, très poliment.", "Le royaume des baies croit en toi — va le rendre fier."],
+      "snowrabbit": ["Reviens avant que ta concentration ne fonde en neige.", "Même les tout petits pas laissent des traces.", "Bun t'a gardé une place au chaud près de la fenêtre d'hiver."],
+      "dreams": ["Bun a sommeil aussi… mais on peut finir une toute petite tâche.", "Étudie tout doucement. Les rêves peuvent attendre encore un peu.", "Reviens sous la petite couverture fraise de la responsabilité."]
+    },
+    "cocoa": {
+      "classic": ["Concentre-toi d'abord. Tu pourras frimer après.", "Du travail régulier. Pas de drame. C'est la recette.", "Tu n'as pas besoin de motivation. Tu as besoin de cinq minutes nettes."],
+      "relax": ["Lentement, c'est bien. S'arrêter, c'est le seul problème.", "Laisse le minuteur infuser. Toi, continue, c'est tout.", "Pas de précipitation. Reviens juste avant que la concentration refroidisse."],
+      "demon": ["Déjà en train de filer ? Audacieuse. J'aime ce culot — maintenant sers-t'en sur tes notes.", "Reviens. Tes notes ne vont pas te craindre toutes seules.", "Tu pourras abandonner après avoir gagné. Pas avant."]
+    },
+    "bunny": {
+      "classic": ["Bunny dit de revenir, parce que Bunny est mignonne et a raison.", "Ta séance d'étude a besoin de la supervision de Bunny, tout de suite.", "Bunny a déjà fait son travail en étant adorable. À toi maintenant."],
+      "jiraikei": ["Ne laisse pas Bunny seule avec ton travail inachevé… tu reviens vite, dis ?", "Reviens, ou Bunny fixera le minuteur d'un air tout triste.", "Tu as promis à Bunny d'étudier — et Bunny a attendu si sagement."],
+      "palace": ["Reviens, je t'en prie. Ta concentration mérite une fin gracieuse.", "Un effort discret reste noble.", "Bunny attendra, mais pas éternellement."]
+    },
+    "miel": {
+      "classic": ["Miel a gardé la pièce au chaud pour toi. Reviens vite.", "Encore juste une petite cuillerée d'étude.", "Le petit effort d'aujourd'hui deviendra doux plus tard."],
+      "champion": ["Tiens bon. Les gagnants font aussi la partie ennuyeuse.", "Encore un round. Tu es plus près que tu ne le crois.", "Miel a sommeil, mais Miel veut quand même la victoire."],
+      "zzz": ["Mmm… reviens… les notes commencent à se sentir seules.", "On étudie maintenant… le petit nuage de sieste, plus tard…", "Miel tient à peine les yeux ouverts, mais même Miel est encore là."]
+    },
+    "tira": {
+      "classic": ["Retourne à ton travail. De façon dramatique, s'il le faut.", "Pas besoin de te presser. Ne disparais simplement pas.", "Une fin tranquille reste une fin."],
+      "chocomint": ["Reviens. C'est ton petit rappel tout doux, avec une pointe de piquant.", "On peut être mignonne et responsable en même temps — je l'ai déjà vu.", "Cinq minutes. Peu d'effort, plein de saveur."],
+      "sleepover": ["Le grignotage est meilleur après la séance — gagnons-le d'abord.", "C'est une soirée d'étude — le moment cocooning compte plus une fois qu'on a fini quelque chose.", "Reviens. Le moment cocooning est meilleur quand tu as fini quelque chose."],
+      "afternoontrain": ["Tu flâneras plus tard. Tes devoirs sont toujours là, à t'attendre.", "Prends la route panoramique pour revenir à la concentration.", "La liberté est meilleure une fois la tâche terminée."]
+    },
+    "hanji": {
+      "classic": ["Reviens tout doucement. La page t'attend.", "Une petite concentration reste de la concentration.", "Pas de bruit. Juste une ligne de plus."],
+      "ivoryrose": ["Reviens, s'il te plaît. Ton effort est sur le point d'éclore.", "Un peu de courage te va bien aujourd'hui.", "Termine en douceur. Que la journée soit douce avec toi."]
+    },
+    "generic": ["Héhé~ ça chatouille !", "On étudie ensemble bientôt ?", "Je suis si contente que tu sois là."]
+  },
   "report": {
     "report": "Signaler",
     "block": "Bloquer",
@@ -19,6 +54,12 @@
     "failedMsg": "Vérifie ta connexion et réessaie."
   },
   "tutorial": {
+    "character_title": "Changer de personnage",
+    "character_body": "Touche ce bouton pour changer de compagnon et lui mettre de nouvelles tenues.",
+    "recipe_title": "Recettes",
+    "recipe_body": "Ouvre ton livre de recettes ici pour voir les gourmandises que tu as préparées.",
+    "room_title": "Ta chambre",
+    "room_body": "Touche ici pour changer l'arrière-plan et décorer ton bureau.",
     "start_title": "Sessions d'étude",
     "start_body": "Lance un minuteur pour gagner des pièces.",
     "streak_title": "Série quotidienne",
@@ -270,7 +311,7 @@
     "awayTitle": "Reviens étudier !",
     "awayBody": "Ta session d'étude s'arrêtera si tu ne reviens pas dans une minute.",
     "awayBody_bun": "Bun t'attendait… reviens avant que Bun ne s'inquiète.",
-    "awayBody_companion_bunny": "Reviens tout de suiteuh ou bunny va te taper.",
+    "awayBody_companion_bunny": "Reviens vite, ou Bunny va bouder !",
     "awayBody_companion_cocoa": "Reviens. On n'a pas fini, et ta concentration refroidit.",
     "awayBody_hanji": "J'ai gardé ta place en silence… reviens avant que le silence ne devienne trop vide.",
     "awayBody_companion_tira": "Tu as quitté l'écran d'étude ? Moi j'ai quitté la fac, pas cette session. Reviens.",
@@ -318,6 +359,7 @@
     "savedPresetsIncluded": "Les préréglages de pause enregistrés sont inclus ci-dessus.",
     "customBreak": "Pause personnalisée →",
     "backToHome": "Retour à l'accueil",
+    "bondLabel": "Lien avec ton compagnon",
     "finishedTitle": "TU AS TERMINÉ TA SESSION !",
     "thankYou": "Merci d'avoir étudié !",
     "sessionNumber": "Numéro de session",
@@ -963,6 +1005,7 @@
     "companionBakery": "Pâtisserie des compagnons",
     "chooseToday": "Choisis qui étudie avec toi aujourd'hui",
     "myCompanions": "Mes compagnons",
+    "level": "Niv. {{level}}",
     "defaultTagline": "Ton compagnon d'étude",
     "active": "Actif",
     "setActive": "Activer",

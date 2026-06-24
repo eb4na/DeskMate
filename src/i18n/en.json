@@ -1,4 +1,39 @@
 {
+  "pet": {
+    "bun": {
+      "classic": ["Bun made today soft for you. Now study just a little.", "One page first, then Bun will give you the warmest little cheer.", "You don't have to be perfect. Just come back and try with Bun."],
+      "angel": ["Rest your worries here. Begin again gently.", "Bun believes small progress still glows.", "Take your time. Bun will keep the room calm."],
+      "strawberry": ["A proper little scholar must return to their studies.", "Bun requests one more focus session, very politely.", "The berry kingdom believes in you — go make it proud."],
+      "snowrabbit": ["Come back before your focus melts into snow.", "Even tiny steps leave tracks.", "Bun saved a warm spot for you beside the winter window."],
+      "dreams": ["Bun is sleepy too… but we can finish one tiny task.", "Study softly. The dreams can wait a little longer.", "Come back under the strawberry blanket of responsibility."]
+    },
+    "cocoa": {
+      "classic": ["Focus first. You can look cool after.", "Steady work. No drama. That's the recipe.", "You don't need motivation. You need five clean minutes."],
+      "relax": ["Slow is fine. Stopped is the only problem.", "Let the timer steep. You just keep going.", "No rush. Just return before the focus gets cold."],
+      "demon": ["Sneaking off already? Bold. I like the nerve — now bring it to your notes.", "Come back. Your notes are not going to fear you by themselves.", "You can quit after you win. Not before."]
+    },
+    "bunny": {
+      "classic": ["Bunny says come back because Bunny is cute and correct.", "Your study session needs Bunny's supervision immediately.", "Bunny already did Bunny's job by being adorable. Now you do yours."],
+      "jiraikei": ["Don't leave Bunny alone with your unfinished work… come back soon?", "Come back or Bunny will stare sadly at the timer.", "You promised Bunny you’d study — and Bunny’s been waiting so patiently."],
+      "palace": ["Please return. Your focus deserves a graceful finish.", "A quiet effort is still noble.", "Bunny will wait, but not forever."]
+    },
+    "miel": {
+      "classic": ["Miel kept the room warm for you. Come back soon.", "Just one more spoonful of studying.", "Tiny work today becomes sweet later."],
+      "champion": ["Stay with it. Winners do the boring part too.", "One more round. You're closer than you think.", "Miel is sleepy, but Miel still wants the win."],
+      "zzz": ["Mmm… come back… the notes are getting lonely.", "Study now… nap cloud later…", "Miel can barely stay awake, but even Miel is still here."]
+    },
+    "tira": {
+      "classic": ["Walk back to your work. Dramatically, if needed.", "No need to rush. Just don't disappear.", "A calm finish is still a finish."],
+      "chocomint": ["Come back. This is your gentle reminder with a tiny bite.", "You can be cute and responsible at the same time — I’ve seen it.", "Five minutes. Low effort, high flavor."],
+      "sleepover": ["Snacks hit better after the session — let’s earn them first.", "It’s a study night — the cozy part counts more once we finish something.", "Come back. The cozy part works better when you finish something."],
+      "afternoontrain": ["You can wander later. Your homework is still standing here.", "Take the scenic route back to focus.", "Freedom feels better after the task is done."]
+    },
+    "hanji": {
+      "classic": ["Return quietly. The page is waiting.", "Small focus is still focus.", "No noise. Just one more line."],
+      "ivoryrose": ["Please come back. Your effort is almost blooming.", "A little courage suits you today.", "Finish softly. Let the day be kind to you."]
+    },
+    "generic": ["Hehe~ that tickles!", "Let's study together soon?", "So glad you're here."]
+  },
   "report": {
     "report": "Report",
     "block": "Block",
@@ -19,6 +54,12 @@
     "failedMsg": "Please check your connection and try again."
   },
   "tutorial": {
+    "character_title": "Switch character",
+    "character_body": "Tap this button to change your study buddy and dress them in new outfits.",
+    "recipe_title": "Recipes",
+    "recipe_body": "Open your recipe book here to see the treats you've baked.",
+    "room_title": "Your room",
+    "room_body": "Tap here to change your background and decorate your desk.",
     "start_title": "Study sessions",
     "start_body": "Start a focus timer to earn coins.",
     "streak_title": "Daily streak",
@@ -270,7 +311,7 @@
     "awayTitle": "Come back to studying!",
     "awayBody": "Your study session will stop if you don't return within a minute.",
     "awayBody_bun": "Bun was waiting for you… come back before Bun gets all worried.",
-    "awayBody_companion_bunny": "Come back right neow or bunny gonna kick you.",
+    "awayBody_companion_bunny": "Come back right neow, or Bunny will pout!",
     "awayBody_companion_cocoa": "Come back. We are not done yet, and your focus is getting cold.",
     "awayBody_hanji": "I saved your spot quietly… please come back before the silence feels too empty.",
     "awayBody_companion_tira": "You left the study screen? I left college, not this session. Come back.",
@@ -318,6 +359,7 @@
     "savedPresetsIncluded": "Saved break presets are included above.",
     "customBreak": "Custom break →",
     "backToHome": "Back to home",
+    "bondLabel": "Companion bond",
     "finishedTitle": "YOU FINISHED YOUR SESSION!",
     "thankYou": "Thank you for studying!",
     "sessionNumber": "Session Number",
@@ -963,6 +1005,7 @@
     "companionBakery": "Companion Bakery",
     "chooseToday": "Choose who studies with you today",
     "myCompanions": "My Companions",
+    "level": "Lv {{level}}",
     "defaultTagline": "Your study buddy",
     "active": "Active",
     "setActive": "Set Active",

@@ -228,6 +228,10 @@ function RootNavigator() {
     if (!initialized || !loaded || !authed || plusReconciled.current) return;
     plusReconciled.current = true;
     (async () => {
+      // In dev, Plus is controlled locally (the test "reset to new account" makes a
+      // free account, mock-purchase grants it) — don't auto-sync from the store, or a
+      // sandbox entitlement would re-grant Plus right after a reset.
+      if (__DEV__) return;
       await configurePurchases(session?.user?.id);
       const until = await currentPlusExpiry();
       if (until === undefined) return; // IAP unavailable — leave local state as-is
@@ -253,7 +257,7 @@ function RootNavigator() {
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
 
       <Stack.Protected guard={!!session || isGuest}>
-        <Stack.Screen name="language-picker" options={{ headerShown: false, gestureEnabled: false, animation: 'none' }} />
+        <Stack.Screen name="language-picker" options={{ headerShown: false, gestureEnabled: false, animation: 'none', presentation: 'transparentModal', contentStyle: { backgroundColor: 'transparent' } }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         {/* Session flow */}
         <Stack.Screen name="session-picker" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />

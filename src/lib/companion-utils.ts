@@ -118,7 +118,7 @@ export const COMPANION_SKINS: Record<string, BunSkin[]> = {
   'shop:companion_honey': [
     { id: 'classic', name: 'Honey Bear', emoji: '', image: require('@/assets/images/honey/honey.png'), shopItemId: null, lore: "Something warm was already baking. The kind of welcome that doesn't wait to be asked." },
     { id: 'champion', name: 'Champion', emoji: '', image: require('@/assets/images/honey/honey-champion.png'), shopItemId: 'outfit_honey_champion', lore: "Focused. Decided. Already there before the bell. The kind of quiet that wins." },
-    { id: 'zzz', name: 'ZZZ', emoji: '', image: require('@/assets/images/honey/honey-zzz.png'), shopItemId: 'outfit_honey_zzz', lore: "Soft grids. Gentle timers. A note left somewhere warm. Even in sleep, something here cares." },
+    { id: 'zzz', name: 'ZZZ', emoji: '', image: require('@/assets/images/honey/honey-zzz.png'), shopItemId: 'outfit_honey_zzz', roomId: 'miels-room', lore: "Soft grids. Gentle timers. A note left somewhere warm. Even in sleep, something here cares." },
   ],
   'shop:companion_bunny': [
     { id: 'classic', name: 'Cutest Thing Ever', emoji: '', image: require('@/assets/images/bunny/bunny.png'), shopItemId: null, lore: "Don't be fooled. It's adorable and it knows exactly what it's doing." },

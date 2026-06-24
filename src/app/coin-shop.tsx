@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { showPopup } from '@/lib/popup';
@@ -15,8 +15,9 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
-import { DAILY_EARN_CAP } from '@/constants/placeholder-data';
-import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
+import { DAILY_EARN_CAP, formatCoins } from '@/constants/placeholder-data';
+import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
+import { useTabletScale } from '@/hooks/use-tablet-scale';
 
 type CoinPack = { id: string; nameKey: string; coins: number; price: string; popular?: boolean };
 
@@ -39,6 +40,10 @@ const PACK_IMAGES: Record<string, number> = {
 
 export default function CoinShopScreen() {
   const { t } = useTranslation();
+  // Tablet: scale every size by one shared factor so the whole screen grows together
+  // (it was fixed-size and far too small on iPad).
+  const { scale, contentWidth } = useTabletScale();
+  const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const { coins, earnedToday, addPurchasedCoins, isPlus, addStreakFreeze, streakFreezes } = useApp();
   const capRemaining = Math.max(0, DAILY_EARN_CAP - earnedToday);
 
@@ -116,8 +121,8 @@ export default function CoinShopScreen() {
           <ThemedView type="backgroundElement" style={styles.balanceCard}>
             <ThemedText type="small" themeColor="textSecondary">{t('coinShop.yourBalance')}</ThemedText>
             <View style={styles.balanceRow}>
-              <CoinIcon size={40} />
-              <ThemedText style={styles.balanceAmount}>{coins}</ThemedText>
+              <CoinIcon size={40 * scale} />
+              <ThemedText style={styles.balanceAmount}>{formatCoins(coins)}</ThemedText>
             </View>
           </ThemedView>
 
@@ -127,7 +132,7 @@ export default function CoinShopScreen() {
               <ThemedText type="small" themeColor="textSecondary">{t('coinShop.dailyFreeEarn')}</ThemedText>
               <View style={styles.capCoins}>
                 <ThemedText type="smallBold">{earnedToday}/{DAILY_EARN_CAP}</ThemedText>
-                <CoinIcon size={28} />
+                <CoinIcon size={28 * scale} />
               </View>
             </ThemedView>
             <ThemedView style={styles.progressBar}>
@@ -165,7 +170,7 @@ export default function CoinShopScreen() {
                       <ThemedText style={styles.menuPrice}>{packPrice(pack)}</ThemedText>
                     </View>
                     <View style={styles.menuSubLine}>
-                      <CoinAmount amount={pack.coins} size={18} textStyle={styles.menuCoinText} />
+                      <CoinAmount amount={pack.coins} size={18 * scale} textStyle={styles.menuCoinText} />
                       {pack.popular && (
                         <View style={styles.chefBadge}>
                           <ThemedText style={styles.chefText}>{t('shop.chefsPick')}</ThemedText>
@@ -202,7 +207,7 @@ export default function CoinShopScreen() {
           {/* Plus discount note */}
           {isPlus ? (
             <ThemedView type="backgroundElement" style={[styles.plusBanner, styles.plusBannerActive]}>
-              <BakeryStarEmoji size={28} />
+              <BakeryStarEmoji size={28 * scale} />
               <ThemedView type="transparent" style={styles.plusBannerText}>
                 <ThemedText type="smallBold">{t('coinShop.discountActive')}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">{t('coinShop.appliedAllItems')}</ThemedText>
@@ -213,14 +218,14 @@ export default function CoinShopScreen() {
               style={({ pressed }) => [pressed && styles.pressed]}
               onPress={() => router.push('/plus-upgrade')}>
               <ThemedView type="backgroundElement" style={styles.plusBanner}>
-                <BakeryStarEmoji size={28} />
+                <BakeryStarEmoji size={28 * scale} />
                 <ThemedView type="transparent" style={styles.plusBannerText}>
                   <ThemedText type="smallBold">{t('coinShop.plusSave20')}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">{t('coinShop.tapToUpgrade')}</ThemedText>
                 </ThemedView>
                 <ThemedView style={styles.plusBadge}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <LockBadge size={16} />
+                    <LockBadge size={16 * scale} />
                     <ThemedText style={styles.plusBadgeText}>Plus</ThemedText>
                   </View>
                 </ThemedView>
@@ -241,7 +246,7 @@ export default function CoinShopScreen() {
             ].map((row) => (
               <ThemedView key={row.labelKey} type="transparent" style={styles.tipRow}>
                 <ThemedText type="small" themeColor="textSecondary">{t(row.labelKey)}</ThemedText>
-                <CoinAmount amount={row.coins} prefix="+" size={26} textStyle={styles.tipCoins} />
+                <CoinAmount amount={row.coins} prefix="+" size={26 * scale} textStyle={styles.tipCoins} />
               </ThemedView>
             ))}
           </ThemedView>
@@ -252,122 +257,122 @@ export default function CoinShopScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (s: number, cw: number) => StyleSheet.create({
   container: { flex: 1 },
   safeArea: {
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-    paddingBottom: Spacing.six,
-    maxWidth: MaxContentWidth,
+    paddingHorizontal: Spacing.four * s,
+    paddingTop: Spacing.three * s,
+    paddingBottom: Spacing.six * s,
+    maxWidth: cw,
     width: '100%',
     alignSelf: 'center',
-    gap: Spacing.three,
+    gap: Spacing.three * s,
   },
   balanceCard: {
     borderRadius: BakeryRadii.card,
-    padding: Spacing.four,
+    padding: Spacing.four * s,
     alignItems: 'center',
-    gap: Spacing.one,
+    gap: Spacing.one * s,
     backgroundColor: BakeryColors.glass,
     ...BakeryShadow,
   },
-  balanceRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  balanceAmount: { fontSize: 32, lineHeight: 40, fontWeight: '800', color: BakeryColors.honey },
+  balanceRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two * s },
+  balanceAmount: { fontSize: 32 * s, lineHeight: 40 * s, fontWeight: '800', color: BakeryColors.honey },
   capCard: {
     borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
-    gap: Spacing.one,
+    padding: Spacing.three * s,
+    gap: Spacing.one * s,
     backgroundColor: BakeryColors.glass,
     ...BakeryShadow,
   },
   capRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  capCoins: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  capCoins: { flexDirection: 'row', alignItems: 'center', gap: 4 * s },
   progressBar: {
-    height: 6,
-    borderRadius: 3,
+    height: 6 * s,
+    borderRadius: 3 * s,
     backgroundColor: 'rgba(0,0,0,0.08)',
     overflow: 'hidden',
-    marginVertical: 4,
+    marginVertical: 4 * s,
   },
-  progressFill: { height: '100%', borderRadius: 3, backgroundColor: BakeryColors.honey },
-  capNote: { fontSize: 12 },
+  progressFill: { height: '100%', borderRadius: 3 * s, backgroundColor: BakeryColors.honey },
+  capNote: { fontSize: 12 * s },
   // ─── Bakery menu of coin packs ───────────────────────────────────────────
   menuCard: {
     borderRadius: BakeryRadii.card,
     backgroundColor: BakeryColors.frosting,
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three * s,
+    paddingVertical: Spacing.two * s,
     ...BakeryShadow,
   },
   menuHeader: {
     alignItems: 'center',
-    gap: 2,
-    paddingBottom: Spacing.two,
-    marginBottom: Spacing.one,
+    gap: 2 * s,
+    paddingBottom: Spacing.two * s,
+    marginBottom: Spacing.one * s,
     borderBottomWidth: 1.5,
     borderBottomColor: BakeryColors.shortbread,
     borderStyle: 'dashed',
   },
-  menuTitle: { fontSize: 18, fontWeight: '800', color: BakeryColors.cocoaDark, letterSpacing: 0.5 },
-  menuSubtitle: { fontSize: 12, color: BakeryColors.mocha },
+  menuTitle: { fontSize: 18 * s, fontWeight: '800', color: BakeryColors.cocoaDark, letterSpacing: 0.5 },
+  menuSubtitle: { fontSize: 12 * s, color: BakeryColors.mocha },
   // In-card section heading ("Coins" / "Items") + its little subtitle.
-  sectionLabel: { fontSize: 14, fontWeight: '800', color: BakeryColors.cocoaDark, letterSpacing: 0.3, marginTop: Spacing.one },
-  sectionSubtitle: { fontSize: 11, color: BakeryColors.mocha, marginBottom: 2 },
+  sectionLabel: { fontSize: 14 * s, fontWeight: '800', color: BakeryColors.cocoaDark, letterSpacing: 0.3, marginTop: Spacing.one * s },
+  sectionSubtitle: { fontSize: 11 * s, color: BakeryColors.mocha, marginBottom: 2 * s },
   // Dashed rule separating the Coins and Items sections.
-  sectionRule: { borderBottomWidth: 1.5, borderBottomColor: BakeryColors.shortbread, borderStyle: 'dashed', marginVertical: Spacing.two },
-  menuRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.two },
-  menuIcon: { width: 54, height: 54 },
-  menuBody: { flex: 1, gap: 3 },
+  sectionRule: { borderBottomWidth: 1.5, borderBottomColor: BakeryColors.shortbread, borderStyle: 'dashed', marginVertical: Spacing.two * s },
+  menuRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two * s, paddingVertical: Spacing.two * s },
+  menuIcon: { width: 54 * s, height: 54 * s },
+  menuBody: { flex: 1, gap: 3 * s },
   menuTopLine: { flexDirection: 'row', alignItems: 'flex-end' },
-  menuName: { flexShrink: 1, fontSize: 15, fontWeight: '700', color: BakeryColors.cocoaDark },
+  menuName: { flexShrink: 1, fontSize: 15 * s, fontWeight: '700', color: BakeryColors.cocoaDark },
   menuLeader: {
     flex: 1,
-    marginHorizontal: 6,
-    marginBottom: 4,
+    marginHorizontal: 6 * s,
+    marginBottom: 4 * s,
     borderBottomWidth: 1,
     borderStyle: 'dashed',
     borderColor: BakeryColors.latte,
   },
-  menuPrice: { fontSize: 15, fontWeight: '800', color: BakeryColors.cocoaDark },
-  menuSubLine: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  menuCoinText: { fontSize: 13, color: BakeryColors.mocha },
+  menuPrice: { fontSize: 15 * s, fontWeight: '800', color: BakeryColors.cocoaDark },
+  menuSubLine: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two * s },
+  menuCoinText: { fontSize: 13 * s, color: BakeryColors.mocha },
   chefBadge: {
     backgroundColor: `${BakeryColors.honey}22`,
     borderRadius: BakeryRadii.chip,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
+    paddingHorizontal: 7 * s,
+    paddingVertical: 2 * s,
   },
-  chefText: { fontSize: 10, fontWeight: '700', color: BakeryColors.mocha },
-  menuDivider: { height: 1, backgroundColor: `${BakeryColors.shortbread}99` },
+  chefText: { fontSize: 10 * s, fontWeight: '700', color: BakeryColors.mocha },
+  menuDivider: { height: 1 * s, backgroundColor: `${BakeryColors.shortbread}99` },
   plusBanner: {
     borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
+    padding: Spacing.three * s,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    gap: Spacing.two * s,
     backgroundColor: BakeryColors.glass,
   },
   plusBannerActive: { borderWidth: 1.5, borderColor: '#F2A0B5' },
-  plusBannerEmoji: { fontSize: 22, lineHeight: 28 },
-  plusBannerText: { flex: 1, gap: 2 },
+  plusBannerEmoji: { fontSize: 22 * s, lineHeight: 28 * s },
+  plusBannerText: { flex: 1, gap: 2 * s },
   plusBadge: {
     backgroundColor: `${BakeryColors.rose}22`,
     borderRadius: BakeryRadii.chip,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 8 * s,
+    paddingVertical: 4 * s,
   },
-  plusBadgeText: { fontSize: 12, fontWeight: '700', color: BakeryColors.berry },
+  plusBadgeText: { fontSize: 12 * s, fontWeight: '700', color: BakeryColors.berry },
   tipCard: {
     borderRadius: BakeryRadii.card,
-    padding: Spacing.three,
-    gap: Spacing.two,
+    padding: Spacing.three * s,
+    gap: Spacing.two * s,
     backgroundColor: BakeryColors.glass,
     ...BakeryShadow,
   },
-  tipTitle: { fontSize: 14, marginBottom: 2 },
+  tipTitle: { fontSize: 14 * s, marginBottom: 2 * s },
   tipRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  tipCoins: { color: BakeryColors.honey, fontSize: 13 },
+  tipCoins: { color: BakeryColors.honey, fontSize: 13 * s },
   pressed: { opacity: 0.8 },
 });

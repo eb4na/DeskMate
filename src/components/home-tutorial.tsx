@@ -12,12 +12,15 @@ import { ThemedText } from '@/components/themed-text';
 import { measureTutorialTarget, type TargetRect } from '@/lib/tutorial-targets';
 import { BakeryColors } from '@/constants/theme';
 
-// The five "most important starting features", in order. Edit this array to
-// change which elements get a popup (each `target` must be a registered anchor).
+// The most important starting features, in order. Edit this array to change which
+// elements get a popup (each `target` must be a registered anchor).
 const STEPS: { target: string; titleKey: string; bodyKey: string }[] = [
   { target: 'start', titleKey: 'tutorial.start_title', bodyKey: 'tutorial.start_body' },
   { target: 'streak', titleKey: 'tutorial.streak_title', bodyKey: 'tutorial.streak_body' },
   { target: 'coins', titleKey: 'tutorial.coins_title', bodyKey: 'tutorial.coins_body' },
+  { target: 'switchChar', titleKey: 'tutorial.character_title', bodyKey: 'tutorial.character_body' },
+  { target: 'food', titleKey: 'tutorial.recipe_title', bodyKey: 'tutorial.recipe_body' },
+  { target: 'editRoom', titleKey: 'tutorial.room_title', bodyKey: 'tutorial.room_body' },
   { target: 'tasks', titleKey: 'tutorial.tasks_title', bodyKey: 'tutorial.tasks_body' },
   { target: 'shop', titleKey: 'tutorial.shop_title', bodyKey: 'tutorial.shop_body' },
 ];
@@ -75,7 +78,10 @@ export function HomeTutorial({ onDone }: { onDone: () => void }) {
 
   return (
     // High zIndex so the overlay sits above every home element (which use zIndex up
-    // to 30) — otherwise those paint over the tap-catcher and taps do nothing.
+    // to 30) — otherwise those paint over the tap-catcher and taps do nothing. NOTE:
+    // intentionally NOT a native <Modal> — wrapping this in a transparent Modal could
+    // present an invisible touch-blocking layer (no visible card) that froze the home
+    // screen, so the coachmark lives in-screen as a high-zIndex overlay instead.
     <View style={[StyleSheet.absoluteFill, styles.overlay]} pointerEvents="box-none">
       {/* Transparent full-screen catcher — no dimming; tapping it advances. */}
       <Pressable style={styles.backdrop} onPress={next} />

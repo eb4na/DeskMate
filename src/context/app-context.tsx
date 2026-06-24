@@ -1,7 +1,7 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import i18n, { detectDeviceLanguage } from '@/i18n';
-import { DAILY_EARN_CAP, MAX_FRIENDS, STATIC_SUBJECTS } from '@/constants/placeholder-data';
+import { COINS_PER_MINUTE, DAILY_EARN_CAP, MAX_FRIENDS, STATIC_SUBJECTS } from '@/constants/placeholder-data';
 import { SHOP_ITEMS, type ShopCategory } from '@/constants/shop-data';
 import { dailyRewardCoins } from '@/constants/login-rewards';
 import { dailyGoalIds, getQuest, getAchievement } from '@/constants/quests';
@@ -218,6 +218,17 @@ type PersistedState = {
   subjectTimeMap: Record<string, number>;
   skipSubjectCount: number;
   sessionHistory: SessionRecord[];
+  // Minutes studied with each companion (companionId → minutes). Drives the per-
+  // companion bond level shown in the gallery. No rewards attached.
+  companionMinutes: Record<string, number>;
+  // Daily ceiling on bond minutes earned, mirroring the coin earn cap so levels can't
+  // be ground out in one day. `companionBondDate` is the todayISO it was last reset on.
+  companionBondToday: number;
+  companionBondDate: string;
+  // Tiny daily bond from petting the companion on the home screen (separate small cap
+  // so tapping is flavour, not a grind). `petBondDate` is the todayISO of last reset.
+  petBondToday: number;
+  petBondDate: string;
   // Wave 4
   isPlus: boolean;
   plusPlan: 'monthly' | 'annual' | null; // billing period; null = not subscribed
@@ -371,6 +382,11 @@ const DEFAULTS: PersistedState = {
   subjectTimeMap: {},
   skipSubjectCount: 0,
   sessionHistory: [],
+  companionMinutes: {},
+  companionBondToday: 0,
+  companionBondDate: '',
+  petBondToday: 0,
+  petBondDate: '',
   // Wave 4
   isPlus: false,
   plusPlan: null,
@@ -806,6 +822,7 @@ type AppContextType = {
   subjectTimeMap: Record<string, number>;
   skipSubjectCount: number;
   sessionHistory: SessionRecord[];
+  companionMinutes: Record<string, number>;
   activeSession: ActiveSession | null;
 
   // Wave 4 state
@@ -919,6 +936,7 @@ type AppContextType = {
   birthdayRewardYear: number;
   claimBirthdayReward: () => void;
   recordSession: (minutes: number) => void;
+  petCompanion: () => void;
   addMoodEntry: (entry: Omit<MoodEntry, 'id'>) => void;
   addExam: (exam: Omit<ExamCountdown, 'id'>) => string | null;
   removeExam: (id: string) => void;
@@ -1302,11 +1320,51 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const recordSession = (minutes: number) =>
-    setS((prev) => ({
-      ...prev,
-      sessionsCompleted: prev.sessionsCompleted + 1,
-      totalMinutes: prev.totalMinutes + minutes,
-    }));
+    setS((prev) => {
+      const today = todayISO();
+      const bondToday = prev.companionBondDate === today ? prev.companionBondToday : 0;
+      // Daily bond ceiling mirrors the coin earn cap (max coins/day ÷ coins/min), so
+      // levels can't be ground out in a single day. DAILY_EARN_CAP=500, /2 → 250 min.
+      const dailyBondCap = Math.floor(DAILY_EARN_CAP / COINS_PER_MINUTE);
+      const credited = Math.max(0, Math.min(minutes, dailyBondCap - bondToday));
+      const id = prev.activeCompanionId;
+      return {
+        ...prev,
+        sessionsCompleted: prev.sessionsCompleted + 1,
+        totalMinutes: prev.totalMinutes + minutes,
+        // Credit (capped) time toward the companion studied with (bond level). This is
+        // the single minutes funnel for solo (full + early) and multiplayer finish, so
+        // each session counts exactly once.
+        companionMinutes: {
+          ...prev.companionMinutes,
+          [id]: (prev.companionMinutes?.[id] ?? 0) + credited,
+        },
+        companionBondToday: bondToday + credited,
+        companionBondDate: today,
+      };
+    });
+
+  // Petting the companion on the home screen: a tiny daily-capped bond nudge toward the
+  // active companion's level (flavour, not a grind — at most a few bond/day).
+  const petCompanion = () =>
+    setS((prev) => {
+      const today = todayISO();
+      const petToday = prev.petBondDate === today ? prev.petBondToday : 0;
+      const PET_BOND = 1;
+      const PET_DAILY_CAP = 5;
+      const credited = Math.max(0, Math.min(PET_BOND, PET_DAILY_CAP - petToday));
+      if (credited === 0) return prev; // already at today's pet cap
+      const id = prev.activeCompanionId;
+      return {
+        ...prev,
+        companionMinutes: {
+          ...prev.companionMinutes,
+          [id]: (prev.companionMinutes?.[id] ?? 0) + credited,
+        },
+        petBondToday: petToday + credited,
+        petBondDate: today,
+      };
+    });
 
   // Record a FULLY-COMPLETED study session toward daily quests + achievements.
   // Called only from the two real-completion funnels (solo session-complete and the
@@ -1985,21 +2043,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const clearRecipeBadge = () => setRecipeBadgePending(null);
   const clearCharacterObtained = () => setCharacterObtainedPending(null);
 
-  // TEST/PLACEHOLDER: wipe everything back to a brand-new-account state so the
-  // first-launch onboarding can be re-tested — clears consent (legal docs +
-  // birthday) and the starter pick, so the app drops back to the legal gate →
-  // birthday → character chooser flow. Keeps only the signed-in identity (friend
-  // code) + chosen language so the session/login doesn't break. Still grants
-  // 1,000,000 coins for convenience once onboarding is finished.
+  // TEST/PLACEHOLDER: wipe game progress + purchases WITHOUT erasing the account.
+  // The user stays signed in and fully onboarded (legal/birthday/starter all kept),
+  // so we DON'T drop back into the onboarding flow. Everything owned/equipped —
+  // companions, backgrounds, desks, outfits, skins, recipes/badges — resets to the
+  // brand-new defaults, which leave only Bun (starter:girl, classic skin) and the
+  // Cozy room. Grants 1,000,000 coins. Keeps identity (friend code + friends),
+  // language, consent (legal + birthday), and the captured timezone intact.
   const resetGameData = () => {
     setActiveSession(null);
     setRecipeBadgePending(null);
     setS((prev) => ({
       ...DEFAULTS,
+      // Identity + completed onboarding — keep so the account isn't erased and the
+      // login/onboarding gates stay closed.
       friendCode: prev.friendCode,
       friends: prev.friends,
       language: prev.language,
       languageSelected: prev.languageSelected,
+      legalAccepted: prev.legalAccepted,
+      birthday: prev.birthday,
+      timezone: prev.timezone,
+      // Profile text identity (display name/bio/birthday) is part of the account.
+      profileDisplayName: prev.profileDisplayName,
+      profileDescription: prev.profileDescription,
+      profileBirthday: prev.profileBirthday,
+      // Already past the starter chooser — don't re-prompt; defaults give them Bun.
+      starterChosen: true,
+      // Already-onboarded account — don't replay the first-launch coachmark tour.
+      tutorialSeen: prev.tutorialSeen,
       coins: 1_000_000,
     }));
   };
@@ -2226,11 +2298,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         subjectTimeMap: s.subjectTimeMap,
         skipSubjectCount: s.skipSubjectCount,
         sessionHistory: s.sessionHistory,
+        companionMinutes: s.companionMinutes ?? {},
         activeSession,
         addCoins,
         claimLoginReward,
         claimBirthdayReward,
         recordSession,
+        petCompanion,
         addMoodEntry,
         addExam,
         removeExam,

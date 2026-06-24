@@ -11,6 +11,7 @@
  * player on Home rather than flashing under the splash.
  */
 import { Image } from 'expo-image';
+import { formatCoins } from '@/constants/placeholder-data';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -84,7 +85,7 @@ export function DailyRewardModal() {
             <Text style={styles.heroDay}>{t('dailyReward.day', { n: reward.day })}</Text>
             <View style={styles.heroCoinRow}>
               <Image source={COIN} style={styles.heroCoin} contentFit="contain" />
-              <Text style={styles.heroCoins}>{reward.coins}</Text>
+              <Text style={styles.heroCoins}>{formatCoins(reward.coins)}</Text>
             </View>
           </View>
 

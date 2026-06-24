@@ -62,6 +62,17 @@ export const ROOM_PAIRS: RoomPair[] = [
     deskImage: require('@/assets/images/desks/pink.png'),
   },
   {
+    // Miel's cozy honey bedroom — paired with the ZZZ pajama skin. deskId is null
+    // (only the background is a shop item), so the pairing buy/equip just needs the
+    // Miel's Room background; the desk renders from this pair's light-wood deskImage.
+    id: 'miels-room',
+    name: "Miel's Room",
+    backgroundId: 'bg_miels_room',
+    deskId: null,
+    backgroundImage: require('@/assets/images/backgrounds/miels-room.png'),
+    deskImage: require('@/assets/images/desks/miels.png'),
+  },
+  {
     // Matched set — Tranquil kitchen background + Maplewood desk.
     id: 'tranquil',
     name: 'Tranquil',

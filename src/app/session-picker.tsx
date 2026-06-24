@@ -17,7 +17,7 @@ import { newRoomId } from '@/lib/game-net';
 import { useStudyRoom } from '@/lib/use-study-room';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { navigateWithLoading, companionPrefetchUri, STUDY_ASSETS } from '@/lib/preload-nav';
-import { SESSION_LENGTHS, autoBreakMinutes, coinsForMinutes } from '@/constants/placeholder-data';
+import { SESSION_LENGTHS, autoBreakMinutes, coinsForMinutes, formatCoins } from '@/constants/placeholder-data';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 
@@ -110,7 +110,7 @@ export default function SessionPickerScreen() {
           <View style={styles.topSpacer} />
           <Pressable style={({ pressed }) => [styles.coinPill, tw('coinPill'), pressed && styles.pressed]} onPress={() => router.push('/coin-shop')}>
             <CoinIcon size={Math.round(18 * grow)} />
-            <Text style={styles.coinText}>{coins}</Text>
+            <Text style={styles.coinText}>{formatCoins(coins)}</Text>
           </Pressable>
         </View>
 

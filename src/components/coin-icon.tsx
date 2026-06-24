@@ -1,4 +1,5 @@
 import { Image, type ImageStyle } from 'expo-image';
+import { formatCoins } from '@/constants/placeholder-data';
 import { StyleSheet, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -45,7 +46,7 @@ export function CoinAmount({
       <CoinIcon size={size} />
       <ThemedText style={textStyle}>
         {prefix}
-        {amount}
+        {formatCoins(amount)}
       </ThemedText>
     </View>
   );

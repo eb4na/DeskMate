@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { G, Path } from 'react-native-svg';
 
 import { CoinIcon } from '@/components/coin-icon';
-import { PlusGateCard } from '@/components/plus-gate';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
@@ -29,9 +29,28 @@ function formatDateRange(): string {
   return `${fmt(start)} – ${fmt(end)}`;
 }
 
+// Pie chart geometry — mirrors subject-chart.tsx so the two read the same.
+const PIE_SIZE = 180;
+const PIE_RADIUS = PIE_SIZE / 2;
+const GENERAL_PIE_COLOR = '#B8A98C';
+const FALLBACK_PIE_COLOR = '#7C6F5A';
+
+// SVG arc path for a pie slice spanning [startAngle, endAngle] (degrees, clockwise
+// from 12 o'clock), centered on the pie with radius PIE_RADIUS.
+function slicePath(startAngle: number, endAngle: number): string {
+  const polar = (angle: number) => {
+    const rad = ((angle - 90) * Math.PI) / 180;
+    return { x: PIE_RADIUS + PIE_RADIUS * Math.cos(rad), y: PIE_RADIUS + PIE_RADIUS * Math.sin(rad) };
+  };
+  const start = polar(endAngle);
+  const end = polar(startAngle);
+  const largeArc = endAngle - startAngle <= 180 ? 0 : 1;
+  return `M ${PIE_RADIUS} ${PIE_RADIUS} L ${start.x} ${start.y} A ${PIE_RADIUS} ${PIE_RADIUS} 0 ${largeArc} 0 ${end.x} ${end.y} Z`;
+}
+
 export default function WeeklyReportScreen() {
   const { t } = useTranslation();
-  const { sessionHistory, tasks, moodEntries, streak, subjects, isPlus } = useApp();
+  const { sessionHistory, tasks, moodEntries, streak, subjects } = useApp();
   // Tablet: scale every size by ONE shared factor so all text (preset-based AND
   // explicitly-sized) grows together and stays uniform — no more "some huge, some tiny."
   const { scale, contentWidth } = useTabletScale();
@@ -62,6 +81,22 @@ export default function WeeklyReportScreen() {
   }
   const subjectEntries = Object.entries(weekSubjectMap).sort((a, b) => b[1] - a[1]);
   const topSubject = subjectEntries[0];
+
+  // Pie slices for the week's subject split — colors match the legend rows below.
+  const pieArcs = useMemo(() => {
+    let cursor = 0;
+    return subjectEntries.map(([name, minutes]) => {
+      const color =
+        name === 'General Study'
+          ? GENERAL_PIE_COLOR
+          : subjects.find((s) => s.name === name)?.color ?? FALLBACK_PIE_COLOR;
+      const sweep = weekMinutes > 0 ? (minutes / weekMinutes) * 360 : 0;
+      const arc = { name, color, start: cursor, end: cursor + sweep };
+      cursor += sweep;
+      return arc;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekSubjectMap, weekMinutes, subjects]);
 
   // Estimated coins — 1 coin per minute studied (matches the earn rule).
   const estimatedCoins = weekSessions.reduce((sum, r) => sum + coinsForMinutes(r.minutes), 0);
@@ -141,7 +176,7 @@ export default function WeeklyReportScreen() {
             {stats.map((s) => (
               <ThemedView key={s.label} type="backgroundElement" style={styles.statCard}>
                 {'coinIcon' in s && s.coinIcon ? (
-                  <CoinIcon size={Math.round(48 * scale)} style={styles.statCoinIcon} />
+                  <CoinIcon size={Math.round(24 * scale)} style={styles.statCoinIcon} />
                 ) : (
                   <ThemedText style={styles.statEmoji}>{'emoji' in s ? s.emoji : ''}</ThemedText>
                 )}
@@ -157,6 +192,23 @@ export default function WeeklyReportScreen() {
           {subjectEntries.length > 0 && (
             <ThemedView style={styles.section}>
               <ThemedText type="smallBold" style={styles.sectionTitle}>{t('weeklyReport.subjectBreakdown')}</ThemedText>
+              {weekMinutes > 0 && (
+                <View style={styles.pieWrap}>
+                  <Svg width={PIE_SIZE * scale} height={PIE_SIZE * scale} viewBox={`0 0 ${PIE_SIZE} ${PIE_SIZE}`}>
+                    <G>
+                      {pieArcs.length === 1 ? (
+                        // Single subject: a full disc (an arc command can't draw 360°).
+                        <Path
+                          d={`M ${PIE_RADIUS} ${PIE_RADIUS} m -${PIE_RADIUS} 0 a ${PIE_RADIUS} ${PIE_RADIUS} 0 1 0 ${PIE_SIZE} 0 a ${PIE_RADIUS} ${PIE_RADIUS} 0 1 0 -${PIE_SIZE} 0`}
+                          fill={pieArcs[0].color}
+                        />
+                      ) : (
+                        pieArcs.map((a) => <Path key={a.name} d={slicePath(a.start, a.end)} fill={a.color} />)
+                      )}
+                    </G>
+                  </Svg>
+                </View>
+              )}
               <ThemedView style={styles.subjectList}>
                 {subjectEntries.map(([name, minutes]) => {
                   const subject = subjects.find((s) => s.name === name);
@@ -210,63 +262,6 @@ export default function WeeklyReportScreen() {
                 {suggestedGoal}
               </ThemedText>
             </ThemedView>
-          </ThemedView>
-
-          {/* ── Plus advanced report sections ───────────────────────────── */}
-          <ThemedView style={styles.section}>
-            <ThemedText type="smallBold" style={styles.sectionTitle}>
-              {t('weeklyReport.advancedInsights')}
-              {!isPlus && <ThemedText style={styles.plusTag}> — Plus</ThemedText>}
-            </ThemedText>
-            {isPlus ? (
-              <>
-                <ThemedView type="backgroundElement" style={styles.advancedCard}>
-                  <ThemedText style={styles.advancedEmoji}></ThemedText>
-                  <ThemedView type="transparent" style={styles.advancedText}>
-                    <ThemedText type="smallBold">{t('weeklyReport.bestStudyHours')}</ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {t('weeklyReport.bestStudyHoursPlus')}
-                    </ThemedText>
-                  </ThemedView>
-                </ThemedView>
-                <ThemedView type="backgroundElement" style={styles.advancedCard}>
-                  <ThemedText style={styles.advancedEmoji}></ThemedText>
-                  <ThemedView type="transparent" style={styles.advancedText}>
-                    <ThemedText type="smallBold">{t('weeklyReport.avoidanceInsights')}</ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {t('weeklyReport.avoidancePlus')}
-                    </ThemedText>
-                  </ThemedView>
-                </ThemedView>
-                <ThemedView type="backgroundElement" style={styles.advancedCard}>
-                  <ThemedText style={styles.advancedEmoji}></ThemedText>
-                  <ThemedView type="transparent" style={styles.advancedText}>
-                    <ThemedText type="smallBold">{t('weeklyReport.monthlyOverview')}</ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {t('weeklyReport.monthlyPlus')}
-                    </ThemedText>
-                  </ThemedView>
-                </ThemedView>
-              </>
-            ) : (
-              <>
-                <PlusGateCard
-                  emoji=""
-                  title={t('weeklyReport.bestStudyHours')}
-                  description={t('weeklyReport.bestStudyHoursDesc')}
-                />
-                <PlusGateCard
-                  emoji=""
-                  title={t('weeklyReport.avoidanceInsights')}
-                  description={t('weeklyReport.avoidanceDesc')}
-                />
-                <PlusGateCard
-                  emoji=""
-                  title={t('weeklyReport.monthlyReport')}
-                  description={t('weeklyReport.monthlyDesc')}
-                />
-              </>
-            )}
           </ThemedView>
 
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
@@ -323,6 +318,7 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   statLabel: { textAlign: 'center', fontSize: 12 * s },
   section: { gap: Spacing.two * s },
   sectionTitle: { fontSize: 17 * s, fontWeight: '800' },
+  pieWrap: { alignItems: 'center', paddingVertical: Spacing.two * s },
   subjectList: { gap: Spacing.two * s },
   subjectRow: { borderRadius: 12 * s, padding: Spacing.two * s, gap: 6 * s },
   subjectMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 * s },
@@ -355,14 +351,4 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   goalEmoji: { fontSize: 22 * s, lineHeight: 28 * s },
   goalText: { flex: 1, fontSize: 13 * s, lineHeight: 20 * s },
   backBtn: { alignItems: 'center', paddingVertical: Spacing.two * s },
-  plusTag: { color: '#F5A623', fontSize: 12 * s, fontWeight: '400' },
-  advancedCard: {
-    borderRadius: 14 * s,
-    padding: Spacing.three * s,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.two * s,
-  },
-  advancedEmoji: { fontSize: 24 * s, lineHeight: 30 * s, width: 32 * s },
-  advancedText: { flex: 1, gap: 2 * s },
 });

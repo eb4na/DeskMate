@@ -1,4 +1,39 @@
 {
+  "pet": {
+    "bun": {
+      "classic": ["Bun te dejó el día suavecito. Ahora estudia solo un poquito.", "Primero una página, y luego Bun te dará el ánimo más calentito.", "No tienes que ser perfecta. Solo vuelve e inténtalo con Bun."],
+      "angel": ["Deja aquí tus preocupaciones. Empieza de nuevo, con calma.", "Bun cree que el pequeño progreso también brilla.", "Tómate tu tiempo. Bun mantendrá la habitación en calma."],
+      "strawberry": ["Una pequeña erudita como es debido vuelve a sus estudios.", "Bun solicita una sesión de concentración más, con mucha cortesía.", "El reino de las bayas cree en ti: ve y haz que se sienta orgulloso."],
+      "snowrabbit": ["Vuelve antes de que tu concentración se derrita como nieve.", "Hasta los pasos diminutos dejan huellas.", "Bun te guardó un rinconcito calentito junto a la ventana de invierno."],
+      "dreams": ["Bun también tiene sueño… pero podemos terminar una tarea pequeñita.", "Estudia bajito. Los sueños pueden esperar un poquito más.", "Vuelve bajo la mantita de fresa de la responsabilidad."]
+    },
+    "cocoa": {
+      "classic": ["Primero concéntrate. Lucirte puede esperar.", "Trabajo constante. Sin dramas. Esa es la receta.", "No te hace falta motivación. Te hacen falta cinco minutos limpios."],
+      "relax": ["Despacio está bien. Lo único malo es parar.", "Deja que el temporizador repose. Tú solo sigue.", "Sin prisa. Solo vuelve antes de que la concentración se enfríe."],
+      "demon": ["¿Escapándote ya? Qué atrevida. Me gusta el descaro: ahora llévalo a tus apuntes.", "Vuelve. Tus apuntes no van a temerte solos.", "Puedes rendirte después de ganar. No antes."]
+    },
+    "bunny": {
+      "classic": ["Bunny dice que vuelvas, porque Bunny es linda y tiene razón.", "Tu sesión de estudio necesita la supervisión de Bunny ahora mismo.", "Bunny ya hizo su trabajo siendo adorable. Ahora te toca a ti."],
+      "jiraikei": ["No dejes a Bunny sola con tu trabajo sin terminar… ¿vuelves prontito?", "Vuelve, o Bunny se quedará mirando el temporizador con tristeza.", "Le prometiste a Bunny que estudiarías… y Bunny ha esperado con tanta paciencia."],
+      "palace": ["Por favor, regresa. Tu concentración merece un final elegante.", "Un esfuerzo silencioso también es noble.", "Bunny esperará, pero no para siempre."]
+    },
+    "miel": {
+      "classic": ["Miel mantuvo la habitación calentita para ti. Vuelve pronto.", "Solo una cucharadita más de estudio.", "El trabajito de hoy se vuelve dulce más adelante."],
+      "champion": ["Sigue adelante. Los campeones también hacen la parte aburrida.", "Una ronda más. Estás más cerca de lo que crees.", "Miel tiene sueño, pero Miel aún quiere la victoria."],
+      "zzz": ["Mmm… vuelve… los apuntes se están sintiendo solitos.", "Ahora a estudiar… la nubecita de siesta, después…", "Miel casi no puede mantenerse despierta, pero hasta Miel sigue aquí."]
+    },
+    "tira": {
+      "classic": ["Regresa caminando a tu trabajo. De forma dramática, si hace falta.", "No hay prisa. Solo no desaparezcas.", "Un final tranquilo sigue siendo un final."],
+      "chocomint": ["Vuelve. Este es tu recordatorio dulce, con un toque picantito.", "Puedes ser linda y responsable a la vez: lo he visto.", "Cinco minutos. Poco esfuerzo, mucho sabor."],
+      "sleepover": ["Los snacks saben mejor después de la sesión: primero hay que ganárselos.", "Es noche de estudio: la parte acogedora vale más cuando ya terminamos algo.", "Vuelve. La parte acogedora sienta mejor cuando terminas algo."],
+      "afternoontrain": ["Ya pasearás luego. Tu tarea sigue aquí, esperando.", "Toma el camino panorámico de regreso a la concentración.", "La libertad se siente mejor cuando la tarea ya está hecha."]
+    },
+    "hanji": {
+      "classic": ["Regresa en silencio. La página está esperando.", "Una concentración pequeña sigue siendo concentración.", "Sin ruido. Solo una línea más."],
+      "ivoryrose": ["Por favor, vuelve. Tu esfuerzo está a punto de florecer.", "Hoy te sienta bien un poquito de valor.", "Termina con suavidad. Que el día sea amable contigo."]
+    },
+    "generic": ["¡Jaja~ me haces cosquillas!", "¿Estudiamos juntas prontito?", "Qué alegría que estés aquí."]
+  },
   "report": {
     "report": "Reportar",
     "block": "Bloquear",
@@ -19,6 +54,12 @@
     "failedMsg": "Comprueba tu conexión e inténtalo de nuevo."
   },
   "tutorial": {
+    "character_title": "Cambiar personaje",
+    "character_body": "Toca este botón para cambiar de compañero y ponerle nuevos atuendos.",
+    "recipe_title": "Recetas",
+    "recipe_body": "Abre aquí tu recetario para ver los postres que has horneado.",
+    "room_title": "Tu habitación",
+    "room_body": "Toca aquí para cambiar el fondo y decorar tu escritorio.",
     "start_title": "Sesiones de estudio",
     "start_body": "Inicia un temporizador para ganar monedas.",
     "streak_title": "Racha diaria",
@@ -270,7 +311,7 @@
     "awayTitle": "¡Vuelve a estudiar!",
     "awayBody": "Tu sesión de estudio se detendrá si no vuelves en un minuto.",
     "awayBody_bun": "Bun te estaba esperando… vuelve antes de que Bun se preocupe.",
-    "awayBody_companion_bunny": "Vuelve ahowa mismo o bunny te va a patear.",
+    "awayBody_companion_bunny": "¡Vuelve ya o Bunny hará pucheros!",
     "awayBody_companion_cocoa": "Vuelve. Aún no hemos terminado, y tu concentración se está enfriando.",
     "awayBody_hanji": "Guardé tu lugar en silencio… vuelve antes de que el silencio se sienta demasiado vacío.",
     "awayBody_companion_tira": "¿Dejaste la pantalla de estudio? Yo dejé la uni, no esta sesión. Vuelve.",
@@ -318,6 +359,7 @@
     "savedPresetsIncluded": "Los ajustes de descanso guardados se incluyen arriba.",
     "customBreak": "Descanso personalizado →",
     "backToHome": "Volver al inicio",
+    "bondLabel": "Vínculo con tu compañero",
     "finishedTitle": "¡TERMINASTE TU SESIÓN!",
     "thankYou": "¡Gracias por estudiar!",
     "sessionNumber": "Número de sesión",
@@ -963,6 +1005,7 @@
     "companionBakery": "Pastelería de compañeros",
     "chooseToday": "Elige quién estudia contigo hoy",
     "myCompanions": "Mis compañeros",
+    "level": "Nv {{level}}",
     "defaultTagline": "Tu compañero de estudio",
     "active": "Activo",
     "setActive": "Activar",

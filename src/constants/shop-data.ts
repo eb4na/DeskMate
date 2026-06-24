@@ -287,6 +287,15 @@ export const SHOP_ITEMS: ShopItem[] = [
     image: require('@/assets/images/backgrounds/buns-room.png'),
   },
   {
+    id: 'bg_miels_room',
+    name: "Miel's Room",
+    emoji: '',
+    description: "Miel's cozy honey bedroom — gingham quilts, warm sunlight, and a sleepy bear nook. Pairs with Miel's ZZZ pajamas.",
+    price: 900,
+    category: 'background',
+    image: require('@/assets/images/backgrounds/miels-room.png'),
+  },
+  {
     id: 'bg_afternoon_train',
     name: 'Afternoon Train',
     emoji: '',

@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { formatCoins } from '@/constants/placeholder-data';
 import { router } from 'expo-router';
 import { Fragment, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -257,7 +258,7 @@ export default function EditRoomScreen() {
                   <Text style={styles.modalBalanceLabel}>{t('editRoom.yourBalance')}</Text>
                   <View style={styles.modalBalance}>
                     <CoinIcon size={Math.round(20 * scale)} />
-                    <Text style={styles.modalBalanceNum}>{coins}</Text>
+                    <Text style={styles.modalBalanceNum}>{formatCoins(coins)}</Text>
                   </View>
                 </View>
 

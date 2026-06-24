@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BakeryHeartEmoji } from '@/components/bakery-emoji';
 import { CoinIcon } from '@/components/coin-icon';
 import { Companion } from '@/components/companion';
+import { CompanionLevel } from '@/components/companion-level';
 import { DevKnobs } from '@/components/dev-knobs';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { ThemedText } from '@/components/themed-text';
@@ -98,6 +99,8 @@ export default function SessionCompleteScreen() {
     earnedToday,
     streak,
     streakFreezes,
+    activeCompanionId,
+    companionMinutes,
   } = useApp();
   const { t } = useTranslation();
   const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('sessioncomplete', [
@@ -290,6 +293,12 @@ export default function SessionCompleteScreen() {
                   valueIcon={<CoinIcon size={16} />}
                 />
               )}
+            </View>
+
+            {/* Companion bond — level earned by studying with this companion. */}
+            <View style={styles.bondBlock}>
+              <Text style={styles.bondLabel}>{t('sessionComplete.bondLabel')}</Text>
+              <CompanionLevel minutes={companionMinutes?.[activeCompanionId] ?? 0} scale={1.15} />
             </View>
 
             <View style={styles.heartDivider}><BakeryHeartEmoji size={16} /></View>
@@ -495,6 +504,20 @@ const styles = StyleSheet.create({
     color: FP.muted,
     textAlign: 'right',
     fontStyle: 'italic',
+  },
+  bondBlock: {
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 240,
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: Spacing.one,
+  },
+  bondLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: FP.brown,
+    textAlign: 'center',
   },
   moodPrompt: {
     fontSize: 14,
