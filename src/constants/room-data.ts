@@ -10,7 +10,7 @@ export type RoomPair = {
   backgroundId: string | null; // shop item id for the background, or null (default)
   deskId: string | null; // shop item id for the desk, or null (default)
   backgroundImage: number;
-  deskImage: number;
+  deskImage: number | null; // null = a deskless room (background only, no desk surface)
   // Desk surface render tuning. `deskFit: 'contain'` zooms the desk out (shows the
   // whole image instead of cropping), and `deskTint` fills the revealed edges with
   // a colour that blends into the surface (e.g. a tiled floor's base tone).
@@ -62,15 +62,16 @@ export const ROOM_PAIRS: RoomPair[] = [
     deskImage: require('@/assets/images/desks/pink.png'),
   },
   {
-    // Miel's cozy honey bedroom — paired with the ZZZ pajama skin. deskId is null
-    // (only the background is a shop item), so the pairing buy/equip just needs the
-    // Miel's Room background; the desk renders from this pair's light-wood deskImage.
+    // Miel's cozy honey bedroom — paired with the ZZZ pajama skin.
     id: 'miels-room',
     name: "Miel's Room",
     backgroundId: 'bg_miels_room',
-    deskId: null,
+    deskId: 'desk_miels',
     backgroundImage: require('@/assets/images/backgrounds/miels-room.png'),
     deskImage: require('@/assets/images/desks/miels.png'),
+    // The honey-wood surface is a uniform texture; this matching tint fills any
+    // edge sliver the cover-crop reveals so the desk never "cuts out" at the sides.
+    deskTint: '#FEC04F',
   },
   {
     // Matched set — Tranquil kitchen background + Maplewood desk.
@@ -135,6 +136,17 @@ export const ROOM_PAIRS: RoomPair[] = [
     // Plain cover desk (centered): a solid navy surface. deskTint matches the
     // surface as a load-time safety net.
     deskTint: '#384F64',
+  },
+  {
+    // Matched set for Bunny's Bluebell outfit — a pink-and-blue water-park
+    // background with NO desk: the scene (pool + deck) is the whole view, so the
+    // home/study render skips the desk surface entirely for this room.
+    id: 'bluebell-lagoon',
+    name: 'Bluebell Lagoon',
+    backgroundId: 'bg_bluebell_lagoon',
+    deskId: null,
+    backgroundImage: require('@/assets/images/backgrounds/bluebell-room.png'),
+    deskImage: null,
   },
 ];
 

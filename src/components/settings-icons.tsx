@@ -173,6 +173,22 @@ export function GearIcon({ size = 32 }: IconProps) {
   );
 }
 
+// ── Mailbox → Envelope with a heart seal ──────────────────────────────────────
+export function EnvelopeIcon({ size = 32 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 48 48">
+      <Rect x="6" y="13" width="36" height="24" rx="4" fill={C} stroke={S} strokeWidth="2" />
+      {/* flap */}
+      <Path d="M7 15 L24 28 L41 15" fill={B} stroke={S} strokeWidth="2" strokeLinejoin="round" />
+      {/* lower fold hints */}
+      <Path d="M7 35 L18 25 M41 35 L30 25" stroke={S} strokeWidth="1.5" strokeLinecap="round" fill="none" opacity={0.3} />
+      {/* little heart seal */}
+      <Path d="M24 30 q-1.6 -2.4 -3.6 -1.6 q-1.6 0.8 -0.8 2.8 q0.8 2 4.4 4 q3.6 -2 4.4 -4 q0.8 -2 -0.8 -2.8 q-2 -0.8 -3.6 1.6 Z"
+        fill={R} stroke={S} strokeWidth="0.8" />
+    </Svg>
+  );
+}
+
 // ── 📊 Progress → Bar chart ───────────────────────────────────────────────────
 export function ChartIcon({ size = 32 }: IconProps) {
   return (

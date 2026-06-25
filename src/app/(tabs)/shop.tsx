@@ -29,7 +29,7 @@ import {
 } from '@/constants/shop-data';
 import { outfitsForCharacter } from '@/constants/outfit-data';
 import { pairForItem, isPairOwned, partnerItemId, ROOM_PAIRS } from '@/constants/room-data';
-import { SHOP_COMPANIONS, STARTER_COMPANION_IMAGES, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, BUN_SKINS, getCompanionSkins } from '@/lib/companion-utils';
+import { SHOP_COMPANIONS, STARTER_COMPANION_IMAGES, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, BUN_SKINS, getCompanionSkins, pickSkinLore, skinLores } from '@/lib/companion-utils';
 import { RECIPE_IDS, hasAllRecipeBadges } from '@/app/food-gallery';
 import { DAILY_EARN_CAP, formatCoins } from '@/constants/placeholder-data';
 import {
@@ -94,6 +94,9 @@ const SHOP_TS = _isTabletDevice ? Math.max(1, _shortest / 834) * 1.15 : 1;
 // tablet shop scale; BUY_TS is 1 everywhere except the 13".
 const _isLargeTablet = _shortest >= 1000;
 const BUY_TS = _isLargeTablet ? SHOP_TS : 1;
+// Scale a fixed size up on tablets (1× on phones, since SHOP_TS is 1 there).
+// Used for popups whose fixed sizes don't otherwise grow on a big iPad.
+const ts = (n: number) => n * SHOP_TS;
 // On tablet the grid/menu may grow past the old 800px phone cap so the shop fills
 // more of the screen instead of a narrow centered column (capped at the device).
 const WIN_W = Math.min(_win.width, MaxContentWidth * SHOP_TS);
@@ -102,7 +105,7 @@ const WIN_W = Math.min(_win.width, MaxContentWidth * SHOP_TS);
 // 38%, the character art is ~35% of the screen height). Sized in explicit px so
 // the proportions can't drift with flex/percentage quirks.
 const PREVIEW_WIN = Dimensions.get('window');
-const PREVIEW_STAGE_H = Math.min(PREVIEW_WIN.height * 0.54, 470);
+const PREVIEW_STAGE_H = Math.min(PREVIEW_WIN.height * 0.54, 470 * SHOP_TS);
 const PREVIEW_STAGE_W = PREVIEW_STAGE_H * (PREVIEW_WIN.width / PREVIEW_WIN.height);
 const PREVIEW_CHAR = PREVIEW_STAGE_H * 0.355; // home: 300px char / ~845px screen
 const PREVIEW_CHAR_BOTTOM = PREVIEW_STAGE_H * 0.38; // home: char layer bottom 38%
@@ -344,9 +347,6 @@ export default function ShopScreen() {
   const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
   const pages = Array.from({ length: totalPages }, (_, i) => items.slice(i * ITEMS_PER_PAGE, (i + 1) * ITEMS_PER_PAGE));
   const capRemaining = Math.max(0, DAILY_EARN_CAP - earnedToday);
-  // The player's current room + desk, used to stage the outfit preview.
-  const previewBgRoom = ROOM_PAIRS.find((r) => r.id === equippedBackgroundRoomId) ?? ROOM_PAIRS[0];
-  const previewDeskRoom = ROOM_PAIRS.find((r) => r.id === equippedDeskRoomId) ?? ROOM_PAIRS[0];
 
   const handleBuyFreeze = () => {
     const productId = PRODUCT_IDS.streakFreeze;
@@ -479,7 +479,11 @@ export default function ShopScreen() {
 
   // Confirm the popup: buy everything it lists, then ask whether to equip it now.
   const confirmBuy = () => {
-    if (!buyReq || coins < buyReq.total) return;
+    if (!buyReq) return;
+    if (coins < buyReq.total) {
+      showPopup(t('gallery.notEnoughCoins'), t('gallery.notEnoughCoinsMsg', { price: buyReq.total, coins }));
+      return;
+    }
     for (const it of buyReq.items) purchaseShopItem(it.id, Math.floor(it.price * discount));
     track('shop_purchase', {
       itemIds: buyReq.items.map((it) => it.id),
@@ -723,11 +727,11 @@ export default function ShopScreen() {
                               <FitText style={[styles.itemName, tName]}>{localizeOutfitName(o.name, t)}</FitText>
                             </View>
                           </Pressable>
-                          {skin?.lore && (
+                          {skin && skinLores(skin).length > 0 && (
                             <Pressable
                               style={({ pressed }) => [styles.outfitLoreBadge, pressed && { opacity: 0.7 }]}
                               hitSlop={8}
-                              onPress={() => setLorePop({ name: localizeOutfitName(o.name, t), text: skin.lore! })}>
+                              onPress={() => setLorePop({ name: localizeOutfitName(o.name, t), text: pickSkinLore(skin) })}>
                               <ThemedText style={styles.outfitLoreBadgeText}>i</ThemedText>
                             </Pressable>
                           )}
@@ -981,19 +985,11 @@ export default function ShopScreen() {
           <Pressable style={styles.previewCard} onPress={(e) => e.stopPropagation?.()}>
             {outfitPreview && (
               <>
-                <ThemedText style={styles.buyTitle}>{localizeOutfitName(outfitPreview.name, t)}</ThemedText>
+                <ThemedText style={[styles.buyTitle, ltTitle]}>{localizeOutfitName(outfitPreview.name, t)}</ThemedText>
                 <View style={styles.previewStage}>
-                  <RNImage source={previewBgRoom.backgroundImage} style={styles.previewBg} resizeMode="cover" />
                   {outfitPreview.image && (
-                    <View style={styles.previewCharLayer} pointerEvents="none">
-                      <RNImage source={outfitPreview.image} style={styles.previewCharImg} resizeMode="contain" />
-                    </View>
+                    <RNImage source={outfitPreview.image} style={styles.previewSkinOnly} resizeMode="contain" />
                   )}
-                  <RNImage
-                    source={previewDeskRoom.deskImage}
-                    style={[styles.previewDesk, previewDeskRoom.deskTint ? { backgroundColor: previewDeskRoom.deskTint } : null]}
-                    resizeMode={previewDeskRoom.deskFit ?? 'cover'}
-                  />
                 </View>
                 <ThemedText style={styles.previewNote}>{t('shop.charLockedMsg', { name: localizeCompanionName(outfitPreview.charName, t) })}</ThemedText>
                 <Pressable style={styles.previewClose} onPress={() => setOutfitPreview(null)}>
@@ -1062,12 +1058,11 @@ export default function ShopScreen() {
 
                 <SoundPressable
                   sound="confirm"
-                  disabled={coins < buyReq.total}
                   style={({ pressed }) => [
                     styles.buyConfirmBtn,
                     ltConfirmBtn,
                     coins < buyReq.total && styles.buyConfirmDisabled,
-                    pressed && coins >= buyReq.total && { opacity: 0.85 },
+                    pressed && { opacity: 0.85 },
                   ]}
                   onPress={confirmBuy}>
                   <ThemedText style={[styles.buyConfirmText, ltConfirmText]}>
@@ -1176,14 +1171,14 @@ const styles = StyleSheet.create({
   zoomCard: {
     backgroundColor: '#FFFDF8',
     borderRadius: 28,
-    padding: 20,
+    padding: 20 * (_isTabletDevice ? SHOP_TS : 1),
     alignItems: 'center',
-    gap: 12,
+    gap: 12 * (_isTabletDevice ? SHOP_TS : 1),
     width: '86%',
-    maxWidth: 360,
+    maxWidth: 360 * (_isTabletDevice ? SHOP_TS : 1),
   },
-  zoomImage: { width: '100%', height: 300 },
-  zoomHint: { fontSize: 12, color: '#9A7B6D' },
+  zoomImage: { width: '100%', height: 300 * (_isTabletDevice ? SHOP_TS : 1) },
+  zoomHint: { fontSize: 12 * (_isTabletDevice ? SHOP_TS : 1), color: '#9A7B6D' },
 
   // White buy-confirmation popup
   buyBackdrop: {
@@ -1227,8 +1222,8 @@ const styles = StyleSheet.create({
 
   // Outfit desk-setup preview popup
   previewCard: {
-    width: '100%', maxWidth: 360, backgroundColor: '#FFFDF8', borderRadius: 26,
-    padding: Spacing.four, gap: Spacing.three, borderWidth: 1.5, borderColor: BakeryColors.shortbread,
+    width: '100%', maxWidth: ts(360), backgroundColor: '#FFFDF8', borderRadius: 26,
+    padding: ts(Spacing.four), gap: ts(Spacing.three), borderWidth: 1.5, borderColor: BakeryColors.shortbread,
     ...BakeryShadow,
   },
   // Staged room: background fills, character sits at the desk, desk paints in
@@ -1237,6 +1232,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center', width: PREVIEW_STAGE_W, height: PREVIEW_STAGE_H,
     borderRadius: 18, overflow: 'hidden', backgroundColor: BakeryColors.cream, position: 'relative',
   },
+  previewSkinOnly: { width: '88%', height: '88%', alignSelf: 'center', marginVertical: '6%' },
   previewBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   previewCharLayer: {
     position: 'absolute', left: 0, right: 0, bottom: PREVIEW_CHAR_BOTTOM,
@@ -1244,11 +1240,11 @@ const styles = StyleSheet.create({
   },
   previewCharImg: { width: PREVIEW_CHAR, height: PREVIEW_CHAR, backgroundColor: 'transparent' },
   previewDesk: { position: 'absolute', left: 0, right: 0, bottom: 0, height: PREVIEW_DESK_H, zIndex: 2 },
-  previewNote: { fontSize: 13, color: BakeryColors.mocha, textAlign: 'center', lineHeight: 18 },
+  previewNote: { fontSize: ts(13), color: BakeryColors.mocha, textAlign: 'center', lineHeight: ts(18) },
   previewClose: {
-    backgroundColor: BakeryColors.honey, borderRadius: 18, paddingVertical: Spacing.three, alignItems: 'center',
+    backgroundColor: BakeryColors.honey, borderRadius: 18, paddingVertical: ts(Spacing.three), alignItems: 'center',
   },
-  previewCloseText: { color: BakeryColors.cocoaDark, fontSize: 16, fontWeight: '800' },
+  previewCloseText: { color: BakeryColors.cocoaDark, fontSize: ts(16), fontWeight: '800' },
 
   viewOnlyNote: {
     backgroundColor: `${BakeryColors.honey}18`, borderRadius: 14, paddingVertical: Spacing.two,
@@ -1587,12 +1583,12 @@ const styles = StyleSheet.create({
   },
   loreCard: {
     backgroundColor: '#FFFDF8', borderRadius: 24,
-    padding: 24, gap: 12, alignItems: 'center',
-    maxWidth: 320, width: '100%',
+    padding: ts(24), gap: ts(12), alignItems: 'center',
+    maxWidth: ts(320), width: '100%',
     shadowColor: '#5B3A2E', shadowOpacity: 0.18, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
   },
-  loreTitle: { fontSize: 17, fontWeight: '900', textAlign: 'center' },
-  loreText: { fontSize: 14, lineHeight: 21, textAlign: 'center', fontStyle: 'italic' },
-  loreClose: { marginTop: 4, backgroundColor: '#F0739A', borderRadius: 18, paddingVertical: 10, paddingHorizontal: 28 },
-  loreCloseText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  loreTitle: { fontSize: ts(22), fontWeight: '900', textAlign: 'center' },
+  loreText: { fontSize: ts(19), lineHeight: ts(27), textAlign: 'center', fontStyle: 'italic' },
+  loreClose: { marginTop: 4, backgroundColor: '#F0739A', borderRadius: 18, paddingVertical: ts(10), paddingHorizontal: ts(28) },
+  loreCloseText: { color: '#fff', fontSize: ts(14), fontWeight: '800' },
 });

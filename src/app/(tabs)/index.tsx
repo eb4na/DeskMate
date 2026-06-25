@@ -848,15 +848,24 @@ export default function HomeScreen() {
   // After the recipe pops out of the timer, hand off to the finish screen.
   useEffect(() => {
     if (!finishingSession) return;
+    let clearId: ReturnType<typeof setTimeout>;
     const id = setTimeout(() => {
-      clearActiveSession();
-      setFinishingSession(false);
+      // Push the receipt FIRST, then clear the session a beat later. If we cleared
+      // first, Home would instantly re-render its top HUD (streak chip + coins) and
+      // that chip would flash behind the receipt as it slides in — looking like the
+      // streak "showed up on the receipt." Deferring the clear keeps the in-session
+      // view up until the receipt has fully covered Home.
       if (finishParamsRef.current) {
         router.push({ pathname: '/session-complete', params: finishParamsRef.current });
         finishParamsRef.current = null;
       }
+      setFinishingSession(false);
+      clearId = setTimeout(() => clearActiveSession(), 450);
     }, 1700);
-    return () => clearTimeout(id);
+    return () => {
+      clearTimeout(id);
+      clearTimeout(clearId);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finishingSession]);
 
@@ -1203,17 +1212,23 @@ export default function HomeScreen() {
               </View>
 
               {/* Desk surface — top edge fixed at 53%; bleeds past the bottom safe-area
-                  inset so the desk (not the room background) fills the very bottom strip. */}
-              <RNImage
-                source={deskRoom.deskImage}
-                style={[styles.deskNewLayer, tDesk, { bottom: -insets.bottom }, deskRoom.deskTint ? { backgroundColor: deskRoom.deskTint } : null]}
-                resizeMode={deskRoom.deskFit ?? 'cover'}
-                pointerEvents="none"
-              />
-              {/* A hairline along the desk's top edge so it reads as a table edge
-                  instead of a hard cut. Shares the desk's exact geometry (same
-                  height + bottom inset) so its top border sits right on the edge. */}
-              <View style={[styles.deskTopEdge, { bottom: -insets.bottom }, tDeskEdge]} pointerEvents="none" />
+                  inset so the desk (not the room background) fills the very bottom strip.
+                  Deskless rooms (deskImage === null, e.g. Bluebell Lagoon) skip it so the
+                  full scene shows. */}
+              {deskRoom.deskImage != null && (
+                <>
+                  <RNImage
+                    source={deskRoom.deskImage}
+                    style={[styles.deskNewLayer, tDesk, { bottom: -insets.bottom }, deskRoom.deskTint ? { backgroundColor: deskRoom.deskTint } : null]}
+                    resizeMode={deskRoom.deskFit ?? 'cover'}
+                    pointerEvents="none"
+                  />
+                  {/* A hairline along the desk's top edge so it reads as a table edge
+                      instead of a hard cut. Shares the desk's exact geometry (same
+                      height + bottom inset) so its top border sits right on the edge. */}
+                  <View style={[styles.deskTopEdge, { bottom: -insets.bottom }, tDeskEdge]} pointerEvents="none" />
+                </>
+              )}
               {/* Mixer on desk — matches the equipped dessert */}
               <RNImage source={deskKit.mixer} style={[styles.deskMixer, { width: ph.mixerW, height: ph.mixerH }, deskKit.mixerStyle, tMixer]} resizeMode="contain" pointerEvents="none" />
 

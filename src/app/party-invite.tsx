@@ -6,10 +6,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
+import { useAuth } from '@/context/auth-context';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { bunAvatarNudge, getCompanionImage } from '@/lib/companion-utils';
 import { useStudyRoom } from '@/lib/use-study-room';
 import { joinPresence, sendInvite, type OnlineGameId, type PresenceMap } from '@/lib/game-net';
+import { listAcceptedFriends, listBlocked } from '@/lib/friend-requests';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
 
@@ -23,7 +25,8 @@ export default function PartyInviteScreen() {
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const { room, game } = useLocalSearchParams<{ room?: string; game?: string }>();
   const inviteGame = (game as OnlineGameId) || 'batterdash';
-  const { friends, friendCode, profileDisplayName } = useApp();
+  const { friends, friendCode, profileDisplayName, addFriend, setFriendProfile } = useApp();
+  const { user } = useAuth();
   const [onlineCodes, setOnlineCodes] = useState<PresenceMap>(new Map());
   const [invited, setInvited] = useState<Set<string>>(new Set());
   // Game invites (not study-room invites) can only pull in a friend who's NOT
@@ -42,6 +45,33 @@ export default function PartyInviteScreen() {
     if (!friendCode) return;
     return joinPresence(friendCode, setOnlineCodes);
   }, [friendCode]);
+
+  // Pull accepted friends from the cloud when this screen opens. The local friends
+  // list is otherwise only synced when the Friends tab is visited, so a friend who
+  // accepted since you last opened it wouldn't appear here yet — making them
+  // impossible to invite even though they're a real friend on the server.
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      const [accepted, blk] = await Promise.all([listAcceptedFriends(user.id), listBlocked(user.id)]);
+      if (cancelled) return;
+      for (const a of accepted) {
+        if (blk.includes(a.code)) continue;
+        addFriend(a.code); // no-op if already a friend
+        if (a.profile) {
+          setFriendProfile(a.code, {
+            displayName: a.profile.displayName || undefined,
+            companionId: a.profile.companionId,
+            skinId: a.profile.skinId,
+            avatarFrame: a.profile.avatarFrame,
+          });
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const invite = (code: string, online: boolean) => {
     if (!room || !online) return;

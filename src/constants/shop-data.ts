@@ -77,7 +77,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     id: 'companion_cocoa',
     name: 'Cocoa',
     emoji: '',
-    description: 'A cozy barista kitty in a cocoa-brown apron.',
+    description: 'A laid-back kitty in a cozy autumn kimono.',
     price: 1300,
     category: 'companion',
     image: require('@/assets/images/cocoa/cocoa.png'),
@@ -159,15 +159,6 @@ export const SHOP_ITEMS: ShopItem[] = [
     image: require('@/assets/images/bun/bun-dreams.png'),
   },
   {
-    id: 'outfit_cocoa_relax',
-    name: 'Relax Cocoa',
-    emoji: '',
-    description: "A cozy autumn kimono & hakama. Cocoa sends warm steep-some-tea reminders while wearing it — wear it from Cocoa's Wardrobe.",
-    price: 1500,
-    category: 'outfits',
-    image: require('@/assets/images/cocoa/cocoa-relax.png'),
-  },
-  {
     id: 'outfit_cocoa_demon',
     name: 'Demon Cocoa',
     emoji: '',
@@ -238,6 +229,15 @@ export const SHOP_ITEMS: ShopItem[] = [
     price: 1500,
     category: 'outfits',
     image: require('@/assets/images/bunny/bunny-palace.png'),
+  },
+  {
+    id: 'outfit_bunny_bluebell',
+    name: 'Bluebell Bunny',
+    emoji: '',
+    description: "A frilly blue-and-pink sweet lolita dress with ribbon bows. Bunny turns soft and sugary in her reminders while wearing it — wear it from Bunny's Wardrobe.",
+    price: 1500,
+    category: 'outfits',
+    image: require('@/assets/images/bunny/bunny-bluebell.png'),
   },
   {
     id: 'outfit_hanji_ivoryrose',
@@ -350,6 +350,15 @@ export const SHOP_ITEMS: ShopItem[] = [
     image: require('@/assets/images/backgrounds/strawberry-palace.png'),
     plusOnly: true,
   },
+  {
+    id: 'bg_bluebell_lagoon',
+    name: 'Bluebell Lagoon',
+    emoji: '',
+    description: 'A pink-and-blue water park — twisty slides, heart floats, and a sunny pool. Pairs with Bunny\'s Bluebell outfit.',
+    price: 900,
+    category: 'background',
+    image: require('@/assets/images/backgrounds/bluebell-room.png'),
+  },
   // ─── Desks / study surfaces (400–700 coins) ─────────────────────────────
   {
     id: 'desk_marble',
@@ -386,6 +395,15 @@ export const SHOP_ITEMS: ShopItem[] = [
     price: 500,
     category: 'desk',
     image: require('@/assets/images/desks/pale-wood.png'),
+  },
+  {
+    id: 'desk_miels',
+    name: "Miel's Desk",
+    emoji: '',
+    description: "A cozy honey-wood study surface — pairs with Miel's Room.",
+    price: 500,
+    category: 'desk',
+    image: require('@/assets/images/desks/miels.png'),
   },
   {
     id: 'desk_afternoon_train',

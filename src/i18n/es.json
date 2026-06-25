@@ -10,12 +10,13 @@
     "cocoa": {
       "classic": ["Primero concéntrate. Lucirte puede esperar.", "Trabajo constante. Sin dramas. Esa es la receta.", "No te hace falta motivación. Te hacen falta cinco minutos limpios."],
       "relax": ["Despacio está bien. Lo único malo es parar.", "Deja que el temporizador repose. Tú solo sigue.", "Sin prisa. Solo vuelve antes de que la concentración se enfríe."],
-      "demon": ["¿Escapándote ya? Qué atrevida. Me gusta el descaro: ahora llévalo a tus apuntes.", "Vuelve. Tus apuntes no van a temerte solos.", "Puedes rendirte después de ganar. No antes."]
+      "demon": ["¿Escapándote? Lleva ese descaro a tus apuntes.", "Vuelve. Tus apuntes no van a temerte solos.", "Puedes rendirte después de ganar. No antes."]
     },
     "bunny": {
       "classic": ["Bunny dice que vuelvas, porque Bunny es linda y tiene razón.", "Tu sesión de estudio necesita la supervisión de Bunny ahora mismo.", "Bunny ya hizo su trabajo siendo adorable. Ahora te toca a ti."],
       "jiraikei": ["No dejes a Bunny sola con tu trabajo sin terminar… ¿vuelves prontito?", "Vuelve, o Bunny se quedará mirando el temporizador con tristeza.", "Le prometiste a Bunny que estudiarías… y Bunny ha esperado con tanta paciencia."],
-      "palace": ["Por favor, regresa. Tu concentración merece un final elegante.", "Un esfuerzo silencioso también es noble.", "Bunny esperará, pero no para siempre."]
+      "palace": ["Por favor, regresa. Tu concentración merece un final elegante.", "Un esfuerzo silencioso también es noble.", "Bunny esperará, pero no para siempre."],
+      "bluebell": ["Bunny se arregló solo para estudiar. ¿Vuelves?", "Volantes azules, lazos dulces, Bunny te espera.", "Dulce y paciente. Bunny sigue aquí."]
     },
     "miel": {
       "classic": ["Miel mantuvo la habitación calentita para ti. Vuelve pronto.", "Solo una cucharadita más de estudio.", "El trabajito de hoy se vuelve dulce más adelante."],
@@ -25,7 +26,7 @@
     "tira": {
       "classic": ["Regresa caminando a tu trabajo. De forma dramática, si hace falta.", "No hay prisa. Solo no desaparezcas.", "Un final tranquilo sigue siendo un final."],
       "chocomint": ["Vuelve. Este es tu recordatorio dulce, con un toque picantito.", "Puedes ser linda y responsable a la vez: lo he visto.", "Cinco minutos. Poco esfuerzo, mucho sabor."],
-      "sleepover": ["Los snacks saben mejor después de la sesión: primero hay que ganárselos.", "Es noche de estudio: la parte acogedora vale más cuando ya terminamos algo.", "Vuelve. La parte acogedora sienta mejor cuando terminas algo."],
+      "sleepover": ["Los snacks saben mejor después de la sesión: primero hay que ganárselos.", "Primero estudiar. Lo acogedor vale más después.", "Vuelve. La parte acogedora sienta mejor cuando terminas algo."],
       "afternoontrain": ["Ya pasearás luego. Tu tarea sigue aquí, esperando.", "Toma el camino panorámico de regreso a la concentración.", "La libertad se siente mejor cuando la tarea ya está hecha."]
     },
     "hanji": {
@@ -573,6 +574,7 @@
     "dangerZone": "Zona peligrosa",
     "clearData": "Borrar todos los datos",
     "secAccount": "CUENTA",
+    "mailboxSub": "Regalos y mensajes",
     "secMembership": "MEMBRESÍA",
     "secBalances": "SALDOS",
     "secFocusStudy": "CONCENTRACIÓN Y ESTUDIO",
@@ -1034,6 +1036,10 @@
     "matchedTitle": "¡Conjunto a juego listo!",
     "matchedMsg": "¡{{outfit}} con la sala {{room}}, todo listo!",
     "matchedRoomSub": "Consigue la sala {{room}} (fondo + escritorio) para combinar con {{outfit}}.",
+    "equipLookTitle": "¿Usar este look?",
+    "equipLookSub": "¿Aplicar la sala {{room}} y ponerte {{outfit}}?",
+    "equipLookSubNoDesk": "¿Aplicar el fondo {{room}} y ponerte {{outfit}}? Tu escritorio actual se mantiene.",
+    "equipLookBtn": "Equipar",
     "roomLockedTitle": "Sala a juego bloqueada",
     "roomLockedMsg": "Desbloquea la sala {{room}} en la Tienda para completar el look de {{outfit}}.",
     "goToShop": "Ir a la Tienda",
@@ -1089,6 +1095,7 @@
     "game_connect4": "Conecta 4",
     "game_tictactoe": "Tres en raya",
     "game_batterdash": "BatterDash",
+    "game_2048": "2048",
     "chat": "Chat",
     "game_study": "Sala de estudio",
     "you": "Tú"
@@ -1446,7 +1453,28 @@
     "playFriendFree": "Juega gratis con un amigo",
     "getPlusUnlock": "Consigue Plus para desbloquear",
     "plus": "Plus",
-    "sameDevice": "Mismo dispositivo"
+    "sameDevice": "Mismo dispositivo",
+    "score": "Puntos",
+    "best": "Mejor",
+    "restart": "Reiniciar",
+    "joinTheNumbers": "~ ¡Une los números! ~",
+    "g2048Bubble": "¡Relájate y haz 2048!",
+    "made2048": "¡Hiciste 2048!",
+    "keepGoing": "Seguir",
+    "noMoves": "¡No hay más movimientos!",
+    "tryAgain": "Intentar de nuevo"
+  },
+  "mailbox": {
+    "title": "Buzón",
+    "empty": "No hay correo ahora. ¡Vuelve pronto por regalos!",
+    "claim": "Reclamar",
+    "claimed": "Reclamado",
+    "coinsReward": "{{count}} monedas",
+    "claimedTitle": "¡Recompensa reclamada!",
+    "claimedMsg": "Has recibido {{reward}}.",
+    "claimedPlain": "¡Disfruta!",
+    "chooseOne": "Elige uno para reclamar:",
+    "wearNote": "Tendrás que desbloquear el personaje correspondiente para poder usarlo."
   },
   "cake": {
     "back": "‹ Atrás",
@@ -1611,6 +1639,7 @@
     "zzz": "ZZZ",
     "jiraiKei": "Jirai Kei",
     "bluePeony": "Peonía Azul",
+    "bluebell": "Campanilla",
     "berryPrincess": "Princesa Berry",
     "ivoryRose": "Rosa Marfil",
     "strawberryDreams": "Sueños de Fresa",

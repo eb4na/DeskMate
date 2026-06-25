@@ -10,12 +10,13 @@
     "cocoa": {
       "classic": ["Concentre-toi d'abord. Tu pourras frimer après.", "Du travail régulier. Pas de drame. C'est la recette.", "Tu n'as pas besoin de motivation. Tu as besoin de cinq minutes nettes."],
       "relax": ["Lentement, c'est bien. S'arrêter, c'est le seul problème.", "Laisse le minuteur infuser. Toi, continue, c'est tout.", "Pas de précipitation. Reviens juste avant que la concentration refroidisse."],
-      "demon": ["Déjà en train de filer ? Audacieuse. J'aime ce culot — maintenant sers-t'en sur tes notes.", "Reviens. Tes notes ne vont pas te craindre toutes seules.", "Tu pourras abandonner après avoir gagné. Pas avant."]
+      "demon": ["Déjà en train de filer ? Sers ce culot sur tes notes.", "Reviens. Tes notes ne vont pas te craindre toutes seules.", "Tu pourras abandonner après avoir gagné. Pas avant."]
     },
     "bunny": {
       "classic": ["Bunny dit de revenir, parce que Bunny est mignonne et a raison.", "Ta séance d'étude a besoin de la supervision de Bunny, tout de suite.", "Bunny a déjà fait son travail en étant adorable. À toi maintenant."],
       "jiraikei": ["Ne laisse pas Bunny seule avec ton travail inachevé… tu reviens vite, dis ?", "Reviens, ou Bunny fixera le minuteur d'un air tout triste.", "Tu as promis à Bunny d'étudier — et Bunny a attendu si sagement."],
-      "palace": ["Reviens, je t'en prie. Ta concentration mérite une fin gracieuse.", "Un effort discret reste noble.", "Bunny attendra, mais pas éternellement."]
+      "palace": ["Reviens, je t'en prie. Ta concentration mérite une fin gracieuse.", "Un effort discret reste noble.", "Bunny attendra, mais pas éternellement."],
+      "bluebell": ["Bunny s'est faite belle pour étudier. Tu reviens ?", "Volants bleus, nœuds tout doux. Bunny attend.", "Douce et patiente, Bunny est encore là."]
     },
     "miel": {
       "classic": ["Miel a gardé la pièce au chaud pour toi. Reviens vite.", "Encore juste une petite cuillerée d'étude.", "Le petit effort d'aujourd'hui deviendra doux plus tard."],
@@ -25,7 +26,7 @@
     "tira": {
       "classic": ["Retourne à ton travail. De façon dramatique, s'il le faut.", "Pas besoin de te presser. Ne disparais simplement pas.", "Une fin tranquille reste une fin."],
       "chocomint": ["Reviens. C'est ton petit rappel tout doux, avec une pointe de piquant.", "On peut être mignonne et responsable en même temps — je l'ai déjà vu.", "Cinq minutes. Peu d'effort, plein de saveur."],
-      "sleepover": ["Le grignotage est meilleur après la séance — gagnons-le d'abord.", "C'est une soirée d'étude — le moment cocooning compte plus une fois qu'on a fini quelque chose.", "Reviens. Le moment cocooning est meilleur quand tu as fini quelque chose."],
+      "sleepover": ["Le grignotage est meilleur après la séance — gagnons-le d'abord.", "Étudions d'abord. Le cocooning vaut mieux après.", "Reviens. Le moment cocooning est meilleur quand tu as fini quelque chose."],
       "afternoontrain": ["Tu flâneras plus tard. Tes devoirs sont toujours là, à t'attendre.", "Prends la route panoramique pour revenir à la concentration.", "La liberté est meilleure une fois la tâche terminée."]
     },
     "hanji": {
@@ -573,6 +574,7 @@
     "dangerZone": "Zone dangereuse",
     "clearData": "Effacer toutes les données",
     "secAccount": "COMPTE",
+    "mailboxSub": "Cadeaux et messages",
     "secMembership": "ABONNEMENT",
     "secBalances": "SOLDES",
     "secFocusStudy": "CONCENTRATION ET ÉTUDE",
@@ -1034,6 +1036,10 @@
     "matchedTitle": "Tenue assortie prête !",
     "matchedMsg": "{{outfit}} avec la salle {{room}}, c'est prêt !",
     "matchedRoomSub": "Obtenez la salle {{room}} (décor + bureau) pour accompagner {{outfit}}.",
+    "equipLookTitle": "Adopter ce look ?",
+    "equipLookSub": "Appliquer la salle {{room}} et porter {{outfit}} ?",
+    "equipLookSubNoDesk": "Appliquer le décor {{room}} et porter {{outfit}} ? Votre bureau actuel est conservé.",
+    "equipLookBtn": "Équiper",
     "roomLockedTitle": "Salle assortie verrouillée",
     "roomLockedMsg": "Débloque la salle {{room}} dans la Boutique pour compléter le look de {{outfit}}.",
     "goToShop": "Aller à la Boutique",
@@ -1089,6 +1095,7 @@
     "game_connect4": "Puissance 4",
     "game_tictactoe": "Morpion",
     "game_batterdash": "BatterDash",
+    "game_2048": "2048",
     "chat": "Chat",
     "game_study": "Salle d'étude",
     "you": "Toi"
@@ -1446,7 +1453,28 @@
     "playFriendFree": "Joue gratuitement avec un ami",
     "getPlusUnlock": "Obtiens Plus pour débloquer",
     "plus": "Plus",
-    "sameDevice": "Même appareil"
+    "sameDevice": "Même appareil",
+    "score": "Score",
+    "best": "Meilleur",
+    "restart": "Recommencer",
+    "joinTheNumbers": "~ Réunis les nombres ! ~",
+    "g2048Bubble": "Détends-toi et fais 2048 !",
+    "made2048": "Tu as fait 2048 !",
+    "keepGoing": "Continuer",
+    "noMoves": "Plus de mouvements !",
+    "tryAgain": "Réessayer"
+  },
+  "mailbox": {
+    "title": "Boîte aux lettres",
+    "empty": "Pas de courrier pour l'instant. Reviens vite pour des cadeaux !",
+    "claim": "Réclamer",
+    "claimed": "Réclamé",
+    "coinsReward": "{{count}} pièces",
+    "claimedTitle": "Récompense réclamée !",
+    "claimedMsg": "Tu as reçu {{reward}}.",
+    "claimedPlain": "Profite bien !",
+    "chooseOne": "Choisis-en un à réclamer :",
+    "wearNote": "Il faudra débloquer le personnage correspondant pour pouvoir le porter."
   },
   "cake": {
     "back": "‹ Retour",
@@ -1611,6 +1639,7 @@
     "zzz": "ZZZ",
     "jiraiKei": "Jirai Kei",
     "bluePeony": "Pivoine Bleue",
+    "bluebell": "Campanule",
     "berryPrincess": "Princesse Berry",
     "ivoryRose": "Rose Ivoire",
     "strawberryDreams": "Rêves de Fraise",

@@ -30,16 +30,16 @@ import i18n, { useTranslation } from '@/i18n';
 
 const LOADING_IMGS = [
   require('@/assets/images/home/loading4.png'),
-  require('@/assets/images/home/loading6.png'),
   require('@/assets/images/home/loading11.png'),
   require('@/assets/images/home/loading8.png'),
   require('@/assets/images/home/loading9.png'),
   require('@/assets/images/home/loading10.png'),
+  require('@/assets/images/home/loading12.png'),
 ];
 
 // Index-aligned with LOADING_IMGS: true where the art's bottom (under the label)
 // is too dark or too pink for the default pink label to read — use white there.
-const LOADING_TEXT_WHITE = [true, true, true, true, true, false];
+const LOADING_TEXT_WHITE = [true, true, true, true, false, true];
 
 // Full-screen loading splash shown OVER the app — the home screen mounts behind
 // it (loading its art) and stays hidden until everything is ready. Only when
@@ -156,7 +156,7 @@ function RootNavigator() {
       const bg = ROOM_PAIRS.find((r) => r.id === equippedBackgroundRoomId)?.backgroundImage ?? ROOM_PAIRS[0].backgroundImage;
       const desk = ROOM_PAIRS.find((r) => r.id === equippedDeskRoomId)?.deskImage ?? ROOM_PAIRS[0].deskImage;
       const char = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins)?.imageSource;
-      const numeric = [bg, desk, ...(typeof char === 'number' ? [char] : [])];
+      const numeric = [bg, desk, ...(typeof char === 'number' ? [char] : [])].filter((x): x is number => x != null);
       // Custom-art companions carry a {uri} image — prefetch those through expo-image.
       const uri = char && typeof char === 'object' && 'uri' in char ? char.uri : undefined;
       Promise.all([
@@ -295,6 +295,7 @@ function RootNavigator() {
         <Stack.Screen name="companion-chat" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="companion-pfp" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="settings" options={{ presentation: 'modal', title: t('screens.settings') }} />
+        <Stack.Screen name="mailbox" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="legal" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="coin-shop" options={{ presentation: 'modal', title: t('screens.getCoins') }} />
       </Stack.Protected>

@@ -14,6 +14,7 @@ import { loadBlockedCodes, blockUserRemote, unblockUserRemote } from '@/lib/mode
 import { syncStreakReminders } from '@/lib/notifications';
 import { computeTaskRollover } from '@/lib/task-recurrence';
 import { uploadProfile } from '@/lib/profile-sync';
+import { companionLevelInfo } from '@/lib/companion-level';
 import { uploadStudyDay } from '@/lib/study-buddy';
 import { HANJI_COMPANION_ID, recipeBadgeKey, badgesFromMadeFoods, hasAllCharacterBadges, RECIPE_IDS } from '@/constants/recipes';
 
@@ -293,6 +294,12 @@ type PersistedState = {
   cakeBestLine: number;
   cakeCharacter: string;
 
+  // 2048 break-game best score
+  game2048Best: number;
+
+  // Broadcast mail the player has already claimed (mail row ids).
+  claimedMailIds: string[];
+
   // i18n
   language: string;
   languageSelected: boolean;
@@ -433,6 +440,8 @@ const DEFAULTS: PersistedState = {
   cakeBestRush: 0,
   cakeBestLine: 0,
   cakeCharacter: 'bun',
+  game2048Best: 0,
+  claimedMailIds: [],
   language: 'en',
   languageSelected: false,
   legalAccepted: false,
@@ -921,6 +930,10 @@ type AppContextType = {
   cakeCharacter: string;
   setCakeCharacter: (id: string) => void;
   recordCakeBest: (mode: 'rush' | 'line', score: number) => void;
+  game2048Best: number;
+  recordGame2048Best: (score: number) => void;
+  claimedMailIds: string[];
+  claimMail: (mail: { id: string; coins: number; itemId: string | null }) => void;
   setLanguage: (lang: string) => void;
   markLanguageSelected: () => void;
   markLegalAccepted: () => void;
@@ -1209,6 +1222,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const companionId = s.profileCompanionId || equippedCompanionId;
     const skinId = s.profileCompanionId ? s.profileSkinId : equippedSkinId;
     const userId = session.user.id;
+    // Top "chef" level = highest companion bond level across all companions (min 1).
+    const topChefLevel = Object.values(s.companionMinutes ?? {}).reduce(
+      (max, mins) => Math.max(max, companionLevelInfo(mins).level),
+      1,
+    );
     const timer = setTimeout(() => {
       uploadProfile(userId, {
         friendCode: s.friendCode,
@@ -1223,6 +1241,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         currentStreak: s.streak.currentStreak,
         longestStreak: s.streak.longestStreak,
         totalMinutes: s.totalMinutes,
+        topChefLevel,
       });
     }, 800);
     return () => clearTimeout(timer);
@@ -1231,7 +1250,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     s.profileDisplayName, s.profileDescription, s.profileBirthday, s.profileBackgroundId,
     s.profileAvatarFrame, s.profileCardColor,
     s.profileCompanionId, s.profileSkinId, s.activeCompanionId, s.bunSkinId, s.companionSkins,
-    s.streak.currentStreak, s.streak.longestStreak, s.totalMinutes,
+    s.streak.currentStreak, s.streak.longestStreak, s.totalMinutes, s.companionMinutes,
   ]);
 
   // Mirror the streak's last-study date to the server so a Study Buddy's daily
@@ -2177,6 +2196,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
         : { ...prev, cakeBestLine: Math.max(prev.cakeBestLine, score) },
     );
 
+  const recordGame2048Best = (score: number) =>
+    setS((prev) => ({ ...prev, game2048Best: Math.max(prev.game2048Best, score) }));
+
+  // Claim a broadcast mail's reward once: grant coins (uncapped, like the login
+  // reward) + unlock its item if any, and remember it so it can't be claimed twice.
+  const claimMail = (mail: { id: string; coins: number; itemId: string | null }) =>
+    setS((prev) => {
+      if (prev.claimedMailIds.includes(mail.id)) return prev;
+      const grantItem = !!mail.itemId && !prev.ownedShopItems.includes(mail.itemId);
+      return {
+        ...prev,
+        coins: prev.coins + (mail.coins || 0),
+        ownedShopItems: grantItem ? [...prev.ownedShopItems, mail.itemId as string] : prev.ownedShopItems,
+        claimedMailIds: [...prev.claimedMailIds, mail.id],
+      };
+    });
+
   const setMultipleReminders = (reminders: ReminderEntry[]) =>
     setS((prev) => ({ ...prev, multipleReminders: reminders }));
 
@@ -2402,6 +2438,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         cakeCharacter: s.cakeCharacter ?? 'bun',
         setCakeCharacter,
         recordCakeBest,
+        game2048Best: s.game2048Best ?? 0,
+        recordGame2048Best,
+        claimedMailIds: s.claimedMailIds ?? [],
+        claimMail,
         setIsPlus,
         useStreakFreeze,
         saveTimerPreset,

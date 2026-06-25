@@ -54,6 +54,7 @@ const OUTFIT_NAME_KEYS: Record<string, string> = {
   ZZZ: 'outfitNames.zzz',
   'Jirai Kei': 'outfitNames.jiraiKei',
   'Blue Peony': 'outfitNames.bluePeony',
+  Bluebell: 'outfitNames.bluebell',
   'Berry Princess': 'outfitNames.berryPrincess',
   'Ivory Rose': 'outfitNames.ivoryRose',
   'Strawberry Dreams': 'outfitNames.strawberryDreams',
@@ -75,14 +76,26 @@ export const STARTER_COMPANION_IMAGES: Record<DefaultCompanionId, number> = {
 // `shopItemId: null` means free/owned by default; otherwise it must be purchased.
 // `roomId` (optional) ties an outfit to a matched room (ROOM_PAIRS id); the
 // wardrobe shows a chain/link icon that sets that background+desk to match.
-export type BunSkin = { id: string; name: string; emoji: string; image: number; shopItemId: string | null; roomId?: string; lore?: string };
+// `lore` is a single short quote; `lores` (optional) is a set of quotes and the
+// outfit popup shows a random one each time it's tapped.
+export type BunSkin = { id: string; name: string; emoji: string; image: number; shopItemId: string | null; roomId?: string; lore?: string; lores?: string[] };
 export const BUN_SKINS: BunSkin[] = [
-  { id: 'classic', name: 'Strawberry', emoji: '', image: require('@/assets/images/bun/bun-home.png'), shopItemId: null, lore: "She showed up and never quite left. Warm and familiar, like something you didn't know you were missing." },
-  { id: 'angel', name: 'Angel', emoji: '', image: require('@/assets/images/bun/bun-angel.png'), shopItemId: 'outfit_bun_angel', lore: "There is a kind of kindness that doesn't announce itself. It's just there — between one breath and the next, quiet and sure." },
-  { id: 'strawberry', name: 'Berry Princess', emoji: '', image: require('@/assets/images/bun/bun-strawberry.png'), shopItemId: 'outfit_bun_strawberry', lore: "A crown worn like it was always there. Sweet at the edges, golden at the center — the kind of warmth that doesn't ask permission." },
-  { id: 'snowrabbit', name: 'Snow Rabbit', emoji: '', image: require('@/assets/images/bun/bun-snowrabbit.png'), shopItemId: 'outfit_bun_snowrabbit', roomId: 'frostbloom-shrine', lore: "Cold air. A flower that blooms against the frost anyway. Winter as an invitation, not an ending." },
-  { id: 'dreams', name: 'Strawberry Dreams', emoji: '', image: require('@/assets/images/bun/bun-dreams.png'), shopItemId: 'outfit_bun_dreams', roomId: 'buns-room', lore: "A lantern left on low. The night settling in like it belongs. Softness all the way down." },
+  { id: 'classic', name: 'Strawberry', emoji: '', image: require('@/assets/images/bun/bun-home.png'), shopItemId: null, lore: "Showed up and never left — warm like something you'd missed." },
+  { id: 'angel', name: 'Angel', emoji: '', image: require('@/assets/images/bun/bun-angel.png'), shopItemId: 'outfit_bun_angel', lore: "A quiet kindness that doesn't announce itself." },
+  { id: 'strawberry', name: 'Berry Princess', emoji: '', image: require('@/assets/images/bun/bun-strawberry.png'), shopItemId: 'outfit_bun_strawberry', lore: "A crown worn like it was always there." },
+  { id: 'snowrabbit', name: 'Snow Rabbit', emoji: '', image: require('@/assets/images/bun/bun-snowrabbit.png'), shopItemId: 'outfit_bun_snowrabbit', roomId: 'frostbloom-shrine', lore: "A flower that blooms against the frost anyway." },
+  { id: 'dreams', name: 'Strawberry Dreams', emoji: '', image: require('@/assets/images/bun/bun-dreams.png'), shopItemId: 'outfit_bun_dreams', roomId: 'buns-room', lore: "A lantern on low. Softness all the way down." },
 ];
+
+/** All quotes for a skin (the `lores` set, or the single `lore`, or none). */
+export function skinLores(skin: BunSkin): string[] {
+  return skin.lores ?? (skin.lore ? [skin.lore] : []);
+}
+/** A random quote for the outfit popup (empty string if the skin has none). */
+export function pickSkinLore(skin: BunSkin): string {
+  const all = skinLores(skin);
+  return all.length ? all[Math.floor(Math.random() * all.length)] : '';
+}
 
 export function getBunSkinImage(skinId: string | null | undefined): number {
   return BUN_SKINS.find((s) => s.id === skinId)?.image ?? BUN_SKINS[0].image;
@@ -105,29 +118,33 @@ export function getEffectiveBunSkinId(
 // companion id (`shop:<itemId>`). The first entry is the default look.
 export const COMPANION_SKINS: Record<string, BunSkin[]> = {
   'shop:companion_cocoa': [
-    { id: 'classic', name: 'Top Tier', emoji: '', image: require('@/assets/images/cocoa/cocoa.png'), shopItemId: null, lore: "Warm without trying. Present without asking. The kind of thing that simply is — and that's the whole of it." },
-    { id: 'relax', name: 'Relax', emoji: '', image: require('@/assets/images/cocoa/cocoa-relax.png'), shopItemId: 'outfit_cocoa_relax', lore: "Autumn without urgency. The afternoon that forgets to end. Something like breathing, but slower." },
-    { id: 'demon', name: 'Demon', emoji: '', image: require('@/assets/images/cocoa/cocoa-demon.png'), shopItemId: 'outfit_cocoa_demon', lore: "All that sharpness — and still something steady beneath it. The kind of edge that knows exactly where it ends." },
+    { id: 'classic', name: 'Relax', emoji: '', image: require('@/assets/images/cocoa/cocoa.png'), shopItemId: null, lore: "Autumn without urgency. Breathing, but slower." },
+    { id: 'demon', name: 'Demon', emoji: '', image: require('@/assets/images/cocoa/cocoa-demon.png'), shopItemId: 'outfit_cocoa_demon', lore: "All that edge — and still steady beneath it." },
   ],
   'shop:companion_tira': [
-    { id: 'classic', name: 'Graceful Walk', emoji: '', image: require('@/assets/images/tira/tira.png'), shopItemId: null, lore: "Composed. Deliberate. Never in a hurry. The kind of stillness that already knows how this ends." },
-    { id: 'chocomint', name: 'Choco Mint', emoji: '', image: require('@/assets/images/tira/tira-chocomint.png'), shopItemId: 'outfit_tira_chocomint', lore: "Sweet at the surface. Steady at the core. The kind of softness that holds its shape." },
-    { id: 'sleepover', name: 'Sleepover', emoji: '', image: require('@/assets/images/tira/tira-sleepover.png'), shopItemId: 'outfit_tira_sleepover', roomId: 'tiras-room', lore: "The night turned down low. Long evenings. Unhurried mornings. Rest that means it." },
-    { id: 'afternoontrain', name: 'Carefree Days', emoji: '', image: require('@/assets/images/tira/tira-afternoon-train.png'), shopItemId: 'outfit_tira_afternoontrain', roomId: 'afternoon-train', lore: "Sunflowers past the window. Something wrapped in cloth. The hours between nowhere and somewhere — the freest ones there are." },
+    { id: 'classic', name: 'Graceful Walk', emoji: '', image: require('@/assets/images/tira/tira.png'), shopItemId: null, lore: "Composed, deliberate, never in a hurry." },
+    { id: 'chocomint', name: 'Choco Mint', emoji: '', image: require('@/assets/images/tira/tira-chocomint.png'), shopItemId: 'outfit_tira_chocomint', lore: "Sweet at the surface, steady at the core." },
+    { id: 'sleepover', name: 'Sleepover', emoji: '', image: require('@/assets/images/tira/tira-sleepover.png'), shopItemId: 'outfit_tira_sleepover', roomId: 'tiras-room', lore: "Long evenings, unhurried mornings. Rest that means it." },
+    { id: 'afternoontrain', name: 'Carefree Days', emoji: '', image: require('@/assets/images/tira/tira-afternoon-train.png'), shopItemId: 'outfit_tira_afternoontrain', roomId: 'afternoon-train', lore: "The hours between nowhere and somewhere." },
   ],
   'shop:companion_honey': [
-    { id: 'classic', name: 'Honey Bear', emoji: '', image: require('@/assets/images/honey/honey.png'), shopItemId: null, lore: "Something warm was already baking. The kind of welcome that doesn't wait to be asked." },
-    { id: 'champion', name: 'Champion', emoji: '', image: require('@/assets/images/honey/honey-champion.png'), shopItemId: 'outfit_honey_champion', lore: "Focused. Decided. Already there before the bell. The kind of quiet that wins." },
-    { id: 'zzz', name: 'ZZZ', emoji: '', image: require('@/assets/images/honey/honey-zzz.png'), shopItemId: 'outfit_honey_zzz', roomId: 'miels-room', lore: "Soft grids. Gentle timers. A note left somewhere warm. Even in sleep, something here cares." },
+    { id: 'classic', name: 'Honey Bear', emoji: '', image: require('@/assets/images/honey/honey.png'), shopItemId: null, lore: "Something warm was already baking." },
+    { id: 'champion', name: 'Champion', emoji: '', image: require('@/assets/images/honey/honey-champion.png'), shopItemId: 'outfit_honey_champion', lore: "Decided. Already there before the bell." },
+    { id: 'zzz', name: 'ZZZ', emoji: '', image: require('@/assets/images/honey/honey-zzz.png'), shopItemId: 'outfit_honey_zzz', roomId: 'miels-room', lore: "Soft grids, gentle timers. Even sleep cares here." },
   ],
   'shop:companion_bunny': [
-    { id: 'classic', name: 'Cutest Thing Ever', emoji: '', image: require('@/assets/images/bunny/bunny.png'), shopItemId: null, lore: "Don't be fooled. It's adorable and it knows exactly what it's doing." },
-    { id: 'jiraikei', name: 'Jirai Kei', emoji: '', image: require('@/assets/images/bunny/bunny-jiraikei.png'), shopItemId: 'outfit_bunny_jiraikei', roomId: 'landmine', lore: "It doesn't explain itself. It doesn't need to. The look says enough — and the look says plenty." },
+    { id: 'classic', name: 'Cutest Thing Ever', emoji: '', image: require('@/assets/images/bunny/bunny.png'), shopItemId: null, lore: "Adorable — and it knows exactly what it's doing." },
+    { id: 'jiraikei', name: 'Jirai Kei', emoji: '', image: require('@/assets/images/bunny/bunny-jiraikei.png'), shopItemId: 'outfit_bunny_jiraikei', roomId: 'landmine', lore: "It doesn't explain itself. It doesn't need to." },
     { id: 'palace', name: 'Blue Peony', emoji: '', image: require('@/assets/images/bunny/bunny-palace.png'), shopItemId: 'outfit_bunny_palace', lore: "It speaks softly. It doesn't have to speak twice." },
+    { id: 'bluebell', name: 'Bluebell', emoji: '', image: require('@/assets/images/bunny/bunny-bluebell.png'), shopItemId: 'outfit_bunny_bluebell', roomId: 'bluebell-lagoon', lores: [
+      "Blue as the hour right before sleep.",
+      "Frills, ribbons — and no apology for them.",
+      "Sweetness that never had to raise its voice.",
+    ] },
   ],
   'shop:companion_hanji': [
-    { id: 'classic', name: 'Quiet Lavender', emoji: '', image: require('@/assets/images/hanji/hanji.png'), shopItemId: null, roomId: 'lavender-palace', lore: "Arrived quietly. Stayed. Some presences don't announce themselves — they simply remain." },
-    { id: 'ivoryrose', name: 'Ivory Rose', emoji: '', image: require('@/assets/images/hanji/hanji-ivoryrose.png'), shopItemId: 'outfit_hanji_ivoryrose', lore: "Dressed like the day mattered — before knowing what it would bring. That's a kind of faith." },
+    { id: 'classic', name: 'Quiet Lavender', emoji: '', image: require('@/assets/images/hanji/hanji.png'), shopItemId: null, roomId: 'lavender-palace', lore: "Arrived quietly. Stayed." },
+    { id: 'ivoryrose', name: 'Ivory Rose', emoji: '', image: require('@/assets/images/hanji/hanji-ivoryrose.png'), shopItemId: 'outfit_hanji_ivoryrose', lore: "Dressed like the day mattered. That's a kind of faith." },
   ],
 };
 

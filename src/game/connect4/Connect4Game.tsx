@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Dimensions, Pressable, StyleSheet, View } from 'react-native';
+import { Dimensions, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { DevKnobs } from '@/components/dev-knobs';
@@ -35,7 +35,11 @@ type Result = Player | 'draw' | null;
 const BOARD_NATIVE_AR = 1402 / 1122; // height / width of board.png
 const SCREEN_W = Dimensions.get('window').width;
 const SCREEN_H = Dimensions.get('window').height;
-const BOARD_W = Math.min(SCREEN_W - 40, 360);
+// Big iPads scale the whole play screen up (board, frames, fonts, spacing) via a
+// single factor, so nothing stays at the phone's 360-px size on a 13" screen.
+const LARGE = Math.min(SCREEN_W, SCREEN_H) >= 600;
+const UI = LARGE ? 1.7 : 1;
+const BOARD_W = Math.min(SCREEN_W - 40, 360 * UI);
 const BOARD_H = BOARD_W * BOARD_NATIVE_AR;
 const COL_FX = [0.1556, 0.2687, 0.3823, 0.4944, 0.6076, 0.7234, 0.8358];
 const ROW_FY = [0.2942, 0.3779, 0.4624, 0.5460, 0.6295];
@@ -66,7 +70,7 @@ const FRAME_CENTER: Record<Player, { x: number; y: number }> = {
   1: { x: 0.52, y: 0.53 },
   2: { x: 0.5, y: 0.5 },
 };
-const FRAME_SIZE = 86;
+const FRAME_SIZE = 86 * UI;
 const FACE_D = FRAME_SIZE * 0.66;
 const FACE_ZOOM = 1.7; // zoom into the upper half of the companion body
 
@@ -142,6 +146,19 @@ export function Connect4Game({
   } = useApp();
 
   const opponent = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
+
+  // Scale the opponent-picker cards up on big iPads (raw dimensions, not a flag).
+  const { width: winW, height: winH } = useWindowDimensions();
+  const largeScreen = Math.min(winW, winH) >= 600;
+  const titleBig = largeScreen ? { width: Math.min(winW * 0.74, 580), height: Math.min(winW * 0.74, 580) / 2.66, marginTop: 0 } : null;
+  const modeCardBig = largeScreen ? { maxWidth: 220, paddingVertical: Spacing.four, borderRadius: 28, gap: 12 } : null;
+  const modeIconBig = largeScreen ? { width: 84, height: 84 } : null;
+  const modeDiscBig = largeScreen ? { height: 84 } : null;
+  const modePieceBig = largeScreen ? { width: 52, height: 52 } : null;
+  const modeTitleBig = largeScreen ? { fontSize: 21 } : null;
+  const modeSubBig = largeScreen ? { fontSize: 14 } : null;
+  const subPillBig = largeScreen ? { paddingHorizontal: 24, paddingVertical: 10 } : null;
+  const subPillTextBig = largeScreen ? { fontSize: 17 } : null;
   // The player's own avatar (their profile bun) for the left-hand player card.
   const playerFigure = resolveProfileFigure({
     profileCompanionId,
@@ -355,34 +372,36 @@ export function Connect4Game({
         <Pressable style={({ pressed }) => [styles.backBtn, tw('back'), pressed && styles.pressed]} onPress={() => onLeave?.()} hitSlop={8}>
           <Image source={BACK_IMG} style={styles.backImg} contentFit="contain" />
         </Pressable>
-        <Image source={TITLE_IMG} style={[styles.titleImg, tw('title')]} contentFit="contain" />
-        <View style={styles.subPill}>
-          <ThemedText type="smallBold" style={styles.subPillText}>{t('connect4.dropDiscs')}</ThemedText>
+        <Image source={TITLE_IMG} style={[styles.titleImg, titleBig, tw('title')]} contentFit="contain" />
+        <View style={styles.modePickerCenter}>
+        <View style={[styles.subPill, subPillBig]}>
+          <ThemedText type="smallBold" style={[styles.subPillText, subPillTextBig]}>{t('connect4.dropDiscs')}</ThemedText>
         </View>
         <View style={styles.modeRow}>
           <Pressable
-            style={({ pressed }) => [styles.modeCard, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.modeCard, modeCardBig, pressed && styles.pressed]}
             onPress={startAi}>
-            <Image source={opponent.imageSource} style={styles.modeIcon} contentFit="contain" />
-            <ThemedText type="smallBold" style={styles.modeTitle}>{t('connect4.vsName', { name: opponent.name })}</ThemedText>
-            <ThemedText type="small" style={styles.modeSub}>{t('connect4.playTheAI')}</ThemedText>
+            <Image source={opponent.imageSource} style={[styles.modeIcon, modeIconBig]} contentFit="contain" />
+            <ThemedText type="smallBold" style={[styles.modeTitle, modeTitleBig]}>{t('connect4.vsName', { name: opponent.name })}</ThemedText>
+            <ThemedText type="small" style={[styles.modeSub, modeSubBig]}>{t('connect4.playTheAI')}</ThemedText>
           </Pressable>
-          <Pressable style={({ pressed }) => [styles.modeCard, pressed && styles.pressed]} onPress={startLocal}>
-            <View style={styles.modeDiscRow}>
-              <Image source={PIECE_IMG[1]} style={styles.modePiece} contentFit="contain" />
-              <Image source={PIECE_IMG[2]} style={styles.modePiece} contentFit="contain" />
+          <Pressable style={({ pressed }) => [styles.modeCard, modeCardBig, pressed && styles.pressed]} onPress={startLocal}>
+            <View style={[styles.modeDiscRow, modeDiscBig]}>
+              <Image source={PIECE_IMG[1]} style={[styles.modePiece, modePieceBig]} contentFit="contain" />
+              <Image source={PIECE_IMG[2]} style={[styles.modePiece, modePieceBig]} contentFit="contain" />
             </View>
-            <ThemedText type="smallBold" style={styles.modeTitle}>{t('games.passAndPlay')}</ThemedText>
-            <ThemedText type="small" style={styles.modeSub}>{t('games.sameDevice')}</ThemedText>
+            <ThemedText type="smallBold" style={[styles.modeTitle, modeTitleBig]}>{t('games.passAndPlay')}</ThemedText>
+            <ThemedText type="small" style={[styles.modeSub, modeSubBig]}>{t('games.sameDevice')}</ThemedText>
           </Pressable>
-          <Pressable style={({ pressed }) => [styles.modeCard, pressed && styles.pressed]} onPress={hostGame}>
-            <View style={styles.modeDiscPair}>
-              <Image source={PIECE_IMG[1]} style={styles.modePiece} contentFit="contain" />
-              <View style={{ marginLeft: -10 }}><Image source={PIECE_IMG[2]} style={styles.modePiece} contentFit="contain" /></View>
+          <Pressable style={({ pressed }) => [styles.modeCard, modeCardBig, pressed && styles.pressed]} onPress={hostGame}>
+            <View style={[styles.modeDiscPair, modeDiscBig]}>
+              <Image source={PIECE_IMG[1]} style={[styles.modePiece, modePieceBig]} contentFit="contain" />
+              <View style={{ marginLeft: -10 }}><Image source={PIECE_IMG[2]} style={[styles.modePiece, modePieceBig]} contentFit="contain" /></View>
             </View>
-            <ThemedText type="smallBold" style={styles.modeTitle}>{t('connect4.online')}</ThemedText>
-            <ThemedText type="small" style={styles.modeSub}>{t('connect4.playFriend')}</ThemedText>
+            <ThemedText type="smallBold" style={[styles.modeTitle, modeTitleBig]}>{t('connect4.online')}</ThemedText>
+            <ThemedText type="small" style={[styles.modeSub, modeSubBig]}>{t('connect4.playFriend')}</ThemedText>
           </Pressable>
+        </View>
         </View>
       </View>
     );
@@ -660,15 +679,17 @@ const styles = StyleSheet.create({
   // top-aligned container that let the room show through behind it).
   lobbyRoot: { justifyContent: 'center', gap: Spacing.three, paddingHorizontal: Spacing.four },
   // Picker sits high so the CONNECT4 title overlaps the "VS" baked into the background.
-  modeRoot: { paddingTop: SCREEN_H * 0.1 },
+  modeRoot: { justifyContent: 'flex-start', paddingTop: SCREEN_H * 0.04 },
+  // Logo pins to the top (modeRoot); the picker fills the rest and centers in it.
+  modePickerCenter: { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center', gap: Spacing.three, paddingBottom: SCREEN_H * 0.16 },
   backBtn: { position: 'absolute', top: -2, left: 2, width: 58, height: 58, zIndex: 5 },
   backImg: { width: 58, height: 58 },
-  titleImg: { width: Math.min(BOARD_W, 320), height: Math.min(BOARD_W, 320) / 2.66, marginTop: 2 },
+  titleImg: { width: Math.min(BOARD_W, 320 * UI), height: Math.min(BOARD_W, 320 * UI) / 2.66, marginTop: 2 },
 
   // Players (VS badge lives in the background art)
   playersRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  vsGap: { width: 64 },
-  playerCard: { alignItems: 'center', gap: 5, width: 100 },
+  vsGap: { width: 64 * UI },
+  playerCard: { alignItems: 'center', gap: 5 * UI, width: 100 * UI },
   frameWrap: { width: FRAME_SIZE, height: FRAME_SIZE, alignItems: 'center', justifyContent: 'center' },
   faceClip: { position: 'absolute', overflow: 'hidden', backgroundColor: '#FEECD4' },
   silWrap: { alignItems: 'center', justifyContent: 'flex-end', backgroundColor: '#F3E7DA' },
@@ -676,26 +697,26 @@ const styles = StyleSheet.create({
   namePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    maxWidth: 96,
+    gap: 5 * UI,
+    maxWidth: 96 * UI,
     backgroundColor: '#FFFCF8',
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
+    paddingHorizontal: 10 * UI,
+    paddingVertical: 3 * UI,
   },
-  namePiece: { width: 16, height: 16 },
-  nameText: { flexShrink: 1, color: BakeryColors.cocoaDark },
+  namePiece: { width: 16 * UI, height: 16 * UI },
+  nameText: { flexShrink: 1, color: BakeryColors.cocoaDark, fontSize: 14 * UI, lineHeight: 20 * UI },
 
   // Status pill
   statusPill: {
     backgroundColor: '#FFFCF8',
     borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 6,
+    paddingHorizontal: 18 * UI,
+    paddingVertical: 6 * UI,
     borderWidth: 1.5,
     borderColor: '#F4D7DE',
   },
-  statusText: { color: BakeryColors.jam, fontSize: 15 },
+  statusText: { color: BakeryColors.jam, fontSize: 15 * UI, lineHeight: 21 * UI },
 
   // Board
   boardWrap: { width: BOARD_W, height: BOARD_H, overflow: 'hidden', marginTop: 0 },
@@ -717,15 +738,15 @@ const styles = StyleSheet.create({
   // Disc tray
   tray: {
     flexDirection: 'row',
-    gap: Spacing.three,
+    gap: Spacing.three * UI,
     backgroundColor: '#FFFCF8',
     borderRadius: 999,
-    paddingHorizontal: 22,
-    paddingVertical: 8,
+    paddingHorizontal: 22 * UI,
+    paddingVertical: 8 * UI,
     borderWidth: 1.5,
     borderColor: '#F4D7DE',
   },
-  trayDisc: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center', opacity: 0.4 },
+  trayDisc: { width: 30 * UI, height: 30 * UI, alignItems: 'center', justifyContent: 'center', opacity: 0.4 },
   trayActive: { opacity: 1 },
   trayPiece: { width: '100%', height: '100%' },
 

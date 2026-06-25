@@ -64,7 +64,7 @@ export function PetBubble({ line, isTablet = false, scale = 1, onDone }: { line:
   const opacity = prog.interpolate({ inputRange: [0, 0.07, 0.8, 1], outputRange: [0, 1, 1, 0] });
   const popScale = prog.interpolate({ inputRange: [0, 0.1, 1], outputRange: [0.7, 1, 1.06] });
 
-  const W = (isTablet ? 150 : 190) * scale;
+  const W = (isTablet ? 188 : 232) * scale;
   const H = (W * 84) / 120;
 
   return (
@@ -87,10 +87,10 @@ export function PetBubble({ line, isTablet = false, scale = 1, onDone }: { line:
         </Svg>
         <View style={{ position: 'absolute', left: W * 0.16, right: W * 0.16, top: H * 0.34, bottom: H * 0.12, alignItems: 'center', justifyContent: 'center' }}>
           <Text
-            style={{ fontSize: (isTablet ? 9 : 12) * scale, fontWeight: '700', color: BakeryColors.cocoaDark, textAlign: 'center' }}
+            style={{ fontSize: (isTablet ? 11 : 14) * scale, fontWeight: '700', color: BakeryColors.cocoaDark, textAlign: 'center' }}
             numberOfLines={3}
             adjustsFontSizeToFit
-            minimumFontScale={0.5}>
+            minimumFontScale={0.7}>
             {line}
           </Text>
         </View>

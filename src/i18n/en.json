@@ -10,12 +10,13 @@
     "cocoa": {
       "classic": ["Focus first. You can look cool after.", "Steady work. No drama. That's the recipe.", "You don't need motivation. You need five clean minutes."],
       "relax": ["Slow is fine. Stopped is the only problem.", "Let the timer steep. You just keep going.", "No rush. Just return before the focus gets cold."],
-      "demon": ["Sneaking off already? Bold. I like the nerve — now bring it to your notes.", "Come back. Your notes are not going to fear you by themselves.", "You can quit after you win. Not before."]
+      "demon": ["Sneaking off? Bold. Take that nerve to your notes.", "Come back. Your notes are not going to fear you by themselves.", "You can quit after you win. Not before."]
     },
     "bunny": {
       "classic": ["Bunny says come back because Bunny is cute and correct.", "Your study session needs Bunny's supervision immediately.", "Bunny already did Bunny's job by being adorable. Now you do yours."],
       "jiraikei": ["Don't leave Bunny alone with your unfinished work… come back soon?", "Come back or Bunny will stare sadly at the timer.", "You promised Bunny you’d study — and Bunny’s been waiting so patiently."],
-      "palace": ["Please return. Your focus deserves a graceful finish.", "A quiet effort is still noble.", "Bunny will wait, but not forever."]
+      "palace": ["Please return. Your focus deserves a graceful finish.", "A quiet effort is still noble.", "Bunny will wait, but not forever."],
+      "bluebell": ["Bunny dressed up just for study time. Come back?", "Blue frills, sweet bows — and Bunny waiting.", "Sweet and patient. Bunny's still right here."]
     },
     "miel": {
       "classic": ["Miel kept the room warm for you. Come back soon.", "Just one more spoonful of studying.", "Tiny work today becomes sweet later."],
@@ -25,7 +26,7 @@
     "tira": {
       "classic": ["Walk back to your work. Dramatically, if needed.", "No need to rush. Just don't disappear.", "A calm finish is still a finish."],
       "chocomint": ["Come back. This is your gentle reminder with a tiny bite.", "You can be cute and responsible at the same time — I’ve seen it.", "Five minutes. Low effort, high flavor."],
-      "sleepover": ["Snacks hit better after the session — let’s earn them first.", "It’s a study night — the cozy part counts more once we finish something.", "Come back. The cozy part works better when you finish something."],
+      "sleepover": ["Snacks hit better after the session — let’s earn them first.", "Study first. The cozy part counts more after.", "Come back. The cozy part works better when you finish something."],
       "afternoontrain": ["You can wander later. Your homework is still standing here.", "Take the scenic route back to focus.", "Freedom feels better after the task is done."]
     },
     "hanji": {
@@ -573,6 +574,7 @@
     "dangerZone": "Danger Zone",
     "clearData": "Clear all data",
     "secAccount": "ACCOUNT",
+    "mailboxSub": "Gifts & messages",
     "secMembership": "MEMBERSHIP",
     "secBalances": "BALANCES",
     "secFocusStudy": "FOCUS & STUDY",
@@ -1034,6 +1036,10 @@
     "matchedTitle": "Matched look set!",
     "matchedMsg": "{{outfit}} with the {{room}} room — all set!",
     "matchedRoomSub": "Get the {{room}} room (background + desk) to match {{outfit}}.",
+    "equipLookTitle": "Wear this look?",
+    "equipLookSub": "Apply the {{room}} room and wear {{outfit}}?",
+    "equipLookSubNoDesk": "Apply the {{room}} background and wear {{outfit}}? Your current desk stays.",
+    "equipLookBtn": "Equip",
     "roomLockedTitle": "Matching room locked",
     "roomLockedMsg": "Unlock the {{room}} room in the Shop to complete {{outfit}}'s look.",
     "goToShop": "Go to Shop",
@@ -1089,6 +1095,7 @@
     "game_connect4": "Connect 4",
     "game_tictactoe": "Tic-Tac-Toe",
     "game_batterdash": "BatterDash",
+    "game_2048": "2048",
     "chat": "Chat",
     "game_study": "Study Room",
     "you": "You"
@@ -1446,7 +1453,28 @@
     "playFriendFree": "Play a friend free",
     "getPlusUnlock": "Get Plus to unlock",
     "plus": "Plus",
-    "sameDevice": "Same device"
+    "sameDevice": "Same device",
+    "score": "Score",
+    "best": "Best",
+    "restart": "Restart",
+    "joinTheNumbers": "~ Join the numbers! ~",
+    "g2048Bubble": "Let's chill and make 2048!",
+    "made2048": "You made 2048!",
+    "keepGoing": "Keep going",
+    "noMoves": "No more moves!",
+    "tryAgain": "Try again"
+  },
+  "mailbox": {
+    "title": "Mailbox",
+    "empty": "No mail right now. Check back soon for gifts!",
+    "claim": "Claim",
+    "claimed": "Claimed",
+    "coinsReward": "{{count}} coins",
+    "claimedTitle": "Reward claimed!",
+    "claimedMsg": "You got {{reward}}.",
+    "claimedPlain": "Enjoy!",
+    "chooseOne": "Choose one to claim:",
+    "wearNote": "You'll need to unlock the matching character before you can wear it."
   },
   "cake": {
     "back": "‹ Back",
@@ -1611,6 +1639,7 @@
     "zzz": "ZZZ",
     "jiraiKei": "Jirai Kei",
     "bluePeony": "Blue Peony",
+    "bluebell": "Bluebell",
     "berryPrincess": "Berry Princess",
     "ivoryRose": "Ivory Rose",
     "strawberryDreams": "Strawberry Dreams",

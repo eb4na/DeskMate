@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,6 +9,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DeleteAccountModal } from '@/components/delete-account-modal';
 import { InstagramFollowRow } from '@/components/instagram-follow-row';
 import { PlusIcon } from '@/components/plus-icon';
+import { EnvelopeIcon } from '@/components/settings-icons';
+import { fetchMail } from '@/lib/mail';
 import { LockBadge } from '@/components/lock-badge';
 
 // Cozy hand-drawn settings icon set (assets/images/settings/*.png).
@@ -127,7 +129,20 @@ export default function SettingsScreen() {
     companionSkins,
     resetGameData,
     replayTutorial,
+    claimedMailIds,
   } = useApp();
+
+  // Unread mail count for the Mailbox row badge (live fetch on open).
+  const [unreadMail, setUnreadMail] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    fetchMail().then((m) => {
+      if (alive) setUnreadMail(m.filter((x) => !claimedMailIds.includes(x.id)).length);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [claimedMailIds]);
 
   const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
 
@@ -208,6 +223,17 @@ export default function SettingsScreen() {
               </ThemedText>
             </Pressable>
           </View>
+
+          {/* Mailbox */}
+          <ThemedView type="backgroundElement" style={styles.group}>
+            <SettingRow
+              icon={<EnvelopeIcon size={34} />}
+              label={t('mailbox.title')}
+              value={t('settings.mailboxSub')}
+              badge={unreadMail > 0 ? (unreadMail > 9 ? '9+' : String(unreadMail)) : undefined}
+              onPress={() => router.push('/mailbox')}
+            />
+          </ThemedView>
 
           {/* Account */}
           <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>

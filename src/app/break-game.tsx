@@ -14,7 +14,6 @@ import { Companion } from '@/components/companion';
 import { DevKnobs } from '@/components/dev-knobs';
 import { SimpleHomeIcon } from '@/components/tab-icons';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
-import { useIsTablet } from '@/hooks/use-device-class';
 import {
   getCompanionImage,
   localizeCompanionName,
@@ -28,13 +27,14 @@ import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 import { getCompanionLine } from '@/constants/companion-lines';
 import { Connect4Game } from '@/game/connect4/Connect4Game';
+import { Game2048 } from '@/game/2048/Game2048';
 import { joinGameRoom, type GameRoom, type PlayerMeta } from '@/lib/game-net';
 import { playTap } from '@/lib/sounds';
 import { showLoadingScreen } from '@/lib/loading-signal';
 import { BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-type GameId = 'tictactoe' | 'connect4' | 'cakekitchen';
+type GameId = 'tictactoe' | 'connect4' | 'cakekitchen' | '2048';
 type Phase = 'select' | 'playing' | 'resting' | 'over';
 type TicTacToeMode = 'ai' | 'friend' | 'online';
 
@@ -242,14 +242,28 @@ function TicTacToeGame({
     friendCode,
   } = useApp();
   const { width: winW, height: winH } = useWindowDimensions();
-  const isTablet = useIsTablet();
-  // Phones keep the flat 340 cap. On tablets the cap scales with the shorter
-  // screen edge so the board grows proportionally on larger iPads (e.g. 13")
-  // instead of staying the same absolute size it has on the 11".
-  const boardCap = isTablet ? Math.min(winW, winH) * 0.42 : 340;
-  const boardSize = Math.min(winW - 32, winH * 0.38, boardCap);
-  // Player cards as wide as two fit side-by-side, so the name has real room.
-  const cardW = Math.min((winW - 24) / 2, 200);
+  // Board scales straight off the screen size: big iPads get a big board, while
+  // phones keep the familiar 340 floor. Driven by raw dimensions (not the tablet
+  // flag) so it still grows even when the dev device-class preview forces phone.
+  const boardSize = Math.min(
+    winW - 32,
+    winH * 0.6,
+    Math.max(340, Math.min(winW, winH) * 0.8),
+  );
+  // Player cards as wide as two fit side-by-side, so the name has real room;
+  // they scale up on larger screens to stay proportional to the board.
+  const cardW = Math.min((winW - 24) / 2, Math.max(200, Math.min(winW, winH) * 0.28));
+  // Large-screen flag (raw dimensions, not the tablet flag) — used to scale the
+  // opponent-picker cards up on big iPads.
+  const largeScreen = Math.min(winW, winH) >= 600;
+  const modeCardBig = largeScreen ? { maxWidth: 250, paddingVertical: 40, borderRadius: 34, gap: 16 } : null;
+  const modeIconBig = largeScreen ? { width: 104, height: 104 } : null;
+  const modePiecesBig = largeScreen ? { height: 104 } : null;
+  const modePieceBig = largeScreen ? { width: 62, height: 62 } : null;
+  const modeTitleBig = largeScreen ? { fontSize: 23 } : null;
+  const modeSubBig = largeScreen ? { fontSize: 15 } : null;
+  const subPillBig = largeScreen ? { paddingHorizontal: 26, paddingVertical: 11 } : null;
+  const subPillTextBig = largeScreen ? { fontSize: 18 } : null;
 
   // Avatars: "you" use your profile figure; your active companion is the
   // opponent in vs-AI (and the other card in pass-and-play).
@@ -568,38 +582,38 @@ function TicTacToeGame({
           /* ── Opponent picker (shown first, like Connect 4) ── */
           <>
             <Image source={TTT_TITLE} style={tttStyles.titleImg} contentFit="contain" />
-            <View style={tttStyles.subPill}>
-              <ThemedText type="smallBold" style={tttStyles.subPillText}>
+            <View style={[tttStyles.subPill, subPillBig]}>
+              <ThemedText type="smallBold" style={[tttStyles.subPillText, subPillTextBig]}>
                 {t('games.chooseOpponent')}
               </ThemedText>
             </View>
             <View style={tttStyles.modeCards}>
               <Pressable
-                style={({ pressed }) => [tttStyles.modeCard, pressed && tttStyles.pressed]}
+                style={({ pressed }) => [tttStyles.modeCard, modeCardBig, pressed && tttStyles.pressed]}
                 onPress={() => chooseMode('ai')}>
-                <Image source={oppAvatar} style={tttStyles.modeIcon} contentFit="contain" />
-                <ThemedText type="smallBold" style={tttStyles.modeTitle}>{t('games.vsAI')}</ThemedText>
-                <ThemedText type="small" style={tttStyles.modeSub}>{t('games.playCompanion')}</ThemedText>
+                <Image source={oppAvatar} style={[tttStyles.modeIcon, modeIconBig]} contentFit="contain" />
+                <ThemedText type="smallBold" style={[tttStyles.modeTitle, modeTitleBig]}>{t('games.vsAI')}</ThemedText>
+                <ThemedText type="small" style={[tttStyles.modeSub, modeSubBig]}>{t('games.playCompanion')}</ThemedText>
               </Pressable>
               <Pressable
-                style={({ pressed }) => [tttStyles.modeCard, pressed && tttStyles.pressed]}
+                style={({ pressed }) => [tttStyles.modeCard, modeCardBig, pressed && tttStyles.pressed]}
                 onPress={() => chooseMode('friend')}>
-                <View style={tttStyles.modePieces}>
-                  <Image source={TTT_X} style={tttStyles.modePiece} contentFit="contain" />
-                  <Image source={TTT_O} style={[tttStyles.modePiece, { marginLeft: -8 }]} contentFit="contain" />
+                <View style={[tttStyles.modePieces, modePiecesBig]}>
+                  <Image source={TTT_X} style={[tttStyles.modePiece, modePieceBig]} contentFit="contain" />
+                  <Image source={TTT_O} style={[tttStyles.modePiece, modePieceBig, { marginLeft: -8 }]} contentFit="contain" />
                 </View>
-                <ThemedText type="smallBold" style={tttStyles.modeTitle}>{t('games.passAndPlay')}</ThemedText>
-                <ThemedText type="small" style={tttStyles.modeSub}>{t('games.sameDevice')}</ThemedText>
+                <ThemedText type="smallBold" style={[tttStyles.modeTitle, modeTitleBig]}>{t('games.passAndPlay')}</ThemedText>
+                <ThemedText type="small" style={[tttStyles.modeSub, modeSubBig]}>{t('games.sameDevice')}</ThemedText>
               </Pressable>
               <Pressable
-                style={({ pressed }) => [tttStyles.modeCard, pressed && tttStyles.pressed]}
+                style={({ pressed }) => [tttStyles.modeCard, modeCardBig, pressed && tttStyles.pressed]}
                 onPress={hostGame}>
-                <View style={tttStyles.modePieces}>
-                  <Image source={TTT_X} style={tttStyles.modePiece} contentFit="contain" />
-                  <Image source={TTT_O} style={[tttStyles.modePiece, { marginLeft: 4 }]} contentFit="contain" />
+                <View style={[tttStyles.modePieces, modePiecesBig]}>
+                  <Image source={TTT_X} style={[tttStyles.modePiece, modePieceBig]} contentFit="contain" />
+                  <Image source={TTT_O} style={[tttStyles.modePiece, modePieceBig, { marginLeft: 4 }]} contentFit="contain" />
                 </View>
-                <ThemedText type="smallBold" style={tttStyles.modeTitle}>{t('connect4.online')}</ThemedText>
-                <ThemedText type="small" style={tttStyles.modeSub}>{t('connect4.playFriend')}</ThemedText>
+                <ThemedText type="smallBold" style={[tttStyles.modeTitle, modeTitleBig]}>{t('connect4.online')}</ThemedText>
+                <ThemedText type="small" style={[tttStyles.modeSub, modeSubBig]}>{t('connect4.playFriend')}</ThemedText>
               </Pressable>
             </View>
             {/* Bottom spacer pushes the centered picker group upward. */}
@@ -855,7 +869,15 @@ export default function BreakGameScreen() {
     role?: string;
   }>();
   const { ownedShopItems, isPlus } = useApp();
-  const { width: winW } = useWindowDimensions();
+  const { width: winW, height: winH } = useWindowDimensions();
+  // Large-screen check from raw dimensions (not the tablet flag) so the footer
+  // still scales up even if the dev device-class preview is forcing phone.
+  const largeScreen = Math.min(winW, winH) >= 600;
+  // Phone sizes look lost on a 13" iPad — scale the footer chrome up there.
+  const homeBtnSize = largeScreen ? 92 : 66;
+  const homeIconSize = largeScreen ? 46 : 34;
+  const indicatorH = largeScreen ? 4 : 2.5;
+  const backArrowSize = largeScreen ? 56 : 40;
 
   // Online entry — opened from a friend invite straight into a networked game.
   const onlineSession =
@@ -926,6 +948,7 @@ export default function BreakGameScreen() {
     // { id: 'cakekitchen', nameKey: 'friends.game_batterdash', emoji: '', free: true, shopItemId: null, route: '/cake-game', icon: require('@/assets/images/cake/batterdash-banner.png'), tint: '#FBE0E6', featured: true, comingSoon: true },
     { id: 'tictactoe', nameKey: 'friends.game_tictactoe', emoji: '', free: true, shopItemId: null, icon: require('@/assets/images/tictactoe/thumbnail.png'), tint: '#FBEAD2' },
     { id: 'connect4', nameKey: 'friends.game_connect4', emoji: '', free: true, shopItemId: null, icon: require('@/assets/images/games/connect4.png'), tint: '#DFEAF4' },
+    { id: '2048', nameKey: 'friends.game_2048', emoji: '', free: true, shopItemId: null, icon: require('@/assets/images/2048/thumbnail.png'), tint: '#CFE9F2' },
   ];
   const featuredGame = GAMES.find((g) => g.featured);
   const gridGames = GAMES.filter((g) => !g.featured);
@@ -989,6 +1012,7 @@ export default function BreakGameScreen() {
 
   const connect4Active = phase === 'playing' && selectedGame === 'connect4';
   const tictactoeActive = phase === 'playing' && selectedGame === 'tictactoe';
+  const g2048Active = phase === 'playing' && selectedGame === '2048';
 
   // Tic-Tac-Toe takes over the whole screen with its own bakery scene.
   if (tictactoeActive) {
@@ -1002,6 +1026,11 @@ export default function BreakGameScreen() {
         onLeave={onlineSession ? goHome : showGames}
       />
     );
+  }
+
+  // 2048 is single-player and renders its own full-screen scene.
+  if (g2048Active) {
+    return <Game2048 onLeave={showGames} />;
   }
 
   return (
@@ -1120,16 +1149,16 @@ export default function BreakGameScreen() {
             {/* During a real study break this returns to the session (back arrow);
                 when just browsing from Home it's a home button. */}
             <View style={styles.homeFooter}>
-              <View style={[styles.homeIndicator, { marginHorizontal: -(Spacing.four + Math.max(0, (winW - MaxContentWidth) / 2)) }]} />
+              <View style={[styles.homeIndicator, { height: indicatorH, marginHorizontal: -(Spacing.four + Math.max(0, (winW - MaxContentWidth) / 2)) }]} />
               <Pressable
-                style={({ pressed }) => [styles.homeBtn, tw('homeBtn'), pressed && styles.pressed]}
+                style={({ pressed }) => [styles.homeBtn, { width: homeBtnSize, height: homeBtnSize, borderRadius: homeBtnSize / 2 }, tw('homeBtn'), pressed && styles.pressed]}
                 onPress={goHome}
                 hitSlop={8}
                 accessibilityLabel={isBrowse ? t('nav.home') : t('games.backToStudying')}>
                 {isBrowse ? (
-                  <SimpleHomeIcon color="#D86F9C" size={34} />
+                  <SimpleHomeIcon color="#D86F9C" size={homeIconSize} />
                 ) : (
-                  <ThemedText style={styles.backArrow}>‹</ThemedText>
+                  <ThemedText style={[styles.backArrow, { fontSize: backArrowSize, lineHeight: backArrowSize + 4 }]}>‹</ThemedText>
                 )}
               </Pressable>
             </View>
@@ -1167,13 +1196,13 @@ export default function BreakGameScreen() {
         {phase !== 'playing' && phase !== 'select' &&
           (isBrowse ? (
             <View style={styles.homeFooter}>
-              <View style={[styles.homeIndicator, { marginHorizontal: -(Spacing.four + Math.max(0, (winW - MaxContentWidth) / 2)) }]} />
+              <View style={[styles.homeIndicator, { height: indicatorH, marginHorizontal: -(Spacing.four + Math.max(0, (winW - MaxContentWidth) / 2)) }]} />
               <Pressable
-                style={({ pressed }) => [styles.homeBtn, tw('homeBtn'), pressed && styles.pressed]}
+                style={({ pressed }) => [styles.homeBtn, { width: homeBtnSize, height: homeBtnSize, borderRadius: homeBtnSize / 2 }, tw('homeBtn'), pressed && styles.pressed]}
                 onPress={goHome}
                 hitSlop={8}
                 accessibilityLabel={t('nav.home')}>
-                <SimpleHomeIcon color="#D86F9C" size={34} />
+                <SimpleHomeIcon color="#D86F9C" size={homeIconSize} />
               </Pressable>
             </View>
           ) : (

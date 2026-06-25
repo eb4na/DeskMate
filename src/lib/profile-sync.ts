@@ -18,6 +18,9 @@ export type SyncedProfile = {
   currentStreak: number;
   longestStreak: number;
   totalMinutes: number;
+  // Highest companion ("chef") bond level across all the player's companions. Synced
+  // so the founder can see the top level reached across the user base (SQL query).
+  topChefLevel?: number;
 };
 
 export async function uploadProfile(userId: string, p: SyncedProfile): Promise<boolean> {
@@ -37,6 +40,7 @@ export async function uploadProfile(userId: string, p: SyncedProfile): Promise<b
       current_streak: p.currentStreak,
       longest_streak: p.longestStreak,
       total_minutes: p.totalMinutes,
+      top_chef_level: p.topChefLevel ?? 1,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'user_id' },
@@ -78,5 +82,6 @@ export async function fetchProfileByCode(code: string): Promise<SyncedProfile | 
     currentStreak: data.current_streak ?? 0,
     longestStreak: data.longest_streak ?? 0,
     totalMinutes: data.total_minutes ?? 0,
+    topChefLevel: data.top_chef_level ?? 1,
   };
 }

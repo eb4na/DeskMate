@@ -9,6 +9,7 @@ import { CoinAmount, CoinIcon } from '@/components/coin-icon';
 import { LockOverlay } from '@/components/lock-badge';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
+import { showPopup } from '@/lib/popup';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { useTranslation } from '@/i18n';
 import {
@@ -87,7 +88,11 @@ export default function EditRoomScreen() {
   const canAffordTarget = coins >= targetTotal;
 
   const confirmBuy = () => {
-    if (!buyTarget || !canAffordTarget) return;
+    if (!buyTarget) return;
+    if (!canAffordTarget) {
+      showPopup(t('gallery.notEnoughCoins'), t('gallery.notEnoughCoinsMsg', { price: targetTotal, coins }));
+      return;
+    }
     for (const it of targetItems) purchaseShopItem(it.id, Math.floor(it.price * discount));
     // They tapped it to use it — so equip the half (or both) right away.
     if (buyTarget.kind !== 'desk') setEquippedBackground(buyTarget.room.id);
@@ -196,7 +201,7 @@ export default function EditRoomScreen() {
               <Card
                 key={room.id}
                 room={room}
-                image={room.deskImage}
+                image={room.deskImage!/* deskRooms filter excludes deskless rooms */}
                 owned={deskOwned(room, ownedShopItems)}
                 active={equippedDeskRoomId === room.id}
                 onPress={() => setEquippedDesk(room.id)}
@@ -269,11 +274,10 @@ export default function EditRoomScreen() {
                 )}
 
                 <Pressable
-                  disabled={!canAffordTarget}
                   style={({ pressed }) => [
                     styles.buyBtn,
                     !canAffordTarget && styles.buyBtnDisabled,
-                    pressed && canAffordTarget && { opacity: 0.85 },
+                    pressed && { opacity: 0.85 },
                   ]}
                   onPress={confirmBuy}>
                   <Text style={styles.buyBtnText}>

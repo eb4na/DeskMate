@@ -26,6 +26,8 @@ import { SoundPickerModal } from '@/components/sound-picker-modal';
 import { DevKnobs } from '@/components/dev-knobs';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { getCompanionImage, hanjiIsAnimated, isHanjiActiveId, resolveActiveCompanion } from '@/lib/companion-utils';
+import { PetBubble } from '@/components/companion-pet';
+import { getPetLine } from '@/constants/pet-lines';
 import { isPlusFrame } from '@/components/avatar-frame';
 import { HanjiFigure } from '@/components/hanji-figure';
 import { useStudyRoom, STUDY_ROOM_MAX, type StudyStatus } from '@/lib/use-study-room';
@@ -33,6 +35,19 @@ import { joinPresence, setMyPresenceStatus } from '@/lib/game-net';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
+
+// Active-companion id → pet-line persona key (the i18n `pet.<key>` voice). Tapping
+// a character during a session shows one of its lines. Custom/AI slots map to
+// undefined → the generic lines.
+const PERSONA_BY_COMPANION: Record<string, string> = {
+  'starter:girl': 'bun',
+  'shop:companion_bun': 'bun',
+  'shop:companion_cocoa': 'cocoa',
+  'shop:companion_bunny': 'bunny',
+  'shop:companion_honey': 'miel',
+  'shop:companion_tira': 'tira',
+  'shop:companion_hanji': 'hanji',
+};
 
 const BUN_STUDYING = require('@/assets/images/bun/bun-studying.png');
 const AVATAR_FRAME = require('@/assets/images/study/avatar-frame.png');
@@ -143,11 +158,41 @@ export function StudyRoomView({
   // tracks solo↔multiplayer and tablet size changes.
   const timerCardRef = useRef<View>(null);
   const [ropes, setRopes] = useState<{ top: number; width: number; eyeY: number } | null>(null);
+
+  // ── Overlap priority (character > timer > status circle) ───────────────────
+  // Three stacked elements can crowd each other on big screens: the status-circle
+  // row (top), the timer sign, and the characters that rise up from behind the
+  // desk. Priority is fixed — the CHARACTER never shrinks; if the timer would reach
+  // the characters it shrinks; the circle (least important) shrinks before either.
+  // We measure the on-screen rect of each (window coords, so all comparable) and
+  // shrink the lower-priority box just enough to clear. Measuring only TOP edges —
+  // each of which is fixed by layout ABOVE it, never by the shrink we apply below —
+  // keeps this a single pass with no measure→shrink→measure oscillation.
+  const partyLayerRef = useRef<View>(null);
+  const participantBlockRef = useRef<View>(null);
+  const [collide, setCollide] = useState<
+    { timerTop: number; timerH: number; circleTop: number; charTop: number } | null
+  >(null);
+  const measureCollide = useCallback(() => {
+    const t = timerCardRef.current;
+    const c = participantBlockRef.current;
+    const p = partyLayerRef.current;
+    if (!t || !c || !p) return;
+    t.measureInWindow((tx, ty, tw, th) => {
+      c.measureInWindow((cx, cy) => {
+        p.measureInWindow((px, py) => {
+          if (th > 0 && cy > 0 && py > 0)
+            setCollide({ timerTop: ty, timerH: th, circleTop: cy, charTop: py });
+        });
+      });
+    });
+  }, []);
   const measureRopes = useCallback(() => {
     timerCardRef.current?.measureInWindow((x, y, w, h) => {
       if (w > 0 && y > 0) setRopes({ top: -y, width: w, eyeY: y + h * EYELET_FRAC.y });
     });
-  }, []);
+    measureCollide();
+  }, [measureCollide]);
   const {
     activeSession,
     equippedDeskRoomId,
@@ -165,6 +210,7 @@ export function StudyRoomView({
     recordSession,
     recordQuestSession,
     addSubjectTime,
+    updateStreak,
     companionMinutes,
     selectedFoodId,
     equippedShopItems,
@@ -172,6 +218,16 @@ export function StudyRoomView({
     setEquippedSound,
     vinylColor,
   } = useApp();
+  // Tap-to-talk during a session: tapping a character pops one of its pet lines in a
+  // cloud above it. `talk.code` is whose bubble is showing (mine = my friendCode).
+  const [talk, setTalk] = useState<{ code: string; line: string; id: number } | null>(null);
+  const myPersona = PERSONA_BY_COMPANION[activeCompanionId ?? ''];
+  const mySkin = activeCompanionId === 'starter:girl' ? bunSkinId : companionSkins?.[activeCompanionId ?? ''] ?? 'classic';
+  const talkAs = (code: string, persona: string | undefined, skin: string | undefined) => {
+    playPop();
+    setTalk({ code, line: getPetLine(persona, skin), id: Date.now() });
+  };
+
   // The equipped study sound (a `sound_<id>` shop item) → its ambience id. Music
   // only actually plays for sounds that have an audio file; the vinyl spins to match.
   const equippedAmbId = equippedShopItems.sound ? equippedShopItems.sound.replace('sound_', '') : null;
@@ -439,6 +495,30 @@ export function StudyRoomView({
   // Rooms cap at STUDY_ROOM_MAX — hide the invite button once full.
   const roomFull = participants.length >= STUDY_ROOM_MAX;
 
+  // Resolve the priority overlap (see measureCollide). The character is fixed; the
+  // status circle and (rarely) the timer shrink to clear its rising head.
+  const COLLIDE_GAP = 6; // min breathing room left between two boxes (px)
+  const CHAR_ART_TOP = 0.06; // transparent padding atop the companion art (frac of size)
+  const CIRCLE_MIN_SCALE = 0.5; // never shrink the status circle below half
+  const TIMER_MIN_SCALE = 0.7;
+  let circleScale = 1;
+  let timerScale = 1;
+  if (collide && !soloScene) {
+    // The visible head sits a little below the square image box's top edge.
+    const charTopY = collide.charTop + CHAR_ART_TOP * partyCharSize;
+    circleScale = Math.max(
+      CIRCLE_MIN_SCALE,
+      Math.min(1, (charTopY - collide.circleTop - COLLIDE_GAP) / partFrameH),
+    );
+    timerScale = Math.max(
+      TIMER_MIN_SCALE,
+      Math.min(1, (charTopY - collide.timerTop - COLLIDE_GAP) / collide.timerH),
+    );
+  }
+  const partFrameWS = Math.round(partFrameW * circleScale);
+  const partFrameHS = Math.round(partFrameH * circleScale);
+  const partFontSizeS = Math.max(8, Math.round(partFontSize * circleScale));
+
   // ── Tablet desk + character geometry ───────────────────────────────────────
   // One shared anchor — `deskTopT`, the desk panel's top edge measured up from the
   // screen bottom — so the desk surface, its front-edge line, the characters and
@@ -600,6 +680,10 @@ export function StudyRoomView({
       // "study with a friend" quest + friend-session achievements.
       recordQuestSession({ minutes: activeSession.durationMinutes, withFriend: true });
       addSubjectTime(activeSession.subjectName, activeSession.durationMinutes);
+      // Advance the daily streak too, just like a solo finish — otherwise studying
+      // only with friends would never tick the streak shown in Progress. updateStreak
+      // also credits the streak-bonus coins internally.
+      updateStreak();
       setCoinsEarned(earned);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -682,7 +766,11 @@ export function StudyRoomView({
       )}
 
       {/* Timer card */}
-      <View ref={timerCardRef} onLayout={measureRopes} style={[styles.timerWrap, isSolo && styles.timerWrapSolo, isTablet && { width: isSolo ? '62%' : '48%' }]}>
+      <View ref={timerCardRef} onLayout={measureRopes} style={[styles.timerWrap, isSolo && styles.timerWrapSolo, isTablet && { width: isSolo ? '62%' : '48%' },
+        // Shrink the sign up-and-away if it would reach the characters (anchored at
+        // its top so the eyelets stay put). Transform-only, so it never reflows the
+        // status row below — keeping the overlap measurement stable.
+        timerScale < 1 && collide ? { transform: [{ translateY: -(collide.timerH * (1 - timerScale)) / 2 }, { scale: timerScale }] } : null]}>
         {/* Ropes from the real top of the screen down to the sign's eyelets. Rendered
             behind StudyOven so the sign body + eyelet circles cover the rope ends. */}
         {ropes && (
@@ -702,7 +790,7 @@ export function StudyRoomView({
           <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.nowBaking, isSolo && styles.nowBakingSolo, isTablet && styles.nowBakingTablet]}>{t('studyRoom.nowBaking')}</Text>
           {/* Auto-shrink to fit the sign's width so the timer can never overflow / pop
               out the side on any screen or font size. */}
-          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.timer, isSolo && styles.timerSolo, isTablet && { fontSize: Math.round(winW * 0.081), width: "100%", textAlign: "center" }]}>{format(displaySecs)}</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.3} style={[styles.timer, { width: '100%', textAlign: 'center' }, isSolo && styles.timerSolo, isTablet && { fontSize: Math.round(winW * 0.081) }]}>{format(displaySecs)}</Text>
           {!isSolo && (
             <View style={styles.studyingRow}>
               <Image source={PPL_ICON} style={styles.pplIcon} contentFit="contain" />
@@ -718,7 +806,7 @@ export function StudyRoomView({
 
       {/* Participant row (multiplayer only) */}
       {!isSolo && (
-      <View style={styles.participantBlock}>
+      <View ref={participantBlockRef} onLayout={measureCollide} style={styles.participantBlock}>
       <View style={[styles.participantRow, !isTablet && styles.participantRowPhone, { gap: PARTY_GAP }]}>
         {participants.slice(0, STUDY_ROOM_MAX).map((p) => {
           const present = p.code === friendCode || room.presentCodes.includes(p.code);
@@ -726,13 +814,13 @@ export function StudyRoomView({
           const img = p.code === friendCode ? bigCharacter : getCompanionImage(p.companionId, p.skinId);
           const plusRing = isPlusFrame(p.avatarFrame) ? { borderWidth: 2.5, borderColor: '#D4A847' } : null;
           return (
-            <View key={p.code} style={[styles.participant, { width: partFrameW, height: partFrameH }]}>
-              <Image source={AVATAR_FRAME} style={{ position: 'absolute', left: 0, top: 0, width: partFrameW, height: partFrameH }} contentFit="fill" pointerEvents="none" />
+            <View key={p.code} style={[styles.participant, { width: partFrameWS, height: partFrameHS }]}>
+              <Image source={AVATAR_FRAME} style={{ position: 'absolute', left: 0, top: 0, width: partFrameWS, height: partFrameHS }} contentFit="fill" pointerEvents="none" />
               <View style={[styles.partFace, plusRing]}>
                 <Image source={img} style={styles.partFaceImg} contentFit="cover" contentPosition="top" />
               </View>
               <View style={[styles.partDot, { backgroundColor: DOT_COLOR[status] }]} />
-              <Text style={[styles.partName, { fontSize: partFontSize }]} numberOfLines={1}>{p.code === friendCode ? t('studyRoom.you') : p.name}</Text>
+              <Text style={[styles.partName, { fontSize: partFontSizeS }]} numberOfLines={1}>{p.code === friendCode ? t('studyRoom.you') : p.name}</Text>
             </View>
           );
         })}
@@ -757,9 +845,10 @@ export function StudyRoomView({
           // Transform lives on an Animated.View (like Home) — applying it to the
           // expo-image directly stutters because the study view re-renders every
           // second (the countdown), which re-attaches the native animation nodes.
-          <Animated.View style={[styles.character, styles.characterSolo, soloCharTransform]}>
-            {soloCharContent}
-          </Animated.View>
+          <Pressable style={[styles.character, styles.characterSolo]} onPress={() => talkAs(friendCode, myPersona, mySkin)}>
+            <Animated.View style={soloCharTransform}>{soloCharContent}</Animated.View>
+            {talk && <PetBubble key={talk.id} line={talk.line} onDone={() => setTalk(null)} />}
+          </Pressable>
         )}
         {isSolo && onBreak && (
           <View style={styles.breakBadge}>
@@ -776,9 +865,11 @@ export function StudyRoomView({
           behind the table. Phone uses the in-scene flex layout above. */}
       {soloScene && isTablet && (
         <Animated.View
-          pointerEvents="none"
           style={[{ position: 'absolute', left: 0, right: 0, bottom: soloCharBottomT, alignItems: 'center', zIndex: 1 }, soloCharTransform]}>
-          <View style={{ width: soloCharSize, height: soloCharSize }}>{soloCharContent}</View>
+          <Pressable style={{ width: soloCharSize, height: soloCharSize }} onPress={() => talkAs(friendCode, myPersona, mySkin)}>
+            {soloCharContent}
+            {talk && <PetBubble key={talk.id} line={talk.line} scale={1.25} onDone={() => setTalk(null)} />}
+          </Pressable>
         </Animated.View>
       )}
 
@@ -786,14 +877,18 @@ export function StudyRoomView({
           edge. Sits behind the desk (same zIndex, drawn before) so the lower body
           tucks behind the table, like the solo character. */}
       {!soloScene && (
-        <View style={[styles.partyLayer, { bottom: partyCharBottomRaised }]} pointerEvents="none">
+        <View ref={partyLayerRef} onLayout={measureCollide} style={[styles.partyLayer, { bottom: partyCharBottomRaised }]}>
           {participants.slice(0, STUDY_ROOM_MAX).map((p) => {
             const img = p.code === friendCode ? bigCharacter : getCompanionImage(p.companionId, p.skinId);
             const pIsHanji = p.code === friendCode
               ? hanjiIsAnimated(activeCompanionId, companionSkins?.[activeCompanionId ?? ''])
               : hanjiIsAnimated(p.companionId, p.skinId);
+            // Tap a character → show one of its (or their) lines. Mine uses my live
+            // persona/skin; friends use the companion they're studying as.
+            const persona = p.code === friendCode ? myPersona : (p.companionId ? PERSONA_BY_COMPANION[p.companionId] : undefined);
+            const skin = p.code === friendCode ? mySkin : p.skinId;
             return (
-              <View key={p.code} style={[styles.partyMember, { width: partySlotW }]}>
+              <Pressable key={p.code} style={[styles.partyMember, { width: partySlotW }]} onPress={() => talkAs(p.code, persona, skin)}>
                 {/* No status dot above the character — status already shows on the
                     top participant cards, so the dot here was redundant clutter. */}
                 {/* Same gentle idle bounce as the solo character (transform on an
@@ -806,7 +901,10 @@ export function StudyRoomView({
                     <Image source={img} style={{ width: partyCharSize, height: partyCharSize }} contentFit="contain" />
                   )}
                 </Animated.View>
-              </View>
+                {talk?.code === p.code && (
+                  <PetBubble key={talk.id} line={talk.line} scale={0.72} onDone={() => setTalk(null)} />
+                )}
+              </Pressable>
             );
           })}
         </View>

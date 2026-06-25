@@ -119,47 +119,47 @@ export default function FoodGalleryScreen() {
                 return (
                   <View
                     key={food.id}
-                    style={[styles.foodCard, isSelected && styles.foodCardActive, locked && styles.foodCardLocked]}>
+                    style={[styles.foodCard, isTablet && styles.foodCardTablet, isSelected && styles.foodCardActive, locked && styles.foodCardLocked]}>
                     {/* Top-right: an empty circle slot on every recipe; once baked
                         it fills with the same badge shown on the finish-studying
                         receipt. Locked recipes show a lock in the slot. */}
                     {isMade ? (
                       <Pressable
-                        style={styles.madeBadgeBtn}
+                        style={[styles.madeBadgeBtn, isTablet && styles.madeBadgeBtnTablet]}
                         hitSlop={6}
                         onPress={() => setZoomBadge(food.madeBadge ?? BUN_FINISHED)}>
                         <Image source={food.madeBadge ?? BUN_FINISHED} style={styles.madeBadgeImg} resizeMode="cover" />
                       </Pressable>
                     ) : (
-                      <View style={styles.badgeSlotEmpty} />
+                      <View style={[styles.badgeSlotEmpty, isTablet && styles.madeBadgeBtnTablet]} />
                     )}
-                    <View style={styles.imageWrap}>
+                    <View style={[styles.imageWrap, isTablet && styles.imageWrapTablet]}>
                       <Image
                         source={food.image}
-                        style={[styles.foodImg, locked && styles.lockedImg]}
+                        style={[styles.foodImg, isTablet && styles.foodImgTablet, locked && styles.lockedImg]}
                         resizeMode="contain"
                       />
                     </View>
-                    <Text style={styles.foodName} numberOfLines={2}>{t(`foodGallery.food_${food.id}`)}</Text>
-                    <Text style={styles.foodOwner} numberOfLines={1}>{t('foodGallery.ownerTag', { name: localizeCompanionName(food.owner, t) })}</Text>
-                    <Text style={styles.foodDesc} numberOfLines={2}>{t(`foodGallery.food_${food.id}_desc`)}</Text>
+                    <Text style={[styles.foodName, isTablet && styles.foodNameTablet]} numberOfLines={2}>{t(`foodGallery.food_${food.id}`)}</Text>
+                    <Text style={[styles.foodOwner, isTablet && styles.foodOwnerTablet]} numberOfLines={1}>{t('foodGallery.ownerTag', { name: localizeCompanionName(food.owner, t) })}</Text>
+                    <Text style={[styles.foodDesc, isTablet && styles.foodDescTablet]} numberOfLines={2}>{t(`foodGallery.food_${food.id}_desc`)}</Text>
                     {locked ? (
                       <Pressable
-                        style={({ pressed }) => [styles.lockedBtn, pressed && styles.pressed]}
+                        style={({ pressed }) => [styles.lockedBtn, isTablet && styles.btnTablet, pressed && styles.pressed]}
                         onPress={() => router.replace({ pathname: '/shop', params: { category: 'recipe' } })}>
-                        <Text style={styles.lockedBtnText} numberOfLines={1}>
+                        <Text style={[styles.lockedBtnText, isTablet && styles.btnTextTablet]} numberOfLines={1}>
                           {t('foodGallery.lockedBuy', { price: food.price ?? 0 })}
                         </Text>
                       </Pressable>
                     ) : isSelected ? (
-                      <View style={styles.activePill}>
-                        <Text style={styles.activePillText}>{t('foodGallery.baking')}</Text>
+                      <View style={[styles.activePill, isTablet && styles.btnTablet]}>
+                        <Text style={[styles.activePillText, isTablet && styles.btnTextTablet]}>{t('foodGallery.baking')}</Text>
                       </View>
                     ) : (
                       <Pressable
-                        style={({ pressed }) => [styles.selectBtn, pressed && styles.pressed]}
+                        style={({ pressed }) => [styles.selectBtn, isTablet && styles.btnTablet, pressed && styles.pressed]}
                         onPress={() => { setSelectedFood(food.id); if (router.canGoBack()) router.back(); else router.replace('/'); }}>
-                        <Text style={styles.selectBtnText}>{t('foodGallery.bakeThis')}</Text>
+                        <Text style={[styles.selectBtnText, isTablet && styles.btnTextTablet]}>{t('foodGallery.bakeThis')}</Text>
                       </Pressable>
                     )}
                   </View>
@@ -170,9 +170,9 @@ export default function FoodGalleryScreen() {
 
           {/* Done */}
           <Pressable
-            style={({ pressed }) => [styles.doneButton, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.doneButton, isTablet && styles.doneButtonTablet, pressed && styles.pressed]}
             onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}>
-            <Text style={styles.doneButtonText}>{t('common.done')}</Text>
+            <Text style={[styles.doneButtonText, isTablet && styles.doneButtonTextTablet]}>{t('common.done')}</Text>
           </Pressable>
         </SafeAreaView>
       </ScrollView>
@@ -337,6 +337,20 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   doneButtonText: { color: '#fff', fontSize: 17, fontWeight: '800' },
+
+  // Tablet: the cards and their contents read tiny on a 13" iPad. Bump the art,
+  // names, descriptions and buttons up so the recipe grid fills the wide canvas.
+  foodCardTablet: { borderRadius: 28, padding: Spacing.four, gap: 8 },
+  imageWrapTablet: { width: 150, height: 150 },
+  foodImgTablet: { width: 150, height: 150 },
+  madeBadgeBtnTablet: { width: 56, height: 56, borderRadius: 28, top: 8, right: 8 },
+  foodNameTablet: { fontSize: 22 },
+  foodOwnerTablet: { fontSize: 14, marginTop: 2 },
+  foodDescTablet: { fontSize: 15, lineHeight: 21 },
+  btnTablet: { marginTop: 10, paddingHorizontal: 24, paddingVertical: 11 },
+  btnTextTablet: { fontSize: 16 },
+  doneButtonTablet: { borderRadius: 24, paddingVertical: Spacing.four },
+  doneButtonTextTablet: { fontSize: 22 },
 
   pressed: { opacity: 0.85 },
 });

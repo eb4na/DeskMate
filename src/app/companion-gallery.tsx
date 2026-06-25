@@ -23,7 +23,7 @@ import { CompanionLevel } from '@/components/companion-level';
 import { Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
-import { BUN_SKINS, type BunSkin, getBunSkinImage, getCompanionSkinImage, getCompanionSkins, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, SHOP_COMPANIONS } from '@/lib/companion-utils';
+import { BUN_SKINS, type BunSkin, getBunSkinImage, getCompanionSkinImage, getCompanionSkins, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, pickSkinLore, skinLores, SHOP_COMPANIONS } from '@/lib/companion-utils';
 import { SHOP_ITEMS } from '@/constants/shop-data';
 import { roomById, isPairOwned, type RoomPair } from '@/constants/room-data';
 
@@ -173,13 +173,20 @@ function GalleryContent() {
   // plus the outfit itself if it's still locked) right here, instead of jumping
   // to the Shop. All chain-link-reachable rooms are plain coin items.
   const [pairBuy, setPairBuy] = useState<{ pair: RoomPair; skin: BunSkin } | null>(null);
+  // Confirm-before-equip for an already-owned matched room: preview the room
+  // (background + desk if it has one) and let the player confirm.
+  const [pairConfirm, setPairConfirm] = useState<{ pair: RoomPair; skin: BunSkin } | null>(null);
   // Outfit lore popup.
   const [lorePopup, setLorePopup] = useState<{ name: string; text: string } | null>(null);
   const buyDiscount = isPlus ? 0.75 : 1;
   const buyPrice = buyItem ? Math.floor(buyItem.price * buyDiscount) : 0;
   const canAffordBuy = coins >= buyPrice;
   const confirmBuy = () => {
-    if (!buyItem || !canAffordBuy) return;
+    if (!buyItem) return;
+    if (!canAffordBuy) {
+      showPopup(t('gallery.notEnoughCoins'), t('gallery.notEnoughCoinsMsg', { price: buyPrice, coins }));
+      return;
+    }
     purchaseShopItem(buyItem.id, buyPrice);
     setBuyItem(null);
   };
@@ -195,11 +202,16 @@ function GalleryContent() {
   const pairTotal = pairNeedItems.reduce((sum, it) => sum + Math.floor(it.price * buyDiscount), 0);
   const canAffordPair = coins >= pairTotal;
   const confirmPairBuy = () => {
-    if (!pairBuy || !canAffordPair) return;
+    if (!pairBuy) return;
+    if (!canAffordPair) {
+      showPopup(t('gallery.notEnoughCoins'), t('gallery.notEnoughCoinsMsg', { price: pairTotal, coins }));
+      return;
+    }
     for (const it of pairNeedItems) purchaseShopItem(it.id, Math.floor(it.price * buyDiscount));
     const { pair, skin } = pairBuy;
     setEquippedBackground(pair.id);
-    setEquippedDesk(pair.id);
+    // Deskless scene rooms keep the player's current desk (see equipMatchedRoom).
+    if (pair.deskId) setEquippedDesk(pair.id);
     equipWardrobeSkin(skin.id);
     setPairBuy(null);
     showPopup(t('gallery.matchedTitle'), t('gallery.matchedMsg', { outfit: localizeOutfitName(skin.name, t), room: pair.name }));
@@ -223,17 +235,28 @@ function GalleryContent() {
   const equipMatchedRoom = (skin: BunSkin) => {
     const pair = roomById(skin.roomId);
     if (!pair) return;
-    const outfitName = localizeOutfitName(skin.name, t);
     if (!isPairOwned(pair, ownedShopItems)) {
       setPairBuy({ pair, skin });
       return;
     }
+    // Owned — preview the room (and its desk, if any) and confirm before applying.
+    setPairConfirm({ pair, skin });
+  };
+
+  // Apply the previewed matched room after the player confirms.
+  const confirmPairEquip = () => {
+    if (!pairConfirm) return;
+    const { pair, skin } = pairConfirm;
     setEquippedBackground(pair.id);
-    setEquippedDesk(pair.id);
+    // Some matched rooms (e.g. Bluebell Lagoon) are a full scene with no desk
+    // surface. Don't switch the player onto a deskless room — keep whatever desk
+    // they're currently using; only swap the desk when the room actually has one.
+    if (pair.deskId) setEquippedDesk(pair.id);
     // Wear the outfit too — but only if it's unlocked (a locked skin can't be worn).
     const skinLocked = !!skin.shopItemId && !ownedShopItems.includes(skin.shopItemId);
     if (!skinLocked) equipWardrobeSkin(skin.id);
-    showPopup(t('gallery.matchedTitle'), t('gallery.matchedMsg', { outfit: outfitName, room: pair.name }));
+    setPairConfirm(null);
+    showPopup(t('gallery.matchedTitle'), t('gallery.matchedMsg', { outfit: localizeOutfitName(skin.name, t), room: pair.name }));
   };
 
   // Equipping a character drops you straight back to the home screen.
@@ -449,10 +472,10 @@ function GalleryContent() {
                             <Text style={styles.skinTap}>{t('gallery.tapToWear')}</Text>
                           )}
                         </Pressable>
-                        {skin.lore && (
+                        {skinLores(skin).length > 0 && (
                           <Pressable
                             style={({ pressed }) => [styles.loreBadge, pressed && styles.pressed]}
-                            onPress={() => setLorePopup({ name: localizeOutfitName(skin.name, t), text: skin.lore! })}
+                            onPress={() => setLorePopup({ name: localizeOutfitName(skin.name, t), text: pickSkinLore(skin) })}
                             hitSlop={8}>
                             <Text style={styles.loreBadgeText}>i</Text>
                           </Pressable>
@@ -518,11 +541,10 @@ function GalleryContent() {
                   </Text>
                 )}
                 <Pressable
-                  disabled={!canAffordBuy}
                   style={({ pressed }) => [
                     styles.buyBtn,
                     !canAffordBuy && styles.buyBtnDisabled,
-                    pressed && canAffordBuy && styles.pressed,
+                    pressed && styles.pressed,
                   ]}
                   onPress={confirmBuy}>
                   <Text style={styles.buyBtnText}>
@@ -554,7 +576,9 @@ function GalleryContent() {
                     bottom band (mirrors the real study room), since the pair is both. */}
                 <View style={styles.pairImage}>
                   <Image source={pairBuy.pair.backgroundImage} style={styles.pairBg} contentFit="cover" />
-                  <Image source={pairBuy.pair.deskImage} style={styles.pairDesk} contentFit="cover" />
+                  {pairBuy.pair.deskImage != null && (
+                    <Image source={pairBuy.pair.deskImage} style={styles.pairDesk} contentFit="cover" />
+                  )}
                 </View>
                 <Text style={styles.plusAlertMsg}>
                   {t('gallery.matchedRoomSub', { outfit: localizeOutfitName(pairBuy.skin.name, t), room: pairBuy.pair.name })}
@@ -572,11 +596,10 @@ function GalleryContent() {
                   </Text>
                 )}
                 <Pressable
-                  disabled={!canAffordPair}
                   style={({ pressed }) => [
                     styles.buyBtn,
                     !canAffordPair && styles.buyBtnDisabled,
-                    pressed && canAffordPair && styles.pressed,
+                    pressed && styles.pressed,
                   ]}
                   onPress={confirmPairBuy}>
                   <Text style={styles.buyBtnText}>
@@ -584,6 +607,44 @@ function GalleryContent() {
                   </Text>
                 </Pressable>
                 <Pressable style={styles.buyCancel} onPress={() => setPairBuy(null)}>
+                  <Text style={styles.buyCancelText}>{t('gallery.maybeLater')}</Text>
+                </Pressable>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Confirm-before-equip for an owned matched room: preview background (+ desk
+          if it has one) and ask the player to confirm. */}
+      <Modal
+        visible={pairConfirm !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPairConfirm(null)}>
+        <Pressable style={styles.buyBackdrop} onPress={() => setPairConfirm(null)}>
+          <Pressable style={styles.buyCard} onPress={(e) => e.stopPropagation?.()}>
+            {pairConfirm && (
+              <>
+                <Text style={styles.buyTitle}>{t('gallery.equipLookTitle')}</Text>
+                <View style={styles.pairImage}>
+                  <Image source={pairConfirm.pair.backgroundImage} style={styles.pairBg} contentFit="cover" />
+                  {pairConfirm.pair.deskImage != null && (
+                    <Image source={pairConfirm.pair.deskImage} style={styles.pairDesk} contentFit="cover" />
+                  )}
+                </View>
+                <Text style={styles.plusAlertMsg}>
+                  {t(pairConfirm.pair.deskId ? 'gallery.equipLookSub' : 'gallery.equipLookSubNoDesk', {
+                    outfit: localizeOutfitName(pairConfirm.skin.name, t),
+                    room: pairConfirm.pair.name,
+                  })}
+                </Text>
+                <Pressable
+                  style={({ pressed }) => [styles.buyBtn, pressed && styles.pressed]}
+                  onPress={confirmPairEquip}>
+                  <Text style={styles.buyBtnText}>{t('gallery.equipLookBtn')}</Text>
+                </Pressable>
+                <Pressable style={styles.buyCancel} onPress={() => setPairConfirm(null)}>
                   <Text style={styles.buyCancelText}>{t('gallery.maybeLater')}</Text>
                 </Pressable>
               </>
@@ -1064,8 +1125,8 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     maxWidth: 320 * s, width: '100%',
     shadowColor: '#5B3A2E', shadowOpacity: 0.18, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
   },
-  loreTitle: { fontSize: 17 * s, fontWeight: '900', color: P.brown, textAlign: 'center' },
-  loreText: { fontSize: 14 * s, color: P.mutedBrown, lineHeight: 21 * s, textAlign: 'center', fontStyle: 'italic' },
+  loreTitle: { fontSize: 22 * s, fontWeight: '900', color: P.brown, textAlign: 'center' },
+  loreText: { fontSize: 19 * s, color: P.mutedBrown, lineHeight: 27 * s, textAlign: 'center', fontStyle: 'italic' },
   loreClose: { marginTop: 4 * s, backgroundColor: P.pink, borderRadius: 18 * s, paddingVertical: 10 * s, paddingHorizontal: 28 * s },
   loreCloseText: { color: '#fff', fontSize: 14 * s, fontWeight: '800' },
 });
