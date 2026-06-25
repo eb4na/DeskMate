@@ -32,12 +32,11 @@ export const PRODUCT_IDS = {
   treasury: 'memobun.coins.treasury',
   // one-time Streak Freeze consumable
   streakFreeze: 'memobun.streakfreeze',
-  // Memobun Plus subscription. These match the identifiers created in RevenueCat
-  // (currently the Test Store) exactly. The original "monthly"/"yearly" Test Store
-  // products got locked to the wrong price (un-editable, un-deletable due to test
-  // transactions), so we point at freshly-created products instead.
-  plusMonthly: 'memobun.plus.monthly',
-  plusAnnual: 'memobun.plus.yearly',
+  // Memobun Plus subscription. These MUST match the App Store Connect subscription
+  // Product IDs exactly (ASC IDs can't be renamed once created). The live App Store
+  // subscriptions in the "Memobun Plus" group use the bare ids "monthly"/"yearly".
+  plusMonthly: 'monthly',
+  plusAnnual: 'yearly',
 } as const;
 
 // Must match the RevenueCat Entitlement identifier EXACTLY (case + spaces).
