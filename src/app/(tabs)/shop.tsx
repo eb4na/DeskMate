@@ -986,9 +986,9 @@ export default function ShopScreen() {
             {outfitPreview && (
               <>
                 <ThemedText style={[styles.buyTitle, ltTitle]}>{localizeOutfitName(outfitPreview.name, t)}</ThemedText>
-                <View style={styles.previewStage}>
+                <View style={styles.buyHero}>
                   {outfitPreview.image && (
-                    <RNImage source={outfitPreview.image} style={styles.previewSkinOnly} resizeMode="contain" />
+                    <RNImage source={outfitPreview.image} style={[styles.buyHeroImg, ltHeroImg]} resizeMode="contain" />
                   )}
                 </View>
                 <ThemedText style={styles.previewNote}>{t('shop.charLockedMsg', { name: localizeCompanionName(outfitPreview.charName, t) })}</ThemedText>

@@ -395,8 +395,12 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
               }
             }
           } else if (type === 'begin') {
-            // Idempotent: each member applies `begin` once. A re-sent begin (same
-            // startAt) is ignored by anyone already begun.
+            // The host has started — the room is now LIVE. We NEVER force another
+            // member into a session they didn't start: that's what made the other
+            // device flip into studying with no tap on it. Instead, every non-host
+            // member begins their OWN session on their own clock when THEY tap Start
+            // (startSelf). A re-sent begin (host re-announcing to a newcomer) is
+            // handled identically. Idempotent once we've recorded the live room.
             if (begunRef.current) return;
             const d = data as { startAt: number; durationMinutes: number; subjectName: string | null; taskId: string | null; taskTitle: string | null; bgRoomId?: string | null; deskRoomId?: string | null; resend?: boolean };
             begunRef.current = true;
@@ -409,22 +413,8 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
               bgRoomId: d.bgRoomId ?? null,
               deskRoomId: d.deskRoomId ?? null,
             };
-            if (d.resend) {
-              // Late joiner: the room is already running. Don't auto-apply — surface
-              // a Start button so they pick their own length + start (startSelf).
-              setCanStartSelf(true);
-              return;
-            }
-            applyBeginRef.current(d.startAt, {
-              // Each player studies for their own chosen length + topic; the host's
-              // start only sets the shared start moment. Minutes fall back to the
-              // host's if unset; topic falls back to null (→ pick a subject in-session)
-              // since the host's topic isn't meaningful for this player.
-              durationMinutes: myPreferredMinutes.current ?? d.durationMinutes,
-              subjectName: myTopic.current ?? null,
-              taskId: d.taskId,
-              taskTitle: d.taskTitle,
-            });
+            // Surface this member's own Start button; they begin only when ready.
+            setCanStartSelf(true);
           } else if (type === 'leave') {
             const code = (data as { code: string }).code;
             if (!isHostRef.current) return;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { playTick } from '@/lib/sounds';
@@ -18,8 +18,8 @@ const MIN_VALUES = range(0, 59); // 0–59 so a clean hour (e.g. 60m) shows :00,
 // height + text so the wheel matches the surrounding tablet-scaled layout; the snap
 // math is all derived from the scaled ITEM_H, so it stays consistent.
 export function WheelColumn({
-  values, value, unit, onChange, loop = false, scale = 1,
-}: { values: number[]; value: number; unit: string; onChange: (v: number) => void; loop?: boolean; scale?: number }) {
+  values, value, unit, onChange, loop = false, scale = 1, resnap = 0,
+}: { values: number[]; value: number; unit: string; onChange: (v: number) => void; loop?: boolean; scale?: number; resnap?: number }) {
   const ITEM_H = Math.round(BASE_ITEM_H * scale);
   const styles = useMemo(() => makeWheelStyles(scale, ITEM_H), [scale, ITEM_H]);
   const ref = useRef<ScrollView>(null);
@@ -48,9 +48,14 @@ export function WheelColumn({
       if (target !== i) ref.current?.scrollTo({ y: target * ITEM_H, animated: false });
     }
   };
+  // Snap to the canonical `value` — on mount, when it changes, AND after every
+  // commit (via `resnap`). The last case matters when the parent CLAMPS a scroll
+  // back to the same value (e.g. scrolling below the 5-min floor): `idx` doesn't
+  // change, so without the `resnap` bump the wheel would stay parked on the
+  // rejected sub-floor number instead of springing back to the allowed value.
   useEffect(() => {
     ref.current?.scrollTo({ y: idx * ITEM_H, animated: true });
-  }, [idx, ITEM_H]);
+  }, [idx, ITEM_H, resnap]);
   return (
     <View style={styles.wheel}>
       <View style={styles.wheelHighlight} pointerEvents="none" />
@@ -92,17 +97,28 @@ export function DurationWheel({
   const clamp = (m: number) => Math.max(min, Math.min(max, m));
   const hr = Math.floor(minutes / 60);
   const mn = minutes % 60;
+  // A 0-minute session must never be selectable. The bare "0" minute only exists to
+  // render whole hours as ":00" (e.g. 1 hr 00 min), so we keep it ONLY when there's
+  // at least an hour. With no hours, the minute column starts at the floor (`min`,
+  // never below 1) — so 0 (and anything under the floor) simply isn't on the wheel.
+  const minuteFloor = Math.max(1, Math.min(min, 59));
+  const minuteValues = hr === 0 ? range(minuteFloor, 59) : MIN_VALUES;
+  // Bumped on every commit so the columns re-snap to the (possibly clamped) value,
+  // even when the clamp lands back on the current value — that's what stops a scroll
+  // below the `min` floor from leaving the wheel parked on a sub-floor number.
+  const [resnap, setResnap] = useState(0);
+  const apply = (raw: number) => { onChange(clamp(raw)); setResnap((n) => n + 1); };
   return (
     <>
       <View style={styles.durCard}>
-        <WheelColumn values={HR_VALUES} value={hr} unit="hr" scale={scale} onChange={(h) => onChange(clamp(h * 60 + mn))} />
+        <WheelColumn values={HR_VALUES} value={hr} unit="hr" scale={scale} resnap={resnap} onChange={(h) => apply(h * 60 + mn)} />
         <View style={styles.durDivider} />
-        <WheelColumn values={MIN_VALUES} value={mn} unit="min" loop scale={scale} onChange={(m) => onChange(clamp(hr * 60 + m))} />
+        <WheelColumn values={minuteValues} value={mn} unit="min" loop scale={scale} resnap={resnap} onChange={(m) => apply(hr * 60 + m)} />
       </View>
       {picks && picks.length > 0 && (
         <View style={styles.pickRow}>
           {picks.map((m) => (
-            <Pressable key={m} onPress={() => { playTick(); onChange(clamp(m)); }} style={[styles.pick, minutes === m && styles.pickActive]}>
+            <Pressable key={m} onPress={() => { playTick(); apply(m); }} style={[styles.pick, minutes === m && styles.pickActive]}>
               <Text style={[styles.pickText, minutes === m && styles.pickTextActive]}>{m}m</Text>
             </Pressable>
           ))}

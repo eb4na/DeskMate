@@ -766,7 +766,7 @@ export function StudyRoomView({
       )}
 
       {/* Timer card */}
-      <View ref={timerCardRef} onLayout={measureRopes} style={[styles.timerWrap, isSolo && styles.timerWrapSolo, isTablet && { width: isSolo ? '62%' : '48%' },
+      <View ref={timerCardRef} onLayout={measureRopes} style={[styles.timerWrap, soloScene && styles.timerWrapSolo, isTablet && { width: soloScene ? '62%' : '48%' },
         // Shrink the sign up-and-away if it would reach the characters (anchored at
         // its top so the eyelets stay put). Transform-only, so it never reflows the
         // status row below — keeping the overlap measurement stable.
@@ -787,11 +787,11 @@ export function StudyRoomView({
         )}
         <StudyOven style={StyleSheet.absoluteFill} />
         <View style={styles.timerText}>
-          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.nowBaking, isSolo && styles.nowBakingSolo, isTablet && styles.nowBakingTablet]}>{t('studyRoom.nowBaking')}</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.nowBaking, soloScene && styles.nowBakingSolo, isTablet && styles.nowBakingTablet]}>{t('studyRoom.nowBaking')}</Text>
           {/* Auto-shrink to fit the sign's width so the timer can never overflow / pop
               out the side on any screen or font size. */}
-          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.3} style={[styles.timer, { width: '100%', textAlign: 'center' }, isSolo && styles.timerSolo, isTablet && { fontSize: Math.round(winW * 0.081) }]}>{format(displaySecs)}</Text>
-          {!isSolo && (
+          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.3} style={[styles.timer, { width: '100%', textAlign: 'center' }, soloScene && styles.timerSolo, isTablet && { fontSize: Math.round(winW * 0.081) }]}>{format(displaySecs)}</Text>
+          {!soloScene && (
             <View style={styles.studyingRow}>
               <Image source={PPL_ICON} style={styles.pplIcon} contentFit="contain" />
               <Text style={styles.bakeSub}>
