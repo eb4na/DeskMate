@@ -98,6 +98,12 @@ export default function PartyInviteScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>{inviteGame === 'study' ? t('party.inviteToStudy') : t('party.inviteToParty')}</Text>
           <Text style={styles.subtitle}>{t('party.inviteSubtitle')}</Text>
+          {/* TEMP presence diagnostic: how many accounts the realtime channel sees
+              online vs. how many of MY friends. 0 others online → presence isn't
+              being delivered (backend); others online but 0 friends → code mismatch. */}
+          <Text style={styles.debugLine}>
+            presence: {onlineCodes.size} online · {friends.filter((f) => onlineCodes.has(f.code)).length} friend(s)
+          </Text>
         </View>
 
         <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
@@ -195,6 +201,7 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   header: { gap: 4 * s },
   title: { fontSize: 22 * s, fontWeight: '900', color: BakeryColors.cocoaDark },
   subtitle: { fontSize: 13 * s, color: BakeryColors.mocha },
+  debugLine: { fontSize: 11 * s, color: BakeryColors.latte, fontWeight: '700' },
   list: { gap: Spacing.two * s, paddingBottom: Spacing.four },
   row: {
     flexDirection: 'row',

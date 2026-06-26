@@ -10,6 +10,7 @@ import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'reac
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { useApp } from '@/context/app-context';
+import { useIsTablet } from '@/hooks/use-device-class';
 import { getCompanionImage, localizeCompanionName } from '@/lib/companion-utils';
 import { RECIPE_BADGES, RECIPE_IDS } from '@/constants/recipes';
 import { useTranslation } from '@/i18n';
@@ -77,6 +78,7 @@ function JumpCheck({ animate }: { animate: boolean }) {
 
 export function RecipeBadgeModal() {
   const { t } = useTranslation();
+  const isTablet = useIsTablet();
   const { recipeBadgePending, clearRecipeBadge, bakedWith } = useApp();
 
   // recipeBadgePending holds the recipe id just made; the badge goes to that
@@ -88,7 +90,8 @@ export function RecipeBadgeModal() {
     <Modal visible={!!recipeBadgePending} transparent animationType="fade" onRequestClose={clearRecipeBadge}>
       <View style={styles.root}>
         <Pressable style={styles.backdrop} onPress={clearRecipeBadge} />
-        <View style={styles.card}>
+        {/* Uniform scale-up on the big iPad — the fixed 320px card reads tiny there. */}
+        <View style={[styles.card, isTablet && { transform: [{ scale: 1.6 }] }]}>
           <View style={styles.wisteria} pointerEvents="none">
             <WisteriaIcon size={44} />
           </View>

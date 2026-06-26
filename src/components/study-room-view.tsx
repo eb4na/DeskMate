@@ -28,7 +28,6 @@ import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { getCompanionImage, hanjiIsAnimated, isHanjiActiveId, resolveActiveCompanion } from '@/lib/companion-utils';
 import { PetBubble } from '@/components/companion-pet';
 import { getPetLine } from '@/constants/pet-lines';
-import { isPlusFrame } from '@/components/avatar-frame';
 import { HanjiFigure } from '@/components/hanji-figure';
 import { useStudyRoom, STUDY_ROOM_MAX, type StudyStatus } from '@/lib/use-study-room';
 import { joinPresence, setMyPresenceStatus } from '@/lib/game-net';
@@ -50,7 +49,6 @@ const PERSONA_BY_COMPANION: Record<string, string> = {
 };
 
 const BUN_STUDYING = require('@/assets/images/bun/bun-studying.png');
-const AVATAR_FRAME = require('@/assets/images/study/avatar-frame.png');
 const PPL_ICON = require('@/assets/images/study/ppl-icon.png');
 const BREAK_PILL = require('@/assets/images/study/break-pill.png');
 const DESK = require('@/assets/images/home/desk-new.png');
@@ -79,11 +77,6 @@ function mergePlayback(prev: Playback | null, next: Playback | null): Playback |
   return next;
 }
 
-const DOT_COLOR: Record<StudyStatus, string> = {
-  studying: '#5BC47B',
-  break: '#F0B44A',
-  idle: BakeryColors.latte,
-};
 
 // Per-character placement for the desk book (dx = fraction of the 300px canvas,
 // negative = left). The book sits centered on the character's column, then shifts
@@ -158,41 +151,11 @@ export function StudyRoomView({
   // tracks solo↔multiplayer and tablet size changes.
   const timerCardRef = useRef<View>(null);
   const [ropes, setRopes] = useState<{ top: number; width: number; eyeY: number } | null>(null);
-
-  // ── Overlap priority (character > timer > status circle) ───────────────────
-  // Three stacked elements can crowd each other on big screens: the status-circle
-  // row (top), the timer sign, and the characters that rise up from behind the
-  // desk. Priority is fixed — the CHARACTER never shrinks; if the timer would reach
-  // the characters it shrinks; the circle (least important) shrinks before either.
-  // We measure the on-screen rect of each (window coords, so all comparable) and
-  // shrink the lower-priority box just enough to clear. Measuring only TOP edges —
-  // each of which is fixed by layout ABOVE it, never by the shrink we apply below —
-  // keeps this a single pass with no measure→shrink→measure oscillation.
-  const partyLayerRef = useRef<View>(null);
-  const participantBlockRef = useRef<View>(null);
-  const [collide, setCollide] = useState<
-    { timerTop: number; timerH: number; circleTop: number; charTop: number } | null
-  >(null);
-  const measureCollide = useCallback(() => {
-    const t = timerCardRef.current;
-    const c = participantBlockRef.current;
-    const p = partyLayerRef.current;
-    if (!t || !c || !p) return;
-    t.measureInWindow((tx, ty, tw, th) => {
-      c.measureInWindow((cx, cy) => {
-        p.measureInWindow((px, py) => {
-          if (th > 0 && cy > 0 && py > 0)
-            setCollide({ timerTop: ty, timerH: th, circleTop: cy, charTop: py });
-        });
-      });
-    });
-  }, []);
   const measureRopes = useCallback(() => {
     timerCardRef.current?.measureInWindow((x, y, w, h) => {
       if (w > 0 && y > 0) setRopes({ top: -y, width: w, eyeY: y + h * EYELET_FRAC.y });
     });
-    measureCollide();
-  }, [measureCollide]);
+  }, []);
   const {
     activeSession,
     equippedDeskRoomId,
@@ -204,6 +167,7 @@ export function StudyRoomView({
     profileDisplayName,
     friendCode,
     shiftSessionStart,
+    markSessionMultiplayer,
     startActiveSession,
     clearActiveSession,
     addCoins,
@@ -467,7 +431,6 @@ export function StudyRoomView({
   // headcount — one person is biggest, more people shrink to share the row.
   const partyCount = Math.min(participants.length, STUDY_ROOM_MAX);
   const PARTY_GAP = 4;
-  const FRAME_H_PAD = 16; // matches root paddingHorizontal (Spacing.three)
   // Multiplayer characters: bigger than the plain width-fit AND clustered toward the
   // middle so the outer ones do not get cut off at the screen edges. `partyCharSize`
   // is the visible character/image size; `partySlotW` is the (narrower) column width
@@ -478,13 +441,6 @@ export function StudyRoomView({
   const MP_SPREAD = partyCount <= 1 ? 1 : isTablet ? 0.93 : 0.84;
   const partyCharSize = Math.round(baseFit * MP_SIZE);
   const partySlotW = Math.round(baseFit * MP_SPREAD);
-  // Avatar frames: capped so 2-player sessions don't balloon. Phones keep the
-  // flat 90px cap; tablets scale the cap with screen width so the frames don't
-  // look tiny on a big iPad (e.g. 13"). Solo always 72.
-  const frameCap = isTablet ? Math.round(winW * 0.13) : 90;
-  const partFrameW = partyCount <= 1 ? (isTablet ? frameCap : 72) : Math.min(frameCap, Math.floor((winW - 2 * FRAME_H_PAD - PARTY_GAP * (partyCount - 1)) / partyCount));
-  const partFrameH = Math.round(partFrameW * (969 / 814));
-  const partFontSize = Math.max(8, Math.round(partFrameW * 10 / 72));
   // Book grows with the character; on phone bump the ratio a little more so the
   // book reads bigger on the desk (tablet keeps the original 0.52).
   const partyBookSize = Math.round(partyCharSize * (!isTablet ? 0.58 : 0.52));
@@ -494,30 +450,6 @@ export function StudyRoomView({
   const soloScene = isSolo || participants.length <= 1;
   // Rooms cap at STUDY_ROOM_MAX — hide the invite button once full.
   const roomFull = participants.length >= STUDY_ROOM_MAX;
-
-  // Resolve the priority overlap (see measureCollide). The character is fixed; the
-  // status circle and (rarely) the timer shrink to clear its rising head.
-  const COLLIDE_GAP = 6; // min breathing room left between two boxes (px)
-  const CHAR_ART_TOP = 0.06; // transparent padding atop the companion art (frac of size)
-  const CIRCLE_MIN_SCALE = 0.5; // never shrink the status circle below half
-  const TIMER_MIN_SCALE = 0.7;
-  let circleScale = 1;
-  let timerScale = 1;
-  if (collide && !soloScene) {
-    // The visible head sits a little below the square image box's top edge.
-    const charTopY = collide.charTop + CHAR_ART_TOP * partyCharSize;
-    circleScale = Math.max(
-      CIRCLE_MIN_SCALE,
-      Math.min(1, (charTopY - collide.circleTop - COLLIDE_GAP) / partFrameH),
-    );
-    timerScale = Math.max(
-      TIMER_MIN_SCALE,
-      Math.min(1, (charTopY - collide.timerTop - COLLIDE_GAP) / collide.timerH),
-    );
-  }
-  const partFrameWS = Math.round(partFrameW * circleScale);
-  const partFrameHS = Math.round(partFrameH * circleScale);
-  const partFontSizeS = Math.max(8, Math.round(partFontSize * circleScale));
 
   // ── Tablet desk + character geometry ───────────────────────────────────────
   // One shared anchor — `deskTopT`, the desk panel's top edge measured up from the
@@ -620,7 +552,22 @@ export function StudyRoomView({
 
   const handleAddFriend = () => {
     if (room.active && room.roomId) {
+      // Already in a room → invite straight into it.
       router.push({ pathname: '/party-invite', params: { room: room.roomId, game: 'study' } });
+    } else if (activeSession) {
+      // Solo session → promote it to a hosted room so the friend can join in as a
+      // late joiner, then open the same invite list. Mark it multiplayer so it
+      // credits "with friend" on completion. The host already chose their subject
+      // at solo start, so suppress the multiplayer "pick a subject" prompt.
+      markSessionMultiplayer();
+      setMpSubjectPicked(true);
+      const id = room.hostFromSolo({
+        durationMinutes: activeSession.durationMinutes,
+        subjectName: activeSession.subjectName ?? null,
+        taskId: activeSession.taskId ?? null,
+        taskTitle: activeSession.taskTitle ?? null,
+      });
+      router.push({ pathname: '/party-invite', params: { room: id, game: 'study' } });
     } else {
       router.push('/friends');
     }
@@ -766,11 +713,7 @@ export function StudyRoomView({
       )}
 
       {/* Timer card */}
-      <View ref={timerCardRef} onLayout={measureRopes} style={[styles.timerWrap, soloScene && styles.timerWrapSolo, isTablet && { width: soloScene ? '62%' : '48%' },
-        // Shrink the sign up-and-away if it would reach the characters (anchored at
-        // its top so the eyelets stay put). Transform-only, so it never reflows the
-        // status row below — keeping the overlap measurement stable.
-        timerScale < 1 && collide ? { transform: [{ translateY: -(collide.timerH * (1 - timerScale)) / 2 }, { scale: timerScale }] } : null]}>
+      <View ref={timerCardRef} onLayout={measureRopes} style={[styles.timerWrap, soloScene && styles.timerWrapSolo, isTablet && { width: soloScene ? '62%' : '48%' }]}>
         {/* Ropes from the real top of the screen down to the sign's eyelets. Rendered
             behind StudyOven so the sign body + eyelet circles cover the rope ends. */}
         {ropes && (
@@ -787,11 +730,14 @@ export function StudyRoomView({
         )}
         <StudyOven style={StyleSheet.absoluteFill} />
         <View style={styles.timerText}>
-          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.nowBaking, soloScene && styles.nowBakingSolo, isTablet && styles.nowBakingTablet]}>{t('studyRoom.nowBaking')}</Text>
+          {/* Phone keeps it minimal — JUST the countdown, centered in the sign. The
+              "Now baking" caption + "studying together" line are tablet-only (more
+              room there); on phone they only crowded the small sign. */}
+          {isTablet && <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.nowBaking, soloScene && styles.nowBakingSolo, styles.nowBakingTablet]}>{t('studyRoom.nowBaking')}</Text>}
           {/* Auto-shrink to fit the sign's width so the timer can never overflow / pop
               out the side on any screen or font size. */}
           <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.3} style={[styles.timer, { width: '100%', textAlign: 'center' }, soloScene && styles.timerSolo, isTablet && { fontSize: Math.round(winW * 0.081) }]}>{format(displaySecs)}</Text>
-          {!soloScene && (
+          {!soloScene && isTablet && (
             <View style={styles.studyingRow}>
               <Image source={PPL_ICON} style={styles.pplIcon} contentFit="contain" />
               <Text style={styles.bakeSub}>
@@ -804,37 +750,15 @@ export function StudyRoomView({
         {isSolo && <RecipePop dish={dishImage} playing={finishing} />}
       </View>
 
-      {/* Participant row (multiplayer only) */}
-      {!isSolo && (
-      <View ref={participantBlockRef} onLayout={measureCollide} style={styles.participantBlock}>
-      <View style={[styles.participantRow, !isTablet && styles.participantRowPhone, { gap: PARTY_GAP }]}>
-        {participants.slice(0, STUDY_ROOM_MAX).map((p) => {
-          const present = p.code === friendCode || room.presentCodes.includes(p.code);
-          const status: StudyStatus = !present ? 'idle' : p.code === friendCode ? (onBreak ? 'break' : 'studying') : room.statusMap[p.code] ?? 'studying';
-          const img = p.code === friendCode ? bigCharacter : getCompanionImage(p.companionId, p.skinId);
-          const plusRing = isPlusFrame(p.avatarFrame) ? { borderWidth: 2.5, borderColor: '#D4A847' } : null;
-          return (
-            <View key={p.code} style={[styles.participant, { width: partFrameWS, height: partFrameHS }]}>
-              <Image source={AVATAR_FRAME} style={{ position: 'absolute', left: 0, top: 0, width: partFrameWS, height: partFrameHS }} contentFit="fill" pointerEvents="none" />
-              <View style={[styles.partFace, plusRing]}>
-                <Image source={img} style={styles.partFaceImg} contentFit="cover" contentPosition="top" />
-              </View>
-              <View style={[styles.partDot, { backgroundColor: DOT_COLOR[status] }]} />
-              <Text style={[styles.partName, { fontSize: partFontSizeS }]} numberOfLines={1}>{p.code === friendCode ? t('studyRoom.you') : p.name}</Text>
-            </View>
-          );
-        })}
-      </View>
-      {/* "Someone left" notice — a quiet line that fades in just under the
-          participant row (with a bubble "pop") and fades itself out a few seconds
-          later. No popup, no dismiss: the session never pauses. Absolutely
-          positioned below the row so the fade can't reflow the scene. */}
-      {leftNotice !== null && !mpFinished && (
-        <Animated.View pointerEvents="none" style={[styles.leftToast, { opacity: leftFade }]}>
-          <Text style={styles.leftToastText} numberOfLines={1}>{leftNotice}</Text>
-        </Animated.View>
-      )}
-      </View>
+      {/* Status-circle row removed: each studier's break state now reads off their
+          desk book, which stops flipping when they're on break. We keep only the
+          quiet "someone left" toast, anchored near the top where the row used to be. */}
+      {!soloScene && (leftNotice !== null && !mpFinished) && (
+        <View style={styles.participantBlock}>
+          <Animated.View pointerEvents="none" style={[styles.leftToast, { opacity: leftFade }]}>
+            <Text style={styles.leftToastText} numberOfLines={1}>{leftNotice}</Text>
+          </Animated.View>
+        </View>
       )}
 
       {/* Characters behind the desk. Solo shows one big like Home; multiplayer
@@ -877,7 +801,7 @@ export function StudyRoomView({
           edge. Sits behind the desk (same zIndex, drawn before) so the lower body
           tucks behind the table, like the solo character. */}
       {!soloScene && (
-        <View ref={partyLayerRef} onLayout={measureCollide} style={[styles.partyLayer, { bottom: partyCharBottomRaised }]}>
+        <View style={[styles.partyLayer, { bottom: partyCharBottomRaised }]}>
           {participants.slice(0, STUDY_ROOM_MAX).map((p) => {
             const img = p.code === friendCode ? bigCharacter : getCompanionImage(p.companionId, p.skinId);
             const pIsHanji = p.code === friendCode
@@ -970,7 +894,9 @@ export function StudyRoomView({
               <View
                 key={p.code}
                 style={[styles.partyBookSlot, { width: partySlotW }]}>
-                <StudyBook active={participantStatus(p.code) !== 'break'} size={partyBookSize} coverColor={cover} />
+                {/* Flip ONLY while that studier is actively studying — a break or a
+                    dropped/idle connection holds the pages still. */}
+                <StudyBook active={participantStatus(p.code) === 'studying'} size={partyBookSize} coverColor={cover} />
               </View>
             );
           })}

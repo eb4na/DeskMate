@@ -260,6 +260,7 @@
     "anyLengthFree": "Any length, no preset",
     "startButton": "Start {{minutes}} min Session",
     "chooseDuration": "CHOOSE DURATION",
+    "presetsHeader": "YOUR PRESETS",
     "len_15": "Quick Warm-up",
     "len_30": "Focus Boost",
     "len_60": "Deep Focus",

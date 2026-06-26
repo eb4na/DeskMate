@@ -3,7 +3,7 @@ import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useSt
 import { showPopup } from '@/lib/popup';
 
 import { useApp } from '@/context/app-context';
-import { joinGameRoom, type GameRoom } from '@/lib/game-net';
+import { joinGameRoom, newRoomId, type GameRoom } from '@/lib/game-net';
 import {
   getPlayback,
   playTrackAt,
@@ -67,6 +67,9 @@ type StudyRoomValue = {
   joinRoom: (roomId: string, isHost: boolean) => void;
   leaveRoom: () => void;
   start: (opts: StudyStartOpts) => void;
+  // Promote a running SOLO session into a hosted room (no lobby) so the studier can
+  // invite friends in mid-session. Returns the new room id. See the implementation.
+  hostFromSolo: (opts: StudyStartOpts) => string;
   // A guest joining an already-running room starts their own session on their own
   // clock (no broadcast). Used by the lobby's late-joiner Start button.
   startSelf: (opts: StudyStartOpts) => void;
@@ -395,12 +398,12 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
               }
             }
           } else if (type === 'begin') {
-            // The host has started — the room is now LIVE. We NEVER force another
-            // member into a session they didn't start: that's what made the other
-            // device flip into studying with no tap on it. Instead, every non-host
-            // member begins their OWN session on their own clock when THEY tap Start
-            // (startSelf). A re-sent begin (host re-announcing to a newcomer) is
-            // handled identically. Idempotent once we've recorded the live room.
+            // The host pressed Start — the synced session begins for EVERYONE in the
+            // room at once. Each present member auto-applies `begin` (on their own
+            // chosen length + topic; the host's start only sets the shared start
+            // moment). Idempotent: applied once per member. A re-sent begin (the host
+            // re-announcing to a late joiner) is the exception — they get a Start
+            // button and begin on their own clock instead of being pulled in.
             if (begunRef.current) return;
             const d = data as { startAt: number; durationMinutes: number; subjectName: string | null; taskId: string | null; taskTitle: string | null; bgRoomId?: string | null; deskRoomId?: string | null; resend?: boolean };
             begunRef.current = true;
@@ -413,8 +416,21 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
               bgRoomId: d.bgRoomId ?? null,
               deskRoomId: d.deskRoomId ?? null,
             };
-            // Surface this member's own Start button; they begin only when ready.
-            setCanStartSelf(true);
+            if (d.resend) {
+              // Late joiner: the room is already running. Don't auto-apply — surface
+              // a Start button so they begin on their own clock (startSelf).
+              setCanStartSelf(true);
+              return;
+            }
+            applyBeginRef.current(d.startAt, {
+              // Each player studies for their own chosen length + topic; the host's
+              // start only sets the shared start moment. Minutes fall back to the
+              // host's if unset; topic falls back to null (→ pick a subject in-session).
+              durationMinutes: myPreferredMinutes.current ?? d.durationMinutes,
+              subjectName: myTopic.current ?? null,
+              taskId: d.taskId,
+              taskTitle: d.taskTitle,
+            });
           } else if (type === 'leave') {
             const code = (data as { code: string }).code;
             if (!isHostRef.current) return;
@@ -480,6 +496,26 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
   const startSelf = (opts: StudyStartOpts) => {
     const startAt = Date.now() + 300;
     applyBeginRef.current(startAt, opts);
+  };
+
+  // Promote a running SOLO session into a hosted multiplayer room WITHOUT going
+  // through the lobby. The host keeps studying on their CURRENT clock — we never
+  // call applyBegin here — we just open a room and mark it ALREADY-running
+  // (begunRef + lastBeginRef) so any friend who accepts the invite arrives as a
+  // late joiner: the `hello` handler re-sends `begin` (resend), they pick their own
+  // length and Start on their own clock, exactly like joining a room mid-session.
+  // Returns the new room id so the invite screen can address it.
+  const hostFromSolo = (opts: StudyStartOpts): string => {
+    const id = newRoomId();
+    joinRoom(id, true); // resets begun=false; we flip it back on right below
+    const bgRoomId = meRef.current.bgRoomId;
+    const deskRoomId = meRef.current.deskRoomId;
+    setHostBackgroundId(bgRoomId);
+    setHostDeskId(deskRoomId);
+    begunRef.current = true;
+    setBegun(true);
+    lastBeginRef.current = { startAt: Date.now(), opts, bgRoomId, deskRoomId };
+    return id;
   };
 
   const setStatus = (s: StudyStatus) => {
@@ -558,6 +594,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
       joinRoom,
       leaveRoom,
       start,
+      hostFromSolo,
       startSelf,
       setStatus,
       setMyPrefs,

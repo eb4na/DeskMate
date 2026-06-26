@@ -11,7 +11,7 @@ import {
 import { Colors } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { useTheme } from '@/hooks/use-theme';
-import { getBunSkinImage, resolveActiveCompanion } from '@/lib/companion-utils';
+import { getBunSkinImage, localizeCompanionName, resolveActiveCompanion } from '@/lib/companion-utils';
 import { useTranslation } from '@/i18n';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
@@ -54,7 +54,10 @@ export function Companion({ pose, size = 'full' }: Props) {
     : undefined;
   const roomColor =
     activeTheme?.[isLightTheme ? 'lightRoom' : 'darkRoom'] ?? undefined;
-  const labelText = [activeCompanion.name, poseLabel, activeTheme?.label, activeDecoration?.label]
+  // Built-in companions show their per-language name; custom slot names pass
+  // through localizeCompanionName unchanged.
+  const localizedCompanionName = localizeCompanionName(activeCompanion.name, t);
+  const labelText = [localizedCompanionName, poseLabel, activeTheme?.label, activeDecoration?.label]
     .filter(Boolean)
     .join(' · ');
   const resolvedImageSource =
@@ -106,7 +109,7 @@ export function Companion({ pose, size = 'full' }: Props) {
             setDidImageFail(true);
           }
         }}
-        accessibilityLabel={t('a11y.companionLabel', { name: activeCompanion.name, pose: poseLabel })}
+        accessibilityLabel={t('a11y.companionLabel', { name: localizedCompanionName, pose: poseLabel })}
       />
 
       {activeOutfit ? (

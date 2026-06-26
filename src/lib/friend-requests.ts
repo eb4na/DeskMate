@@ -4,7 +4,7 @@
  * friends only after acceptance.
  */
 import { supabase } from '@/lib/supabase';
-import { fetchProfileByCode, lookupUserIdByCode, type SyncedProfile } from '@/lib/profile-sync';
+import { fetchProfileByCode, type SyncedProfile } from '@/lib/profile-sync';
 
 export type IncomingRequest = {
   id: string;
@@ -17,30 +17,51 @@ export type AcceptedFriend = {
   profile: SyncedProfile | null;
 };
 
+// `stage` names exactly which step failed so the UI can show it (instead of one
+// vague "couldn't send"): validate → bad input, lookup → couldn't find the
+// recipient's profile (or DB unreachable), insert → the request write was
+// rejected/unreachable.
 export async function sendFriendRequest(args: {
   fromUser: string;
   fromCode: string;
   toCode: string;
-}): Promise<{ ok: boolean; error?: string }> {
+}): Promise<{ ok: boolean; error?: string; stage?: 'validate' | 'lookup' | 'insert' }> {
   const toCode = args.toCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (toCode.length !== 6) return { ok: false, error: 'Friend codes are 6 letters/numbers.' };
-  if (toCode === args.fromCode) return { ok: false, error: "That's your own code!" };
+  if (toCode.length !== 6) return { ok: false, stage: 'validate', error: 'Friend codes are 6 letters/numbers.' };
+  if (toCode === args.fromCode) return { ok: false, stage: 'validate', error: "That's your own code!" };
 
-  const toUser = await lookupUserIdByCode(toCode);
-  if (!toUser) return { ok: false, error: 'No Memobun account uses that code yet. Ask them to open the app first.' };
-  if (toUser === args.fromUser) return { ok: false, error: "That's your own code!" };
+  // Look up the recipient directly (not via lookupUserIdByCode, which hides the
+  // error) so we can tell "no such profile" apart from "DB unreachable".
+  let toUser: string;
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('friend_code', toCode)
+      .maybeSingle();
+    if (error) return { ok: false, stage: 'lookup', error: `DB error: ${error.message}` };
+    if (!data) return { ok: false, stage: 'lookup', error: 'No Memobun account uses that code yet. Ask them to open the app first (their profile must sync).' };
+    toUser = data.user_id as string;
+  } catch (e) {
+    return { ok: false, stage: 'lookup', error: `Can't reach Supabase: ${e instanceof Error ? e.message : String(e)}` };
+  }
+  if (toUser === args.fromUser) return { ok: false, stage: 'validate', error: "That's your own code!" };
 
-  const { error } = await supabase.from('friend_requests').upsert(
-    {
-      from_user: args.fromUser,
-      from_code: args.fromCode,
-      to_user: toUser,
-      to_code: toCode,
-      status: 'pending',
-    },
-    { onConflict: 'from_user,to_user' },
-  );
-  if (error) return { ok: false, error: 'Could not send request. Try again.' };
+  try {
+    const { error } = await supabase.from('friend_requests').upsert(
+      {
+        from_user: args.fromUser,
+        from_code: args.fromCode,
+        to_user: toUser,
+        to_code: toCode,
+        status: 'pending',
+      },
+      { onConflict: 'from_user,to_user' },
+    );
+    if (error) return { ok: false, stage: 'insert', error: `Write rejected: ${error.message}` };
+  } catch (e) {
+    return { ok: false, stage: 'insert', error: `Can't reach Supabase: ${e instanceof Error ? e.message : String(e)}` };
+  }
   return { ok: true };
 }
 

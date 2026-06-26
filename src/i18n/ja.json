@@ -260,6 +260,7 @@
     "anyLengthFree": "任意の長さ、保存不可",
     "startButton": "{{minutes}}分セッション開始",
     "chooseDuration": "時間を選ぶ",
+    "presetsHeader": "あなたのプリセット",
     "len_15": "クイックウォームアップ",
     "len_30": "集中ブースト",
     "len_60": "ディープフォーカス",

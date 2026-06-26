@@ -260,6 +260,7 @@
     "anyLengthFree": "자유 시간, 저장 불가",
     "startButton": "{{minutes}}분 세션 시작",
     "chooseDuration": "시간 선택",
+    "presetsHeader": "내 프리셋",
     "len_15": "빠른 워밍업",
     "len_30": "집중 부스트",
     "len_60": "딥 포커스",

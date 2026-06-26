@@ -6,6 +6,7 @@
 // - Game room: both players join `game:<roomId>`; presence tells each side when
 //   the opponent is connected; gameplay messages go over a single `msg` event.
 
+import { AppState } from 'react-native';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase';
@@ -67,6 +68,13 @@ export type PresenceMap = ReadonlyMap<string, PresenceStatus>;
 let presenceChannel: RealtimeChannel | null = null;
 let presenceCount = 0;
 let onlineCache = new Map<string, PresenceStatus>();
+// Re-announce our presence whenever the app returns to the foreground: iOS
+// suspends the socket while backgrounded, which drops us from everyone's presence
+// state. Supabase auto-rejoins the channel, but doesn't always re-`track` our own
+// state, so a returning app can look "offline" to friends until something else
+// re-tracks. Re-tracking on resume fixes that. Subscription is tied to the channel
+// lifetime (set up on create, removed on teardown).
+let presenceAppStateSub: { remove: () => void } | null = null;
 // This client's broadcast study status, re-tracked whenever it changes. Defaults to
 // 'free' (online, not studying).
 let myPresenceStatus: PresenceStatus = 'free';
@@ -99,12 +107,17 @@ export function joinPresence(myCode: string, onSync?: (online: PresenceMap) => v
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') presenceChannel!.track({ at: Date.now(), status: myPresenceStatus });
       });
+    presenceAppStateSub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') presenceChannel?.track({ at: Date.now(), status: myPresenceStatus });
+    });
   }
 
   return () => {
     if (onSync) presenceSubs.delete(onSync);
     presenceCount -= 1;
     if (presenceCount <= 0 && presenceChannel) {
+      presenceAppStateSub?.remove();
+      presenceAppStateSub = null;
       supabase.removeChannel(presenceChannel);
       presenceChannel = null;
       onlineCache = new Map();

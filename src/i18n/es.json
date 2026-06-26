@@ -260,6 +260,7 @@
     "anyLengthFree": "Cualquier duración, sin guardar",
     "startButton": "Iniciar {{minutes}} min",
     "chooseDuration": "ELIGE LA DURACIÓN",
+    "presetsHeader": "TUS AJUSTES",
     "len_15": "Calentamiento rápido",
     "len_30": "Impulso de enfoque",
     "len_60": "Enfoque profundo",

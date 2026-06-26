@@ -8,6 +8,7 @@ import { router } from 'expo-router';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useApp } from '@/context/app-context';
+import { useIsTablet } from '@/hooks/use-device-class';
 import { useTranslation } from '@/i18n';
 
 const HANJI_IMG = require('@/assets/images/hanji/hanji.png');
@@ -16,6 +17,7 @@ const P = { card: '#FFFDF8', purple: '#B7A0E0', purpleSoft: '#ECE3FA', brown: '#
 
 export function HanjiUnlockModal() {
   const { t } = useTranslation();
+  const isTablet = useIsTablet();
   const { hanjiUnlockPending, clearHanjiUnlock, recipeBadgePending } = useApp();
   // On the final badge both flags are set; show the 5/5 recipe-progress popup
   // first and only reveal Hanji once that popup is dismissed (recipeBadgePending
@@ -31,7 +33,8 @@ export function HanjiUnlockModal() {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={clearHanjiUnlock}>
       <View style={styles.root}>
         <Pressable style={styles.backdrop} onPress={clearHanjiUnlock} />
-        <View style={styles.card}>
+        {/* Slightly larger on the big iPad so the celebration isn't a tiny card. */}
+        <View style={[styles.card, isTablet && { transform: [{ scale: 1.3 }] }]}>
           <View style={styles.avatar}>
             <Image source={HANJI_IMG} style={styles.avatarImg} contentFit="contain" />
           </View>

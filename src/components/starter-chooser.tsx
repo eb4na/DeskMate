@@ -49,6 +49,11 @@ export function StarterChooser() {
   const { chooseStarter } = useApp();
   const [index, setIndex] = useState(0); // starts on Bun (STARTER_CHOICES[0])
   const choice = STARTER_CHOICES[index];
+  // The companions on either side, shown as faded sneak peeks at the edges so you
+  // can tell who's next (wraps around).
+  const n = STARTER_CHOICES.length;
+  const prev = STARTER_CHOICES[(index - 1 + n) % n];
+  const next = STARTER_CHOICES[(index + 1) % n];
 
   // Idle bounce — identical feel to the Home companion: a slow rise with a tiny
   // squash-and-stretch. 0 = resting (squished), 1 = apex (stretched).
@@ -96,8 +101,16 @@ export function StarterChooser() {
           <Text style={styles.subtitle}>{t('starter.subtitle')}</Text>
         </View>
 
-        {/* Carousel — swipe to flip, or use the left/right arrows. */}
+        {/* Carousel — swipe to flip, or use the left/right arrows. The
+            neighbouring companions peek in, faded, at the edges. */}
         <View style={styles.stage} {...swipe.panHandlers}>
+          <View style={styles.peekLeft} pointerEvents="none">
+            <Image source={prev.image} style={styles.peekImage} contentFit="contain" />
+          </View>
+          <View style={styles.peekRight} pointerEvents="none">
+            <Image source={next.image} style={styles.peekImage} contentFit="contain" />
+          </View>
+
           <Pressable
             onPress={() => step(-1)}
             hitSlop={12}
@@ -161,6 +174,27 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, color: P.mutedBrown, textAlign: 'center', lineHeight: 19, paddingHorizontal: 8 },
 
   stage: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  // Faded sneak peeks of the neighbouring companions, half tucked off each edge
+  // and sitting behind the arrows + the centred character.
+  peekLeft: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: '-18%',
+    width: '40%',
+    opacity: 0.4,
+    justifyContent: 'flex-end',
+  },
+  peekRight: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    right: '-18%',
+    width: '40%',
+    opacity: 0.4,
+    justifyContent: 'flex-end',
+  },
+  peekImage: { width: '100%', height: '82%', backgroundColor: 'transparent' },
   arrow: {
     width: 52,
     height: 52,

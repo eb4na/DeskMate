@@ -7,6 +7,7 @@ import { CompanionAvatar } from '@/components/companion-avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { DEFAULT_PFP_FOCUS, type PfpFocus, useApp } from '@/context/app-context';
+import { localizeCompanionName } from '@/lib/companion-utils';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, MaxContentWidth, Spacing } from '@/constants/theme';
 
@@ -78,7 +79,7 @@ export default function CompanionPfpScreen() {
         ) : (
           <View style={styles.center}>
             <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
-              {t('pfp.dragHint', { name: slot.name })}
+              {t('pfp.dragHint', { name: localizeCompanionName(slot.name, t) })}
             </ThemedText>
 
             <View style={styles.previewWrap} {...pan.panHandlers}>

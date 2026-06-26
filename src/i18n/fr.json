@@ -260,6 +260,7 @@
     "anyLengthFree": "Durée libre, sans enregistrement",
     "startButton": "Démarrer {{minutes}} min",
     "chooseDuration": "CHOISIR LA DURÉE",
+    "presetsHeader": "VOS PRÉRÉGLAGES",
     "len_15": "Échauffement rapide",
     "len_30": "Coup de focus",
     "len_60": "Focus profond",

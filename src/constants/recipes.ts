@@ -8,13 +8,25 @@ export const HANJI_COMPANION_ID = 'companion_hanji';
 // Each recipe badge belongs to a character (their signature bake). companionId
 // feeds getCompanionImage() for the avatar ('' = the starter Bun). Keep in sync
 // with FOOD_ITEMS in src/app/food-gallery.tsx.
-export const RECIPE_BADGES: { recipeId: string; owner: string; companionId: string }[] = [
-  { recipeId: 'strawberry-shortcake', owner: 'Bun', companionId: '' },
-  { recipeId: 'berry-croissant', owner: 'Cocoa', companionId: 'shop:companion_cocoa' },
-  { recipeId: 'sakura-mochi', owner: 'Bunny', companionId: 'shop:companion_bunny' },
-  { recipeId: 'pudding', owner: 'Miel', companionId: 'shop:companion_honey' },
-  { recipeId: 'matcha-crepe', owner: 'Tira', companionId: 'shop:companion_tira' },
+// `recipeItem` is the shop SKU that unlocks baking the recipe — granted free to a
+// player who picks that character as their starter. null = Bun's strawberry
+// shortcake, which is free for everyone and needs no SKU.
+export const RECIPE_BADGES: { recipeId: string; owner: string; companionId: string; recipeItem: string | null }[] = [
+  { recipeId: 'strawberry-shortcake', owner: 'Bun', companionId: '', recipeItem: null },
+  { recipeId: 'berry-croissant', owner: 'Bunny', companionId: 'shop:companion_bunny', recipeItem: 'recipe_croissant' },
+  { recipeId: 'sakura-mochi', owner: 'Cocoa', companionId: 'shop:companion_cocoa', recipeItem: 'recipe_sakura' },
+  { recipeId: 'pudding', owner: 'Miel', companionId: 'shop:companion_honey', recipeItem: 'recipe_pudding' },
+  { recipeId: 'matcha-crepe', owner: 'Tira', companionId: 'shop:companion_tira', recipeItem: 'recipe_matcha' },
 ];
+
+/** The signature recipe (and its unlock SKU) matching a starter companion, so a
+ * new player gets the recipe that goes with the character they chose. The Bun
+ * starter uses companionId '' and its recipe is free (recipeItem null). Returns
+ * null if the id isn't a known starter character. */
+export function starterRecipe(companionId: string): { recipeId: string; recipeItem: string | null } | null {
+  const b = RECIPE_BADGES.find((x) => x.companionId === companionId);
+  return b ? { recipeId: b.recipeId, recipeItem: b.recipeItem } : null;
+}
 
 // The recipe ids whose "made" badges must all be collected to unlock Hanji.
 export const RECIPE_IDS = RECIPE_BADGES.map((b) => b.recipeId);

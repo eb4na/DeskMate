@@ -260,6 +260,7 @@
     "anyLengthFree": "任意时长，不可保存",
     "startButton": "开始 {{minutes}} 分钟",
     "chooseDuration": "选择时长",
+    "presetsHeader": "你的预设",
     "len_15": "快速热身",
     "len_30": "专注加速",
     "len_60": "深度专注",

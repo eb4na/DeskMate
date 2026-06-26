@@ -62,7 +62,7 @@ export default function SessionPickerScreen() {
   const grow = isTablet ? Math.max(1, scale / 1.3) : 1;
   const styles = useMemo(() => makeStyles(grow), [grow]);
   const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('sessionpicker', PICKER_ELEMENTS);
-  const { subjects, coins, isPlus, activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins } = useApp();
+  const { subjects, coins, isPlus, savedTimerPresets, deleteTimerPreset, activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins } = useApp();
   const studyRoom = useStudyRoom();
   const { t } = useTranslation();
   const [selected, setSelected] = useState(30);
@@ -172,6 +172,53 @@ export default function SessionPickerScreen() {
                 </View>
               );
             })}
+
+            {/* Your saved presets (Plus) — custom durations saved from the custom
+                timer. Tap to select; ✕ to remove. */}
+            {isPlus && savedTimerPresets.length > 0 && (
+              <>
+                <View style={styles.sectionRule} />
+                <Text style={[styles.sectionLabel, isTablet && styles.sectionLabelTablet]}>{t('sessionPicker.presetsHeader')}</Text>
+                {savedTimerPresets.map((p, i) => {
+                  const isActive = selected === p.minutes;
+                  return (
+                    <View key={p.id}>
+                      <Pressable
+                        style={({ pressed }) => [styles.menuRow, isTablet && styles.menuRowTablet, isActive && styles.menuRowActive, pressed && styles.pressed]}
+                        onPress={() => { playTick(); setSelected(p.minutes); }}>
+                        <View style={[styles.customIconWrap, isTablet && styles.customIconWrapTablet]}>
+                          <PlusIcon size={isTablet ? Math.round(28 * grow) : 22} />
+                        </View>
+                        <View style={styles.menuBody}>
+                          <View style={styles.menuTopLine}>
+                            <Text style={[styles.menuName, isTablet && styles.menuNameTablet, isActive && styles.menuNameActive]} numberOfLines={1}>
+                              {p.label}
+                            </Text>
+                            <View style={styles.menuLeader} />
+                            <CoinIcon size={isTablet ? Math.round(18 * grow) : 14} />
+                            <Text style={[styles.menuPrice, isTablet && styles.menuPriceTablet]}>+{coinsForMinutes(p.minutes)}</Text>
+                          </View>
+                          <Text style={[styles.menuCoinText, isTablet && styles.menuCoinTextTablet]}>{p.minutes} {t('customTimer.min')}</Text>
+                        </View>
+                        {isActive && (
+                          <View style={[styles.checkBadge, isTablet && styles.checkBadgeTablet]}>
+                            <Text style={[styles.checkIcon, isTablet && styles.checkIconTablet]}>✓</Text>
+                          </View>
+                        )}
+                        <Pressable
+                          hitSlop={10}
+                          style={({ pressed }) => [styles.presetDelete, pressed && styles.pressed]}
+                          onPress={() => deleteTimerPreset(p.id)}
+                          accessibilityLabel={t('common.delete')}>
+                          <Text style={styles.presetDeleteText}>✕</Text>
+                        </Pressable>
+                      </Pressable>
+                      {i < savedTimerPresets.length - 1 && <View style={styles.menuDivider} />}
+                    </View>
+                  );
+                })}
+              </>
+            )}
 
             <View style={styles.sectionRule} />
 
@@ -324,6 +371,12 @@ const makeStyles = (g: number) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   checkIcon: { fontSize: 12 * g, color: '#fff', fontWeight: '900' },
+
+  presetDelete: {
+    width: 26 * g, height: 26 * g, borderRadius: 13 * g, marginLeft: 4 * g,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: `${C.shortbread}80`,
+  },
+  presetDeleteText: { fontSize: 12 * g, color: C.mocha, fontWeight: '800', lineHeight: 14 * g },
 
   customIconWrap: { width: 54 * g, alignItems: 'center', justifyContent: 'center' },
 

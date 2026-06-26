@@ -50,7 +50,7 @@ export const FOOD_ITEMS: FoodItem[] = [
     requiresItem: 'recipe_sakura',
     price: 600,
     madeBadge: require('@/assets/images/cake/sakura-badge.png'),
-    owner: 'Bunny',
+    owner: 'Cocoa',
   },
   {
     id: 'matcha-crepe',
@@ -66,7 +66,7 @@ export const FOOD_ITEMS: FoodItem[] = [
     requiresItem: 'recipe_croissant',
     price: 600,
     madeBadge: require('@/assets/images/cake/croissant-badge.png'),
-    owner: 'Cocoa',
+    owner: 'Bunny',
   },
 ];
 
@@ -182,8 +182,8 @@ export default function FoodGalleryScreen() {
         <Pressable style={styles.zoomBackdrop} onPress={() => setZoomBadge(null)}>
           {zoomBadge !== null && (
             <View style={styles.zoomCard}>
-              <Image source={zoomBadge} style={styles.zoomBadgeImg} resizeMode="contain" />
-              <Text style={styles.zoomHint}>{t('shop.tapToClose')}</Text>
+              <Image source={zoomBadge} style={[styles.zoomBadgeImg, isTablet && styles.zoomBadgeImgTablet]} resizeMode="contain" />
+              <Text style={[styles.zoomHint, isTablet && styles.zoomHintTablet]}>{t('shop.tapToClose')}</Text>
             </View>
           )}
         </Pressable>
@@ -293,7 +293,10 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: '#F4C5A8',
   },
   zoomBadgeImg: { width: 170, height: 170, borderRadius: 20 },
+  // The 13" iPad has tons of room — the 170px preview reads tiny there, so blow it up.
+  zoomBadgeImgTablet: { width: 360, height: 360, borderRadius: 36 },
   zoomHint: { fontSize: 12.5, color: P.mutedBrown, fontWeight: '600' },
+  zoomHintTablet: { fontSize: 18 },
   // Empty placeholder circle shown top-right until the recipe is baked.
   badgeSlotEmpty: {
     position: 'absolute', top: 4, right: 4, zIndex: 2,

@@ -24,7 +24,7 @@ type TimerMode = 'focus' | 'break';
 const range = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 const HR_VALUES = range(0, 5);
 const MIN_VALUES = range(1, 59); // 1-minute steps, never 0
-const ITEM_H = 40;
+const ITEM_H = 58; // taller rows = bigger, more forgiving touch targets (less accidental over-scroll)
 const LOOP_REPEAT = 7; // copies stacked to fake an endless (wrapping) wheel
 const LOOP_CENTER = Math.floor(LOOP_REPEAT / 2);
 

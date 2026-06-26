@@ -16,7 +16,7 @@ import { computeTaskRollover } from '@/lib/task-recurrence';
 import { uploadProfile } from '@/lib/profile-sync';
 import { companionLevelInfo } from '@/lib/companion-level';
 import { uploadStudyDay } from '@/lib/study-buddy';
-import { HANJI_COMPANION_ID, recipeBadgeKey, badgesFromMadeFoods, hasAllCharacterBadges, RECIPE_IDS } from '@/constants/recipes';
+import { HANJI_COMPANION_ID, recipeBadgeKey, badgesFromMadeFoods, hasAllCharacterBadges, RECIPE_IDS, starterRecipe } from '@/constants/recipes';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -264,6 +264,11 @@ type PersistedState = {
 
   // Food / baking
   selectedFoodId: string;
+  // One-time guard: an early build of the starter-chooser auto-switched the home
+  // desk to the chosen character's recipe, leaving accounts stuck on the wrong
+  // desk ingredients. We reset selectedFoodId to the default once, then flip this
+  // so a player's later Bakery Menu choices are never overridden.
+  deskFoodReset?: boolean;
   madeFoods: string[];
   // Companion badge keys the player has baked with (any recipe while that
   // companion was active). Collecting all five → unlocks Hanji.
@@ -423,6 +428,7 @@ const DEFAULTS: PersistedState = {
   multipleReminders: [],
   advancedExamMap: {},
   selectedFoodId: 'strawberry-shortcake',
+  deskFoodReset: true,
   madeFoods: [],
   bakedWith: [],
   hanjiUnlockPending: false,
@@ -719,6 +725,15 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
     }
   }
 
+  // One-time desk fix: an early starter-chooser auto-switched the home desk to the
+  // chosen character's recipe, leaving accounts stuck on the wrong ingredients.
+  // Reset the selected desk food to the default strawberry shortcake once, then
+  // mark it done so later Bakery Menu choices are respected.
+  if (!merged.deskFoodReset) {
+    merged.selectedFoodId = 'strawberry-shortcake';
+    merged.deskFoodReset = true;
+  }
+
   // Badge progress is derived from the recipes actually made. Recompute it here so
   // any save corrupted by the old equipped-companion logic self-heals (e.g. a badge
   // credited for the wrong character drops off).
@@ -995,6 +1010,9 @@ type AppContextType = {
   clearActiveSession: () => void;
   /** Pushes the active session's start forward by `seconds` (pause-for-break). */
   shiftSessionStart: (seconds: number) => void;
+  /** Flag the active session as multiplayer (e.g. a solo session promoted to a room
+   *  when the studier invites a friend in), so completion credits "with friend". */
+  markSessionMultiplayer: () => void;
 
   // Wave 2 skip nudge
   incrementSkipSubjectCount: () => void;
@@ -1756,6 +1774,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const markSessionMultiplayer = () => {
+    setActiveSession((prev) => (prev && !prev.isMultiplayer ? { ...prev, isMultiplayer: true } : prev));
+  };
+
   // ─── Wave 2 skip nudge ────────────────────────────────────────────────────
 
   const incrementSkipSubjectCount = () =>
@@ -1896,16 +1918,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // picker. Bun keeps its `starter:girl` active id; the others use `shop:<sku>`.
   const chooseStarter = (activeId: ActiveCompanionId) => {
     const shopItemId = activeId === 'starter:girl' ? 'companion_bun' : activeId.slice(5);
-    setS((prev) => ({
-      ...prev,
-      starterCompanionId: activeId,
-      starterChosen: true,
-      activeCompanionId: activeId,
-      defaultCompanionId: 'girl',
-      ownedShopItems: prev.ownedShopItems.includes(shopItemId)
-        ? prev.ownedShopItems
-        : [...prev.ownedShopItems, shopItemId],
-    }));
+    // Grant the recipe that matches the character the player picked, so it's
+    // unlocked in the Bakery Menu. The home desk stays on the default strawberry
+    // shortcake (don't auto-switch selectedFoodId) so the desk ingredients the
+    // player starts with never change out from under them.
+    const rec = starterRecipe(activeId === 'starter:girl' ? '' : activeId);
+    setS((prev) => {
+      const grants = [shopItemId, rec?.recipeItem].filter(
+        (id): id is string => !!id && !prev.ownedShopItems.includes(id),
+      );
+      return {
+        ...prev,
+        starterCompanionId: activeId,
+        starterChosen: true,
+        activeCompanionId: activeId,
+        defaultCompanionId: 'girl',
+        ownedShopItems: grants.length ? [...prev.ownedShopItems, ...grants] : prev.ownedShopItems,
+      };
+    });
     // Celebrate the first companion the same way as a shop purchase.
     setCharacterObtainedPending(shopItemId);
   };
@@ -2364,6 +2394,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         startActiveSession,
         clearActiveSession,
         shiftSessionStart,
+        markSessionMultiplayer,
         incrementSkipSubjectCount,
         resetSkipSubjectCount,
         purchaseShopItem,

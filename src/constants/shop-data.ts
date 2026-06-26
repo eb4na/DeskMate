@@ -482,7 +482,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     price: 750,
     category: 'recipe',
     image: require('@/assets/images/cake/sakura-mochi.png'),
-    owner: 'Bunny',
+    owner: 'Cocoa',
   },
   {
     id: 'recipe_matcha',
@@ -502,7 +502,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     price: 750,
     category: 'recipe',
     image: require('@/assets/images/cake/croissant.png'),
-    owner: 'Cocoa',
+    owner: 'Bunny',
   },
 
   // ─── Reminder styles (150–300 coins) ─────────────────────────────────────

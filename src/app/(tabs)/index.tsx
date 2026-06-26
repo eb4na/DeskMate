@@ -845,6 +845,35 @@ export default function HomeScreen() {
     setFinishingSession(true);
   }, [activeSession, sessionSecondsLeft]);
 
+  // Robust wall-clock finisher: schedule completion for the EXACT end moment instead
+  // of relying on the per-second re-render above to land precisely on zero (which it
+  // sometimes misses — leaving the timer stuck at 00:00 with nothing happening). Re-
+  // arms whenever the session object changes, so a break's `shiftSessionStart` (which
+  // pushes the end time out) reschedules correctly. Shares `handledCompletionId` with
+  // the effect above so completion can never fire twice.
+  useEffect(() => {
+    if (!activeSession || activeSession.isMultiplayer) return;
+    if (handledCompletionId.current === activeSession.id) return;
+    const endMs = new Date(activeSession.startedAt).getTime() + activeSession.durationMinutes * 60000;
+    const finishNow = () => {
+      if (handledCompletionId.current === activeSession.id) return;
+      handledCompletionId.current = activeSession.id;
+      finishParamsRef.current = {
+        sessionLength: String(activeSession.durationMinutes),
+        subject: activeSession.subjectName ?? '',
+        coinsEarned: String(coinsForMinutes(activeSession.durationMinutes)),
+        taskId: activeSession.taskId ?? '',
+        taskTitle: activeSession.taskTitle ?? '',
+      };
+      setFinishingSession(true);
+    };
+    const remaining = endMs - Date.now();
+    if (remaining <= 0) { finishNow(); return; }
+    const id = setTimeout(finishNow, remaining + 50);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSession]);
+
   // After the recipe pops out of the timer, hand off to the finish screen.
   useEffect(() => {
     if (!finishingSession) return;

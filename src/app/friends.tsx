@@ -99,6 +99,7 @@ export default function FriendsScreen() {
   const [requestedCodes, setRequestedCodes] = useState<string[]>([]); // suggestions I've just requested
   const [busy, setBusy] = useState(false);
   const [sentTo, setSentTo] = useState<string | null>(null); // shows the "request sent" confirmation
+  const [sendDiag, setSendDiag] = useState<string | null>(null); // TEMP: inline send-failure reason
   const [playFor, setPlayFor] = useState<Friend | null>(null);
   const [onlineCodes, setOnlineCodes] = useState<PresenceMap>(new Map());
   const [copied, setCopied] = useState(false);
@@ -177,15 +178,36 @@ export default function FriendsScreen() {
       showPopup(t('friends.signInNeeded'), t('friends.signInToSend'));
       return;
     }
+    // Validate up front so an empty/short code gives feedback instead of a silent
+    // no-op (the recipient lookup would otherwise just bounce with no signal).
+    const code = input.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (code.length !== 6) {
+      showPopup(t('friends.couldNotSend'), t('friends.enterFriendCode'));
+      return;
+    }
     setBusy(true);
-    const res = await sendFriendRequest({ fromUser: user.id, fromCode: friendCode, toCode: input });
-    setBusy(false);
-    if (res.ok) {
-      const code = input.trim().toUpperCase();
-      setInput('');
-      setSentTo(code); // themed confirmation screen instead of a system alert
-    } else {
-      showPopup(t('friends.couldNotSend'), res.error ?? t('friends.tryAgain'));
+    setSendDiag('sending…');
+    try {
+      const res = await sendFriendRequest({ fromUser: user.id, fromCode: friendCode, toCode: code });
+      if (res.ok) {
+        setSendDiag(null);
+        setInput('');
+        setSentTo(code); // themed confirmation screen instead of a system alert
+      } else {
+        // Show the exact failing step + message INLINE so the cause is visible
+        // without digging through logs (e.g. "lookup: Can't reach Supabase: …").
+        setSendDiag(`✗ ${res.stage ?? 'send'}: ${res.error ?? 'unknown'}`);
+        showPopup(t('friends.couldNotSend'), res.error ?? t('friends.tryAgain'));
+      }
+    } catch (e) {
+      // Any thrown error (network hang, unexpected Supabase failure) is surfaced
+      // rather than swallowed — otherwise the tap looks like it did nothing.
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn('[friends] sendFriendRequest threw:', e);
+      setSendDiag(`✗ threw: ${msg}`);
+      showPopup(t('friends.couldNotSend'), msg);
+    } finally {
+      setBusy(false); // always reset, so the button can never get stuck on "…"
     }
   };
 
@@ -456,6 +478,8 @@ export default function FriendsScreen() {
               </Pressable>
             </View>
             <Text style={styles.codeHint}>{t('friends.requestHint')}</Text>
+            {/* TEMP diagnostic: shows the exact step + reason a send failed. */}
+            {sendDiag && <Text style={styles.sendDiag} selectable>{sendDiag}</Text>}
           </View>
 
           {/* Incoming requests */}
@@ -725,6 +749,7 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   },
   shareBtnText: { color: P.pink, fontWeight: '800', fontSize: 13 * s },
   codeHint: { fontSize: 12 * s, color: P.mutedBrown, textAlign: 'center' },
+  sendDiag: { fontSize: 11 * s, color: '#C0463E', fontWeight: '700', textAlign: 'center', marginTop: 6 * s },
 
   addRow: { flexDirection: 'row', gap: Spacing.two * s },
   addInput: {
