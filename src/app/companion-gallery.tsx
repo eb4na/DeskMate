@@ -525,7 +525,9 @@ function GalleryContent() {
               <Pressable style={styles.loreBackdrop} onPress={() => setLorePopup(null)}>
                 <Pressable style={styles.loreCard} onPress={() => {}}>
                   <Text style={styles.loreTitle}>{lorePopup.name}</Text>
-                  <Text style={styles.loreText}>{lorePopup.text}</Text>
+                  <ScrollView style={styles.loreScroll} contentContainerStyle={styles.loreScrollContent} showsVerticalScrollIndicator>
+                    <Text style={styles.loreText}>{lorePopup.text}</Text>
+                  </ScrollView>
                   <Pressable style={({ pressed }) => [styles.loreClose, pressed && styles.pressed]} onPress={() => setLorePopup(null)}>
                     <Text style={styles.loreCloseText}>{t('common.close')}</Text>
                   </Pressable>
@@ -1170,7 +1172,7 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   loreBadge: {
     position: 'absolute', top: 8 * s, left: 8 * s, zIndex: 10,
     width: 22 * s, height: 22 * s, borderRadius: 11 * s,
-    backgroundColor: 'rgba(91,58,46,0.55)',
+    backgroundColor: P.pink,
     alignItems: 'center', justifyContent: 'center',
   },
   loreBadgeText: { color: '#fff', fontSize: 11 * s, fontWeight: '800', lineHeight: 14 * s },
@@ -1182,12 +1184,16 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   },
   loreCard: {
     backgroundColor: '#FFFDF8', borderRadius: 24 * s,
-    padding: 24 * s, gap: 12 * s, alignItems: 'center',
-    maxWidth: 320 * s, width: '100%', minWidth: MIN_POPUP_WIDTH,
+    paddingHorizontal: 22 * s, paddingTop: 22 * s, paddingBottom: 18 * s, gap: 12 * s, alignItems: 'center',
+    // A tall vertical rectangle: narrower width + capped height so the long story
+    // scrolls inside rather than overflowing the screen.
+    width: '88%', maxWidth: 360 * s, minWidth: MIN_POPUP_WIDTH, maxHeight: '84%',
     shadowColor: '#5B3A2E', shadowOpacity: 0.18, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
   },
-  loreTitle: { fontSize: 22 * s, fontWeight: '900', color: P.brown, textAlign: 'center' },
-  loreText: { fontSize: 19 * s, color: P.mutedBrown, lineHeight: 27 * s, textAlign: 'center', fontStyle: 'italic' },
+  loreScroll: { alignSelf: 'stretch', flexShrink: 1 },
+  loreScrollContent: { paddingVertical: 2 * s },
+  loreTitle: { fontSize: 20 * s, fontWeight: '900', color: P.brown, textAlign: 'center' },
+  loreText: { fontSize: 13.5 * s, color: P.mutedBrown, lineHeight: 20 * s, textAlign: 'left' },
   loreClose: { marginTop: 4 * s, backgroundColor: P.pink, borderRadius: 18 * s, paddingVertical: 10 * s, paddingHorizontal: 28 * s },
   loreCloseText: { color: '#fff', fontSize: 14 * s, fontWeight: '800' },
 });

@@ -1,37 +1,37 @@
 {
   "pet": {
     "bun": {
-      "classic": ["Bun made today soft for you. Now study just a little.", "One page first, then Bun will give you the warmest little cheer.", "You don't have to be perfect. Just come back and try with Bun."],
-      "angel": ["Rest your worries here. Begin again gently.", "Bun believes small progress still glows.", "Take your time. Bun will keep the room calm."],
-      "strawberry": ["A proper little scholar must return to their studies.", "Bun requests one more focus session, very politely.", "The berry kingdom believes in you — go make it proud."],
-      "snowrabbit": ["Come back before your focus melts into snow.", "Even tiny steps leave tracks.", "Bun saved a warm spot for you beside the winter window."],
-      "dreams": ["Bun is sleepy too… but we can finish one tiny task.", "Study softly. The dreams can wait a little longer.", "Come back under the strawberry blanket of responsibility."]
+      "classic": ["Welcome back, warm little crumb.", "The café saved your favorite seat.", "Something sweet was waiting for you."],
+      "angel": ["Soft wings, softer wishes.", "I kept the cold away.", "You're safe under sugar-white skies."],
+      "strawberry": ["A crown is sweeter with strawberries.", "The palace smells like cake today.", "Royal decree: be gently happy."],
+      "snowrabbit": ["Even frost lets flowers bloom.", "Snow fell, but I stayed warm.", "A blue ribbon tied winter still."],
+      "dreams": ["The lantern is sleepy and pink.", "Dreams are baking very quietly.", "Tiny strawberries guard the night."]
     },
     "cocoa": {
-      "classic": ["Focus first. You can look cool after.", "Steady work. No drama. That's the recipe.", "You don't need motivation. You need five clean minutes."],
-      "relax": ["Slow is fine. Stopped is the only problem.", "Let the timer steep. You just keep going.", "No rush. Just return before the focus gets cold."],
-      "demon": ["Sneaking off? Bold. Take that nerve to your notes.", "Come back. Your notes are not going to fear you by themselves.", "You can quit after you win. Not before."]
+      "classic": ["Let the afternoon steep slowly.", "No rush, leaves fall on time.", "Warm sleeves, quiet sky, enough."],
+      "relax": ["Let the afternoon steep slowly.", "No rush, leaves fall on time.", "Warm sleeves, quiet sky, enough."],
+      "demon": ["Even shadows need a calm chair.", "Dark wings, soft footsteps.", "I look fierce. I'm still cozy."]
     },
     "bunny": {
-      "classic": ["Bunny says come back because Bunny is cute and correct.", "Your study session needs Bunny's supervision immediately.", "Bunny already did Bunny's job by being adorable. Now you do yours."],
-      "jiraikei": ["Don't leave Bunny alone with your unfinished work… come back soon?", "Come back or Bunny will stare sadly at the timer.", "You promised Bunny you’d study — and Bunny’s been waiting so patiently."],
-      "palace": ["Please return. Your focus deserves a graceful finish.", "A quiet effort is still noble.", "Bunny will wait, but not forever."],
-      "bluebell": ["Bunny dressed up just for study time. Come back?", "Blue frills, sweet bows — and Bunny waiting.", "Sweet and patient. Bunny's still right here."]
+      "classic": ["Bunny arrived. The room improved.", "Cute is a serious responsibility.", "Admire bunny. Bunny permits it."],
+      "jiraikei": ["Sweet bow, sharp little warning.", "Bunny smiles. Choose wisely.", "Pink lace can still bite."],
+      "palace": ["The peonies bow when I pass.", "Bunny has spoken. Obviously.", "Royal blue, royal mood."],
+      "bluebell": ["Sugar bells are ringing softly.", "Bunny is sweet, not harmless.", "Blue ribbons make better days."]
     },
     "miel": {
-      "classic": ["Miel kept the room warm for you. Come back soon.", "Just one more spoonful of studying.", "Tiny work today becomes sweet later."],
-      "champion": ["Stay with it. Winners do the boring part too.", "One more round. You're closer than you think.", "Miel is sleepy, but Miel still wants the win."],
-      "zzz": ["Mmm… come back… the notes are getting lonely.", "Study now… nap cloud later…", "Miel can barely stay awake, but even Miel is still here."]
+      "classic": ["Something warm is almost ready.", "Honey makes the room softer.", "I saved you the cozy corner."],
+      "champion": ["Bell rang. Miel already won.", "Gold looks better with honey.", "Tiny bear, giant victory."],
+      "zzz": ["Five more dreams, please.", "Honey first. Nap after.", "My nightcap says good job."]
     },
     "tira": {
-      "classic": ["Walk back to your work. Dramatically, if needed.", "No need to rush. Just don't disappear.", "A calm finish is still a finish."],
-      "chocomint": ["Come back. This is your gentle reminder with a tiny bite.", "You can be cute and responsible at the same time — I’ve seen it.", "Five minutes. Low effort, high flavor."],
-      "sleepover": ["Snacks hit better after the session — let’s earn them first.", "Study first. The cozy part counts more after.", "Come back. The cozy part works better when you finish something."],
-      "afternoontrain": ["You can wander later. Your homework is still standing here.", "Take the scenic route back to focus.", "Freedom feels better after the task is done."]
+      "classic": ["Slow steps still arrive beautifully.", "Cocoa dust settles with grace.", "Sweetness is quieter than it looks."],
+      "chocomint": ["Mint cool, chocolate steady.", "Fresh bows, firm little heart.", "Sweet does not mean soft."],
+      "sleepover": ["Pajama wisdom says keep going.", "Blankets approve of your effort.", "Sleepover rules: soft but serious."],
+      "afternoontrain": ["The train hums between hours.", "Somewhere waits beyond the window.", "Navy sleeves, drifting afternoon."]
     },
     "hanji": {
-      "classic": ["Return quietly. The page is waiting.", "Small focus is still focus.", "No noise. Just one more line."],
-      "ivoryrose": ["Please come back. Your effort is almost blooming.", "A little courage suits you today.", "Finish softly. Let the day be kind to you."]
+      "classic": ["Wisteria moves without asking.", "Lavender silence can still sing.", "I brought calm in my sleeves."],
+      "ivoryrose": ["Ivory roses remember the morning.", "Today dressed itself with care.", "Soft lace, steady heart."]
     },
     "generic": ["Hehe~ that tickles!", "Let's study together soon?", "So glad you're here."]
   },
