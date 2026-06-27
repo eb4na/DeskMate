@@ -7,6 +7,7 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Defs, Ellipse, G, Line, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import { discoPalette } from '@/lib/disco-palette';
 
 // Static dot stars (x,y as 0..1 fractions).
 const STARS: [number, number, number][] = [
@@ -42,7 +43,7 @@ function useLoop(period: number, delay = 0) {
   return v;
 }
 
-function SpinningBall({ x, y, r, dark }: { x: number; y: number; r: number; dark: boolean }) {
+function SpinningBall({ x, y, r, dark, tileA, tileB }: { x: number; y: number; r: number; dark: boolean; tileA: string; tileB: string }) {
   const spin = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const a = Animated.loop(Animated.timing(spin, { toValue: 1, duration: 9000, easing: Easing.linear, useNativeDriver: true }));
@@ -64,8 +65,8 @@ function SpinningBall({ x, y, r, dark }: { x: number; y: number; r: number; dark
           const c = Math.cos(Math.asin(f));
           return <Line key={`h${i}`} x1={r - (r - 1) * c} y1={r + (r - 1) * f} x2={r + (r - 1) * c} y2={r + (r - 1) * f} stroke={grid} strokeWidth={0.6} opacity={0.6} />;
         })}
-        <Rect x={r - r * 0.2} y={r - r * 0.15} width={r * 0.28} height={r * 0.28} fill="#F0A9C2" opacity={0.85} />
-        <Rect x={r + r * 0.2} y={r + r * 0.1} width={r * 0.24} height={r * 0.24} fill="#9D7BE8" opacity={0.85} />
+        <Rect x={r - r * 0.2} y={r - r * 0.15} width={r * 0.28} height={r * 0.28} fill={tileA} opacity={0.85} />
+        <Rect x={r + r * 0.2} y={r + r * 0.1} width={r * 0.24} height={r * 0.24} fill={tileB} opacity={0.85} />
         <Circle cx={r - r * 0.35} cy={r - r * 0.35} r={r * 0.16} fill="#FFFFFF" opacity={0.7} />
       </Svg>
     </Animated.View>
@@ -130,13 +131,12 @@ function TwinkleSpark({ x, y, a, color, delay }: { x: number; y: number; a: numb
   );
 }
 
-export function DiscoBackdrop({ color, width, height }: { color: 'black' | 'white'; width: number; height: number }) {
+export function DiscoBackdrop({ color, vinylColor, width, height }: { color: 'black' | 'white'; vinylColor: string; width: number; height: number }) {
   const dark = color === 'black';
   const W = width, H = height, min = Math.min(W, H);
-  const star = dark ? '#FFFFFF' : '#9B79C6';
-  const note = dark ? '#F4B3C9' : '#B074A0';
-  const ray = '#C9A8FF';
-  const floorColors = dark ? ['#F0A9C2', '#9D7BE8', '#6FC7E8', '#F4C77A'] : ['#E59BB8', '#A88BE0', '#86B6D8', '#E0B86A'];
+  // Whole-scene palette themed around the chosen vinyl colour (analogous hues).
+  const pal = discoPalette(vinylColor, dark);
+  const star = pal.star, note = pal.note;
   const bx = W * 0.18, by = H * 0.085, br = min * 0.07;
 
   return (
@@ -145,17 +145,17 @@ export function DiscoBackdrop({ color, width, height }: { color: 'black' | 'whit
       <Svg width={W} height={H} style={StyleSheet.absoluteFill}>
         <Defs>
           <RadialGradient id="discoBg" cx="50%" cy="32%" rx="75%" ry="62%">
-            <Stop offset="0" stopColor={dark ? '#3A2256' : '#FBF3FF'} />
-            <Stop offset="0.55" stopColor={dark ? '#1C1030' : '#EFE3FB'} />
-            <Stop offset="1" stopColor={dark ? '#0A0714' : '#E2D2F2'} />
+            <Stop offset="0" stopColor={pal.bg[0]} />
+            <Stop offset="0.55" stopColor={pal.bg[1]} />
+            <Stop offset="1" stopColor={pal.bg[2]} />
           </RadialGradient>
           <RadialGradient id="discoSpot" cx="50%" cy="50%" rx="50%" ry="50%">
-            <Stop offset="0" stopColor={dark ? '#8E5BD6' : '#E9D7FA'} stopOpacity={dark ? 0.5 : 0.65} />
-            <Stop offset="1" stopColor={dark ? '#8E5BD6' : '#E9D7FA'} stopOpacity={0} />
+            <Stop offset="0" stopColor={pal.spot} stopOpacity={dark ? 0.5 : 0.6} />
+            <Stop offset="1" stopColor={pal.spot} stopOpacity={0} />
           </RadialGradient>
           <RadialGradient id="discoBeam" cx="50%" cy="0%" rx="50%" ry="70%">
-            <Stop offset="0" stopColor={ray} stopOpacity={dark ? 0.2 : 0.14} />
-            <Stop offset="1" stopColor={ray} stopOpacity={0} />
+            <Stop offset="0" stopColor={pal.beam} stopOpacity={dark ? 0.2 : 0.14} />
+            <Stop offset="1" stopColor={pal.beam} stopOpacity={0} />
           </RadialGradient>
         </Defs>
         <Rect x={0} y={0} width={W} height={H} fill="url(#discoBg)" />
@@ -172,12 +172,12 @@ export function DiscoBackdrop({ color, width, height }: { color: 'black' | 'whit
 
       {/* Animated decorations */}
       {FLOOR.map(([x, y, s, ci, delay], i) => (
-        <PulsingLight key={`fl${i}`} cx={W * x} cy={H * y} r={min * 0.1 * s} color={floorColors[ci]} dark={dark} delay={delay} />
+        <PulsingLight key={`fl${i}`} cx={W * x} cy={H * y} r={min * 0.1 * s} color={pal.floor[ci]} dark={dark} delay={delay} />
       ))}
-      <SpinningBall x={bx} y={by} r={br} dark={dark} />
+      <SpinningBall x={bx} y={by} r={br} dark={dark} tileA={pal.floor[1]} tileB={pal.floor[3]} />
       {/* Twinkling glints ON the ball so it clearly sparkles, not just slowly spins. */}
       {([[-0.35, -0.2], [0.3, 0.05], [-0.05, 0.32], [0.35, -0.3], [0.1, -0.05]] as [number, number][]).map(([dx, dy], i) => (
-        <TwinkleSpark key={`bg${i}`} x={bx + br * dx} y={by + br * dy} a={br * (0.24 + 0.06 * (i % 2))} color={i % 2 ? '#F0A9C2' : '#FFFFFF'} delay={i * 260} />
+        <TwinkleSpark key={`bg${i}`} x={bx + br * dx} y={by + br * dy} a={br * (0.24 + 0.06 * (i % 2))} color={i % 2 ? pal.sparkle : '#FFFFFF'} delay={i * 260} />
       ))}
       {SPARKS.map(([x, y, s, delay], i) => (
         <TwinkleSpark key={`sp${i}`} x={W * x} y={H * y} a={min * 0.02 * s} color={star} delay={delay} />

@@ -292,6 +292,7 @@ function RootNavigator() {
         <Stack.Screen name="mood-chart" options={{ presentation: 'modal', title: t('screens.moodChart') }} />
         <Stack.Screen name="subject-chart" options={{ presentation: 'modal', title: t('screens.subjectChart') }} />
         <Stack.Screen name="break-game" options={{ headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="next-session" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="cake-game" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="party-invite" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="study-lobby" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />

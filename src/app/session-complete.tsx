@@ -76,12 +76,14 @@ function ReceiptRow({
 }
 
 export default function SessionCompleteScreen() {
-  const { sessionLength, subject, coinsEarned, taskId, taskTitle } = useLocalSearchParams<{
+  const { sessionLength, subject, coinsEarned, taskId, taskTitle, breakMinutes, autoStarted } = useLocalSearchParams<{
     sessionLength: string;
     subject: string;
     coinsEarned: string;
     taskId?: string;
     taskTitle?: string;
+    breakMinutes?: string;
+    autoStarted?: string;
   }>();
 
   const {
@@ -122,6 +124,12 @@ export default function SessionCompleteScreen() {
 
   const earned = parseInt(coinsEarned ?? '0', 10);
   const minutes = parseInt(sessionLength ?? '25', 10);
+  // Break length picked at setup. Counts toward the recorded total + lifetime stats
+  // (study + break), but NOT coins (coins stay study-only). Drives the post-session
+  // break too — no re-pick (the user already chose it at the start of the session).
+  const breakMin = Math.max(0, parseInt(breakMinutes ?? '0', 10) || 0);
+  const totalWithBreak = minutes + breakMin;
+  const wasAutoStarted = autoStarted === '1';
   const subjectName = subject && subject.length > 0 ? subject : null;
 
   // Coins actually credited after the daily cap (snapshot earnedToday before crediting).
@@ -148,7 +156,9 @@ export default function SessionCompleteScreen() {
     credited.current = true;
     playFinishDing(); // oven-timer "ding": your study session is done
     addCoins(earned);
-    recordSession(minutes);
+    // Record the whole session including the break (study + break) toward lifetime
+    // total minutes + companion bond. Coins/quests/subject-time stay study-only below.
+    recordSession(totalWithBreak);
     // Solo finish → counts toward daily quests/achievements (not friend quests).
     recordQuestSession({ minutes });
     addSubjectTime(subjectName, minutes);
@@ -212,10 +222,13 @@ export default function SessionCompleteScreen() {
         });
       }
     }
-    if (showBreakGame) {
-      setStage('break');
+    // Break length was already chosen at session setup — go straight into it (no
+    // re-pick). The break-game then hands off to the next-session picker. If there's
+    // no break, skip straight to the next-session picker.
+    if (breakMin > 0) {
+      startBreak(breakMin);
     } else {
-      goHome();
+      goNextSession();
     }
   };
 
@@ -242,7 +255,24 @@ export default function SessionCompleteScreen() {
   const startBreak = (breakMins: number) =>
     router.replace({
       pathname: '/break-game',
-      params: { breakMinutes: String(breakMins), fromSession: '1' },
+      params: {
+        breakMinutes: String(breakMins),
+        fromSession: '1',
+        // After this break, hand off to the next-session picker (not Home).
+        nextMinutes: String(minutes),
+        nextSubject: subjectName ?? '',
+        nextAutoStarted: wasAutoStarted ? '1' : '',
+      },
+    });
+  // No break → straight to the next-session picker (1-minute countdown).
+  const goNextSession = () =>
+    router.replace({
+      pathname: '/next-session',
+      params: {
+        lastMinutes: String(minutes),
+        subject: subjectName ?? '',
+        autoStarted: wasAutoStarted ? '1' : '',
+      },
     });
   const openCustomBreak = () =>
     router.push({ pathname: '/custom-timer', params: { mode: 'break' } });
@@ -278,6 +308,9 @@ export default function SessionCompleteScreen() {
               <ReceiptRow label={t('pickers.date')} value={receipt.date} />
               <ReceiptRow label={t('pickers.time')} value={receipt.time} />
               <ReceiptRow label={t('sessionComplete.studyTimeLabel')} value={`${minutes} ${t('sessionComplete.min')}`} />
+              {breakMin > 0 && (
+                <ReceiptRow label={t('sessionComplete.totalTimeLabel')} value={`${totalWithBreak} ${t('sessionComplete.min')}`} />
+              )}
               <ReceiptRow
                 label={t('sessionComplete.coinsEarnedLabel')}
                 value={`+${actualEarned}`}

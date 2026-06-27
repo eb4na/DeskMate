@@ -6,10 +6,7 @@ import { useApp } from '@/context/app-context';
 import { joinGameRoom, newRoomId, type GameRoom } from '@/lib/game-net';
 import {
   getPlayback,
-  playTrackAt,
   spotifyConnected,
-  spotifyPause,
-  spotifyResume,
   subscribeSpotify,
 } from '@/lib/spotify';
 
@@ -76,6 +73,7 @@ type StudyRoomValue = {
   hostDiscoOn: boolean;
   hostDiscoColor: 'black' | 'white';
   hostCoverUrl: string | null;
+  hostPlaying: boolean;
   canStartSelf: boolean;
   joinRoom: (roomId: string, isHost: boolean) => void;
   leaveRoom: () => void;
@@ -143,6 +141,9 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
   const [hostDiscoOn, setHostDiscoOn] = useState(false);
   const [hostDiscoColor, setHostDiscoColor] = useState<'black' | 'white'>('black');
   const [hostCoverUrl, setHostCoverUrl] = useState<string | null>(null);
+  // Whether the host's music is PLAYING (vs paused), synced so a guest's disco scene
+  // matches the host's: paused = characters stop bouncing + vinyl stops, cover stays.
+  const [hostPlaying, setHostPlaying] = useState(true);
   // True only for a late joiner (joined a room that's already running): the lobby
   // shows them a "Start studying" button to begin on their own clock.
   const [canStartSelf, setCanStartSelf] = useState(false);
@@ -238,6 +239,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     setHostDiscoOn(false);
     setHostDiscoColor('black');
     setHostCoverUrl(null);
+    setHostPlaying(true);
     myPreferredMinutes.current = null;
     myTopic.current = null;
     begunRef.current = false;
@@ -412,43 +414,13 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
             setHostDiscoOn(!!d.on);
             setHostDiscoColor(d.color === 'white' ? 'white' : 'black');
           } else if (type === 'spotify') {
+            // Sync the host's COVER + play/pause state for the shared disco BACKGROUND
+            // disk only — the AUDIO is no longer mirrored (each studier plays their own
+            // song). It's just an image + a flag, so no Plus/Spotify needed to see it.
             if (isHostRef.current) return;
-            const d = data as { uri?: string; positionMs?: number; isPlaying?: boolean; ts?: number; coverUrl?: string | null };
-            // Show the host's cover on this guest's disco vinyl even if they have no
-            // Spotify connected — it's just an image URL.
+            const d = data as { coverUrl?: string | null; isPlaying?: boolean };
             setHostCoverUrl(d.coverUrl ?? null);
-            // The actual AUDIO mirror needs the guest's OWN Spotify Premium; without it
-            // they just see the cover (above) and hear nothing from Spotify.
-            if (!spotifyConnected()) return;
-            const uri = d.uri ?? null;
-            const playing = !!d.isPlaying;
-            const last = mirrorRef.current;
-            // mirrorRef tracks the song this player actually STARTED (not just the
-            // host's last report) — only advance it when we issue a real change, so
-            // a resume after a skip-while-paused reloads the right track.
-            if (!uri) {
-              if (last.playing) spotifyPause();
-              mirrorRef.current = { uri: null, playing: false };
-            } else if (uri !== last.uri) {
-              // New/changed track — start it at the host's estimated position, but
-              // only if the host is actually playing. If the host is paused on a new
-              // track, do nothing AND leave mirrorRef untouched, so the eventual
-              // resume hits this branch again and loads the correct track.
-              if (playing) {
-                const elapsed = d.ts ? Math.max(0, Date.now() - d.ts) : 0;
-                playTrackAt(uri, (d.positionMs ?? 0) + elapsed);
-                mirrorRef.current = { uri, playing: true };
-              }
-            } else {
-              // Same track we started — react only to a play/pause flip, never a re-seek.
-              if (playing && !last.playing) {
-                spotifyResume();
-                mirrorRef.current = { uri, playing: true };
-              } else if (!playing && last.playing) {
-                spotifyPause();
-                mirrorRef.current = { uri, playing: false };
-              }
-            }
+            setHostPlaying(d.isPlaying ?? true);
           } else if (type === 'begin') {
             // The host pressed Start — the synced session begins for EVERYONE in the
             // room at once. Each present member auto-applies `begin` (on their own
@@ -532,6 +504,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     setHostDiscoOn(false);
     setHostDiscoColor('black');
     setHostCoverUrl(null);
+    setHostPlaying(true);
   };
 
   const start = (opts: StudyStartOpts) => {
@@ -620,7 +593,9 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
       });
     };
     tick();
-    const id = setInterval(tick, 5000);
+    // 2s so a guest's disco scene reflects the host's play/pause quickly (the cover +
+    // playing flag drive the shared backdrop's spin + character bounce).
+    const id = setInterval(tick, 2000);
     return () => {
       cancelled = true;
       clearInterval(id);
@@ -672,6 +647,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
       hostDiscoOn,
       hostDiscoColor,
       hostCoverUrl,
+      hostPlaying,
       canStartSelf,
       joinRoom,
       leaveRoom,
@@ -683,7 +659,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     }),
     // joinRoom/leaveRoom/start/setStatus are stable enough (read refs); deps are the state they expose.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [roomId, begun, isHost, myCode, roster, statusMap, presentCodes, netStatus, hostBackgroundId, hostDeskId, hostSoundShared, hostSoundId, hostDiscoOn, hostDiscoColor, hostCoverUrl, canStartSelf],
+    [roomId, begun, isHost, myCode, roster, statusMap, presentCodes, netStatus, hostBackgroundId, hostDeskId, hostSoundShared, hostSoundId, hostDiscoOn, hostDiscoColor, hostCoverUrl, hostPlaying, canStartSelf],
   );
 
   return <StudyRoomContext.Provider value={value}>{children}</StudyRoomContext.Provider>;

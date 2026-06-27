@@ -31,6 +31,7 @@ import { FloatingHeart, makeHearts, PetBubble, type Heart } from '@/components/c
 import { getPetLine } from '@/constants/pet-lines';
 import { HanjiFigure } from '@/components/hanji-figure';
 import { useStudyRoom, STUDY_ROOM_MAX, type StudyStatus } from '@/lib/use-study-room';
+import { discoPalette } from '@/lib/disco-palette';
 import { joinPresence, setMyPresenceStatus } from '@/lib/game-net';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { useTranslation } from '@/i18n';
@@ -193,9 +194,14 @@ export function StudyRoomView({
   // on gives every player the disco scene, Plus or not); the host + a solo studier use
   // their own setting.
   const followsHostDisco = room.active && !room.isHost;
-  const focus = followsHostDisco ? room.hostDiscoOn : spotifyBgEnabled;
+  // Disco is a Plus feature: you only get it for yourself with Plus (so a lapsed-Plus
+  // account stops seeing it). A non-Plus GUEST still gets it from a Plus host below.
+  const focus = followsHostDisco ? room.hostDiscoOn : (spotifyBgEnabled && isPlus);
   const discoColor: 'black' | 'white' = followsHostDisco ? room.hostDiscoColor : spotifyBgColor;
-  const focusFg = discoColor === 'white' ? '#111111' : '#FFFFFF';
+  // Disco accent palette derived from the chosen vinyl colour (analogous hues).
+  const discoPal = discoPalette(vinylColor, discoColor === 'black');
+  // Timer + buttons: white in dark mode, a dark vinyl-hue shade in light mode.
+  const focusFg = discoPal.fg;
   // Tap-to-talk during a session: tapping a character pops one of its pet lines in a
   // cloud above it. `talk.code` is whose bubble is showing (mine = my friendCode).
   const [talk, setTalk] = useState<{ code: string; line: string; id: number } | null>(null);
@@ -223,8 +229,10 @@ export function StudyRoomView({
   // the HOST's equipped study sound instead of their own. Only guests are overridden
   // (the host + solo studiers always use their own sound). `hostSoundId` null while
   // sharing = host turned its sound off, so the guest goes quiet too.
-  const hostSharingSound = room.active && !room.isHost && room.hostSoundShared;
-  const effectiveSoundItem = hostSharingSound ? room.hostSoundId : equippedShopItems.sound;
+  // Each studier plays their OWN music — the host's audio is no longer mirrored. (The
+  // host's cover/sound IS still shown on the shared disco BACKGROUND disk, below.)
+  const effectiveSoundItem = equippedShopItems.sound;
+  const hostSoundImage = SHOP_ITEMS.find((i) => i.id === room.hostSoundId)?.image;
   // The effective study sound (a `sound_<id>` shop item) → its ambience id. Music
   // only actually plays for sounds that have an audio file; the vinyl spins to match.
   const equippedAmbId = effectiveSoundItem ? effectiveSoundItem.replace('sound_', '') : null;
@@ -246,15 +254,20 @@ export function StudyRoomView({
   const equippedSoundImage = SHOP_ITEMS.find((i) => i.id === effectiveSoundItem)?.image;
   const vinylCenter: number | { uri: string } | undefined =
     spotifyOn && playback?.coverUrl ? { uri: playback.coverUrl } : equippedSoundImage;
-  // The big disco vinyl's art: a guest shows the HOST's cover (synced) — or the host's
-  // shared bundled-sound icon (effectiveSoundItem already resolves to it) when the host
-  // isn't on Spotify; the host + a solo studier use their own vinylCenter.
+  // The big disco BACKGROUND vinyl's art is SHARED — a guest shows the HOST's cover
+  // (synced), or the host's shared bundled-sound icon when the host isn't on Spotify.
+  // The host + a solo studier use their own vinylCenter. (The small bottom radio still
+  // shows each studier's OWN music — see vinylCenter above.)
   const discoVinylCenter: number | { uri: string } | undefined = followsHostDisco
-    ? (room.hostCoverUrl ? { uri: room.hostCoverUrl } : equippedSoundImage)
+    ? (room.hostCoverUrl ? { uri: room.hostCoverUrl } : hostSoundImage)
     : vinylCenter;
   // Spin only while something is actually playing: Spotify's reported state when
   // connected, else the looping study sound.
   const musicPlaying = (spotifyOn && !!playback?.isPlaying) || (!!equippedAmbId && hasSoundPreview(equippedAmbId));
+  // Whether the disco scene should be "playing" (big vinyl spins + character jumps). A
+  // guest follows the HOST's play/pause (so pausing stops everyone's bounce while the
+  // cover stays); host/solo follow their own music.
+  const discoPlaying = followsHostDisco ? room.hostPlaying : musicPlaying;
   // Play/stop the bundled study music. An equipped sound always plays — being
   // merely *connected* to Spotify no longer silences it (set the sound to "Off" to
   // hand the radio back to Spotify).
@@ -267,9 +280,6 @@ export function StudyRoomView({
   const lastSoundRef = useRef(equippedShopItems.sound);
   useEffect(() => { if (equippedShopItems.sound) lastSoundRef.current = equippedShopItems.sound; }, [equippedShopItems.sound]);
   const onVinylSpin = () => {
-    // A guest hearing the host's shared sound can't change it — the radio just
-    // reflects the host's music, so a spin would have no audible effect.
-    if (hostSharingSound) return;
     if (spotifyOn) {
       // Pause is a simple toggle; play targets a device explicitly (a bare resume
       // can't wake an idle Spotify) so the music actually starts.
@@ -422,6 +432,12 @@ export function StudyRoomView({
   // (same idle motion as the home screen). 0 = resting/lowest, 1 = apex.
   const charBounce = useRef(new Animated.Value(0)).current;
   useEffect(() => {
+    // In disco mode the character only jumps while music is PLAYING — paused = rest at
+    // the bottom. Normal study mode always does the gentle home-screen idle bounce.
+    if (focus && !discoPlaying) {
+      charBounce.stopAnimation(() => charBounce.setValue(0));
+      return;
+    }
     // Focus mode bounces hard + fast; normal mode is the gentle home-screen idle.
     const dur = focus ? 300 : 900;
     const loop = Animated.loop(
@@ -432,7 +448,7 @@ export function StudyRoomView({
     );
     loop.start();
     return () => loop.stop();
-  }, [charBounce, focus]);
+  }, [charBounce, focus, discoPlaying]);
   const charTranslateY = charBounce.interpolate({ inputRange: [0, 1], outputRange: [0, focus ? -36 : -7] });
   const charScaleY = charBounce.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1.02] });
   const charScaleX = charBounce.interpolate({ inputRange: [0, 1], outputRange: [1.02, 0.99] });
@@ -486,7 +502,7 @@ export function StudyRoomView({
   const partySlotW = Math.round(baseFit * MP_SPREAD);
   // Book grows with the character; on phone bump the ratio a little more so the
   // book reads bigger on the desk (tablet keeps the original 0.52).
-  const partyBookSize = Math.round(partyCharSize * (!isTablet ? 0.58 : 0.52));
+  const partyBookSize = Math.round(partyCharSize * (!isTablet ? 0.66 : 0.60));
   // When you're the only one in the room (others left, or before they begin), the
   // party row would render a single oversized, off-center character/book that floats
   // off the desk — so render the solo scene (big centered character + desk book) instead.
@@ -536,9 +552,16 @@ export function StudyRoomView({
 
   // Solo character content, reused by the phone (in-scene) and tablet (absolute,
   // desk-anchored) layouts so only one ever mounts.
-  const soloCharContent = hanjiIsAnimated(activeCompanionId, companionSkins?.[activeCompanionId ?? ''])
+  const charIsAnimatedHanji = hanjiIsAnimated(activeCompanionId, companionSkins?.[activeCompanionId ?? '']);
+  const soloCharContent = charIsAnimatedHanji
     ? <HanjiFigure style={styles.characterFill} />
     : <Image source={bigCharacter} style={styles.characterFill} contentFit="contain" />;
+  // Alpha-locked disco wash: a tinted copy of the character image — `tintColor` recolours
+  // ONLY opaque pixels, so the wash hugs the character shape (no square overlay). Themed
+  // off the vinyl colour. Skipped for the animated Hanji figure (no single image to tint).
+  const discoCharTintNode = focus && !charIsAnimatedHanji
+    ? <Image source={bigCharacter} tintColor={discoPal.charTint} contentFit="contain" style={styles.discoCharTintImg} />
+    : null;
   const soloCharTransform = { transform: [{ translateY: charTranslateY }, { scaleX: charScaleX }, { scaleY: charScaleY }] };
 
   // Cover color per participant, keyed off the companion id.
@@ -767,19 +790,23 @@ export function StudyRoomView({
 
   return (
     <View style={styles.root}>
-      {/* "Spotify background" mode: a large album-cover vinyl drawn over the solid
-          black/white fill (set in index.tsx), behind the desk + character. Decorative
-          only — the small radio vinyl below stays the play/stop control. */}
+      {/* "Spotify background" mode: a large album-cover vinyl drawn over the disco
+          backdrop, behind the desk + character. Tapping it toggles play/stop (host/solo
+          only — a guest can't control the host's music, so theirs stays non-interactive
+          and taps fall through to the scene). `box-none` lets taps off the disk fall
+          through to the character below. */}
       {focus && (
-        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'flex-start', paddingTop: winH * 0.15 }]}>
-          <StudyVinyl
-            size={Math.round(Math.min(winW, winH) * 0.66)}
-            playing={followsHostDisco ? true : musicPlaying}
-            discColor={vinylColor}
-            centerImage={discoVinylCenter}
-            disk
-            holeColor={discoColor === 'white' ? '#FFFFFF' : '#000000'}
-          />
+        <View pointerEvents={followsHostDisco ? 'none' : 'box-none'} style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'flex-start', paddingTop: winH * 0.15 }]}>
+          <Pressable onPress={onVinylSpin}>
+            <StudyVinyl
+              size={Math.round(Math.min(winW, winH) * 0.66)}
+              playing={discoPlaying}
+              discColor={vinylColor}
+              centerImage={discoVinylCenter}
+              disk
+              holeColor={discoColor === 'white' ? '#FFFFFF' : '#000000'}
+            />
+          </Pressable>
         </View>
       )}
       {/* Invite-friend button (top right) — shown whenever there's room for more
@@ -857,10 +884,12 @@ export function StudyRoomView({
             {/* Squish layer (center-bottom origin so feet stay tucked behind the desk
                 on tap) wraps the idle-bounce layer — mirrors Home's CompanionPet. */}
             <Animated.View style={{ width: '100%', height: '100%', transform: [{ scale: tapScale }], transformOrigin: 'center bottom' }}>
-              <Animated.View style={soloCharTransform}>{soloCharContent}</Animated.View>
+              <Animated.View style={soloCharTransform}>
+                {soloCharContent}
+                {/* Alpha-locked disco wash — inside the bounce wrapper so it rides with the jump. */}
+                {discoCharTintNode}
+              </Animated.View>
             </Animated.View>
-            {/* Disco lighting wash over the character so it blends into the scene. */}
-            {focus && <View pointerEvents="none" style={styles.discoCharTint} />}
             {talk?.code === friendCode && hearts.map((h) => (
               <FloatingHeart key={h.id} heart={h} size={18 * heartScale} onDone={() => setHearts((cur) => cur.filter((x) => x.id !== h.id))} />
             ))}
@@ -886,8 +915,8 @@ export function StudyRoomView({
           <Pressable style={{ width: soloCharSize, height: soloCharSize }} onPress={() => talkAs(friendCode, myPersona, mySkin, 1.25)}>
             <Animated.View style={{ flex: 1, transform: [{ scale: tapScale }], transformOrigin: 'center bottom' }}>
               {soloCharContent}
+              {discoCharTintNode}
             </Animated.View>
-            {focus && <View pointerEvents="none" style={styles.discoCharTint} />}
             {talk?.code === friendCode && hearts.map((h) => (
               <FloatingHeart key={h.id} heart={h} size={18 * heartScale} onDone={() => setHearts((cur) => cur.filter((x) => x.id !== h.id))} />
             ))}
@@ -907,8 +936,11 @@ export function StudyRoomView({
               ? hanjiIsAnimated(activeCompanionId, companionSkins?.[activeCompanionId ?? ''])
               : hanjiIsAnimated(p.companionId, p.skinId);
             // Tap a character → show one of its (or their) lines. Mine uses my live
-            // persona/skin; friends use the companion they're studying as.
-            const persona = p.code === friendCode ? myPersona : (p.companionId ? PERSONA_BY_COMPANION[p.companionId] : undefined);
+            // persona/skin; friends use the companion they're studying as. An absent
+            // companionId means they're studying as the starter Bun (only `shop:`
+            // companions sync a real id) — default to the 'bun' voice so the skin's
+            // lines show, matching how the avatar already renders Bun for no id.
+            const persona = p.code === friendCode ? myPersona : (p.companionId ? PERSONA_BY_COMPANION[p.companionId] : 'bun');
             const skin = p.code === friendCode ? mySkin : p.skinId;
             return (
               <Pressable key={p.code} style={[styles.partyMember, { width: partySlotW }]} onPress={() => talkAs(p.code, persona, skin, 0.72)}>
@@ -991,8 +1023,12 @@ export function StudyRoomView({
         // nudge here — in a row of small characters the face offset read as off-center.
         // On phone, raise the book up toward the character so it sits closer — but
         // keep the lift below the character's raised baseline so the book's base never
-        // rides up past/into the body.
-        <View style={[styles.partyBookRow, { bottom: partyCharBottom + (!isTablet ? 0.05 * partyCharSize : -4) }]} pointerEvents="none">
+        // rides up past/into the body. HARD CAP (same intent as the solo-tablet clip):
+        // the book may never cross the desk's top edge — clamp the row so the book's
+        // TOP can't rise above `deskEdgeY`, otherwise the larger multiplayer books float
+        // up past the desk onto the wall. The book's rendered height is 84/120 of its
+        // `size` (StudyBook draws a 120×84 art), so the cap uses that, not `partyBookSize`.
+        <View style={[styles.partyBookRow, { bottom: Math.min(partyCharBottom + (!isTablet ? 0.05 * partyCharSize : -4), deskEdgeY - partyBookSize * (84 / 120)) }]} pointerEvents="none">
           {participants.slice(0, STUDY_ROOM_MAX).map((p) => {
             const cover = p.code === friendCode ? soloBookColor : bookColorFor(p.companionId);
             return (
@@ -1014,7 +1050,7 @@ export function StudyRoomView({
             The game slot keeps its space even while studying (button hidden) so the
             radio is already in its final spot and doesn't jump up when break starts. */}
         <View style={[styles.gameCol, isTablet && styles.gameColTablet]}>
-          <Pressable onPress={() => { if (!hostSharingSound) setSoundOpen(true); }} style={({ pressed }) => [styles.radioBtn, pressed && !hostSharingSound && styles.pressed]} hitSlop={8}>
+          <Pressable onPress={() => setSoundOpen(true)} style={({ pressed }) => [styles.radioBtn, pressed && styles.pressed]} hitSlop={8}>
             <StudyVinyl size={isTablet ? 92 : 56} playing={musicPlaying} discColor={vinylColor} centerImage={vinylCenter} onSpin={onVinylSpin} />
           </Pressable>
           <Pressable
@@ -1195,6 +1231,8 @@ const styles = StyleSheet.create({
   characterSolo: { width: 300, height: 300, marginBottom: 40 },
   // Focus mode drops the character lower (no desk to tuck behind).
   characterSoloFocus: { marginBottom: -42 },
+  // Alpha-locked disco wash: a tinted copy of the character image, overlaid + faded.
+  discoCharTintImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.18 },
   // Multiplayer party — characters evenly spaced (equal gaps incl. the ends),
   // lifted up so heads clear the desk edge (240) and tuck behind the table.
   partyLayer: {

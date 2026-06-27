@@ -101,6 +101,9 @@ export type ActiveSession = {
   isMultiplayer?: boolean;
   /** Custom break length (minutes); falls back to floor(duration/12) when unset. */
   breakMinutes?: number;
+  /** True when this session began via the post-break auto-start (no human pick).
+   *  Used to cap auto-start to ONE in a row — see the next-session picker. */
+  autoStarted?: boolean;
 };
 
 // ─── Wave 4 types ─────────────────────────────────────────────────────────────
@@ -746,6 +749,11 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
   const month = new Date().toISOString().slice(0, 7);
   const merged = { ...saved };
 
+  // Disco ("Spotify background") mode never persists across launches — every app start
+  // (and therefore every study session) begins in the normal desk view; the player
+  // opts into disco during the session. Their colour choice is kept for next time.
+  merged.spotifyBgEnabled = false;
+
   // Plus lapses at the end of its billing period — monthly subscriptions end after
   // a month, annual after a year (plusUntil is set accordingly on subscribe). Owned
   // Plus perks are kept; only the membership + its monthly allotments stop.
@@ -1123,6 +1131,8 @@ type AppContextType = {
     isMultiplayer?: boolean;
     /** Custom break length (minutes) for the single-player break. */
     breakMinutes?: number;
+    /** True when auto-started by the post-break next-session countdown. */
+    autoStarted?: boolean;
   }) => void;
   clearActiveSession: () => void;
   /** Pushes the active session's start forward by `seconds` (pause-for-break). */
@@ -1907,6 +1917,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     startedAt,
     isMultiplayer,
     breakMinutes,
+    autoStarted,
   }: {
     durationMinutes: number;
     subjectName: string | null;
@@ -1915,6 +1926,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     startedAt?: string;
     isMultiplayer?: boolean;
     breakMinutes?: number;
+    autoStarted?: boolean;
   }) => {
     setActiveSession({
       id: uid(),
@@ -1925,6 +1937,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       startedAt: startedAt ?? new Date().toISOString(),
       isMultiplayer,
       breakMinutes,
+      autoStarted,
     });
   };
 

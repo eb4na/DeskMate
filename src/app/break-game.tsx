@@ -873,7 +873,6 @@ const tttStyles = StyleSheet.create({
 const { height: SCREEN_H } = Dimensions.get('window');
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
-const ALLOWED_BREAK_MINUTES = [5, 10, 15];
 const CONNECT4_BG = require('@/assets/images/connect4/background.png');
 const TTT_BG = require('@/assets/images/tictactoe/background-clean.png');
 
@@ -890,13 +889,17 @@ const BREAKGAME_ELEMENTS = [
 export default function BreakGameScreen() {
   const { t } = useTranslation();
   const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('breakgame', BREAKGAME_ELEMENTS);
-  const { breakMinutes, fromSession, browse, game, room, role } = useLocalSearchParams<{
+  const { breakMinutes, fromSession, browse, game, room, role, nextMinutes, nextSubject, nextAutoStarted } = useLocalSearchParams<{
     breakMinutes: string;
     fromSession?: string;
     browse?: string;
     game?: string;
     room?: string;
     role?: string;
+    // After a solo study break, hand off to the next-session picker instead of Home.
+    nextMinutes?: string;
+    nextSubject?: string;
+    nextAutoStarted?: string;
   }>();
   const { ownedShopItems, isPlus } = useApp();
   const { width: winW, height: winH } = useWindowDimensions();
@@ -919,8 +922,11 @@ export default function BreakGameScreen() {
   // break timer, no study framing — just pick a game.
   const isBrowse = browse === '1' || !!onlineSession;
   const parsedMinutes = parseInt(breakMinutes ?? '', 10);
+  // The break length is now chosen + validated at session SETUP (incl. Plus custom
+  // breaks that aren't 5/10/15), so accept any sane positive length here rather than
+  // bouncing those sessions to Home and skipping the next-session picker.
   const validEntry =
-    !!onlineSession || isBrowse || (fromSession === '1' && ALLOWED_BREAK_MINUTES.includes(parsedMinutes));
+    !!onlineSession || isBrowse || (fromSession === '1' && parsedMinutes > 0 && parsedMinutes <= 300);
 
   const returnToTabs = () => {
     if (router.canDismiss()) {
@@ -928,6 +934,24 @@ export default function BreakGameScreen() {
       return;
     }
     router.replace('/');
+  };
+
+  // After a solo study break finishes, go pick the next session (1-minute countdown);
+  // a bare break (no next-session handoff) just returns Home.
+  const hasNextSession = !!nextMinutes;
+  const goNext = () => {
+    if (hasNextSession) {
+      router.replace({
+        pathname: '/next-session',
+        params: {
+          lastMinutes: nextMinutes!,
+          subject: nextSubject ?? '',
+          autoStarted: nextAutoStarted ?? '',
+        },
+      });
+      return;
+    }
+    returnToTabs();
   };
 
   useEffect(() => {
@@ -1030,7 +1054,7 @@ export default function BreakGameScreen() {
           </ThemedView>
           <Pressable
             style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
-            onPress={goHome}>
+            onPress={goNext}>
             <ThemedText type="smallBold" style={styles.primaryBtnText}>
               {t('games.backToStudying')}
             </ThemedText>

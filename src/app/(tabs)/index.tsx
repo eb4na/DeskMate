@@ -28,7 +28,7 @@ import { HomeTutorial } from '@/components/home-tutorial';
 import { DiscoBackdrop } from '@/components/disco-backdrop';
 import { setTutorialTarget } from '@/lib/tutorial-targets';
 import i18n, { useTranslation } from '@/i18n';
-import { coinsForMinutes, formatCoins } from '@/constants/placeholder-data';
+import { autoBreakMinutes, coinsForMinutes, formatCoins } from '@/constants/placeholder-data';
 import { hanjiIsAnimated, resolveActiveCompanion } from '@/lib/companion-utils';
 import { HanjiFigure } from '@/components/hanji-figure';
 import { CompanionPet, PetCloudHost } from '@/components/companion-pet';
@@ -533,6 +533,7 @@ export default function HomeScreen() {
     activeSession,
     spotifyBgEnabled,
     spotifyBgColor,
+    vinylColor,
     activeCompanionId,
     clearActiveSession,
     companionSlots,
@@ -755,7 +756,7 @@ export default function HomeScreen() {
   // A multiplayer GUEST follows the host's synced state (so the host enabling it gives
   // every player the disco background, Plus or not); host + solo use their own setting.
   const followsHostDisco = studyRoom.active && !studyRoom.isHost;
-  const discoBgOn = !!activeSession && (followsHostDisco ? studyRoom.hostDiscoOn : spotifyBgEnabled);
+  const discoBgOn = !!activeSession && (followsHostDisco ? studyRoom.hostDiscoOn : (spotifyBgEnabled && isPlus));
   const discoBgColor = followsHostDisco ? studyRoom.hostDiscoColor : spotifyBgColor;
   const deskRoom = ROOM_PAIRS.find((r) => r.id === equippedDeskRoomId) ?? ROOM_PAIRS[0];
   const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
@@ -871,6 +872,10 @@ export default function HomeScreen() {
       coinsEarned: String(coinsForMinutes(activeSession.durationMinutes)),
       taskId: activeSession.taskId ?? '',
       taskTitle: activeSession.taskTitle ?? '',
+      // Break length picked at setup (flows to the post-session break + the record),
+      // and whether THIS session was itself auto-started (caps auto-start chaining).
+      breakMinutes: String(activeSession.breakMinutes ?? autoBreakMinutes(activeSession.durationMinutes)),
+      autoStarted: activeSession.autoStarted ? '1' : '',
     };
     setFinishingSession(true);
   }, [activeSession, sessionSecondsLeft]);
@@ -894,6 +899,8 @@ export default function HomeScreen() {
         coinsEarned: String(coinsForMinutes(activeSession.durationMinutes)),
         taskId: activeSession.taskId ?? '',
         taskTitle: activeSession.taskTitle ?? '',
+        breakMinutes: String(activeSession.breakMinutes ?? autoBreakMinutes(activeSession.durationMinutes)),
+        autoStarted: activeSession.autoStarted ? '1' : '',
       };
       setFinishingSession(true);
     };
@@ -1018,7 +1025,7 @@ export default function HomeScreen() {
           vinyl is drawn over it inside the study scene). */}
       {discoBgOn ? (
         <View style={[styles.roomBackground, { backgroundColor: discoBgColor === 'white' ? '#FFFFFF' : '#000000' }]} pointerEvents="none">
-          <DiscoBackdrop color={discoBgColor} width={winW} height={winH} />
+          <DiscoBackdrop color={discoBgColor} vinylColor={vinylColor} width={winW} height={winH} />
         </View>
       ) : (
         <>
