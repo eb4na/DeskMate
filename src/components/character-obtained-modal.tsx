@@ -8,9 +8,12 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { MIN_POPUP_WIDTH } from '@/constants/theme';
+
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 import { companionByShopItemId, localizeCompanionName } from '@/lib/companion-utils';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 
 const P = { card: '#FFFDF8', brown: '#5B3A2E', muted: '#9A7B6D' };
 
@@ -19,6 +22,7 @@ export function CharacterObtainedModal() {
   const { characterObtainedPending, clearCharacterObtained, setActiveCompanion } = useApp();
   const choice = characterObtainedPending ? companionByShopItemId(characterObtainedPending) : undefined;
   const visible = !!choice;
+  useReportModalTransition(visible);
 
   if (!choice) {
     return <Modal visible={false} transparent />;
@@ -63,7 +67,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
   card: {
-    width: '100%', maxWidth: 320, backgroundColor: P.card, borderRadius: 24,
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 320, backgroundColor: P.card, borderRadius: 24,
     borderWidth: 2, borderColor: 'rgba(255,255,255,0.85)', padding: 22, alignItems: 'center', gap: 8,
     shadowColor: '#5B3A2E', shadowOpacity: 0.18, shadowRadius: 16, shadowOffset: { width: 0, height: 6 },
     elevation: 6,
@@ -77,7 +81,7 @@ const styles = StyleSheet.create({
   message: { fontSize: 14, color: P.muted, fontWeight: '600', textAlign: 'center', lineHeight: 20 },
   button: {
     alignSelf: 'stretch', marginTop: 10, paddingVertical: 13, borderRadius: 16,
-    alignItems: 'center',
+    alignItems: 'center', flexDirection: 'row', justifyContent: 'center',
   },
   buttonText: { color: '#fff', fontWeight: '900', fontSize: 15 },
   laterBtn: { paddingVertical: 8, alignItems: 'center' },

@@ -18,6 +18,7 @@ import {
   TERMS_OF_SERVICE,
 } from '@/constants/legal';
 import { Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 
 const BAKERY_BG = require('@/assets/images/backgrounds/bakery-menu.png');
 
@@ -53,8 +54,9 @@ function defaultBirthday(): string {
   return `${y}-${m}-${d}`;
 }
 
-// Note: this whole flow is intentionally English-only (legal text is English-only),
-// so the copy here is NOT run through i18n — matching the rest of the legal gate.
+// Note: the legal DOCUMENT bodies (PRIVACY_POLICY / TERMS_OF_SERVICE) stay
+// English-only by design. The surrounding gate chrome (titles, buttons, labels)
+// IS localized via i18n so first-launch matches the device language.
 
 // Shared bakery shell: cream background with a big bubbly title (no banner frame).
 function MenuShell({ title, children }: { title: string; children: React.ReactNode }) {
@@ -76,6 +78,7 @@ function MenuShell({ title, children }: { title: string; children: React.ReactNo
 // (2) confirm date of birth (must be at least MINIMUM_AGE). The caller persists
 // via markLegalAccepted + setBirthday once both are done.
 export function LegalConsentGate({ onAgree }: { onAgree: (birthday: string) => void }) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<'legal' | 'age'>('legal');
 
   // --- Step 1: legal documents ---
@@ -97,9 +100,9 @@ export function LegalConsentGate({ onAgree }: { onAgree: (birthday: string) => v
   if (step === 'legal') {
     return (
       <View style={styles.overlay}>
-        <MenuShell title="Before you start">
+        <MenuShell title={t('consent.beforeStart')}>
           <Text style={styles.subtitle}>
-            Please read our Privacy Policy and Terms of Service to use Memobun.
+            {t('consent.readPolicies')}
           </Text>
 
           <ScrollView
@@ -115,10 +118,10 @@ export function LegalConsentGate({ onAgree }: { onAgree: (birthday: string) => v
                 setReachedEnd(true);
               }
             }}>
-            <LegalDocument heading="Privacy Policy" sections={PRIVACY_POLICY} />
+            <LegalDocument heading={t('consent.privacyPolicy')} sections={PRIVACY_POLICY} />
             <View style={styles.divider} />
-            <LegalDocument heading="Terms of Service" sections={TERMS_OF_SERVICE} />
-            <Text style={styles.effective}>Effective {LEGAL_EFFECTIVE_DATE}</Text>
+            <LegalDocument heading={t('consent.termsOfService')} sections={TERMS_OF_SERVICE} />
+            <Text style={styles.effective}>{t('consent.effective', { date: LEGAL_EFFECTIVE_DATE })}</Text>
           </ScrollView>
 
           <Pressable
@@ -130,7 +133,7 @@ export function LegalConsentGate({ onAgree }: { onAgree: (birthday: string) => v
               pressed && scrolledEnough && styles.pressed,
             ]}>
             <Text style={styles.agreeBtnText}>
-              {scrolledEnough ? 'I have read & agree — Continue' : 'Scroll to the bottom to continue'}
+              {scrolledEnough ? t('consent.agreeContinue') : t('consent.scrollToContinue')}
             </Text>
           </Pressable>
         </MenuShell>
@@ -141,21 +144,22 @@ export function LegalConsentGate({ onAgree }: { onAgree: (birthday: string) => v
   // Step 2: date of birth
   return (
     <View style={styles.overlay}>
-      <MenuShell title="One last thing...">
+      <MenuShell title={t('consent.oneLastThing')}>
         {/* Scrollable so the Agree button below stays reachable even on small
             screens where the banner + wheel would otherwise overflow. */}
         <ScrollView style={styles.ageScroll} contentContainerStyle={styles.ageScrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.ageCard}>
-            <Text style={styles.fieldLabel}>Your date of birth</Text>
+            <Text style={styles.fieldLabel}>{t('consent.dateOfBirth')}</Text>
             <DateWheelPicker
               value={birthday}
               onChange={setBirthdayValue}
               maximumDateISO={getTodayISO()}
               minYear={1920}
             />
+            <Text style={styles.birthdayReward}>{t('consent.birthdayReward')}</Text>
             {!oldEnough && (
               <Text style={styles.ageError}>
-                You must be at least {MINIMUM_AGE} years old to use Memobun.
+                {t('consent.minAge', { age: MINIMUM_AGE })}
               </Text>
             )}
 
@@ -163,14 +167,14 @@ export function LegalConsentGate({ onAgree }: { onAgree: (birthday: string) => v
               <View style={[styles.checkbox, confirmed && styles.checkboxOn]}>
                 {confirmed && <Text style={styles.checkboxMark}>✓</Text>}
               </View>
-              <Text style={styles.checkLabel}>I confirm the date above is my date of birth.</Text>
+              <Text style={styles.checkLabel}>{t('consent.confirmDob')}</Text>
             </Pressable>
           </View>
         </ScrollView>
 
         <View style={styles.footerBtns}>
           <Pressable onPress={() => setStep('legal')} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}>
-            <Text style={styles.backBtnText}>Back</Text>
+            <Text style={styles.backBtnText}>{t('common.back')}</Text>
           </Pressable>
           <Pressable
             disabled={!ready}
@@ -181,7 +185,7 @@ export function LegalConsentGate({ onAgree }: { onAgree: (birthday: string) => v
               !ready && styles.agreeBtnDisabled,
               pressed && ready && styles.pressed,
             ]}>
-            <Text style={styles.agreeBtnText}>Agree & Continue</Text>
+            <Text style={styles.agreeBtnText}>{t('consent.agreeAndContinue')}</Text>
           </Pressable>
         </View>
       </MenuShell>
@@ -233,6 +237,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   fieldLabel: { fontSize: 15, fontWeight: '700', color: P.brown },
+  birthdayReward: { fontSize: 12.5, fontWeight: '700', color: P.pink, textAlign: 'center', lineHeight: 17 },
   ageError: { fontSize: 12, fontWeight: '700', color: '#C0392B' },
 
   checkRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },

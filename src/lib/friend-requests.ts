@@ -30,18 +30,16 @@ export async function sendFriendRequest(args: {
   if (toCode.length !== 6) return { ok: false, stage: 'validate', error: 'Friend codes are 6 letters/numbers.' };
   if (toCode === args.fromCode) return { ok: false, stage: 'validate', error: "That's your own code!" };
 
-  // Look up the recipient directly (not via lookupUserIdByCode, which hides the
-  // error) so we can tell "no such profile" apart from "DB unreachable".
+  // Look up the recipient via the get_profile_by_code RPC (the blanket profiles read
+  // was removed for privacy). We still tell "no such profile" apart from "DB
+  // unreachable": an RPC error = DB error, an empty result = no such code.
   let toUser: string;
   try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('user_id')
-      .eq('friend_code', toCode)
-      .maybeSingle();
+    const { data, error } = await supabase.rpc('get_profile_by_code', { p_code: toCode });
     if (error) return { ok: false, stage: 'lookup', error: `DB error: ${error.message}` };
-    if (!data) return { ok: false, stage: 'lookup', error: 'No Memobun account uses that code yet. Ask them to open the app first (their profile must sync).' };
-    toUser = data.user_id as string;
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return { ok: false, stage: 'lookup', error: 'No Memobun account uses that code yet. Ask them to open the app first (their profile must sync).' };
+    toUser = row.user_id as string;
   } catch (e) {
     return { ok: false, stage: 'lookup', error: `Can't reach Supabase: ${e instanceof Error ? e.message : String(e)}` };
   }

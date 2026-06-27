@@ -22,6 +22,8 @@ export const posthog = apiKey
 export type AnalyticsEvent =
   | 'study_session_completed'
   | 'shop_purchase'
+  | 'shop_redeem_ticket'
+  | 'ad_reward'
   | 'companion_chat_opened';
 
 export function track(event: AnalyticsEvent, props?: EventProps) {

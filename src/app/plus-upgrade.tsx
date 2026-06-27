@@ -1,18 +1,20 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Dimensions, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlusIcon } from '@/components/plus-icon';
 import { PlusCrown } from '@/components/avatar-frame';
+import { CardColorIcon } from '@/components/card-color-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
+import { useIsTablet } from '@/hooks/use-device-class';
 import { useTranslation } from '@/i18n';
 import { PRODUCT_IDS, fetchPrices, purchasePlus, purchasesReady, restorePlus, type PriceMap } from '@/lib/purchases';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
 
 // Each feature shows the same in-game art used for that feature elsewhere, so the
 // paywall reads as a tour of real Memobun content rather than generic line icons.
@@ -23,17 +25,20 @@ const FEATURES: {
   descKey: string;
   art?: number;
   crown?: boolean; // render the gold crown frame instead of an image
+  cardColor?: boolean; // render the code-drawn profile-card-colour icon
   noteKey?: string;
   noteKind?: 'keep' | 'expire';
 }[] = [
   { titleKey: 'plus.f_customTimers', descKey: 'plus.f_customTimersDesc', art: require('@/assets/images/settings/timer.png') },
-  { titleKey: 'plus.f_multiReminders', descKey: 'plus.f_multiRemindersDesc', art: require('@/assets/images/shop/icon-reminder.png') },
   { titleKey: 'plus.f_unlimitedExams', descKey: 'plus.f_unlimitedExamsDesc', art: require('@/assets/images/home/exam-calendar-icon.png') },
+  { titleKey: 'plus.f_moreSubjects', descKey: 'plus.f_moreSubjectsDesc', art: require('@/assets/images/settings/books.png') },
   { titleKey: 'plus.f_streakFreezes', descKey: 'plus.f_streakFreezesDesc', art: require('@/assets/images/home/streak-freeze-icon.png') },
-  { titleKey: 'plus.f_advancedReports', descKey: 'plus.f_advancedReportsDesc', art: require('@/assets/images/settings/progress.png') },
+  { titleKey: 'plus.f_ambience', descKey: 'plus.f_ambienceDesc', art: require('@/assets/images/shop/icon-sound.png') },
   { titleKey: 'plus.f_spotify', descKey: 'plus.f_spotifyDesc', art: require('@/assets/images/settings/spotify-logo.png') },
   { titleKey: 'plus.f_exclusiveSkin', descKey: 'plus.f_exclusiveSkinDesc', art: require('@/assets/images/bun/bun-strawberry.png'), noteKey: 'plus.noteKeep', noteKind: 'keep' },
   { titleKey: 'plus.f_goldenTeahouse', descKey: 'plus.f_goldenTeahouseDesc', art: require('@/assets/images/backgrounds/strawberry-palace.png'), noteKey: 'plus.noteKeep', noteKind: 'keep' },
+  { titleKey: 'plus.f_cardColor', descKey: 'plus.f_cardColorDesc', cardColor: true, noteKey: 'plus.noteExpire', noteKind: 'expire' },
+  { titleKey: 'plus.f_roomTicket', descKey: 'plus.f_roomTicketDesc', art: require('@/assets/images/shop/ticket.png') },
   { titleKey: 'plus.f_shopDiscount', descKey: 'plus.f_shopDiscountDesc', art: require('@/assets/images/tabIcons/gen-shop.png') },
   { titleKey: 'plus.f_streakCoins', descKey: 'plus.f_streakCoinsDesc', art: require('@/assets/images/home/coin-icon.png') },
 ];
@@ -44,6 +49,13 @@ const ROOM_ART = require('@/assets/images/backgrounds/strawberry-palace.png');
 
 export default function PlusUpgradeScreen() {
   const { t } = useTranslation();
+  // This paywall is presented as a page/form-sheet modal. On iPad that sheet
+  // reports a narrow *window* width, so the window-based device-class hook can
+  // misread the device as a phone and skip every tablet style. Detect the real
+  // device from the physical SCREEN (which the sheet can't shrink) so tablet
+  // sizing actually fires here. min-side is orientation-independent.
+  const screen = Dimensions.get('screen');
+  const isTablet = useIsTablet() || Math.min(screen.width, screen.height) >= 600;
   const { isPlus, setIsPlus, ownedShopItems } = useApp();
   // Chosen billing period — monthly Plus lapses after a month, annual after a year.
   const [plan, setPlan] = useState<'monthly' | 'annual'>('monthly');
@@ -119,11 +131,11 @@ export default function PlusUpgradeScreen() {
         <SafeAreaView style={styles.safeArea}>
           {/* Hero */}
           <ThemedView style={styles.hero}>
-            <PlusIcon size={72} />
-            <ThemedText type="subtitle" style={styles.heroTitle}>
+            <PlusIcon size={isTablet ? 96 : 72} />
+            <ThemedText type="subtitle" style={[styles.heroTitle, isTablet && styles.heroTitleTablet]}>
               Memobun Plus
             </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.heroSub}>
+            <ThemedText type="small" themeColor="textSecondary" style={[styles.heroSub, isTablet && styles.heroSubTablet]}>
               {t('plus.heroSub')}
             </ThemedText>
           </ThemedView>
@@ -132,8 +144,8 @@ export default function PlusUpgradeScreen() {
           {isPlus && (
             <ThemedView type="backgroundElement" style={styles.activeBanner}>
               <ThemedText style={styles.activeEmoji}></ThemedText>
-              <ThemedText type="smallBold">{t('plus.plusMember')}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
+              <ThemedText type="smallBold" style={isTablet && styles.bannerTitleTablet}>{t('plus.plusMember')}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" style={isTablet && styles.secondaryTextTablet}>
                 {t('plus.allUnlocked')}
               </ThemedText>
             </ThemedView>
@@ -142,17 +154,19 @@ export default function PlusUpgradeScreen() {
           {/* Feature list */}
           <ThemedView style={styles.featureList}>
             {FEATURES.map((f) => (
-              <ThemedView key={f.titleKey} style={styles.featureRow}>
-                <ThemedView style={styles.featureIcon}>
+              <ThemedView key={f.titleKey} style={[styles.featureRow, isTablet && styles.featureRowTablet]}>
+                <ThemedView style={[styles.featureIcon, isTablet && styles.featureIconTablet]}>
                   {f.crown ? (
-                    <PlusCrown size={30} />
+                    <PlusCrown size={isTablet ? 42 : 30} />
+                  ) : f.cardColor ? (
+                    <CardColorIcon size={isTablet ? 52 : 40} />
                   ) : (
-                    <Image source={f.art} style={styles.featureImg} contentFit="contain" />
+                    <Image source={f.art} style={[styles.featureImg, isTablet && styles.featureImgTablet]} contentFit="contain" />
                   )}
                 </ThemedView>
                 <ThemedView style={styles.featureText}>
-                  <ThemedText type="smallBold">{t(f.titleKey)}</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">
+                  <ThemedText type="smallBold" style={isTablet && styles.featureTitleTablet}>{t(f.titleKey)}</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" style={isTablet && styles.featureDescTablet}>
                     {t(f.descKey)}
                   </ThemedText>
                   {f.noteKey && (
@@ -164,81 +178,70 @@ export default function PlusUpgradeScreen() {
                     </ThemedView>
                   )}
                 </ThemedView>
-                <ThemedText style={styles.checkmark}>✓</ThemedText>
+                <ThemedText style={[styles.checkmark, isTablet && styles.checkmarkTablet]}>✓</ThemedText>
               </ThemedView>
             ))}
           </ThemedView>
 
           {/* Pricing — tap to pick a plan. Monthly lapses after a month; annual after a year. */}
           {!isPlus && (
-            <ThemedView type="backgroundElement" style={styles.priceCard}>
+            <ThemedView type="backgroundElement" style={[styles.priceCard, isTablet && styles.priceCardTablet]}>
               <Pressable
                 onPress={() => setPlan('monthly')}
-                style={[styles.priceRow, styles.planRow, plan === 'monthly' && styles.planRowActive]}>
+                style={[styles.priceRow, styles.planRow, isTablet && styles.planRowTablet, plan === 'monthly' && styles.planRowActive]}>
                 <ThemedView style={styles.planLeft}>
-                  <ThemedView style={[styles.radio, plan === 'monthly' && styles.radioActive]}>
-                    {plan === 'monthly' && <ThemedText style={styles.radioCheck}>✓</ThemedText>}
+                  <ThemedView style={[styles.radio, isTablet && styles.radioTablet, plan === 'monthly' && styles.radioActive]}>
+                    {plan === 'monthly' && <ThemedText style={[styles.radioCheck, isTablet && styles.radioCheckTablet]}>✓</ThemedText>}
                   </ThemedView>
                   <View style={styles.planTextCol}>
-                    <ThemedText type="smallBold" style={styles.priceTitle}>
+                    <ThemedText type="smallBold" style={[styles.priceTitle, isTablet && styles.priceTitleTablet]}>
                       {t('plus.monthly')}
                     </ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
+                    <ThemedText type="small" themeColor="textSecondary" style={isTablet && styles.planSubTablet}>
                       {t('plus.cancelAnytime')}
                     </ThemedText>
                   </View>
                 </ThemedView>
-                <ThemedText style={styles.priceValue}>{monthlyPrice}</ThemedText>
+                <ThemedText style={[styles.priceValue, isTablet && styles.priceValueTablet]}>{monthlyPrice}</ThemedText>
               </Pressable>
               <ThemedView style={styles.divider} />
               <Pressable
                 onPress={() => setPlan('annual')}
-                style={[styles.priceRow, styles.planRow, plan === 'annual' && styles.planRowActive]}>
+                style={[styles.priceRow, styles.planRow, isTablet && styles.planRowTablet, plan === 'annual' && styles.planRowActive]}>
                 <ThemedView style={styles.planLeft}>
-                  <ThemedView style={[styles.radio, plan === 'annual' && styles.radioActive]}>
-                    {plan === 'annual' && <ThemedText style={styles.radioCheck}>✓</ThemedText>}
+                  <ThemedView style={[styles.radio, isTablet && styles.radioTablet, plan === 'annual' && styles.radioActive]}>
+                    {plan === 'annual' && <ThemedText style={[styles.radioCheck, isTablet && styles.radioCheckTablet]}>✓</ThemedText>}
                   </ThemedView>
                   <View style={styles.planTextCol}>
-                    <ThemedText type="smallBold" style={styles.priceTitle}>
+                    <ThemedText type="smallBold" style={[styles.priceTitle, isTablet && styles.priceTitleTablet]}>
                       {t('plus.yearly')}{' '}
-                      <ThemedText style={styles.saveBadge}>{t('plus.saveYearly')}</ThemedText>
+                      <ThemedText style={[styles.saveBadge, isTablet && styles.saveBadgeTablet]}>{t('plus.saveYearly')}</ThemedText>
                     </ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
+                    <ThemedText type="small" themeColor="textSecondary" style={isTablet && styles.planSubTablet}>
                       {t('plus.yearlyDetail')}
                     </ThemedText>
                   </View>
                 </ThemedView>
-                <ThemedText style={styles.priceValue}>{yearlyPrice}</ThemedText>
+                <ThemedText style={[styles.priceValue, isTablet && styles.priceValueTablet]}>{yearlyPrice}</ThemedText>
               </Pressable>
             </ThemedView>
           )}
 
-          {/* Free features reminder */}
-          {!isPlus && (
-            <ThemedView type="backgroundElement" style={styles.freeCard}>
-              <ThemedText type="smallBold" style={styles.freeTitle}>
-                {t('plus.freeForever')}
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary" style={styles.freeText}>
-                {t('plus.freeText')}
-              </ThemedText>
-            </ThemedView>
-          )}
 
           {/* CTA buttons */}
           {!isPlus ? (
             <>
               <SoundPressable
                 sound="confirm"
-                style={({ pressed }) => [styles.upgradeBtn, pressed && styles.pressed]}
+                style={({ pressed }) => [styles.upgradeBtn, isTablet && styles.upgradeBtnTablet, pressed && styles.pressed]}
                 onPress={startPlus}>
-                <ThemedText type="smallBold" style={styles.upgradeBtnText}>
+                <ThemedText type="smallBold" style={[styles.upgradeBtnText, isTablet && styles.upgradeBtnTextTablet]}>
                   {t('plus.startPlus')}
                 </ThemedText>
               </SoundPressable>
 
               <Pressable onPress={handleRestore} style={styles.restoreBtn}>
-                <ThemedText type="small" themeColor="textSecondary">
+                <ThemedText type="small" themeColor="textSecondary" style={isTablet && styles.secondaryTextTablet}>
                   {t('plus.restorePurchases')}
                 </ThemedText>
               </Pressable>
@@ -247,7 +250,7 @@ export default function PlusUpgradeScreen() {
             // DEV-only: locally flip Plus off for testing. In production Apple owns
             // cancellation, so there's no local "deactivate" — see the Manage link below.
             <Pressable onPress={() => setConfirm('deactivate')} style={styles.deactivateBtn}>
-              <ThemedText type="small" themeColor="textSecondary">
+              <ThemedText type="small" themeColor="textSecondary" style={isTablet && styles.secondaryTextTablet}>
                 {t('plus.deactivatePlus')}
               </ThemedText>
             </Pressable>
@@ -256,20 +259,20 @@ export default function PlusUpgradeScreen() {
             // subscriptions screen rather than flipping local state (which the launch
             // reconcile would just restore from the live entitlement).
             <Pressable onPress={() => Linking.openURL('https://apps.apple.com/account/subscriptions')} style={styles.deactivateBtn}>
-              <ThemedText type="small" themeColor="textSecondary">
+              <ThemedText type="small" themeColor="textSecondary" style={isTablet && styles.secondaryTextTablet}>
                 {t('plus.manageSubscription')}
               </ThemedText>
             </Pressable>
           )}
 
-          <ThemedText type="small" themeColor="textSecondary" style={styles.disclaimer}>
+          <ThemedText type="small" themeColor="textSecondary" style={[styles.disclaimer, isTablet && styles.disclaimerTablet]}>
             {t('plus.disclaimer')}
           </ThemedText>
 
           {/* App Store Guideline 3.1.2: an auto-renewing-subscription paywall must
               link to functional Terms (EULA) + Privacy Policy from the screen. */}
           <Pressable onPress={() => router.push('/legal')} style={styles.legalLink}>
-            <ThemedText type="small" style={styles.legalLinkText}>
+            <ThemedText type="small" style={[styles.legalLinkText, isTablet && styles.secondaryTextTablet]}>
               {t('plus.termsPrivacy', { defaultValue: 'Terms of Service & Privacy Policy' })}
             </ThemedText>
           </Pressable>
@@ -415,6 +418,30 @@ const styles = StyleSheet.create({
   featureImg: { width: 40, height: 40, backgroundColor: 'transparent' },
   featureText: { flex: 1, gap: 2 },
   checkmark: { fontSize: 16, color: '#C75A78', fontWeight: '700' },
+  // iPad: the feature list reads tiny at phone sizes — scale up text + icons.
+  featureRowTablet: { paddingVertical: 11, gap: Spacing.three },
+  featureIconTablet: { width: 60 },
+  featureImgTablet: { width: 56, height: 56 },
+  featureTitleTablet: { fontSize: 21, lineHeight: 27 },
+  featureDescTablet: { fontSize: 16, lineHeight: 22 },
+  checkmarkTablet: { fontSize: 24 },
+  // iPad: the rest of the screen (hero, prices, CTAs) has no phone→tablet scaling,
+  // so it reads tiny inside the wide sheet — bump every text/control here too.
+  heroTitleTablet: { fontSize: 38, lineHeight: 46 },
+  heroSubTablet: { fontSize: 18, lineHeight: 24 },
+  bannerTitleTablet: { fontSize: 20, lineHeight: 26 },
+  priceCardTablet: { padding: Spacing.four, gap: Spacing.three },
+  priceTitleTablet: { fontSize: 20, lineHeight: 26 },
+  priceValueTablet: { fontSize: 30 },
+  planSubTablet: { fontSize: 15.5, lineHeight: 21 },
+  saveBadgeTablet: { fontSize: 14 },
+  planRowTablet: { paddingHorizontal: 14, paddingVertical: 12 },
+  radioTablet: { width: 26, height: 26, borderRadius: 13 },
+  radioCheckTablet: { fontSize: 15, lineHeight: 17 },
+  upgradeBtnTablet: { paddingVertical: Spacing.four, borderRadius: 20 },
+  upgradeBtnTextTablet: { fontSize: 22 },
+  secondaryTextTablet: { fontSize: 16, lineHeight: 22 },
+  disclaimerTablet: { fontSize: 14, lineHeight: 21 },
   // Per-perk note pill: "keep forever" (positive green) vs "expires with Plus" (amber).
   notepill: { alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginTop: 3 },
   notePillKeep: { backgroundColor: 'rgba(75,164,110,0.14)' },
@@ -443,9 +470,6 @@ const styles = StyleSheet.create({
   },
   radioActive: { backgroundColor: '#C75A78', borderColor: '#C75A78' },
   radioCheck: { color: '#fff', fontSize: 11, fontWeight: '800', lineHeight: 13 },
-  freeCard: { borderRadius: 16, padding: Spacing.three, gap: Spacing.one },
-  freeTitle: { fontSize: 14 },
-  freeText: { lineHeight: 20 },
   upgradeBtn: {
     backgroundColor: '#7C6F5A',
     borderRadius: 16,
@@ -470,6 +494,7 @@ const styles = StyleSheet.create({
   },
   confirmCard: {
     width: '100%',
+    minWidth: MIN_POPUP_WIDTH,
     maxWidth: 340,
     backgroundColor: '#FFFDF8',
     borderRadius: 22,

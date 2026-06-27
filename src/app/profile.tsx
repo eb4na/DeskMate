@@ -17,7 +17,6 @@ const STREAK_ICON = require('@/assets/images/profile/streak-cupcake.png');
 const BEST_STREAK_ICON = require('@/assets/images/profile/best-streak-cupcake.png');
 const STUDIED_ICON = require('@/assets/images/profile/studied-book.png');
 const BIRTHDAY_ICON = require('@/assets/images/profile/birthday-candle.png');
-import { DateWheelPicker } from '@/components/date-wheel-picker';
 import { useApp } from '@/context/app-context';
 import i18n, { useTranslation } from '@/i18n';
 import { ROOM_PAIRS, backgroundOwned } from '@/constants/room-data';
@@ -87,10 +86,8 @@ export default function ProfileScreen() {
   const cc = cardColors(activeCardColor);
   const pinkStrip = cardColors('pink').strip;
   const cardRef = useRef<View>(null);
-  // Birthday is set-once: a saved birthday renders locked (read-only). Editing is
-  // only entered via the "Add birthday" flow, and committed through a confirm popup.
-  const [editingBirthday, setEditingBirthday] = useState(false);
-  const [birthdayDraft, setBirthdayDraft] = useState('2008-01-01');
+  // Birthday is set at onboarding (and changeable once, in Settings) — here it's a
+  // read-only display. See settings.tsx for the change-once editor.
   const [showColorPicker, setShowColorPicker] = useState(false);
 
   // Cloud profile sync (name + current character + stats) runs app-wide in
@@ -297,47 +294,10 @@ export default function ProfileScreen() {
 
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>{t('profileCard.birthday')}</Text>
-            {profileBirthday ? (
-              // Set-once: once saved, the birthday is locked and can't be changed.
-              <>
-                <Text style={styles.lockedValue}>{formatBirthday(profileBirthday)}</Text>
-                <Text style={styles.fieldHint}>{t('profileCard.birthdayLockedNote')}</Text>
-              </>
-            ) : editingBirthday ? (
-              <>
-                <DateWheelPicker
-                  value={birthdayDraft}
-                  onChange={setBirthdayDraft}
-                  hideYear
-                />
-                <Pressable
-                  style={({ pressed }) => [styles.bdaySaveBtn, pressed && styles.pressed]}
-                  onPress={() =>
-                    showPopup(
-                      t('profileCard.birthdaySetOnceTitle'),
-                      t('profileCard.birthdaySetOnceMsg', { date: formatBirthday(birthdayDraft) }),
-                      [
-                        { text: t('common.cancel'), style: 'cancel' },
-                        {
-                          text: t('profileCard.birthdaySetOnceConfirm'),
-                          onPress: () => {
-                            updateProfile({ birthday: birthdayDraft });
-                            setEditingBirthday(false);
-                          },
-                        },
-                      ],
-                    )
-                  }>
-                  <Text style={styles.bdaySaveBtnText}>{t('profileCard.birthdaySave')}</Text>
-                </Pressable>
-              </>
-            ) : (
-              <Pressable
-                style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
-                onPress={() => setEditingBirthday(true)}>
-                <Text style={styles.addBtnText}>{t('profileCard.addBirthday')}</Text>
-              </Pressable>
-            )}
+            {/* Read-only: birthday is set at onboarding; the one allowed change lives
+                in Settings (so there's a single source of truth for the change-once). */}
+            <Text style={styles.lockedValue}>{profileBirthday ? formatBirthday(profileBirthday) : '—'}</Text>
+            <Text style={styles.fieldHint}>{t('profileCard.birthdayManageInSettings')}</Text>
           </View>
 
           <View style={styles.field}>

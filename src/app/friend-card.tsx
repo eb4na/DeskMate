@@ -22,7 +22,7 @@ import { ROOM_PAIRS } from '@/constants/room-data';
 import { cardColors } from '@/constants/card-colors';
 import { isPlusFrame } from '@/components/avatar-frame';
 import i18n, { useTranslation } from '@/i18n';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
 
 const P = {
   cream: '#FFF8EF',
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   modDivider: { color: P.muted, fontSize: 13 },
   // Local report/block popup (transparent backdrop — matches the app's no-dim modals).
   popBackdrop: { flex: 1, backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center', padding: 28 },
-  popCard: { width: '100%', maxWidth: 340, backgroundColor: P.card, borderRadius: 24, padding: 22, gap: 10, borderWidth: 1.5, borderColor: P.pinkSoft, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
+  popCard: { width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 340, backgroundColor: P.card, borderRadius: 24, padding: 22, gap: 10, borderWidth: 1.5, borderColor: P.pinkSoft, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
   popTitle: { fontSize: 18, fontWeight: '900', color: P.brown, textAlign: 'center' },
   popSub: { fontSize: 13, color: P.muted, textAlign: 'center', marginBottom: 4, lineHeight: 18 },
   popReason: { paddingVertical: 12, borderRadius: 14, backgroundColor: P.cream, borderWidth: 1.5, borderColor: P.pinkSoft, alignItems: 'center' },

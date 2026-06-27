@@ -11,7 +11,10 @@
       "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.sophialin.memobun",
       "supportsTablet": true,
-      "requireFullScreen": true
+      "requireFullScreen": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -25,7 +28,8 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "com.google.android.gms.permission.AD_ID"
       ],
       "package": "com.sophialin.memobun"
     },
@@ -51,11 +55,31 @@
       ],
       "expo-secure-store",
       "expo-sharing",
-      "expo-audio"
+      "expo-audio",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "iosAppId": "ca-app-pub-3799563844531019~8704817643",
+          "androidAppId": "ca-app-pub-3799563844531019~5068824967"
+        }
+      ],
+      [
+        "expo-tracking-transparency",
+        {
+          "userTrackingPermission": "Memobun uses this to show you more relevant ads. Your choice won't change how many coins you can earn."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3a483783-3c22-47ca-a06a-c83ae195aaf0"
+      }
+    },
+    "owner": "ebanana"
   }
 }

@@ -5,6 +5,7 @@ import { SoundPressable } from '@/components/sound-pressable';
 import { showPopup } from '@/lib/popup';
 import { track } from '@/lib/analytics';
 import { PRODUCT_IDS, fetchPrices, purchaseProduct, purchasesReady, type PriceMap } from '@/lib/purchases';
+import { AD_REWARD_COINS, DAILY_AD_LIMIT, adsReady, showRewardedAd } from '@/lib/ads';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinAmount, CoinIcon } from '@/components/coin-icon';
@@ -38,14 +39,45 @@ const PACK_IMAGES: Record<string, number> = {
   treasury: require('@/assets/images/shop/coin-cake3.png'),
 };
 
+// Code-drawn play badge (no emoji, per app icon rules): honey rounded square with a
+// white triangle. Used on the watch-a-video row.
+function PlayIcon({ size }: { size: number }) {
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size * 0.28,
+        backgroundColor: BakeryColors.honey,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+      <View
+        style={{
+          width: 0,
+          height: 0,
+          borderTopWidth: size * 0.17,
+          borderBottomWidth: size * 0.17,
+          borderLeftWidth: size * 0.27,
+          borderTopColor: 'transparent',
+          borderBottomColor: 'transparent',
+          borderLeftColor: '#FFFFFF',
+          marginLeft: size * 0.08,
+        }}
+      />
+    </View>
+  );
+}
+
 export default function CoinShopScreen() {
   const { t } = useTranslation();
   // Tablet: scale every size by one shared factor so the whole screen grows together
   // (it was fixed-size and far too small on iPad).
   const { scale, contentWidth } = useTabletScale();
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
-  const { coins, earnedToday, addPurchasedCoins, isPlus, addStreakFreeze, streakFreezes } = useApp();
+  const { coins, earnedToday, addPurchasedCoins, isPlus, addStreakFreeze, streakFreezes, adRewardCount, claimAdReward } = useApp();
   const capRemaining = Math.max(0, DAILY_EARN_CAP - earnedToday);
+  const adsLeft = Math.max(0, DAILY_AD_LIMIT - adRewardCount);
 
   // Live App Store prices (localized currency). Falls back to the hardcoded pack
   // strings when IAP is unavailable / fetch fails. Mirrors (tabs)/shop.tsx.
@@ -112,6 +144,39 @@ export default function CoinShopScreen() {
     });
   };
 
+  // Watch a rewarded video for AD_REWARD_COINS, up to DAILY_AD_LIMIT/day. Coins are
+  // granted ONLY after a real ad reward fires (showRewardedAd resolves rewarded:true)
+  // — same fail-closed rule as coin packs: dev mock-grants, production refuses when no
+  // ad / SDK is available. The 3×/day cap is enforced authoritatively in claimAdReward.
+  const handleWatchAd = async () => {
+    if (adsLeft <= 0) {
+      showPopup(t('coinShop.adLimitReached'), t('coinShop.adLimitReachedMsg', { total: DAILY_AD_LIMIT }));
+      return;
+    }
+    const grant = () => {
+      if (claimAdReward()) {
+        track('ad_reward', { coins: AD_REWARD_COINS });
+        showPopup(t('coinShop.adRewardTitle'), t('coinShop.adRewardMsg', { coins: AD_REWARD_COINS }));
+      } else {
+        showPopup(t('coinShop.adLimitReached'), t('coinShop.adLimitReachedMsg', { total: DAILY_AD_LIMIT }));
+      }
+    };
+    if (!adsReady()) {
+      if (__DEV__) {
+        showPopup(t('coinShop.watchAdTitle'), t('coinShop.watchAdMock', { coins: AD_REWARD_COINS }), [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('coinShop.watchAdButton'), onPress: grant },
+        ]);
+      } else {
+        showPopup(t('coinShop.adUnavailable'), t('coinShop.adUnavailableMsg'));
+      }
+      return;
+    }
+    const res = await showRewardedAd();
+    if (res.rewarded) grant();
+    else showPopup(t('coinShop.adUnavailable'), t('coinShop.adUnavailableMsg'));
+  };
+
   return (
     <ThemedView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -146,6 +211,26 @@ export default function CoinShopScreen() {
                 : t('coinShop.dailyCapReached')}
             </ThemedText>
           </ThemedView>
+
+          {/* Watch a video for coins (rewarded ads) */}
+          <View style={styles.adCard}>
+            <PlayIcon size={40 * scale} />
+            <View style={styles.adBody}>
+              <ThemedText type="smallBold">{t('coinShop.watchAdTitle')}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {adsLeft > 0
+                  ? t('coinShop.watchAdDesc', { coins: AD_REWARD_COINS, count: adsLeft })
+                  : t('coinShop.watchAdDone')}
+              </ThemedText>
+            </View>
+            <SoundPressable
+              sound="confirm"
+              disabled={adsLeft <= 0}
+              onPress={handleWatchAd}
+              style={({ pressed }) => [styles.adBtn, adsLeft <= 0 && styles.adBtnDisabled, pressed && styles.pressed]}>
+              <ThemedText style={styles.adBtnText}>{t('coinShop.watchAdButton')}</ThemedText>
+            </SoundPressable>
+          </View>
 
           {/* ── Bakery Menu — Coins + Items on one paper, split by a rule ── */}
           <View style={styles.menuCard}>
@@ -286,6 +371,25 @@ const makeStyles = (s: number, cw: number) => StyleSheet.create({
     ...BakeryShadow,
   },
   capRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  // ─── Watch-a-video (rewarded ad) row ─────────────────────────────────────
+  adCard: {
+    borderRadius: BakeryRadii.card,
+    padding: Spacing.three * s,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two * s,
+    backgroundColor: BakeryColors.glass,
+    ...BakeryShadow,
+  },
+  adBody: { flex: 1, gap: 2 * s },
+  adBtn: {
+    backgroundColor: BakeryColors.honey,
+    borderRadius: BakeryRadii.chip,
+    paddingHorizontal: Spacing.three * s,
+    paddingVertical: Spacing.two * s,
+  },
+  adBtnDisabled: { backgroundColor: BakeryColors.latte, opacity: 0.6 },
+  adBtnText: { fontSize: 14 * s, fontWeight: '800', color: '#FFFFFF' },
   capCoins: { flexDirection: 'row', alignItems: 'center', gap: 4 * s },
   progressBar: {
     height: 6 * s,

@@ -362,7 +362,7 @@ export default function AddTaskScreen() {
               </ThemedView>
             ) : (
               <ThemedText type="small" themeColor="textSecondary">
-                Turn on a due date & time to add a reminder.
+                {t('addTask.reminderNeedsDue')}
               </ThemedText>
             )}
           </ThemedView>

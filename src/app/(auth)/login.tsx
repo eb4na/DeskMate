@@ -19,25 +19,28 @@ import { SoundPressable } from '@/components/sound-pressable';
 import {
   AppleLogoIcon,
   ChevronDownIcon,
-  EyeIcon,
-  EyeOffIcon,
   GoogleGIcon,
   LockIcon,
   MailIcon,
 } from '@/components/auth-icons';
 import { DevKnobs, type Knob } from '@/components/dev-knobs';
-import { BakeryColors, BakeryRadii, BakeryShadow, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, Fonts, MaxContentWidth, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
 import { showPopup } from '@/lib/popup';
 import { useIsTablet } from '@/hooks/use-device-class';
-import { supabase } from '@/lib/supabase';
+import { authCallbackUrl, supabase } from '@/lib/supabase';
 import { signInWithProvider } from '@/lib/oauth';
 import { LANGUAGES, type SupportedLanguage, useTranslation } from '@/i18n';
 
 const LOGIN_BG = require('@/assets/images/auth/login-bg.png');
 const LOGIN_CAT = require('@/assets/images/auth/login-cat.png');
 const LOGO = require('@/assets/images/auth/memobun-sign.png');
+
+// Password-visibility toggle: a normal (open-eyed) bear while the password is
+// hidden as dots, and an eyes-covered bear while it's revealed. Matches signup.
+const BEAR_HIDDEN = require('@/assets/images/auth/bear-eyes-open.png');
+const BEAR_SHOWN = require('@/assets/images/auth/bear-eyes-covered.png');
 
 // Tablet-only layout overrides for the login screen. Applied only when
 // useIsTablet() (phones stay byte-identical). These are 11-inch-REFERENCE values
@@ -115,6 +118,10 @@ export default function LoginScreen() {
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // True when sign-in failed because the email is registered but not yet
+  // confirmed — surfaces a "Resend verification" button (login has no code field).
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resendingVerify, setResendingVerify] = useState(false);
   const noticeMessage = typeof notice === 'string' ? notice : '';
 
   const activeLang = LANGUAGES.find((l) => l.code === language) ?? LANGUAGES[0];
@@ -147,6 +154,7 @@ export default function LoginScreen() {
 
     setSubmitting(true);
     setErrorMessage('');
+    setNeedsVerification(false);
     clearKickedReason();
 
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -155,8 +163,10 @@ export default function LoginScreen() {
     });
 
     if (error) {
+      const notConfirmed = /email not confirmed|email_not_confirmed/i.test(error.message);
+      setNeedsVerification(notConfirmed);
       setErrorMessage(
-        /email not confirmed|email_not_confirmed/i.test(error.message)
+        notConfirmed
           ? t('errors.emailNotVerified')
           : /invalid login credentials/i.test(error.message)
             ? t('errors.invalidCredentials')
@@ -180,6 +190,33 @@ export default function LoginScreen() {
     Keyboard.dismiss();
     router.replace('/');
     setSubmitting(false);
+  };
+
+  // Resend the signup verification code and jump to the code-entry screen. Shown
+  // only after a sign-in attempt failed because the email isn't confirmed yet.
+  const handleResendVerification = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setErrorMessage(t('errors.enterEmailPassword'));
+      return;
+    }
+
+    setResendingVerify(true);
+    setErrorMessage('');
+
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: normalizedEmail,
+      options: { emailRedirectTo: authCallbackUrl },
+    });
+
+    setResendingVerify(false);
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+
+    router.push({ pathname: '/verify-code', params: { email: normalizedEmail, mode: 'signup' } });
   };
 
   // Social sign-in (Google) via the Supabase OAuth browser flow. On success the
@@ -291,11 +328,11 @@ export default function LoginScreen() {
                   hitSlop={8}
                   onPress={() => setShowPassword((s) => !s)}
                   style={({ pressed }) => pressed && styles.pressed}>
-                  {showPassword ? (
-                    <EyeOffIcon color={BakeryColors.jam} />
-                  ) : (
-                    <EyeIcon color={BakeryColors.jam} />
-                  )}
+                  <RNImage
+                    source={showPassword ? BEAR_SHOWN : BEAR_HIDDEN}
+                    style={styles.bearToggle}
+                    resizeMode="contain"
+                  />
                 </Pressable>
               </View>
 
@@ -313,6 +350,18 @@ export default function LoginScreen() {
               {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
               {!errorMessage && noticeMessage ? (
                 <Text style={styles.noticeText}>{noticeMessage}</Text>
+              ) : null}
+
+              {/* Resend verification — only when the email is registered but unconfirmed */}
+              {needsVerification ? (
+                <SoundPressable
+                  style={({ pressed }) => [styles.oauthButton, (pressed || resendingVerify) && styles.pressed]}
+                  onPress={handleResendVerification}
+                  disabled={resendingVerify}>
+                  <Text style={styles.oauthText}>
+                    {resendingVerify ? t('auth.sending') : t('auth.resendVerification')}
+                  </Text>
+                </SoundPressable>
               ) : null}
 
               {/* Log In */}
@@ -500,6 +549,7 @@ const styles = StyleSheet.create({
     ...BakeryShadow,
   },
   input: { flex: 1, fontSize: 15, color: BakeryColors.cocoaDark, paddingVertical: 0 },
+  bearToggle: { width: 30, height: 30, backgroundColor: 'transparent' },
 
   forgotRow: { alignSelf: 'flex-end', paddingVertical: 2 },
   forgotText: { fontSize: 12.5, fontWeight: '700', color: BakeryColors.mocha },
@@ -590,13 +640,14 @@ const styles = StyleSheet.create({
   // Signed-out-elsewhere popup — cozy bubbly card replacing the native alert.
   kickBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(91,58,46,0.45)',
+    backgroundColor: 'rgba(91,58,46,0.7)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: Spacing.four,
   },
   kickCard: {
     width: '100%',
+    minWidth: MIN_POPUP_WIDTH,
     maxWidth: 320,
     backgroundColor: BakeryColors.frosting,
     borderRadius: 30,
@@ -626,11 +677,13 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   kickBtn: {
-    alignSelf: 'stretch',
+    alignSelf: 'center',
     backgroundColor: BakeryColors.jam,
     borderRadius: BakeryRadii.pill,
     paddingVertical: 14,
+    paddingHorizontal: 64,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: Spacing.two,
   },
   kickBtnText: {
@@ -639,6 +692,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#fff',
     letterSpacing: 0.5,
+    textAlign: 'center',
   },
 
   pressed: { opacity: 0.85 },

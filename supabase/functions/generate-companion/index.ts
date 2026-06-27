@@ -98,14 +98,19 @@ Deno.serve(async (request) => {
   }
 
   // Server-side daily rate limit. Image generation is the expensive endpoint, so a
-  // tighter cap. Fail OPEN if the check errors (e.g. migration not applied yet);
-  // enforce whenever it succeeds.
+  // tighter cap. Fail CLOSED: if the check errors we refuse rather than let calls flow
+  // to the image API uncapped (the 20260622e_ai_usage_rate_limit migration must be
+  // applied for this endpoint to work).
   const DAILY_IMAGE_CAP = 20;
   const { data: imageAllowed, error: rateError } = await authClient.rpc('bump_ai_usage', {
     p_kind: 'image',
     p_cap: DAILY_IMAGE_CAP,
   });
-  if (!rateError && imageAllowed === false) {
+  if (rateError) {
+    console.error('[generate-companion] rate-limit check failed:', rateError.message);
+    return jsonResponse({ error: 'Service temporarily unavailable. Please try again later.' }, 503);
+  }
+  if (imageAllowed === false) {
     return jsonResponse({ error: 'Daily image limit reached. Please try again tomorrow.' }, 429);
   }
 

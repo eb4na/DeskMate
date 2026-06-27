@@ -2,7 +2,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
-import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
 
 const C = BakeryColors;
 
@@ -62,6 +62,7 @@ const styles = StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
   card: {
     width: '100%',
+    minWidth: MIN_POPUP_WIDTH,
     maxWidth: 340,
     maxHeight: '70%',
     backgroundColor: C.frosting,

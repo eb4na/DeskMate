@@ -9,25 +9,28 @@ import {
   TERMS_OF_SERVICE,
 } from '@/constants/legal';
 import { BakeryColors, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 
 // Read-only viewer for the Privacy Policy + Terms of Service, opened from
 // Settings so the documents stay available after the first-launch consent.
+// The document bodies stay in English; only the surrounding chrome is localized.
 export default function LegalScreen() {
+  const { t } = useTranslation();
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} hitSlop={12} style={styles.close}>
-            <Text style={styles.closeText}>Done</Text>
+            <Text style={styles.closeText}>{t('common.done')}</Text>
           </Pressable>
-          <Text style={styles.title}>Privacy & Terms</Text>
+          <Text style={styles.title}>{t('consent.privacyTermsTitle')}</Text>
           <View style={styles.close} />
         </View>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator>
-          <LegalDocument heading="Privacy Policy" sections={PRIVACY_POLICY} />
+          <LegalDocument heading={t('consent.privacyPolicy')} sections={PRIVACY_POLICY} />
           <View style={styles.divider} />
-          <LegalDocument heading="Terms of Service" sections={TERMS_OF_SERVICE} />
-          <Text style={styles.effective}>Effective {LEGAL_EFFECTIVE_DATE}</Text>
+          <LegalDocument heading={t('consent.termsOfService')} sections={TERMS_OF_SERVICE} />
+          <Text style={styles.effective}>{t('consent.effective', { date: LEGAL_EFFECTIVE_DATE })}</Text>
         </ScrollView>
       </SafeAreaView>
     </View>

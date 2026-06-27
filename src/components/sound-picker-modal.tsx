@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Svg, { Circle, ClipPath, Defs, G, Line as SvgLine, Rect } from 'react-native-svg';
 
 import { useApp } from '@/context/app-context';
 import { useIsTablet } from '@/hooks/use-device-class';
@@ -66,6 +67,51 @@ function PrevGlyph() {
     </View>
   );
 }
+// "Spotify background" toggle icon: a disco ball. Lit/colourful when on, muted when
+// off; locked = dimmed with a tiny padlock (non-Plus).
+function DiscoBallGlyph({ on, locked }: { on: boolean; locked?: boolean }) {
+  const base = on ? '#C6CCD6' : '#DAD3C7';
+  const dark = on ? '#8A93A3' : '#B9AF9F';
+  const spark = on ? '#F0A9C2' : '#CABFAE';
+  const cx = 23, cy = 31, r = 17;
+  const grid = [-12, -8, -4, 0, 4, 8, 12];
+  return (
+    <View style={[glyph.discoWrap, locked && glyph.bgLocked]}>
+      <Svg width={46} height={54} viewBox="0 0 46 54">
+        <Defs>
+          <ClipPath id="discoBall"><Circle cx={cx} cy={cy} r={r} /></ClipPath>
+        </Defs>
+        {/* Hanger */}
+        <SvgLine x1={cx} y1={cy - r} x2={cx} y2={6} stroke="#9A8C7A" strokeWidth={1.6} />
+        <Circle cx={cx} cy={5} r={2.6} fill="none" stroke="#9A8C7A" strokeWidth={1.6} />
+        {/* Ball */}
+        <Circle cx={cx} cy={cy} r={r} fill={base} stroke={dark} strokeWidth={1.3} />
+        <G clipPath="url(#discoBall)">
+          {grid.map((d) => (
+            <SvgLine key={`v${d}`} x1={cx + d} y1={cy - r} x2={cx + d} y2={cy + r} stroke={dark} strokeWidth={0.7} opacity={0.55} />
+          ))}
+          {grid.map((d) => (
+            <SvgLine key={`h${d}`} x1={cx - r} y1={cy + d} x2={cx + r} y2={cy + d} stroke={dark} strokeWidth={0.7} opacity={0.55} />
+          ))}
+          {/* Sparkle tiles */}
+          <Rect x={cx - 10} y={cy - 4} width={4} height={4} fill={spark} />
+          <Rect x={cx + 1} y={cy - 11} width={4} height={4} fill={spark} />
+          <Rect x={cx - 3} y={cy + 2} width={4} height={4} fill={spark} />
+          <Rect x={cx + 5} y={cy + 5} width={4} height={4} fill={spark} />
+          <Rect x={cx + 6} y={cy - 7} width={4} height={4} fill={spark} />
+        </G>
+        {/* Sheen */}
+        <Circle cx={cx - 5} cy={cy - 6} r={3.4} fill="#FFFFFF" opacity={0.35} />
+      </Svg>
+      {locked && (
+        <View style={glyph.bgLockBadge}>
+          <View style={glyph.bgLockShackle} />
+          <View style={glyph.bgLockBody} />
+        </View>
+      )}
+    </View>
+  );
+}
 
 /**
  * Study radio panel (right-anchored). Pick a bought study sound, or connect Spotify
@@ -84,10 +130,13 @@ export function SoundPickerModal({
   playback: Playback | null;
   onRefresh: () => Promise<void> | void;
 }) {
-  const { ownedShopItems, equippedShopItems, setEquippedSound, isPlus, vinylColor, setVinylColor } = useApp();
+  const { ownedShopItems, equippedShopItems, setEquippedSound, isPlus, vinylColor, setVinylColor,
+    spotifyBgEnabled, spotifyBgColor, setSpotifyBgEnabled, setSpotifyBgColor } = useApp();
   const { t } = useTranslation();
   const isTablet = useIsTablet();
-  const sounds = SHOP_ITEMS.filter((i) => i.category === 'sound' && ownedShopItems.includes(i.id));
+  // Plus members get every sound free while subscribed; coin-bought sounds are kept
+  // forever. So a sound is available if Plus OR it's owned.
+  const sounds = SHOP_ITEMS.filter((i) => i.category === 'sound' && (isPlus || ownedShopItems.includes(i.id)));
   const equipped = equippedShopItems.sound;
 
   const [connected, setConnected] = useState(spotifyConnected());
@@ -207,9 +256,19 @@ export function SoundPickerModal({
               onPress={() => setMode((m) => (m === 'sounds' ? 'spotify' : 'sounds'))}
               style={({ pressed }) => [styles.modeToggle, pressed && styles.pressed]}>
               <Text style={styles.modeToggleText}>
-                {mode === 'sounds' ? `♪  Spotify${isPlus ? '' : ' 🔒'}  →` : `←  ${t('soundPicker.title')}`}
+                {mode === 'sounds' ? `Spotify  →` : `←  ${t('soundPicker.title')}`}
               </Text>
             </Pressable>
+            {/* Top-right "Spotify background" toggle — Plus only (locked otherwise). */}
+            {mode === 'spotify' && (
+              <Pressable
+                onPress={() => { if (isPlus) { setSpotifyBgEnabled(!spotifyBgEnabled); } else { onClose(); router.push('/plus-upgrade'); } }}
+                accessibilityLabel={t('soundPicker.spotifyBg')}
+                style={({ pressed }) => [styles.bgIconBtn, pressed && styles.pressed]}
+                hitSlop={8}>
+                <DiscoBallGlyph on={isPlus && spotifyBgEnabled} locked={!isPlus} />
+              </Pressable>
+            )}
           </View>
 
           {mode === 'sounds' ? (
@@ -324,6 +383,21 @@ export function SoundPickerModal({
             })}
           </View>
 
+          {/* Black/white pick for the Spotify background (the on/off toggle lives in the
+              top-right of this popup). Only shown once the background is enabled. */}
+          {mode === 'spotify' && isPlus && spotifyBgEnabled && (
+            <View style={styles.bgRow}>
+              <Pressable
+                onPress={() => setSpotifyBgColor('black')}
+                style={[styles.bgSwatch, { backgroundColor: '#000000' }, spotifyBgColor === 'black' && styles.bgSwatchSelected]}
+                hitSlop={4} />
+              <Pressable
+                onPress={() => setSpotifyBgColor('white')}
+                style={[styles.bgSwatch, { backgroundColor: '#FFFFFF' }, spotifyBgColor === 'white' && styles.bgSwatchSelected]}
+                hitSlop={4} />
+            </View>
+          )}
+
           <Pressable onPress={onClose} style={({ pressed }) => [styles.doneBtn, isTablet && styles.doneBtnTablet, pressed && styles.pressed]}>
             <Text style={[styles.doneBtnText, isTablet && styles.doneBtnTextTablet]}>{t('common.done')}</Text>
           </Pressable>
@@ -348,6 +422,12 @@ const glyph = StyleSheet.create({
   edge: { width: 3.5, height: 16, borderRadius: 1.5, backgroundColor: '#FFFFFF' },
   pauseRow: { flexDirection: 'row', gap: 4 },
   bar: { width: 4, height: 15, borderRadius: 1.5, backgroundColor: '#FFFFFF' },
+  // "Spotify background" toggle icon (disco ball).
+  discoWrap: { width: 46, height: 54, alignItems: 'center', justifyContent: 'center' },
+  bgLocked: { opacity: 0.45 },
+  bgLockBadge: { position: 'absolute', right: 0, top: 4, alignItems: 'center' },
+  bgLockShackle: { width: 6, height: 4, borderWidth: 1.3, borderBottomWidth: 0, borderColor: C.mocha, borderTopLeftRadius: 3, borderTopRightRadius: 3 },
+  bgLockBody: { width: 9, height: 6, borderRadius: 1.5, backgroundColor: C.mocha },
 });
 
 const styles = StyleSheet.create({
@@ -355,7 +435,8 @@ const styles = StyleSheet.create({
   centerWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.three },
   panel: {
     width: '92%', maxWidth: 440, maxHeight: '90%', backgroundColor: C.frosting,
-    borderRadius: BakeryRadii.panel, borderWidth: 2, borderColor: C.shortbread,
+    // Thin dark-brown "wood" frame around the music popup.
+    borderRadius: BakeryRadii.panel, borderWidth: 2, borderColor: '#6E4A2C',
     padding: Spacing.four, gap: Spacing.two, ...BakeryShadow,
   },
   // Tablet: a genuinely bigger box — wider card + more padding (inner sizes bump via isTablet).
@@ -409,7 +490,7 @@ const styles = StyleSheet.create({
   swatchSelected: { borderColor: C.berry, borderWidth: 3 },
   swatchCheck: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
 
-  spotifyBtn: { backgroundColor: '#F4A0A8', borderRadius: BakeryRadii.button, paddingVertical: 13, alignItems: 'center' },
+  spotifyBtn: { backgroundColor: '#F4A0A8', borderRadius: BakeryRadii.button, paddingVertical: 11, paddingHorizontal: 28, alignSelf: 'center', alignItems: 'center' },
   spotifyBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
   note: { fontSize: 11.5, color: C.mocha, lineHeight: 16 },
   notice: { fontSize: 12.5, color: C.berry, fontWeight: '700', lineHeight: 17 },
@@ -439,7 +520,7 @@ const styles = StyleSheet.create({
 
   // ── Redesigned player ──
   // Top-left source toggle (shop music ⇄ Spotify)
-  topRow: { flexDirection: 'row', alignItems: 'center' },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   modeToggle: {
     alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#fff', borderWidth: 1.5, borderColor: C.shortbread,
@@ -473,5 +554,14 @@ const styles = StyleSheet.create({
 
   // Shared colour picker along the bottom
   colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', paddingHorizontal: Spacing.two },
+  // "Spotify background": top-right toggle icon button + the black/white picker row.
+  bgIconBtn: {
+    backgroundColor: '#fff', borderWidth: 1.5, borderColor: C.shortbread,
+    borderRadius: 16, paddingHorizontal: 7, paddingVertical: 4,
+    alignItems: 'center', justifyContent: 'center', ...BakeryShadow,
+  },
+  bgRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 2 },
+  bgSwatch: { width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, borderColor: C.shortbread },
+  bgSwatchSelected: { borderColor: C.berry, borderWidth: 3 },
   colorRowTablet: { gap: 12 },
 });

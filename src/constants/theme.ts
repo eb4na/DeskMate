@@ -5,7 +5,7 @@
 
 import '@/global.css';
 
-import { Platform } from 'react-native';
+import { Dimensions, Platform } from 'react-native';
 
 export const Colors = {
   light: {
@@ -124,3 +124,10 @@ export const BottomTabInset = TabBarTotalHeight + 6 + Math.abs(TabBarBottomOffse
 // screen bottom, so reserve just above it (not the whole bar's tall lace area).
 export const BottomTabClearance = 152;
 export const MaxContentWidth = 800;
+
+// Every popup/dialog card should occupy at least 40% of the screen width, so they
+// don't look tiny on big tablets. Add `minWidth: MIN_POPUP_WIDTH` to a popup card's
+// style — minWidth clamps after maxWidth in Yoga, so it raises the floor on large
+// screens while being a no-op on phones (40% of a phone width is below the cards'
+// existing maxWidth). Portrait-locked, so this once-captured value is stable.
+export const MIN_POPUP_WIDTH = Math.round(Dimensions.get('window').width * 0.4);

@@ -1,12 +1,16 @@
+import { Asset } from 'expo-asset';
 import { Image } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
+import { FOOD_ITEMS } from '@/app/food-gallery';
+import { starterRecipe } from '@/constants/recipes';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 import { localizeCompanionName, STARTER_CHOICES } from '@/lib/companion-utils';
+import { showLoadingScreen } from '@/lib/loading-signal';
 import { playSwoosh, playTapConfirm } from '@/lib/sounds';
 
 // Per-character tagline i18n keys (shared with the gallery), keyed by the
@@ -93,8 +97,38 @@ export function StarterChooser() {
 
   const name = localizeCompanionName(choice.name, t);
 
+  // The signature recipe granted alongside this character (Bun's is free for
+  // everyone). Shown as a small "comes with" chip — the character is the focus,
+  // this just hints at the bake that joins them. Matches chooseStarter's mapping.
+  const recipeId =
+    starterRecipe(choice.activeId === 'starter:girl' ? '' : choice.activeId)?.recipeId ??
+    'strawberry-shortcake';
+  const recipeImage = (FOOD_ITEMS.find((f) => f.id === recipeId) ?? FOOD_ITEMS[0]).image;
+  const recipeName = t(`foodGallery.food_${recipeId}`);
+
+  // Confirm the pick. The home screen is already mounted behind this chooser
+  // showing the DEFAULT Bun, and the post-pick celebration card has a transparent
+  // backdrop — so without this the player watches Bun visibly swap to their pick
+  // behind the card. Play the quick loading screen FIRST (preloading the chosen
+  // companion's art) and only run chooseStarter once the loader lifts, so home is
+  // already warm on the chosen character. The loader's own failsafe lifts it even
+  // if the preload hangs, so this can never get stuck.
+  const [submitting, setSubmitting] = useState(false);
+  const confirm = () => {
+    if (submitting) return;
+    setSubmitting(true);
+    playTapConfirm();
+    showLoadingScreen(() => chooseStarter(choice.activeId), {
+      quick: true,
+      until: Asset.loadAsync(choice.image).catch(() => {}),
+    });
+  };
+
   return (
     <View style={styles.root}>
+      {/* While the loader plays over the chooser, hide the carousel so the loader's
+          fade-out reveals just the cream backdrop (not a flash of the old card). */}
+      {!submitting && (
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.header}>
           <Text style={styles.title}>{t('starter.title')}</Text>
@@ -138,6 +172,10 @@ export function StarterChooser() {
           <Text style={styles.tagline}>
             {TAGLINE_KEYS[choice.name] ? t(TAGLINE_KEYS[choice.name]) : t('gallery.defaultTagline')}
           </Text>
+          <View style={styles.recipeChip}>
+            <Image source={recipeImage} style={styles.recipeImage} contentFit="contain" />
+            <Text style={styles.recipeText}>{t('starter.comesWith', { recipe: recipeName })}</Text>
+          </View>
           <View style={styles.dots}>
             {STARTER_CHOICES.map((c, i) => (
               <View key={c.shopItemId} style={[styles.dot, i === index && styles.dotActive]} />
@@ -148,12 +186,13 @@ export function StarterChooser() {
         <View style={styles.footer}>
           <Text style={styles.hint}>{t('starter.hint')}</Text>
           <Pressable
-            onPress={() => { playTapConfirm(); chooseStarter(choice.activeId); }}
+            onPress={confirm}
             style={({ pressed }) => [styles.confirmBtn, pressed && styles.pressed]}>
             <Text style={styles.confirmText}>{t('starter.choose', { name })}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
+      )}
     </View>
   );
 }
@@ -217,6 +256,18 @@ const styles = StyleSheet.create({
   info: { alignItems: 'center', gap: 8 },
   name: { fontSize: 26, fontWeight: '900', color: P.brown },
   tagline: { fontSize: 15, color: P.mutedBrown, fontWeight: '600', textAlign: 'center' },
+  recipeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 5,
+    paddingLeft: 6,
+    paddingRight: 12,
+    borderRadius: 999,
+    backgroundColor: P.pinkSoft,
+  },
+  recipeImage: { width: 22, height: 22, backgroundColor: 'transparent' },
+  recipeText: { fontSize: 12.5, color: P.brown, fontWeight: '700' },
   dots: { flexDirection: 'row', gap: 8, marginTop: 4 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: P.pinkSoft },
   dotActive: { backgroundColor: P.pink, width: 22 },

@@ -21,7 +21,7 @@ import {
   type RoomPair,
 } from '@/constants/room-data';
 import { SHOP_ITEMS } from '@/constants/shop-data';
-import { Fonts, Spacing } from '@/constants/theme';
+import { Fonts, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
 
 type BuyTarget = { room: RoomPair; kind: 'background' | 'desk' | 'pair' };
 
@@ -397,7 +397,7 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', padding: 24,
   },
   modalCard: {
-    width: '100%', maxWidth: 360 * s, backgroundColor: P.card, borderRadius: 26 * s,
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 360 * s, backgroundColor: P.card, borderRadius: 26 * s,
     padding: Spacing.four * s, gap: Spacing.three * s, borderWidth: 1.5, borderColor: P.peach,
   },
   modalTitle: { fontSize: 19 * s, fontWeight: '800', color: P.brown, textAlign: 'center' },

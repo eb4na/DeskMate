@@ -15,6 +15,7 @@ import { HanjiUnlockModal } from '@/components/hanji-unlock-modal';
 import { RecipeBadgeModal } from '@/components/recipe-badge-modal';
 import { DailyRewardModal } from '@/components/daily-reward-modal';
 import { BirthdayRewardModal } from '@/components/birthday-reward-modal';
+import { TicketRewardModal } from '@/components/ticket-reward-modal';
 import { useStudyRoom } from '@/lib/use-study-room';
 import { BakeryGearEmoji } from '@/components/bakery-emoji';
 import { CountdownShape } from '@/components/countdown-shapes';
@@ -24,6 +25,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { nextLoginReward, todayISO, useApp } from '@/context/app-context';
 import { HomeTutorial } from '@/components/home-tutorial';
+import { DiscoBackdrop } from '@/components/disco-backdrop';
 import { setTutorialTarget } from '@/lib/tutorial-targets';
 import i18n, { useTranslation } from '@/i18n';
 import { coinsForMinutes, formatCoins } from '@/constants/placeholder-data';
@@ -32,6 +34,7 @@ import { HanjiFigure } from '@/components/hanji-figure';
 import { CompanionPet, PetCloudHost } from '@/components/companion-pet';
 import { useAuth } from '@/context/auth-context';
 import { listBlocked, listIncomingRequests } from '@/lib/friend-requests';
+import { fetchMail } from '@/lib/mail';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { takePendingDragSession, setDragActive, type DragSessionData } from '@/lib/drag-session';
 import { showLoadingScreen } from '@/lib/loading-signal';
@@ -528,6 +531,8 @@ export default function HomeScreen() {
     tasks,
     subjects,
     activeSession,
+    spotifyBgEnabled,
+    spotifyBgColor,
     activeCompanionId,
     clearActiveSession,
     companionSlots,
@@ -544,6 +549,7 @@ export default function HomeScreen() {
     petCompanion,
     addSubjectTime,
     dmUnread,
+    claimedMailIds,
   } = useApp();
   // Current pet speech-bubble line — lifted here so it can be drawn in a high-zIndex
   // layer (above the desk/mixer), not trapped inside the low-z character layer.
@@ -554,6 +560,20 @@ export default function HomeScreen() {
   // Count of pending friend requests → red badge on the friend button.
   // Refreshed whenever Home regains focus (e.g. after accepting/declining).
   const [pendingRequests, setPendingRequests] = useState(0);
+  // Any live mail the player hasn't claimed yet → red dot on the Settings button
+  // (mailbox lives in Settings). Refreshed on Home focus, like the friend badge.
+  const [hasUnclaimedMail, setHasUnclaimedMail] = useState(false);
+  // Read the latest claimed-mail ids through a ref so the Home focus effect can use
+  // them WITHOUT listing the array as a dependency. claimedMailIds is `?? []` in
+  // app-context, so it can be a fresh [] every render — taking it as a focus-effect
+  // dep would rebuild the callback each render and re-run the effect in an infinite
+  // loop (setHomeFocused toggling), freezing Home. The effect re-runs on every Home
+  // focus anyway, so it still picks up newly-claimed mail when you return from Settings.
+  const claimedMailIdsRef = useRef(claimedMailIds);
+  claimedMailIdsRef.current = claimedMailIds;
+  // Settings red dot shows only while there's unclaimed mail (the Instagram-follow
+  // reward still hops its own present box in Settings, just no Settings-button dot).
+  const settingsHasAlert = hasUnclaimedMail;
 
   // Desk mixer + ingredients follow the equipped dessert. The 3 ingredients
   // drop into these 3 fixed desk-slot positions, by index.
@@ -683,6 +703,10 @@ export default function HomeScreen() {
     } else {
       setPendingRequests(0);
     }
+    // Any unclaimed live mail → Settings red dot.
+    fetchMail()
+      .then((m) => { if (!cancelled) setHasUnclaimedMail(m.some((mail) => !claimedMailIdsRef.current.includes(mail.id))); })
+      .catch(() => {});
     return () => { cancelled = true; setHomeFocused(false); };
   }, [startBounce, user?.id]));
 
@@ -727,6 +751,12 @@ export default function HomeScreen() {
   // In a multiplayer study session, everyone studies in the host's room.
   const hostBgRoom = studyRoom.hostBackgroundId ? ROOM_PAIRS.find((r) => r.id === studyRoom.hostBackgroundId) : undefined;
   const bgRoom = activeSession?.isMultiplayer && hostBgRoom ? hostBgRoom : myBgRoom;
+  // Disco ("Spotify background") replaces the room with a solid colour during a session.
+  // A multiplayer GUEST follows the host's synced state (so the host enabling it gives
+  // every player the disco background, Plus or not); host + solo use their own setting.
+  const followsHostDisco = studyRoom.active && !studyRoom.isHost;
+  const discoBgOn = !!activeSession && (followsHostDisco ? studyRoom.hostDiscoOn : spotifyBgEnabled);
+  const discoBgColor = followsHostDisco ? studyRoom.hostDiscoColor : spotifyBgColor;
   const deskRoom = ROOM_PAIRS.find((r) => r.id === equippedDeskRoomId) ?? ROOM_PAIRS[0];
   const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
   // Worn skin of the active companion — drives per-skin pet lines (Bun uses bunSkinId).
@@ -983,16 +1013,26 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       {/* Full-screen room background (behind the safe area) so it bleeds edge to
-          edge — under the status bar and down to the bottom. */}
-      <Image
-        source={bgRoom.backgroundImage}
-        style={styles.roomBackground}
-        contentFit="cover"
-        contentPosition="center"
-        pointerEvents="none"
-      />
-      {/* Soft sunlight shining from the top — kept gentle so the room stays clear */}
-      <Image source={SUNLIGHT} style={styles.sunlight} contentFit="cover" pointerEvents="none" />
+          edge — under the status bar and down to the bottom. In "Spotify background"
+          study mode the room is replaced by a solid black/white fill (the big cover
+          vinyl is drawn over it inside the study scene). */}
+      {discoBgOn ? (
+        <View style={[styles.roomBackground, { backgroundColor: discoBgColor === 'white' ? '#FFFFFF' : '#000000' }]} pointerEvents="none">
+          <DiscoBackdrop color={discoBgColor} width={winW} height={winH} />
+        </View>
+      ) : (
+        <>
+          <Image
+            source={bgRoom.backgroundImage}
+            style={styles.roomBackground}
+            contentFit="cover"
+            contentPosition="center"
+            pointerEvents="none"
+          />
+          {/* Soft sunlight shining from the top — kept gentle so the room stays clear */}
+          <Image source={SUNLIGHT} style={styles.sunlight} contentFit="cover" pointerEvents="none" />
+        </>
+      )}
 
       {/* The study session is a full-bleed immersive scene (desk + room fill the
           screen), so it must NOT sit inside the 800px centered content column — on a
@@ -1021,7 +1061,7 @@ export default function HomeScreen() {
                   <View style={styles.streakChipWrap} ref={(n) => setTutorialTarget('streak', n)}>
                     <Animated.View
                       onLayout={onHudChipLayout}
-                      style={[styles.statusChip, hudChipW ? { width: hudChipW } : null, { transform: [{ scale: isTablet ? (htScaled.hudScale ?? 1) : 1 }, { scale: streakPop.interpolate({ inputRange: [0, 1], outputRange: [1, 1.16] }) }] }]}>
+                      style={[styles.statusChip, hudChipW ? { minWidth: hudChipW } : null, { transform: [{ scale: isTablet ? (htScaled.hudScale ?? 1) : 1 }, { scale: streakPop.interpolate({ inputRange: [0, 1], outputRange: [1, 1.16] }) }] }]}>
                       <Animated.View style={{ transform: [
                         { scale: streakPop.interpolate({ inputRange: [0, 1], outputRange: [1, 1.4] }) },
                         { rotate: streakPop.interpolate({ inputRange: [0, 0.5, 1], outputRange: ['0deg', '-14deg', '8deg'] }) },
@@ -1029,7 +1069,7 @@ export default function HomeScreen() {
                         <Image source={STREAK_FIRE_ICON} style={styles.statusStreakIcon} contentFit="contain" accessibilityLabel="" />
                       </Animated.View>
                       <ThemedText type="smallBold" style={styles.statusChipText}>
-                        {todayStreakDay} day streak
+                        {todayStreakDay} {t('home.dayStreak')}
                       </ThemedText>
                     </Animated.View>
                     <Animated.Text
@@ -1045,7 +1085,7 @@ export default function HomeScreen() {
                     onPress={() => router.push('/coin-shop')}
                     style={({ pressed }) => pressed && styles.cardPressed}
                     accessibilityLabel={t('home.a11yAddCoins')}>
-                    <View onLayout={onHudChipLayout} style={[styles.statusChip, styles.coinChip, hudChipW ? { width: hudChipW } : null, tChip]} ref={(n) => setTutorialTarget('coins', n)}>
+                    <View onLayout={onHudChipLayout} style={[styles.statusChip, styles.coinChip, hudChipW ? { minWidth: hudChipW } : null, tChip]} ref={(n) => setTutorialTarget('coins', n)}>
                       <CoinIcon size={22} />
                       <ThemedText type="smallBold" style={[styles.statusChipText, styles.coinChipText]}>
                         {formatCoins(coins)}
@@ -1194,6 +1234,9 @@ export default function HomeScreen() {
                   onPress={() => router.push('/settings')}
                   accessibilityLabel={t('home.a11yOpenSettings')}>
                   <Image source={SETTINGS_BTN} style={[styles.topSettingsImg, { width: ph.szMd, height: ph.szMd }, tImg(72)]} contentFit="contain" />
+                  {settingsHasAlert && (
+                    <View style={[styles.settingsAlertDot, isTablet && styles.settingsAlertDotTablet]} pointerEvents="none" />
+                  )}
                 </Pressable>
               )}
 
@@ -1320,10 +1363,14 @@ export default function HomeScreen() {
           )}
         </View>
       </SafeAreaView>
-<HanjiUnlockModal />
-      {homeFocused && <RecipeBadgeModal />}
-      {homeFocused && <DailyRewardModal />}
-      {homeFocused && <BirthdayRewardModal />}
+      {/* Wait for the real Home screen: homeFocused stays true during a study
+          session too (StudyRoomView renders inside this tab), so also require no
+          active session — these reward popups hold until the user is back on Home. */}
+      {homeFocused && !activeSession && <HanjiUnlockModal />}
+      {homeFocused && !activeSession && <RecipeBadgeModal />}
+      {homeFocused && !activeSession && <DailyRewardModal />}
+      {homeFocused && !activeSession && <BirthdayRewardModal />}
+      {homeFocused && !activeSession && <TicketRewardModal />}
       {/* First-launch coachmark tour — only after onboarding, and only once the
           daily-reward popup is out of the way (so the two never stack). Replaying
           it from Settings just flips tutorialSeen back off. */}
@@ -1418,8 +1465,24 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
+  // Settings red dot — unclaimed mail or the not-yet-tapped Instagram reward. The
+  // button is a CIRCLE (transparent square corners), so inset the dot onto the rim
+  // instead of the square's corner where it'd float off the visible icon.
+  settingsAlertDot: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#FF4D5E',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  // iPad: bigger dot, inset onto the larger circular button's rim.
+  settingsAlertDotTablet: { right: 14, bottom: 14, width: 22, height: 22, borderRadius: 11, borderWidth: 3 },
   friendReqBadgeTablet: { right: 16, bottom: 4 },
-  friendDmDotTablet: { right: 16, bottom: 4 },
+  friendDmDotTablet: { right: 16, bottom: 4, width: 22, height: 22, borderRadius: 11, borderWidth: 3 },
   friendReqBadgeText: { color: '#FFFFFF', fontSize: 11, lineHeight: 14, fontWeight: '900' },
   gameFloating: {
     backgroundColor: 'transparent',

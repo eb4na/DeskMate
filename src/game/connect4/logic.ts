@@ -84,6 +84,12 @@ function winsWith(board: Board, col: number, player: Player): boolean {
 // while staying well under a frame on a phone (alpha-beta + center ordering
 // prune most of the tree).
 const AI_DEPTH = 8;
+// Hard wall-clock budget for the whole search. Once it's exceeded, every remaining
+// node returns the heuristic immediately (see `minimax`), so the tree collapses fast
+// and the AI can NEVER block the JS thread for long (the old uncapped depth-8 search
+// could stall a beat early-game). The center-first ordering means the most important
+// lines are searched within budget; the win/block shortcuts keep it tactically sound.
+const AI_TIME_BUDGET_MS = 250;
 const WIN_SCORE = 100000;
 const CENTER = Math.floor(COLS / 2);
 // Search the centre first — it produces the best alpha-beta cutoffs and centre
@@ -140,17 +146,20 @@ function minimax(
   maximizing: boolean,
   ai: Player,
   human: Player,
+  deadline: number,
 ): number {
   // Terminal: a win for either side (+depth so sooner wins / later losses win ties).
   if (checkWin(board, ai).won) return WIN_SCORE + depth;
   if (checkWin(board, human).won) return -WIN_SCORE - depth;
   const cols = COL_ORDER.filter((c) => board[0][c] === 0);
-  if (depth === 0 || cols.length === 0) return evaluate(board, ai, human);
+  // Stop deepening at depth 0, a full board, OR once the time budget is spent — the
+  // last keeps the AI from ever thinking too long, falling back to the heuristic.
+  if (depth === 0 || cols.length === 0 || Date.now() > deadline) return evaluate(board, ai, human);
 
   if (maximizing) {
     let best = -Infinity;
     for (const c of cols) {
-      const s = minimax(applyMove(board, c, ai)!.board, depth - 1, alpha, beta, false, ai, human);
+      const s = minimax(applyMove(board, c, ai)!.board, depth - 1, alpha, beta, false, ai, human, deadline);
       if (s > best) best = s;
       if (best > alpha) alpha = best;
       if (alpha >= beta) break;
@@ -159,7 +168,7 @@ function minimax(
   }
   let best = Infinity;
   for (const c of cols) {
-    const s = minimax(applyMove(board, c, human)!.board, depth - 1, alpha, beta, true, ai, human);
+    const s = minimax(applyMove(board, c, human)!.board, depth - 1, alpha, beta, true, ai, human, deadline);
     if (s < best) best = s;
     if (best < beta) beta = best;
     if (beta <= alpha) break;
@@ -197,8 +206,9 @@ export function getAIMove(board: Board, ai: Player, human: Player): number {
 
   let best = -Infinity;
   let choice = cols[0];
+  const deadline = Date.now() + AI_TIME_BUDGET_MS;
   for (const c of COL_ORDER.filter((x) => cols.includes(x))) {
-    const exact = minimax(applyMove(board, c, ai)!.board, AI_DEPTH - 1, -Infinity, Infinity, false, ai, human);
+    const exact = minimax(applyMove(board, c, ai)!.board, AI_DEPTH - 1, -Infinity, Infinity, false, ai, human, deadline);
     const noisy = exact + (Math.random() - 0.5) * 5;
     if (noisy > best) {
       best = noisy;

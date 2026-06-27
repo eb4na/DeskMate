@@ -30,9 +30,19 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# local env files — ignore ALL env files (real secrets live here) except the
+# committed template. This stops e.g. .env.production / .env.staging being committed.
 .env
-.env*.local
+.env.*
+!.env.example
+
+# secrets / service-account credentials (never commit these)
+*.keystore
+google-services.json
+GoogleService-Info.plist
+secrets*.json
+serviceAccount*.json
+AuthKey_*.p8
 
 # typescript
 *.tsbuildinfo

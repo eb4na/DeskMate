@@ -14,6 +14,7 @@ import { getDeviceId } from '@/lib/device-id';
 import { markGuestUpgradePending, clearGuestUpgradePending } from '@/lib/app-state-repository';
 import { signInWithProvider, type OAuthResult } from '@/lib/oauth';
 import { clearPersistedState } from '@/lib/storage';
+import { disconnectSpotify } from '@/lib/spotify';
 import { supabase } from '@/lib/supabase';
 
 // Guest mode lives only in app state (no Supabase session), so it must be
@@ -237,6 +238,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         teardownSession();
         await clearPersistedState(userId ? `user_state_${userId}` : 'guest_state').catch(() => {});
         await AsyncStorage.multiRemove([GUEST_KEY, 'deskmate.pendingGuestUpgrade', 'deskmate.deviceId']).catch(() => {});
+        // Clear Spotify access/refresh tokens too — otherwise they'd survive account
+        // deletion and leave the next person on a shared/resold device in control of
+        // the Spotify account.
+        await disconnectSpotify().catch(() => {});
         await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
       },
     }),

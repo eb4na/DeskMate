@@ -38,6 +38,7 @@ import {
   BakeryShadow,
   BottomTabClearance,
   MaxContentWidth,
+  MIN_POPUP_WIDTH,
   Spacing,
 } from '@/constants/theme';
 
@@ -78,6 +79,7 @@ function CategoryIcon({ id, size }: { id: ShopCategory; size?: number }) {
 }
 
 const MAGNIFIER_ICON = require('@/assets/images/shop/magnifier.png');
+const TICKET_ICON = require('@/assets/images/shop/ticket.png');
 
 const _win = Dimensions.get('window');
 const _shortest = Math.min(_win.width, _win.height);
@@ -271,6 +273,8 @@ export default function ShopScreen() {
     streakFreezes,
     companionSlots,
     madeFoods,
+    exchangeTickets,
+    redeemTicketForItem,
   } = useApp();
   const allRecipesDone = hasAllRecipeBadges(madeFoods);
   const recipesDoneCount = RECIPE_IDS.filter((id) => madeFoods.includes(id)).length;
@@ -510,6 +514,26 @@ export default function ShopScreen() {
     }
   };
 
+  // Redeem a Plus room ticket for the single background/desk in the buy popup
+  // (instead of coins), then offer to equip it like a normal purchase.
+  const redeemWithTicket = () => {
+    if (!buyReq || buyReq.items.length !== 1) return;
+    const item = buyReq.items[0];
+    if (!redeemTicketForItem(item.id)) return;
+    track('shop_redeem_ticket', { itemId: item.id, category: item.category });
+    const { equip, equipName } = buyReq;
+    setBuyReq(null);
+    if (equip) setEquipPrompt({ name: equipName ?? '', equip });
+  };
+
+  // The ticket option only applies to a single background/desk buy (one ticket =
+  // one item), and only when the player actually holds a ticket.
+  const canUseTicket =
+    !!buyReq &&
+    buyReq.items.length === 1 &&
+    (buyReq.items[0].category === 'background' || buyReq.items[0].category === 'desk') &&
+    exchangeTickets > 0;
+
   const handleEquip = (itemId: string, name: string) => {
     const ok = equipShopItem(itemId);
     if (!ok) { showPopup(t('shop.cantEquip'), t('shop.unlockFirst')); return; }
@@ -549,6 +573,12 @@ export default function ShopScreen() {
               <CoinIcon size={isTablet ? 32 * SHOP_TS : 32} />
               <ThemedText style={[styles.balanceNum, tBalanceNum]}>{formatCoins(coins)}</ThemedText>
             </ThemedView>
+            {(isPlus || exchangeTickets > 0) && (
+              <ThemedView style={[styles.balancePill, tBalancePill]}>
+                <RNImage source={TICKET_ICON} style={{ width: isTablet ? 34 * SHOP_TS : 34, height: isTablet ? 23 * SHOP_TS : 23 }} resizeMode="contain" />
+                <ThemedText style={[styles.balanceNum, tBalanceNum]}>{exchangeTickets}</ThemedText>
+              </ThemedView>
+            )}
           </View>
         </ThemedView>
 
@@ -1069,6 +1099,15 @@ export default function ShopScreen() {
                     {coins >= buyReq.total ? t('gallery.unlockForCoins', { price: buyReq.total }) : t('gallery.notEnoughCoins')}
                   </ThemedText>
                 </SoundPressable>
+                {canUseTicket && (
+                  <SoundPressable
+                    sound="confirm"
+                    style={({ pressed }) => [styles.buyTicketBtn, ltConfirmBtn, pressed && { opacity: 0.85 }]}
+                    onPress={redeemWithTicket}>
+                    <RNImage source={TICKET_ICON} style={styles.buyTicketIcon} resizeMode="contain" />
+                    <ThemedText style={[styles.buyTicketText, ltConfirmText]}>{t('shop.useTicket')}</ThemedText>
+                  </SoundPressable>
+                )}
                 <Pressable style={styles.buyCancelBtn} onPress={() => setBuyReq(null)}>
                   <ThemedText style={[styles.buyCancelText, ltCancelText]}>{t('gallery.maybeLater')}</ThemedText>
                 </Pressable>
@@ -1186,7 +1225,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', padding: 24,
   },
   buyCard: {
-    width: '100%', maxWidth: 360, backgroundColor: '#FFFDF8', borderRadius: 26,
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 360, backgroundColor: '#FFFDF8', borderRadius: 26,
     padding: Spacing.four, gap: Spacing.three, borderWidth: 1.5, borderColor: BakeryColors.shortbread,
     ...BakeryShadow,
   },
@@ -1217,6 +1256,13 @@ const styles = StyleSheet.create({
   },
   buyConfirmDisabled: { backgroundColor: BakeryColors.shortbread },
   buyConfirmText: { color: BakeryColors.cocoaDark, fontSize: 16, fontWeight: '800' },
+  buyTicketBtn: {
+    backgroundColor: '#EFE6FB', borderWidth: 1.5, borderColor: '#C9B3EC', borderRadius: 18,
+    paddingVertical: Spacing.three, marginTop: Spacing.two, flexDirection: 'row',
+    alignItems: 'center', justifyContent: 'center', gap: 8,
+  },
+  buyTicketIcon: { width: 28, height: 19 },
+  buyTicketText: { color: '#6B4FA0', fontSize: 16, fontWeight: '800' },
   buyCancelBtn: { alignItems: 'center', paddingVertical: 4 },
   buyCancelText: { fontSize: 13.5, color: BakeryColors.mocha, fontWeight: '700' },
 

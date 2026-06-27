@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useTranslation } from '@/i18n';
-import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
 
 const C = BakeryColors;
 
@@ -95,7 +95,7 @@ export function DeleteAccountModal({
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center', padding: 24 },
   card: {
-    width: '100%', maxWidth: 360, backgroundColor: C.frosting,
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 360, backgroundColor: C.frosting,
     borderRadius: BakeryRadii.panel, borderWidth: 2, borderColor: '#E8A0A0',
     padding: Spacing.four, gap: Spacing.two, ...BakeryShadow,
   },

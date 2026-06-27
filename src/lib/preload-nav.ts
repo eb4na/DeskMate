@@ -52,6 +52,16 @@ export function companionPrefetchUri(source: number | { uri: string } | null | u
   return source && typeof source === 'object' && typeof source.uri === 'string' ? source.uri : null;
 }
 
+// Resolve a job within `ms` no matter what. `.catch()` swallows REJECTIONS but a
+// PENDING (hung) ExpoImage.prefetch / Asset.loadAsync never rejects, so Promise.all
+// would pend forever and freeze the loader. Racing a timeout guarantees settlement.
+function withTimeout(p: Promise<unknown>, ms = 5000): Promise<unknown> {
+  return Promise.race([
+    Promise.resolve(p).catch(() => {}),
+    new Promise((resolve) => setTimeout(resolve, ms)),
+  ]);
+}
+
 // Warm everything the solo/multiplayer studying view draws (StudyRoomView art +
 // the active companion's character image) so the loading screen that plays right
 // before studying never lifts onto a half-loaded scene. Per-asset failures are
@@ -63,7 +73,8 @@ export function preloadStudyAssets(
   if (typeof characterSource === 'number') jobs.push(Asset.loadAsync(characterSource));
   const uri = companionPrefetchUri(characterSource);
   if (uri) jobs.push(ExpoImage.prefetch(uri));
-  return Promise.all(jobs.map((p) => Promise.resolve(p).catch(() => {})));
+  // Timeout-wrapped so a hung asset/prefetch can never freeze the loading overlay.
+  return Promise.all(jobs.map((p) => withTimeout(p)));
 }
 
 export function navigateWithLoading(navigate: () => void, { assets, prefetch }: PreloadOpts = {}) {
@@ -72,8 +83,8 @@ export function navigateWithLoading(navigate: () => void, { assets, prefetch }: 
   for (const uri of prefetch ?? []) {
     if (uri) jobs.push(ExpoImage.prefetch(uri));
   }
-  // Swallow per-asset failures so a slow/broken image can never hang the overlay.
-  const preloaded = Promise.all(jobs.map((p) => Promise.resolve(p).catch(() => {})));
+  // Timeout-wrapped so a slow/broken/HUNG image can never hang the overlay.
+  const preloaded = Promise.all(jobs.map((p) => withTimeout(p)));
   // Navigate only once assets are cached, so the destination slides in warm. The
   // overlay (over the source screen) lifts right after `navigate()`, by which
   // point the destination renders fully on its first frame.

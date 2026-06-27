@@ -7,8 +7,11 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { MIN_POPUP_WIDTH } from '@/constants/theme';
+
 import { useApp } from '@/context/app-context';
 import { useIsTablet } from '@/hooks/use-device-class';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 import { useTranslation } from '@/i18n';
 
 const HANJI_IMG = require('@/assets/images/hanji/hanji.png');
@@ -18,11 +21,13 @@ const P = { card: '#FFFDF8', purple: '#B7A0E0', purpleSoft: '#ECE3FA', brown: '#
 export function HanjiUnlockModal() {
   const { t } = useTranslation();
   const isTablet = useIsTablet();
-  const { hanjiUnlockPending, clearHanjiUnlock, recipeBadgePending } = useApp();
+  const { hanjiUnlockPending, clearHanjiUnlock, recipeBadgePending, characterObtainedPending } = useApp();
   // On the final badge both flags are set; show the 5/5 recipe-progress popup
   // first and only reveal Hanji once that popup is dismissed (recipeBadgePending
-  // cleared).
-  const visible = hanjiUnlockPending && !recipeBadgePending;
+  // cleared). Also hold behind the just-obtained-companion card — both are native
+  // <Modal>s and co-presenting freezes iOS (see daily-reward-modal).
+  const visible = hanjiUnlockPending && !recipeBadgePending && !characterObtainedPending;
+  useReportModalTransition(!!visible);
 
   const meet = () => {
     clearHanjiUnlock();
@@ -56,7 +61,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
   card: {
-    width: '100%', maxWidth: 320, backgroundColor: P.card, borderRadius: 24,
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 320, backgroundColor: P.card, borderRadius: 24,
     borderWidth: 2, borderColor: P.purpleSoft, padding: 22, alignItems: 'center', gap: 8,
   },
   avatar: {

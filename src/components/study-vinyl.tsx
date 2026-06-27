@@ -44,12 +44,19 @@ export function StudyVinyl({
   discColor = DEFAULT_VINYL_COLOR,
   centerImage,
   onSpin,
+  disk = false,
+  holeColor,
 }: {
   size?: number;
   playing: boolean;
   discColor?: string;
   centerImage?: number | { uri: string };
   onSpin?: () => void;
+  // `disk`: render a clean disk (cover art filling the circle + a centre hole), with
+  // no dark vinyl rim/grooves/label. `holeColor` fills the centre hole (e.g. the study
+  // background colour, so it reads as punched through).
+  disk?: boolean;
+  holeColor?: string;
 }) {
   const spin = useRef(new Animated.Value(0)).current;        // continuous auto-spin (0..1 → 0..360°)
   const manual = useRef(new Animated.Value(0)).current;      // extra degrees from finger dragging
@@ -141,6 +148,31 @@ export function StudyVinyl({
     <Animated.View
       pointerEvents="none"
       style={{ width: size, height: size, transform: [{ rotate }] }}>
+      {disk ? (
+        /* Clean disk: cover art filling the whole circle + a centre hole; no dark
+           vinyl rim, grooves, or label. */
+        <>
+          <View
+            style={[
+              styles.center,
+              { width: size, height: size, borderRadius: size / 2, marginLeft: -size / 2, marginTop: -size / 2, backgroundColor: centerImage ? 'transparent' : shade(discColor, 0.3), overflow: 'hidden' },
+            ]}>
+            {!!centerImage && <Image source={centerImage} style={{ width: size, height: size, borderRadius: size / 2 }} contentFit="cover" />}
+          </View>
+          <View
+            pointerEvents="none"
+            style={[
+              styles.center,
+              {
+                width: size * 0.13, height: size * 0.13, borderRadius: size * 0.065,
+                marginLeft: -size * 0.065, marginTop: -size * 0.065,
+                backgroundColor: holeColor ?? '#111111',
+                borderWidth: Math.max(1.5, size * 0.012), borderColor: 'rgba(255,255,255,0.55)',
+              },
+            ]}
+          />
+        </>
+      ) : (<>
       <Svg width={size} height={size} viewBox="0 0 100 100">
         {/* Disc */}
         <Circle cx={50} cy={50} r={48} fill={discColor} />
@@ -186,6 +218,7 @@ export function StudyVinyl({
           </View>
         </>
       )}
+      </>)}
     </Animated.View>
     </View>
   );

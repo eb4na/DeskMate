@@ -13,14 +13,18 @@ export type PlayerMeta = { companionId?: string; skinId?: string; name?: string 
 
 export type Connect4Handlers = {
   onMove: (col: number) => void;
-  onRematch: () => void;
+  // `first` = which player (1 or 2) starts this game, chosen randomly by the host
+  // (or rematch presser) and broadcast so both sides agree — so it's NOT always the host.
+  onStart: (first: number) => void;
+  onRematch: (first: number) => void;
   onPresence: (state: { opponentPresent: boolean; opponent: PlayerMeta | null }) => void;
   onStatus?: (status: string) => void;
 };
 
 export type Connect4Room = {
   sendMove: (col: number) => void;
-  sendRematch: () => void;
+  sendStart: (first: number) => void;
+  sendRematch: (first: number) => void;
   leave: () => void;
 };
 
@@ -48,7 +52,12 @@ export function joinConnect4Room(
     .on('broadcast', { event: 'move' }, ({ payload }) => {
       if (payload && typeof payload.col === 'number') handlers.onMove(payload.col);
     })
-    .on('broadcast', { event: 'rematch' }, () => handlers.onRematch())
+    .on('broadcast', { event: 'start' }, ({ payload }) => {
+      handlers.onStart(payload?.first === 2 ? 2 : 1);
+    })
+    .on('broadcast', { event: 'rematch' }, ({ payload }) => {
+      handlers.onRematch(payload?.first === 2 ? 2 : 1);
+    })
     .on('presence', { event: 'sync' }, () => {
       const state = channel.presenceState<PlayerMeta & { presence_ref: string }>();
       const keys = Object.keys(state);
@@ -71,8 +80,11 @@ export function joinConnect4Room(
     sendMove: (col: number) => {
       channel.send({ type: 'broadcast', event: 'move', payload: { col } });
     },
-    sendRematch: () => {
-      channel.send({ type: 'broadcast', event: 'rematch', payload: {} });
+    sendStart: (first: number) => {
+      channel.send({ type: 'broadcast', event: 'start', payload: { first } });
+    },
+    sendRematch: (first: number) => {
+      channel.send({ type: 'broadcast', event: 'rematch', payload: { first } });
     },
     leave: () => {
       supabase.removeChannel(channel);

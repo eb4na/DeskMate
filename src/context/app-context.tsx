@@ -10,10 +10,12 @@ import { getAppStateScope, loadScopedAppState, saveScopedAppState, isGuestUpgrad
 import { probeCloudState, pushCloudState, pushCloudStateDebounced } from '@/lib/cloud-sync';
 import { getEffectiveBunSkinId, getEffectiveCompanionSkins } from '@/lib/companion-utils';
 import { maskProfanity } from '@/lib/profanity';
+import { AD_REWARD_COINS, DAILY_AD_LIMIT } from '@/lib/ads';
 import { loadBlockedCodes, blockUserRemote, unblockUserRemote } from '@/lib/moderation';
 import { syncStreakReminders } from '@/lib/notifications';
 import { computeTaskRollover } from '@/lib/task-recurrence';
 import { uploadProfile } from '@/lib/profile-sync';
+import { claimMailRemote } from '@/lib/mail';
 import { companionLevelInfo } from '@/lib/companion-level';
 import { uploadStudyDay } from '@/lib/study-buddy';
 import { HANJI_COMPANION_ID, recipeBadgeKey, badgesFromMadeFoods, hasAllCharacterBadges, RECIPE_IDS, starterRecipe } from '@/constants/recipes';
@@ -201,9 +203,18 @@ type PersistedState = {
   use24HourTime: boolean;
   soundEffectsEnabled: boolean;
   vinylColor: string;
+  // "Spotify background" study mode: replace the room background with a solid colour +
+  // a large album-cover vinyl while studying. Colour is the user's pick.
+  spotifyBgEnabled: boolean;
+  spotifyBgColor: 'black' | 'white';
   streak: StreakData;
   earnedToday: number;
   earnedDate: string;
+  // Rewarded-video coins: how many ads the player has watched-for-coins today, and
+  // the todayISO it was last reset on. Capped at DAILY_AD_LIMIT/day; payout bypasses
+  // DAILY_EARN_CAP (the per-day ad limit *is* its cap).
+  adRewardCount: number;
+  adRewardDate: string;
   // Daily login reward (separate from the study streak above): consecutive days
   // the player opened the app and claimed the coin bonus, + the last claimed day.
   loginStreak: number;
@@ -254,6 +265,12 @@ type PersistedState = {
   aiTickets: number;
   aiTicketsResetMonth: string;
   purchasedAiTickets: number;
+  // Plus "room tickets": 1/month (on the purchase day-of-month) redeemable for any
+  // single background OR desk. Kept on lapse; new ones only accrue while Plus.
+  exchangeTickets: number;
+  exchangeTicketAnchorDay: number;   // 1–31 day Plus was bought; 0 = unset
+  exchangeTicketLastGrantISO: string; // account-tz YYYY-MM-DD of the last grant
+  exchangeTicketPending: number;      // granted but not yet shown in the popup
   chatMessages: number;
   chatFreeUsedToday: number;
   chatFreeDate: string;
@@ -288,6 +305,9 @@ type PersistedState = {
   profileDisplayName: string;
   profileDescription: string;
   profileBirthday: string; // YYYY-MM-DD or ''
+  // Profile birthday is set-once + change-once: after the initial set, the player
+  // may correct it exactly one time. This flag burns when that one change is used.
+  profileBirthdayChanged: boolean;
   profileBackgroundId: string; // room id used as the card backdrop
   profileCardColor: string; // pastel key for the card outline + friend-code strip (Plus)
   profileCompanionId: string; // chosen character for the card ('' = use active)
@@ -355,7 +375,7 @@ export const CHAT_HISTORY_CAP = 50;
 
 // Maximum active subjects — free tier vs Plus.
 export const MAX_SUBJECTS_FREE = 10;
-export const MAX_SUBJECTS_PLUS = 20;
+export const MAX_SUBJECTS_PLUS = 50;
 
 const DEFAULTS: PersistedState = {
   // New accounts start with a coin gift.
@@ -369,9 +389,13 @@ const DEFAULTS: PersistedState = {
   use24HourTime: false,
   soundEffectsEnabled: true,
   vinylColor: '#3B3340',
+  spotifyBgEnabled: false,
+  spotifyBgColor: 'black',
   streak: { currentStreak: 0, longestStreak: 0, lastStudyDate: null },
   earnedToday: 0,
   earnedDate: '',
+  adRewardCount: 0,
+  adRewardDate: '',
   loginStreak: 0,
   loginRewardDate: '',
   birthdayRewardYear: 0,
@@ -420,6 +444,10 @@ const DEFAULTS: PersistedState = {
   aiTickets: 0,
   aiTicketsResetMonth: '',
   purchasedAiTickets: 0,
+  exchangeTickets: 0,
+  exchangeTicketAnchorDay: 0,
+  exchangeTicketLastGrantISO: '',
+  exchangeTicketPending: 0,
   chatMessages: 0,
   chatFreeUsedToday: 0,
   chatFreeDate: '',
@@ -438,6 +466,7 @@ const DEFAULTS: PersistedState = {
   profileDisplayName: '',
   profileDescription: '',
   profileBirthday: '',
+  profileBirthdayChanged: false,
   profileBackgroundId: 'cozy',
   profileCardColor: 'pink',
   profileCompanionId: '',
@@ -556,6 +585,37 @@ function addDaysISO(iso: string, delta: number): string {
 
 function yesterdayISO(): string {
   return addDaysISO(todayISO(), -1);
+}
+
+// Days in a given month (m is 1–12). Day 0 of next month = last day of this one.
+function daysInMonth(y: number, m1to12: number): number {
+  return new Date(y, m1to12, 0).getDate();
+}
+
+// How many monthly room-ticket grants are due since `lastGrantISO` up to `today`
+// (both account-tz YYYY-MM-DD). One grant per monthly anniversary of the purchase
+// day-of-month (`anchorDay`), clamped to the last day for short months (e.g. a 31st
+// anchor pays Feb 28/29). Returns the count owed + the new last-grant date. Catches
+// up multiple months if the app wasn't opened. Lexicographic compare on
+// YYYY-MM-DD is correct since all parts are zero-padded.
+export function exchangeTicketsDue(
+  anchorDay: number,
+  lastGrantISO: string,
+  today: string,
+): { granted: number; lastISO: string } {
+  if (!anchorDay || !lastGrantISO) return { granted: 0, lastISO: lastGrantISO };
+  const pad = (n: number) => String(n).padStart(2, '0');
+  let [y, m] = lastGrantISO.slice(0, 10).split('-').map(Number);
+  let granted = 0;
+  let lastISO = lastGrantISO.slice(0, 10);
+  // Cap iterations so a corrupt/old date can never spin forever.
+  for (let i = 0; i < 600; i++) {
+    m += 1;
+    if (m > 12) { m = 1; y += 1; }
+    const ann = `${y}-${pad(m)}-${pad(Math.min(anchorDay, daysInMonth(y, m)))}`;
+    if (ann <= today) { granted += 1; lastISO = ann; } else break;
+  }
+  return { granted, lastISO };
 }
 
 const MAX_COMPANION_SLOTS = 3;
@@ -717,6 +777,30 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
     merged.aiTicketsResetMonth = month;
   }
 
+  // Plus room tickets. A fresh purchase sets the first ticket + anchor in setIsPlus.
+  // But Plus members from BEFORE this feature have no anchor day yet — initialize
+  // them here (anchor to today + grant their first ticket) so every current Plus
+  // member gets one. Already-earned tickets are kept on lapse.
+  if (merged.isPlus && !merged.exchangeTicketAnchorDay) {
+    const t0 = todayISO();
+    merged.exchangeTicketAnchorDay = Number(t0.slice(8, 10));
+    merged.exchangeTickets = (merged.exchangeTickets ?? 0) + 1;
+    merged.exchangeTicketPending = (merged.exchangeTicketPending ?? 0) + 1;
+    merged.exchangeTicketLastGrantISO = t0;
+  } else if (merged.isPlus && merged.exchangeTicketAnchorDay) {
+    // Grant any monthly-anniversary tickets owed since the last grant.
+    const due = exchangeTicketsDue(
+      merged.exchangeTicketAnchorDay,
+      merged.exchangeTicketLastGrantISO ?? '',
+      todayISO(),
+    );
+    if (due.granted > 0) {
+      merged.exchangeTickets = (merged.exchangeTickets ?? 0) + due.granted;
+      merged.exchangeTicketPending = (merged.exchangeTicketPending ?? 0) + due.granted;
+      merged.exchangeTicketLastGrantISO = due.lastISO;
+    }
+  }
+
   // Plus exclusive: ensure Plus members own the Berry Princess Bun skin and the
   // Strawberry Palace room (covers players who had Plus before these became perks).
   for (const plusGrant of ['outfit_bun_strawberry', 'bg_strawberry_palace', 'desk_strawberry']) {
@@ -724,6 +808,12 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
       merged.ownedShopItems = [...(merged.ownedShopItems ?? []), plusGrant];
     }
   }
+
+  // Plus perk: all study/ambience sounds are free WHILE subscribed — but we do NOT
+  // bake them into ownedShopItems (that would keep them forever even after Plus
+  // lapses). Access is gated at use-time as `isPlus || ownedShopItems.includes(id)`,
+  // so Plus members get every sound for free, anything bought with coins is kept
+  // forever, and unbought sounds re-lock the moment Plus ends.
 
   // One-time desk fix: an early starter-chooser auto-switched the home desk to the
   // chosen character's recipe, leaving accounts stuck on the wrong ingredients.
@@ -784,6 +874,18 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
   if (merged.tutorialSeen === undefined) merged.tutorialSeen = !!merged.legalAccepted;
   if (!merged.starterCompanionId) merged.starterCompanionId = 'starter:girl';
 
+  // Retroactively grant the recipe tied to the player's chosen starter, so anyone
+  // who picked a starter BEFORE this perk existed still owns that character's
+  // signature recipe (new picks get it in chooseStarter). Bun's recipe is free
+  // (recipeItem null → no-op). Ownership-gated, so it never re-adds.
+  if (merged.starterChosen) {
+    const starterCid = merged.starterCompanionId === 'starter:girl' ? '' : merged.starterCompanionId;
+    const sr = starterRecipe(starterCid);
+    if (sr?.recipeItem && !(merged.ownedShopItems ?? []).includes(sr.recipeItem)) {
+      merged.ownedShopItems = [...(merged.ownedShopItems ?? []), sr.recipeItem];
+    }
+  }
+
   // Give every user a stable friend code the first time.
   if (!merged.friendCode) merged.friendCode = generateFriendCode();
 
@@ -822,9 +924,15 @@ type AppContextType = {
   use24HourTime: boolean;
   soundEffectsEnabled: boolean;
   vinylColor: string;
+  // "Spotify background" study mode: replace the room background with a solid colour +
+  // a large album-cover vinyl while studying. Colour is the user's pick.
+  spotifyBgEnabled: boolean;
+  spotifyBgColor: 'black' | 'white';
   streak: StreakData;
   todayStreakDay: number;
   earnedToday: number;
+  // Rewarded-video ads watched-for-coins today (rolled to today, reads 0 on a new day).
+  adRewardCount: number;
   loginStreak: number;
   loginRewardDate: string;
 
@@ -871,6 +979,8 @@ type AppContextType = {
   equippedDeskRoomId: string;
   aiTickets: number;
   purchasedAiTickets: number;
+  exchangeTickets: number;
+  exchangeTicketPending: number;
   chatMessages: number;
   dailyChatRemaining: number;
   chatThread: ChatTurn[];
@@ -925,6 +1035,7 @@ type AppContextType = {
   profileDisplayName: string;
   profileDescription: string;
   profileBirthday: string;
+  profileBirthdayChanged: boolean;
   profileBackgroundId: string;
   profileCardColor: string;
   profileCompanionId: string;
@@ -934,6 +1045,7 @@ type AppContextType = {
     displayName: string;
     description: string;
     birthday: string;
+    birthdayChanged: boolean;
     backgroundId: string;
     cardColor: string;
     companionId: string;
@@ -948,7 +1060,7 @@ type AppContextType = {
   game2048Best: number;
   recordGame2048Best: (score: number) => void;
   claimedMailIds: string[];
-  claimMail: (mail: { id: string; coins: number; itemId: string | null }) => void;
+  claimMail: (mail: { id: string; coins: number; itemId: string | null }) => Promise<boolean>;
   setLanguage: (lang: string) => void;
   markLanguageSelected: () => void;
   markLegalAccepted: () => void;
@@ -959,6 +1071,9 @@ type AppContextType = {
 
   // Wave 1 actions
   addCoins: (amount: number) => void;
+  // Grant the coins for one watched rewarded ad. Returns true if granted, false if
+  // the daily limit (DAILY_AD_LIMIT) is already reached. Coins bypass DAILY_EARN_CAP.
+  claimAdReward: () => boolean;
   claimLoginReward: () => void;
   // Birthday gift (+1000 coins, once per year on the player's birthday).
   birthdayRewardYear: number;
@@ -973,6 +1088,8 @@ type AppContextType = {
   setUse24HourTime: (value: boolean) => void;
   setSoundEffectsEnabled: (value: boolean) => void;
   setVinylColor: (value: string) => void;
+  setSpotifyBgEnabled: (value: boolean) => void;
+  setSpotifyBgColor: (value: 'black' | 'white') => void;
   updateStreak: (opts?: { rescueWithFreeze?: boolean }) => {
     bonus: number;
     isComeback: boolean;
@@ -1020,6 +1137,8 @@ type AppContextType = {
 
   // Wave 2 shop
   purchaseShopItem: (itemId: string, price: number) => boolean;
+  redeemTicketForItem: (itemId: string) => boolean;
+  clearExchangeTicketPending: () => void;
   equipShopItem: (itemId: string) => boolean;
 
   // Wave 4 actions
@@ -1063,6 +1182,11 @@ const AppContext = createContext<AppContextType | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const { initialized: authInitialized, session } = useAuth();
   const [s, setS] = useState<PersistedState>(DEFAULTS);
+  // Always-current mirror of `s` so actions that must return a synchronous result
+  // (e.g. claimAdReward's grant/deny) can read the latest state without waiting for
+  // a setS to flush.
+  const sRef = useRef(s);
+  sRef.current = s;
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [loadedScopeKey, setLoadedScopeKey] = useState<string | null>(null);
@@ -1303,6 +1427,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  // Grant the coins for one watched rewarded ad. Caller must only invoke this after
+  // a real ad reward fired (or the __DEV__ mock). Guarded server-of-truth on the
+  // DAILY_AD_LIMIT/day cap (reset at the account-timezone midnight); payout bypasses
+  // DAILY_EARN_CAP because the per-day ad count is itself the cap. Returns false if
+  // the limit is already reached so the UI can show "come back tomorrow".
+  const claimAdReward = (): boolean => {
+    const today = todayISO();
+    const prev = sRef.current;
+    const based = prev.adRewardDate === today ? prev.adRewardCount : 0;
+    if (based >= DAILY_AD_LIMIT) return false;
+    setS((cur) => {
+      const t0 = todayISO();
+      const b = cur.adRewardDate === t0 ? cur.adRewardCount : 0;
+      if (b >= DAILY_AD_LIMIT) return cur;
+      return {
+        ...cur,
+        coins: cur.coins + AD_REWARD_COINS,
+        adRewardCount: b + 1,
+        adRewardDate: t0,
+      };
+    });
+    return true;
+  };
+
   // Claim today's daily login reward. No-op if already claimed today. Coins are
   // added directly (not through the daily earn cap, like the study-streak bonus).
   const claimLoginReward = () => {
@@ -1472,9 +1620,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const examCap = prev.isPlus ? MAX_EXAMS_PLUS : FREE_EXAM_LIMIT;
       if (prev.examCountdowns.length >= examCap) return prev;
       added = true;
+      // Mask profanity in the user-entered name/subject (parity with subjects + DMs).
+      const safeExam = { ...exam, name: maskProfanity(exam.name), subject: maskProfanity(exam.subject) };
       return {
         ...prev,
-        examCountdowns: [...prev.examCountdowns, { ...exam, id: newId }],
+        examCountdowns: [...prev.examCountdowns, { ...safeExam, id: newId }],
       };
     });
     return added ? newId : null;
@@ -1487,11 +1637,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
 
   // Edit an existing countdown in place (no cap check — count is unchanged).
-  const updateExam = (id: string, patch: Partial<Omit<ExamCountdown, 'id'>>) =>
+  const updateExam = (id: string, patch: Partial<Omit<ExamCountdown, 'id'>>) => {
+    const safePatch = {
+      ...patch,
+      ...(patch.name !== undefined ? { name: maskProfanity(patch.name) } : {}),
+      ...(patch.subject !== undefined ? { subject: maskProfanity(patch.subject) } : {}),
+    };
     setS((prev) => ({
       ...prev,
-      examCountdowns: prev.examCountdowns.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+      examCountdowns: prev.examCountdowns.map((e) => (e.id === id ? { ...e, ...safePatch } : e)),
     }));
+  };
 
   const setReminder = (enabled: boolean, time: string) =>
     setS((prev) => ({ ...prev, reminderEnabled: enabled, reminderTime: time }));
@@ -1503,11 +1659,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setS((prev) => ({ ...prev, soundEffectsEnabled: value }));
   const setVinylColor = (value: string) =>
     setS((prev) => ({ ...prev, vinylColor: value }));
+  const setSpotifyBgEnabled = (value: boolean) =>
+    setS((prev) => ({ ...prev, spotifyBgEnabled: value }));
+  const setSpotifyBgColor = (value: 'black' | 'white') =>
+    setS((prev) => ({ ...prev, spotifyBgColor: value }));
 
   const updateProfile = (patch: Partial<{
     displayName: string;
     description: string;
     birthday: string;
+    birthdayChanged: boolean;
     backgroundId: string;
     cardColor: string;
     companionId: string;
@@ -1519,6 +1680,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...(patch.displayName !== undefined ? { profileDisplayName: maskProfanity(patch.displayName) } : {}),
       ...(patch.description !== undefined ? { profileDescription: maskProfanity(patch.description) } : {}),
       ...(patch.birthday !== undefined ? { profileBirthday: patch.birthday } : {}),
+      ...(patch.birthdayChanged !== undefined ? { profileBirthdayChanged: patch.birthdayChanged } : {}),
       ...(patch.backgroundId !== undefined ? { profileBackgroundId: patch.backgroundId } : {}),
       ...(patch.cardColor !== undefined ? { profileCardColor: patch.cardColor } : {}),
       ...(patch.companionId !== undefined ? { profileCompanionId: patch.companionId } : {}),
@@ -1632,6 +1794,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         tasks: [
           {
             ...task,
+            // Mask profanity in the title (parity with subjects + DMs).
+            title: maskProfanity(task.title),
             id,
             createdAt: new Date().toISOString(),
             completedAt: null,
@@ -1646,13 +1810,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return id;
   };
 
-  const updateTask = (id: string, patch: Partial<Pick<Task, 'title' | 'subjectId' | 'dueDate' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'notifId' | 'repeatDays' | 'repeatUntil'>>) =>
+  const updateTask = (id: string, patch: Partial<Pick<Task, 'title' | 'subjectId' | 'dueDate' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'notifId' | 'repeatDays' | 'repeatUntil'>>) => {
+    const safePatch = patch.title !== undefined ? { ...patch, title: maskProfanity(patch.title) } : patch;
     setS((prev) => ({
       ...prev,
       tasks: prev.tasks.map((t) =>
-        t.id === id ? { ...t, ...patch, lastActivityAt: new Date().toISOString() } : t,
+        t.id === id ? { ...t, ...safePatch, lastActivityAt: new Date().toISOString() } : t,
       ),
     }));
+  };
 
   const deleteTask = (id: string) =>
     setS((prev) => ({ ...prev, tasks: prev.tasks.filter((t) => t.id !== id) }));
@@ -1790,6 +1956,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const setIsPlus = (value: boolean, plan: 'monthly' | 'annual' = 'monthly', untilOverride?: string) => {
     const month = new Date().toISOString().slice(0, 7);
+    const today = todayISO();
     setS((prev) => {
       const updates: Partial<PersistedState> = { isPlus: value };
       // Plus members automatically wear the gold crown avatar frame; it clears when
@@ -1813,13 +1980,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
       } else {
         updates.plusPlan = null;
         updates.plusUntil = '';
+        // Plus ended → re-lock sounds: if the equipped study sound was only free via
+        // Plus (not actually bought), un-equip it so it stops playing.
+        const equippedSound = prev.equippedShopItems?.sound;
+        if (equippedSound && !prev.ownedShopItems.includes(equippedSound)) {
+          updates.equippedShopItems = { ...prev.equippedShopItems, sound: null };
+        }
       }
       if (value && prev.aiTicketsResetMonth !== month) {
         updates.aiTickets = 3;
         updates.aiTicketsResetMonth = month;
       }
-      // Plus exclusive: getting Plus grants the Berry Princess Bun skin and the
-      // Strawberry Palace room for free. Both are kept even if Plus later lapses.
+      // First room ticket the moment they go Plus, and anchor the monthly cadence to
+      // today's day-of-month. Idempotent per day so a restore/double-call can't
+      // double-grant. Subsequent monthly tickets come from the load-merge anniversary
+      // check. Tickets are kept on lapse, so nothing is cleared when value is false.
+      if (value && prev.exchangeTicketLastGrantISO !== today) {
+        updates.exchangeTicketAnchorDay = Number(today.slice(8, 10));
+        updates.exchangeTickets = prev.exchangeTickets + 1;
+        updates.exchangeTicketLastGrantISO = today;
+        updates.exchangeTicketPending = prev.exchangeTicketPending + 1;
+      }
+      // Plus exclusive: getting Plus grants the Berry Princess Bun skin, the
+      // Strawberry Palace room + desk for free — these are KEPT forever even if Plus
+      // later lapses. Study/ambience sounds are NOT granted here: they're free while
+      // subscribed (gated as `isPlus || owned` at use-time) but re-lock when Plus
+      // ends, so only sounds actually bought with coins stay.
       if (value) {
         const granted = prev.ownedShopItems;
         const toGrant = ['outfit_bun_strawberry', 'bg_strawberry_palace', 'desk_strawberry'].filter((id) => !granted.includes(id));
@@ -1918,11 +2104,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // picker. Bun keeps its `starter:girl` active id; the others use `shop:<sku>`.
   const chooseStarter = (activeId: ActiveCompanionId) => {
     const shopItemId = activeId === 'starter:girl' ? 'companion_bun' : activeId.slice(5);
-    // Grant the recipe that matches the character the player picked, so it's
-    // unlocked in the Bakery Menu. The home desk stays on the default strawberry
-    // shortcake (don't auto-switch selectedFoodId) so the desk ingredients the
-    // player starts with never change out from under them.
+    // Grant the recipe that matches the character the player picked AND make it
+    // their starting desk recipe, so a new player begins on the bake that goes
+    // with their character (Bun → the free strawberry shortcake). This only runs
+    // when the player actively picks a starter, so — unlike the old migration that
+    // caused the "stuck on the wrong desk" bug — it never overrides an existing
+    // player's later Bakery Menu choices. `deskFoodReset: true` keeps the one-time
+    // reset migration from clobbering this chosen starting recipe on the next load.
     const rec = starterRecipe(activeId === 'starter:girl' ? '' : activeId);
+    const startingFoodId = rec?.recipeId ?? 'strawberry-shortcake';
     setS((prev) => {
       const grants = [shopItemId, rec?.recipeItem].filter(
         (id): id is string => !!id && !prev.ownedShopItems.includes(id),
@@ -1933,6 +2123,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         starterChosen: true,
         activeCompanionId: activeId,
         defaultCompanionId: 'girl',
+        selectedFoodId: startingFoodId,
+        deskFoodReset: true,
         ownedShopItems: grants.length ? [...prev.ownedShopItems, ...grants] : prev.ownedShopItems,
       };
     });
@@ -2093,8 +2285,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const clearCharacterObtained = () => setCharacterObtainedPending(null);
 
   // TEST/PLACEHOLDER: wipe game progress + purchases WITHOUT erasing the account.
-  // The user stays signed in and fully onboarded (legal/birthday/starter all kept),
-  // so we DON'T drop back into the onboarding flow. Everything owned/equipped —
+  // The user stays signed in (legal/birthday kept) but is dropped back to the
+  // STARTER CHOOSER to re-pick their free companion. Everything owned/equipped —
   // companions, backgrounds, desks, outfits, skins, recipes/badges — resets to the
   // brand-new defaults, which leave only Bun (starter:girl, classic skin) and the
   // Cozy room. Grants 1,000,000 coins. Keeps identity (friend code + friends),
@@ -2117,8 +2309,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       profileDisplayName: prev.profileDisplayName,
       profileDescription: prev.profileDescription,
       profileBirthday: prev.profileBirthday,
-      // Already past the starter chooser — don't re-prompt; defaults give them Bun.
-      starterChosen: true,
+      profileBirthdayChanged: prev.profileBirthdayChanged,
+      // Drop back to the starter chooser so the reset re-runs the "pick your free
+      // companion" step (DEFAULTS already reset starterCompanionId/activeCompanionId).
+      starterChosen: false,
       // Already-onboarded account — don't replay the first-launch coachmark tour.
       tutorialSeen: prev.tutorialSeen,
       coins: 1_000_000,
@@ -2231,7 +2425,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Claim a broadcast mail's reward once: grant coins (uncapped, like the login
   // reward) + unlock its item if any, and remember it so it can't be claimed twice.
-  const claimMail = (mail: { id: string; coins: number; itemId: string | null }) =>
+  // The server (claim_mail RPC) is the authority on whether it was already claimed —
+  // we grant the reward only when it reports a NEW claim, so editing local state to
+  // replay a claim is a no-op.
+  // Returns true if the mail should now show as claimed (granted or already claimed),
+  // false if the attempt failed and should be retryable.
+  const claimMail = async (mail: { id: string; coins: number; itemId: string | null }): Promise<boolean> => {
+    const result = await claimMailRemote(mail.id, mail.itemId);
+    if (result === 'error') {
+      // Offline / RPC failure: leave it UNCLAIMED so the reward isn't forfeited.
+      return false;
+    }
+    if (result === 'already') {
+      // Already claimed elsewhere: reflect claimed state, grant nothing.
+      setS((prev) =>
+        prev.claimedMailIds.includes(mail.id)
+          ? prev
+          : { ...prev, claimedMailIds: [...prev.claimedMailIds, mail.id] },
+      );
+      return true;
+    }
+    // 'new' — grant the reward exactly once.
     setS((prev) => {
       if (prev.claimedMailIds.includes(mail.id)) return prev;
       const grantItem = !!mail.itemId && !prev.ownedShopItems.includes(mail.itemId);
@@ -2242,6 +2456,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         claimedMailIds: [...prev.claimedMailIds, mail.id],
       };
     });
+    return true;
+  };
 
   const setMultipleReminders = (reminders: ReminderEntry[]) =>
     setS((prev) => ({ ...prev, multipleReminders: reminders }));
@@ -2306,6 +2522,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
+  // Redeem one Plus room ticket for a single background OR desk (no coins). Guards:
+  // must own a ticket, item must exist, be a background/desk, and not already owned.
+  const redeemTicketForItem = (itemId: string): boolean => {
+    const item = getShopItem(itemId);
+    if (!item || s.exchangeTickets <= 0) return false;
+    if (item.category !== 'background' && item.category !== 'desk') return false;
+    if (s.ownedShopItems.includes(itemId)) return false;
+    setS((prev) => {
+      if (prev.exchangeTickets <= 0 || prev.ownedShopItems.includes(itemId)) return prev;
+      return {
+        ...prev,
+        exchangeTickets: prev.exchangeTickets - 1,
+        ownedShopItems: [...prev.ownedShopItems, itemId],
+      };
+    });
+    return true;
+  };
+
+  const clearExchangeTicketPending = () => setS((prev) => ({ ...prev, exchangeTicketPending: 0 }));
+
   const equipShopItem = (itemId: string): boolean => {
     const item = getShopItem(itemId);
     if (!item || item.category === 'game' || !s.ownedShopItems.includes(itemId)) return false;
@@ -2338,6 +2574,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         use24HourTime: s.use24HourTime,
         soundEffectsEnabled: s.soundEffectsEnabled,
         vinylColor: s.vinylColor,
+        spotifyBgEnabled: s.spotifyBgEnabled ?? false,
+        spotifyBgColor: s.spotifyBgColor ?? 'black',
         streak: s.streak,
         // Today's streak day = what the streak counts *as of today* (the login day),
         // even before the user has claimed/studied. So a fresh login shows day 1, a
@@ -2345,6 +2583,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // a stale number while you're looking at it.
         todayStreakDay: streakRescueAvailable(s, todayISO()) ? s.streak.currentStreak : nextStreakState(s.streak, todayISO()).next,
         earnedToday: s.earnedDate === todayISO() ? s.earnedToday : 0,
+        adRewardCount: s.adRewardDate === todayISO() ? s.adRewardCount : 0,
         loginStreak: s.loginStreak,
         loginRewardDate: s.loginRewardDate,
         // Always hand the screen today's counters (reset at midnight) so progress
@@ -2367,6 +2606,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         companionMinutes: s.companionMinutes ?? {},
         activeSession,
         addCoins,
+        claimAdReward,
         claimLoginReward,
         claimBirthdayReward,
         recordSession,
@@ -2379,6 +2619,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setUse24HourTime,
         setSoundEffectsEnabled,
         setVinylColor,
+        setSpotifyBgEnabled,
+        setSpotifyBgColor,
         updateStreak,
         addSubject,
         renameSubject,
@@ -2398,6 +2640,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         incrementSkipSubjectCount,
         resetSkipSubjectCount,
         purchaseShopItem,
+        redeemTicketForItem,
+        clearExchangeTicketPending,
         equipShopItem,
         // Wave 4
         isPlus: s.isPlus,
@@ -2418,6 +2662,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         equippedDeskRoomId: s.equippedDeskRoomId ?? 'cozy',
         aiTickets: s.aiTickets,
         purchasedAiTickets: s.purchasedAiTickets,
+        exchangeTickets: s.exchangeTickets,
+        exchangeTicketPending: s.exchangeTicketPending,
         chatMessages: s.chatMessages,
         dailyChatRemaining: s.isPlus
           ? Math.max(0, PLUS_DAILY_CHAT - (s.chatFreeDate === todayISO() ? s.chatFreeUsedToday : 0))
@@ -2458,6 +2704,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         profileDisplayName: s.profileDisplayName ?? '',
         profileDescription: s.profileDescription ?? '',
         profileBirthday: s.profileBirthday ?? '',
+        profileBirthdayChanged: s.profileBirthdayChanged ?? false,
         profileBackgroundId: s.profileBackgroundId ?? 'cozy',
         profileCardColor: s.profileCardColor ?? 'pink',
         profileCompanionId: s.profileCompanionId ?? '',
@@ -2471,7 +2718,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         recordCakeBest,
         game2048Best: s.game2048Best ?? 0,
         recordGame2048Best,
-        claimedMailIds: s.claimedMailIds ?? [],
+        // Use the module-level DEFAULTS array (not a fresh `[]`) so the reference is
+        // stable across renders — consumers list claimedMailIds in effect deps, and a
+        // new array each render would re-run those effects in a loop (froze Home).
+        claimedMailIds: s.claimedMailIds ?? DEFAULTS.claimedMailIds,
         claimMail,
         setIsPlus,
         useStreakFreeze,

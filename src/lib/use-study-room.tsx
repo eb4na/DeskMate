@@ -63,6 +63,19 @@ type StudyRoomValue = {
   roomId: string | null;
   hostBackgroundId: string | null;
   hostDeskId: string | null;
+  // Host radio for the bundled study sounds: when a PLUS host shares, every guest
+  // plays the host's equipped study sound instead of their own (mirrors the Spotify
+  // host-radio for the in-app ambience). `hostSoundShared` distinguishes "a Plus host
+  // is sharing" (true) from "no sharing host" (false) — the former with a null
+  // `hostSoundId` means the host has its sound OFF, so guests go quiet too.
+  hostSoundShared: boolean;
+  hostSoundId: string | null;
+  // Host's disco ("Spotify background") mode, synced to every guest. `hostDiscoOn` =
+  // a Plus host has it on; `hostDiscoColor` = black/white; `hostCoverUrl` = the host's
+  // current album cover (or null) to show on the disco vinyl.
+  hostDiscoOn: boolean;
+  hostDiscoColor: 'black' | 'white';
+  hostCoverUrl: string | null;
   canStartSelf: boolean;
   joinRoom: (roomId: string, isHost: boolean) => void;
   leaveRoom: () => void;
@@ -92,8 +105,11 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     startActiveSession,
     equippedBackgroundRoomId,
     equippedDeskRoomId,
+    equippedShopItems,
     isPlus,
     profileAvatarFrame,
+    spotifyBgEnabled,
+    spotifyBgColor,
   } = useApp();
 
   const myCode = friendCode;
@@ -114,6 +130,19 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
   // Host's room — everyone in the room studies with the host's background + desk.
   const [hostBackgroundId, setHostBackgroundId] = useState<string | null>(null);
   const [hostDeskId, setHostDeskId] = useState<string | null>(null);
+  // Host radio (bundled study sounds): a Plus host broadcasts its equipped sound so
+  // every guest plays the same one. `hostSoundShared` flips true once any broadcast
+  // arrives (→ guest overrides their own sound); `hostSoundId` is the shared sound's
+  // shop id, or null when the host has its sound turned off (guests go quiet too).
+  const [hostSoundShared, setHostSoundShared] = useState(false);
+  const [hostSoundId, setHostSoundId] = useState<string | null>(null);
+  // Host "Spotify background" (disco) mode: a Plus host broadcasts whether it's on +
+  // the chosen colour, so EVERY guest (Plus or not) shows the same disco scene. The
+  // host's now-playing cover (synced on the `spotify` channel below) fills the disco
+  // vinyl. Display-only → no Plus/Premium needed on the guest to SEE it.
+  const [hostDiscoOn, setHostDiscoOn] = useState(false);
+  const [hostDiscoColor, setHostDiscoColor] = useState<'black' | 'white'>('black');
+  const [hostCoverUrl, setHostCoverUrl] = useState<string | null>(null);
   // True only for a late joiner (joined a room that's already running): the lobby
   // shows them a "Start studying" button to begin on their own clock.
   const [canStartSelf, setCanStartSelf] = useState(false);
@@ -204,6 +233,11 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     setPresentCodes([]);
     setHostBackgroundId(host ? meRef.current.bgRoomId : null);
     setHostDeskId(host ? meRef.current.deskRoomId : null);
+    setHostSoundShared(false);
+    setHostSoundId(null);
+    setHostDiscoOn(false);
+    setHostDiscoColor('black');
+    setHostCoverUrl(null);
     myPreferredMinutes.current = null;
     myTopic.current = null;
     begunRef.current = false;
@@ -363,11 +397,29 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
           } else if (type === 'status') {
             const d = data as { code: string; status: StudyStatus };
             setStatusMap((prev) => ({ ...prev, [d.code]: d.status }));
+          } else if (type === 'hostsound') {
+            // Plus host is sharing its bundled study sound → mirror it (guests play
+            // the host's sound instead of their own). The host ignores its own echo.
+            if (isHostRef.current) return;
+            const d = data as { soundId?: string | null };
+            setHostSoundShared(true);
+            setHostSoundId(d.soundId ?? null);
+          } else if (type === 'discobg') {
+            // Plus host toggled disco mode / colour → every guest mirrors it (display
+            // only, so a guest needs neither Plus nor Spotify to SEE the disco scene).
+            if (isHostRef.current) return;
+            const d = data as { on?: boolean; color?: 'black' | 'white' };
+            setHostDiscoOn(!!d.on);
+            setHostDiscoColor(d.color === 'white' ? 'white' : 'black');
           } else if (type === 'spotify') {
-            // Host's now-playing → mirror it on this player's own Spotify (only if
-            // they have it connected; non-premium accounts just 403 and stay silent).
-            if (isHostRef.current || !spotifyConnected()) return;
-            const d = data as { uri?: string; positionMs?: number; isPlaying?: boolean; ts?: number };
+            if (isHostRef.current) return;
+            const d = data as { uri?: string; positionMs?: number; isPlaying?: boolean; ts?: number; coverUrl?: string | null };
+            // Show the host's cover on this guest's disco vinyl even if they have no
+            // Spotify connected — it's just an image URL.
+            setHostCoverUrl(d.coverUrl ?? null);
+            // The actual AUDIO mirror needs the guest's OWN Spotify Premium; without it
+            // they just see the cover (above) and hear nothing from Spotify.
+            if (!spotifyConnected()) return;
             const uri = d.uri ?? null;
             const playing = !!d.isPlaying;
             const last = mirrorRef.current;
@@ -475,6 +527,11 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     setPresentCodes([]);
     setHostBackgroundId(null);
     setHostDeskId(null);
+    setHostSoundShared(false);
+    setHostSoundId(null);
+    setHostDiscoOn(false);
+    setHostDiscoColor('black');
+    setHostCoverUrl(null);
   };
 
   const start = (opts: StudyStartOpts) => {
@@ -558,6 +615,8 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
         positionMs: pb.progressMs ?? 0,
         isPlaying: pb.isPlaying,
         ts: Date.now(),
+        // Album cover for guests' disco vinyl (display only — no Premium needed there).
+        coverUrl: pb.coverUrl ?? null,
       });
     };
     tick();
@@ -567,6 +626,24 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
       clearInterval(id);
     };
   }, [isHost, begun, isPlus, spotifyOn]);
+
+  // Host radio for the bundled study sounds: while a PLUS host's synced session is
+  // live, broadcast its equipped study sound so every guest plays the same one.
+  // Re-runs on sound change AND on roster changes (`roster.length`) so a late joiner
+  // — who just subscribed — gets the current sound from the fresh closure. Sending
+  // even a null sound (host turned it off) keeps guests in sync (they go quiet too).
+  useEffect(() => {
+    if (!isHost || !begun || !isPlus) return;
+    room.current?.send('hostsound', { soundId: equippedShopItems.sound ?? null });
+  }, [isHost, begun, isPlus, equippedShopItems.sound, roster.length]);
+
+  // Host disco ("Spotify background") broadcast: a Plus host pushes its on/off + colour
+  // so every guest mirrors the disco scene (display only — guests need no Plus/Premium
+  // to see it). Re-runs on toggle/colour change AND roster change (late-joiner re-sync).
+  useEffect(() => {
+    if (!isHost || !begun || !isPlus) return;
+    room.current?.send('discobg', { on: spotifyBgEnabled, color: spotifyBgColor });
+  }, [isHost, begun, isPlus, spotifyBgEnabled, spotifyBgColor, roster.length]);
 
   // Clean up the connection if the provider ever unmounts (app teardown).
   useEffect(() => {
@@ -590,6 +667,11 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
       roomId,
       hostBackgroundId,
       hostDeskId,
+      hostSoundShared,
+      hostSoundId,
+      hostDiscoOn,
+      hostDiscoColor,
+      hostCoverUrl,
       canStartSelf,
       joinRoom,
       leaveRoom,
@@ -601,7 +683,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     }),
     // joinRoom/leaveRoom/start/setStatus are stable enough (read refs); deps are the state they expose.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [roomId, begun, isHost, myCode, roster, statusMap, presentCodes, netStatus, hostBackgroundId, hostDeskId, canStartSelf],
+    [roomId, begun, isHost, myCode, roster, statusMap, presentCodes, netStatus, hostBackgroundId, hostDeskId, hostSoundShared, hostSoundId, hostDiscoOn, hostDiscoColor, hostCoverUrl, canStartSelf],
   );
 
   return <StudyRoomContext.Provider value={value}>{children}</StudyRoomContext.Provider>;

@@ -27,6 +27,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg';
 
 import { FitText } from '@/components/fit-text';
+import { GameRulesButton } from '@/components/game-rules-button';
 import { ThemedText } from '@/components/themed-text';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
@@ -233,6 +234,13 @@ export function Game2048({ onLeave }: { onLeave?: () => void }) {
           style={({ pressed }) => [styles.backBtn, { top: insets.top + 2, left: 8 }, pressed && styles.pressed]}>
           <Image source={BACK_ARROW} style={styles.backImg} contentFit="contain" />
         </Pressable>
+
+        {/* Rules (top-right, mirrors the back button) */}
+        <GameRulesButton
+          title={t('games.howToPlay')}
+          body={t('games.rules2048')}
+          style={{ top: insets.top + 2, right: insets.right + 18 }}
+        />
 
         {/* Wordmark + subtitle (art includes "~ Join the numbers! ~") */}
         <Image source={TITLE} style={styles.title} contentFit="contain" />

@@ -16,8 +16,11 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { MIN_POPUP_WIDTH } from '@/constants/theme';
+
 import { birthdayRewardAvailable, nextLoginReward, todayISO, useApp } from '@/context/app-context';
 import { DAILY_REWARD_CAP } from '@/constants/login-rewards';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 import { isLoadingActive, subscribeLoadingDone } from '@/lib/loading-signal';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { useTranslation } from '@/i18n';
@@ -41,6 +44,7 @@ export function DailyRewardModal() {
     legalAccepted, starterChosen,
     isPlus, streakFreezes,
     profileBirthday, birthdayRewardYear,
+    characterObtainedPending,
   } = useApp();
 
   const reward = nextLoginReward({ loginRewardDate, streak, isPlus, streakFreezes }, todayISO());
@@ -70,7 +74,12 @@ export function DailyRewardModal() {
   const [leaving, setLeaving] = useState(false);
 
   const onboarded = legalAccepted && starterChosen;
-  const visible = reward.available && armed && onboarded && !hanjiUnlockPending && !recipeBadgePending && !birthdayPending && !leaving;
+  // Hold the reward until the just-obtained-companion celebration card is dismissed
+  // — both are native <Modal>s, and picking a starter sets characterObtainedPending
+  // in the SAME commit that flips starterChosen (→ onboarded) true, so without this
+  // the two try to present at once and iOS freezes (no card shows at all).
+  const visible = reward.available && armed && onboarded && !characterObtainedPending && !hanjiUnlockPending && !recipeBadgePending && !birthdayPending && !leaving;
+  useReportModalTransition(visible);
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -119,7 +128,7 @@ const makeStyles = (s: number) => {
     root: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 * s },
     backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
     card: {
-      width: '100%', maxWidth: 340 * s, backgroundColor: P.card, borderRadius: 24 * s,
+      width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 340 * s, backgroundColor: P.card, borderRadius: 24 * s,
       borderWidth: 2, borderColor: P.pinkSoft, padding: 22 * s, alignItems: 'center', gap: 6 * s,
     },
     title: { fontSize: 19 * s, fontWeight: '900', color: P.brown, textAlign: 'center' },

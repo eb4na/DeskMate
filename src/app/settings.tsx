@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -44,11 +44,22 @@ import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
 import { supabase } from '@/lib/supabase';
 import { linkProvider } from '@/lib/oauth';
-import { AppleLogoIcon, GoogleGIcon } from '@/components/auth-icons';
+import { AppleLogoIcon, GoogleGIcon, LockIcon } from '@/components/auth-icons';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { getAmbienceName } from '@/app/ambience-picker';
-import { LANGUAGES, useTranslation } from '@/i18n';
-import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
+import i18n, { LANGUAGES, useTranslation } from '@/i18n';
+import { DateWheelPicker } from '@/components/date-wheel-picker';
+
+const BIRTHDAY_ICON = require('@/assets/images/profile/birthday-candle.png');
+
+// Month + day only (the stored birthday's year is an arbitrary leap year — never shown).
+function formatBirthday(iso: string): string {
+  if (!iso) return '';
+  const d = new Date(`${iso}T00:00:00`);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString(i18n.language || 'en-US', { month: 'long', day: 'numeric' });
+}
+import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 
 type RowProps = {
@@ -106,9 +117,20 @@ export default function SettingsScreen() {
   // Local confirm for the test "reset to new account" — a root showPopup can't
   // render over this native-modal screen (it just looked like nothing happened).
   const [resetOpen, setResetOpen] = useState(false);
+  // Inline language dropdown (replaces the old full-screen picker).
+  const [langOpen, setLangOpen] = useState(false);
   // Leave-guest / sign-out confirm — a LOCAL modal (not root showPopup, which can't
   // present over the Settings native modal — the tap just looked dead).
   const [signOutOpen, setSignOutOpen] = useState(false);
+  // Change-password — a LOCAL modal (root showPopup can't present over the Settings
+  // native modal) with its own field/error/success state.
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pwCurrent, setPwCurrent] = useState('');
+  const [pwNew, setPwNew] = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
+  const [pwError, setPwError] = useState('');
+  const [pwSuccess, setPwSuccess] = useState(false);
+  const [pwSaving, setPwSaving] = useState(false);
   const {
     coins,
     isPlus,
@@ -116,6 +138,8 @@ export default function SettingsScreen() {
     ambienceId,
     reminderEnabled,
     language,
+    setLanguage,
+    markLanguageSelected,
     reminderTime,
     setReminder,
     use24HourTime,
@@ -130,7 +154,13 @@ export default function SettingsScreen() {
     resetGameData,
     replayTutorial,
     claimedMailIds,
+    profileBirthday,
+    profileBirthdayChanged,
+    updateProfile,
   } = useApp();
+  // Birthday change-once editor (set at onboarding; one change allowed here).
+  const [bdayOpen, setBdayOpen] = useState(false);
+  const [bdayDraft, setBdayDraft] = useState('2008-01-01');
 
   // Unread mail count for the Mailbox row badge (live fetch on open).
   const [unreadMail, setUnreadMail] = useState(0);
@@ -195,6 +225,67 @@ export default function SettingsScreen() {
     if (router.canDismiss()) router.dismissAll();
   };
 
+  const openChangePassword = () => {
+    setPwCurrent('');
+    setPwNew('');
+    setPwConfirm('');
+    setPwError('');
+    setPwSuccess(false);
+    setPwOpen(true);
+  };
+
+  const handleChangePassword = async () => {
+    const email = user?.email;
+    if (!email) {
+      setPwError(t('errors.generic'));
+      return;
+    }
+    if (!pwCurrent) {
+      setPwError(t('errors.enterCurrentPassword'));
+      return;
+    }
+    if (!pwNew) {
+      setPwError(t('errors.enterNewPassword'));
+      return;
+    }
+    if (pwNew.length < 6) {
+      setPwError(t('errors.newPasswordTooShort'));
+      return;
+    }
+    if (pwNew !== pwConfirm) {
+      setPwError(t('errors.passwordsNoMatch'));
+      return;
+    }
+    if (pwNew === pwCurrent) {
+      setPwError(t('errors.newPasswordSameAsOld'));
+      return;
+    }
+
+    setPwSaving(true);
+    setPwError('');
+
+    // Verify the current password first — this is what makes it a "change"
+    // (vs. the email-link "reset"). Re-auth is the same user/device, so the
+    // single-device claim in AuthProvider no-ops (no re-revoke, no kick).
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: pwCurrent });
+    if (signInError) {
+      setPwError(t('errors.currentPasswordWrong'));
+      setPwSaving(false);
+      return;
+    }
+
+    const { error } = await supabase.auth.updateUser({ password: pwNew });
+    if (error) {
+      setPwError(error.message);
+      setPwSaving(false);
+      return;
+    }
+
+    setPwSuccess(true);
+    setPwSaving(false);
+    setTimeout(() => setPwOpen(false), 900);
+  };
+
   const handleDeleteConfirm = async () => {
     try {
       await deleteAccount();
@@ -245,6 +336,29 @@ export default function SettingsScreen() {
               label={isGuest ? t('settings.guestMode') : t('settings.signedIn')}
               value={isGuest ? t('settings.guestProgressNote') : user?.email ?? t('settings.accountFallback')}
             />
+            <View style={styles.divider} />
+            {/* Birthday: set at onboarding, changeable exactly once here. Once that
+                one change is used (profileBirthdayChanged), the row locks for good. */}
+            <SettingRow
+              icon={<Image source={BIRTHDAY_ICON} style={{ width: 30 * scale, height: 30 * scale }} contentFit="contain" />}
+              label={t('profileCard.birthday')}
+              value={profileBirthday ? formatBirthday(profileBirthday) : t('profileCard.addBirthday')}
+              onPress={profileBirthdayChanged ? undefined : () => { setBdayDraft(profileBirthday || '2008-01-01'); setBdayOpen(true); }}
+              lock={profileBirthdayChanged}
+            />
+            {/* Change password — only for email/password accounts (OAuth-only
+                accounts have no password to change). */}
+            {!isGuest && connectedProviders.includes('email') && (
+              <>
+                <View style={styles.divider} />
+                <SettingRow
+                  icon={<LockIcon color={BakeryColors.jam} size={26} />}
+                  label={t('settings.changePassword')}
+                  value={t('settings.changePasswordNote')}
+                  onPress={openChangePassword}
+                />
+              </>
+            )}
             <View style={styles.divider} />
             <Pressable
               onPress={handleSignOut}
@@ -481,15 +595,48 @@ export default function SettingsScreen() {
           <ThemedView type="backgroundElement" style={styles.group}>
             <InstagramFollowRow />
             <View style={styles.divider} />
-            <SettingRow
-              icon={<SettingsIcon name="language" />}
-              label={t('settings.language')}
-              value={(() => {
-                const lang = LANGUAGES.find((l) => l.code === language);
-                return lang ? `${lang.flag} ${lang.native}` : 'English';
-              })()}
-              onPress={() => router.push('/language-picker')}
-            />
+            {/* Language — inline dropdown (no separate screen). Tapping expands the
+                list right here; picking a language switches it and collapses. */}
+            <Pressable
+              onPress={() => setLangOpen((o) => !o)}
+              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
+              <View style={styles.rowIconImage}><SettingsIcon name="language" /></View>
+              <View style={styles.rowBody}>
+                <ThemedText type="smallBold">{t('settings.language')}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                  {(() => {
+                    const lang = LANGUAGES.find((l) => l.code === language);
+                    return lang ? `${lang.flag} ${lang.native}` : 'English';
+                  })()}
+                </ThemedText>
+              </View>
+              <ThemedText type="small" themeColor="textSecondary" style={[styles.chevron, langOpen && styles.chevronOpen]}>
+                ›
+              </ThemedText>
+            </Pressable>
+            {langOpen && (
+              <View style={styles.langDropdown}>
+                {LANGUAGES.map((lang) => {
+                  const active = lang.code === language;
+                  return (
+                    <Pressable
+                      key={lang.code}
+                      onPress={() => {
+                        if (lang.code !== language) {
+                          setLanguage(lang.code);
+                          markLanguageSelected();
+                        }
+                        setLangOpen(false);
+                      }}
+                      style={({ pressed }) => [styles.langOption, active && styles.langOptionActive, pressed && styles.rowPressed]}>
+                      <ThemedText style={styles.langFlag}>{lang.flag}</ThemedText>
+                      <ThemedText type="smallBold" style={styles.langName}>{lang.native}</ThemedText>
+                      {active && <ThemedText type="smallBold" style={styles.langCheck}>✓</ThemedText>}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
             <View style={styles.divider} />
             <SettingRow
               icon={<SettingsIcon name="reset" />}
@@ -509,7 +656,7 @@ export default function SettingsScreen() {
               icon={<SettingsIcon name="feedback" />}
               label={t('settings.sendFeedback')}
               value={t('settings.sendFeedbackNote')}
-              onPress={() => Linking.openURL('mailto:hello@deskmate.app?subject=Memobun%20Feedback')}
+              onPress={() => Linking.openURL('mailto:hello@memobun.app?subject=Memobun%20Feedback')}
             />
             <View style={styles.divider} />
             <SettingRow
@@ -576,6 +723,64 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
+      {/* Change password — local modal so it shows over the Settings native modal. */}
+      <Modal visible={pwOpen} transparent animationType="fade" onRequestClose={() => setPwOpen(false)}>
+        <KeyboardAvoidingView
+          style={styles.pwBackdrop}
+          behavior={Platform.select({ ios: 'padding', android: undefined })}>
+          <View style={styles.pwCard}>
+            <ThemedText style={styles.pwTitle}>{t('settings.changePassword')}</ThemedText>
+            <TextInput
+              style={styles.pwInput}
+              value={pwCurrent}
+              onChangeText={setPwCurrent}
+              secureTextEntry
+              textContentType="password"
+              autoCapitalize="none"
+              placeholder={t('auth.currentPasswordPlaceholder')}
+              placeholderTextColor={BakeryColors.jam}
+              returnKeyType="next"
+            />
+            <TextInput
+              style={styles.pwInput}
+              value={pwNew}
+              onChangeText={setPwNew}
+              secureTextEntry
+              textContentType="newPassword"
+              autoCapitalize="none"
+              placeholder={t('auth.passwordMinPlaceholder')}
+              placeholderTextColor={BakeryColors.jam}
+              returnKeyType="next"
+            />
+            <TextInput
+              style={styles.pwInput}
+              value={pwConfirm}
+              onChangeText={setPwConfirm}
+              secureTextEntry
+              textContentType="newPassword"
+              autoCapitalize="none"
+              placeholder={t('auth.typeAgain')}
+              placeholderTextColor={BakeryColors.jam}
+              returnKeyType="done"
+              onSubmitEditing={handleChangePassword}
+            />
+            {pwError ? <ThemedText style={styles.pwError}>{pwError}</ThemedText> : null}
+            {pwSuccess ? <ThemedText style={styles.pwSuccess}>{t('settings.passwordChanged')}</ThemedText> : null}
+            <Pressable
+              style={({ pressed }) => [styles.pwBtn, (pressed || pwSaving) && styles.pressed]}
+              onPress={handleChangePassword}
+              disabled={pwSaving}>
+              <ThemedText style={styles.pwBtnText}>
+                {pwSaving ? t('auth.saving') : t('auth.updatePassword')}
+              </ThemedText>
+            </Pressable>
+            <Pressable style={styles.resetCancel} onPress={() => setPwOpen(false)} disabled={pwSaving}>
+              <ThemedText style={styles.resetCancelText}>{t('common.cancel')}</ThemedText>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
       {/* TEST reset confirm — local modal so it shows over the Settings modal. */}
       <Modal visible={resetOpen} transparent animationType="fade" onRequestClose={() => setResetOpen(false)}>
         <View style={styles.resetBackdrop}>
@@ -597,6 +802,38 @@ export default function SettingsScreen() {
             </Pressable>
             <Pressable style={styles.resetCancel} onPress={() => setResetOpen(false)}>
               <ThemedText style={styles.resetCancelText}>Cancel</ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Birthday change-once editor. A LOCAL modal (root showPopup can't present
+          over the Settings native modal). The warning note makes the one-shot
+          nature explicit, so Save commits directly without a second confirm. */}
+      <Modal visible={bdayOpen} transparent animationType="fade" onRequestClose={() => setBdayOpen(false)}>
+        <View style={styles.resetBackdrop}>
+          <View style={styles.resetCard}>
+            <ThemedText style={styles.resetTitle}>{t('profileCard.birthday')}</ThemedText>
+            <ThemedText style={styles.resetBody}>
+              {profileBirthday ? t('profileCard.birthdayChangeOnceNote') : t('settings.birthdaySetNote')}
+            </ThemedText>
+            <DateWheelPicker value={bdayDraft} onChange={setBdayDraft} hideYear />
+            <Pressable
+              style={({ pressed }) => [styles.resetBtn, pressed && styles.pressed]}
+              onPress={() => {
+                // First-ever set (pre-onboarding-update users) doesn't burn the change;
+                // editing an existing birthday does (birthdayChanged: true → locks).
+                const isChange = !!profileBirthday;
+                // Don't burn the one allowed change if nothing actually changed
+                // (e.g. they opened the picker, it defaulted to today's value, Save).
+                if (isChange && bdayDraft === profileBirthday) { setBdayOpen(false); return; }
+                updateProfile(isChange ? { birthday: bdayDraft, birthdayChanged: true } : { birthday: bdayDraft });
+                setBdayOpen(false);
+              }}>
+              <ThemedText style={styles.resetBtnText}>{t('profileCard.birthdaySave')}</ThemedText>
+            </Pressable>
+            <Pressable style={styles.resetCancel} onPress={() => setBdayOpen(false)}>
+              <ThemedText style={styles.resetCancelText}>{t('common.cancel')}</ThemedText>
             </Pressable>
           </View>
         </View>
@@ -651,6 +888,17 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   rowBody: { flex: 1, gap: 2 * s },
   connectedTag: { color: '#5BA86B', fontWeight: '700' },
   chevron: { fontSize: 22 * s, lineHeight: 24 * s },
+  chevronOpen: { transform: [{ rotate: '90deg' }] },
+  // Inline language dropdown
+  langDropdown: { paddingLeft: 44 * s, paddingBottom: 6 * s, gap: 2 * s },
+  langOption: {
+    flexDirection: 'row', alignItems: 'center', gap: 10 * s,
+    paddingVertical: 11 * s, paddingHorizontal: 12 * s, borderRadius: 12 * s,
+  },
+  langOptionActive: { backgroundColor: 'rgba(247,167,184,0.18)' },
+  langFlag: { fontSize: 20 * s },
+  langName: { flex: 1 },
+  langCheck: { color: BakeryColors.berry },
   divider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: BakeryColors.border,
@@ -668,7 +916,7 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   // Local reset-confirm modal
   resetBackdrop: { flex: 1, backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center', padding: 24 },
   resetCard: {
-    width: '100%', maxWidth: 360 * s, backgroundColor: BakeryColors.frosting,
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 360 * s, backgroundColor: BakeryColors.frosting,
     borderRadius: BakeryRadii.panel * s, borderWidth: 2, borderColor: '#E8A0A0',
     padding: Spacing.four * s, gap: Spacing.two * s, ...BakeryShadow,
   },
@@ -680,4 +928,21 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   resetCancelText: { fontSize: 14 * s, fontWeight: '800', color: BakeryColors.mocha },
   pressed: { opacity: 0.85 },
   footer: { height: Spacing.five * s },
+  // Change-password modal
+  pwBackdrop: { flex: 1, backgroundColor: 'rgba(91,58,46,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  pwCard: {
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 360 * s, backgroundColor: BakeryColors.frosting,
+    borderRadius: BakeryRadii.panel * s, borderWidth: 2, borderColor: BakeryColors.rose,
+    padding: Spacing.four * s, gap: Spacing.two * s, ...BakeryShadow,
+  },
+  pwTitle: { fontSize: 19 * s, fontWeight: '900', color: BakeryColors.cocoaDark, textAlign: 'center', marginBottom: Spacing.one * s },
+  pwInput: {
+    height: 50 * s, borderRadius: BakeryRadii.pill, backgroundColor: '#FFFFFF',
+    borderWidth: 1.5, borderColor: BakeryColors.rose, paddingHorizontal: Spacing.three * s,
+    fontSize: 15 * s, color: BakeryColors.cocoaDark,
+  },
+  pwError: { color: BakeryColors.danger, fontSize: 13 * s, lineHeight: 18 * s, textAlign: 'center' },
+  pwSuccess: { color: BakeryColors.success, fontSize: 13 * s, lineHeight: 18 * s, textAlign: 'center' },
+  pwBtn: { paddingVertical: 14 * s, borderRadius: BakeryRadii.pill, alignItems: 'center', backgroundColor: BakeryColors.jam, marginTop: Spacing.one * s },
+  pwBtnText: { fontSize: 16 * s, fontWeight: '900', color: '#fff' },
 });

@@ -7,20 +7,30 @@ import {
   ScrollView,
   StyleSheet,
   TextInput,
+  View,
   useColorScheme,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { Image } from 'expo-image';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BakeryColors, BakeryRadii, BakeryShadow, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { authCallbackUrl, supabase } from '@/lib/supabase';
-import { useTranslation } from '@/i18n';
+import i18n, { useTranslation } from '@/i18n';
+
+// Password-visibility toggle: a normal (open-eyed) bear while the password is
+// hidden as dots, and an eyes-covered bear while it's revealed.
+const BEAR_HIDDEN = require('@/assets/images/auth/bear-eyes-open.png');
+const BEAR_SHOWN = require('@/assets/images/auth/bear-eyes-covered.png');
 
 export default function SignupScreen() {
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [existingAccountMessage, setExistingAccountMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -52,44 +62,73 @@ export default function SignupScreen() {
       return;
     }
 
+    if (password !== confirmPassword) {
+      setErrorMessage(t('errors.passwordsDoNotMatch'));
+      setExistingAccountMessage('');
+      return;
+    }
+
     setSubmitting(true);
     setErrorMessage('');
     setExistingAccountMessage('');
 
+    const goVerify = () =>
+      router.push({ pathname: '/verify-code', params: { email: normalizedEmail, mode: 'signup' } });
+
+    // When the email already exists, distinguish an *unfinished* signup (created
+    // but never verified — a leftover stub) from a real, confirmed account.
+    // Resending the signup code succeeds only for an unconfirmed user, so we use
+    // that as the test: success → let them finish verifying (don't dead-end on a
+    // half-made account); failure → it's a real account, send them to sign in.
+    const resumeOrBlock = async () => {
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email: normalizedEmail,
+        options: { emailRedirectTo: authCallbackUrl },
+      });
+      setSubmitting(false);
+      if (!resendError) {
+        goVerify();
+      } else {
+        setExistingAccountMessage(t('errors.emailAlreadyRegisteredLong'));
+      }
+    };
+
     const { data, error } = await supabase.auth.signUp({
       email: normalizedEmail,
       password,
-      options: { emailRedirectTo: authCallbackUrl },
+      // Store the chosen app language in user_metadata so the Send Email Hook can
+      // localize the verification (and later auth) emails to the right language.
+      options: { emailRedirectTo: authCallbackUrl, data: { language: i18n.language } },
     });
 
     if (error) {
-      if (/user already registered/i.test(error.message)) {
-        setExistingAccountMessage(t('errors.emailAlreadyRegistered'));
+      if (/already registered|already.*exists/i.test(error.message)) {
+        await resumeOrBlock();
       } else {
         setErrorMessage(error.message);
+        setSubmitting(false);
       }
-      setSubmitting(false);
       return;
     }
 
-    // Supabase signals a duplicate email in three ways:
-    // 1. error.message "user already registered" (enumeration protection OFF)
-    // 2. data.user.identities === [] (unconfirmed duplicate, protection OFF)
-    // 3. data.user === null with no error (enumeration protection ON)
+    // Supabase signals a duplicate email in several ways:
+    // 1. error.message "user already registered" (handled above)
+    // 2. data.user.identities === [] (unconfirmed duplicate, enumeration off)
+    // 3. data.user === null with no error (enumeration protection on)
     // 4. data.user.email_confirmed_at set (confirmed account already exists)
     const looksLikeExistingAccount =
       !data.user ||
       (Array.isArray(data.user.identities) && data.user.identities.length === 0) ||
       !!data.user.email_confirmed_at;
 
-    setSubmitting(false);
-
     if (looksLikeExistingAccount) {
-      setExistingAccountMessage(t('errors.emailAlreadyRegisteredLong'));
+      await resumeOrBlock();
       return;
     }
 
-    router.push({ pathname: '/verify-code', params: { email: normalizedEmail, mode: 'signup' } });
+    setSubmitting(false);
+    goVerify();
   };
 
   return (
@@ -125,17 +164,53 @@ export default function SignupScreen() {
               />
 
               <ThemedText type="smallBold">{t('auth.password')}</ThemedText>
-              <TextInput
-                style={inputStyle}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                textContentType="newPassword"
-                placeholder={t('auth.passwordMinPlaceholder')}
-                placeholderTextColor={colors.textSecondary}
-                returnKeyType="done"
-                onSubmitEditing={handleSignup}
-              />
+              <View style={[inputStyle, styles.passwordRow]}>
+                <TextInput
+                  style={styles.passwordInput}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  textContentType="newPassword"
+                  placeholder={t('auth.passwordMinPlaceholder')}
+                  placeholderTextColor={colors.textSecondary}
+                  returnKeyType="next"
+                />
+                <Pressable
+                  hitSlop={8}
+                  onPress={() => setShowPassword((s) => !s)}
+                  style={({ pressed }) => pressed && styles.pressed}>
+                  <Image
+                    source={showPassword ? BEAR_SHOWN : BEAR_HIDDEN}
+                    style={styles.bearToggle}
+                    contentFit="contain"
+                  />
+                </Pressable>
+              </View>
+
+              <ThemedText type="smallBold">{t('auth.confirmPassword')}</ThemedText>
+              <View style={[inputStyle, styles.passwordRow]}>
+                <TextInput
+                  style={styles.passwordInput}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showPassword}
+                  textContentType="newPassword"
+                  placeholder={t('auth.confirmPasswordPlaceholder')}
+                  placeholderTextColor={colors.textSecondary}
+                  returnKeyType="done"
+                  onSubmitEditing={handleSignup}
+                />
+                <Pressable
+                  hitSlop={8}
+                  onPress={() => setShowPassword((s) => !s)}
+                  style={({ pressed }) => pressed && styles.pressed}>
+                  <Image
+                    source={showPassword ? BEAR_SHOWN : BEAR_HIDDEN}
+                    style={styles.bearToggle}
+                    contentFit="contain"
+                  />
+                </Pressable>
+              </View>
 
               {errorMessage ? (
                 <ThemedText type="small" style={styles.errorText}>
@@ -225,14 +300,21 @@ const styles = StyleSheet.create({
     backgroundColor: BakeryColors.glass,
     ...BakeryShadow,
   },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  passwordInput: { flex: 1, color: BakeryColors.cocoaDark, fontSize: 16, paddingVertical: 0 },
+  bearToggle: { width: 30, height: 30, backgroundColor: 'transparent' },
   primaryButton: {
     marginTop: Spacing.one,
-    backgroundColor: BakeryColors.honey,
+    backgroundColor: BakeryColors.jam,
     borderRadius: BakeryRadii.button,
     paddingVertical: Spacing.three,
     alignItems: 'center',
   },
-  primaryButtonText: { color: BakeryColors.cocoaDark },
+  primaryButtonText: { color: '#FFFFFF' },
   secondaryButton: {
     borderRadius: BakeryRadii.button,
     paddingVertical: Spacing.three,

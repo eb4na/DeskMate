@@ -235,7 +235,7 @@ export default function CompanionChatScreen() {
             </Pressable>
             <View style={styles.profileInfo}>
               <View style={styles.profileNameRow}>
-                <ThemedText style={styles.profileName}>DeskMate</ThemedText>
+                <ThemedText style={styles.profileName}>{localizeCompanionName(companion.name, t)}</ThemedText>
                 <HeartIcon />
               </View>
               <View style={styles.onlineRow}>

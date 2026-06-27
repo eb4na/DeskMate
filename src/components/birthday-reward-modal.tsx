@@ -9,8 +9,11 @@ import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { MIN_POPUP_WIDTH } from '@/constants/theme';
+
 import { BIRTHDAY_REWARD_COINS, birthdayRewardAvailable, todayISO, useApp } from '@/context/app-context';
 import { isLoadingActive, subscribeLoadingDone } from '@/lib/loading-signal';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 import { useTranslation } from '@/i18n';
 
 const COIN = require('@/assets/images/home/coin-icon.png');
@@ -27,6 +30,7 @@ export function BirthdayRewardModal() {
     profileBirthday, birthdayRewardYear, claimBirthdayReward,
     hanjiUnlockPending, recipeBadgePending,
     legalAccepted, starterChosen,
+    characterObtainedPending,
   } = useApp();
 
   const available = birthdayRewardAvailable({ profileBirthday, birthdayRewardYear }, todayISO());
@@ -43,7 +47,8 @@ export function BirthdayRewardModal() {
   }, []);
 
   const onboarded = legalAccepted && starterChosen;
-  const visible = available && armed && onboarded && !hanjiUnlockPending && !recipeBadgePending;
+  const visible = available && armed && onboarded && !characterObtainedPending && !hanjiUnlockPending && !recipeBadgePending;
+  useReportModalTransition(visible);
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -77,7 +82,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
   card: {
-    width: '100%', maxWidth: 340, backgroundColor: P.card, borderRadius: 24,
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 340, backgroundColor: P.card, borderRadius: 24,
     borderWidth: 2, borderColor: P.pinkSoft, padding: 22, alignItems: 'center', gap: 6,
   },
   cake: { width: 76, height: 76, marginBottom: 2 },

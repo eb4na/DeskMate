@@ -5,6 +5,7 @@ import { Dimensions, Pressable, StyleSheet, useWindowDimensions, View } from 're
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { DevKnobs } from '@/components/dev-knobs';
+import { GameRulesButton } from '@/components/game-rules-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
@@ -203,6 +204,8 @@ export function Connect4Game({
 
   useEffect(() => () => leaveRoom(), [leaveRoom]);
 
+  // Randomize who drops the first piece (player 1 or 2) so it's never always the host.
+  const randomFirst = useCallback((): Player => (Math.random() < 0.5 ? 1 : 2), []);
   const resetGame = useCallback((first: Player = 1) => {
     const fresh = createBoard();
     boardRef.current = fresh;
@@ -270,7 +273,7 @@ export function Connect4Game({
     setOpp('ai');
     setMyPlayer(1);
     myPlayerRef.current = 1;
-    resetGame(1);
+    resetGame(randomFirst());
     setScreen('play');
   };
 
@@ -280,7 +283,7 @@ export function Connect4Game({
     setOpp('local');
     setMyPlayer(1);
     myPlayerRef.current = 1;
-    resetGame(1);
+    resetGame(randomFirst());
     setScreen('play');
   };
 
@@ -295,14 +298,24 @@ export function Connect4Game({
     leaveRoom();
     roomRef.current = joinConnect4Room(code, isHost, {
       onMove: (col) => doMove(col, mine === 1 ? 2 : 1),
-      onRematch: () => resetGame(1),
+      // Guest applies whatever starter the host chose for this game / rematch.
+      onStart: (first) => resetGame(first as Player),
+      onRematch: (first) => resetGame(first as Player),
       onPresence: ({ opponentPresent: present, opponent }) => {
         setOpponentPresent(present);
         if (opponent) setOppMeta(opponent);
         if (present) {
           setConnecting(false);
           if (screenRef.current !== 'play') {
-            resetGame(1);
+            if (isHost) {
+              // Host picks the first player at random and tells the guest, so the
+              // opener isn't always the host.
+              const first = randomFirst();
+              resetGame(first);
+              roomRef.current?.sendStart(first);
+            } else {
+              resetGame(1); // placeholder until the host's `onStart` arrives
+            }
             setScreen('play');
           }
         } else if (screenRef.current === 'play') {
@@ -439,8 +452,9 @@ export function Connect4Game({
   const myTurn = !result && !oppLeft && (localMode || turn === myPlayer);
   const gameOver = !!result || oppLeft;
   const rematch = () => {
-    resetGame(1);
-    if (opp === 'online') roomRef.current?.sendRematch();
+    const first = randomFirst();
+    resetGame(first);
+    if (opp === 'online') roomRef.current?.sendRematch(first);
   };
 
   // Avatars:
@@ -511,6 +525,13 @@ export function Connect4Game({
       <Pressable style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} onPress={() => onLeave?.()} hitSlop={8}>
         <Image source={BACK_IMG} style={styles.backImg} contentFit="contain" />
       </Pressable>
+
+      {/* Rules (top-right, mirrors the back button) */}
+      <GameRulesButton
+        title={t('games.howToPlay')}
+        body={t('games.rulesConnect4')}
+        style={styles.rulesBtn}
+      />
 
       {/* Title logo */}
       <Image source={TITLE_IMG} style={[styles.titleImg, tw('title')]} contentFit="contain" />
@@ -683,6 +704,7 @@ const styles = StyleSheet.create({
   // Logo pins to the top (modeRoot); the picker fills the rest and centers in it.
   modePickerCenter: { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center', gap: Spacing.three, paddingBottom: SCREEN_H * 0.16 },
   backBtn: { position: 'absolute', top: -2, left: 2, width: 58, height: 58, zIndex: 5 },
+  rulesBtn: { top: 8, right: 18 },
   backImg: { width: 58, height: 58 },
   titleImg: { width: Math.min(BOARD_W, 320 * UI), height: Math.min(BOARD_W, 320 * UI) / 2.66, marginTop: 2 },
 

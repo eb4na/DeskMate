@@ -9,6 +9,7 @@ import { PostHogProvider } from 'posthog-react-native';
 import { useIsTablet } from '@/hooks/use-device-class';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { InviteListener } from '@/components/invite-listener';
 import { CharacterObtainedModal } from '@/components/character-obtained-modal';
 import { LegalConsentGate } from '@/components/legal-consent-gate';
@@ -54,11 +55,16 @@ function LoadingScreen({ ready, quick, onDone }: { ready: boolean; quick?: boole
   const { t } = useTranslation();
   const [slow, setSlow] = useState(false);
   const [minDone, setMinDone] = useState(false);
+  // FAIL-OPEN failsafe: if `ready` never flips (e.g. a hung asset prefetch leaves a
+  // gate stuck), force-dismiss after a hard cap so the overlay can NEVER block the
+  // app forever. Generous so it doesn't cut a legitimately-slow load short.
+  const [forceDone, setForceDone] = useState(false);
 
   // Launch/login use the full 3s loader; quick in-app navigation uses a short
   // minimum so it dismisses the moment the destination's assets are ready.
   const minMs = quick ? 400 : 3000;
   const barMs = quick ? 500 : 3000;
+  const maxMs = quick ? 6000 : 10000;
 
   // Creep the bar toward ~92% over the minimum hold; never completes on its own.
   useEffect(() => {
@@ -70,14 +76,17 @@ function LoadingScreen({ ready, quick, onDone }: { ready: boolean; quick?: boole
     }).start();
     const minTimer = setTimeout(() => setMinDone(true), minMs);
     const slowTimer = setTimeout(() => setSlow(true), 3000);
+    const maxTimer = setTimeout(() => setForceDone(true), maxMs);
     return () => {
       clearTimeout(minTimer);
       clearTimeout(slowTimer);
+      clearTimeout(maxTimer);
     };
-  }, [progress, minMs, barMs]);
+  }, [progress, minMs, barMs, maxMs]);
 
-  // Finish only once the app is ready AND the 3s minimum has passed.
-  const finished = ready && minDone;
+  // Finish once the app is ready AND the minimum hold has passed — OR once the hard
+  // max-hold failsafe trips (so a stuck `ready` can't freeze the screen).
+  const finished = (ready && minDone) || forceDone;
   useEffect(() => {
     if (!finished) return;
     Animated.sequence([
@@ -89,7 +98,7 @@ function LoadingScreen({ ready, quick, onDone }: { ready: boolean; quick?: boole
   const width = progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
 
   return (
-    <Animated.View style={[styles.loadingRoot, { opacity: fade }]} pointerEvents="auto">
+    <Animated.View style={[styles.loadingRoot, { opacity: fade }]} pointerEvents={finished ? 'none' : 'auto'}>
       <ExpoImage source={img} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="center" />
       <View style={styles.loadingBarWrap}>
         <Text style={[styles.loadingLabel, whiteText && styles.loadingLabelWhite]}>{t('common.loading')}</Text>
@@ -120,7 +129,7 @@ const PRELOAD_ASSETS = [
 
 function RootNavigator() {
   const { initialized, isGuest, session, signOut, sessionRestoredAtLaunch } = useAuth();
-  const { loaded, legalAccepted, markLegalAccepted, setBirthday, soundEffectsEnabled, starterChosen, isPlus, plusPlan, setIsPlus, persistedStateReady, resetAccountForAbandonedOnboarding,
+  const { loaded, legalAccepted, markLegalAccepted, setBirthday, updateProfile, soundEffectsEnabled, starterChosen, isPlus, plusPlan, setIsPlus, persistedStateReady, resetAccountForAbandonedOnboarding,
     equippedBackgroundRoomId, equippedDeskRoomId, activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins } = useApp();
   const { t } = useTranslation();
 
@@ -159,9 +168,14 @@ function RootNavigator() {
       const numeric = [bg, desk, ...(typeof char === 'number' ? [char] : [])].filter((x): x is number => x != null);
       // Custom-art companions carry a {uri} image — prefetch those through expo-image.
       const uri = char && typeof char === 'object' && 'uri' in char ? char.uri : undefined;
-      Promise.all([
-        Asset.loadAsync(numeric).catch(() => {}),
-        ...(uri ? [ExpoImage.prefetch(uri).catch(() => {})] : []),
+      // Race a timeout so a HUNG prefetch (pending, never rejects) can't wedge the
+      // splash — `.catch` only handles rejection, not an indefinitely-pending promise.
+      Promise.race([
+        Promise.all([
+          Asset.loadAsync(numeric).catch(() => {}),
+          ...(uri ? [ExpoImage.prefetch(uri).catch(() => {})] : []),
+        ]),
+        new Promise((res) => setTimeout(res, 5000)),
       ]).finally(() => { if (!cancelled) setHomeAssetsReady(true); });
     } catch {
       // Never let a resolution error wedge the splash on screen — fail open.
@@ -192,7 +206,10 @@ function RootNavigator() {
     // Wait until this account's saved state is *reliably* loaded (not a failed-load
     // fallback to defaults, which would falsely look like unfinished onboarding).
     if (!persistedStateReady || !authed) return;
-    if (legalAccepted && starterChosen) return; // onboarding finished — nothing to do
+    // Onboarding finished — disarm the guard for the rest of the session so a LATER
+    // in-session drop back to the starter picker (e.g. the dev "Reset items" button)
+    // is treated as a deliberate re-pick, not an abandoned-onboarding wipe.
+    if (legalAccepted && starterChosen) { abandonHandledRef.current = true; return; }
     abandonHandledRef.current = true;
     (async () => {
       await resetAccountForAbandonedOnboarding();
@@ -321,6 +338,12 @@ function RootNavigator() {
       <LegalConsentGate
         onAgree={(birthday) => {
           setBirthday(birthday);
+          // Seed the profile birthday (shown on the card + drives the yearly reward)
+          // from the same pick, but YEAR-STRIPPED to a fixed leap year (2008) — the
+          // profile birthday syncs to friends, so the real birth year must not leak.
+          // Only month/day is ever used (card formatter + isBirthdayToday). This is
+          // the initial set, so it does NOT consume the one allowed change in Settings.
+          updateProfile({ birthday: `2008-${birthday.slice(5)}` });
           markLegalAccepted();
         }}
       />
@@ -360,7 +383,9 @@ function LandscapeLetterbox({ children }: { children: ReactNode }) {
 function AnalyticsIdentity() {
   const { user, isGuest } = useAuth();
   useEffect(() => {
-    if (user) identifyUser(user.id, user.email ? { email: user.email } : undefined);
+    // Identify by the (non-PII) account UUID only — deliberately don't send the user's
+    // email to a third-party analytics service (privacy-by-design for a 13+ app).
+    if (user) identifyUser(user.id);
     else if (!isGuest) resetUser();
   }, [user, isGuest]);
   return null;
@@ -388,7 +413,9 @@ function AppShell() {
       <StudyRoomProvider>
         <AnalyticsIdentity />
         <LandscapeLetterbox>
-          <RootNavigator />
+          <ErrorBoundary>
+            <RootNavigator />
+          </ErrorBoundary>
         </LandscapeLetterbox>
         <InviteListener />
         <PopupHost />

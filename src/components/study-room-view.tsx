@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Svg, { Line } from 'react-native-svg';
 import { Animated, AppState, Easing, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
+import { DurationWheel } from '@/components/duration-wheel';
 import { cancelComeBackNudge, sendComeBackNudge } from '@/lib/notifications';
 
 import { CoinIcon } from '@/components/coin-icon';
@@ -26,14 +27,14 @@ import { SoundPickerModal } from '@/components/sound-picker-modal';
 import { DevKnobs } from '@/components/dev-knobs';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { getCompanionImage, hanjiIsAnimated, isHanjiActiveId, resolveActiveCompanion } from '@/lib/companion-utils';
-import { PetBubble } from '@/components/companion-pet';
+import { FloatingHeart, makeHearts, PetBubble, type Heart } from '@/components/companion-pet';
 import { getPetLine } from '@/constants/pet-lines';
 import { HanjiFigure } from '@/components/hanji-figure';
 import { useStudyRoom, STUDY_ROOM_MAX, type StudyStatus } from '@/lib/use-study-room';
 import { joinPresence, setMyPresenceStatus } from '@/lib/game-net';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { useTranslation } from '@/i18n';
-import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
 
 // Active-companion id → pet-line persona key (the i18n `pet.<key>` voice). Tapping
 // a character during a session shows one of its lines. Custom/AI slots map to
@@ -181,20 +182,52 @@ export function StudyRoomView({
     ownedShopItems,
     setEquippedSound,
     vinylColor,
+    spotifyBgEnabled,
+    spotifyBgColor,
+    isPlus,
   } = useApp();
+  const room = useStudyRoom();
+  // "Spotify background" focus mode: a minimal scene (plain text countdown, no desk or
+  // book, character dropped lower and bouncing hard) over the solid bg + big cover vinyl.
+  // In a multiplayer room, a GUEST follows the host's broadcast (so the host turning it
+  // on gives every player the disco scene, Plus or not); the host + a solo studier use
+  // their own setting.
+  const followsHostDisco = room.active && !room.isHost;
+  const focus = followsHostDisco ? room.hostDiscoOn : spotifyBgEnabled;
+  const discoColor: 'black' | 'white' = followsHostDisco ? room.hostDiscoColor : spotifyBgColor;
+  const focusFg = discoColor === 'white' ? '#111111' : '#FFFFFF';
   // Tap-to-talk during a session: tapping a character pops one of its pet lines in a
   // cloud above it. `talk.code` is whose bubble is showing (mine = my friendCode).
   const [talk, setTalk] = useState<{ code: string; line: string; id: number } | null>(null);
   const myPersona = PERSONA_BY_COMPANION[activeCompanionId ?? ''];
   const mySkin = activeCompanionId === 'starter:girl' ? bunSkinId : companionSkins?.[activeCompanionId ?? ''] ?? 'classic';
-  const talkAs = (code: string, persona: string | undefined, skin: string | undefined) => {
+  // Tap reaction (same feel as Home's CompanionPet): a quick squish bounce + a burst of
+  // hearts, in addition to the spoken line. Native-driven so the per-second countdown
+  // re-render never re-attaches/stutters the animation. Hearts render in whichever
+  // character was tapped (matched on `talk.code`); `heartScale` sizes them to it.
+  const tapScale = useRef(new Animated.Value(1)).current;
+  const [hearts, setHearts] = useState<Heart[]>([]);
+  const [heartScale, setHeartScale] = useState(1);
+  const talkAs = (code: string, persona: string | undefined, skin: string | undefined, scale = 1) => {
     playPop();
+    Animated.sequence([
+      Animated.timing(tapScale, { toValue: 1.1, duration: 110, useNativeDriver: true }),
+      Animated.spring(tapScale, { toValue: 1, friction: 4, tension: 120, useNativeDriver: true }),
+    ]).start();
+    setHeartScale(scale);
+    setHearts((h) => [...h, ...makeHearts(scale)]);
     setTalk({ code, line: getPetLine(persona, skin), id: Date.now() });
   };
 
-  // The equipped study sound (a `sound_<id>` shop item) → its ambience id. Music
+  // Host radio (bundled study sounds): when a Plus host shares, every guest plays
+  // the HOST's equipped study sound instead of their own. Only guests are overridden
+  // (the host + solo studiers always use their own sound). `hostSoundId` null while
+  // sharing = host turned its sound off, so the guest goes quiet too.
+  const hostSharingSound = room.active && !room.isHost && room.hostSoundShared;
+  const effectiveSoundItem = hostSharingSound ? room.hostSoundId : equippedShopItems.sound;
+  // The effective study sound (a `sound_<id>` shop item) → its ambience id. Music
   // only actually plays for sounds that have an audio file; the vinyl spins to match.
-  const equippedAmbId = equippedShopItems.sound ? equippedShopItems.sound.replace('sound_', '') : null;
+  const equippedAmbId = effectiveSoundItem ? effectiveSoundItem.replace('sound_', '') : null;
   // When Spotify is connected it takes over the radio (the user controls it in the
   // sound popup); otherwise the bundled study sound loops. The vinyl spins for either.
   const [spotifyOn, setSpotifyOn] = useState(spotifyConnected());
@@ -210,9 +243,15 @@ export function StudyRoomView({
   };
   // What the vinyl's label shows: the Spotify cover when connected & it has art,
   // otherwise the equipped study sound's icon (or nothing).
-  const equippedSoundImage = SHOP_ITEMS.find((i) => i.id === equippedShopItems.sound)?.image;
+  const equippedSoundImage = SHOP_ITEMS.find((i) => i.id === effectiveSoundItem)?.image;
   const vinylCenter: number | { uri: string } | undefined =
     spotifyOn && playback?.coverUrl ? { uri: playback.coverUrl } : equippedSoundImage;
+  // The big disco vinyl's art: a guest shows the HOST's cover (synced) — or the host's
+  // shared bundled-sound icon (effectiveSoundItem already resolves to it) when the host
+  // isn't on Spotify; the host + a solo studier use their own vinylCenter.
+  const discoVinylCenter: number | { uri: string } | undefined = followsHostDisco
+    ? (room.hostCoverUrl ? { uri: room.hostCoverUrl } : equippedSoundImage)
+    : vinylCenter;
   // Spin only while something is actually playing: Spotify's reported state when
   // connected, else the looping study sound.
   const musicPlaying = (spotifyOn && !!playback?.isPlaying) || (!!equippedAmbId && hasSoundPreview(equippedAmbId));
@@ -228,6 +267,9 @@ export function StudyRoomView({
   const lastSoundRef = useRef(equippedShopItems.sound);
   useEffect(() => { if (equippedShopItems.sound) lastSoundRef.current = equippedShopItems.sound; }, [equippedShopItems.sound]);
   const onVinylSpin = () => {
+    // A guest hearing the host's shared sound can't change it — the radio just
+    // reflects the host's music, so a spin would have no audible effect.
+    if (hostSharingSound) return;
     if (spotifyOn) {
       // Pause is a simple toggle; play targets a device explicitly (a bare resume
       // can't wake an idle Spotify) so the music actually starts.
@@ -239,7 +281,7 @@ export function StudyRoomView({
     if (equippedShopItems.sound) {
       setEquippedSound(null);
     } else {
-      const next = lastSoundRef.current ?? SHOP_ITEMS.find((i) => i.category === 'sound' && ownedShopItems.includes(i.id))?.id ?? null;
+      const next = lastSoundRef.current ?? SHOP_ITEMS.find((i) => i.category === 'sound' && (isPlus || ownedShopItems.includes(i.id)))?.id ?? null;
       if (next) setEquippedSound(next);
     }
   };
@@ -286,7 +328,6 @@ export function StudyRoomView({
 
   // The baked recipe's dish art (springs out of the timer when the session ends).
   const dishImage = (FOOD_ITEMS.find((f) => f.id === selectedFoodId) ?? FOOD_ITEMS[0]).image;
-  const room = useStudyRoom();
   // In a room everyone studies on the host's desk; solo uses my equipped desk.
   const deskRoomId = room.active && room.hostDeskId ? room.hostDeskId : equippedDeskRoomId;
   const deskRoom = ROOM_PAIRS.find((r) => r.id === deskRoomId);
@@ -381,16 +422,18 @@ export function StudyRoomView({
   // (same idle motion as the home screen). 0 = resting/lowest, 1 = apex.
   const charBounce = useRef(new Animated.Value(0)).current;
   useEffect(() => {
+    // Focus mode bounces hard + fast; normal mode is the gentle home-screen idle.
+    const dur = focus ? 300 : 900;
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(charBounce, { toValue: 1, duration: 900, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-        Animated.timing(charBounce, { toValue: 0, duration: 900, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+        Animated.timing(charBounce, { toValue: 1, duration: dur, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(charBounce, { toValue: 0, duration: dur, easing: Easing.in(Easing.quad), useNativeDriver: true }),
       ]),
     );
     loop.start();
     return () => loop.stop();
-  }, [charBounce]);
-  const charTranslateY = charBounce.interpolate({ inputRange: [0, 1], outputRange: [0, -7] });
+  }, [charBounce, focus]);
+  const charTranslateY = charBounce.interpolate({ inputRange: [0, 1], outputRange: [0, focus ? -36 : -7] });
   const charScaleY = charBounce.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1.02] });
   const charScaleX = charBounce.interpolate({ inputRange: [0, 1], outputRange: [1.02, 0.99] });
 
@@ -594,7 +637,12 @@ export function StudyRoomView({
   const [finishPickerOpen, setFinishPickerOpen] = useState(false);
   const [coinsEarned, setCoinsEarned] = useState(0);
   const creditedRef = useRef<string | null>(null);
-  const mpFinished = !!activeSession?.isMultiplayer && secondsLeft <= 0;
+  // Wall-clock fallback: the per-second `secondsLeft` tick (driven from Home) can
+  // stall (backgrounding, render lag), which would leave a multiplayer session stuck
+  // at 00:00 with NO finish menu and NO Exit button — a hard freeze. This flag is
+  // force-set by a timer at the exact end moment so the finish always surfaces.
+  const [mpForceFinished, setMpForceFinished] = useState(false);
+  const mpFinished = !!activeSession?.isMultiplayer && (secondsLeft <= 0 || mpForceFinished);
   // Post-finish unlimited break: a resting state with a Continue button (no timer,
   // no limit). Separate from `onBreak` (the in-session soft break) on purpose.
   const [finishBreak, setFinishBreak] = useState(false);
@@ -602,6 +650,9 @@ export function StudyRoomView({
   // duration waits here between the time picker and the subject picker.
   const [durationPickerOpen, setDurationPickerOpen] = useState(false);
   const [restartDuration, setRestartDuration] = useState<number | null>(null);
+  // Plus-only custom length for "study again": shows the duration wheel inline.
+  const [restartCustomOpen, setRestartCustomOpen] = useState(false);
+  const [restartCustomMin, setRestartCustomMin] = useState(45);
 
   const startFinishBreak = () => {
     setFinishBreak(true);
@@ -616,6 +667,20 @@ export function StudyRoomView({
     setDurationPickerOpen(false);
     setFinishPickerOpen(true);
   };
+
+  // Schedule the multiplayer finish for the EXACT end moment, independent of the
+  // ticking `secondsLeft`. Mirrors the solo wall-clock finisher in index.tsx so a
+  // stalled tick can't freeze the session. Re-arms whenever the session changes.
+  useEffect(() => {
+    setMpForceFinished(false);
+    if (!activeSession?.isMultiplayer) return;
+    const endMs = new Date(activeSession.startedAt).getTime() + activeSession.durationMinutes * 60000;
+    const remaining = endMs - Date.now();
+    if (remaining <= 0) { setMpForceFinished(true); return; }
+    const id = setTimeout(() => setMpForceFinished(true), remaining + 50);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSession?.id, activeSession?.startedAt, activeSession?.durationMinutes]);
 
   useEffect(() => {
     if (mpFinished && activeSession && creditedRef.current !== activeSession.id) {
@@ -702,18 +767,36 @@ export function StudyRoomView({
 
   return (
     <View style={styles.root}>
+      {/* "Spotify background" mode: a large album-cover vinyl drawn over the solid
+          black/white fill (set in index.tsx), behind the desk + character. Decorative
+          only — the small radio vinyl below stays the play/stop control. */}
+      {focus && (
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'flex-start', paddingTop: winH * 0.15 }]}>
+          <StudyVinyl
+            size={Math.round(Math.min(winW, winH) * 0.66)}
+            playing={followsHostDisco ? true : musicPlaying}
+            discColor={vinylColor}
+            centerImage={discoVinylCenter}
+            disk
+            holeColor={discoColor === 'white' ? '#FFFFFF' : '#000000'}
+          />
+        </View>
+      )}
       {/* Invite-friend button (top right) — shown whenever there's room for more
           studiers (fewer than STUDY_ROOM_MAX, INCLUDING a solo session). Once a
           multiplayer room fills to 3, the button is simply removed (no "Full" chip). */}
       {!roomFull && (
-        <Pressable onPress={handleAddFriend} style={({ pressed }) => [styles.addFriendBtn, isTablet && styles.addFriendBtnTablet, pressed && styles.pressed]} hitSlop={8}>
-          <Text style={[styles.addFriendIcon, isTablet && styles.addFriendIconTablet]}>＋</Text>
-          <Text style={[styles.addFriendLabel, isTablet && styles.addFriendLabelTablet]}>{t('studyRoom.friend')}</Text>
+        <Pressable onPress={handleAddFriend} style={({ pressed }) => [styles.addFriendBtn, isTablet && styles.addFriendBtnTablet, focus && styles.btnFocusFlat, pressed && styles.pressed]} hitSlop={8} accessibilityLabel={t('studyRoom.friend')}>
+          <Text style={[styles.addFriendIcon, isTablet && styles.addFriendIconTablet, focus && { color: focusFg }]}>＋</Text>
         </Pressable>
       )}
 
       {/* Timer card */}
-      <View ref={timerCardRef} onLayout={measureRopes} style={[styles.timerWrap, soloScene && styles.timerWrapSolo, isTablet && { width: soloScene ? '62%' : '48%' }]}>
+      <View ref={timerCardRef} onLayout={measureRopes} style={[styles.timerWrap, soloScene && styles.timerWrapSolo, isTablet && { width: soloScene ? '62%' : '48%' }, focus && { marginTop: isTablet ? 48 : 30 }]}>
+        {focus ? (
+          /* Focus mode: just the countdown, in the opposite colour to the background. */
+          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.3} style={[styles.focusTimer, { color: focusFg }]}>{format(displaySecs)}</Text>
+        ) : (<>
         {/* Ropes from the real top of the screen down to the sign's eyelets. Rendered
             behind StudyOven so the sign body + eyelet circles cover the rope ends. */}
         {ropes && (
@@ -748,6 +831,7 @@ export function StudyRoomView({
         </View>
         {/* When the session ends, the baked recipe springs up out of the timer. */}
         {isSolo && <RecipePop dish={dishImage} playing={finishing} />}
+        </>)}
       </View>
 
       {/* Status-circle row removed: each studier's break state now reads off their
@@ -769,8 +853,17 @@ export function StudyRoomView({
           // Transform lives on an Animated.View (like Home) — applying it to the
           // expo-image directly stutters because the study view re-renders every
           // second (the countdown), which re-attaches the native animation nodes.
-          <Pressable style={[styles.character, styles.characterSolo]} onPress={() => talkAs(friendCode, myPersona, mySkin)}>
-            <Animated.View style={soloCharTransform}>{soloCharContent}</Animated.View>
+          <Pressable style={[styles.character, styles.characterSolo, focus && styles.characterSoloFocus]} onPress={() => talkAs(friendCode, myPersona, mySkin)}>
+            {/* Squish layer (center-bottom origin so feet stay tucked behind the desk
+                on tap) wraps the idle-bounce layer — mirrors Home's CompanionPet. */}
+            <Animated.View style={{ width: '100%', height: '100%', transform: [{ scale: tapScale }], transformOrigin: 'center bottom' }}>
+              <Animated.View style={soloCharTransform}>{soloCharContent}</Animated.View>
+            </Animated.View>
+            {/* Disco lighting wash over the character so it blends into the scene. */}
+            {focus && <View pointerEvents="none" style={styles.discoCharTint} />}
+            {talk?.code === friendCode && hearts.map((h) => (
+              <FloatingHeart key={h.id} heart={h} size={18 * heartScale} onDone={() => setHearts((cur) => cur.filter((x) => x.id !== h.id))} />
+            ))}
             {talk && <PetBubble key={talk.id} line={talk.line} onDone={() => setTalk(null)} />}
           </Pressable>
         )}
@@ -789,9 +882,15 @@ export function StudyRoomView({
           behind the table. Phone uses the in-scene flex layout above. */}
       {soloScene && isTablet && (
         <Animated.View
-          style={[{ position: 'absolute', left: 0, right: 0, bottom: soloCharBottomT, alignItems: 'center', zIndex: 1 }, soloCharTransform]}>
-          <Pressable style={{ width: soloCharSize, height: soloCharSize }} onPress={() => talkAs(friendCode, myPersona, mySkin)}>
-            {soloCharContent}
+          style={[{ position: 'absolute', left: 0, right: 0, bottom: focus ? soloCharBottomT - 120 : soloCharBottomT, alignItems: 'center', zIndex: 1 }, soloCharTransform]}>
+          <Pressable style={{ width: soloCharSize, height: soloCharSize }} onPress={() => talkAs(friendCode, myPersona, mySkin, 1.25)}>
+            <Animated.View style={{ flex: 1, transform: [{ scale: tapScale }], transformOrigin: 'center bottom' }}>
+              {soloCharContent}
+            </Animated.View>
+            {focus && <View pointerEvents="none" style={styles.discoCharTint} />}
+            {talk?.code === friendCode && hearts.map((h) => (
+              <FloatingHeart key={h.id} heart={h} size={18 * heartScale} onDone={() => setHearts((cur) => cur.filter((x) => x.id !== h.id))} />
+            ))}
             {talk && <PetBubble key={talk.id} line={talk.line} scale={1.25} onDone={() => setTalk(null)} />}
           </Pressable>
         </Animated.View>
@@ -812,19 +911,25 @@ export function StudyRoomView({
             const persona = p.code === friendCode ? myPersona : (p.companionId ? PERSONA_BY_COMPANION[p.companionId] : undefined);
             const skin = p.code === friendCode ? mySkin : p.skinId;
             return (
-              <Pressable key={p.code} style={[styles.partyMember, { width: partySlotW }]} onPress={() => talkAs(p.code, persona, skin)}>
+              <Pressable key={p.code} style={[styles.partyMember, { width: partySlotW }]} onPress={() => talkAs(p.code, persona, skin, 0.72)}>
                 {/* No status dot above the character — status already shows on the
                     top participant cards, so the dot here was redundant clutter. */}
-                {/* Same gentle idle bounce as the solo character (transform on an
+                {/* Squish-on-tap layer (only the tapped member uses tapScale) wrapping
+                    the same gentle idle bounce as the solo character (transform on an
                     Animated.View, not the image, to avoid per-second re-render stutter). */}
-                <Animated.View
-                  style={{ transform: [{ translateY: charTranslateY }, { scaleX: charScaleX }, { scaleY: charScaleY }] }}>
-                  {pIsHanji ? (
-                    <HanjiFigure style={{ width: partyCharSize, height: partyCharSize }} />
-                  ) : (
-                    <Image source={img} style={{ width: partyCharSize, height: partyCharSize }} contentFit="contain" />
-                  )}
+                <Animated.View style={{ transform: [{ scale: talk?.code === p.code ? tapScale : 1 }], transformOrigin: 'center bottom' }}>
+                  <Animated.View
+                    style={{ transform: [{ translateY: charTranslateY }, { scaleX: charScaleX }, { scaleY: charScaleY }] }}>
+                    {pIsHanji ? (
+                      <HanjiFigure style={{ width: partyCharSize, height: partyCharSize }} />
+                    ) : (
+                      <Image source={img} style={{ width: partyCharSize, height: partyCharSize }} contentFit="contain" />
+                    )}
+                  </Animated.View>
                 </Animated.View>
+                {talk?.code === p.code && hearts.map((h) => (
+                  <FloatingHeart key={h.id} heart={h} size={18 * heartScale} onDone={() => setHearts((cur) => cur.filter((x) => x.id !== h.id))} />
+                ))}
                 {talk?.code === p.code && (
                   <PetBubble key={talk.id} line={talk.line} scale={0.72} onDone={() => setTalk(null)} />
                 )}
@@ -836,12 +941,12 @@ export function StudyRoomView({
 
       {/* Desk surface — a full-width layer along the bottom. The character sits
           behind it; the book, controls and end-session button lie ON it. */}
-      <Image source={equippedDeskImage} style={[styles.studyDesk, isTablet && { left: deskSideT, right: deskSideT, bottom: deskBottomT, height: deskTopT - deskBottomT }, deskRoom?.deskTint ? { backgroundColor: deskRoom.deskTint } : null, tw('desk')]} contentFit={deskRoom?.deskFit ?? 'cover'} pointerEvents="none" />
+      {!focus && <Image source={equippedDeskImage} style={[styles.studyDesk, isTablet && { left: deskSideT, right: deskSideT, bottom: deskBottomT, height: deskTopT - deskBottomT }, deskRoom?.deskTint ? { backgroundColor: deskRoom.deskTint } : null, tw('desk')]} contentFit={deskRoom?.deskFit ?? 'cover'} pointerEvents="none" />}
       {/* The thin front-edge line sits at the desk's top edge AND carries the same
           `tw('desk')` transform as the desk image, so the two can never separate —
           re-dialing the desk knob moves the line with it. */}
-      <View style={[styles.deskEdge, isTablet && { left: deskSideT, right: deskSideT, bottom: deskTopT }, tw('desk')]} pointerEvents="none" />
-      {soloScene ? (
+      {!focus && <View style={[styles.deskEdge, isTablet && { left: deskSideT, right: deskSideT, bottom: deskTopT }, tw('desk')]} pointerEvents="none" />}
+      {!focus && (soloScene ? (
         isTablet ? (
           // HARD CAP: the book can never cross the desk's top edge. This clip box
           // spans the desk region only (bottom of root up to the desk line at
@@ -901,7 +1006,7 @@ export function StudyRoomView({
             );
           })}
         </View>
-      )}
+      ))}
 
       {/* Controls */}
       <View style={styles.controls}>
@@ -909,7 +1014,7 @@ export function StudyRoomView({
             The game slot keeps its space even while studying (button hidden) so the
             radio is already in its final spot and doesn't jump up when break starts. */}
         <View style={[styles.gameCol, isTablet && styles.gameColTablet]}>
-          <Pressable onPress={() => setSoundOpen(true)} style={({ pressed }) => [styles.radioBtn, pressed && styles.pressed]} hitSlop={8}>
+          <Pressable onPress={() => { if (!hostSharingSound) setSoundOpen(true); }} style={({ pressed }) => [styles.radioBtn, pressed && !hostSharingSound && styles.pressed]} hitSlop={8}>
             <StudyVinyl size={isTablet ? 92 : 56} playing={musicPlaying} discColor={vinylColor} centerImage={vinylCenter} onSpin={onVinylSpin} />
           </Pressable>
           <Pressable
@@ -917,7 +1022,7 @@ export function StudyRoomView({
             disabled={!onBreak}
             style={({ pressed }) => [styles.gameBtnWrap, isTablet && { width: 64, height: 56 }, pressed && onBreak && styles.pressed]}
             hitSlop={6}>
-            {onBreak && <Image source={GAME_BTN} style={[styles.gameBtn, isTablet && { width: 64, height: 56 }]} contentFit="contain" />}
+            {onBreak && <Image source={GAME_BTN} style={[styles.gameBtn, isTablet && { width: 64, height: 56 }, focus && { tintColor: focusFg }]} contentFit="contain" />}
           </Pressable>
         </View>
         {showBreakButton && (
@@ -925,13 +1030,13 @@ export function StudyRoomView({
             onPress={handleBreak}
             disabled={breakDisabled}
             style={({ pressed }) => [styles.breakBtn, isTablet && { width: 340, height: 66 }, breakDisabled && styles.breakBtnDisabled, pressed && styles.pressed]}>
-            <Image source={BREAK_PILL} style={StyleSheet.absoluteFill} contentFit="fill" pointerEvents="none" />
-            <Text style={[styles.breakBtnText, isTablet && { fontSize: 21 }]}>{breakLabel}</Text>
+            {!focus && <Image source={BREAK_PILL} style={StyleSheet.absoluteFill} contentFit="fill" pointerEvents="none" />}
+            <Text style={[styles.breakBtnText, isTablet && { fontSize: 21 }, focus && { color: focusFg }]}>{breakLabel}</Text>
           </SoundPressable>
         )}
       </View>
-      <SoundPressable onPress={handleLeave} style={({ pressed }) => [styles.endBtn, isTablet && { paddingHorizontal: 34, paddingVertical: 14, marginBottom: 34 }, pressed && styles.endBtnPressed]} hitSlop={8}>
-        <Text style={[styles.endBtnText, isTablet && { fontSize: 18 }]}>{room.active ? t('studyRoom.leaveRoom') : t('session.endSession')}</Text>
+      <SoundPressable onPress={handleLeave} style={({ pressed }) => [styles.endBtn, isTablet && { paddingHorizontal: 34, paddingVertical: 14, marginBottom: 34 }, focus && styles.btnFocusFlat, pressed && styles.endBtnPressed]} hitSlop={8}>
+        <Text style={[styles.endBtnText, isTablet && { fontSize: 18 }, focus && { color: focusFg }]}>{room.active ? t('studyRoom.leaveRoom') : t('session.endSession')}</Text>
       </SoundPressable>
 
       {/* Multiplayer: pick your own subject at the start */}
@@ -985,17 +1090,45 @@ export function StudyRoomView({
       {/* Study-again step 1: pick a fresh session length. */}
       {durationPickerOpen && (
         <View style={styles.finishOverlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setDurationPickerOpen(false)} />
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => { setDurationPickerOpen(false); setRestartCustomOpen(false); }} />
           <View style={styles.finishCard}>
             <Text style={styles.finishTitle}>{t('studyRoom.howLong')}</Text>
-            {SESSION_LENGTHS.map((opt) => (
-              <Pressable
-                key={opt.minutes}
-                onPress={() => pickRestartDuration(opt.minutes)}
-                style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
-                <Text style={styles.finishBtnText}>{t('studyRoom.minutesOption', { count: opt.minutes })}</Text>
-              </Pressable>
-            ))}
+            {restartCustomOpen ? (
+              // Plus: pick any length on the wheel, then start.
+              <>
+                <DurationWheel
+                  minutes={restartCustomMin}
+                  onChange={(m) => setRestartCustomMin(Math.max(5, Math.min(300, m)))}
+                  picks={SESSION_LENGTHS.map((o) => o.minutes)}
+                  scale={isTablet ? 1.25 : 1}
+                />
+                <SoundPressable
+                  sound="confirm"
+                  onPress={() => { setRestartCustomOpen(false); pickRestartDuration(restartCustomMin); }}
+                  style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
+                  <Text style={styles.finishBtnText}>{t('lobby.startStudying')}</Text>
+                </SoundPressable>
+              </>
+            ) : (
+              <>
+                {SESSION_LENGTHS.map((opt) => (
+                  <Pressable
+                    key={opt.minutes}
+                    onPress={() => pickRestartDuration(opt.minutes)}
+                    style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
+                    <Text style={styles.finishBtnText}>{t('studyRoom.minutesOption', { count: opt.minutes })}</Text>
+                  </Pressable>
+                ))}
+                {/* Custom length is a Plus perk (same as the lobby's custom timer). */}
+                {isPlus && (
+                  <SoundPressable
+                    onPress={() => setRestartCustomOpen(true)}
+                    style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
+                    <Text style={styles.finishBtnText}>{t('lobby.customLength')}</Text>
+                  </SoundPressable>
+                )}
+              </>
+            )}
           </View>
         </View>
       )}
@@ -1017,6 +1150,8 @@ export function StudyRoomView({
 
 const styles = StyleSheet.create({
   root: { flex: 1, paddingHorizontal: Spacing.three, paddingTop: Spacing.one, gap: Spacing.two },
+  // Big background cover-vinyl, centred behind the scene (Spotify background mode).
+  spotifyBgVinylWrap: { alignItems: 'center', justifyContent: 'center' },
 
   // Timer card. The base width/`timer` font below are the phone-MULTIPLAYER values
   // (solo + tablet override both). Widened from 52% so the multiplayer oven sign is
@@ -1029,6 +1164,8 @@ const styles = StyleSheet.create({
   nowBakingSolo: { fontSize: 13 },
   timer: { fontSize: 46, fontWeight: '900', color: BakeryColors.cocoaDark, letterSpacing: 1 },
   timerSolo: { fontSize: 56 },
+  // Focus-mode (Spotify background) countdown: big, plain, no sign — colour set inline.
+  focusTimer: { fontSize: 64, fontWeight: '900', letterSpacing: 1, textAlign: 'center', width: '100%' },
   // Tablet: bigger timer to fill the wider sign.
   timerTablet: { fontSize: 84 },
   nowBakingTablet: { fontSize: 18, marginBottom: 4 },
@@ -1056,6 +1193,8 @@ const styles = StyleSheet.create({
   characterFill: { width: '100%', height: '100%' },
   // Solo: match the Home-screen companion size (300×300) so it feels prominent.
   characterSolo: { width: 300, height: 300, marginBottom: 40 },
+  // Focus mode drops the character lower (no desk to tuck behind).
+  characterSoloFocus: { marginBottom: -42 },
   // Multiplayer party — characters evenly spaced (equal gaps incl. the ends),
   // lifted up so heads clear the desk edge (240) and tuck behind the table.
   partyLayer: {
@@ -1130,25 +1269,25 @@ const styles = StyleSheet.create({
 
   // Add-friend (top right)
   addFriendBtn: {
-    // Phone value: tucked up near the top so it clears the timer sign's wide body
-    // (which sits low thanks to the card's -36 marginTop). Still below the notch —
-    // studyRoomWrap pads the whole view down past the safe-area inset. Tablet
-    // overrides `top` below.
+    // Round plus button, tucked up near the top so it clears the timer sign's wide
+    // body. Still below the notch — studyRoomWrap pads the view past the safe-area
+    // inset. Tablet overrides size/position below.
     position: 'absolute', top: 2, right: 18, zIndex: 30,
-    flexDirection: 'row', alignItems: 'center', gap: 3,
+    alignItems: 'center', justifyContent: 'center',
+    width: 34, height: 34,
     backgroundColor: BakeryColors.glass,
     borderWidth: 1.5, borderColor: BakeryColors.shortbread,
     borderRadius: BakeryRadii.pill,
-    paddingLeft: 8, paddingRight: 11, paddingVertical: 5,
     ...BakeryShadow,
   },
-  addFriendIcon: { fontSize: 16, fontWeight: '900', color: BakeryColors.berry, marginTop: -1 },
-  addFriendLabel: { fontSize: 12, fontWeight: '800', color: BakeryColors.cocoaDark },
+  addFriendIcon: { fontSize: 18, fontWeight: '900', color: BakeryColors.berry, marginTop: -1 },
   roomFullBadge: { paddingHorizontal: 11, opacity: 0.7 },
   // Tablet: scale the friend button up so it's actually legible on a big iPad.
-  addFriendBtnTablet: { top: 22, right: 28, gap: 6, paddingLeft: 16, paddingRight: 22, paddingVertical: 11, borderWidth: 2 },
-  addFriendIconTablet: { fontSize: 28 },
-  addFriendLabelTablet: { fontSize: 21 },
+  addFriendBtnTablet: { top: 22, right: 28, width: 52, height: 52, borderWidth: 2 },
+  addFriendIconTablet: { fontSize: 30 },
+  // Disco/focus mode: strip a button down to plain text (no fill/border/shadow); its
+  // text colour is set inline to focusFg (white or black, opposite the background).
+  btnFocusFlat: { backgroundColor: 'transparent', borderWidth: 0, shadowOpacity: 0, shadowColor: 'transparent', elevation: 0 },
 
   // Radio (sound picker) — stacked above the game button in the controls row.
   radioBtn: { alignItems: 'center', justifyContent: 'center' },
@@ -1160,7 +1299,7 @@ const styles = StyleSheet.create({
   // light enough that the resting characters/desk show through behind the card.
   finishOverlayLight: { ...StyleSheet.absoluteFill, zIndex: 50, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent', padding: 28 },
   finishCard: {
-    width: '100%', maxWidth: 320, backgroundColor: BakeryColors.frosting,
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 320, backgroundColor: BakeryColors.frosting,
     borderRadius: BakeryRadii.panel, borderWidth: 2, borderColor: BakeryColors.shortbread,
     padding: Spacing.four, gap: Spacing.two, alignItems: 'stretch', ...BakeryShadow,
   },

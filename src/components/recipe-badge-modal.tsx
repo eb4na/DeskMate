@@ -9,9 +9,12 @@ import { Image } from 'expo-image';
 import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
+import { MIN_POPUP_WIDTH } from '@/constants/theme';
+
 import { useApp } from '@/context/app-context';
 import { useIsTablet } from '@/hooks/use-device-class';
 import { getCompanionImage, localizeCompanionName } from '@/lib/companion-utils';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 import { RECIPE_BADGES, RECIPE_IDS } from '@/constants/recipes';
 import { useTranslation } from '@/i18n';
 
@@ -79,15 +82,18 @@ function JumpCheck({ animate }: { animate: boolean }) {
 export function RecipeBadgeModal() {
   const { t } = useTranslation();
   const isTablet = useIsTablet();
-  const { recipeBadgePending, clearRecipeBadge, bakedWith } = useApp();
+  const { recipeBadgePending, clearRecipeBadge, bakedWith, characterObtainedPending } = useApp();
 
   // recipeBadgePending holds the recipe id just made; the badge goes to that
   // recipe's designated character.
   const justEarned = RECIPE_BADGES.find((b) => b.recipeId === recipeBadgePending);
   const count = RECIPE_BADGES.filter((b) => bakedWith.includes(b.companionId)).length;
+  useReportModalTransition(!!recipeBadgePending && !characterObtainedPending);
 
+  // Hold behind the just-obtained-companion card — both are native <Modal>s and
+  // co-presenting freezes iOS (see daily-reward-modal).
   return (
-    <Modal visible={!!recipeBadgePending} transparent animationType="fade" onRequestClose={clearRecipeBadge}>
+    <Modal visible={!!recipeBadgePending && !characterObtainedPending} transparent animationType="fade" onRequestClose={clearRecipeBadge}>
       <View style={styles.root}>
         <Pressable style={styles.backdrop} onPress={clearRecipeBadge} />
         {/* Uniform scale-up on the big iPad — the fixed 320px card reads tiny there. */}
@@ -139,7 +145,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
   card: {
-    width: '100%', maxWidth: 320, backgroundColor: P.card, borderRadius: 24,
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 320, backgroundColor: P.card, borderRadius: 24,
     borderWidth: 2, borderColor: P.pinkSoft, padding: 22, alignItems: 'center', gap: 6,
   },
   wisteria: { position: 'absolute', top: -10, right: 6, zIndex: 3, transform: [{ rotate: '18deg' }] },

@@ -82,7 +82,7 @@ export type BunSkin = { id: string; name: string; emoji: string; image: number; 
 export const BUN_SKINS: BunSkin[] = [
   { id: 'classic', name: 'Strawberry', emoji: '', image: require('@/assets/images/bun/bun-home.png'), shopItemId: null, lore: "Showed up and never left — warm like something you'd missed." },
   { id: 'angel', name: 'Angel', emoji: '', image: require('@/assets/images/bun/bun-angel.png'), shopItemId: 'outfit_bun_angel', lore: "A quiet kindness that doesn't announce itself." },
-  { id: 'strawberry', name: 'Berry Princess', emoji: '', image: require('@/assets/images/bun/bun-strawberry.png'), shopItemId: 'outfit_bun_strawberry', lore: "A crown worn like it was always there." },
+  { id: 'strawberry', name: 'Berry Princess', emoji: '', image: require('@/assets/images/bun/bun-strawberry.png'), shopItemId: 'outfit_bun_strawberry', roomId: 'strawberry-palace', lore: "A crown worn like it was always there." },
   { id: 'snowrabbit', name: 'Snow Rabbit', emoji: '', image: require('@/assets/images/bun/bun-snowrabbit.png'), shopItemId: 'outfit_bun_snowrabbit', roomId: 'frostbloom-shrine', lore: "A flower that blooms against the frost anyway." },
   { id: 'dreams', name: 'Strawberry Dreams', emoji: '', image: require('@/assets/images/bun/bun-dreams.png'), shopItemId: 'outfit_bun_dreams', roomId: 'buns-room', lore: "A lantern on low. Softness all the way down." },
 ];

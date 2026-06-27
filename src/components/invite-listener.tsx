@@ -7,9 +7,12 @@ import { router, usePathname } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { MIN_POPUP_WIDTH } from '@/constants/theme';
+
 import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
 import { bunAvatarNudge, getCompanionImage } from '@/lib/companion-utils';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 import { listBlocked } from '@/lib/friend-requests';
 import { joinPresence, subscribeToInvites, type GameInvite, type OnlineGameId } from '@/lib/game-net';
 import { acceptGameInvite } from '@/lib/invite-actions';
@@ -45,6 +48,7 @@ export function InviteListener() {
   const { user } = useAuth();
   const studyRoom = useStudyRoom();
   const [invite, setInvite] = useState<GameInvite | null>(null);
+  useReportModalTransition(!!invite);
   // Current route, kept in a ref so the realtime invite callback reads it live.
   const pathname = usePathname();
   const pathRef = useRef(pathname);
@@ -143,6 +147,7 @@ const styles = StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
   card: {
     width: '100%',
+    minWidth: MIN_POPUP_WIDTH,
     maxWidth: 320,
     backgroundColor: P.card,
     borderRadius: 24,

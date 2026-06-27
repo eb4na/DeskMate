@@ -24,7 +24,8 @@ export type SyncedProfile = {
 };
 
 export async function uploadProfile(userId: string, p: SyncedProfile): Promise<boolean> {
-  console.log('[profile-sync] uploading', { userId, companionId: p.companionId, friendCode: p.friendCode });
+  // Don't log PII (friend code / display name) — these can land in crash/log tools.
+  console.log('[profile-sync] uploading', { companionId: p.companionId });
   const { error } = await supabase.from('profiles').upsert(
     {
       user_id: userId,
@@ -46,33 +47,57 @@ export async function uploadProfile(userId: string, p: SyncedProfile): Promise<b
     { onConflict: 'user_id' },
   );
   if (error) console.warn('[profile-sync] UPLOAD FAILED:', error.message, error.details, error.hint);
-  else console.log('[profile-sync] upload OK for', p.friendCode, 'companionId:', p.companionId);
+  else console.log('[profile-sync] upload OK', { companionId: p.companionId });
   return !error;
 }
 
+// A profile's user id, looked up by friend code. Goes through get_profile_by_code so
+// it doesn't depend on the (now removed) blanket profiles read.
 export async function lookupUserIdByCode(code: string): Promise<string | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('user_id')
-    .eq('friend_code', code.trim().toUpperCase())
-    .maybeSingle();
-  if (error || !data) return null;
-  return data.user_id as string;
+  const row = await fetchProfileRow(code);
+  return row?.user_id ?? null;
+}
+
+// Raw row from the get_profile_by_code RPC (SECURITY DEFINER, exact friend-code match).
+// Deliberately has NO `birthday`/DOB field — that never leaves the server.
+type ProfileRow = {
+  user_id: string;
+  friend_code: string;
+  display_name: string | null;
+  description: string | null;
+  // Year-masked (month/day only) by the RPC — never the real DOB year.
+  birthday: string | null;
+  companion_id: string | null;
+  skin_id: string | null;
+  background_id: string | null;
+  avatar_frame: string | null;
+  card_color: string | null;
+  current_streak: number | null;
+  longest_streak: number | null;
+  total_minutes: number | null;
+  top_chef_level: number | null;
+};
+
+async function fetchProfileRow(code: string): Promise<ProfileRow | null> {
+  const { data, error } = await supabase.rpc('get_profile_by_code', {
+    p_code: code.trim().toUpperCase(),
+  });
+  if (error) {
+    console.warn('[profile-sync] get_profile_by_code error:', error.message);
+    return null;
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  return (row as ProfileRow) ?? null;
 }
 
 export async function fetchProfileByCode(code: string): Promise<SyncedProfile | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('friend_code', code.trim().toUpperCase())
-    .maybeSingle();
-  if (error) console.warn('[profile-sync] fetchProfileByCode error for', code, ':', error.message);
-  if (!data) { console.log('[profile-sync] no profile found for code:', code); return null; }
-  console.log('[profile-sync] fetched', code, '→ companionId:', data.companion_id, 'displayName:', data.display_name);
+  const data = await fetchProfileRow(code);
+  if (!data) { console.log('[profile-sync] no profile found for that code'); return null; }
   return {
     friendCode: data.friend_code,
     displayName: data.display_name ?? '',
     description: data.description ?? '',
+    // Year-masked month/day from the RPC (the real DOB year never leaves the server).
     birthday: data.birthday ?? '',
     companionId: data.companion_id ?? '',
     skinId: data.skin_id ?? 'classic',

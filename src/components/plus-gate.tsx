@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 
 type CardProps = {
   emoji?: string;
@@ -17,6 +18,7 @@ type CardProps = {
 
 /** Tappable locked card — navigates to the Plus upgrade screen */
 export function PlusGateCard({ emoji = '✨', icon, title, description }: CardProps) {
+  const { t } = useTranslation();
   return (
     <Pressable
       style={({ pressed }) => [pressed && styles.pressed]}
@@ -25,12 +27,12 @@ export function PlusGateCard({ emoji = '✨', icon, title, description }: CardPr
         <ThemedView type="transparent" style={styles.header}>
           {icon ?? (emoji === '✨' ? <PlusIcon size={32} /> : <ThemedText style={styles.emoji}>{emoji}</ThemedText>)}
           <ThemedView style={styles.badge}>
-            <ThemedText style={styles.badgeText}>Chef&apos;s Special</ThemedText>
+            <ThemedText style={styles.badgeText}>{t('plusGate.chefsSpecial')}</ThemedText>
           </ThemedView>
         </ThemedView>
         <ThemedText type="smallBold" style={styles.title}>{title}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.desc}>{description}</ThemedText>
-        <ThemedText type="small" style={styles.tapHint}>Tap to peek at the bakery pass →</ThemedText>
+        <ThemedText type="small" style={styles.tapHint}>{t('plusGate.peekBakeryPass')}</ThemedText>
       </ThemedView>
     </Pressable>
   );

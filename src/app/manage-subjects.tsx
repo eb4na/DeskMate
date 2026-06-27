@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, useColorScheme } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, TextInput, useColorScheme } from 'react-native';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,7 +11,7 @@ import { useApp, MAX_SUBJECTS_FREE, MAX_SUBJECTS_PLUS } from '@/context/app-cont
 import { containsProfanity } from '@/lib/profanity';
 import { SUBJECT_COLORS } from '@/constants/placeholder-data';
 import { useTranslation } from '@/i18n';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
 
 export default function ManageSubjectsScreen() {
   const { t } = useTranslation();
@@ -26,6 +26,9 @@ export default function ManageSubjectsScreen() {
   const [selectedColor, setSelectedColor] = useState<string>(SUBJECT_COLORS[0]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  // Local delete confirm — this screen is a native modal, so a root showPopup()
+  // renders BEHIND it (see settings.tsx). A local <Modal> shows over the screen.
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const activeSubjects = subjects
     .filter((s) => !s.archived)
@@ -95,11 +98,11 @@ export default function ManageSubjectsScreen() {
     reorderSubjects(sorted.map((s) => s.id));
   };
 
-  const handleDelete = (id: string, name: string) => {
-    showPopup(t('manageSubjects.deleteSubjectQ'), t('manageSubjects.deleteMsg', { name }), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('common.delete'), style: 'destructive', onPress: () => deleteSubject(id) },
-    ]);
+  const handleDelete = (id: string, name: string) => setDeleteTarget({ id, name });
+
+  const confirmDelete = () => {
+    if (deleteTarget) deleteSubject(deleteTarget.id);
+    setDeleteTarget(null);
   };
 
   const inputStyle = [
@@ -186,7 +189,6 @@ export default function ManageSubjectsScreen() {
               onChangeText={setNewName}
               maxLength={30}
               returnKeyType="done"
-              onSubmitEditing={handleAdd}
             />
             {nameHasProfanity && (
               <ThemedText type="small" style={styles.profanityWarn}>
@@ -236,6 +238,26 @@ export default function ManageSubjectsScreen() {
           </Pressable>
         </SafeAreaView>
       </ScrollView>
+
+      {/* Delete confirm — local modal so it shows over this (native modal) screen. */}
+      <Modal visible={deleteTarget !== null} transparent animationType="fade" onRequestClose={() => setDeleteTarget(null)}>
+        <Pressable style={styles.confirmBackdrop} onPress={() => setDeleteTarget(null)}>
+          <Pressable style={styles.confirmCard} onPress={(e) => e.stopPropagation?.()}>
+            <ThemedText style={styles.confirmTitle}>{t('manageSubjects.deleteSubjectQ')}</ThemedText>
+            <ThemedText style={styles.confirmBody}>
+              {t('manageSubjects.deleteMsg', { name: deleteTarget?.name ?? '' })}
+            </ThemedText>
+            <Pressable
+              style={({ pressed }) => [styles.confirmDeleteBtn, pressed && styles.pressed]}
+              onPress={confirmDelete}>
+              <ThemedText style={styles.confirmDeleteText}>{t('common.delete')}</ThemedText>
+            </Pressable>
+            <Pressable style={styles.confirmCancel} onPress={() => setDeleteTarget(null)}>
+              <ThemedText style={styles.confirmCancelText}>{t('common.cancel')}</ThemedText>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ThemedView>
   );
 }
@@ -301,4 +323,16 @@ const styles = StyleSheet.create({
   profanityWarn: { color: '#C2536B', fontWeight: '700', marginTop: 2 },
   pressed: { opacity: 0.8 },
   doneBtn: { alignItems: 'center', paddingVertical: Spacing.two },
+  confirmBackdrop: { flex: 1, backgroundColor: 'rgba(60,40,35,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  confirmCard: {
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 360, backgroundColor: BakeryColors.frosting,
+    borderRadius: BakeryRadii.panel, borderWidth: 2, borderColor: '#E8A0A0',
+    padding: Spacing.four, gap: Spacing.two, ...BakeryShadow,
+  },
+  confirmTitle: { fontSize: 20, fontWeight: '900', color: '#C0392B', textAlign: 'center' },
+  confirmBody: { fontSize: 13.5, color: BakeryColors.cocoaDark, lineHeight: 19, textAlign: 'center' },
+  confirmDeleteBtn: { paddingVertical: 14, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: '#D0392B', marginTop: Spacing.one },
+  confirmDeleteText: { fontSize: 16, fontWeight: '900', color: '#fff' },
+  confirmCancel: { alignItems: 'center', paddingVertical: Spacing.one },
+  confirmCancelText: { fontSize: 14, fontWeight: '800', color: BakeryColors.mocha },
 });

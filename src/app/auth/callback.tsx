@@ -6,9 +6,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useTranslation } from '@/i18n';
 import { supabase } from '@/lib/supabase';
 
 export default function AuthCallbackScreen() {
+  const { t } = useTranslation();
   const { code, type, error_description, error_code } = useLocalSearchParams<{
     code?: string;
     type?: string;
@@ -65,10 +67,10 @@ export default function AuthCallbackScreen() {
         <ThemedView type="backgroundElement" style={styles.card}>
           <ActivityIndicator size="large" color="#7C6F5A" />
           <ThemedText type="subtitle" style={styles.title}>
-            Checking link
+            {t('authCallback.checkingLink')}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.message}>
-            Taking you to the right screen...
+            {t('authCallback.checkingLinkMsg')}
           </ThemedText>
         </ThemedView>
       </SafeAreaView>

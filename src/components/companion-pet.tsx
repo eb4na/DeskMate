@@ -16,14 +16,35 @@ const PERSONA_KEYS: Record<string, string> = {
 // home component — only the small PetCloudHost reacts. Keeps tapping snappy.
 type PetCloudEvent = { line: string; id: number };
 let cloudListener: ((e: PetCloudEvent) => void) | null = null;
+// Monotonic id per tap — used as the PetBubble's React key and to match the
+// finishing bubble against the current one (see PetCloudHost). A counter (not
+// Date.now()) guarantees uniqueness even for two taps in the same millisecond.
+let cloudSeq = 0;
 function emitPetCloud(line: string) {
-  cloudListener?.({ line, id: Date.now() });
+  cloudListener?.({ line, id: ++cloudSeq });
 }
 
-type Heart = { id: number; startX: number; driftX: number; bottom: number; rot: number };
+export type Heart = { id: number; startX: number; driftX: number; bottom: number; rot: number };
+
+// Build a fresh burst of 3–4 hearts spawning from the character's SIDES (random side +
+// height) at an angle. Shared by the home tap and the in-session tap so both feel alike.
+export function makeHearts(scale = 1): Heart[] {
+  const base = Date.now();
+  const count = 3 + Math.floor(Math.random() * 2); // 3–4
+  return Array.from({ length: count }, (_, i) => {
+    const side = Math.random() < 0.5 ? -1 : 1;
+    return {
+      id: base + i,
+      startX: side * (48 + Math.random() * 42) * scale,
+      driftX: side * (20 + Math.random() * 45) * scale,
+      bottom: (55 + Math.random() * 100) * scale,
+      rot: side * (10 + Math.random() * 22),
+    };
+  });
+}
 
 // A heart that bursts from the character's side, drifting outward + up at an angle.
-function FloatingHeart({ heart, size, onDone }: { heart: Heart; size: number; onDone: () => void }) {
+export function FloatingHeart({ heart, size, onDone }: { heart: Heart; size: number; onDone: () => void }) {
   const prog = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(prog, { toValue: 1, duration: 1200, useNativeDriver: true }).start(({ finished }) => {
@@ -108,7 +129,20 @@ export function PetCloudHost({ isTablet = false, scale = 1 }: { isTablet?: boole
     return () => { cloudListener = null; };
   }, []);
   if (!cloud) return null;
-  return <PetBubble key={cloud.id} line={cloud.line} isTablet={isTablet} scale={scale} onDone={() => setCloud(null)} />;
+  // Clear ONLY if the bubble that finished is still the one showing. When you tap
+  // again before the previous bubble's 3.6s lifetime ends, that earlier bubble is
+  // unmounted but its animation callback still fires later — without this guard it
+  // would null out (or fully suppress) the newer bubble, so a repeat tap looked
+  // like the dialogue stopped showing.
+  return (
+    <PetBubble
+      key={cloud.id}
+      line={cloud.line}
+      isTablet={isTablet}
+      scale={scale}
+      onDone={() => setCloud((c) => (c?.id === cloud.id ? null : c))}
+    />
+  );
 }
 
 // Wraps the home companion so tapping it pets the character: a pop sound, a squish
@@ -145,21 +179,7 @@ export function CompanionPet({
     ]).start();
     playPop();
     // Hearts burst from the character's SIDES (random side + height) at an angle.
-    const base = Date.now();
-    const count = 3 + Math.floor(Math.random() * 2); // 3–4
-    setHearts((h) => [
-      ...h,
-      ...Array.from({ length: count }, (_, i) => {
-        const side = Math.random() < 0.5 ? -1 : 1;
-        return {
-          id: base + i,
-          startX: side * (48 + Math.random() * 42) * scale,
-          driftX: side * (20 + Math.random() * 45) * scale,
-          bottom: (55 + Math.random() * 100) * scale,
-          rot: side * (10 + Math.random() * 22),
-        };
-      }),
-    ]);
+    setHearts((h) => [...h, ...makeHearts(scale)]);
     emitPetCloud(getPetLine(companionName ? PERSONA_KEYS[companionName] : undefined, skinId));
     // Defer the bond write off the tap frame — it triggers an app-wide context re-render
     // and isn't visually urgent, so the pop/bounce/cloud render first.

@@ -12,6 +12,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Companion } from '@/components/companion';
 import { DevKnobs } from '@/components/dev-knobs';
+import { GameRulesButton } from '@/components/game-rules-button';
 import { SimpleHomeIcon } from '@/components/tab-icons';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import {
@@ -293,6 +294,9 @@ function TicTacToeGame({
   const [screen, setScreen] = useState<'mode' | 'lobby' | 'play'>(externalInvite ? 'lobby' : 'mode');
   const [board, setBoard] = useState<Cell[]>(Array(9).fill(null));
   const [isPlayerTurn, setIsPlayerTurn] = useState(true);
+  // Which symbol moves first this game. Online: the host picks it at random and
+  // broadcasts so the opener isn't always the host (Hearts/X). Default X.
+  const [firstSymbol, setFirstSymbol] = useState<'X' | 'O'>('X');
   const [mode, setMode] = useState<TicTacToeMode>(externalInvite ? 'online' : 'ai');
   const aiMovePending = useRef(false);
 
@@ -314,7 +318,9 @@ function TicTacToeGame({
 
   const xCount = board.filter((c) => c === 'X').length;
   const oCount = board.filter((c) => c === 'O').length;
-  const nextSymbol: 'X' | 'O' = xCount === oCount ? 'X' : 'O';
+  // Moves alternate from `firstSymbol`: even total → first mover, odd → the other.
+  const otherSymbol: 'X' | 'O' = firstSymbol === 'X' ? 'O' : 'X';
+  const nextSymbol: 'X' | 'O' = (xCount + oCount) % 2 === 0 ? firstSymbol : otherSymbol;
   const myTurnOnline = mySymbol === nextSymbol;
 
   const applyMove = (idx: number, symbol: 'X' | 'O') => {
@@ -346,7 +352,11 @@ function TicTacToeGame({
         if (type === 'move') {
           const d = data as { idx: number; symbol: 'X' | 'O' };
           applyMove(d.idx, d.symbol);
-        } else if (type === 'rematch') {
+        } else if (type === 'start' || type === 'rematch') {
+          // Host told us who opens this game/rematch — apply it so the starter
+          // matches on both devices (guest applies, never decides).
+          const d = data as { firstSymbol?: 'X' | 'O' };
+          if (d?.firstSymbol === 'X' || d?.firstSymbol === 'O') setFirstSymbol(d.firstSymbol);
           setBoard(Array(9).fill(null));
         }
       },
@@ -356,6 +366,12 @@ function TicTacToeGame({
           setConnecting(false);
           if (screenRef.current !== 'play') {
             setBoard(Array(9).fill(null));
+            // Host randomly picks the opener and broadcasts it (guest waits for it).
+            if (isHost) {
+              const fs: 'X' | 'O' = Math.random() < 0.5 ? 'X' : 'O';
+              setFirstSymbol(fs);
+              roomRef.current?.send('start', { firstSymbol: fs });
+            }
             setScreen('play');
           }
         }
@@ -398,7 +414,8 @@ function TicTacToeGame({
   const resetBoard = () => {
     aiMovePending.current = false;
     setBoard(Array(9).fill(null));
-    setIsPlayerTurn(true);
+    // AI / pass-and-play: randomize who moves first (false → opponent/AI opens).
+    setIsPlayerTurn(Math.random() < 0.5);
   };
 
   // Mode select → play (offline modes only).
@@ -485,8 +502,12 @@ function TicTacToeGame({
 
   const reset = () => {
     if (isOnline) {
+      // Randomize who opens the rematch and tell the opponent, so it's not always
+      // the same player going first.
+      const fs: 'X' | 'O' = Math.random() < 0.5 ? 'X' : 'O';
+      setFirstSymbol(fs);
       setBoard(Array(9).fill(null));
-      roomRef.current?.send('rematch');
+      roomRef.current?.send('rematch', { firstSymbol: fs });
       return;
     }
     resetBoard();
@@ -564,7 +585,7 @@ function TicTacToeGame({
 
       {/* Title — wordmark on the picker; plain text once in a game. */}
       {screen !== 'mode' && (
-        <ThemedText style={[tttStyles.title, { top: insets.top + winH * 0.085 }]}>
+        <ThemedText style={[tttStyles.title, { top: insets.top + winH * 0.05 }]}>
           {t('friends.game_tictactoe')}
         </ThemedText>
       )}
@@ -577,7 +598,16 @@ function TicTacToeGame({
         <Image source={BACK_ARROW} style={tttStyles.backImg} contentFit="contain" />
       </Pressable>
 
-      <View style={[tttStyles.content, { paddingTop: insets.top + winH * 0.12, paddingBottom: insets.bottom + winH * 0.13 }]}>
+      {/* Rules (top-right, only on the board — mirrors the back button) */}
+      {screen === 'play' && (
+        <GameRulesButton
+          title={t('games.howToPlay')}
+          body={t('games.rulesTicTacToe')}
+          style={{ top: insets.top + 2, right: insets.right + 18 }}
+        />
+      )}
+
+      <View style={[tttStyles.content, { paddingTop: insets.top + winH * 0.13, paddingBottom: insets.bottom + winH * 0.13 }]}>
         {screen === 'mode' ? (
           /* ── Opponent picker (shown first, like Connect 4) ── */
           <>
@@ -1054,6 +1084,15 @@ export default function BreakGameScreen() {
                 <ThemedView style={[styles.progressFill, { width: `${pct}%` as unknown as number }]} />
               </ThemedView>
             </ThemedView>
+            <Pressable
+              onPress={goHome}
+              hitSlop={8}
+              style={({ pressed }) => [styles.skipBreakBtn, pressed && styles.pressed]}
+              accessibilityLabel={t('breakGame.skipBreak')}>
+              <ThemedText type="smallBold" numberOfLines={1} style={styles.skipBreakText}>
+                {t('breakGame.skipBreak')}
+              </ThemedText>
+            </Pressable>
           </ThemedView>
         )}
 
@@ -1210,7 +1249,7 @@ export default function BreakGameScreen() {
               style={({ pressed }) => [styles.endStudyBtn, tw('endStudy'), pressed && styles.pressed]}
               onPress={goHome}>
               <ThemedText type="smallBold" style={styles.endStudyBtnText}>
-                End study
+                {t('breakGame.endStudy')}
               </ThemedText>
             </Pressable>
           ))}
@@ -1253,6 +1292,15 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   progressFill: { height: '100%', borderRadius: 3, backgroundColor: '#7C6F5A' },
+  skipBreakBtn: {
+    borderRadius: 999,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 7,
+    borderWidth: 1.5,
+    borderColor: '#F2A0B5',
+    backgroundColor: 'rgba(242,160,181,0.16)',
+  },
+  skipBreakText: { color: '#D86F9C', fontSize: 13 },
   selectContent: { gap: Spacing.three, paddingBottom: Spacing.four },
   selectHeader: { alignItems: 'center', gap: 4, paddingTop: Spacing.one, backgroundColor: 'transparent' },
   selectTitle: {

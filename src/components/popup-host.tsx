@@ -6,14 +6,30 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { subscribePopup, type PopupButton, type PopupConfig } from '@/lib/popup';
+import { msUntilModalSafe, useReportModalTransition } from '@/lib/modal-traffic';
 import { useTranslation } from '@/i18n';
-import { BakeryColors as C, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
+import { BakeryColors as C, BakeryRadii, BakeryShadow, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
 
 export function PopupHost() {
   const { t } = useTranslation();
   const [config, setConfig] = useState<PopupConfig | null>(null);
 
-  useEffect(() => subscribePopup((cfg) => setConfig(cfg)), []);
+  // Anti-freeze: a popup is itself a native <Modal>, so never present it in the same
+  // ~300ms window another modal is opening/closing — that stacks two iOS modals and
+  // freezes the app. Wait out the global settle window before showing. Pure delay, so
+  // it can never wedge; a popup just appears a touch later if a modal just moved.
+  useEffect(
+    () =>
+      subscribePopup((cfg) => {
+        const wait = msUntilModalSafe();
+        if (wait === 0) setConfig(cfg);
+        else setTimeout(() => setConfig(cfg), wait);
+      }),
+    [],
+  );
+
+  // Report our own open/close so OTHER presenters likewise wait us out.
+  useReportModalTransition(config !== null);
 
   if (!config) return null;
 
@@ -88,6 +104,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '100%',
+    minWidth: MIN_POPUP_WIDTH,
     maxWidth: 340,
     backgroundColor: '#FFFDF8',
     borderRadius: BakeryRadii.panel,

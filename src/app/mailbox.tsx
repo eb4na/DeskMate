@@ -17,7 +17,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useIsTablet } from '@/hooks/use-device-class';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
-import { fetchMail, type Mail } from '@/lib/mail';
+import { fetchMail, fetchMailClaims, type Mail } from '@/lib/mail';
 import { BUN_SKINS, COMPANION_SKINS, localizeCompanionName, localizeOutfitName } from '@/lib/companion-utils';
 import { SHOP_ITEMS } from '@/constants/shop-data';
 import { BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -47,6 +47,9 @@ export default function MailboxScreen() {
   const isTablet = useIsTablet();
   const { claimedMailIds, claimMail } = useApp();
   const [mail, setMail] = useState<Mail[] | null>(null);
+  // Server-recorded claims (mail_claims). Merged with the local claimedMailIds so the
+  // claimed state is correct across devices and can't be undone by editing local state.
+  const [serverClaimed, setServerClaimed] = useState<string[]>([]);
   // The mail currently opened into the letter view (null = inbox list).
   const [openId, setOpenId] = useState<string | null>(null);
   // For "pick one" mail: the item id the player has selected, keyed by mail id.
@@ -57,20 +60,32 @@ export default function MailboxScreen() {
     fetchMail().then((m) => {
       if (alive) setMail(m);
     });
+    fetchMailClaims().then((ids) => {
+      if (alive) setServerClaimed(ids);
+    });
     return () => {
       alive = false;
     };
   }, []);
 
+  // Claimed = recorded on the server OR granted locally this session.
+  const isClaimed = useCallback(
+    (id: string) => serverClaimed.includes(id) || claimedMailIds.includes(id),
+    [serverClaimed, claimedMailIds],
+  );
+
   // NOTE: claiming gives INLINE feedback (the card flips to a "claimed" state), never
   // a Modal popup. A transparent <Modal> shown here and then left mounted while the
   // user pops back to Home orphans an invisible touch-capturing window over Home
   // (iOS RN bug) — which froze all taps. Inline feedback avoids any Modal entirely.
-  const onClaim = useCallback((m: Mail, chosenId: string | null) => {
+  const onClaim = useCallback(async (m: Mail, chosenId: string | null) => {
     // A "pick one" mail grants the selected choice; otherwise the mail's fixed item.
     const chosen = m.itemChoices.length > 0 ? chosenId : m.itemId;
     if (m.itemChoices.length > 0 && !chosen) return; // must pick one first
-    claimMail({ id: m.id, coins: m.coins, itemId: chosen ?? null });
+    const claimed = await claimMail({ id: m.id, coins: m.coins, itemId: chosen ?? null });
+    // Only reflect claimed in the UI if it actually succeeded; on a network error we
+    // leave it unclaimed so the user can retry (the reward isn't forfeited).
+    if (claimed) setServerClaimed((prev) => (prev.includes(m.id) ? prev : [...prev, m.id]));
   }, [claimMail]);
 
   const pick = useCallback((mailId: string, itemId: string) => {
@@ -102,7 +117,7 @@ export default function MailboxScreen() {
             <OpenLetter
               mail={openMail}
               isTablet={isTablet}
-              claimed={claimedMailIds.includes(openMail.id)}
+              claimed={isClaimed(openMail.id)}
               pickedId={picked[openMail.id]}
               onPick={pick}
               onClaim={onClaim}
@@ -114,7 +129,7 @@ export default function MailboxScreen() {
             </ThemedView>
           ) : (
             mail.map((m) => {
-              const claimed = claimedMailIds.includes(m.id);
+              const claimed = isClaimed(m.id);
               return (
                 <Pressable
                   key={m.id}

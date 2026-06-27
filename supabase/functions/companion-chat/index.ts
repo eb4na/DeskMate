@@ -90,14 +90,19 @@ Deno.serve(async (request) => {
   }
 
   // Server-side daily rate limit — the client's ticket cap is bypassable, so enforce a
-  // per-user ceiling here too. Fail OPEN if the check itself errors (e.g. the migration
-  // isn't applied yet) so chat keeps working; enforce whenever the check succeeds.
+  // per-user ceiling here too. Fail CLOSED: if the check itself errors we refuse rather
+  // than let calls flow to OpenAI uncapped (the 20260622e_ai_usage_rate_limit migration
+  // must be applied for this endpoint to work).
   const DAILY_CHAT_CAP = 150;
   const { data: chatAllowed, error: rateError } = await authClient.rpc('bump_ai_usage', {
     p_kind: 'chat',
     p_cap: DAILY_CHAT_CAP,
   });
-  if (!rateError && chatAllowed === false) {
+  if (rateError) {
+    console.error('[companion-chat] rate-limit check failed:', rateError.message);
+    return jsonResponse({ error: 'Service temporarily unavailable. Please try again later.' }, 503);
+  }
+  if (chatAllowed === false) {
     return jsonResponse({ error: 'Daily chat limit reached. Please try again tomorrow.' }, 429);
   }
 

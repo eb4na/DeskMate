@@ -82,10 +82,12 @@ export function HomeTutorial({ onDone }: { onDone: () => void }) {
     // intentionally NOT a native <Modal> — wrapping this in a transparent Modal could
     // present an invisible touch-blocking layer (no visible card) that froze the home
     // screen, so the coachmark lives in-screen as a high-zIndex overlay instead.
-    <View style={[StyleSheet.absoluteFill, styles.overlay]} pointerEvents="box-none">
-      {/* Transparent full-screen catcher — no dimming; tapping it advances. */}
-      <Pressable style={styles.backdrop} onPress={next} />
-
+    //
+    // The overlay itself is the full-screen tap-catcher (a Pressable, NOT a box-none
+    // View with a child catcher): a box-none parent delegates hit-testing to children,
+    // and a transparent child catcher under it could drop taps so nothing advanced.
+    // Making the root Pressable claim the touch directly is what fixes the freeze.
+    <Pressable style={[StyleSheet.absoluteFill, styles.overlay]} onPress={next}>
       {/* Tooltip card. Itself a Pressable that advances, so tapping the card (not
           just the backdrop around it) isn't a dead zone — the Back/Skip pressables
           nested below still take their own taps first. */}
@@ -131,13 +133,12 @@ export function HomeTutorial({ onDone }: { onDone: () => void }) {
           </Pressable>
         </View>
       </Pressable>
-    </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   overlay: { zIndex: 100 },
-  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'transparent' },
   card: {
     position: 'absolute',
     backgroundColor: '#FFFFFF',

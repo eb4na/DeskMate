@@ -32,7 +32,7 @@ import { isPlusFrame } from '@/components/avatar-frame';
 import { cardColors } from '@/constants/card-colors';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { useTranslation } from '@/i18n';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 
 function toFriendPatch(p: SyncedProfile): Partial<Friend> {
@@ -856,7 +856,7 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   sentRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
   sentBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
   sentCard: {
-    width: '100%', maxWidth: 320 * s, backgroundColor: P.card, borderRadius: 26 * s,
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 320 * s, backgroundColor: P.card, borderRadius: 26 * s,
     borderWidth: 1.5, borderColor: P.pinkSoft, padding: Spacing.four * s, alignItems: 'center', gap: Spacing.two * s,
   },
   sentCheck: {

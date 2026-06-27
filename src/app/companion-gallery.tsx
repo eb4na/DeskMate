@@ -10,7 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { showPopup } from '@/lib/popup';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
@@ -20,7 +20,7 @@ import { LockOverlay } from '@/components/lock-badge';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { ThemedView } from '@/components/themed-view';
 import { CompanionLevel } from '@/components/companion-level';
-import { Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Fonts, MaxContentWidth, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 import { BUN_SKINS, type BunSkin, getBunSkinImage, getCompanionSkinImage, getCompanionSkins, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, pickSkinLore, skinLores, SHOP_COMPANIONS } from '@/lib/companion-utils';
@@ -169,6 +169,10 @@ function GalleryContent() {
   const [buyItem, setBuyItem] = useState<{ id: string; name: string; image: number | null; price: number } | null>(null);
   // Plus-exclusive outfit popup (custom — replaces the native alert).
   const [plusAlertName, setPlusAlertName] = useState<string | null>(null);
+  // Generic IN-FILE alert/confirm. Replaces root showPopup, which cannot present over
+  // this `presentation:'modal'` screen — doing so freezes iOS (confirmed via trace).
+  // In-file modals (presented by this screen's own VC) show fine, like plusAlert.
+  const [galleryAlert, setGalleryAlert] = useState<{ title: string; msg: string; confirmText?: string; onConfirm?: () => void } | null>(null);
   // Matched-room buy popup: purchase an outfit's paired room (background + desk,
   // plus the outfit itself if it's still locked) right here, instead of jumping
   // to the Shop. All chain-link-reachable rooms are plain coin items.
@@ -178,13 +182,23 @@ function GalleryContent() {
   const [pairConfirm, setPairConfirm] = useState<{ pair: RoomPair; skin: BunSkin } | null>(null);
   // Outfit lore popup.
   const [lorePopup, setLorePopup] = useState<{ name: string; text: string } | null>(null);
+  // Report this screen's native <Modal>s (buy / pair-buy / pair-confirm / lore / Plus
+  // alert) to the global anti-freeze signal so popups never present mid-transition.
+  useReportModalTransition(
+    buyItem !== null || plusAlertName !== null || pairBuy !== null || pairConfirm !== null || lorePopup !== null || galleryAlert !== null,
+  );
   const buyDiscount = isPlus ? 0.75 : 1;
   const buyPrice = buyItem ? Math.floor(buyItem.price * buyDiscount) : 0;
   const canAffordBuy = coins >= buyPrice;
+  // Show an in-file alert AFTER the current buy/preview <Modal> has dismissed — two
+  // in-file modals can't co-present either, so wait out the ~300ms fade first.
+  const alertAfterDismiss = (title: string, msg: string) =>
+    setTimeout(() => setGalleryAlert({ title, msg }), 350);
   const confirmBuy = () => {
     if (!buyItem) return;
     if (!canAffordBuy) {
-      showPopup(t('gallery.notEnoughCoins'), t('gallery.notEnoughCoinsMsg', { price: buyPrice, coins }));
+      setBuyItem(null);
+      alertAfterDismiss(t('gallery.notEnoughCoins'), t('gallery.notEnoughCoinsMsg', { price: buyPrice, coins }));
       return;
     }
     purchaseShopItem(buyItem.id, buyPrice);
@@ -201,10 +215,12 @@ function GalleryContent() {
     : [];
   const pairTotal = pairNeedItems.reduce((sum, it) => sum + Math.floor(it.price * buyDiscount), 0);
   const canAffordPair = coins >= pairTotal;
+
   const confirmPairBuy = () => {
     if (!pairBuy) return;
     if (!canAffordPair) {
-      showPopup(t('gallery.notEnoughCoins'), t('gallery.notEnoughCoinsMsg', { price: pairTotal, coins }));
+      setPairBuy(null);
+      alertAfterDismiss(t('gallery.notEnoughCoins'), t('gallery.notEnoughCoinsMsg', { price: pairTotal, coins }));
       return;
     }
     for (const it of pairNeedItems) purchaseShopItem(it.id, Math.floor(it.price * buyDiscount));
@@ -214,7 +230,12 @@ function GalleryContent() {
     if (pair.deskId) setEquippedDesk(pair.id);
     equipWardrobeSkin(skin.id);
     setPairBuy(null);
-    showPopup(t('gallery.matchedTitle'), t('gallery.matchedMsg', { outfit: localizeOutfitName(skin.name, t), room: pair.name }));
+    // Drop back home so the new room + outfit are visible (matches character-equip).
+    // Defer navigation until the buy modal has finished dismissing — dismissing this
+    // in-file <Modal> AND the gallery modal SCREEN in the same tick freezes iOS (two
+    // native dismissals at once). No success popup — a root popup can't present over
+    // this modal screen either.
+    setTimeout(goHome, 350);
   };
   const wardrobeIsBun = wardrobeFor?.id === getStarterActiveId('girl');
   // Skins for the open wardrobe (Bun uses its own list; shop companions use COMPANION_SKINS).
@@ -256,7 +277,9 @@ function GalleryContent() {
     const skinLocked = !!skin.shopItemId && !ownedShopItems.includes(skin.shopItemId);
     if (!skinLocked) equipWardrobeSkin(skin.id);
     setPairConfirm(null);
-    showPopup(t('gallery.matchedTitle'), t('gallery.matchedMsg', { outfit: localizeOutfitName(skin.name, t), room: pair.name }));
+    // Defer until the preview modal has dismissed (see confirmPairBuy) — avoids the
+    // in-file-modal + screen dismissal colliding.
+    setTimeout(goHome, 350);
   };
 
   // Equipping a character drops you straight back to the home screen.
@@ -264,10 +287,7 @@ function GalleryContent() {
 
   const handleUseSlot = (slotId: string, hasRenderableImage: boolean) => {
     if (!hasRenderableImage) {
-      showPopup(
-        t('gallery.noArtTitle'),
-        t('gallery.noArtMsg'),
-      );
+      setGalleryAlert({ title: t('gallery.noArtTitle'), msg: t('gallery.noArtMsg') });
       return;
     }
     setActiveCompanion(slotId);
@@ -275,10 +295,12 @@ function GalleryContent() {
   };
 
   const confirmDelete = (slotId: string, name: string) => {
-    showPopup(t('gallery.removeCompanionQ'), t('gallery.removeCompanionMsg', { name }), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('gallery.remove'), style: 'destructive', onPress: () => deleteCompanionSlot(slotId) },
-    ]);
+    setGalleryAlert({
+      title: t('gallery.removeCompanionQ'),
+      msg: t('gallery.removeCompanionMsg', { name }),
+      confirmText: t('gallery.remove'),
+      onConfirm: () => deleteCompanionSlot(slotId),
+    });
   };
 
   // Owned characters — the free starter + any companions bought (one of the five
@@ -676,6 +698,44 @@ function GalleryContent() {
         </Pressable>
       </Modal>
 
+      {/* Generic in-file alert / confirm — replaces root showPopup (which freezes when
+          presented over this modal screen). Presents fine because it's part of this
+          screen's own view, like the other in-file modals above. */}
+      <Modal
+        visible={galleryAlert !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setGalleryAlert(null)}>
+        <Pressable style={styles.buyBackdrop} onPress={() => setGalleryAlert(null)}>
+          <Pressable style={styles.buyCard} onPress={(e) => e.stopPropagation?.()}>
+            {galleryAlert && (
+              <>
+                <Text style={styles.buyTitle}>{galleryAlert.title}</Text>
+                <Text style={styles.plusAlertMsg}>{galleryAlert.msg}</Text>
+                {galleryAlert.onConfirm ? (
+                  <>
+                    <Pressable
+                      style={({ pressed }) => [styles.buyBtn, pressed && styles.pressed]}
+                      onPress={() => { const fn = galleryAlert.onConfirm; setGalleryAlert(null); fn?.(); }}>
+                      <Text style={styles.buyBtnText}>{galleryAlert.confirmText ?? t('common.ok')}</Text>
+                    </Pressable>
+                    <Pressable style={styles.buyCancel} onPress={() => setGalleryAlert(null)}>
+                      <Text style={styles.buyCancelText}>{t('common.cancel')}</Text>
+                    </Pressable>
+                  </>
+                ) : (
+                  <Pressable
+                    style={({ pressed }) => [styles.plusOkBtn, pressed && styles.pressed]}
+                    onPress={() => setGalleryAlert(null)}>
+                    <Text style={styles.plusOkText}>{t('common.ok')}</Text>
+                  </Pressable>
+                )}
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
     </ScrollView>
     <DevKnobs screen="companion-gallery" knobs={knobs} onChange={(key, value) => setTweak((p) => ({ ...p, [key]: value }))} />
     </>
@@ -940,6 +1000,7 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   },
   buyCard: {
     width: '100%',
+    minWidth: MIN_POPUP_WIDTH,
     maxWidth: 340 * s,
     backgroundColor: P.card,
     borderRadius: 26 * s,
@@ -1122,7 +1183,7 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   loreCard: {
     backgroundColor: '#FFFDF8', borderRadius: 24 * s,
     padding: 24 * s, gap: 12 * s, alignItems: 'center',
-    maxWidth: 320 * s, width: '100%',
+    maxWidth: 320 * s, width: '100%', minWidth: MIN_POPUP_WIDTH,
     shadowColor: '#5B3A2E', shadowOpacity: 0.18, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
   },
   loreTitle: { fontSize: 22 * s, fontWeight: '900', color: P.brown, textAlign: 'center' },
