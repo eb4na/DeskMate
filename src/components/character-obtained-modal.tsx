@@ -13,7 +13,7 @@ import { MIN_POPUP_WIDTH } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 import { companionByShopItemId, localizeCompanionName } from '@/lib/companion-utils';
-import { useReportModalTransition } from '@/lib/modal-traffic';
+import { useModalSafeVisible } from '@/lib/modal-traffic';
 
 const P = { card: '#FFFDF8', brown: '#5B3A2E', muted: '#9A7B6D' };
 
@@ -21,8 +21,9 @@ export function CharacterObtainedModal() {
   const { t } = useTranslation();
   const { characterObtainedPending, clearCharacterObtained, setActiveCompanion } = useApp();
   const choice = characterObtainedPending ? companionByShopItemId(characterObtainedPending) : undefined;
-  const visible = !!choice;
-  useReportModalTransition(visible);
+  // Defer past the settle window so this celebration never presents on top of a
+  // still-transitioning modal (it can be triggered by a purchase on any screen).
+  const visible = useModalSafeVisible(!!choice);
 
   if (!choice) {
     return <Modal visible={false} transparent />;

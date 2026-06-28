@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PlusIcon } from '@/components/plus-icon';
 import { PlusCrown } from '@/components/avatar-frame';
 import { CardColorIcon } from '@/components/card-color-icon';
+import { DiscoBallIcon } from '@/components/disco-ball-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
@@ -26,6 +27,7 @@ const FEATURES: {
   art?: number;
   crown?: boolean; // render the gold crown frame instead of an image
   cardColor?: boolean; // render the code-drawn profile-card-colour icon
+  disco?: boolean; // render the code-drawn disco-ball icon
   noteKey?: string;
   noteKind?: 'keep' | 'expire';
 }[] = [
@@ -35,6 +37,7 @@ const FEATURES: {
   { titleKey: 'plus.f_streakFreezes', descKey: 'plus.f_streakFreezesDesc', art: require('@/assets/images/home/streak-freeze-icon.png') },
   { titleKey: 'plus.f_ambience', descKey: 'plus.f_ambienceDesc', art: require('@/assets/images/shop/icon-sound.png') },
   { titleKey: 'plus.f_spotify', descKey: 'plus.f_spotifyDesc', art: require('@/assets/images/settings/spotify-logo.png') },
+  { titleKey: 'plus.f_disco', descKey: 'plus.f_discoDesc', disco: true },
   { titleKey: 'plus.f_exclusiveSkin', descKey: 'plus.f_exclusiveSkinDesc', art: require('@/assets/images/bun/bun-strawberry.png'), noteKey: 'plus.noteKeep', noteKind: 'keep' },
   { titleKey: 'plus.f_goldenTeahouse', descKey: 'plus.f_goldenTeahouseDesc', art: require('@/assets/images/backgrounds/strawberry-palace.png'), noteKey: 'plus.noteKeep', noteKind: 'keep' },
   { titleKey: 'plus.f_cardColor', descKey: 'plus.f_cardColorDesc', cardColor: true, noteKey: 'plus.noteExpire', noteKind: 'expire' },
@@ -160,6 +163,8 @@ export default function PlusUpgradeScreen() {
                     <PlusCrown size={isTablet ? 42 : 30} />
                   ) : f.cardColor ? (
                     <CardColorIcon size={isTablet ? 52 : 40} />
+                  ) : f.disco ? (
+                    <DiscoBallIcon size={isTablet ? 52 : 40} />
                   ) : (
                     <Image source={f.art} style={[styles.featureImg, isTablet && styles.featureImgTablet]} contentFit="contain" />
                   )}

@@ -10,7 +10,7 @@ import { DeleteAccountModal } from '@/components/delete-account-modal';
 import { InstagramFollowRow } from '@/components/instagram-follow-row';
 import { PlusIcon } from '@/components/plus-icon';
 import { EnvelopeIcon } from '@/components/settings-icons';
-import { fetchMail } from '@/lib/mail';
+import { fetchMail, fetchMailClaims } from '@/lib/mail';
 import { LockBadge } from '@/components/lock-badge';
 
 // Cozy hand-drawn settings icon set (assets/images/settings/*.png).
@@ -162,12 +162,20 @@ export default function SettingsScreen() {
   const [bdayOpen, setBdayOpen] = useState(false);
   const [bdayDraft, setBdayDraft] = useState('2008-01-01');
 
-  // Unread mail count for the Mailbox row badge (live fetch on open).
+  // Unread mail count for the Mailbox row badge (live fetch on open). Only count mail
+  // with an UNCLAIMED reward: a message-only mail (no coins/item) can't be claimed, so
+  // it must never badge forever. "Claimed" merges the SERVER claims with local state —
+  // local `claimedMailIds` is wiped by an account reset, but the server claim persists,
+  // so without the server check a reset would wrongly re-badge already-claimed mail.
   const [unreadMail, setUnreadMail] = useState(0);
   useEffect(() => {
     let alive = true;
-    fetchMail().then((m) => {
-      if (alive) setUnreadMail(m.filter((x) => !claimedMailIds.includes(x.id)).length);
+    Promise.all([fetchMail(), fetchMailClaims()]).then(([m, serverClaimed]) => {
+      if (!alive) return;
+      const claimed = new Set([...serverClaimed, ...claimedMailIds]);
+      const hasReward = (x: { coins: number; itemId: string | null; itemChoices: string[] }) =>
+        x.coins > 0 || !!x.itemId || x.itemChoices.length > 0;
+      setUnreadMail(m.filter((x) => hasReward(x) && !claimed.has(x.id)).length);
     });
     return () => {
       alive = false;
@@ -787,7 +795,7 @@ export default function SettingsScreen() {
           <View style={styles.resetCard}>
             <ThemedText style={styles.resetTitle}>Reset items &amp; progress?</ThemedText>
             <ThemedText style={styles.resetBody}>
-              TEST: keeps your account (you stay signed in — no onboarding restart) but removes everything you own — companions, backgrounds, desks, outfits, skins, recipes/badges — leaving just Bun. Wipes study progress too, and grants 1,000,000 coins.
+              TEST: keeps your account (you stay signed in), but you'll re-accept the Privacy Policy and confirm your birthday to verify your age again. Removes everything you own — companions, backgrounds, desks, outfits, skins, recipes/badges — leaving just Bun. Wipes study progress too, and grants 1,000,000 coins.
             </ThemedText>
             <Pressable
               style={({ pressed }) => [styles.resetBtn, pressed && styles.pressed]}

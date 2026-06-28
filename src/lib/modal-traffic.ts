@@ -13,7 +13,7 @@
 // stuck, so a missed/duplicated call can never strand a modal permanently invisible.
 // Worst case is a popup that appears a few hundred ms late. Fail-open by construction.
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 // Roughly the RN Modal fade/slide duration plus a little slack, so the previous
 // modal's view controller is fully gone before the next one presents.
@@ -40,4 +40,40 @@ export function useReportModalTransition(visible: boolean) {
   useEffect(() => {
     noteModalTransition();
   }, [visible]);
+}
+
+/**
+ * Hook: gate a native <Modal>'s visibility through the global settle window so it can
+ * NEVER present while another modal is still opening/closing (the iOS double-present
+ * freeze). Pass the visibility you WANT; get back the visibility that is SAFE to apply.
+ *
+ * This is the PRESENTER half of the guard — until now only PopupHost waited like this,
+ * inline; every other modal merely reported, so anything that presented on top of a
+ * transitioning modal (e.g. a realtime invite arriving while a popup was open, on any
+ * screen) could wedge the screen. Use this for any modal that PRESENTS on its own; it
+ * also reports its own open/close, so don't ALSO call useReportModalTransition.
+ *
+ * When `want` turns true it waits out msUntilModalSafe(), re-checking on each wake in
+ * case another modal moved meanwhile; turning `want` off hides at once. Pure timer —
+ * it can never wedge (worst case the modal appears a few hundred ms late).
+ */
+export function useModalSafeVisible(want: boolean): boolean {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    if (!want) {
+      setShow(false);
+      return;
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const tryShow = () => {
+      const wait = msUntilModalSafe();
+      if (wait <= 0) setShow(true);
+      else timer = setTimeout(tryShow, wait);
+    };
+    tryShow();
+    return () => { if (timer) clearTimeout(timer); };
+  }, [want]);
+  // Report our own open/close so OTHER presenters likewise wait us out.
+  useReportModalTransition(show);
+  return show;
 }

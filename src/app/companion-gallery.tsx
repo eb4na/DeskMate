@@ -8,6 +8,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useReportModalTransition } from '@/lib/modal-traffic';
@@ -122,6 +123,7 @@ function GalleryContent() {
   const { t } = useTranslation();
   const { scale, contentWidth } = useTabletScale();
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
+  const { height: winH } = useWindowDimensions();
   const {
     activeCompanionId,
     starterCompanionId,
@@ -520,21 +522,25 @@ function GalleryContent() {
               onPress={() => setWardrobeFor(null)}>
               <Text style={styles.doneButtonText}>{t('common.done')}</Text>
             </Pressable>
-
-            {lorePopup && (
-              <Pressable style={styles.loreBackdrop} onPress={() => setLorePopup(null)}>
-                <Pressable style={styles.loreCard} onPress={() => {}}>
-                  <Text style={styles.loreTitle}>{lorePopup.name}</Text>
-                  <ScrollView style={styles.loreScroll} contentContainerStyle={styles.loreScrollContent} showsVerticalScrollIndicator>
-                    <Text style={styles.loreText}>{lorePopup.text}</Text>
-                  </ScrollView>
-                  <Pressable style={({ pressed }) => [styles.loreClose, pressed && styles.pressed]} onPress={() => setLorePopup(null)}>
-                    <Text style={styles.loreCloseText}>{t('common.close')}</Text>
-                  </Pressable>
-                </Pressable>
-              </Pressable>
-            )}
           </View>
+          {/* Lore popup — on the FULL-SCREEN backdrop (not the bottom sheet) so it
+              centers on the whole screen. */}
+          {lorePopup && (
+            <View style={styles.loreBackdrop}>
+              {/* Tap-outside-to-close lives on a layer BEHIND the card so it never
+                  wraps (and swallows the scroll gesture of) the ScrollView. */}
+              <Pressable style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onPress={() => setLorePopup(null)} />
+              <View style={styles.loreCard}>
+                <Text style={styles.loreTitle}>{lorePopup.name}</Text>
+                <ScrollView style={[styles.loreScroll, { maxHeight: winH * 0.6 }]} contentContainerStyle={styles.loreScrollContent} showsVerticalScrollIndicator nestedScrollEnabled>
+                  <Text style={styles.loreText}>{lorePopup.text}</Text>
+                </ScrollView>
+                <Pressable style={({ pressed }) => [styles.loreClose, pressed && styles.pressed]} onPress={() => setLorePopup(null)}>
+                  <Text style={styles.loreCloseText}>{t('common.close')}</Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
         </View>
       </Modal>
 

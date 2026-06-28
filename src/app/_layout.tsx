@@ -1,4 +1,5 @@
 import { Asset } from 'expo-asset';
+import { useFonts } from 'expo-font';
 import { Image as ExpoImage } from 'expo-image';
 import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
 import { Animated, Easing, StyleSheet, Text, useColorScheme, useWindowDimensions, View } from 'react-native';
@@ -132,6 +133,10 @@ function RootNavigator() {
   const { loaded, legalAccepted, markLegalAccepted, setBirthday, updateProfile, soundEffectsEnabled, starterChosen, isPlus, plusPlan, setIsPlus, persistedStateReady, resetAccountForAbandonedOnboarding,
     equippedBackgroundRoomId, equippedDeskRoomId, activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins } = useApp();
   const { t } = useTranslation();
+
+  // Rounded display font (Baloo 2 ExtraBold) for the study countdown — loads from the
+  // bundled asset; non-blocking (the timer falls back to system until it's ready).
+  useFonts({ Baloo2: require('@/assets/fonts/Baloo2-ExtraBold.ttf') });
 
   // Keep the tap-sound helper's gate in sync with the user's setting.
   useEffect(() => { setTapSoundEnabled(soundEffectsEnabled); }, [soundEffectsEnabled]);

@@ -16,6 +16,7 @@ import { RecipeBadgeModal } from '@/components/recipe-badge-modal';
 import { DailyRewardModal } from '@/components/daily-reward-modal';
 import { BirthdayRewardModal } from '@/components/birthday-reward-modal';
 import { TicketRewardModal } from '@/components/ticket-reward-modal';
+import { AfterMoodPrompt } from '@/components/after-mood-prompt';
 import { useStudyRoom } from '@/lib/use-study-room';
 import { BakeryGearEmoji } from '@/components/bakery-emoji';
 import { CountdownShape } from '@/components/countdown-shapes';
@@ -34,7 +35,7 @@ import { HanjiFigure } from '@/components/hanji-figure';
 import { CompanionPet, PetCloudHost } from '@/components/companion-pet';
 import { useAuth } from '@/context/auth-context';
 import { listBlocked, listIncomingRequests } from '@/lib/friend-requests';
-import { fetchMail } from '@/lib/mail';
+import { fetchMail, fetchMailClaims } from '@/lib/mail';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { takePendingDragSession, setDragActive, type DragSessionData } from '@/lib/drag-session';
 import { showLoadingScreen } from '@/lib/loading-signal';
@@ -594,6 +595,9 @@ export default function HomeScreen() {
   const [finishingSession, setFinishingSession] = useState(false);
   const finishParamsRef = useRef<Record<string, string> | null>(null);
   const [homeFocused, setHomeFocused] = useState(false);
+  // Minutes of an early-ended-but-recorded session awaiting its after-mood (null = none).
+  // Only the manual stop sets this; the walk-away auto-stop leaves it null (no one's there).
+  const [earlyEndMoodMinutes, setEarlyEndMoodMinutes] = useState<number | null>(null);
   const [dragSession, setDragSession] = useState<DragSessionData | null>(null);
   // The streak + coin pills are two separate buttons that should always be the same
   // width. Each reports its natural (content-sized) width; we take the larger and
@@ -704,9 +708,17 @@ export default function HomeScreen() {
     } else {
       setPendingRequests(0);
     }
-    // Any unclaimed live mail → Settings red dot.
-    fetchMail()
-      .then((m) => { if (!cancelled) setHasUnclaimedMail(m.some((mail) => !claimedMailIdsRef.current.includes(mail.id))); })
+    // Any unclaimed REWARD mail → Settings red dot. Message-only mail (no coins/item)
+    // can't be claimed, so it must not dot forever; merge server claims so an account
+    // reset (which wipes local claimedMailIds) doesn't re-dot already-claimed mail.
+    Promise.all([fetchMail(), fetchMailClaims()])
+      .then(([m, serverClaimed]) => {
+        if (cancelled) return;
+        const claimed = new Set([...serverClaimed, ...claimedMailIdsRef.current]);
+        const hasReward = (mail: { coins: number; itemId: string | null; itemChoices: string[] }) =>
+          mail.coins > 0 || !!mail.itemId || mail.itemChoices.length > 0;
+        setHasUnclaimedMail(m.some((mail) => hasReward(mail) && !claimed.has(mail.id)));
+      })
       .catch(() => {});
     return () => { cancelled = true; setHomeFocused(false); };
   }, [startBounce, user?.id]));
@@ -968,10 +980,14 @@ export default function HomeScreen() {
           clearActiveSession();
 
           // No coins for an early end, but still log the time studied toward
-          // streak/stats if they put in a meaningful chunk.
+          // streak/stats if they put in a meaningful chunk — and capture the
+          // after-mood (the session-complete screen, which normally records it,
+          // is skipped on an early end). Gated on the same threshold as the record
+          // so a too-short session leaves neither a stat nor a mood entry.
           if (sessionElapsedMinutes >= MIN_MINUTES_FOR_COINS) {
             recordSession(sessionElapsedMinutes);
             addSubjectTime(endedSession.subjectName, sessionElapsedMinutes);
+            setEarlyEndMoodMinutes(sessionElapsedMinutes);
           }
         },
       },
@@ -1378,6 +1394,16 @@ export default function HomeScreen() {
       {homeFocused && !activeSession && <DailyRewardModal />}
       {homeFocused && !activeSession && <BirthdayRewardModal />}
       {homeFocused && !activeSession && <TicketRewardModal />}
+      {/* After-mood for a session ended early but still recorded — the only place
+          its mood is captured (the session-complete screen is skipped on early end). */}
+      <AfterMoodPrompt
+        minutes={earlyEndMoodMinutes}
+        onPick={(value, label, sessionMinutes) => {
+          addMoodEntry({ value, label, type: 'after', sessionMinutes, timestamp: new Date().toISOString() });
+          setEarlyEndMoodMinutes(null);
+        }}
+        onSkip={() => setEarlyEndMoodMinutes(null)}
+      />
       {/* First-launch coachmark tour — only after onboarding, and only once the
           daily-reward popup is out of the way (so the two never stack). Replaying
           it from Settings just flips tutorialSeen back off. */}

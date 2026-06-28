@@ -12,7 +12,7 @@ import { MIN_POPUP_WIDTH } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
 import { bunAvatarNudge, getCompanionImage } from '@/lib/companion-utils';
-import { useReportModalTransition } from '@/lib/modal-traffic';
+import { useModalSafeVisible } from '@/lib/modal-traffic';
 import { listBlocked } from '@/lib/friend-requests';
 import { joinPresence, subscribeToInvites, type GameInvite, type OnlineGameId } from '@/lib/game-net';
 import { acceptGameInvite } from '@/lib/invite-actions';
@@ -48,7 +48,10 @@ export function InviteListener() {
   const { user } = useAuth();
   const studyRoom = useStudyRoom();
   const [invite, setInvite] = useState<GameInvite | null>(null);
-  useReportModalTransition(!!invite);
+  // Defer presentation past the global settle window: an invite can arrive over a
+  // realtime callback at any instant, including while another modal is mid-transition
+  // — presenting then would wedge the screen on whatever route you're on.
+  const visible = useModalSafeVisible(!!invite);
   // Current route, kept in a ref so the realtime invite callback reads it live.
   const pathname = usePathname();
   const pathRef = useRef(pathname);
@@ -107,7 +110,7 @@ export function InviteListener() {
   };
 
   return (
-    <Modal visible={!!invite} transparent animationType="fade" onRequestClose={() => setInvite(null)}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={() => setInvite(null)}>
       <View style={styles.root}>
         <Pressable style={styles.backdrop} onPress={() => setInvite(null)} />
         <View style={styles.card}>

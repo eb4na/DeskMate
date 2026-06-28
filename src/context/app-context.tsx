@@ -2315,14 +2315,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       friends: prev.friends,
       language: prev.language,
       languageSelected: prev.languageSelected,
-      legalAccepted: prev.legalAccepted,
-      birthday: prev.birthday,
       timezone: prev.timezone,
-      // Profile text identity (display name/bio/birthday) is part of the account.
+      // Re-verify age on reset: consent + the stored birthday are NOT kept, so the
+      // Privacy Policy + Terms + date-of-birth gate runs again (and a fresh profile
+      // birthday is set from it). These fall back to DEFAULTS — legalAccepted:false,
+      // birthday/profileBirthday cleared, profileBirthdayChanged:false.
+      // Profile text identity (display name/bio) is part of the account.
       profileDisplayName: prev.profileDisplayName,
       profileDescription: prev.profileDescription,
-      profileBirthday: prev.profileBirthday,
-      profileBirthdayChanged: prev.profileBirthdayChanged,
       // Drop back to the starter chooser so the reset re-runs the "pick your free
       // companion" step (DEFAULTS already reset starterCompanionId/activeCompanionId).
       starterChosen: false,

@@ -75,25 +75,6 @@ export default function SignupScreen() {
     const goVerify = () =>
       router.push({ pathname: '/verify-code', params: { email: normalizedEmail, mode: 'signup' } });
 
-    // When the email already exists, distinguish an *unfinished* signup (created
-    // but never verified — a leftover stub) from a real, confirmed account.
-    // Resending the signup code succeeds only for an unconfirmed user, so we use
-    // that as the test: success → let them finish verifying (don't dead-end on a
-    // half-made account); failure → it's a real account, send them to sign in.
-    const resumeOrBlock = async () => {
-      const { error: resendError } = await supabase.auth.resend({
-        type: 'signup',
-        email: normalizedEmail,
-        options: { emailRedirectTo: authCallbackUrl },
-      });
-      setSubmitting(false);
-      if (!resendError) {
-        goVerify();
-      } else {
-        setExistingAccountMessage(t('errors.emailAlreadyRegisteredLong'));
-      }
-    };
-
     const { data, error } = await supabase.auth.signUp({
       email: normalizedEmail,
       password,
@@ -103,31 +84,36 @@ export default function SignupScreen() {
     });
 
     if (error) {
+      setSubmitting(false);
+      // Only an EXPLICIT error means "account exists" — and that only happens with
+      // email-enumeration protection OFF. Send them to sign in. (With protection ON,
+      // signUp never errors on a duplicate; see the success branch below.)
       if (/already registered|already.*exists/i.test(error.message)) {
-        await resumeOrBlock();
+        router.replace({
+          pathname: '/login',
+          params: { email: normalizedEmail, notice: t('errors.emailExistsNotice') },
+        });
       } else {
         setErrorMessage(error.message);
-        setSubmitting(false);
       }
       return;
     }
 
-    // Supabase signals a duplicate email in several ways:
-    // 1. error.message "user already registered" (handled above)
-    // 2. data.user.identities === [] (unconfirmed duplicate, enumeration off)
-    // 3. data.user === null with no error (enumeration protection on)
-    // 4. data.user.email_confirmed_at set (confirmed account already exists)
-    const looksLikeExistingAccount =
-      !data.user ||
-      (Array.isArray(data.user.identities) && data.user.identities.length === 0) ||
-      !!data.user.email_confirmed_at;
+    setSubmitting(false);
 
-    if (looksLikeExistingAccount) {
-      await resumeOrBlock();
+    // The client uses PKCE + email confirmation, so a SUCCESSFUL signUp returns
+    // `{ user: null, session: null }` for a brand-new email — the user is withheld
+    // until the emailed code is verified — and returns the EXACT SAME shape for an
+    // existing/unconfirmed email (enumeration protection makes them indistinguishable
+    // client-side). A confirmation code is sent either way, so just continue to the
+    // verify screen. The old code treated `user == null` / empty `identities` as
+    // "account already exists", which falsely blocked EVERY new signup ("email already
+    // exists" on a genuinely new address). If email confirmation is ever turned off,
+    // signUp returns a live session instead → go straight into the app.
+    if (data.session) {
+      router.replace('/');
       return;
     }
-
-    setSubmitting(false);
     goVerify();
   };
 

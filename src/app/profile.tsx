@@ -292,13 +292,8 @@ export default function ProfileScreen() {
             />
           </View>
 
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>{t('profileCard.birthday')}</Text>
-            {/* Read-only: birthday is set at onboarding; the one allowed change lives
-                in Settings (so there's a single source of truth for the change-once). */}
-            <Text style={styles.lockedValue}>{profileBirthday ? formatBirthday(profileBirthday) : '—'}</Text>
-            <Text style={styles.fieldHint}>{t('profileCard.birthdayManageInSettings')}</Text>
-          </View>
+          {/* Birthday is NOT editable here — it's taken from the date of birth chosen at
+              signup; the single allowed change lives in Settings (one source of truth). */}
 
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>{t('profileCard.character')}</Text>

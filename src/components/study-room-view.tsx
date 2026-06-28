@@ -32,6 +32,7 @@ import { getPetLine } from '@/constants/pet-lines';
 import { HanjiFigure } from '@/components/hanji-figure';
 import { useStudyRoom, STUDY_ROOM_MAX, type StudyStatus } from '@/lib/use-study-room';
 import { discoPalette } from '@/lib/disco-palette';
+import { roomAccent } from '@/lib/room-accent';
 import { joinPresence, setMyPresenceStatus } from '@/lib/game-net';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { useTranslation } from '@/i18n';
@@ -111,9 +112,43 @@ const BOOK_COVER_COLOR: Record<string, string> = {
 };
 const DEFAULT_BOOK_COVER = '#C2925E';
 
+// Per-companion desk-book size multiplier, so each studier's book reads proportional
+// to how big THAT character actually looks. Every character renders in the same square
+// `partyCharSize` box with contentFit:contain, but the arts fill their box by different
+// amounts AND the desk hides their lower ~35%, so e.g. Cocoa stands visibly taller than
+// Bun above the desk while a single fixed book size made Bun's book look oversized and
+// Cocoa's undersized. Derived from each classic art's measured alpha height-fill `f`:
+// the part visible above the desk is `f/2 + 0.15` of the box; these multipliers are
+// that quantity normalised to the 6-companion mean (so the average book is unchanged),
+// gently clamped. Classic art only — skins are second-order and inherit their base.
+// FIRST-PASS estimates from the PNGs; dial on a real 2–3 person room if a book reads off.
+const BOOK_FILL_SCALE: Record<string, number> = {
+  bun: 0.93,
+  companion_cocoa: 1.03,
+  companion_bunny: 0.99,
+  companion_honey: 1.01,
+  companion_tira: 0.97,
+  hanji: 1.06,
+};
+
 // Tablet-only position knobs (🎛 design panel). Dial these live, hit "Get code",
 // and the values bake into TABLET_TWEAKS under `studysession.<name>`.
 const TABLET_ELEMENTS = [{ name: 'desk', label: 'Desk' }];
+
+// Countdown with a REAL thick outline: the number is drawn 8 times in the outline
+// colour, offset around the centre (a proper stroke, not a blur), with the themed fill
+// on top. Fixed font size (no auto-shrink) so every layer lines up exactly.
+function OutlinedTimer({ value, fontStyle, fill, outline, stroke }: { value: string; fontStyle: any; fill: string; outline: string; stroke: number }) {
+  const dirs: [number, number][] = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
+  return (
+    <View style={{ position: 'relative', alignSelf: 'stretch' }}>
+      {dirs.map(([dx, dy], i) => (
+        <Text key={i} numberOfLines={1} style={[fontStyle, { position: 'absolute', top: 0, left: 0, right: 0, width: '100%', textAlign: 'center', color: outline, transform: [{ translateX: dx * stroke }, { translateY: dy * stroke }] }]}>{value}</Text>
+      ))}
+      <Text numberOfLines={1} style={[fontStyle, { width: '100%', textAlign: 'center', color: fill }]}>{value}</Text>
+    </View>
+  );
+}
 
 /**
  * The "studying together" screen shown while a session runs. Works solo (one
@@ -161,6 +196,7 @@ export function StudyRoomView({
   const {
     activeSession,
     equippedDeskRoomId,
+    equippedBackgroundRoomId,
     activeCompanionId,
     defaultCompanionId,
     companionSlots,
@@ -341,6 +377,10 @@ export function StudyRoomView({
   // In a room everyone studies on the host's desk; solo uses my equipped desk.
   const deskRoomId = room.active && room.hostDeskId ? room.hostDeskId : equippedDeskRoomId;
   const deskRoom = ROOM_PAIRS.find((r) => r.id === deskRoomId);
+  // Per-background accent for the in-session UI (timer + Break/friend buttons), themed
+  // to whatever room you're studying in (the host's room in multiplayer).
+  const bgRoomId = room.active && room.hostBackgroundId ? room.hostBackgroundId : equippedBackgroundRoomId;
+  const acc = roomAccent(bgRoomId);
   const equippedDeskImage = deskRoom?.deskImage ?? DESK;
 
   // My status (studying/break), toggled by the Break button in a room.
@@ -481,9 +521,13 @@ export function StudyRoomView({
     room.roster.length > 0
       ? room.roster
       : [{ code: friendCode, name: profileDisplayName || t('studyRoom.defaultName'), isHost: true, companionId: undefined, skinId: undefined }];
-  const participants = [...rawParticipants].sort((a, b) =>
-    a.code === friendCode ? -1 : b.code === friendCode ? 1 : 0,
-  );
+  // Dedupe by code first — a reconnect/double-join can leave two roster rows with the
+  // same code, which would render duplicate React keys (key={p.code}) in the party
+  // member + book maps and miscount the row. Keep the first occurrence of each code.
+  const seenCodes = new Set<string>();
+  const participants = [...rawParticipants]
+    .filter((p) => (seenCodes.has(p.code) ? false : (seenCodes.add(p.code), true)))
+    .sort((a, b) => (a.code === friendCode ? -1 : b.code === friendCode ? 1 : 0));
   const studyingCount = participants.length;
 
   // Multiplayer scene: everyone's character is shown, evenly spaced, and sized by
@@ -496,7 +540,7 @@ export function StudyRoomView({
   // that controls spacing — making it smaller pulls the row inward. Phone enlarges +
   // pulls in MORE; tablet does the same, gentler. Solo (count<=1) is unaffected.
   const baseFit = partyCount <= 1 ? 280 : Math.floor((winW - PARTY_GAP * (partyCount - 1)) / partyCount);
-  const MP_SIZE = partyCount <= 1 ? 1 : isTablet ? 1.1 : 1.2;
+  const MP_SIZE = partyCount <= 1 ? 1 : isTablet ? 1.24 : 1.4;
   const MP_SPREAD = partyCount <= 1 ? 1 : isTablet ? 0.93 : 0.84;
   const partyCharSize = Math.round(baseFit * MP_SIZE);
   const partySlotW = Math.round(baseFit * MP_SPREAD);
@@ -530,8 +574,8 @@ export function StudyRoomView({
   // needs to bleed a little past the root's horizontal padding so it always covers the
   // corners on any device.
   const deskSideT = -(Spacing.three + winW * 0.05); // panel bleeds past the screen sides
-  const soloCharSize = Math.round(winW * 0.54);
-  const soloBookSizeT = Math.round(winW * 0.21);
+  const soloCharSize = Math.round(winW * 0.63);
+  const soloBookSizeT = Math.round(winW * 0.25);
   // Characters sit BEHIND the desk with their lower body tucked under the lip: a
   // fixed FRACTION (<0.5) of the square hides below the desk edge, so MORE THAN HALF
   // the body is always visible on ANY screen. Tying the hide amount to the character
@@ -570,6 +614,15 @@ export function StudyRoomView({
     if (companionId?.startsWith('shop:')) return BOOK_COVER_COLOR[companionId.slice(5)] ?? DEFAULT_BOOK_COVER;
     if (companionId === 'starter:girl' || companionId === 'starter:dude' || !companionId) return BOOK_COVER_COLOR.bun;
     return DEFAULT_BOOK_COVER;
+  };
+
+  // Per-companion book-size multiplier (see BOOK_FILL_SCALE), keyed exactly like the
+  // cover color so the book matches how big that character actually reads on the desk.
+  const bookFillScaleFor = (companionId: string | null | undefined) => {
+    if (isHanjiActiveId(companionId)) return BOOK_FILL_SCALE.hanji;
+    if (companionId?.startsWith('shop:')) return BOOK_FILL_SCALE[companionId.slice(5)] ?? 1;
+    if (companionId === 'starter:girl' || companionId === 'starter:dude' || !companionId) return BOOK_FILL_SCALE.bun;
+    return 1;
   };
 
   // Resolve a participant's live status (studying / break / idle).
@@ -809,12 +862,12 @@ export function StudyRoomView({
           </Pressable>
         </View>
       )}
-      {/* Invite-friend button (top right) — shown whenever there's room for more
-          studiers (fewer than STUDY_ROOM_MAX, INCLUDING a solo session). Once a
-          multiplayer room fills to 3, the button is simply removed (no "Full" chip). */}
-      {!roomFull && (
-        <Pressable onPress={handleAddFriend} style={({ pressed }) => [styles.addFriendBtn, isTablet && styles.addFriendBtnTablet, focus && styles.btnFocusFlat, pressed && styles.pressed]} hitSlop={8} accessibilityLabel={t('studyRoom.friend')}>
-          <Text style={[styles.addFriendIcon, isTablet && styles.addFriendIconTablet, focus && { color: focusFg }]}>＋</Text>
+      {/* Invite-friend button (top right) — only in a MULTIPLAYER room with space left
+          (fewer than STUDY_ROOM_MAX). A solo session stays solo (no invite button). Once
+          a room fills to 3, the button is simply removed (no "Full" chip). */}
+      {!isSolo && !roomFull && (
+        <Pressable onPress={handleAddFriend} style={({ pressed }) => [styles.addFriendBtn, isTablet && styles.addFriendBtnTablet, !focus && { backgroundColor: acc.button, borderColor: acc.button }, focus && styles.btnFocusFlat, pressed && styles.pressed]} hitSlop={8} accessibilityLabel={t('studyRoom.friend')}>
+          <Text style={[styles.addFriendIcon, isTablet && styles.addFriendIconTablet, { color: focus ? focusFg : acc.onButton }]}>＋</Text>
         </Pressable>
       )}
 
@@ -824,37 +877,15 @@ export function StudyRoomView({
           /* Focus mode: just the countdown, in the opposite colour to the background. */
           <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.3} style={[styles.focusTimer, { color: focusFg }]}>{format(displaySecs)}</Text>
         ) : (<>
-        {/* Ropes from the real top of the screen down to the sign's eyelets. Rendered
-            behind StudyOven so the sign body + eyelet circles cover the rope ends. */}
-        {ropes && (
-          <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: ropes.top, width: ropes.width, height: ropes.eyeY }}>
-            <Svg width="100%" height="100%" viewBox={`0 0 ${ropes.width} ${ropes.eyeY}`}>
-              {[EYELET_FRAC.left, EYELET_FRAC.right].map((f) => (
-                <Line key={`rope${f}`} x1={ropes.width * f} y1={0} x2={ropes.width * f} y2={ropes.eyeY} stroke="#B98E5E" strokeWidth={(10 * ropes.width) / 1032} strokeLinecap="round" />
-              ))}
-              {[EYELET_FRAC.left, EYELET_FRAC.right].map((f) => (
-                <Line key={`ropehi${f}`} x1={ropes.width * f} y1={0} x2={ropes.width * f} y2={ropes.eyeY} stroke="#D8B589" strokeWidth={(3.5 * ropes.width) / 1032} strokeLinecap="round" />
-              ))}
-            </Svg>
-          </View>
-        )}
-        <StudyOven style={StyleSheet.absoluteFill} />
+        {/* Oven sign removed for now — just the bare countdown number. */}
         <View style={styles.timerText}>
-          {/* Phone keeps it minimal — JUST the countdown, centered in the sign. The
-              "Now baking" caption + "studying together" line are tablet-only (more
-              room there); on phone they only crowded the small sign. */}
-          {isTablet && <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.nowBaking, soloScene && styles.nowBakingSolo, styles.nowBakingTablet]}>{t('studyRoom.nowBaking')}</Text>}
-          {/* Auto-shrink to fit the sign's width so the timer can never overflow / pop
-              out the side on any screen or font size. */}
-          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.3} style={[styles.timer, { width: '100%', textAlign: 'center' }, soloScene && styles.timerSolo, isTablet && { fontSize: Math.round(winW * 0.081) }]}>{format(displaySecs)}</Text>
-          {!soloScene && isTablet && (
-            <View style={styles.studyingRow}>
-              <Image source={PPL_ICON} style={styles.pplIcon} contentFit="contain" />
-              <Text style={styles.bakeSub}>
-                {studyingCount === 1 ? t('studyRoom.oneStudying') : t('studyRoom.studyingTogether', { count: studyingCount })}
-              </Text>
-            </View>
-          )}
+          <OutlinedTimer
+            value={format(displaySecs)}
+            fontStyle={[styles.timer, soloScene && styles.timerSolo, isTablet && { fontSize: Math.round(winW * 0.135) }]}
+            fill={acc.button}
+            outline="#FFFFFF"
+            stroke={isTablet ? 5 : 3.5}
+          />
         </View>
         {/* When the session ends, the baked recipe springs up out of the timer. */}
         {isSolo && <RecipePop dish={dishImage} playing={finishing} />}
@@ -911,7 +942,7 @@ export function StudyRoomView({
           behind the table. Phone uses the in-scene flex layout above. */}
       {soloScene && isTablet && (
         <Animated.View
-          style={[{ position: 'absolute', left: 0, right: 0, bottom: focus ? soloCharBottomT - 120 : soloCharBottomT, alignItems: 'center', zIndex: 1 }, soloCharTransform]}>
+          style={[{ position: 'absolute', left: 0, right: 0, bottom: focus ? soloCharBottomT - 150 : soloCharBottomT, alignItems: 'center', zIndex: 1 }, soloCharTransform]}>
           <Pressable style={{ width: soloCharSize, height: soloCharSize }} onPress={() => talkAs(friendCode, myPersona, mySkin, 1.25)}>
             <Animated.View style={{ flex: 1, transform: [{ scale: tapScale }], transformOrigin: 'center bottom' }}>
               {soloCharContent}
@@ -1004,15 +1035,24 @@ export function StudyRoomView({
             </View>
           </View>
         ) : (
-          <View
-            style={[
-              styles.bookOnDesk,
-              // Dead-center under the character (which is itself screen-centered); only
-              // the vertical dy nudge is applied.
-              { transform: [{ translateY: SOLO_BOOK_CANVAS * soloBookOffset.dy }] },
-            ]}
-            pointerEvents="none">
-            <StudyBook active={!onBreak} size={118} coverColor={soloBookColor} />
+          // HARD CAP (like tablet): clip to the desk's top line (deskEdgeY) with
+          // overflow:hidden so the book can never poke above the desk edge.
+          <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: deskEdgeY, overflow: 'hidden', zIndex: 2 }} pointerEvents="none">
+            <View
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                alignItems: 'center',
+                // Top rests just BELOW the desk edge — the highest it can go (up near the
+                // character) WITHOUT crossing the desk line. The overflow:hidden clip box
+                // above is the hard guarantee it can never pass the desk. (StudyBook's art
+                // top sits 1.05·size − 42 above the wrap bottom.)
+                bottom: deskEdgeY - 1.05 * 145 + 42 - winH * 0.012,
+                transform: [{ translateY: SOLO_BOOK_CANVAS * soloBookOffset.dy }],
+              }}>
+              <StudyBook active={!onBreak} size={145} coverColor={soloBookColor} />
+            </View>
           </View>
         )
       ) : (
@@ -1028,19 +1068,34 @@ export function StudyRoomView({
         // TOP can't rise above `deskEdgeY`, otherwise the larger multiplayer books float
         // up past the desk onto the wall. The book's rendered height is 84/120 of its
         // `size` (StudyBook draws a 120×84 art), so the cap uses that, not `partyBookSize`.
-        <View style={[styles.partyBookRow, { bottom: Math.min(partyCharBottom + (!isTablet ? 0.05 * partyCharSize : -4), deskEdgeY - partyBookSize * (84 / 120)) }]} pointerEvents="none">
-          {participants.slice(0, STUDY_ROOM_MAX).map((p) => {
-            const cover = p.code === friendCode ? soloBookColor : bookColorFor(p.companionId);
-            return (
-              <View
-                key={p.code}
-                style={[styles.partyBookSlot, { width: partySlotW }]}>
-                {/* Flip ONLY while that studier is actively studying — a break or a
-                    dropped/idle connection holds the pages still. */}
-                <StudyBook active={participantStatus(p.code) === 'studying'} size={partyBookSize} coverColor={cover} />
-              </View>
-            );
-          })}
+        // HARD CAP: clip the whole book row to the desk's top line (deskEdgeY) with
+        // overflow:hidden, so the multiplayer books can never poke above the desk —
+        // foolproof regardless of StudyBook's exact visual height (the positional cap
+        // alone used the wrong height and let them float onto the wall).
+        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: deskEdgeY, overflow: 'hidden', zIndex: 2 }} pointerEvents="none">
+          <View style={[styles.partyBookRow, { bottom: deskEdgeY - 1.05 * partyBookSize + 42 - winH * 0.012 }]} pointerEvents="none">
+            {participants.slice(0, STUDY_ROOM_MAX).map((p) => {
+              // My own companion id (activeCompanionId) drives both my cover + book size;
+              // friends carry their own. Scaling the book per companion keeps the
+              // book↔character size ratio constant across the row even though the arts
+              // fill their boxes (and read above the desk) by different amounts.
+              const myId = p.code === friendCode ? activeCompanionId : p.companionId;
+              const cover = p.code === friendCode ? soloBookColor : bookColorFor(p.companionId);
+              return (
+                <View
+                  key={p.code}
+                  style={[styles.partyBookSlot, { width: partySlotW }]}>
+                  {/* Flip ONLY while that studier is actively studying — a break or a
+                      dropped/idle connection holds the pages still. */}
+                  <StudyBook
+                    active={participantStatus(p.code) === 'studying'}
+                    size={Math.round(partyBookSize * bookFillScaleFor(myId))}
+                    coverColor={cover}
+                  />
+                </View>
+              );
+            })}
+          </View>
         </View>
       ))}
 
@@ -1065,9 +1120,9 @@ export function StudyRoomView({
           <SoundPressable
             onPress={handleBreak}
             disabled={breakDisabled}
-            style={({ pressed }) => [styles.breakBtn, isTablet && { width: 340, height: 66 }, breakDisabled && styles.breakBtnDisabled, pressed && styles.pressed]}>
-            {!focus && <Image source={BREAK_PILL} style={StyleSheet.absoluteFill} contentFit="fill" pointerEvents="none" />}
-            <Text style={[styles.breakBtnText, isTablet && { fontSize: 21 }, focus && { color: focusFg }]}>{breakLabel}</Text>
+            style={({ pressed }) => [styles.breakBtn, isTablet && { width: 340, height: 66 }, focus && styles.btnFocusFlat, breakDisabled && styles.breakBtnDisabled, pressed && styles.pressed]}>
+            {!focus && <Image source={BREAK_PILL} style={StyleSheet.absoluteFill} contentFit="fill" tintColor={acc.button} pointerEvents="none" />}
+            <Text style={[styles.breakBtnText, isTablet && { fontSize: 21 }, { color: focus ? focusFg : acc.onButton }]}>{breakLabel}</Text>
           </SoundPressable>
         )}
       </View>
@@ -1193,13 +1248,13 @@ const styles = StyleSheet.create({
   // (solo + tablet override both). Widened from 52% so the multiplayer oven sign is
   // bigger; it grows downward (top is pinned by marginTop), so the friend button —
   // up in the rope zone above the sign body — still clears it.
-  timerWrap: { alignSelf: 'center', width: '62%', aspectRatio: 1032 / 838, marginTop: -36 },
+  timerWrap: { alignSelf: 'center', width: '62%', aspectRatio: 1032 / 838, marginTop: -72 },
   timerWrapSolo: { width: '88%' },
-  timerText: { position: 'absolute', left: '17%', right: '17%', top: '36%', bottom: '18%', alignItems: 'center', justifyContent: 'center' },
+  timerText: { position: 'absolute', left: 0, right: 0, top: '30%', bottom: '12%', alignItems: 'center', justifyContent: 'center' },
   nowBaking: { fontSize: 9, fontWeight: '800', color: BakeryColors.mocha, letterSpacing: 2, marginBottom: 2 },
   nowBakingSolo: { fontSize: 13 },
-  timer: { fontSize: 46, fontWeight: '900', color: BakeryColors.cocoaDark, letterSpacing: 1 },
-  timerSolo: { fontSize: 56 },
+  timer: { fontSize: 72, fontWeight: '900', letterSpacing: 1, fontFamily: 'Baloo2' },
+  timerSolo: { fontSize: 96 },
   // Focus-mode (Spotify background) countdown: big, plain, no sign — colour set inline.
   focusTimer: { fontSize: 64, fontWeight: '900', letterSpacing: 1, textAlign: 'center', width: '100%' },
   // Tablet: bigger timer to fill the wider sign.
@@ -1228,7 +1283,7 @@ const styles = StyleSheet.create({
   character: { width: 172, height: 200, zIndex: 1, marginBottom: 0 },
   characterFill: { width: '100%', height: '100%' },
   // Solo: match the Home-screen companion size (300×300) so it feels prominent.
-  characterSolo: { width: 300, height: 300, marginBottom: 40 },
+  characterSolo: { width: 350, height: 350, marginBottom: 40 },
   // Focus mode drops the character lower (no desk to tuck behind).
   characterSoloFocus: { marginBottom: -42 },
   // Alpha-locked disco wash: a tinted copy of the character image, overlaid + faded.
