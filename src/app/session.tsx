@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   progressFill: { height: 6, backgroundColor: BakeryColors.honey, borderRadius: 3 },
   controls: { gap: Spacing.three, alignItems: 'center' },
   pauseBtn: {
-    backgroundColor: BakeryColors.honey,
+    backgroundColor: BakeryColors.buttonPink,
     borderRadius: BakeryRadii.button,
     paddingVertical: Spacing.three,
     paddingHorizontal: 48,

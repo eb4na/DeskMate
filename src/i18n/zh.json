@@ -1739,6 +1739,7 @@
     "spotifyNote": "需要 Spotify Premium，并在本设备上打开并播放 Spotify。",
     "spotifyTitle": "Spotify",
     "spotifyBg": "Spotify背景",
+    "discoHostOnly": "只有房主可以开启迪斯科模式",
     "spotifySetup": "Spotify 尚未设置（请添加 Client ID）。",
     "spotifyFailed": "无法连接 Spotify，请重试。",
     "noDevice": "打开 Spotify 并播放歌曲即可在此控制。",

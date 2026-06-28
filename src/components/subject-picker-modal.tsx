@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: BakeryRadii.button,
     alignItems: 'center',
-    backgroundColor: C.honey,
+    backgroundColor: C.buttonPink,
   },
   focusText: { fontSize: 15, fontWeight: '900', color: C.cocoaDark },
   pressed: { opacity: 0.85 },

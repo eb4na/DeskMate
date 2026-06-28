@@ -122,6 +122,7 @@ export function SoundPickerModal({
   onClose,
   playback,
   onRefresh,
+  discoHostOnly = false,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -129,6 +130,10 @@ export function SoundPickerModal({
   // vinyl stays live after this popup closes, and the popup opens already in sync).
   playback: Playback | null;
   onRefresh: () => Promise<void> | void;
+  // In a multiplayer room, only the host controls the disco background — guests
+  // follow the host's state. True when the current user is a non-host in a room, so
+  // tapping the disco toggle shows a "host only" notice instead of toggling.
+  discoHostOnly?: boolean;
 }) {
   const { ownedShopItems, equippedShopItems, setEquippedSound, isPlus, vinylColor, setVinylColor,
     spotifyBgEnabled, spotifyBgColor, setSpotifyBgEnabled, setSpotifyBgColor } = useApp();
@@ -262,7 +267,12 @@ export function SoundPickerModal({
             {/* Top-right "Spotify background" toggle — Plus only (locked otherwise). */}
             {mode === 'spotify' && (
               <Pressable
-                onPress={() => { if (isPlus) { setSpotifyBgEnabled(!spotifyBgEnabled); } else { onClose(); router.push('/plus-upgrade'); } }}
+                onPress={() => {
+                  // In a room, only the host controls disco — guests follow. Tapping
+                  // does nothing; the caption below the row spells out why.
+                  if (discoHostOnly) return;
+                  if (isPlus) { setSpotifyBgEnabled(!spotifyBgEnabled); } else { onClose(); router.push('/plus-upgrade'); }
+                }}
                 accessibilityLabel={t('soundPicker.spotifyBg')}
                 style={({ pressed }) => [styles.bgIconBtn, pressed && styles.pressed]}
                 hitSlop={8}>
@@ -270,6 +280,12 @@ export function SoundPickerModal({
               </Pressable>
             )}
           </View>
+
+          {/* Non-host in a room: disco is host-controlled, so always tell them here
+              (rendered outside the spotify sub-states so it can't get hidden). */}
+          {discoHostOnly && mode === 'spotify' && (
+            <Text style={styles.hostHint}>{t('soundPicker.discoHostOnly')}</Text>
+          )}
 
           {mode === 'sounds' ? (
             /* Record + centre play/pause on the left, owned shop sounds on the right */
@@ -494,6 +510,7 @@ const styles = StyleSheet.create({
   spotifyBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
   note: { fontSize: 11.5, color: C.mocha, lineHeight: 16 },
   notice: { fontSize: 12.5, color: C.berry, fontWeight: '700', lineHeight: 17 },
+  hostHint: { fontSize: 12.5, color: C.berry, fontWeight: '700', lineHeight: 17, textAlign: 'center', marginTop: 6, paddingHorizontal: 12 },
 
   nowPlaying: { alignSelf: 'stretch', backgroundColor: '#fff', borderRadius: BakeryRadii.card, borderWidth: 1.5, borderColor: C.shortbread, paddingHorizontal: Spacing.three, paddingVertical: 10 },
   seekRow: { alignSelf: 'stretch', paddingTop: 8, gap: 4 },

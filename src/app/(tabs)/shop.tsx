@@ -1252,7 +1252,7 @@ const styles = StyleSheet.create({
   buyBalanceNum: { fontSize: 15, fontWeight: '800', color: BakeryColors.cocoaDark },
   buyShortfall: { fontSize: 12.5, color: BakeryColors.berry, fontWeight: '700', textAlign: 'center' },
   buyConfirmBtn: {
-    backgroundColor: BakeryColors.honey, borderRadius: 18, paddingVertical: Spacing.three, alignItems: 'center',
+    backgroundColor: BakeryColors.buttonPink, borderRadius: 18, paddingVertical: Spacing.three, alignItems: 'center',
   },
   buyConfirmDisabled: { backgroundColor: BakeryColors.shortbread },
   buyConfirmText: { color: BakeryColors.cocoaDark, fontSize: 16, fontWeight: '800' },
@@ -1288,7 +1288,7 @@ const styles = StyleSheet.create({
   previewDesk: { position: 'absolute', left: 0, right: 0, bottom: 0, height: PREVIEW_DESK_H, zIndex: 2 },
   previewNote: { fontSize: ts(13), color: BakeryColors.mocha, textAlign: 'center', lineHeight: ts(18) },
   previewClose: {
-    backgroundColor: BakeryColors.honey, borderRadius: 18, paddingVertical: ts(Spacing.three), alignItems: 'center',
+    backgroundColor: BakeryColors.buttonPink, borderRadius: 18, paddingVertical: ts(Spacing.three), alignItems: 'center',
   },
   previewCloseText: { color: BakeryColors.cocoaDark, fontSize: ts(16), fontWeight: '800' },
 
@@ -1588,7 +1588,7 @@ const styles = StyleSheet.create({
   packCoinRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   packCoinAmt: { fontSize: 12, fontWeight: '600', color: BakeryColors.mocha, lineHeight: 16 },
   packPriceBtn: {
-    backgroundColor: BakeryColors.honey,
+    backgroundColor: BakeryColors.buttonPink,
     borderRadius: BakeryRadii.chip,
     paddingHorizontal: 12,
     paddingVertical: 4,

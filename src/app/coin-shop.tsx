@@ -383,13 +383,13 @@ const makeStyles = (s: number, cw: number) => StyleSheet.create({
   },
   adBody: { flex: 1, gap: 2 * s },
   adBtn: {
-    backgroundColor: BakeryColors.honey,
+    backgroundColor: BakeryColors.buttonPink,
     borderRadius: BakeryRadii.chip,
     paddingHorizontal: Spacing.three * s,
     paddingVertical: Spacing.two * s,
   },
   adBtnDisabled: { backgroundColor: BakeryColors.latte, opacity: 0.6 },
-  adBtnText: { fontSize: 14 * s, fontWeight: '800', color: '#FFFFFF' },
+  adBtnText: { fontSize: 14 * s, fontWeight: '800', color: BakeryColors.cocoaDark },
   capCoins: { flexDirection: 'row', alignItems: 'center', gap: 4 * s },
   progressBar: {
     height: 6 * s,

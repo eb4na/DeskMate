@@ -480,8 +480,14 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
 
   const leaveRoom = () => {
     const m = meRef.current;
-    room.current?.send('leave', { code: m.myCode });
-    room.current?.leave();
+    const r = room.current;
+    r?.send('leave', { code: m.myCode });
+    // Let the `leave` broadcast actually flush before tearing the channel down.
+    // `send` is an async websocket push but `leave()` (removeChannel) is synchronous,
+    // so calling them back-to-back kills the push — the host never hears it and only
+    // evicts us ~6s later via the PRESENCE_GRACE_MS presence-drop fallback. Deferring
+    // the teardown (same trick as sendInvite) makes a leave register near-instantly.
+    setTimeout(() => r?.leave(), 350);
     room.current = null;
     if (beginTimer.current) clearTimeout(beginTimer.current);
     clearRemovalTimers();

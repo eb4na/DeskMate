@@ -1739,6 +1739,7 @@
     "spotifyNote": "Necesita Spotify Premium y la app de Spotify abierta y reproduciendo en este dispositivo.",
     "spotifyTitle": "Spotify",
     "spotifyBg": "Fondo de Spotify",
+    "discoHostOnly": "Solo el anfitrión puede activar el modo disco",
     "spotifySetup": "Spotify aún no está configurado (añade tu Client ID).",
     "spotifyFailed": "No se pudo conectar con Spotify. Inténtalo de nuevo.",
     "noDevice": "Abre Spotify y reproduce una canción para controlarla desde aquí.",

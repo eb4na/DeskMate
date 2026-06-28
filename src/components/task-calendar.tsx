@@ -609,7 +609,7 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 13, color: C.mocha, textAlign: 'center' },
   addBtn: {
     marginTop: 6,
-    backgroundColor: C.honey,
+    backgroundColor: C.buttonPink,
     borderRadius: BakeryRadii.button,
     paddingHorizontal: Spacing.four,
     paddingVertical: 9,
@@ -712,7 +712,7 @@ const styles = StyleSheet.create({
   },
   modalCloseText: { fontSize: 14, fontWeight: '800', color: C.cocoaDark },
   modalAddBtn: {
-    backgroundColor: C.honey,
+    backgroundColor: C.buttonPink,
     borderRadius: BakeryRadii.button,
     paddingVertical: Spacing.three,
     alignItems: 'center',

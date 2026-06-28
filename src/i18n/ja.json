@@ -1739,6 +1739,7 @@
     "spotifyNote": "Spotify Premiumと、この端末でSpotifyアプリを開いて再生しておく必要があります。",
     "spotifyTitle": "Spotify",
     "spotifyBg": "Spotify背景",
+    "discoHostOnly": "ディスコモードはホストのみがオンにできます",
     "spotifySetup": "Spotifyはまだ設定されていません（Client IDを追加してください）。",
     "spotifyFailed": "Spotifyに接続できませんでした。もう一度お試しください。",
     "noDevice": "Spotifyを開いて曲を再生すると、ここから操作できます。",

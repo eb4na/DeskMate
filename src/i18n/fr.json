@@ -1739,6 +1739,7 @@
     "spotifyNote": "Nécessite Spotify Premium, avec l'app Spotify ouverte et en lecture sur cet appareil.",
     "spotifyTitle": "Spotify",
     "spotifyBg": "Fond Spotify",
+    "discoHostOnly": "Seul l'hôte peut activer le mode disco",
     "spotifySetup": "Spotify n'est pas encore configuré (ajoute ton Client ID).",
     "spotifyFailed": "Connexion à Spotify impossible. Réessaie.",
     "noDevice": "Ouvre Spotify et lance une chanson pour la contrôler ici.",

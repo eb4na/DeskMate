@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   message: { fontSize: 14, fontWeight: '600', color: C.mocha, textAlign: 'center', lineHeight: 20 },
   buttons: { gap: Spacing.two, marginTop: Spacing.one },
   actionBtn: { borderRadius: BakeryRadii.button, paddingVertical: Spacing.three, alignItems: 'center' },
-  primaryBtn: { backgroundColor: C.honey },
+  primaryBtn: { backgroundColor: C.buttonPink },
   destructiveBtn: { backgroundColor: C.danger },
   actionText: { fontSize: 16, fontWeight: '800' },
   primaryText: { color: C.cocoaDark },

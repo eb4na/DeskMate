@@ -1739,6 +1739,7 @@
     "spotifyNote": "Needs Spotify Premium, with the Spotify app open and playing on this device.",
     "spotifyTitle": "Spotify",
     "spotifyBg": "Spotify background",
+    "discoHostOnly": "Only the host can turn on disco mode",
     "spotifySetup": "Spotify isn't set up yet — add your Client ID to enable it.",
     "spotifyFailed": "Couldn't connect to Spotify. Please try again.",
     "noDevice": "Open Spotify and start a song to control it from here.",

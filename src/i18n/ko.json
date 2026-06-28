@@ -1739,6 +1739,7 @@
     "spotifyNote": "Spotify Premium이 필요하며, 이 기기에서 Spotify 앱을 열어 재생해야 해요.",
     "spotifyTitle": "Spotify",
     "spotifyBg": "스포티파이 배경",
+    "discoHostOnly": "디스코 모드는 호스트만 켤 수 있어요",
     "spotifySetup": "아직 Spotify가 설정되지 않았어요 (Client ID를 추가하세요).",
     "spotifyFailed": "Spotify에 연결할 수 없어요. 다시 시도해 주세요.",
     "noDevice": "Spotify를 열고 노래를 재생하면 여기서 제어할 수 있어요.",

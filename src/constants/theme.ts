@@ -59,6 +59,9 @@ export const BakeryColors = {
   shortbread: '#F7DFC4',
   butter: '#F4C976',
   honey: '#F6C96B',
+  // Default pink for primary action buttons (popups, home, shop, auth). Was honey
+  // (yellow); swapped app-wide. Tweak this one value to restyle every such button.
+  buttonPink: '#E48A9A',
   jam: '#E48A9A',
   berry: '#CC6B7B',
   mint: '#F2C6D1',

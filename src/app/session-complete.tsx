@@ -625,7 +625,7 @@ const styles = StyleSheet.create({
   taskPromptName: { textAlign: 'center', fontSize: 13 },
   taskPromptBtns: { flexDirection: 'row', gap: Spacing.two, marginTop: 2 },
   taskYesBtn: {
-    backgroundColor: BakeryColors.honey,
+    backgroundColor: BakeryColors.buttonPink,
     borderRadius: BakeryRadii.button,
     paddingHorizontal: Spacing.three,
     paddingVertical: 8,
@@ -646,7 +646,7 @@ const styles = StyleSheet.create({
   },
   bubbleText: { textAlign: 'center', lineHeight: 20, fontStyle: 'italic' },
   primaryBtn: {
-    backgroundColor: BakeryColors.honey,
+    backgroundColor: BakeryColors.buttonPink,
     borderRadius: BakeryRadii.button,
     paddingVertical: Spacing.three,
     alignItems: 'center',

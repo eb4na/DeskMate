@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.8 },
   saveBtn: {
-    backgroundColor: BakeryColors.honey,
+    backgroundColor: BakeryColors.buttonPink,
     borderRadius: BakeryRadii.button,
     paddingVertical: Spacing.three,
     alignItems: 'center',

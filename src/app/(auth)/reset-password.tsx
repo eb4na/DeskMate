@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     marginTop: Spacing.one,
-    backgroundColor: BakeryColors.honey,
+    backgroundColor: BakeryColors.buttonPink,
     borderRadius: BakeryRadii.button,
     paddingVertical: Spacing.three,
     alignItems: 'center',

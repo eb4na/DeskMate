@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import Svg, { Line } from 'react-native-svg';
+import Svg, { Line, Path } from 'react-native-svg';
 import { Animated, AppState, Easing, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { DurationWheel } from '@/components/duration-wheel';
@@ -112,25 +112,6 @@ const BOOK_COVER_COLOR: Record<string, string> = {
 };
 const DEFAULT_BOOK_COVER = '#C2925E';
 
-// Per-companion desk-book size multiplier, so each studier's book reads proportional
-// to how big THAT character actually looks. Every character renders in the same square
-// `partyCharSize` box with contentFit:contain, but the arts fill their box by different
-// amounts AND the desk hides their lower ~35%, so e.g. Cocoa stands visibly taller than
-// Bun above the desk while a single fixed book size made Bun's book look oversized and
-// Cocoa's undersized. Derived from each classic art's measured alpha height-fill `f`:
-// the part visible above the desk is `f/2 + 0.15` of the box; these multipliers are
-// that quantity normalised to the 6-companion mean (so the average book is unchanged),
-// gently clamped. Classic art only — skins are second-order and inherit their base.
-// FIRST-PASS estimates from the PNGs; dial on a real 2–3 person room if a book reads off.
-const BOOK_FILL_SCALE: Record<string, number> = {
-  bun: 0.93,
-  companion_cocoa: 1.03,
-  companion_bunny: 0.99,
-  companion_honey: 1.01,
-  companion_tira: 0.97,
-  hanji: 1.06,
-};
-
 // Tablet-only position knobs (🎛 design panel). Dial these live, hit "Get code",
 // and the values bake into TABLET_TWEAKS under `studysession.<name>`.
 const TABLET_ELEMENTS = [{ name: 'desk', label: 'Desk' }];
@@ -147,6 +128,17 @@ function OutlinedTimer({ value, fontStyle, fill, outline, stroke }: { value: str
       ))}
       <Text numberOfLines={1} style={[fontStyle, { width: '100%', textAlign: 'center', color: fill }]}>{value}</Text>
     </View>
+  );
+}
+
+// A little gold crown that floats above the multiplayer HOST's character — just a
+// filled crown silhouette, no outline (per request). Code-drawn SVG in the bakery
+// style (warm gold), sized relative to the character.
+function HostCrown({ size }: { size: number }) {
+  return (
+    <Svg width={size} height={size * 0.78} viewBox="0 0 24 19">
+      <Path d="M2 17 L3.4 6.5 L8 11 L12 3.5 L16 11 L20.6 6.5 L22 17 Z" fill="#F4C84B" />
+    </Svg>
   );
 }
 
@@ -436,9 +428,9 @@ export function StudyRoomView({
     return () => { setMyPresenceStatus('free'); leave(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [friendCode]);
-  useEffect(() => {
-    setMyPresenceStatus(onBreak ? 'break' : 'studying');
-  }, [onBreak]);
+  // NOTE: the studying/break status broadcast lives further down (it depends on
+  // `mpFinished`, defined later) so a finished-but-still-mounted multiplayer room
+  // reports 'free' instead of leaving friends seeing a stale "studying".
 
   // Leave the room when the session view goes away (session ended).
   useEffect(() => {
@@ -540,13 +532,32 @@ export function StudyRoomView({
   // that controls spacing — making it smaller pulls the row inward. Phone enlarges +
   // pulls in MORE; tablet does the same, gentler. Solo (count<=1) is unaffected.
   const baseFit = partyCount <= 1 ? 280 : Math.floor((winW - PARTY_GAP * (partyCount - 1)) / partyCount);
-  const MP_SIZE = partyCount <= 1 ? 1 : isTablet ? 1.24 : 1.4;
-  const MP_SPREAD = partyCount <= 1 ? 1 : isTablet ? 0.93 : 0.84;
+  // Phone 3-player reads small (each column is only ~1/3 the width), so enlarge the
+  // characters there AND widen the spread to make room. The characters have lots of
+  // transparent side-padding so they can grow without colliding; the books can't (they
+  // already nearly fill the row), so the book ratio below is dropped at 3p to keep the
+  // books their current size while only the characters grow.
+  const phone3p = !isTablet && partyCount >= 3;
+  // The party characters share ONE size across the normal desk scene and the disco
+  // scene. The desk scene reads too small on phone, so enlarge there — but keep the
+  // disco (focus) sizing exactly as it was, since disco must stay untouched. `focus`
+  // is true for the disco scene (and a guest following a disco host).
+  const MP_SIZE = partyCount <= 1
+    ? 1
+    : isTablet
+      ? 1.24
+      : focus
+        ? (phone3p ? 1.66 : 1.4) // disco — unchanged
+        : (phone3p ? 2.05 : 1.6); // desk scene — bigger (trimmed a touch)
+  const MP_SPREAD = partyCount <= 1 ? 1 : isTablet ? 0.93 : phone3p ? 0.92 : 0.84;
   const partyCharSize = Math.round(baseFit * MP_SIZE);
   const partySlotW = Math.round(baseFit * MP_SPREAD);
-  // Book grows with the character; on phone bump the ratio a little more so the
-  // book reads bigger on the desk (tablet keeps the original 0.52).
-  const partyBookSize = Math.round(partyCharSize * (!isTablet ? 0.66 : 0.60));
+  // Book grows with the character; the desk book row only renders in the desk scene
+  // (focus hides it), so the ratio is tuned to the desk MP_SIZE above. The ratios are
+  // chosen to keep the on-desk book size ~constant as the characters grow (the books
+  // already nearly fill the row and can't grow without colliding): 3p ≈ 2.05·0.45 and
+  // 2p ≈ 1.6·0.58 land near the books' previous on-desk size.
+  const partyBookSize = Math.round(partyCharSize * (isTablet ? 0.60 : phone3p ? 0.45 : 0.58));
   // When you're the only one in the room (others left, or before they begin), the
   // party row would render a single oversized, off-center character/book that floats
   // off the desk — so render the solo scene (big centered character + desk book) instead.
@@ -614,15 +625,6 @@ export function StudyRoomView({
     if (companionId?.startsWith('shop:')) return BOOK_COVER_COLOR[companionId.slice(5)] ?? DEFAULT_BOOK_COVER;
     if (companionId === 'starter:girl' || companionId === 'starter:dude' || !companionId) return BOOK_COVER_COLOR.bun;
     return DEFAULT_BOOK_COVER;
-  };
-
-  // Per-companion book-size multiplier (see BOOK_FILL_SCALE), keyed exactly like the
-  // cover color so the book matches how big that character actually reads on the desk.
-  const bookFillScaleFor = (companionId: string | null | undefined) => {
-    if (isHanjiActiveId(companionId)) return BOOK_FILL_SCALE.hanji;
-    if (companionId?.startsWith('shop:')) return BOOK_FILL_SCALE[companionId.slice(5)] ?? 1;
-    if (companionId === 'starter:girl' || companionId === 'starter:dude' || !companionId) return BOOK_FILL_SCALE.bun;
-    return 1;
   };
 
   // Resolve a participant's live status (studying / break / idle).
@@ -719,6 +721,13 @@ export function StudyRoomView({
   // force-set by a timer at the exact end moment so the finish always surfaces.
   const [mpForceFinished, setMpForceFinished] = useState(false);
   const mpFinished = !!activeSession?.isMultiplayer && (secondsLeft <= 0 || mpForceFinished);
+  // Broadcast my live status to friends (so they see "studying"/"on break" on the
+  // game-invite list). Report 'free' the moment the session is over: a finished
+  // multiplayer room stays mounted until the player taps Exit (it's the only path
+  // that clears the session), and we must not keep telling friends they're studying.
+  useEffect(() => {
+    setMyPresenceStatus(mpFinished ? 'free' : onBreak ? 'break' : 'studying');
+  }, [mpFinished, onBreak]);
   // Post-finish unlimited break: a resting state with a Continue button (no timer,
   // no limit). Separate from `onBreak` (the in-session soft break) on purpose.
   const [finishBreak, setFinishBreak] = useState(false);
@@ -872,7 +881,7 @@ export function StudyRoomView({
       )}
 
       {/* Timer card */}
-      <View ref={timerCardRef} onLayout={measureRopes} style={[styles.timerWrap, soloScene && styles.timerWrapSolo, isTablet && { width: soloScene ? '62%' : '48%' }, focus && { marginTop: isTablet ? 48 : 30 }]}>
+      <View ref={timerCardRef} onLayout={measureRopes} style={[styles.timerWrap, soloScene && styles.timerWrapSolo, isTablet && { width: soloScene ? '62%' : '48%' }, !isTablet && { marginTop: -52 }, focus && { marginTop: isTablet ? 48 : 30 }]}>
         {focus ? (
           /* Focus mode: just the countdown, in the opposite colour to the background. */
           <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.3} style={[styles.focusTimer, { color: focusFg }]}>{format(displaySecs)}</Text>
@@ -942,7 +951,7 @@ export function StudyRoomView({
           behind the table. Phone uses the in-scene flex layout above. */}
       {soloScene && isTablet && (
         <Animated.View
-          style={[{ position: 'absolute', left: 0, right: 0, bottom: focus ? soloCharBottomT - 150 : soloCharBottomT, alignItems: 'center', zIndex: 1 }, soloCharTransform]}>
+          style={[{ position: 'absolute', left: 0, right: 0, bottom: focus ? soloCharBottomT - 230 : soloCharBottomT, alignItems: 'center', zIndex: 1 }, soloCharTransform]}>
           <Pressable style={{ width: soloCharSize, height: soloCharSize }} onPress={() => talkAs(friendCode, myPersona, mySkin, 1.25)}>
             <Animated.View style={{ flex: 1, transform: [{ scale: tapScale }], transformOrigin: 'center bottom' }}>
               {soloCharContent}
@@ -961,7 +970,12 @@ export function StudyRoomView({
           tucks behind the table, like the solo character. */}
       {!soloScene && (
         <View style={[styles.partyLayer, { bottom: partyCharBottomRaised }]}>
-          {participants.slice(0, STUDY_ROOM_MAX).map((p) => {
+          {participants.slice(0, STUDY_ROOM_MAX).map((p, i) => {
+            // Characters overlap (slots are narrower than the art), so paint order
+            // matters. Peak the zIndex at the centre of the row so the middle
+            // character sits in FRONT of its neighbours, fading outward — instead of
+            // the last-drawn (rightmost) one always winning.
+            const charZ = partyCount - Math.abs(i - (partyCount - 1) / 2);
             const img = p.code === friendCode ? bigCharacter : getCompanionImage(p.companionId, p.skinId);
             const pIsHanji = p.code === friendCode
               ? hanjiIsAnimated(activeCompanionId, companionSkins?.[activeCompanionId ?? ''])
@@ -974,7 +988,7 @@ export function StudyRoomView({
             const persona = p.code === friendCode ? myPersona : (p.companionId ? PERSONA_BY_COMPANION[p.companionId] : 'bun');
             const skin = p.code === friendCode ? mySkin : p.skinId;
             return (
-              <Pressable key={p.code} style={[styles.partyMember, { width: partySlotW }]} onPress={() => talkAs(p.code, persona, skin, 0.72)}>
+              <Pressable key={p.code} style={[styles.partyMember, { width: partySlotW, zIndex: charZ }]} onPress={() => talkAs(p.code, persona, skin, 0.72)}>
                 {/* No status dot above the character — status already shows on the
                     top participant cards, so the dot here was redundant clutter. */}
                 {/* Squish-on-tap layer (only the tapped member uses tapScale) wrapping
@@ -988,14 +1002,19 @@ export function StudyRoomView({
                     ) : (
                       <Image source={img} style={{ width: partyCharSize, height: partyCharSize }} contentFit="contain" />
                     )}
+                    {/* The host crown is NOT drawn here — inside the party layer
+                        (zIndex 1) it gets hidden behind overlapping neighbours. It's
+                        rendered in a high-zIndex overlay below (partyCrownLayer) so it
+                        always shows in front, above the host's head. */}
                   </Animated.View>
                 </Animated.View>
                 {talk?.code === p.code && hearts.map((h) => (
                   <FloatingHeart key={h.id} heart={h} size={18 * heartScale} onDone={() => setHearts((cur) => cur.filter((x) => x.id !== h.id))} />
                 ))}
-                {talk?.code === p.code && (
-                  <PetBubble key={talk.id} line={talk.line} scale={0.72} onDone={() => setTalk(null)} />
-                )}
+                {/* The tap dialogue bubble is NOT drawn here — it would sit in the
+                    party layer (zIndex 1) and get covered by the desk (1) / book (2) /
+                    overlapping neighbours. It's rendered in a high-zIndex overlay below
+                    (partyBubbleLayer) so the text always floats in front of everything. */}
               </Pressable>
             );
           })}
@@ -1075,11 +1094,10 @@ export function StudyRoomView({
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: deskEdgeY, overflow: 'hidden', zIndex: 2 }} pointerEvents="none">
           <View style={[styles.partyBookRow, { bottom: deskEdgeY - 1.05 * partyBookSize + 42 - winH * 0.012 }]} pointerEvents="none">
             {participants.slice(0, STUDY_ROOM_MAX).map((p) => {
-              // My own companion id (activeCompanionId) drives both my cover + book size;
-              // friends carry their own. Scaling the book per companion keeps the
-              // book↔character size ratio constant across the row even though the arts
-              // fill their boxes (and read above the desk) by different amounts.
-              const myId = p.code === friendCode ? activeCompanionId : p.companionId;
+              // Every book is the SAME size (partyBookSize) and bottom-aligned in the
+              // row, so all books read identical and sit at the same Y — only the cover
+              // colour differs per studier. (Per-companion book scaling was tried but
+              // looked wrong: the books came out visibly different sizes across the row.)
               const cover = p.code === friendCode ? soloBookColor : bookColorFor(p.companionId);
               return (
                 <View
@@ -1089,7 +1107,7 @@ export function StudyRoomView({
                       dropped/idle connection holds the pages still. */}
                   <StudyBook
                     active={participantStatus(p.code) === 'studying'}
-                    size={Math.round(partyBookSize * bookFillScaleFor(myId))}
+                    size={partyBookSize}
                     coverColor={cover}
                   />
                 </View>
@@ -1098,6 +1116,43 @@ export function StudyRoomView({
           </View>
         </View>
       ))}
+
+      {/* Host crown overlay — drawn ON TOP of all characters/desk/book (high zIndex)
+          so it's never hidden behind an overlapping neighbour. Mirrors the party row's
+          layout (same full-width centered row, same partySlotW columns, same order,
+          and a full partyCharSize-tall member box) so the crown lands directly above
+          the host's head. Rides the shared idle bounce via charTranslateY. */}
+      {!soloScene && (
+        <View style={[styles.partyLayer, { bottom: partyCharBottomRaised, zIndex: 5 }]} pointerEvents="none">
+          {participants.slice(0, STUDY_ROOM_MAX).map((p) => (
+            <View key={p.code} style={[styles.partyMember, { width: partySlotW, height: partyCharSize }]}>
+              {p.isHost && (
+                <Animated.View style={{ position: 'absolute', top: partyCharSize * 0.02, left: 0, right: 0, alignItems: 'center', transform: [{ translateY: charTranslateY }] }}>
+                  <HostCrown size={Math.round(partyCharSize * 0.17)} />
+                </Animated.View>
+              )}
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Multiplayer tap-dialogue overlay — drawn ON TOP of the desk + book (high
+          zIndex) so the spoken text is never hidden behind them or an overlapping
+          character. Mirrors the party row's exact layout (same full-width centered
+          row, same partySlotW columns, same participant order) so the bubble lands
+          over the tapped character; only the matching slot renders a bubble.
+          pointerEvents:none lets taps fall through to the characters underneath. */}
+      {!soloScene && talk && (
+        <View style={[styles.partyLayer, { bottom: partyCharBottomRaised, zIndex: 6 }]} pointerEvents="none">
+          {participants.slice(0, STUDY_ROOM_MAX).map((p) => (
+            <View key={p.code} style={[styles.partyMember, { width: partySlotW }]}>
+              {talk.code === p.code && (
+                <PetBubble key={talk.id} line={talk.line} scale={0.72} onDone={() => setTalk(null)} />
+              )}
+            </View>
+          ))}
+        </View>
+      )}
 
       {/* Controls */}
       <View style={styles.controls}>
@@ -1233,7 +1288,7 @@ export function StudyRoomView({
       />
 
       {/* Radio: pick a bought sound to play while studying */}
-      <SoundPickerModal visible={soundOpen} onClose={() => setSoundOpen(false)} playback={playback} onRefresh={refreshPlayback} />
+      <SoundPickerModal visible={soundOpen} onClose={() => setSoundOpen(false)} playback={playback} onRefresh={refreshPlayback} discoHostOnly={followsHostDisco} />
       <DevKnobs screen="studysession" knobs={twKnobs} onChange={twChange} />
     </View>
   );
