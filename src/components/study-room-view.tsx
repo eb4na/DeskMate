@@ -974,8 +974,10 @@ export function StudyRoomView({
             // Characters overlap (slots are narrower than the art), so paint order
             // matters. Peak the zIndex at the centre of the row so the middle
             // character sits in FRONT of its neighbours, fading outward — instead of
-            // the last-drawn (rightmost) one always winning.
-            const charZ = partyCount - Math.abs(i - (partyCount - 1) / 2);
+            // the last-drawn (rightmost) one always winning. Use a floored centre
+            // index so EVEN counts (2/4) don't tie the two middle slots (a tie lets
+            // the rightmost win by source order) — the centre slot strictly wins.
+            const charZ = partyCount - Math.abs(i - Math.floor((partyCount - 1) / 2));
             const img = p.code === friendCode ? bigCharacter : getCompanionImage(p.companionId, p.skinId);
             const pIsHanji = p.code === friendCode
               ? hanjiIsAnimated(activeCompanionId, companionSkins?.[activeCompanionId ?? ''])
@@ -1127,7 +1129,7 @@ export function StudyRoomView({
           {participants.slice(0, STUDY_ROOM_MAX).map((p) => (
             <View key={p.code} style={[styles.partyMember, { width: partySlotW, height: partyCharSize }]}>
               {p.isHost && (
-                <Animated.View style={{ position: 'absolute', top: partyCharSize * 0.02, left: 0, right: 0, alignItems: 'center', transform: [{ translateY: charTranslateY }] }}>
+                <Animated.View style={{ position: 'absolute', top: -partyCharSize * 0.08, left: 0, right: 0, alignItems: 'center', transform: [{ translateY: charTranslateY }] }}>
                   <HostCrown size={Math.round(partyCharSize * 0.17)} />
                 </Animated.View>
               )}
