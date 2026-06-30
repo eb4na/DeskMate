@@ -77,7 +77,7 @@ export default function FriendsScreen() {
   const { scale, contentWidth } = useTabletScale();
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const {
-    friendCode, friends: rawFriends, addFriend, removeFriend, setFriendProfile, profileDisplayName, dmUnread,
+    friendCode, lastProfileSyncError, friends: rawFriends, addFriend, removeFriend, setFriendProfile, profileDisplayName, dmUnread,
     activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins,
     profileAvatarFrame, profileCompanionId, profileSkinId, profileCardColor, profileBackgroundId, isPlus,
   } = useApp();
@@ -455,6 +455,17 @@ export default function FriendsScreen() {
               </View>
             </View>
             <Text style={styles.codeHint}>{t('friends.shareCodeHint')}</Text>
+            {/* If my profile card never synced, friends searching this code get
+                "user doesn't exist". Surface it (instead of the old silent warn) so the
+                cause is visible; the upload keeps retrying in the background. */}
+            {lastProfileSyncError && (
+              <Text style={styles.syncWarn} selectable>
+                {t('friends.profileSyncWarn', {
+                  defaultValue: "⚠︎ Your profile isn't synced yet, so friends can't find your code. Check your connection — we'll keep retrying.",
+                })}
+                {`\n(${lastProfileSyncError})`}
+              </Text>
+            )}
           </View>
 
           {/* Add a friend */}
@@ -750,6 +761,7 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   shareBtnText: { color: P.pink, fontWeight: '800', fontSize: 13 * s },
   codeHint: { fontSize: 12 * s, color: P.mutedBrown, textAlign: 'center' },
   sendDiag: { fontSize: 11 * s, color: '#C0463E', fontWeight: '700', textAlign: 'center', marginTop: 6 * s },
+  syncWarn: { fontSize: 11.5 * s, color: '#B26B00', fontWeight: '700', textAlign: 'center', marginTop: 4 * s, lineHeight: 16 * s },
 
   addRow: { flexDirection: 'row', gap: Spacing.two * s },
   addInput: {

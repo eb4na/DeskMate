@@ -229,6 +229,33 @@ export async function sendComeBackNudge(
   }
 }
 
+// Fired while the app is backgrounded during a study break: nudges the player to
+// come back as the break is about to end. Same scheduled-notification mechanism as
+// the come-back nudge; `delaySeconds` is timed to land shortly before the break
+// resumes. Returns the id so it can be cancelled on a quick return.
+export async function sendBreakEndingNudge(
+  title: string,
+  body: string,
+  delaySeconds: number,
+): Promise<string | null> {
+  try {
+    await ensureReminderChannel();
+    const granted = await ensureNotificationPermission();
+    if (!granted) return null;
+    return await Notifications.scheduleNotificationAsync({
+      content: { title, body, sound: 'default', data: { kind: 'break-ending' } },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: Math.max(1, delaySeconds),
+        repeats: false,
+        channelId: STUDY_REMINDER_CHANNEL_ID,
+      },
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function cancelComeBackNudge(notifId: string | null) {
   if (!notifId) return;
   try {

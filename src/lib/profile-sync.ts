@@ -23,7 +23,11 @@ export type SyncedProfile = {
   topChefLevel?: number;
 };
 
-export async function uploadProfile(userId: string, p: SyncedProfile): Promise<boolean> {
+// Result of a profile upload. `code` is the Postgres error code (e.g. '23505' =
+// unique violation) so callers can react to a friend_code collision specifically.
+export type UploadResult = { ok: true } | { ok: false; error: string; code?: string };
+
+export async function uploadProfile(userId: string, p: SyncedProfile): Promise<UploadResult> {
   // Don't log PII (friend code / display name) — these can land in crash/log tools.
   console.log('[profile-sync] uploading', { companionId: p.companionId });
   const { error } = await supabase.from('profiles').upsert(
@@ -46,9 +50,15 @@ export async function uploadProfile(userId: string, p: SyncedProfile): Promise<b
     },
     { onConflict: 'user_id' },
   );
-  if (error) console.warn('[profile-sync] UPLOAD FAILED:', error.message, error.details, error.hint);
-  else console.log('[profile-sync] upload OK', { companionId: p.companionId });
-  return !error;
+  if (error) {
+    console.warn('[profile-sync] UPLOAD FAILED:', error.message, error.details, error.hint);
+    // Surface the most useful one-liner: the hint/details often explain a column or
+    // constraint problem better than the bare message.
+    const detail = error.details || error.hint;
+    return { ok: false, error: detail ? `${error.message} (${detail})` : error.message, code: error.code };
+  }
+  console.log('[profile-sync] upload OK', { companionId: p.companionId });
+  return { ok: true };
 }
 
 // A profile's user id, looked up by friend code. Goes through get_profile_by_code so
