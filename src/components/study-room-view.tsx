@@ -1,11 +1,11 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import Svg, { Line, Path } from 'react-native-svg';
+import Svg, { Circle, Line, Path } from 'react-native-svg';
 import { Animated, AppState, Easing, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { DurationWheel } from '@/components/duration-wheel';
-import { cancelComeBackNudge, sendComeBackNudge } from '@/lib/notifications';
+import { cancelComeBackNudge, sendBreakEndingNudge, sendComeBackNudge } from '@/lib/notifications';
 
 import { CoinIcon } from '@/components/coin-icon';
 import { CompanionLevel } from '@/components/companion-level';
@@ -131,13 +131,26 @@ function OutlinedTimer({ value, fontStyle, fill, outline, stroke }: { value: str
   );
 }
 
-// A little gold crown that floats above the multiplayer HOST's character — just a
-// filled crown silhouette, no outline (per request). Code-drawn SVG in the bakery
-// style (warm gold), sized relative to the character.
+// A little crown that floats above the multiplayer HOST's character — a bubbly,
+// rounded crown: puffy peaks each topped with a bobble, in a saturated light-yellow
+// with a golden-brown outline. Code-drawn SVG in the bakery style, sized to the
+// character. (Round stroke joins puff the peaks; the circles add the bubbly bobbles.)
 function HostCrown({ size }: { size: number }) {
+  const fill = '#FFD63D'; // saturated light yellow
+  const outline = '#C9882C'; // golden-brown edge
   return (
-    <Svg width={size} height={size * 0.78} viewBox="0 0 24 19">
-      <Path d="M2 17 L3.4 6.5 L8 11 L12 3.5 L16 11 L20.6 6.5 L22 17 Z" fill="#F4C84B" />
+    <Svg width={size} height={size * 0.83} viewBox="0 0 24 20">
+      <Path
+        d="M2.5 17 L4 6 L8 11 L12 4 L16 11 L20 6 L21.5 17 Z"
+        fill={fill}
+        stroke={outline}
+        strokeWidth={1.4}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      <Circle cx="4" cy="6" r="1.8" fill={fill} stroke={outline} strokeWidth={1.2} />
+      <Circle cx="12" cy="4" r="1.8" fill={fill} stroke={outline} strokeWidth={1.2} />
+      <Circle cx="20" cy="6" r="1.8" fill={fill} stroke={outline} strokeWidth={1.2} />
     </Svg>
   );
 }
@@ -333,24 +346,43 @@ export function StudyRoomView({
   onAwayRef.current = onAway;
   const tRef = useRef(t);
   tRef.current = t;
-  // The come-back notification body, in the active companion's voice. Set further
-  // down once soloBookKey is known; defaults to the generic warning.
+  // The come-back notification title + body, in the active companion's voice. Set
+  // further down once soloBookKey is known; default to the generic warning.
   const awayBodyKeyRef = useRef('session.awayBody');
+  const awayTitleKeyRef = useRef('session.awayTitle');
+  // Break-about-to-end nudge copy (sent only when the app is backgrounded mid-break).
+  const breakEndTitleKeyRef = useRef('session.breakEndTitle');
+  const breakEndBodyKeyRef = useRef('session.breakEndBody');
+  // Read live inside the AppState listener (its deps are [] so it must use refs).
+  const onBreakRef = useRef(false);
+  const breakLeftRef = useRef(0);
+  const isSoloRef = useRef(false);
   useEffect(() => {
     const AWAY_MS = 60_000;
     let awayAt: number | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
     let nudgeId: string | null = null;
+    let breakNudgeId: string | null = null;
     let stopped = false;
     const stop = () => { if (!stopped) { stopped = true; onAwayRef.current(); } };
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'background') {
+        // Backgrounding during a solo break: the study timer is paused, so don't
+        // auto-stop the session — just nudge them as the break is about to end.
+        if (isSoloRef.current && onBreakRef.current) {
+          if (breakNudgeId == null) {
+            const secs = breakLeftRef.current;
+            const lead = Math.min(60, Math.floor(secs / 2));
+            sendBreakEndingNudge(tRef.current(breakEndTitleKeyRef.current), tRef.current(breakEndBodyKeyRef.current), Math.max(1, secs - lead)).then((id) => { breakNudgeId = id; });
+          }
+          return;
+        }
         if (awayAt != null) return; // already away
         awayAt = Date.now();
         // If they just tapped "open in Spotify", hold the nudge ~10s so it doesn't
         // scold them for deliberately stepping out to start music.
         const nudgeDelay = spotifyAppRecentlyOpened() ? 10 : 1;
-        sendComeBackNudge(tRef.current('session.awayTitle'), tRef.current(awayBodyKeyRef.current), nudgeDelay).then((id) => { nudgeId = id; });
+        sendComeBackNudge(tRef.current(awayTitleKeyRef.current), tRef.current(awayBodyKeyRef.current), nudgeDelay).then((id) => { nudgeId = id; });
         timer = setTimeout(stop, AWAY_MS);
       } else if (state === 'active') {
         const since = awayAt;
@@ -358,10 +390,12 @@ export function StudyRoomView({
         if (timer) { clearTimeout(timer); timer = null; }
         cancelComeBackNudge(nudgeId);
         nudgeId = null;
+        cancelComeBackNudge(breakNudgeId);
+        breakNudgeId = null;
         if (since != null && Date.now() - since >= AWAY_MS) stop();
       }
     });
-    return () => { sub.remove(); if (timer) clearTimeout(timer); cancelComeBackNudge(nudgeId); };
+    return () => { sub.remove(); if (timer) clearTimeout(timer); cancelComeBackNudge(nudgeId); cancelComeBackNudge(breakNudgeId); };
   }, []);
 
   // The baked recipe's dish art (springs out of the timer when the session ends).
@@ -457,6 +491,9 @@ export function StudyRoomView({
   // Pick the companion-flavored come-back line (custom characters keep the generic
   // warning). en.json holds the English copy; other locales fall back to it.
   awayBodyKeyRef.current = soloBookKey === 'custom' ? 'session.awayBody' : `session.awayBody_${soloBookKey}`;
+  awayTitleKeyRef.current = soloBookKey === 'custom' ? 'session.awayTitle' : `session.awayTitle_${soloBookKey}`;
+  breakEndTitleKeyRef.current = soloBookKey === 'custom' ? 'session.breakEndTitle' : `session.breakEndTitle_${soloBookKey}`;
+  breakEndBodyKeyRef.current = soloBookKey === 'custom' ? 'session.breakEndBody' : `session.breakEndBody_${soloBookKey}`;
   const soloBookOffset = SOLO_BOOK_OFFSET[soloBookKey] ?? DEFAULT_SOLO_BOOK_OFFSET;
   const soloBookColor = BOOK_COVER_COLOR[soloBookKey] ?? DEFAULT_BOOK_COVER;
 
@@ -487,6 +524,10 @@ export function StudyRoomView({
 
   // Solo (no synced room) vs multiplayer changes what's shown.
   const isSolo = !room.active;
+  // Mirror live state into refs the AppState listener reads (it mounts once).
+  onBreakRef.current = onBreak;
+  breakLeftRef.current = breakLeft;
+  isSoloRef.current = isSolo;
   const breakMinutes = activeSession?.breakMinutes && activeSession.breakMinutes > 0
     ? activeSession.breakMinutes
     : autoBreakMinutes(activeSession?.durationMinutes ?? 25);
@@ -525,6 +566,20 @@ export function StudyRoomView({
   // Multiplayer scene: everyone's character is shown, evenly spaced, and sized by
   // headcount — one person is biggest, more people shrink to share the row.
   const partyCount = Math.min(participants.length, STUDY_ROOM_MAX);
+  // Always render the local player's OWN character in the centre of the row (and,
+  // via the centred z-index peak, in front). `participants` is already sorted with
+  // self first, so slicing to the cap keeps self in view; here we re-insert self at
+  // the centre slot — matching the charZ peak index Math.floor((n-1)/2) — with the
+  // others keeping their relative order around it. Every display layer (characters,
+  // crown, books, dialogue) maps THIS ordering so columns stay aligned.
+  const centeredParticipants = (() => {
+    const capped = participants.slice(0, STUDY_ROOM_MAX);
+    const self = capped.find((p) => p.code === friendCode);
+    if (!self) return capped;
+    const others = capped.filter((p) => p.code !== friendCode);
+    const selfIdx = Math.floor((capped.length - 1) / 2);
+    return [...others.slice(0, selfIdx), self, ...others.slice(selfIdx)];
+  })();
   const PARTY_GAP = 4;
   // Multiplayer characters: bigger than the plain width-fit AND clustered toward the
   // middle so the outer ones do not get cut off at the screen edges. `partyCharSize`
@@ -672,6 +727,13 @@ export function StudyRoomView({
   };
 
   const handleAddFriend = () => {
+    if (roomFull) {
+      // Full room → there's no one left to invite. Keep the button (so it's still a
+      // visible affordance) but show a quiet hint nudging them to tap a member's
+      // character to view/friend them instead of opening the invite list.
+      showLeftNotice(t('studyRoom.roomFullHint'));
+      return;
+    }
     if (room.active && room.roomId) {
       // Already in a room → invite straight into it.
       router.push({ pathname: '/party-invite', params: { room: room.roomId, game: 'study' } });
@@ -871,10 +933,12 @@ export function StudyRoomView({
           </Pressable>
         </View>
       )}
-      {/* Invite-friend button (top right) — only in a MULTIPLAYER room with space left
-          (fewer than STUDY_ROOM_MAX). A solo session stays solo (no invite button). Once
-          a room fills to 3, the button is simply removed (no "Full" chip). */}
-      {!isSolo && !roomFull && (
+      {/* Invite-friend button (top right) — shown in any MULTIPLAYER room. A solo
+          session stays solo (no invite button). The button stays visible even once
+          the room fills to STUDY_ROOM_MAX; when full it no longer opens the invite
+          list (handleAddFriend shows a "room's full" hint instead) so people can still
+          tap members to view/friend them. */}
+      {!isSolo && (
         <Pressable onPress={handleAddFriend} style={({ pressed }) => [styles.addFriendBtn, isTablet && styles.addFriendBtnTablet, !focus && { backgroundColor: acc.button, borderColor: acc.button }, focus && styles.btnFocusFlat, pressed && styles.pressed]} hitSlop={8} accessibilityLabel={t('studyRoom.friend')}>
           <Text style={[styles.addFriendIcon, isTablet && styles.addFriendIconTablet, { color: focus ? focusFg : acc.onButton }]}>＋</Text>
         </Pressable>
@@ -970,7 +1034,7 @@ export function StudyRoomView({
           tucks behind the table, like the solo character. */}
       {!soloScene && (
         <View style={[styles.partyLayer, { bottom: partyCharBottomRaised }]}>
-          {participants.slice(0, STUDY_ROOM_MAX).map((p, i) => {
+          {centeredParticipants.map((p, i) => {
             // Characters overlap (slots are narrower than the art), so paint order
             // matters. Peak the zIndex at the centre of the row so the middle
             // character sits in FRONT of its neighbours, fading outward — instead of
@@ -990,7 +1054,14 @@ export function StudyRoomView({
             const persona = p.code === friendCode ? myPersona : (p.companionId ? PERSONA_BY_COMPANION[p.companionId] : 'bun');
             const skin = p.code === friendCode ? mySkin : p.skinId;
             return (
-              <Pressable key={p.code} style={[styles.partyMember, { width: partySlotW, zIndex: charZ }]} onPress={() => talkAs(p.code, persona, skin, 0.72)}>
+              <Pressable
+                key={p.code}
+                style={[styles.partyMember, { width: partySlotW, zIndex: charZ }]}
+                onPress={() => p.code === friendCode
+                  // My own character → cute pet line. Another member → open their
+                  // profile card (where they can be friended if not already).
+                  ? talkAs(p.code, persona, skin, 0.72)
+                  : router.push({ pathname: '/friend-card', params: { code: p.code } })}>
                 {/* No status dot above the character — status already shows on the
                     top participant cards, so the dot here was redundant clutter. */}
                 {/* Squish-on-tap layer (only the tapped member uses tapScale) wrapping
@@ -1095,7 +1166,7 @@ export function StudyRoomView({
         // alone used the wrong height and let them float onto the wall).
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: deskEdgeY, overflow: 'hidden', zIndex: 2 }} pointerEvents="none">
           <View style={[styles.partyBookRow, { bottom: deskEdgeY - 1.05 * partyBookSize + 42 - winH * 0.012 }]} pointerEvents="none">
-            {participants.slice(0, STUDY_ROOM_MAX).map((p) => {
+            {centeredParticipants.map((p) => {
               // Every book is the SAME size (partyBookSize) and bottom-aligned in the
               // row, so all books read identical and sit at the same Y — only the cover
               // colour differs per studier. (Per-companion book scaling was tried but
@@ -1126,7 +1197,7 @@ export function StudyRoomView({
           the host's head. Rides the shared idle bounce via charTranslateY. */}
       {!soloScene && (
         <View style={[styles.partyLayer, { bottom: partyCharBottomRaised, zIndex: 5 }]} pointerEvents="none">
-          {participants.slice(0, STUDY_ROOM_MAX).map((p) => (
+          {centeredParticipants.map((p) => (
             <View key={p.code} style={[styles.partyMember, { width: partySlotW, height: partyCharSize }]}>
               {p.isHost && (
                 <Animated.View style={{ position: 'absolute', top: -partyCharSize * 0.08, left: 0, right: 0, alignItems: 'center', transform: [{ translateY: charTranslateY }] }}>
@@ -1146,7 +1217,7 @@ export function StudyRoomView({
           pointerEvents:none lets taps fall through to the characters underneath. */}
       {!soloScene && talk && (
         <View style={[styles.partyLayer, { bottom: partyCharBottomRaised, zIndex: 6 }]} pointerEvents="none">
-          {participants.slice(0, STUDY_ROOM_MAX).map((p) => (
+          {centeredParticipants.map((p) => (
             <View key={p.code} style={[styles.partyMember, { width: partySlotW }]}>
               {talk.code === p.code && (
                 <PetBubble key={talk.id} line={talk.line} scale={0.72} onDone={() => setTalk(null)} />

@@ -1,7 +1,10 @@
 /**
- * Read-only view of a friend's profile card (their chosen character/outfit on a
+ * Read-only view of a profile card (the person's chosen character/outfit on a
  * background, plus streaks, hours studied, birthday and description). Opened by
- * tapping a friend in the Friends list.
+ * tapping a friend in the Friends list — or by tapping another member's character
+ * in a multiplayer study room, where the person may NOT be a friend yet. For a
+ * non-friend the card renders off a freshly-fetched profile and shows an
+ * "Add friend" button (sends a friend request).
  */
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -15,8 +18,10 @@ const STUDIED_ICON = require('@/assets/images/profile/studied-book.png');
 const BIRTHDAY_ICON = require('@/assets/images/profile/birthday-candle.png');
 
 import { useApp } from '@/context/app-context';
+import { useAuth } from '@/context/auth-context';
 import { getCompanionImage } from '@/lib/companion-utils';
-import { fetchProfileByCode } from '@/lib/profile-sync';
+import { fetchProfileByCode, type SyncedProfile } from '@/lib/profile-sync';
+import { sendFriendRequest } from '@/lib/friend-requests';
 import { reportUser, REPORT_REASONS, type ReportReason } from '@/lib/moderation';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { cardColors } from '@/constants/card-colors';
@@ -45,46 +50,81 @@ export default function FriendCardScreen() {
   const { t } = useTranslation();
   const { code } = useLocalSearchParams<{ code: string }>();
   const { friends, setFriendProfile, blockUser, friendCode } = useApp();
+  const { user } = useAuth();
   const friend = friends.find((f) => f.code === code);
+  const isFriend = !!friend;
   const [, force] = useState(0);
+  // For a non-friend (opened from a study room) we have no entry in `friends`, so
+  // render off this freshly-fetched cloud profile instead.
+  const [fetched, setFetched] = useState<SyncedProfile | null>(null);
 
   // Refresh from the cloud so the card is current.
   useEffect(() => {
     if (!code) return;
     fetchProfileByCode(code).then((p) => {
       if (p) {
-        setFriendProfile(code, {
-          displayName: p.displayName || undefined,
-          companionId: p.companionId,
-          skinId: p.skinId,
-          backgroundId: p.backgroundId,
-          avatarFrame: p.avatarFrame,
-          cardColor: p.cardColor,
-          description: p.description,
-          birthday: p.birthday,
-          currentStreak: p.currentStreak,
-          longestStreak: p.longestStreak,
-          totalMinutes: p.totalMinutes,
-        });
+        setFetched(p);
+        // Only cache into the friend store when they actually are a friend — caching
+        // a stranger's profile there would be meaningless (nothing reads it).
+        if (isFriend) {
+          setFriendProfile(code, {
+            displayName: p.displayName || undefined,
+            companionId: p.companionId,
+            skinId: p.skinId,
+            backgroundId: p.backgroundId,
+            avatarFrame: p.avatarFrame,
+            cardColor: p.cardColor,
+            description: p.description,
+            birthday: p.birthday,
+            currentStreak: p.currentStreak,
+            longestStreak: p.longestStreak,
+            totalMinutes: p.totalMinutes,
+          });
+        }
         force((n) => n + 1);
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
 
-  const name = friend?.displayName || friend?.name || t('friendCard.friendFallback', { code });
-  const bgRoom = ROOM_PAIRS.find((r) => r.id === friend?.backgroundId) ?? ROOM_PAIRS[0];
-  const figure = getCompanionImage(friend?.companionId, friend?.skinId);
-  const totalMinutes = friend?.totalMinutes ?? 0;
+  // Prefer the friend-store entry (kept in sync), else the freshly-fetched profile.
+  const name = friend?.displayName || friend?.name || fetched?.displayName || t('friendCard.friendFallback', { code });
+  const backgroundId = friend?.backgroundId ?? fetched?.backgroundId;
+  const bgRoom = ROOM_PAIRS.find((r) => r.id === backgroundId) ?? ROOM_PAIRS[0];
+  const figure = getCompanionImage(friend?.companionId ?? fetched?.companionId, friend?.skinId ?? fetched?.skinId);
+  const totalMinutes = friend?.totalMinutes ?? fetched?.totalMinutes ?? 0;
   const hours = Math.floor(totalMinutes / 60);
   const hoursLabel = hours > 0 ? `${hours}h ${totalMinutes % 60}m` : `${totalMinutes}m`;
+  const currentStreak = friend?.currentStreak ?? fetched?.currentStreak ?? 0;
+  const longestStreak = friend?.longestStreak ?? fetched?.longestStreak ?? 0;
+  const birthday = friend?.birthday ?? fetched?.birthday;
+  const description = friend?.description ?? fetched?.description;
+  const avatarFrame = friend?.avatarFrame ?? fetched?.avatarFrame;
   // Show the friend's chosen card colour — but only while they're Plus (custom
   // colours lapse with Plus, like the avatar frame); everyone else stays pink.
-  const cc = cardColors(isPlusFrame(friend?.avatarFrame) ? (friend?.cardColor || 'pink') : 'pink');
+  const cc = cardColors(isPlusFrame(avatarFrame) ? ((friend?.cardColor ?? fetched?.cardColor) || 'pink') : 'pink');
+  // "Add friend" only when this is someone else and not already a friend.
+  const canAddFriend = !!code && code !== friendCode && !isFriend;
 
   // friend-card is presented as a native modal, so confirmations use a LOCAL modal —
   // the root showPopup renders BEHIND the native sheet and the tap just looks dead.
-  const [mod, setMod] = useState<null | 'report' | 'block' | 'sent' | 'error'>(null);
+  const [mod, setMod] = useState<null | 'report' | 'block' | 'sent' | 'error' | 'reqSent' | 'reqFail'>(null);
+  const [adding, setAdding] = useState(false);
+  // Add friend: send a friend request (recipient must accept), mirroring the
+  // Friends-tab flow. Show the result in the LOCAL modal (root popups render behind
+  // this native sheet).
+  const handleAdd = async () => {
+    if (!code || !user?.id) return;
+    setAdding(true);
+    try {
+      const res = await sendFriendRequest({ fromUser: user.id, fromCode: friendCode, toCode: code });
+      setMod(res.ok ? 'reqSent' : 'reqFail');
+    } catch {
+      setMod('reqFail');
+    } finally {
+      setAdding(false);
+    }
+  };
   // Report: file the chosen reason to Supabase (founder reviews in the dashboard).
   // Await the insert so a failure (e.g. table not migrated) shows an error instead
   // of a false "sent" — the report would otherwise be silently lost.
@@ -116,12 +156,12 @@ export default function FriendCardScreen() {
                 <View style={styles.nameRow}>
                   <Text style={styles.name} numberOfLines={2}>{name}</Text>
                 </View>
-                <Row icon={STREAK_ICON} label={t('friendCard.currentStreak')} value={`${friend?.currentStreak ?? 0}d`} />
-                <Row icon={BEST_STREAK_ICON} label={t('friendCard.bestStreak')} value={`${friend?.longestStreak ?? 0}d`} />
+                <Row icon={STREAK_ICON} label={t('friendCard.currentStreak')} value={`${currentStreak}d`} />
+                <Row icon={BEST_STREAK_ICON} label={t('friendCard.bestStreak')} value={`${longestStreak}d`} />
                 <Row icon={STUDIED_ICON} label={t('friendCard.studied')} value={hoursLabel} />
-                <Row icon={BIRTHDAY_ICON} label={t('friendCard.birthday')} value={formatBirthday(friend?.birthday)} />
-                {friend?.description ? (
-                  <Text style={styles.desc} numberOfLines={3}>“{friend.description}”</Text>
+                <Row icon={BIRTHDAY_ICON} label={t('friendCard.birthday')} value={formatBirthday(birthday)} />
+                {description ? (
+                  <Text style={styles.desc} numberOfLines={3}>“{description}”</Text>
                 ) : null}
               </View>
             </View>
@@ -130,6 +170,12 @@ export default function FriendCardScreen() {
               <Text style={styles.codeStripValue}>{code}</Text>
             </View>
           </View>
+
+          {canAddFriend && (
+            <Pressable style={({ pressed }) => [styles.addBtn, (pressed || adding) && styles.pressed]} onPress={handleAdd} disabled={adding}>
+              <Text style={styles.addBtnText}>{adding ? t('friendCard.addingFriend') : t('friendCard.addFriend')}</Text>
+            </Pressable>
+          )}
 
           <Pressable style={({ pressed }) => [styles.doneBtn, pressed && styles.pressed]} onPress={() => router.back()}>
             <Text style={styles.doneBtnText}>{t('common.close')}</Text>
@@ -188,6 +234,15 @@ export default function FriendCardScreen() {
                   </Pressable>
                 </>
               )}
+              {(mod === 'reqSent' || mod === 'reqFail') && (
+                <>
+                  <Text style={styles.popTitle}>{t(mod === 'reqSent' ? 'friendCard.requestSentTitle' : 'friendCard.requestFailedTitle')}</Text>
+                  <Text style={styles.popSub}>{t(mod === 'reqSent' ? 'friendCard.requestSentMsg' : 'friendCard.requestFailedMsg', { name })}</Text>
+                  <Pressable style={({ pressed }) => [styles.popPrimary, pressed && styles.pressed]} onPress={() => setMod(null)}>
+                    <Text style={styles.popPrimaryText}>{t('common.close')}</Text>
+                  </Pressable>
+                </>
+              )}
             </Pressable>
           </Pressable>
         </Modal>
@@ -238,6 +293,8 @@ const styles = StyleSheet.create({
   },
   codeStripLabel: { fontSize: 11, fontWeight: '800', color: '#fff', letterSpacing: 1, opacity: 0.9 },
   codeStripValue: { fontSize: 16, fontWeight: '900', color: '#fff', letterSpacing: 3 },
+  addBtn: { backgroundColor: P.pink, borderRadius: 18, paddingVertical: 14, alignItems: 'center' },
+  addBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
   doneBtn: { backgroundColor: '#F7A7B8', borderRadius: 18, paddingVertical: 14, alignItems: 'center' },
   doneBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
   modRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, marginTop: 14, paddingVertical: 6 },
