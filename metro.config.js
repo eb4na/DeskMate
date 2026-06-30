@@ -13,7 +13,11 @@ const existingBlockList = Array.isArray(config.resolver.blockList)
   : config.resolver.blockList
     ? [config.resolver.blockList]
     : [];
-config.resolver.blockList = [...existingBlockList, /[\\/]\.claude[\\/].*/];
+// Also exclude the marketing site under website/ — it holds RESIZED COPIES of the
+// app's character/room art (same basenames). Without this, Metro would watch those
+// duplicates and mis-resolve require()s to the wrong image, the same way the .claude
+// worktrees do.
+config.resolver.blockList = [...existingBlockList, /[\\/]\.claude[\\/].*/, /[\\/]website[\\/].*/];
 
 // @supabase/supabase-js ships an ESM build (index.mjs) that uses a raw dynamic
 // `import(OTEL_PKG)` to lazily load OpenTelemetry. Hermes (Expo Go's JS engine)

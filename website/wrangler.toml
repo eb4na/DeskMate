@@ -1,0 +1,6 @@
+# Optional: deploy via the Cloudflare CLI instead of the dashboard.
+# From inside this website/ folder, after `npx wrangler login`:
+#     npx wrangler pages deploy .
+name = "memobun"
+pages_build_output_dir = "."
+compatibility_date = "2024-06-01"
