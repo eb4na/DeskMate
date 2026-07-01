@@ -35,25 +35,6 @@
     reveals.forEach(function (el) { el.classList.add('in'); });
   }
 
-  // ── Graceful screenshot drop-in ────────────────────────────────────
-  // Each gallery <img data-shot="home"> tries assets/screenshots/home.{png,jpg,jpeg,webp}.
-  // If a file exists it fades in over the cozy placeholder; if not, the placeholder
-  // simply stays — so the page looks finished before real screenshots are added.
-  var exts = ['png', 'jpg', 'jpeg', 'webp'];
-  document.querySelectorAll('img[data-shot]').forEach(function (img) {
-    var name = img.getAttribute('data-shot');
-    var i = 0;
-    function tryNext() {
-      if (i >= exts.length) return; // no file found — leave the placeholder showing
-      var url = 'assets/screenshots/' + name + '.' + exts[i++];
-      var probe = new Image();
-      probe.onload = function () { img.src = url; };
-      probe.onerror = tryNext;
-      probe.src = url;
-    }
-    tryNext();
-  });
-
   // ── Footer year ────────────────────────────────────────────────────
   var year = document.getElementById('year');
   if (year) year.textContent = String(new Date().getFullYear());

@@ -1,19 +1,23 @@
-/* Memobun marketing site — pink "carrd"-style kawaii NOTEBOOK theme.
-   The page is a white paper sheet (faint grid + spiral binding) floating on a
-   dotted pastel-pink background. Candy-pink headings, blue tag chips, rounded
-   pill nav, pink-framed cards, and code-drawn strawberry/star/heart stickers.
+/* Memobun marketing site — pink "carrd"-style kawaii PLANNER theme.
+   The page is a ring-bound cream planner: a warm dotted page framed by a soft
+   pink binder cover, with a row of shiny silver binder rings along the top.
+   Candy-pink headings, blue tag chips, rounded pill nav, pink-framed cards, and
+   code-drawn strawberry/star/heart stickers + washi-tape accents.
    No emojis anywhere — inline SVG only. */
 
 :root {
-  /* outer page (behind the sheet) */
-  --blush: #FCE0EA;        /* pastel-pink page background */
-  --blush-deep: #F6C6D6;   /* dots on the background */
-  /* the paper sheet */
-  --paper: #FFFDFB;        /* sheet colour */
-  --band: #FFF0F5;         /* soft-pink section bands + spiral strip */
-  --card: #FFFDFB;         /* card fill */
-  --grid-line: rgba(230, 130, 160, 0.10);  /* faint notebook grid */
+  /* outer page (behind the planner) */
+  --blush: #FCF3D9;        /* cream / light-yellow page background */
+  --blush-deep: #EFDDA8;   /* soft gold dots on the background */
+  /* the planner page */
+  --paper: #FBF5E9;        /* warm cream page colour */
+  --band: #FFF0F5;         /* soft-pink section bands */
+  --card: #FFFDFB;         /* card fill (white sticker-notes on cream) */
+  --dot: rgba(198, 168, 120, 0.16);  /* soft dotted planner page */
   --border: #F4C6D4;       /* soft pink borders */
+  /* pink binder cover framing the page */
+  --cover: #F4B8CC;
+  --cover-edge: #E890AE;
   /* text */
   --cocoa-dark: #7A3D53;   /* headings (deep rose-brown, still readable) */
   --cocoa: #6B4B3A;        /* body — warm brown */
@@ -84,7 +88,7 @@ a:hover { text-decoration: underline; }
 /* ── Header ──────────────────────────────────────────────────────────── */
 .site-header {
   position: sticky; top: 0; z-index: 50;
-  background: rgba(252, 224, 234, 0.86);
+  background: rgba(252, 243, 217, 0.88);
   backdrop-filter: saturate(150%) blur(10px);
   border-bottom: 1px solid var(--border);
 }
@@ -107,31 +111,41 @@ a:hover { text-decoration: underline; }
 .nav-toggle { display: none; background: none; border: none; cursor: pointer; padding: 6px; }
 .nav-toggle span { display: block; width: 24px; height: 2.5px; background: var(--pink-deep); border-radius: 2px; margin: 5px 0; transition: .2s; }
 
-/* ── The paper sheet ─────────────────────────────────────────────────── */
+/* ── The planner page (cream, dotted, ring-bound, pink cover edge) ────── */
 main#top {
   position: relative;
   max-width: var(--sheetw);
-  margin: 34px auto 44px;
+  margin: 42px auto 52px;
   background:
-    repeating-linear-gradient(0deg, transparent 0 27px, var(--grid-line) 27px 28px),
-    repeating-linear-gradient(90deg, transparent 0 27px, var(--grid-line) 27px 28px),
+    radial-gradient(var(--dot) 1.6px, transparent 2px) 0 0 / 26px 26px,
     var(--paper);
   border: 2px solid var(--border);
   border-radius: 30px;
-  box-shadow: var(--shadow);
+  /* layered spread = pink binder cover framing the page */
+  box-shadow:
+    0 0 0 9px var(--cover),
+    0 0 0 11px var(--cover-edge),
+    var(--shadow);
   overflow: hidden;
 }
-/* spiral-binding strip pinned to the top of the sheet */
+/* ring-binder bound edge pinned to the top of the page (thin cream band) */
 .spiral {
-  position: absolute; top: 0; left: 0; right: 0; height: 34px; z-index: 6;
-  background: var(--band); border-bottom: 2px solid var(--border);
+  position: absolute; top: 0; left: 0; right: 0; height: 30px; z-index: 6;
+  background: linear-gradient(180deg, #F3ECDD 0%, #EADFCB 100%);
+  border-bottom: 1.5px solid #D9C6A6;
 }
+/* a full-width row of shiny rose-gold binder rings threaded through the top edge.
+   The radial highlight is offset (50% 40%) to fake a warm metallic sheen; the
+   centre stays transparent so the band shows through the ring's hole.
+   (Rose-gold, never gray — it ties into the pink binder cover.) */
 .spiral::before {
-  content: ""; position: absolute; top: 10px; left: 0; right: 0; height: 14px;
-  background: radial-gradient(circle at center,
-              var(--blush) 0 5px, var(--pink-deep) 5px 6.4px, transparent 6.9px);
-  background-size: 42px 14px; background-repeat: repeat-x; background-position: center;
-  opacity: .85;
+  content: ""; position: absolute; top: 2px; left: 0; right: 0; height: 22px;
+  background: radial-gradient(circle at 50% 40%,
+              transparent 0 4px,
+              #FFF5F1 4.2px, #F6CFCF 5.2px, #EAA6B4 6.2px, #DB86A2 7px, #C56E8B 7.6px,
+              transparent 8px);
+  background-size: 46px 22px; background-repeat: repeat-x; background-position: center top;
+  filter: drop-shadow(0 2px 1.5px rgba(160, 90, 115, 0.25));
 }
 
 /* ── Stickers (code-drawn SVG accents) ───────────────────────────────── */
@@ -139,6 +153,22 @@ main#top {
 .sticker.left  { left: -6px; top: -4px; }
 .sticker.right { right: -6px; top: 6px; }
 .section-head .sticker { width: 38px; }
+
+/* ── Washi-tape accents (code-drawn masking-tape strips) ─────────────── */
+.washi {
+  position: absolute; z-index: 5; width: 116px; height: 32px; pointer-events: none;
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,.38) 0 9px, rgba(255,255,255,.10) 9px 18px),
+    var(--washi-col, #F7C7D8);
+  opacity: .74;
+  box-shadow: 0 2px 5px rgba(150,110,120,.18);
+  /* frayed, slightly translucent tape ends */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 4px, #000 calc(100% - 4px), transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0, #000 4px, #000 calc(100% - 4px), transparent 100%);
+}
+.washi.w-hero  { top: 40px;  right: 8%;  --washi-col: #BFE3F2; transform: rotate(-8deg); }
+.washi.w-rooms { top: -14px; left: 6%;   --washi-col: #F7C7D8; transform: rotate(6deg); }
+.washi.w-char  { top: -16px; right: 7%;  --washi-col: #FCE3A6; transform: rotate(-5deg); }
 
 /* ── Hero ────────────────────────────────────────────────────────────── */
 .hero { position: relative; padding: 72px 0 84px; }
@@ -156,8 +186,10 @@ main#top {
 .hero p.lead { font-size: 1.16rem; color: var(--cocoa); max-width: 40ch; margin: 0 0 26px; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
 .hero-note { margin-top: 16px; font-size: .9rem; color: var(--cocoa-soft); }
-.hero .st-berry { width: 50px; left: -8px; top: 26px; }
-.hero .st-star  { width: 40px; right: 4%; top: 8px; }
+/* keep stickers fully inside the sheet and clear of the spiral strip (34px)
+   so they never get hard-clipped by the sheet's overflow:hidden */
+.hero .st-berry { width: 50px; left: 12px; top: 48px; }
+.hero .st-star  { width: 40px; right: 4%; top: 48px; }
 .hero .st-heart { width: 30px; left: 30%; bottom: 8px; }
 
 /* hero art cluster — one phone "study screen" + two floating room cards */
@@ -204,14 +236,17 @@ main#top {
 section { position: relative; padding: 72px 0; }
 .section-head { position: relative; text-align: center; max-width: 640px; margin: 0 auto 44px; }
 .section-head h2 { font-size: clamp(1.7rem, 3.4vw, 2.4rem); color: var(--pink-ink); }
-.section-head p { color: var(--cocoa-soft); font-size: 1.08rem; margin: 0; }
+/* :not(.eyebrow) so the muted brown body colour never overrides the chip's white */
+.section-head p:not(.eyebrow) { color: var(--cocoa-soft); font-size: 1.08rem; margin: 0; }
 /* eyebrow -> blue "tag chip" like the reference's info bar */
 .eyebrow {
   display: inline-block; background: var(--sky); color: #fff;
   font-weight: 800; letter-spacing: .03em; font-size: .8rem;
-  padding: 5px 16px; border-radius: var(--radius-pill); margin: 0 0 12px;
+  padding: 6px 16px; border-radius: var(--radius-pill); margin: 0 0 18px;
   box-shadow: 0 4px 10px rgba(90,169,212,.28);
 }
+/* on the pink Plus card, the chip reads better in dark pink than blue */
+.plus-band .eyebrow { background: var(--pink-deep); box-shadow: 0 4px 10px rgba(214,92,126,.30); }
 .alt-bg { background: linear-gradient(180deg, var(--band), rgba(255,240,245,.35)); }
 
 /* ── Rooms / "your vibe" showcase ────────────────────────────────────── */
@@ -247,6 +282,45 @@ section { position: relative; padding: 72px 0; }
 .feature h3 { font-size: 1.18rem; margin-bottom: 6px; color: var(--cocoa-dark); }
 .feature p { margin: 0; color: var(--cocoa-soft); font-size: .98rem; }
 
+/* ── How it works (numbered steps) ───────────────────────────────────── */
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+.step {
+  position: relative; text-align: center;
+  background: var(--card); border: 2px solid var(--border);
+  border-radius: var(--radius-card); padding: 30px 24px 26px; box-shadow: var(--shadow-soft);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.step:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+.step-num {
+  display: grid; place-items: center; width: 46px; height: 46px; margin: 0 auto 14px;
+  font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; color: #fff;
+  background: var(--pink); border-radius: 50%; border: 3px solid #fff; box-shadow: var(--shadow-soft);
+}
+.step:nth-child(2) .step-num { background: var(--sky); }
+.step:nth-child(3) .step-num { background: var(--berry); }
+.step h3 { font-size: 1.18rem; margin-bottom: 6px; color: var(--cocoa-dark); }
+.step p { margin: 0; color: var(--cocoa-soft); font-size: .98rem; }
+
+/* ── FAQ (native accordion, no JS) ───────────────────────────────────── */
+.faq-list { max-width: 760px; margin: 0 auto; display: grid; gap: 14px; }
+.faq-item {
+  background: var(--card); border: 2px solid var(--border);
+  border-radius: 18px; padding: 0 20px; box-shadow: var(--shadow-soft);
+}
+.faq-item summary {
+  list-style: none; cursor: pointer; padding: 16px 0;
+  font-family: var(--font-display); font-weight: 700; font-size: 1.06rem; color: var(--cocoa-dark);
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after {
+  content: ""; flex: none; width: 11px; height: 11px; margin-right: 3px;
+  border-right: 2.6px solid var(--pink-deep); border-bottom: 2.6px solid var(--pink-deep);
+  transform: rotate(45deg); transition: transform .2s ease;
+}
+.faq-item[open] summary::after { transform: rotate(-135deg); }
+.faq-item p { margin: 0 0 18px; color: var(--cocoa-soft); font-size: .98rem; }
+
 /* ── Characters ──────────────────────────────────────────────────────── */
 .char-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
 .char-card {
@@ -271,13 +345,6 @@ section { position: relative; padding: 72px 0; }
 .char-card.secret .lockbadge { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; background: rgba(255,253,251,.92); border-radius: 50%; display: grid; place-items: center; color: #B074C0; }
 .char-card.secret .char-info .role { color: #B074C0; }
 
-/* ── Screenshots gallery ─────────────────────────────────────────────── */
-.shots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
-.phone { position: relative; aspect-ratio: 9 / 19; border-radius: 30px; overflow: hidden; border: 6px solid #fff; box-shadow: var(--shadow); background: var(--pink-soft); }
-.phone img { width: 100%; height: 100%; object-fit: cover; display: block; position: relative; z-index: 1; }
-.phone .placeholder { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 10px; padding: 18px; background: linear-gradient(160deg, var(--band), var(--pink-soft)); color: var(--pink-deep); font-family: var(--font-display); font-weight: 700; }
-.phone .placeholder small { font-family: var(--font-body); font-weight: 600; color: var(--cocoa-soft); font-size: .8rem; }
-
 /* ── Plus band ───────────────────────────────────────────────────────── */
 .plus-band { background: linear-gradient(120deg, #FFE3EE, #FCD3E3); border-radius: var(--radius-card); padding: 40px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 30px; align-items: center; box-shadow: var(--shadow-soft); border: 2px solid var(--border); }
 .plus-band h2 { font-size: 1.9rem; color: var(--pink-ink); }
@@ -293,7 +360,7 @@ section { position: relative; padding: 72px 0; }
 .cta p { color: var(--cocoa-soft); font-size: 1.1rem; margin: 0 auto 26px; max-width: 42ch; }
 
 /* ── Footer ──────────────────────────────────────────────────────────── */
-.site-footer { background: linear-gradient(180deg, var(--blush), #F8CFDE); color: #8A5A68; padding: 44px 0 30px; }
+.site-footer { background: linear-gradient(180deg, var(--blush), #F5E4B0); color: #8A5A68; padding: 44px 0 30px; }
 .site-footer a { color: var(--pink-deep); }
 .foot-grid { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 24px; align-items: center; }
 .foot-logo img { height: 46px; opacity: .98; }
@@ -320,7 +387,6 @@ section { position: relative; padding: 72px 0; }
 /* iPad portrait & below */
 @media (max-width: 900px) {
   .feature-grid, .char-grid { grid-template-columns: repeat(2, 1fr); }
-  .shots { grid-template-columns: repeat(2, 1fr); }
   .hero-grid { grid-template-columns: 1fr; text-align: center; }
   .hero p.lead { margin-left: auto; margin-right: auto; }
   .hero-actions { justify-content: center; }
@@ -339,10 +405,10 @@ section { position: relative; padding: 72px 0; }
   .nav-toggle { display: block; }
   .nav.open .nav-links { display: flex; position: absolute; top: 68px; left: 0; right: 0; flex-direction: column; gap: 8px; background: var(--blush); border-bottom: 1px solid var(--border); padding: 12px 24px 16px; }
   .nav.open .nav-links a { text-align: center; }
-  .feature-grid, .char-grid, .shots { grid-template-columns: 1fr; }
+  .feature-grid, .char-grid, .steps { grid-template-columns: 1fr; }
   .rooms { grid-template-columns: repeat(2, 1fr); }
   .room-card { display: none; }            /* keep just the phone on small screens */
   .stage { height: 380px; }
   section { padding: 54px 0; }
-  .section-head .sticker { display: none; } /* keep phones uncluttered */
+  .section-head .sticker, .washi { display: none; } /* keep phones uncluttered */
 }

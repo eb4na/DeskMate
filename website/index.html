@@ -56,11 +56,12 @@
 
   <main id="top">
 
-    <!-- decorative spiral binding at the top of the paper sheet -->
+    <!-- decorative silver ring-binder edge at the top of the planner page -->
     <div class="spiral" aria-hidden="true"></div>
 
     <!-- ── Hero ─────────────────────────────────────────────────────── -->
     <section class="hero">
+      <div class="washi w-hero" aria-hidden="true"></div>
       <!-- code-drawn sticker accents (no emoji) -->
       <svg class="sticker st-berry" viewBox="0 0 44 48" aria-hidden="true"><path d="M22 46C13 46 6 38 6 28c0-8 7-13 16-13s16 5 16 13c0 10-7 18-16 18Z" fill="#F5808F" stroke="#D65C7E" stroke-width="2.5"/><path d="M22 15c-1-5-6-8-11-8 1 4 4 7 6 8-4-1-8 0-10 2 3 1 6 1 8 1-2 1-4 3-4 5 3-1 5-3 7-4h6c2 1 4 3 7 4 0-2-2-4-4-5 2 0 5 0 8-1-2-2-6-3-10-2 2-1 5-4 6-8-5 0-10 3-13 8Z" fill="#7FB877" stroke="#5F9E64" stroke-width="1.5" stroke-linejoin="round"/><g fill="#FFE08A"><circle cx="16" cy="30" r="1.4"/><circle cx="23" cy="27" r="1.4"/><circle cx="29" cy="32" r="1.4"/><circle cx="19" cy="37" r="1.4"/><circle cx="27" cy="39" r="1.4"/><circle cx="22" cy="33" r="1.4"/></g></svg>
       <svg class="sticker st-star" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3c1 0 2 .7 2.4 1.8l3.3 8.2 8.8.6c2.4.2 3.4 3.2 1.5 4.8l-6.8 5.6 2.2 8.6c.6 2.3-2 4.2-4 2.9L20 31.4l-7.4 4.7c-2 1.3-4.6-.6-4-2.9l2.2-8.6-6.8-5.6c-1.9-1.6-.9-4.6 1.5-4.8l8.8-.6 3.3-8.2C18 3.7 19 3 20 3Z" fill="#FFD36B" stroke="#F0B23E" stroke-width="2"/></svg>
@@ -100,8 +101,37 @@
       </div>
     </section>
 
+    <!-- ── How it works ─────────────────────────────────────────────── -->
+    <section id="how">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="eyebrow" data-i18n="how.eyebrow">How it works</p>
+          <h2 data-i18n="how.h2">Three little steps to a cozy study habit</h2>
+          <p data-i18n="how.p">No fuss, no pressure — just a sweet loop you'll actually want to come back to.</p>
+        </div>
+        <div class="steps">
+          <div class="step reveal">
+            <span class="step-num">1</span>
+            <h3 data-i18n="how.s1.t">Pick your companion</h3>
+            <p data-i18n="how.s1.d">Choose a cozy study buddy who fits your vibe — each with their own personality and wardrobe of outfits.</p>
+          </div>
+          <div class="step reveal">
+            <span class="step-num">2</span>
+            <h3 data-i18n="how.s2.t">Start a focus session</h3>
+            <p data-i18n="how.s2.d">Set a duration, subject, and mood, then settle in and study together at the bakery desk.</p>
+          </div>
+          <div class="step reveal">
+            <span class="step-num">3</span>
+            <h3 data-i18n="how.s3.t">Earn coins &amp; unlock</h3>
+            <p data-i18n="how.s3.d">Finish to bank Focus Coins, spend them on rooms, outfits, and treats, and grow your daily streak.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ── Rooms / your vibe ────────────────────────────────────────── -->
     <section id="rooms" class="alt-bg">
+      <div class="washi w-rooms" aria-hidden="true"></div>
       <div class="wrap">
         <div class="section-head reveal">
           <svg class="sticker st-heart right" viewBox="0 0 32 30" aria-hidden="true"><path d="M16 28C6 21 2 15 2 9.5 2 5.4 5.4 2 9.5 2 12 2 14.4 3.3 16 5.4 17.6 3.3 20 2 22.5 2 26.6 2 30 5.4 30 9.5 30 15 26 21 16 28Z" fill="#F5808F" stroke="#D65C7E" stroke-width="2"/></svg>
@@ -189,6 +219,7 @@
 
     <!-- ── Characters ───────────────────────────────────────────────── -->
     <section id="characters" class="alt-bg">
+      <div class="washi w-char" aria-hidden="true"></div>
       <div class="wrap">
         <div class="section-head reveal">
           <svg class="sticker st-star left" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3c1 0 2 .7 2.4 1.8l3.3 8.2 8.8.6c2.4.2 3.4 3.2 1.5 4.8l-6.8 5.6 2.2 8.6c.6 2.3-2 4.2-4 2.9L20 31.4l-7.4 4.7c-2 1.3-4.6-.6-4-2.9l2.2-8.6-6.8-5.6c-1.9-1.6-.9-4.6 1.5-4.8l8.8-.6 3.3-8.2C18 3.7 19 3 20 3Z" fill="#FFD36B" stroke="#F0B23E" stroke-width="2"/></svg>
@@ -259,35 +290,6 @@
       </div>
     </section>
 
-    <!-- ── Gallery ──────────────────────────────────────────────────── -->
-    <section id="gallery">
-      <div class="wrap">
-        <div class="section-head reveal">
-          <p class="eyebrow" data-i18n="gal.eyebrow">A peek inside</p>
-          <h2 data-i18n="gal.h2">Your cozy bakery, on your phone</h2>
-          <p data-i18n="gal.p">Every session lives in a warm little world you build and decorate as you go.</p>
-        </div>
-        <div class="shots">
-          <div class="phone reveal">
-            <div class="placeholder"><span data-i18n="gal.home">Home</span><small data-i18n="gal.home.s">Your bakery &amp; companion</small></div>
-            <img alt="Memobun home screen" data-shot="home" />
-          </div>
-          <div class="phone reveal">
-            <div class="placeholder"><span data-i18n="gal.study">Study</span><small data-i18n="gal.study.s">Focus session in progress</small></div>
-            <img alt="Memobun study session" data-shot="study" />
-          </div>
-          <div class="phone reveal">
-            <div class="placeholder"><span data-i18n="gal.shop">Shop</span><small data-i18n="gal.shop.s">Outfits, rooms &amp; treats</small></div>
-            <img alt="Memobun shop" data-shot="shop" />
-          </div>
-          <div class="phone reveal">
-            <div class="placeholder"><span data-i18n="gal.together">Together</span><small data-i18n="gal.together.s">Studying with friends</small></div>
-            <img alt="Memobun multiplayer room" data-shot="multiplayer" />
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- ── Plus ─────────────────────────────────────────────────────── -->
     <section id="plus">
       <div class="wrap">
@@ -305,6 +307,39 @@
           <div class="plus-icon">
             <img src="assets/icon/app-icon.png" alt="Memobun app icon" />
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── FAQ ──────────────────────────────────────────────────────── -->
+    <section id="faq" class="alt-bg">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="eyebrow" data-i18n="faq.eyebrow">Good to know</p>
+          <h2 data-i18n="faq.h2">Frequently asked questions</h2>
+          <p data-i18n="faq.p">A few things you might be wondering before Memobun opens its doors.</p>
+        </div>
+        <div class="faq-list">
+          <details class="faq-item reveal">
+            <summary data-i18n="faq.q1">Is Memobun free?</summary>
+            <p data-i18n="faq.a1">Yes — Memobun is free to download and play, and you can unlock everything just by studying and earning coins. An optional Memobun Plus subscription and coin packs are there if you'd like a little extra.</p>
+          </details>
+          <details class="faq-item reveal">
+            <summary data-i18n="faq.q2">What devices does it work on?</summary>
+            <p data-i18n="faq.a2">Memobun is coming first to iPhone and iPad on the App Store.</p>
+          </details>
+          <details class="faq-item reveal">
+            <summary data-i18n="faq.q3">When does it launch?</summary>
+            <p data-i18n="faq.a3">Very soon! Follow @memobun.app on Instagram to hear the moment it goes live.</p>
+          </details>
+          <details class="faq-item reveal">
+            <summary data-i18n="faq.q4">Can I study with friends?</summary>
+            <p data-i18n="faq.a4">Absolutely. Study solo with your companion, open a multiplayer room to focus live with friends, or get matched with a friendly one-week study buddy.</p>
+          </details>
+          <details class="faq-item reveal">
+            <summary data-i18n="faq.q5">Who is Memobun for?</summary>
+            <p data-i18n="faq.a5">Anyone who wants studying to feel a little cozier. Memobun is designed for ages 13 and up, with safety-first social features.</p>
+          </details>
         </div>
       </div>
     </section>
