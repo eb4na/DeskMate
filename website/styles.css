@@ -131,8 +131,8 @@ main#top {
 /* ring-binder bound edge pinned to the top of the page (thin cream band) */
 .spiral {
   position: absolute; top: 0; left: 0; right: 0; height: 30px; z-index: 6;
-  background: linear-gradient(180deg, #F3ECDD 0%, #EADFCB 100%);
-  border-bottom: 1.5px solid #D9C6A6;
+  background: #FFFFFF;
+  border-bottom: 1.5px solid #F6DCE4;
 }
 /* a full-width row of shiny rose-gold binder rings threaded through the top edge.
    The radial highlight is offset (50% 40%) to fake a warm metallic sheen; the
