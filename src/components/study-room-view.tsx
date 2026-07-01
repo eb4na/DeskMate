@@ -144,13 +144,13 @@ function HostCrown({ size }: { size: number }) {
         d="M2.5 17 L4 6 L8 11 L12 4 L16 11 L20 6 L21.5 17 Z"
         fill={fill}
         stroke={outline}
-        strokeWidth={1.4}
+        strokeWidth={0.9}
         strokeLinejoin="round"
         strokeLinecap="round"
       />
-      <Circle cx="4" cy="6" r="1.8" fill={fill} stroke={outline} strokeWidth={1.2} />
-      <Circle cx="12" cy="4" r="1.8" fill={fill} stroke={outline} strokeWidth={1.2} />
-      <Circle cx="20" cy="6" r="1.8" fill={fill} stroke={outline} strokeWidth={1.2} />
+      <Circle cx="4" cy="6" r="1.8" fill={fill} stroke={outline} strokeWidth={0.8} />
+      <Circle cx="12" cy="4" r="1.8" fill={fill} stroke={outline} strokeWidth={0.8} />
+      <Circle cx="20" cy="6" r="1.8" fill={fill} stroke={outline} strokeWidth={0.8} />
     </Svg>
   );
 }
