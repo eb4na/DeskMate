@@ -973,6 +973,8 @@
     "topic": "Sujet",
     "minShort": "{{n}}m",
     "customLength": "Durée personnalisée",
+    "breakTime": "Temps de pause",
+    "breakOff": "Aucune",
     "hostPlusCustom": "Minuteur personnalisé débloqué car ton hôte a Plus",
     "noSubjectsHint": "Ajoute des matières dans Tâches pour choisir un sujet.",
     "hostPicks": "L'hôte choisit la durée de la session et démarre.",
@@ -1289,6 +1291,9 @@
     "friendLeft": "{{name}} est parti·e",
     "someoneLeft": "Quelqu'un est parti",
     "roomFullHint": "La salle est pleine ! Touche un copain pour voir sa carte.",
+    "membersTitle": "Dans cette salle",
+    "membersEmpty": "Personne d'autre pour l'instant.",
+    "inviteFriend": "Inviter un ami",
     "stillStudying": "Toujours en train d'étudier ensemble",
     "nowStudyingSolo": "Tu étudies en solo maintenant"
   },

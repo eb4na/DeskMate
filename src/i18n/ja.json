@@ -973,6 +973,8 @@
     "topic": "トピック",
     "minShort": "{{n}}分",
     "customLength": "カスタムの長さ",
+    "breakTime": "休憩時間",
+    "breakOff": "なし",
     "hostPlusCustom": "ホストがPlus会員のためカスタムタイマーを使えます",
     "noSubjectsHint": "「タスク」で科目を追加するとトピックを選べます。",
     "hostPicks": "ホストがセッションの長さを選んで開始します。",
@@ -1289,6 +1291,9 @@
     "friendLeft": "{{name}}が退出しました",
     "someoneLeft": "誰かが退出しました",
     "roomFullHint": "ルームが満員です！キャラをタップしてカードを見てね。",
+    "membersTitle": "このルーム",
+    "membersEmpty": "まだ他に誰もいません。",
+    "inviteFriend": "友だちを招待",
     "stillStudying": "まだ一緒に勉強中",
     "nowStudyingSolo": "今はひとりで勉強中"
   },

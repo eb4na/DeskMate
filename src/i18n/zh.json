@@ -973,6 +973,8 @@
     "topic": "主题",
     "minShort": "{{n}}分钟",
     "customLength": "自定义时长",
+    "breakTime": "休息时间",
+    "breakOff": "关闭",
     "hostPlusCustom": "因为房主拥有 Plus，已解锁自定义计时器",
     "noSubjectsHint": "在「任务」中添加科目即可选择主题。",
     "hostPicks": "房主选择专注时长并开始。",
@@ -1289,6 +1291,9 @@
     "friendLeft": "{{name}} 离开了",
     "someoneLeft": "有人离开了",
     "roomFullHint": "房间已满！点一下伙伴查看他的卡片吧。",
+    "membersTitle": "本房间",
+    "membersEmpty": "还没有其他人。",
+    "inviteFriend": "邀请好友",
     "stillStudying": "还在一起学习",
     "nowStudyingSolo": "现在你在独自学习"
   },

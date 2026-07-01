@@ -136,21 +136,24 @@ function OutlinedTimer({ value, fontStyle, fill, outline, stroke }: { value: str
 // with a golden-brown outline. Code-drawn SVG in the bakery style, sized to the
 // character. (Round stroke joins puff the peaks; the circles add the bubbly bobbles.)
 function HostCrown({ size }: { size: number }) {
-  const fill = '#FFD63D'; // saturated light yellow
-  const outline = '#C9882C'; // golden-brown edge
+  const fill = '#FFD63D';   // saturated light yellow
+  const line = '#C98A2E';   // golden-brown outline
+  const ow = 1.3;           // outline width (viewBox units) — modest so the peak V's don't fill in
+  const D = 'M2.5 17 L4 6 L8 11 L12 4 L16 11 L20 6 L21.5 17 Z';
   return (
     <Svg width={size} height={size * 0.83} viewBox="0 0 24 20">
-      <Path
-        d="M2.5 17 L4 6 L8 11 L12 4 L16 11 L20 6 L21.5 17 Z"
-        fill={fill}
-        stroke={outline}
-        strokeWidth={0.9}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-      <Circle cx="4" cy="6" r="1.8" fill={fill} stroke={outline} strokeWidth={0.8} />
-      <Circle cx="12" cy="4" r="1.8" fill={fill} stroke={outline} strokeWidth={0.8} />
-      <Circle cx="20" cy="6" r="1.8" fill={fill} stroke={outline} strokeWidth={0.8} />
+      {/* Single OUTER outline (no seam per bobble): draw the whole crown (body +
+          bobbles) filled AND stroked in the outline colour underneath, then redraw
+          it fill-only on top. The top fills bury every interior stroke, so only the
+          outer silhouette line survives. */}
+      <Path d={D} fill={line} stroke={line} strokeWidth={ow} strokeLinejoin="round" strokeLinecap="round" />
+      <Circle cx="4" cy="6" r="1.7" fill={line} stroke={line} strokeWidth={ow} />
+      <Circle cx="12" cy="4" r="1.7" fill={line} stroke={line} strokeWidth={ow} />
+      <Circle cx="20" cy="6" r="1.7" fill={line} stroke={line} strokeWidth={ow} />
+      <Path d={D} fill={fill} strokeLinejoin="round" />
+      <Circle cx="4" cy="6" r="1.7" fill={fill} />
+      <Circle cx="12" cy="4" r="1.7" fill={fill} />
+      <Circle cx="20" cy="6" r="1.7" fill={fill} />
     </Svg>
   );
 }
@@ -237,7 +240,9 @@ export function StudyRoomView({
   const followsHostDisco = room.active && !room.isHost;
   // Disco is a Plus feature: you only get it for yourself with Plus (so a lapsed-Plus
   // account stops seeing it). A non-Plus GUEST still gets it from a Plus host below.
-  const focus = followsHostDisco ? room.hostDiscoOn : (spotifyBgEnabled && isPlus);
+  // After a host migration, disco is suppressed for the rest of the session — even a
+  // Plus player who becomes host this way doesn't get their own disco back.
+  const focus = followsHostDisco ? room.hostDiscoOn : (spotifyBgEnabled && isPlus && !room.discoSuppressed);
   const discoColor: 'black' | 'white' = followsHostDisco ? room.hostDiscoColor : spotifyBgColor;
   // Disco accent palette derived from the chosen vinyl colour (analogous hues).
   const discoPal = discoPalette(vinylColor, discoColor === 'black');
@@ -415,6 +420,8 @@ export function StudyRoomView({
   const [breakUsed, setBreakUsed] = useState(false);
   const [breakLeft, setBreakLeft] = useState(0); // seconds remaining in the break
   const [frozenSecs, setFrozenSecs] = useState<number | null>(null); // study time frozen during break
+  // Multiplayer "+" → room members sheet (tap a member to open their card).
+  const [membersOpen, setMembersOpen] = useState(false);
   // Multiplayer: each player picks their own subject when the session begins.
   const [mpSubjectPicked, setMpSubjectPicked] = useState(false);
   // Radio: pick a bought sound to play while studying.
@@ -534,19 +541,29 @@ export function StudyRoomView({
   // A solo session with no break (short warm-up) hides the Break control entirely.
   // Multiplayer breaks are a free soft-toggle, so they always stay available.
   const showBreakButton = !isSolo || breakMinutes > 0;
+  // Whether the Break button runs a real TIMED break (freeze + countdown + auto-
+  // resume) vs the multiplayer free on/off toggle. Solo is always timed. A room is
+  // timed only when a Plus host set a break length in the lobby (activeSession
+  // carries it for every member); otherwise the room keeps the soft toggle.
+  const explicitBreakSet = !!activeSession?.breakMinutes && activeSession.breakMinutes > 0;
+  const isTimedBreak = isSolo ? breakMinutes > 0 : explicitBreakSet;
 
-  // Single-player break: tick the countdown, then auto-resume at zero.
+  // Timed break (solo or Plus-host room): tick the countdown, then auto-resume at
+  // zero. Keyed off frozenSecs (only a timed break freezes the display) so the MP
+  // soft toggle — which never freezes — is unaffected.
   useEffect(() => {
-    if (!(isSolo && onBreak)) return;
+    if (!(onBreak && frozenSecs != null)) return;
     const id = setInterval(() => setBreakLeft((s) => Math.max(0, s - 1)), 1000);
     return () => clearInterval(id);
-  }, [isSolo, onBreak]);
+  }, [onBreak, frozenSecs]);
   useEffect(() => {
-    if (isSolo && onBreak && breakLeft === 0) {
+    if (onBreak && frozenSecs != null && breakLeft === 0) {
       setOnBreak(false);
       setFrozenSecs(null);
+      if (!isSolo) room.setStatus('studying'); // resume: clear the on-break status
     }
-  }, [isSolo, onBreak, breakLeft]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onBreak, frozenSecs, breakLeft, isSolo]);
 
   // Participants: the synced roster, or just me when solo. The local user
   // (active companion) is always shown first.
@@ -691,25 +708,33 @@ export function StudyRoomView({
   };
 
   const handleBreak = () => {
-    if (isSolo) {
-      // One timed break per session; not interruptible (auto-resumes).
+    if (isTimedBreak) {
+      // One timed break per session; not interruptible (auto-resumes). Same for
+      // solo and for a Plus-host room — in a room we also broadcast the break status
+      // so friends see the pink "on break" state.
       if (breakUsed || onBreak) return;
       setBreakUsed(true);
       setFrozenSecs(secondsLeft); // freeze the study display
       shiftSessionStart(breakMinutes * 60); // pause the study timer
       setBreakLeft(breakMinutes * 60);
       setOnBreak(true);
+      if (!isSolo) room.setStatus('break');
     } else {
-      // Multiplayer: soft break anytime, broadcast status.
+      // Multiplayer with no host break: free soft break anytime, broadcast status.
       const next = !onBreak;
       setOnBreak(next);
       room.setStatus(next ? 'break' : 'studying');
     }
   };
 
-  const breakDisabled = isSolo && (breakUsed || onBreak);
-  const breakLabel = isSolo ? (onBreak ? t('studyRoom.breakOnBreak') : t('studyRoom.break')) : onBreak ? t('studyRoom.resume') : t('studyRoom.break');
-  const displaySecs = isSolo && onBreak && frozenSecs != null ? frozenSecs : secondsLeft;
+  // A timed break is one-shot (disabled once used/active); the soft toggle is not.
+  const breakDisabled = isTimedBreak && (breakUsed || onBreak);
+  const breakLabel = isTimedBreak
+    ? (onBreak ? t('studyRoom.breakOnBreak') : t('studyRoom.break'))
+    : (onBreak ? t('studyRoom.resume') : t('studyRoom.break'));
+  // Freeze the study countdown during any timed break (frozenSecs is only set then);
+  // the MP soft toggle leaves the timer running, as before.
+  const displaySecs = onBreak && frozenSecs != null ? frozenSecs : secondsLeft;
 
   const handleLeave = () => {
     if (room.active) {
@@ -726,33 +751,19 @@ export function StudyRoomView({
     }
   };
 
-  const handleAddFriend = () => {
-    if (roomFull) {
-      // Full room → there's no one left to invite. Keep the button (so it's still a
-      // visible affordance) but show a quiet hint nudging them to tap a member's
-      // character to view/friend them instead of opening the invite list.
-      showLeftNotice(t('studyRoom.roomFullHint'));
-      return;
-    }
+  // The "+" opens a small "room members" sheet (below): tap a member to see their
+  // card & friend them, plus an "Invite a friend" row when the room isn't full.
+  const otherMembers = participants.filter((p) => p.code !== friendCode);
+  const openMemberCard = (code: string) => {
+    // Close the in-view sheet first, THEN push the friend-card native modal — the
+    // sheet is a plain overlay (not a native Modal), so this never stacks modals.
+    setMembersOpen(false);
+    router.push({ pathname: '/friend-card', params: { code } });
+  };
+  const inviteToRoom = () => {
+    setMembersOpen(false);
     if (room.active && room.roomId) {
-      // Already in a room → invite straight into it.
       router.push({ pathname: '/party-invite', params: { room: room.roomId, game: 'study' } });
-    } else if (activeSession) {
-      // Solo session → promote it to a hosted room so the friend can join in as a
-      // late joiner, then open the same invite list. Mark it multiplayer so it
-      // credits "with friend" on completion. The host already chose their subject
-      // at solo start, so suppress the multiplayer "pick a subject" prompt.
-      markSessionMultiplayer();
-      setMpSubjectPicked(true);
-      const id = room.hostFromSolo({
-        durationMinutes: activeSession.durationMinutes,
-        subjectName: activeSession.subjectName ?? null,
-        taskId: activeSession.taskId ?? null,
-        taskTitle: activeSession.taskTitle ?? null,
-      });
-      router.push({ pathname: '/party-invite', params: { room: id, game: 'study' } });
-    } else {
-      router.push('/friends');
     }
   };
 
@@ -933,13 +944,12 @@ export function StudyRoomView({
           </Pressable>
         </View>
       )}
-      {/* Invite-friend button (top right) — shown in any MULTIPLAYER room. A solo
-          session stays solo (no invite button). The button stays visible even once
-          the room fills to STUDY_ROOM_MAX; when full it no longer opens the invite
-          list (handleAddFriend shows a "room's full" hint instead) so people can still
-          tap members to view/friend them. */}
+      {/* "+" button (top right) — shown in any MULTIPLAYER room. Opens a small sheet
+          listing the people in the room: tap a member to see their card & friend them,
+          plus "Invite a friend" when the room isn't full. Stays visible even when full
+          (you can still friend the members you're studying with). */}
       {!isSolo && (
-        <Pressable onPress={handleAddFriend} style={({ pressed }) => [styles.addFriendBtn, isTablet && styles.addFriendBtnTablet, !focus && { backgroundColor: acc.button, borderColor: acc.button }, focus && styles.btnFocusFlat, pressed && styles.pressed]} hitSlop={8} accessibilityLabel={t('studyRoom.friend')}>
+        <Pressable onPress={() => setMembersOpen(true)} style={({ pressed }) => [styles.addFriendBtn, isTablet && styles.addFriendBtnTablet, !focus && { backgroundColor: acc.button, borderColor: acc.button }, focus && styles.btnFocusFlat, pressed && styles.pressed]} hitSlop={8} accessibilityLabel={t('studyRoom.friend')}>
           <Text style={[styles.addFriendIcon, isTablet && styles.addFriendIconTablet, { color: focus ? focusFg : acc.onButton }]}>＋</Text>
         </Pressable>
       )}
@@ -1000,7 +1010,7 @@ export function StudyRoomView({
             {talk && <PetBubble key={talk.id} line={talk.line} onDone={() => setTalk(null)} />}
           </Pressable>
         )}
-        {isSolo && onBreak && (
+        {onBreak && frozenSecs != null && (
           <View style={styles.breakBadge}>
             <Text style={styles.breakBadgeText}>
               {t('studyRoom.onBreakTimer', { time: format(breakLeft) })}
@@ -1057,11 +1067,10 @@ export function StudyRoomView({
               <Pressable
                 key={p.code}
                 style={[styles.partyMember, { width: partySlotW, zIndex: charZ }]}
-                onPress={() => p.code === friendCode
-                  // My own character → cute pet line. Another member → open their
-                  // profile card (where they can be friended if not already).
-                  ? talkAs(p.code, persona, skin, 0.72)
-                  : router.push({ pathname: '/friend-card', params: { code: p.code } })}>
+                // Tapping ANY character (mine or another member's) just plays a cute
+                // dialogue line. Viewing/friending a member's card is done from the
+                // top-right "+" button instead.
+                onPress={() => talkAs(p.code, persona, skin, 0.72)}>
                 {/* No status dot above the character — status already shows on the
                     top participant cards, so the dot here was redundant clutter. */}
                 {/* Squish-on-tap layer (only the tapped member uses tapScale) wrapping
@@ -1265,6 +1274,33 @@ export function StudyRoomView({
         onPick={pickStartSubject}
         onClose={() => pickStartSubject(null)}
       />
+
+      {/* "+" → room members sheet. A plain in-view overlay (NOT a native Modal) so
+          opening a member's friend-card on top never stacks native modals. */}
+      {membersOpen && (
+        <View style={styles.memberOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setMembersOpen(false)} />
+          <View style={styles.memberCard}>
+            <Text style={styles.memberTitle}>{t('studyRoom.membersTitle')}</Text>
+            {otherMembers.map((m) => (
+              <Pressable key={m.code} onPress={() => openMemberCard(m.code)} style={({ pressed }) => [styles.memberRow, pressed && styles.pressed]}>
+                <Image source={getCompanionImage(m.companionId, m.skinId)} style={styles.memberAvatar} contentFit="contain" />
+                <Text style={styles.memberName} numberOfLines={1}>{m.name}</Text>
+                <Text style={styles.memberChevron}>›</Text>
+              </Pressable>
+            ))}
+            {otherMembers.length === 0 && <Text style={styles.memberEmpty}>{t('studyRoom.membersEmpty')}</Text>}
+            {!roomFull && (
+              <Pressable onPress={inviteToRoom} style={({ pressed }) => [styles.memberInvite, pressed && styles.pressed]}>
+                <Text style={styles.memberInviteText}>＋  {t('studyRoom.inviteFriend')}</Text>
+              </Pressable>
+            )}
+            <Pressable onPress={() => setMembersOpen(false)} style={styles.memberCloseBtn}>
+              <Text style={styles.memberCloseText}>{t('common.close')}</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
 
       {/* Multiplayer finish — either the unlimited break (Continue, no limit) or
           the finish menu. Both sit on the same full-screen layer so the live
@@ -1531,6 +1567,23 @@ const styles = StyleSheet.create({
   bondLabel: { fontSize: 13, fontWeight: '800', color: BakeryColors.cocoaDark, textAlign: 'center' },
   finishBtn: { paddingVertical: 13, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: BakeryColors.jam },
   finishBtnText: { fontSize: 15, fontWeight: '900', color: '#fff' },
+  // "+" room-members sheet
+  memberOverlay: { ...StyleSheet.absoluteFill, zIndex: 60, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(78,53,40,0.18)', padding: 28 },
+  memberCard: {
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 320, backgroundColor: BakeryColors.frosting,
+    borderRadius: BakeryRadii.panel, borderWidth: 2, borderColor: BakeryColors.shortbread,
+    padding: Spacing.four, gap: Spacing.two, alignItems: 'stretch', ...BakeryShadow,
+  },
+  memberTitle: { fontSize: 17, fontWeight: '900', color: BakeryColors.cocoaDark, textAlign: 'center', marginBottom: Spacing.one },
+  memberRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, paddingHorizontal: 10, borderRadius: BakeryRadii.button, backgroundColor: BakeryColors.cream, borderWidth: 1, borderColor: BakeryColors.shortbread },
+  memberAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: BakeryColors.rose },
+  memberName: { flex: 1, fontSize: 15, fontWeight: '800', color: BakeryColors.cocoaDark },
+  memberChevron: { fontSize: 22, fontWeight: '900', color: BakeryColors.mocha, marginTop: -2 },
+  memberEmpty: { fontSize: 13, color: BakeryColors.mocha, textAlign: 'center', paddingVertical: 8 },
+  memberInvite: { paddingVertical: 12, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: BakeryColors.jam, marginTop: Spacing.one },
+  memberInviteText: { fontSize: 15, fontWeight: '900', color: '#fff' },
+  memberCloseBtn: { paddingVertical: 10, alignItems: 'center' },
+  memberCloseText: { fontSize: 14, fontWeight: '800', color: BakeryColors.mocha },
   finishBtnGhost: { paddingVertical: 11, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: BakeryColors.cream, borderWidth: 1.5, borderColor: BakeryColors.shortbread },
   finishBtnGhostText: { fontSize: 14, fontWeight: '800', color: BakeryColors.mocha },
   // "Someone left" fading notice — anchored just below the participant row.

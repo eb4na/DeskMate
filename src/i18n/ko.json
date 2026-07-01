@@ -973,6 +973,8 @@
     "topic": "주제",
     "minShort": "{{n}}분",
     "customLength": "사용자 지정 길이",
+    "breakTime": "휴식 시간",
+    "breakOff": "없음",
     "hostPlusCustom": "호스트가 Plus 회원이라 커스텀 타이머를 사용할 수 있어요",
     "noSubjectsHint": "할 일에서 과목을 추가하면 주제를 고를 수 있어요.",
     "hostPicks": "호스트가 세션 길이를 정하고 시작합니다.",
@@ -1289,6 +1291,9 @@
     "friendLeft": "{{name}} 님이 나갔어요",
     "someoneLeft": "누군가 나갔어요",
     "roomFullHint": "방이 가득 찼어요! 친구를 탭해서 카드를 확인해요.",
+    "membersTitle": "이 방",
+    "membersEmpty": "아직 아무도 없어요.",
+    "inviteFriend": "친구 초대",
     "stillStudying": "아직 함께 공부 중",
     "nowStudyingSolo": "이제 혼자 공부해요"
   },

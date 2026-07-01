@@ -56,6 +56,11 @@ export default function StudyLobbyScreen() {
   const [minutes, setMinutes] = useState(presetMinutes ?? 30);
   // This player's chosen topic (subject name), or null = not chosen yet.
   const [topic, setTopic] = useState<string | null>(null);
+  // Host-set room break length (minutes) — a Plus HOST perk. 0 = no timed break
+  // (the room keeps its free on/off break). Applies to everyone once the host starts.
+  const [breakMins, setBreakMins] = useState(0);
+  const BREAK_PICKS = [0, 5, 10, 15, 20];
+  const canSetBreak = isHost && isPlus;
 
   // Everyone picks their own length + topic up front; broadcast the choice so every
   // member's avatar shows it, and so this player's session runs with their picks.
@@ -174,6 +179,27 @@ export default function StudyLobbyScreen() {
               ))}
             </View>
           )}
+
+          {/* Break time — a Plus HOST perk. The host picks one break length for the
+              whole room; everyone then gets a personal timed break of that length
+              (freeze + auto-resume). 0 = keep the free on/off break. */}
+          {canSetBreak && (
+            <>
+              <Text style={styles.label}>{t('lobby.breakTime')}</Text>
+              <View style={styles.topicRow}>
+                {BREAK_PICKS.map((m) => (
+                  <Pressable
+                    key={m}
+                    onPress={() => setBreakMins(m)}
+                    style={[styles.topicChip, breakMins === m && styles.topicChipActive]}>
+                    <Text style={[styles.topicText, breakMins === m && styles.topicTextActive]}>
+                      {m === 0 ? t('lobby.breakOff') : t('lobby.minShort', { n: m })}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          )}
         </ScrollView>
 
         <View style={styles.actions}>
@@ -186,7 +212,7 @@ export default function StudyLobbyScreen() {
               </SoundPressable>
               <SoundPressable
                 sound="confirm"
-                onPress={() => start({ durationMinutes: minutes, subjectName: topic, taskId: null, taskTitle: null })}
+                onPress={() => start({ durationMinutes: minutes, subjectName: topic, taskId: null, taskTitle: null, ...(breakMins > 0 ? { breakMinutes: breakMins } : {}) })}
                 style={({ pressed }) => [styles.startBtn, tw('startBtn'), pressed && styles.pressed]}>
                 <Text style={styles.startText}>{t('lobby.startStudying')}</Text>
               </SoundPressable>

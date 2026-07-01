@@ -67,6 +67,7 @@ let dingPool: Pool | null = null;
 let tickPool: Pool | null = null;
 let pieceDropPool: Pool | null = null;
 let popPool: Pool | null = null;
+let coinPool: Pool | null = null;
 
 function getTapPool() {
   if (!tapPool) tapPool = makePool(require('@/assets/sounds/tap.wav'));
@@ -101,6 +102,11 @@ function getPieceDropPool() {
 function getPopPool() {
   if (!popPool) popPool = makePool(require('@/assets/sounds/pop.wav'), 0.5, 4);
   return popPool;
+}
+
+function getCoinPool() {
+  if (!coinPool) coinPool = makePool(require('@/assets/sounds/coin.mp3'), 0.5, 4);
+  return coinPool;
 }
 
 function play(getPool: () => Pool | null) {
@@ -151,6 +157,9 @@ export function playPieceDrop() { play(getPieceDropPool); }
 
 /** Soft bubble "pop" — used when a fellow studier leaves the room mid-session. */
 export function playPop() { play(getPopPool); }
+
+/** Bright "ka-ching" chime for earning coins (rewards, payouts, purchases credit). */
+export function playCoin() { play(getCoinPool); }
 
 /** Pre-create the pop pool (load the wav + audio players) up front, so the first
  *  use (e.g. tapping the home character) doesn't pay that cost on the tap frame. */

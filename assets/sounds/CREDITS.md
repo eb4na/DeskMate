@@ -20,6 +20,7 @@ required credit text in the app's Credits screen.
 | ding.wav (study session finished) | chennes | Freesound.org | CC0 (public domain) | No | https://freesound.org/s/376807/ |
 | tick.wav (picker wheel / duration click) | CAT-FOX_ALEX | Freesound.org | CC0 (public domain) | No | https://freesound.org/s/827133/ |
 | piece-drop.wav (Connect 4 move) | pbimal | Freesound.org | CC0 (public domain) | No | https://freesound.org/s/646781/ |
+| coin.mp3 (coin reward — handful of coins) | ilyashevelev | Freesound.org | CC0 (public domain) | No | https://freesound.org/s/847351/ |
 
 Provided attribution text (optional for CC0, kept for the record):
 
@@ -35,6 +36,7 @@ Provided attribution text (optional for CC0, kept for the record):
 > chess-piece-bounce.ogg by pbimal -- https://freesound.org/s/646781/ -- License: Creative Commons 0 (used as piece-drop.wav)
 > (not used yet — no file provided) MicrowaveDing by Oddworld -- https://freesound.org/s/171252/ -- License: Creative Commons 0
 > pop.wav -- self-generated synth (scripted sine pop, ~100ms) -- License: original/public-domain (used as pop.wav, "someone left" notice). Safe to replace with any CC0 bubble-pop file.
+> handful of coins 008 by ilyashevelev -- https://freesound.org/s/847351/ -- License: Creative Commons 0 (used as coin.mp3, coin earn/spend sound).
 
 ## License quick-reference
 

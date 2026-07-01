@@ -10,6 +10,7 @@ import { getAppStateScope, loadScopedAppState, saveScopedAppState, isGuestUpgrad
 import { probeCloudState, pushCloudState, pushCloudStateDebounced } from '@/lib/cloud-sync';
 import { getEffectiveBunSkinId, getEffectiveCompanionSkins } from '@/lib/companion-utils';
 import { maskProfanity } from '@/lib/profanity';
+import { playCoin } from '@/lib/sounds';
 import { AD_REWARD_COINS, DAILY_AD_LIMIT } from '@/lib/ads';
 import { loadBlockedCodes, blockUserRemote, unblockUserRemote } from '@/lib/moderation';
 import { syncStreakReminders } from '@/lib/notifications';
@@ -1464,6 +1465,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [loaded, session?.user.id, s.streak.lastStudyDate, s.timezone]);
 
   // ─── Wave 1 actions ──────────────────────────────────────────────────────
+
+  // Play the coin chime whenever the balance changes from a user action (earning
+  // or spending). Every coin mutation flows through `s.coins`, so watching it here
+  // covers all of them from one place. Skip the first observation after load and any
+  // pre-load change so hydration / cloud-reconcile (which settle before `loaded`)
+  // stay silent — runtime deltas are local actions. Respects the SFX setting via playCoin.
+  const prevCoinsRef = useRef<number | null>(null);
+  useEffect(() => {
+    // Reset the baseline whenever state is (re)loading — e.g. an account switch or
+    // onboarding wipe cycles `loaded` false→true and swaps in a different balance,
+    // which must not be heard as an earn/spend.
+    if (!loaded) { prevCoinsRef.current = null; return; }
+    const prev = prevCoinsRef.current;
+    prevCoinsRef.current = s.coins;
+    if (prev != null && s.coins !== prev) playCoin();
+  }, [s.coins, loaded]);
 
   const addCoins = (amount: number) => {
     setS((prev) => {

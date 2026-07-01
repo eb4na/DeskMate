@@ -46,6 +46,11 @@ export type StudyStartOpts = {
   subjectName: string | null;
   taskId: string | null;
   taskTitle: string | null;
+  // Optional host-set break length (minutes) for the room. Set by a Plus host in
+  // the lobby; broadcast in `begin` so EVERY member's session gets the same value
+  // (unlike duration/topic, which are per-player). 0/undefined = no timed break
+  // (the room keeps the free on/off break toggle).
+  breakMinutes?: number;
 };
 
 type StudyRoomValue = {
@@ -74,6 +79,9 @@ type StudyRoomValue = {
   hostDiscoColor: 'black' | 'white';
   hostCoverUrl: string | null;
   hostPlaying: boolean;
+  // True after a host migration: disco mode is force-off for the rest of the session
+  // (the migrated host can't run their own disco either). See discoSuppressed.
+  discoSuppressed: boolean;
   canStartSelf: boolean;
   joinRoom: (roomId: string, isHost: boolean) => void;
   leaveRoom: () => void;
@@ -144,6 +152,13 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
   // Whether the host's music is PLAYING (vs paused), synced so a guest's disco scene
   // matches the host's: paused = characters stop bouncing + vinyl stops, cover stays.
   const [hostPlaying, setHostPlaying] = useState(true);
+  // Set once this client becomes host via HOST MIGRATION (the original host left).
+  // The session continues (timer + host's room/desk stay), but disco mode does NOT
+  // carry over: we force it off for everyone and keep it off for the rest of the
+  // session, even if the migrated host is Plus with disco enabled. Reset per room.
+  const [discoSuppressed, setDiscoSuppressed] = useState(false);
+  const discoSuppressedRef = useRef(false);
+  discoSuppressedRef.current = discoSuppressed;
   // True only for a late joiner (joined a room that's already running): the lobby
   // shows them a "Start studying" button to begin on their own clock.
   const [canStartSelf, setCanStartSelf] = useState(false);
@@ -210,6 +225,8 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
         taskTitle: opts.taskTitle,
         startedAt: new Date(startAt).toISOString(),
         isMultiplayer: true,
+        // Host-set room break length — same for everyone (see StudyStartOpts).
+        ...(opts.breakMinutes && opts.breakMinutes > 0 ? { breakMinutes: opts.breakMinutes } : {}),
       });
       // The lobby (and any pickers) are presented as modals over the tabs. Pop
       // them so the session takes over the real full-screen Home, rather than
@@ -240,6 +257,8 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     setHostDiscoColor('black');
     setHostCoverUrl(null);
     setHostPlaying(true);
+    setDiscoSuppressed(false);
+    discoSuppressedRef.current = false;
     myPreferredMinutes.current = null;
     myTopic.current = null;
     begunRef.current = false;
@@ -300,6 +319,16 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
                 // departed host). The session's room/desk stay as the original host set them.
                 isHostRef.current = true;
                 setIsHost(true);
+                // Disco does NOT survive a host handover (unlike the timer + room/desk,
+                // which stay): force it off for everyone and keep it suppressed for the
+                // rest of the session, even if I'm a Plus host who could run my own.
+                discoSuppressedRef.current = true;
+                setDiscoSuppressed(true);
+                setHostDiscoOn(false);
+                setHostDiscoColor('black');
+                setHostCoverUrl(null);
+                setHostPlaying(true);
+                room.current?.send('discobg', { on: false, color: 'black' });
                 const next = rosterRef.current
                   .filter((e) => e.code === myCodeNow || live.includes(e.code))
                   .map((e) => ({ ...e, isHost: e.code === myCodeNow }));
@@ -429,14 +458,15 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
             // re-announcing to a late joiner) is the exception — they get a Start
             // button and begin on their own clock instead of being pulled in.
             if (begunRef.current) return;
-            const d = data as { startAt: number; durationMinutes: number; subjectName: string | null; taskId: string | null; taskTitle: string | null; bgRoomId?: string | null; deskRoomId?: string | null; resend?: boolean };
+            const d = data as { startAt: number; durationMinutes: number; subjectName: string | null; taskId: string | null; taskTitle: string | null; breakMinutes?: number; bgRoomId?: string | null; deskRoomId?: string | null; resend?: boolean };
             begunRef.current = true;
             setBegun(true);
             if (d.bgRoomId !== undefined) setHostBackgroundId(d.bgRoomId);
             if (d.deskRoomId !== undefined) setHostDeskId(d.deskRoomId);
             lastBeginRef.current = {
               startAt: d.startAt,
-              opts: { durationMinutes: d.durationMinutes, subjectName: d.subjectName, taskId: d.taskId, taskTitle: d.taskTitle },
+              // Carry the host's room break so late joiners (startSelf) inherit it too.
+              opts: { durationMinutes: d.durationMinutes, subjectName: d.subjectName, taskId: d.taskId, taskTitle: d.taskTitle, breakMinutes: d.breakMinutes },
               bgRoomId: d.bgRoomId ?? null,
               deskRoomId: d.deskRoomId ?? null,
             };
@@ -454,6 +484,8 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
               subjectName: myTopic.current ?? null,
               taskId: d.taskId,
               taskTitle: d.taskTitle,
+              // Break length is a ROOM setting — everyone gets the host's value.
+              breakMinutes: d.breakMinutes,
             });
           } else if (type === 'leave') {
             const code = (data as { code: string }).code;
@@ -511,6 +543,8 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     setHostDiscoColor('black');
     setHostCoverUrl(null);
     setHostPlaying(true);
+    setDiscoSuppressed(false);
+    discoSuppressedRef.current = false;
   };
 
   const start = (opts: StudyStartOpts) => {
@@ -531,7 +565,12 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
   // (which dismisses the lobby → full-screen Home).
   const startSelf = (opts: StudyStartOpts) => {
     const startAt = Date.now() + 300;
-    applyBeginRef.current(startAt, opts);
+    applyBeginRef.current(startAt, {
+      ...opts,
+      // Inherit the host's room break (from the begin we received as a late joiner)
+      // unless this caller already specified one.
+      breakMinutes: opts.breakMinutes ?? lastBeginRef.current?.opts.breakMinutes,
+    });
   };
 
   // Promote a running SOLO session into a hosted multiplayer room WITHOUT going
@@ -584,7 +623,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
   // now-playing and push it to the room every ~5s so connected players mirror the
   // same song. Gated on isPlus per spec; tears down on session end / leave / disconnect.
   useEffect(() => {
-    if (!isHost || !begun || !isPlus || !spotifyOn) return;
+    if (!isHost || !begun || !isPlus || !spotifyOn || discoSuppressed) return;
     let cancelled = false;
     const tick = async () => {
       const pb = await getPlayback();
@@ -606,7 +645,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       clearInterval(id);
     };
-  }, [isHost, begun, isPlus, spotifyOn]);
+  }, [isHost, begun, isPlus, spotifyOn, discoSuppressed]);
 
   // Host radio for the bundled study sounds: while a PLUS host's synced session is
   // live, broadcast its equipped study sound so every guest plays the same one.
@@ -622,9 +661,14 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
   // so every guest mirrors the disco scene (display only — guests need no Plus/Premium
   // to see it). Re-runs on toggle/colour change AND roster change (late-joiner re-sync).
   useEffect(() => {
-    if (!isHost || !begun || !isPlus) return;
+    if (!isHost || !begun) return;
+    // A migrated host keeps disco OFF for everyone (this branch must precede the
+    // Plus gate — a non-Plus migrated host would otherwise never broadcast, leaving
+    // guests frozen on the departed host's disco).
+    if (discoSuppressed) { room.current?.send('discobg', { on: false, color: 'black' }); return; }
+    if (!isPlus) return;
     room.current?.send('discobg', { on: spotifyBgEnabled, color: spotifyBgColor });
-  }, [isHost, begun, isPlus, spotifyBgEnabled, spotifyBgColor, roster.length]);
+  }, [isHost, begun, isPlus, spotifyBgEnabled, spotifyBgColor, roster.length, discoSuppressed]);
 
   // Clean up the connection if the provider ever unmounts (app teardown).
   useEffect(() => {
@@ -654,6 +698,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
       hostDiscoColor,
       hostCoverUrl,
       hostPlaying,
+      discoSuppressed,
       canStartSelf,
       joinRoom,
       leaveRoom,
@@ -665,7 +710,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     }),
     // joinRoom/leaveRoom/start/setStatus are stable enough (read refs); deps are the state they expose.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [roomId, begun, isHost, myCode, roster, statusMap, presentCodes, netStatus, hostBackgroundId, hostDeskId, hostSoundShared, hostSoundId, hostDiscoOn, hostDiscoColor, hostCoverUrl, hostPlaying, canStartSelf],
+    [roomId, begun, isHost, myCode, roster, statusMap, presentCodes, netStatus, hostBackgroundId, hostDeskId, hostSoundShared, hostSoundId, hostDiscoOn, hostDiscoColor, hostCoverUrl, hostPlaying, discoSuppressed, canStartSelf],
   );
 
   return <StudyRoomContext.Provider value={value}>{children}</StudyRoomContext.Provider>;
