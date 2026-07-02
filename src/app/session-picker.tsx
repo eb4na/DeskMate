@@ -247,32 +247,36 @@ export default function SessionPickerScreen() {
               </Pressable>
             </ScrollView>
 
-            <View style={styles.sectionRule} />
-
             {/* Custom duration — a Plus feature, as a final menu row. Free users see
-                a lock and are sent to the paywall instead of the timer. */}
-            <Pressable
-              style={({ pressed }) => [styles.menuRow, isTablet && styles.menuRowTablet, pressed && styles.pressed]}
-              onPress={() =>
-                isPlus
-                  ? router.push({ pathname: '/custom-timer', params: { mode: 'focus' } })
-                  : router.push('/plus-upgrade')
-              }>
-              <View style={[styles.customIconWrap, isTablet && styles.customIconWrapTablet]}>
-                <PlusIcon size={isTablet ? Math.round(42 * grow) : 32} />
-              </View>
-              <View style={styles.menuBody}>
-                <Text style={[styles.menuName, isTablet && styles.menuNameTablet]}>{t('sessionPicker.customTitle')}</Text>
-                <Text style={[styles.menuCoinText, isTablet && styles.menuCoinTextTablet]}>{t('sessionPicker.customSub')}</Text>
-              </View>
-              {isPlus ? (
-                <View style={[styles.customPill, isTablet && styles.customPillTablet]}>
-                  <Text style={[styles.customPillText, isTablet && styles.customPillTextTablet]}>{t('sessionPicker.customSet')}</Text>
-                </View>
-              ) : (
-                <LockBadge size={isTablet ? Math.round(38 * grow) : 30} />
-              )}
-            </Pressable>
+                a lock and are sent to the paywall instead of the timer. Hidden in
+                multiplayer: there each player sets their own length in the lobby. */}
+            {mode === 'single' && (
+              <>
+                <View style={styles.sectionRule} />
+                <Pressable
+                  style={({ pressed }) => [styles.menuRow, isTablet && styles.menuRowTablet, pressed && styles.pressed]}
+                  onPress={() =>
+                    isPlus
+                      ? router.push({ pathname: '/custom-timer', params: { mode: 'focus' } })
+                      : router.push('/plus-upgrade')
+                  }>
+                  <View style={[styles.customIconWrap, isTablet && styles.customIconWrapTablet]}>
+                    <PlusIcon size={isTablet ? Math.round(42 * grow) : 32} />
+                  </View>
+                  <View style={styles.menuBody}>
+                    <Text style={[styles.menuName, isTablet && styles.menuNameTablet]}>{t('sessionPicker.customTitle')}</Text>
+                    <Text style={[styles.menuCoinText, isTablet && styles.menuCoinTextTablet]}>{t('sessionPicker.customSub')}</Text>
+                  </View>
+                  {isPlus ? (
+                    <View style={[styles.customPill, isTablet && styles.customPillTablet]}>
+                      <Text style={[styles.customPillText, isTablet && styles.customPillTextTablet]}>{t('sessionPicker.customSet')}</Text>
+                    </View>
+                  ) : (
+                    <LockBadge size={isTablet ? Math.round(38 * grow) : 30} />
+                  )}
+                </Pressable>
+              </>
+            )}
           </View>
 
           {/* Start — break info reads as a quiet caption above the one CTA */}

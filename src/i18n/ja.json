@@ -326,7 +326,11 @@
     "presetNamePlaceholder": "プリセット名...",
     "subjectHeader": "科目（任意）",
     "savePresetTitle": "プリセットとして保存",
-    "savePresetSub": "次回のためにセッションを保存"
+    "savePresetSub": "次回のためにセッションを保存",
+    "presetLimitTitle": "プリセットの上限に達しました",
+    "presetLimitSub": "プリセットは最大{{max}}個まで保存できます。置き換えるものを選んでください：",
+    "replaceAction": "置き換える",
+    "replaceStartWithout": "保存せずに開始"
   },
   "subjectPicker": {
     "title": "科目を選ぶ（任意）",

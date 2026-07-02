@@ -326,7 +326,11 @@
     "presetNamePlaceholder": "Preset name...",
     "subjectHeader": "SUBJECT (OPTIONAL)",
     "savePresetTitle": "SAVE AS PRESET",
-    "savePresetSub": "Save your session for next time"
+    "savePresetSub": "Save your session for next time",
+    "presetLimitTitle": "Preset limit reached",
+    "presetLimitSub": "You can save up to {{max}} presets. Pick one to replace:",
+    "replaceAction": "Replace",
+    "replaceStartWithout": "Start without saving"
   },
   "subjectPicker": {
     "title": "Pick a subject (optional)",

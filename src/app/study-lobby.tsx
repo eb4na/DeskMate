@@ -143,7 +143,6 @@ export default function StudyLobbyScreen() {
               <DurationWheel
                 minutes={minutes}
                 onChange={(m) => pickMinutes(clampCustom(m))}
-                picks={SESSION_LENGTHS.map((o) => o.minutes)}
                 scale={scale}
               />
               {customViaHost && <Text style={styles.customNote}>{t('lobby.hostPlusCustom')}</Text>}

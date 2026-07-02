@@ -8,7 +8,7 @@ import { showPopup } from '@/lib/popup';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/coin-icon';
-import { useApp } from '@/context/app-context';
+import { useApp, MAX_TIMER_PRESETS } from '@/context/app-context';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
@@ -122,7 +122,7 @@ export default function CustomTimerScreen() {
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const { mode } = useLocalSearchParams<{ mode?: TimerMode }>();
   const isBreakMode = mode === 'break';
-  const { subjects, saveTimerPreset, isPlus, coins } = useApp();
+  const { subjects, saveTimerPreset, deleteTimerPreset, savedTimerPresets, isPlus, coins } = useApp();
 
   const [focusHr, setFocusHr] = useState(0);
   const [focusMin, setFocusMin] = useState(isBreakMode ? 10 : 45);
@@ -131,6 +131,9 @@ export default function CustomTimerScreen() {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [savePreset, setSavePreset] = useState(false);
   const [presetName, setPresetName] = useState('');
+  // When the user is at the preset cap and asks to save, we can't just drop the
+  // oldest — we open this picker so they choose which one the new preset replaces.
+  const [showReplace, setShowReplace] = useState(false);
 
   const activeSubjects = subjects.filter((s) => !s.archived).sort((a, b) => a.order - b.order);
   const focusMins = focusHr * 60 + focusMin;
@@ -150,14 +153,9 @@ export default function CustomTimerScreen() {
   const setFocusTotal = (m: number) => { setFocusHr(Math.floor(m / 60)); setFocusMin(m % 60); };
   const setBreakTotal = (m: number) => { setBreakHr(Math.floor(m / 60)); setBreakMin(m % 60); };
 
-  const handleStart = () => {
-    const mins = focusMins;
-    if (mins < 1 || mins > 300) { showPopup(t('customTimer.between1And300')); return; }
-    if (isBreakMode) {
-      router.replace({ pathname: '/break-game', params: { breakMinutes: String(mins), fromSession: '1' } });
-      return;
-    }
-    if (savePreset && isPlus) saveTimerPreset({ label: presetName.trim() || `${mins} ${t('customTimer.min')}`, minutes: mins });
+  // Navigate into the session. Kept separate from handleStart so both the normal
+  // path and the "replace a preset" confirm can reuse it.
+  const goToSession = (mins: number) =>
     router.push({
       pathname: '/subject-picker',
       params: {
@@ -166,6 +164,32 @@ export default function CustomTimerScreen() {
         ...(selectedSubjectId ? { subjectId: selectedSubjectId } : {}),
       },
     });
+
+  const savePresetNow = (mins: number) =>
+    saveTimerPreset({ label: presetName.trim() || `${mins} ${t('customTimer.min')}`, minutes: mins });
+
+  const handleStart = () => {
+    const mins = focusMins;
+    if (mins < 1 || mins > 300) { showPopup(t('customTimer.between1And300')); return; }
+    if (isBreakMode) {
+      router.replace({ pathname: '/break-game', params: { breakMinutes: String(mins), fromSession: '1' } });
+      return;
+    }
+    if (savePreset && isPlus) {
+      // At the cap: make the user pick one to replace before we can save + start.
+      if (savedTimerPresets.length >= MAX_TIMER_PRESETS) { setShowReplace(true); return; }
+      savePresetNow(mins);
+    }
+    goToSession(mins);
+  };
+
+  // Chosen slot to overwrite: delete it, save the new preset, then start.
+  const replaceWith = (id: string) => {
+    const mins = focusMins;
+    deleteTimerPreset(id);
+    savePresetNow(mins);
+    setShowReplace(false);
+    goToSession(mins);
   };
 
   return (
@@ -276,6 +300,42 @@ export default function CustomTimerScreen() {
           </SoundPressable>
         </ScrollView>
       </SafeAreaView>
+
+      {/* Replace-a-preset picker. Rendered as an in-tree overlay (NOT a native
+          Modal) so it can't stack on top of another modal and trip the freeze
+          guard. Shown only when the user is at the preset cap and hit Start with
+          "save as preset" on. */}
+      {showReplace && (
+        <View style={styles.overlay}>
+          <View style={styles.replaceCard}>
+            <Text style={styles.replaceTitle}>{t('customTimer.presetLimitTitle')}</Text>
+            <Text style={styles.replaceSub}>{t('customTimer.presetLimitSub', { max: MAX_TIMER_PRESETS })}</Text>
+            <ScrollView style={styles.replaceList} contentContainerStyle={{ gap: Spacing.two * scale }}>
+              {savedTimerPresets.map((p) => (
+                <Pressable
+                  key={p.id}
+                  style={({ pressed }) => [styles.replaceRow, pressed && styles.pressed]}
+                  onPress={() => replaceWith(p.id)}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.replaceRowName} numberOfLines={1}>{p.label}</Text>
+                    <Text style={styles.replaceRowMins}>{p.minutes} {t('customTimer.min')}</Text>
+                  </View>
+                  <Text style={styles.replaceRowAction}>{t('customTimer.replaceAction')}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+            <SoundPressable
+              sound="confirm"
+              style={({ pressed }) => [styles.replaceStartBtn, pressed && styles.pressed]}
+              onPress={() => { setShowReplace(false); goToSession(focusMins); }}>
+              <Text style={styles.replaceStartText}>{t('customTimer.replaceStartWithout')}  →</Text>
+            </SoundPressable>
+            <Pressable style={({ pressed }) => [styles.replaceCancel, pressed && styles.pressed]} onPress={() => setShowReplace(false)}>
+              <Text style={styles.replaceCancelText}>{t('common.cancel')}</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
     </ImageBackground>
   );
 }
@@ -362,6 +422,38 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     paddingVertical: 16 * s, alignItems: 'center', marginTop: Spacing.three * s, ...BakeryShadow,
   },
   startBtnText: { fontSize: 17 * s, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.3 },
+
+  // Replace-a-preset overlay (in-tree, not a native Modal)
+  overlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(74,49,42,0.45)',
+    alignItems: 'center', justifyContent: 'center', padding: Spacing.four * s,
+  },
+  replaceCard: {
+    width: '100%', maxWidth: 420 * s,
+    backgroundColor: C.frosting, borderRadius: BakeryRadii.card * s,
+    borderWidth: 1.5, borderColor: C.shortbread,
+    padding: Spacing.four * s, gap: Spacing.two * s, ...BakeryShadow,
+  },
+  replaceTitle: { fontSize: 18 * s, fontWeight: '900', color: C.cocoaDark, textAlign: 'center' },
+  replaceSub: { fontSize: 13 * s, color: C.mocha, textAlign: 'center', fontWeight: '600', marginBottom: Spacing.one * s },
+  replaceList: { maxHeight: 260 * s },
+  replaceRow: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.two * s,
+    backgroundColor: '#fff', borderRadius: BakeryRadii.button,
+    borderWidth: 1.5, borderColor: C.shortbread,
+    paddingHorizontal: 14 * s, paddingVertical: 12 * s,
+  },
+  replaceRowName: { fontSize: 14.5 * s, fontWeight: '800', color: C.cocoaDark },
+  replaceRowMins: { fontSize: 12 * s, fontWeight: '600', color: C.mocha, marginTop: 1 },
+  replaceRowAction: { fontSize: 13 * s, fontWeight: '900', color: C.berry },
+  replaceStartBtn: {
+    backgroundColor: '#F2A9BC', borderRadius: BakeryRadii.pill,
+    paddingVertical: 14 * s, alignItems: 'center', marginTop: Spacing.one * s, ...BakeryShadow,
+  },
+  replaceStartText: { fontSize: 15 * s, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.3 },
+  replaceCancel: { alignItems: 'center', paddingVertical: 8 * s },
+  replaceCancelText: { fontSize: 14 * s, fontWeight: '800', color: C.mocha },
 
   pressed: { opacity: 0.85 },
 });

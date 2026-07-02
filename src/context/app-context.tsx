@@ -141,8 +141,9 @@ function generateFriendCode() {
   return code;
 }
 
-// Saved presets behave as a fixed-size queue: newest first, oldest dropped.
-const MAX_TIMER_PRESETS = 4;
+// Saved presets are capped: newest first. Once at the cap the UI makes the user
+// pick one to replace (see custom-timer) rather than silently dropping the oldest.
+export const MAX_TIMER_PRESETS = 6;
 
 export type DefaultCompanionId = 'girl' | 'dude';
 export type ActiveCompanionId = `starter:${DefaultCompanionId}` | string;

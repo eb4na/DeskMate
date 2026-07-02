@@ -326,7 +326,11 @@
     "presetNamePlaceholder": "Nom du préréglage...",
     "subjectHeader": "MATIÈRE (OPTIONNEL)",
     "savePresetTitle": "ENREGISTRER COMME PRÉRÉGLAGE",
-    "savePresetSub": "Enregistre ta session pour la prochaine fois"
+    "savePresetSub": "Enregistre ta session pour la prochaine fois",
+    "presetLimitTitle": "Limite de préréglages atteinte",
+    "presetLimitSub": "Tu peux enregistrer jusqu'à {{max}} préréglages. Choisis-en un à remplacer :",
+    "replaceAction": "Remplacer",
+    "replaceStartWithout": "Commencer sans enregistrer"
   },
   "subjectPicker": {
     "title": "Choisir une matière (optionnel)",

@@ -326,7 +326,11 @@
     "presetNamePlaceholder": "Nombre del ajuste...",
     "subjectHeader": "MATERIA (OPCIONAL)",
     "savePresetTitle": "GUARDAR COMO AJUSTE",
-    "savePresetSub": "Guarda tu sesión para la próxima vez"
+    "savePresetSub": "Guarda tu sesión para la próxima vez",
+    "presetLimitTitle": "Límite de ajustes alcanzado",
+    "presetLimitSub": "Puedes guardar hasta {{max}} ajustes. Elige uno para reemplazar:",
+    "replaceAction": "Reemplazar",
+    "replaceStartWithout": "Empezar sin guardar"
   },
   "subjectPicker": {
     "title": "Elige una materia (opcional)",

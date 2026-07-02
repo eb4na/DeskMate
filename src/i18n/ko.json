@@ -326,7 +326,11 @@
     "presetNamePlaceholder": "프리셋 이름...",
     "subjectHeader": "과목 (선택)",
     "savePresetTitle": "프리셋으로 저장",
-    "savePresetSub": "다음에 쓸 수 있도록 세션을 저장하세요"
+    "savePresetSub": "다음에 쓸 수 있도록 세션을 저장하세요",
+    "presetLimitTitle": "프리셋 한도에 도달했어요",
+    "presetLimitSub": "프리셋은 최대 {{max}}개까지 저장할 수 있어요. 교체할 항목을 선택하세요:",
+    "replaceAction": "교체",
+    "replaceStartWithout": "저장하지 않고 시작"
   },
   "subjectPicker": {
     "title": "과목 선택 (선택 사항)",

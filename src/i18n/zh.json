@@ -326,7 +326,11 @@
     "presetNamePlaceholder": "预设名称...",
     "subjectHeader": "科目（可选）",
     "savePresetTitle": "保存为预设",
-    "savePresetSub": "保存本次会话以便下次使用"
+    "savePresetSub": "保存本次会话以便下次使用",
+    "presetLimitTitle": "预设已达上限",
+    "presetLimitSub": "最多可保存 {{max}} 个预设。请选择一个替换：",
+    "replaceAction": "替换",
+    "replaceStartWithout": "不保存直接开始"
   },
   "subjectPicker": {
     "title": "选择科目（可选）",
