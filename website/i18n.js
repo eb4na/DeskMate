@@ -14,12 +14,12 @@
       'hero.lead': `Focus with cozy companions, earn coins, decorate your room, and build a study habit that actually feels nice.`,
       'hero.cta1': `See the vibes`, 'hero.cta2': `Meet the companions`,
       'hero.note': `Coming soon to the App Store · iPhone & iPad`,
-      'hero.timer': `24:13 · Focus`, 'hero.tagCoffee': `Coffee corner`,
-      'card.shrine': `Winter shrine`, 'card.treehouse': `Cozy treehouse`,
+      'hero.timer': `24:13 · Focus`, 'hero.tagCoffee': `Modern Kitchen`,
+      'card.shrine': `Frostbloom Shrine`, 'card.treehouse': `Lavender Palace`,
       'rooms.eyebrow': `Your space, your style`,
       'rooms.h2': `Cute, cozy, cool, or aesthetic — your room, your vibe`,
       'rooms.p': `Study somewhere that feels like you. Unlock and decorate a whole shelf of rooms and desks as you go.`,
-      'room.coffee': `Coffee corner`, 'room.bakery': `Strawberry bakery`, 'room.shrine': `Winter shrine`, 'room.train': `Train window`, 'room.treehouse': `Cozy treehouse`,
+      'room.coffee': `Modern Kitchen`, 'room.bakery': `Bun's Room`, 'room.shrine': `Frostbloom Shrine`, 'room.train': `Afternoon Train`, 'room.treehouse': `Lavender Palace`,
       'feat.eyebrow': `What's inside`,
       'feat.h2': `Everything that makes studying feel sweet`,
       'feat.p': `A whole cozy world built around one simple loop: study, earn, unlock, and come back tomorrow.`,
@@ -105,12 +105,12 @@
       'hero.lead': `かわいい相棒と一緒に集中して、コインを貯めて、お部屋を飾って、心地よく続く勉強習慣を育てよう。`,
       'hero.cta1': `雰囲気を見る`, 'hero.cta2': `仲間に会う`,
       'hero.note': `App Store で近日公開 · iPhone & iPad`,
-      'hero.timer': `24:13 · 集中`, 'hero.tagCoffee': `コーヒーコーナー`,
-      'card.shrine': `雪の神社`, 'card.treehouse': `ツリーハウス`,
+      'hero.timer': `24:13 · 集中`, 'hero.tagCoffee': `Modern Kitchen`,
+      'card.shrine': `Frostbloom Shrine`, 'card.treehouse': `Lavender Palace`,
       'rooms.eyebrow': `自分だけの空間`,
       'rooms.h2': `かわいくも、落ち着きも、クールにも ― お部屋はあなたの気分次第`,
       'rooms.p': `自分らしい場所で勉強しよう。進めるほどに、たくさんのお部屋やデスクを解放して飾れます。`,
-      'room.coffee': `コーヒーコーナー`, 'room.bakery': `いちごベーカリー`, 'room.shrine': `雪の神社`, 'room.train': `電車の車窓`, 'room.treehouse': `ツリーハウス`,
+      'room.coffee': `Modern Kitchen`, 'room.bakery': `Bun's Room`, 'room.shrine': `Frostbloom Shrine`, 'room.train': `Afternoon Train`, 'room.treehouse': `Lavender Palace`,
       'feat.eyebrow': `できること`,
       'feat.h2': `勉強を甘くするすべてが、ここに`,
       'feat.p': `シンプルな流れを中心にした、ほっとする世界 ― 勉強して、貯めて、解放して、また明日。`,
@@ -196,12 +196,12 @@
       'hero.lead': `和可爱的伙伴一起专注、赚取金币、装饰房间，养成真正让你舒心的学习习惯。`,
       'hero.cta1': `看看风格`, 'hero.cta2': `认识伙伴`,
       'hero.note': `即将登陆 App Store · iPhone 和 iPad`,
-      'hero.timer': `24:13 · 专注`, 'hero.tagCoffee': `咖啡角落`,
-      'card.shrine': `雪之神社`, 'card.treehouse': `树屋小窝`,
+      'hero.timer': `24:13 · 专注`, 'hero.tagCoffee': `Modern Kitchen`,
+      'card.shrine': `Frostbloom Shrine`, 'card.treehouse': `Lavender Palace`,
       'rooms.eyebrow': `你的空间，你的风格`,
       'rooms.h2': `可爱、温馨、酷炫、还是唯美 —— 房间随你心意`,
       'rooms.p': `在像你的地方学习。一路解锁并装饰整整一架子的房间和书桌。`,
-      'room.coffee': `咖啡角落`, 'room.bakery': `草莓烘焙屋`, 'room.shrine': `雪之神社`, 'room.train': `车窗风景`, 'room.treehouse': `树屋小窝`,
+      'room.coffee': `Modern Kitchen`, 'room.bakery': `Bun's Room`, 'room.shrine': `Frostbloom Shrine`, 'room.train': `Afternoon Train`, 'room.treehouse': `Lavender Palace`,
       'feat.eyebrow': `内含什么`,
       'feat.h2': `让学习变甜的一切，都在这里`,
       'feat.p': `一个围绕简单循环打造的温馨世界 —— 学习、赚取、解锁，明天再来。`,
@@ -287,12 +287,12 @@
       'hero.lead': `아늑한 친구와 함께 집중하고, 코인을 모으고, 방을 꾸미며, 정말 기분 좋은 공부 습관을 만들어요.`,
       'hero.cta1': `분위기 보기`, 'hero.cta2': `친구들 만나기`,
       'hero.note': `App Store에 곧 출시 · iPhone & iPad`,
-      'hero.timer': `24:13 · 집중`, 'hero.tagCoffee': `커피 코너`,
-      'card.shrine': `겨울 신사`, 'card.treehouse': `아늑한 트리하우스`,
+      'hero.timer': `24:13 · 집중`, 'hero.tagCoffee': `Modern Kitchen`,
+      'card.shrine': `Frostbloom Shrine`, 'card.treehouse': `Lavender Palace`,
       'rooms.eyebrow': `나만의 공간, 나만의 스타일`,
       'rooms.h2': `귀엽게, 아늑하게, 쿨하게, 감성적으로 ― 방은 당신의 취향대로`,
       'rooms.p': `나다운 곳에서 공부해요. 진행할수록 방과 책상을 잔뜩 잠금 해제하고 꾸밀 수 있어요.`,
-      'room.coffee': `커피 코너`, 'room.bakery': `딸기 베이커리`, 'room.shrine': `겨울 신사`, 'room.train': `기차 창가`, 'room.treehouse': `아늑한 트리하우스`,
+      'room.coffee': `Modern Kitchen`, 'room.bakery': `Bun's Room`, 'room.shrine': `Frostbloom Shrine`, 'room.train': `Afternoon Train`, 'room.treehouse': `Lavender Palace`,
       'feat.eyebrow': `무엇이 담겼나요`,
       'feat.h2': `공부를 달콤하게 만드는 모든 것`,
       'feat.p': `단순한 흐름을 중심으로 만든 포근한 세계 ― 공부하고, 모으고, 잠금 해제하고, 내일 또 오기.`,
@@ -378,12 +378,12 @@
       'hero.lead': `Concéntrate con compañeros acogedores, gana monedas, decora tu habitación y crea un hábito de estudio que de verdad se sienta bien.`,
       'hero.cta1': `Ver los ambientes`, 'hero.cta2': `Conoce a los compañeros`,
       'hero.note': `Muy pronto en la App Store · iPhone y iPad`,
-      'hero.timer': `24:13 · Concentración`, 'hero.tagCoffee': `Rincón del café`,
-      'card.shrine': `Santuario nevado`, 'card.treehouse': `Casa del árbol`,
+      'hero.timer': `24:13 · Concentración`, 'hero.tagCoffee': `Modern Kitchen`,
+      'card.shrine': `Frostbloom Shrine`, 'card.treehouse': `Lavender Palace`,
       'rooms.eyebrow': `Tu espacio, tu estilo`,
       'rooms.h2': `Tierno, acogedor, cool o estético: tu habitación, tu vibra`,
       'rooms.p': `Estudia en un lugar que se sienta tuyo. Desbloquea y decora todo un estante de habitaciones y escritorios a tu ritmo.`,
-      'room.coffee': `Rincón del café`, 'room.bakery': `Pastelería de fresa`, 'room.shrine': `Santuario nevado`, 'room.train': `Ventana del tren`, 'room.treehouse': `Casa del árbol`,
+      'room.coffee': `Modern Kitchen`, 'room.bakery': `Bun's Room`, 'room.shrine': `Frostbloom Shrine`, 'room.train': `Afternoon Train`, 'room.treehouse': `Lavender Palace`,
       'feat.eyebrow': `Qué incluye`,
       'feat.h2': `Todo lo que hace que estudiar sepa dulce`,
       'feat.p': `Un mundo acogedor construido en torno a un ciclo simple: estudia, gana, desbloquea y vuelve mañana.`,
@@ -469,12 +469,12 @@
       'hero.lead': `Concentrez-vous avec de tendres compagnons, gagnez des pièces, décorez votre chambre et prenez une habitude d'étude qui fait vraiment du bien.`,
       'hero.cta1': `Voir les ambiances`, 'hero.cta2': `Rencontrer les compagnons`,
       'hero.note': `Bientôt sur l'App Store · iPhone et iPad`,
-      'hero.timer': `24:13 · Focus`, 'hero.tagCoffee': `Coin café`,
-      'card.shrine': `Sanctuaire enneigé`, 'card.treehouse': `Cabane dans l'arbre`,
+      'hero.timer': `24:13 · Focus`, 'hero.tagCoffee': `Modern Kitchen`,
+      'card.shrine': `Frostbloom Shrine`, 'card.treehouse': `Lavender Palace`,
       'rooms.eyebrow': `Votre espace, votre style`,
       'rooms.h2': `Mignon, douillet, cool ou esthétique — votre chambre, votre ambiance`,
       'rooms.p': `Étudiez dans un lieu qui vous ressemble. Débloquez et décorez toute une étagère de chambres et de bureaux au fil du temps.`,
-      'room.coffee': `Coin café`, 'room.bakery': `Pâtisserie fraise`, 'room.shrine': `Sanctuaire enneigé`, 'room.train': `Fenêtre du train`, 'room.treehouse': `Cabane dans l'arbre`,
+      'room.coffee': `Modern Kitchen`, 'room.bakery': `Bun's Room`, 'room.shrine': `Frostbloom Shrine`, 'room.train': `Afternoon Train`, 'room.treehouse': `Lavender Palace`,
       'feat.eyebrow': `Ce qu'il y a dedans`,
       'feat.h2': `Tout ce qui rend les révisions douces`,
       'feat.p': `Un monde douillet bâti autour d'une boucle simple : étudier, gagner, débloquer et revenir demain.`,
@@ -555,6 +555,22 @@
 
   var SUPPORTED = ['en', 'ja', 'zh', 'ko', 'es', 'fr'];
 
+  // Inline SVG flags for the language picker (no emoji; self-contained).
+  var STAR = 'M0,-1L0.225,-0.309L0.951,-0.309L0.363,0.118L0.588,0.809L0,0.382L-0.588,0.809L-0.363,0.118L-0.951,-0.309L-0.225,-0.309Z';
+  // US flag: 7 red stripes over white, blue canton with a 5×4 grid of white stars.
+  var usStripes = '';
+  for (var _r = 0; _r < 7; _r++) usStripes += '<rect y="' + (_r * 3.0769).toFixed(3) + '" width="30" height="1.538"/>';
+  var usStars = '';
+  for (var _sr = 0; _sr < 4; _sr++) for (var _sc = 0; _sc < 5; _sc++) usStars += '<circle cx="' + (1.4 + _sc * 2.1).toFixed(2) + '" cy="' + (1.6 + _sr * 2.5).toFixed(2) + '" r="0.55"/>';
+  var FLAGS = {
+    en: '<svg viewBox="0 0 30 20"><rect width="30" height="20" fill="#fff"/><g fill="#B22234">' + usStripes + '</g><rect width="12" height="10.77" fill="#3C3B6E"/><g fill="#fff">' + usStars + '</g></svg>',
+    ja: '<svg viewBox="0 0 30 20"><rect width="30" height="20" fill="#fff"/><circle cx="15" cy="10" r="6" fill="#BC002D"/></svg>',
+    zh: '<svg viewBox="0 0 30 20"><rect width="30" height="20" fill="#DE2910"/><g fill="#FFDE00"><path d="' + STAR + '" transform="translate(7,6.5) scale(3.4)"/><path d="' + STAR + '" transform="translate(13,2.6) scale(1.1)"/><path d="' + STAR + '" transform="translate(15.6,4.9) scale(1.1)"/><path d="' + STAR + '" transform="translate(15.6,8) scale(1.1)"/><path d="' + STAR + '" transform="translate(13,10.2) scale(1.1)"/></g></svg>',
+    ko: '<svg viewBox="0 0 30 20"><rect width="30" height="20" fill="#fff"/><path d="M15,5 a5,5 0 0,1 0,10 a2.5,2.5 0 0,1 0,-5 a2.5,2.5 0 0,0 0,-5 z" fill="#CD2E3A"/><path d="M15,5 a5,5 0 0,0 0,10 a2.5,2.5 0 0,0 0,-5 a2.5,2.5 0 0,1 0,-5 z" fill="#0047A0"/><g fill="#222" opacity=".9"><rect x="4" y="4.4" width="4" height="0.9"/><rect x="4" y="5.8" width="4" height="0.9"/><rect x="22" y="4.4" width="4" height="0.9"/><rect x="22" y="5.8" width="4" height="0.9"/><rect x="4" y="14.2" width="4" height="0.9"/><rect x="4" y="15.6" width="4" height="0.9"/><rect x="22" y="14.2" width="4" height="0.9"/><rect x="22" y="15.6" width="4" height="0.9"/></g></svg>',
+    es: '<svg viewBox="0 0 30 20"><rect width="30" height="20" fill="#AA151B"/><rect y="5" width="30" height="10" fill="#F1BF00"/></svg>',
+    fr: '<svg viewBox="0 0 30 20"><rect width="30" height="20" fill="#fff"/><rect width="10" height="20" fill="#0055A4"/><rect x="20" width="10" height="20" fill="#EF4135"/></svg>'
+  };
+
   function detect() {
     // explicit ?lang=xx wins (shareable localized links)
     try {
@@ -587,6 +603,8 @@
     if (md && dict['meta.desc']) md.setAttribute('content', dict['meta.desc']);
     var sel = document.getElementById('langSelect');
     if (sel) sel.value = lang;
+    var lf = document.getElementById('langFlag');
+    if (lf) lf.innerHTML = FLAGS[lang] || FLAGS.en;
     try { localStorage.setItem('mb_lang', lang); } catch (e) {}
   }
 

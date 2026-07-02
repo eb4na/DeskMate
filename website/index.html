@@ -29,7 +29,7 @@
   <header class="site-header">
     <div class="wrap nav" id="nav">
       <a class="nav-logo" href="#top" aria-label="Memobun home">
-        <img src="assets/logo/memobun-mark.png" alt="Memobun" />
+        <img src="assets/logo/notebook-mark.png" alt="Memobun" />
       </a>
       <nav class="nav-links">
         <a href="#rooms" data-i18n="nav.rooms">Rooms</a>
@@ -39,14 +39,17 @@
       </nav>
       <div class="nav-cta">
         <span class="pill"><span class="dot"></span> <span data-i18n="nav.soon">Coming soon</span></span>
-        <select id="langSelect" class="lang-select" aria-label="Language">
-          <option value="en">English</option>
-          <option value="ja">日本語</option>
-          <option value="zh">中文</option>
-          <option value="ko">한국어</option>
-          <option value="es">Español</option>
-          <option value="fr">Français</option>
-        </select>
+        <span class="lang-wrap">
+          <span id="langFlag" class="lang-flag" aria-hidden="true"></span>
+          <select id="langSelect" class="lang-select" aria-label="Language">
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+            <option value="zh">中文</option>
+            <option value="ko">한국어</option>
+            <option value="es">Español</option>
+            <option value="fr">Français</option>
+          </select>
+        </span>
       </div>
       <button class="nav-toggle" id="navToggle" aria-label="Menu" aria-expanded="false">
         <span></span><span></span><span></span>
@@ -83,18 +86,18 @@
         <div class="hero-art">
           <div class="stage">
             <figure class="room-card rc-a floaty-slow">
-              <img src="assets/backgrounds/shrine.jpg" alt="Winter shrine study room" />
-              <figcaption data-i18n="card.shrine">Winter shrine</figcaption>
+              <img src="assets/backgrounds/shrine.jpg" alt="Frostbloom Shrine study room" />
+              <figcaption data-i18n="card.shrine">Frostbloom Shrine</figcaption>
             </figure>
             <div class="phone-mock">
               <img class="bg" src="assets/backgrounds/coffee.jpg" alt="Coffee-shop study room" />
               <img class="char" src="assets/characters/cocoa.png" alt="Cocoa, the barista companion" />
               <span class="timer-chip" data-i18n="hero.timer">24:13 · Focus</span>
-              <span class="vibe-tag" data-i18n="hero.tagCoffee">Coffee corner</span>
+              <span class="vibe-tag" data-i18n="hero.tagCoffee">Modern Kitchen</span>
             </div>
             <figure class="room-card rc-b floaty">
-              <img src="assets/backgrounds/treehouse.jpg" alt="Treehouse study room" />
-              <figcaption data-i18n="card.treehouse">Cozy treehouse</figcaption>
+              <img src="assets/backgrounds/lavender.jpg" alt="Lavender Palace study room" />
+              <figcaption data-i18n="card.treehouse">Lavender Palace</figcaption>
             </figure>
           </div>
         </div>
@@ -140,11 +143,11 @@
           <p data-i18n="rooms.p">Study somewhere that feels like you. Unlock and decorate a whole shelf of rooms and desks as you go.</p>
         </div>
         <div class="rooms">
-          <div class="room-tile reveal"><img src="assets/backgrounds/coffee.jpg" alt="Coffee-shop room" /><span data-i18n="room.coffee">Coffee corner</span></div>
-          <div class="room-tile reveal"><img src="assets/backgrounds/cozy-room.jpg" alt="Strawberry bakery room" /><span data-i18n="room.bakery">Strawberry bakery</span></div>
-          <div class="room-tile reveal"><img src="assets/backgrounds/shrine.jpg" alt="Winter shrine room" /><span data-i18n="room.shrine">Winter shrine</span></div>
-          <div class="room-tile reveal"><img src="assets/backgrounds/train.jpg" alt="Train-window room" /><span data-i18n="room.train">Train window</span></div>
-          <div class="room-tile reveal"><img src="assets/backgrounds/treehouse.jpg" alt="Treehouse room" /><span data-i18n="room.treehouse">Cozy treehouse</span></div>
+          <div class="room-tile reveal"><img src="assets/backgrounds/coffee.jpg" alt="Modern kitchen room" /><span data-i18n="room.coffee">Modern Kitchen</span></div>
+          <div class="room-tile reveal"><img src="assets/backgrounds/cozy-room.jpg" alt="Bun's Room" /><span data-i18n="room.bakery">Bun's Room</span></div>
+          <div class="room-tile reveal"><img src="assets/backgrounds/shrine.jpg" alt="Frostbloom Shrine room" /><span data-i18n="room.shrine">Frostbloom Shrine</span></div>
+          <div class="room-tile reveal"><img src="assets/backgrounds/train.jpg" alt="Afternoon Train room" /><span data-i18n="room.train">Afternoon Train</span></div>
+          <div class="room-tile reveal"><img src="assets/backgrounds/lavender.jpg" alt="Lavender Palace room" /><span data-i18n="room.treehouse">Lavender Palace</span></div>
         </div>
       </div>
     </section>

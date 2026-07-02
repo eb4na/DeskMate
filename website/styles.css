@@ -7,8 +7,8 @@
 
 :root {
   /* outer page (behind the planner) */
-  --blush: #FCF3D9;        /* cream / light-yellow page background */
-  --blush-deep: #EFDDA8;   /* soft gold dots on the background */
+  --blush: #FBEEDD;        /* warm cream page background (a touch more red, less yellow) */
+  --blush-deep: #EBD3B4;   /* soft warm-tan dots on the background */
   /* the planner page */
   --paper: #FBF5E9;        /* warm cream page colour */
   --band: #FFF0F5;         /* soft-pink section bands */
@@ -88,7 +88,7 @@ a:hover { text-decoration: underline; }
 /* ── Header ──────────────────────────────────────────────────────────── */
 .site-header {
   position: sticky; top: 0; z-index: 50;
-  background: rgba(252, 243, 217, 0.88);
+  background: rgba(251, 238, 221, 0.90);
   backdrop-filter: saturate(150%) blur(10px);
   border-bottom: 1px solid var(--border);
 }
@@ -102,6 +102,12 @@ a:hover { text-decoration: underline; }
 }
 .nav-links a:hover { color: #fff; background: var(--pink); border-color: var(--pink); text-decoration: none; }
 .nav-cta { display: flex; align-items: center; gap: 12px; }
+.lang-wrap { display: inline-flex; align-items: center; gap: 8px; }
+.lang-flag {
+  display: inline-flex; width: 24px; height: 17px; border-radius: 4px; overflow: hidden;
+  box-shadow: 0 0 0 1.5px var(--border); flex: none;
+}
+.lang-flag svg { display: block; width: 100%; height: 100%; }
 .lang-select {
   font-family: var(--font-body); font-size: .88rem; font-weight: 700; color: var(--pink-deep);
   background: #fff; border: 2px solid var(--border); border-radius: var(--radius-pill);
@@ -331,16 +337,17 @@ section { position: relative; padding: 72px 0; }
 .char-card:hover { transform: translateY(-5px); box-shadow: var(--shadow); }
 .char-art { aspect-ratio: 1 / 1; display: grid; place-items: end center; padding-top: 16px; }
 .char-art img { width: 84%; height: auto; filter: drop-shadow(0 8px 12px rgba(120,53,80,.18)); }
-.char-card.c-bun   .char-art { background: radial-gradient(circle at 50% 78%, #ffd3de, #fff1f5); }
-.char-card.c-cocoa .char-art { background: radial-gradient(circle at 50% 78%, #f4cbb4, #fdeee6); }
-.char-card.c-bunny .char-art { background: radial-gradient(circle at 50% 78%, #f6cfe6, #fdf1f8); }
-.char-card.c-miel  .char-art { background: radial-gradient(circle at 50% 78%, #f6d7bc, #fdf0e6); }
-.char-card.c-tira  .char-art { background: radial-gradient(circle at 50% 78%, #d6e8f4, #eef6fb); }
+/* each companion's card uses its exact app palette colour (bottom), fading up */
+.char-card.c-bun   .char-art { background: radial-gradient(circle at 50% 80%, #ffc9d0, #ffe9ec); }
+.char-card.c-cocoa .char-art { background: radial-gradient(circle at 50% 80%, #c99a73, #ecdccb); }
+.char-card.c-bunny .char-art { background: radial-gradient(circle at 50% 80%, #ffc2df, #ffe6f2); }
+.char-card.c-miel  .char-art { background: radial-gradient(circle at 50% 80%, #ffcd8c, #ffe8c6); }
+.char-card.c-tira  .char-art { background: radial-gradient(circle at 50% 80%, #a3d6ff, #d6ebff); }
 .char-info { padding: 18px 20px 22px; }
 .char-info h3 { font-size: 1.35rem; margin-bottom: 4px; color: var(--cocoa-dark); }
 .char-info .role { color: var(--pink-deep); font-weight: 700; font-size: .9rem; }
 .char-info p { margin: 8px 0 0; color: var(--cocoa-soft); font-size: .96rem; }
-.char-card.secret .char-art { background: linear-gradient(180deg, #F3E1F0, #E7CDE8); position: relative; }
+.char-card.secret .char-art { background: radial-gradient(circle at 50% 80%, #B7A0E0, #e2d7f3); position: relative; }
 .char-card.secret .qmark { font-family: var(--font-display); font-size: 5rem; color: #C79AD1; align-self: center; padding-bottom: 8px; }
 .char-card.secret .lockbadge { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; background: rgba(255,253,251,.92); border-radius: 50%; display: grid; place-items: center; color: #B074C0; }
 .char-card.secret .char-info .role { color: #B074C0; }
@@ -360,7 +367,7 @@ section { position: relative; padding: 72px 0; }
 .cta p { color: var(--cocoa-soft); font-size: 1.1rem; margin: 0 auto 26px; max-width: 42ch; }
 
 /* ── Footer ──────────────────────────────────────────────────────────── */
-.site-footer { background: linear-gradient(180deg, var(--blush), #F5E4B0); color: #8A5A68; padding: 44px 0 30px; }
+.site-footer { background: linear-gradient(180deg, var(--blush), #F1DBBE); color: #8A5A68; padding: 44px 0 30px; }
 .site-footer a { color: var(--pink-deep); }
 .foot-grid { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 24px; align-items: center; }
 .foot-logo img { height: 46px; opacity: .98; }
