@@ -405,17 +405,68 @@ section { position: relative; padding: 72px 0; }
   .plus-icon { order: -1; }
   .sticker { transform: scale(.85); }
 }
-/* phones */
+/* ── phones: a tighter, app-like layout (same content, phone-only) ───── */
 @media (max-width: 620px) {
-  main#top { max-width: 100%; margin: 14px 10px 24px; border-radius: 22px; }
+  /* planner page: slim margin + smaller cover so nothing hugs the edge */
+  main#top {
+    max-width: 100%; margin: 12px 12px 22px; border-radius: 22px;
+    box-shadow: 0 0 0 5px var(--cover), 0 0 0 6px var(--cover-edge), var(--shadow-soft);
+  }
   .nav-links, .nav-cta .btn, .nav-cta .pill { display: none; }
   .nav-toggle { display: block; }
   .nav.open .nav-links { display: flex; position: absolute; top: 68px; left: 0; right: 0; flex-direction: column; gap: 8px; background: var(--blush); border-bottom: 1px solid var(--border); padding: 12px 24px 16px; }
   .nav.open .nav-links a { text-align: center; }
-  .feature-grid, .char-grid, .steps { grid-template-columns: 1fr; }
-  .rooms { grid-template-columns: repeat(2, 1fr); }
-  .room-card { display: none; }            /* keep just the phone on small screens */
-  .stage { height: 380px; }
-  section { padding: 54px 0; }
-  .section-head .sticker, .washi { display: none; } /* keep phones uncluttered */
+
+  section { padding: 38px 0; }
+  .section-head { margin-bottom: 24px; }
+  .section-head h2 { font-size: 1.5rem; }
+  .section-head p:not(.eyebrow) { font-size: .98rem; }
+  .eyebrow { margin-bottom: 14px; }
+  .washi, .section-head .sticker { display: none; } /* keep phones uncluttered */
+
+  /* compact hero — fits ~one screen; buttons full-width */
+  .hero { padding: 20px 0 34px; }
+  .stage { height: 356px; }
+  .phone-mock { width: 178px; border-width: 6px; }
+  .room-card { display: none; }            /* just the phone on small screens */
+  .hero-logo { width: 56%; max-width: 230px; margin-bottom: 10px; }
+  .hero h1 { font-size: 1.9rem; }
+  .hero p.lead { font-size: 1.04rem; margin-bottom: 20px; max-width: 34ch; }
+  .hero-actions { flex-direction: column; align-items: stretch; gap: 10px; }
+  .hero-actions .btn { width: 100%; justify-content: center; }
+  .hero-note { margin-top: 14px; }
+
+  /* Rooms & Characters → side-swipe carousels (full-bleed, snap) */
+  .rooms, .char-grid {
+    display: flex; gap: 12px; overflow-x: auto;
+    scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+    margin: 0 -24px; padding: 2px 24px 14px; scroll-padding-left: 24px;
+    scrollbar-width: none;
+  }
+  .rooms::-webkit-scrollbar, .char-grid::-webkit-scrollbar { display: none; }
+  .room-tile { flex: 0 0 150px; scroll-snap-align: start; }
+  .char-grid { gap: 14px; }
+  .char-card { flex: 0 0 236px; scroll-snap-align: start; }
+
+  /* How-it-works: slim step cards, single column */
+  .steps { grid-template-columns: 1fr; gap: 14px; }
+  .step { padding: 20px 20px 18px; }
+  .step-num { width: 40px; height: 40px; font-size: 1.15rem; margin-bottom: 10px; }
+
+  /* Features: compact 2-up so the list isn't endless */
+  .feature-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .feature { padding: 16px 14px; border-radius: 18px; }
+  .feature .ic { width: 38px; height: 38px; border-radius: 12px; margin-bottom: 8px; }
+  .feature .ic svg { width: 22px; height: 22px; }
+  .feature h3 { font-size: 1rem; margin-bottom: 4px; }
+  .feature p { font-size: .86rem; }
+
+  /* Plus band + FAQ + CTA + footer: tighten */
+  .plus-band { padding: 26px 20px; gap: 18px; }
+  .plus-band h2 { font-size: 1.5rem; }
+  .plus-icon img { width: 100px; height: 100px; }
+  .faq-item summary { font-size: 1rem; }
+  .cta h2 { font-size: 1.7rem; }
+  .foot-grid { justify-content: center; text-align: center; }
+  .foot-links { justify-content: center; }
 }
