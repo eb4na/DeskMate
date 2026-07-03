@@ -1,9 +1,11 @@
-# Cloudflare Pages headers — long-cache the fingerprinted-ish static assets.
+# Cloudflare Pages headers.
+# Images: cache a day (they change rarely; version the filename if one changes).
 /assets/*
-  Cache-Control: public, max-age=31536000, immutable
-
-/*.css
   Cache-Control: public, max-age=86400
+
+# CSS/JS aren't fingerprinted, so always revalidate → edits go live on next deploy.
+/*.css
+  Cache-Control: public, max-age=0, must-revalidate
 
 /*.js
-  Cache-Control: public, max-age=86400
+  Cache-Control: public, max-age=0, must-revalidate
