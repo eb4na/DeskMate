@@ -332,6 +332,8 @@
     "subjectHeader": "과목 (선택)",
     "savePresetTitle": "프리셋으로 저장",
     "savePresetSub": "다음에 쓸 수 있도록 세션을 저장하세요",
+    "addPreset": "프리셋 추가",
+    "presetSaved": "프리셋을 저장했어요!",
     "presetLimitTitle": "프리셋 한도에 도달했어요",
     "presetLimitSub": "프리셋은 최대 {{max}}개까지 저장할 수 있어요. 교체할 항목을 선택하세요:",
     "replaceAction": "교체",
@@ -1630,7 +1632,11 @@
     "claimedMsg": "{{reward}}을(를) 받았어요.",
     "claimedPlain": "즐기세요!",
     "chooseOne": "하나를 골라 받으세요:",
-    "wearNote": "착용하려면 해당 캐릭터를 먼저 잠금 해제해야 해요."
+    "wearNote": "착용하려면 해당 캐릭터를 먼저 잠금 해제해야 해요.",
+    "welcomeTitle": "환영해요 — 잠옷을 골라보세요!",
+    "welcomeBody": "포근한 환영 선물: 세 가지 잠옷 중 하나를 무료로 골라보세요. (입으려면 먼저 해당 캐릭터를 해제해야 해요.)",
+    "thanksTitle": "다운로드해 주셔서 감사해요!",
+    "thanksBody": "시작을 응원하는 500코인이에요. 즐거운 공부 되세요!"
   },
   "cake": {
     "back": "‹ 뒤로",

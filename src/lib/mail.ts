@@ -38,6 +38,23 @@ export async function fetchMail(): Promise<Mail[]> {
     }));
 }
 
+// Fixed broadcast mails (the welcome / thanks-for-downloading gifts) → i18n keys, so
+// their title + body localize. Supabase mail ids are random UUIDs, so we can't key by
+// id; instead match a distinctive substring of the (English) title. Any other mail —
+// a one-off announcement the founder writes later — falls back to the server text.
+const KNOWN_MAIL: { has: string; titleKey: string; bodyKey: string }[] = [
+  { has: 'pajama set', titleKey: 'mailbox.welcomeTitle', bodyKey: 'mailbox.welcomeBody' },
+  { has: 'thanks for downloading', titleKey: 'mailbox.thanksTitle', bodyKey: 'mailbox.thanksBody' },
+];
+
+/** Localized {title, body} for a mail: translated for the known fixed gifts, else the
+ *  server-provided text unchanged. */
+export function localizeMail(mail: { title: string; body: string }, t: (key: string) => string): { title: string; body: string } {
+  const lower = mail.title.toLowerCase();
+  const known = KNOWN_MAIL.find((k) => lower.includes(k.has));
+  return known ? { title: t(known.titleKey), body: t(known.bodyKey) } : { title: mail.title, body: mail.body };
+}
+
 /** Mail ids the signed-in user has already claimed (server-authoritative). */
 export async function fetchMailClaims(): Promise<string[]> {
   const { data, error } = await supabase.from('mail_claims').select('mail_id');

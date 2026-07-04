@@ -332,6 +332,8 @@
     "subjectHeader": "SUBJECT (OPTIONAL)",
     "savePresetTitle": "SAVE AS PRESET",
     "savePresetSub": "Save your session for next time",
+    "addPreset": "Add preset",
+    "presetSaved": "Preset saved!",
     "presetLimitTitle": "Preset limit reached",
     "presetLimitSub": "You can save up to {{max}} presets. Pick one to replace:",
     "replaceAction": "Replace",
@@ -1630,7 +1632,11 @@
     "claimedMsg": "You got {{reward}}.",
     "claimedPlain": "Enjoy!",
     "chooseOne": "Choose one to claim:",
-    "wearNote": "You'll need to unlock the matching character before you can wear it."
+    "wearNote": "You'll need to unlock the matching character before you can wear it.",
+    "welcomeTitle": "Welcome — pick a pajama set!",
+    "welcomeBody": "A cozy welcome gift: choose any one of our three pajama outfits, on the house. (You'll need to unlock its character before you can wear it.)",
+    "thanksTitle": "Thanks for downloading!",
+    "thanksBody": "Here are 500 coins to get you started. Happy studying!"
   },
   "cake": {
     "back": "‹ Back",

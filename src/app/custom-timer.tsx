@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { formatCoins } from '@/constants/placeholder-data';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ImageBackground, NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ImageBackground, NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { playTick } from '@/lib/sounds';
 import { showPopup } from '@/lib/popup';
@@ -131,7 +131,6 @@ export default function CustomTimerScreen() {
   const [breakHr, setBreakHr] = useState(0);
   const [breakMin, setBreakMin] = useState(10);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
-  const [savePreset, setSavePreset] = useState(false);
   const [presetName, setPresetName] = useState('');
   // When the user is at the preset cap and asks to save, we can't just drop the
   // oldest — we open this picker so they choose which one the new preset replaces.
@@ -167,8 +166,11 @@ export default function CustomTimerScreen() {
       },
     });
 
-  const savePresetNow = (mins: number) =>
+  const savePresetNow = (mins: number) => {
     saveTimerPreset({ label: presetName.trim() || `${mins} ${t('customTimer.min')}`, minutes: mins });
+    setPresetName('');
+    showPopup(t('customTimer.presetSaved'));
+  };
 
   const handleStart = () => {
     const mins = focusMins;
@@ -177,21 +179,23 @@ export default function CustomTimerScreen() {
       router.replace({ pathname: '/break-game', params: { breakMinutes: String(mins), fromSession: '1' } });
       return;
     }
-    if (savePreset && isPlus) {
-      // At the cap: make the user pick one to replace before we can save + start.
-      if (savedTimerPresets.length >= MAX_TIMER_PRESETS) { setShowReplace(true); return; }
-      savePresetNow(mins);
-    }
     goToSession(mins);
   };
 
-  // Chosen slot to overwrite: delete it, save the new preset, then start.
-  const replaceWith = (id: string) => {
+  // Add the current focus duration to the saved presets (no session start). At the
+  // cap we open the replace picker so the user chooses which preset to overwrite.
+  const handleAddPreset = () => {
     const mins = focusMins;
-    deleteTimerPreset(id);
+    if (mins < 1 || mins > 300) { showPopup(t('customTimer.between1And300')); return; }
+    if (savedTimerPresets.length >= MAX_TIMER_PRESETS) { setShowReplace(true); return; }
     savePresetNow(mins);
+  };
+
+  // Chosen slot to overwrite: delete it, then save the new preset in its place.
+  const replaceWith = (id: string) => {
+    deleteTimerPreset(id);
+    savePresetNow(focusMins);
     setShowReplace(false);
-    goToSession(mins);
   };
 
   return (
@@ -268,30 +272,27 @@ export default function CustomTimerScreen() {
                 </ScrollView>
               </View>
 
-              {/* Save as preset */}
+              {/* Save as preset — add the current duration to your saved presets
+                  without starting a session. */}
               <View style={styles.presetCard}>
-                <View style={styles.presetTop}>
-                  <View style={styles.presetTextWrap}>
-                    <Text style={styles.presetTitle}>{t('customTimer.savePresetTitle')}</Text>
-                    <Text style={styles.presetSub}>{t('customTimer.savePresetSub')}</Text>
-                  </View>
-                  <Switch
-                    value={savePreset}
-                    onValueChange={setSavePreset}
-                    trackColor={{ false: C.shortbread, true: C.jam }}
-                    thumbColor="#fff"
-                  />
+                <View style={styles.presetTextWrap}>
+                  <Text style={styles.presetTitle}>{t('customTimer.savePresetTitle')}</Text>
+                  <Text style={styles.presetSub}>{t('customTimer.savePresetSub')}</Text>
                 </View>
-                {savePreset && (
-                  <TextInput
-                    style={styles.presetInput}
-                    value={presetName}
-                    onChangeText={setPresetName}
-                    placeholder={t('customTimer.presetNamePlaceholder')}
-                    placeholderTextColor={C.latte}
-                    returnKeyType="done"
-                  />
-                )}
+                <TextInput
+                  style={styles.presetInput}
+                  value={presetName}
+                  onChangeText={setPresetName}
+                  placeholder={t('customTimer.presetNamePlaceholder')}
+                  placeholderTextColor={C.latte}
+                  returnKeyType="done"
+                />
+                <SoundPressable
+                  sound="confirm"
+                  style={({ pressed }) => [styles.addPresetBtn, pressed && styles.pressed]}
+                  onPress={handleAddPreset}>
+                  <Text style={styles.addPresetText}>＋ {t('customTimer.addPreset')}</Text>
+                </SoundPressable>
               </View>
             </>
           )}
@@ -326,12 +327,6 @@ export default function CustomTimerScreen() {
                 </Pressable>
               ))}
             </ScrollView>
-            <SoundPressable
-              sound="confirm"
-              style={({ pressed }) => [styles.replaceStartBtn, pressed && styles.pressed]}
-              onPress={() => { setShowReplace(false); goToSession(focusMins); }}>
-              <Text style={styles.replaceStartText}>{t('customTimer.replaceStartWithout')}  →</Text>
-            </SoundPressable>
             <Pressable style={({ pressed }) => [styles.replaceCancel, pressed && styles.pressed]} onPress={() => setShowReplace(false)}>
               <Text style={styles.replaceCancelText}>{t('common.cancel')}</Text>
             </Pressable>
@@ -409,7 +404,6 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     borderWidth: 1.5, borderColor: 'rgba(195,143,114,0.18)',
     padding: Spacing.three * s, marginTop: 4 * s, gap: Spacing.two * s, ...BakeryShadow,
   },
-  presetTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   presetTextWrap: { flex: 1 },
   presetTitle: { fontSize: 12 * s, fontWeight: '800', color: C.cocoaDark, letterSpacing: 0.5 },
   presetSub: { fontSize: 11.5 * s, color: C.mocha, marginTop: 1 },
@@ -417,6 +411,11 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     borderWidth: 1.5, borderColor: C.shortbread, borderRadius: BakeryRadii.button,
     paddingHorizontal: 12 * s, paddingVertical: 10 * s, fontSize: 14 * s, color: C.cocoaDark, backgroundColor: C.frosting,
   },
+  addPresetBtn: {
+    borderRadius: BakeryRadii.pill, borderWidth: 1.5, borderColor: C.jam,
+    backgroundColor: 'rgba(228,138,154,0.12)', paddingVertical: 11 * s, alignItems: 'center',
+  },
+  addPresetText: { fontSize: 14 * s, fontWeight: '900', color: C.berry, letterSpacing: 0.2 },
 
   // Start
   startBtn: {
@@ -449,11 +448,6 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   replaceRowName: { fontSize: 14.5 * s, fontWeight: '800', color: C.cocoaDark },
   replaceRowMins: { fontSize: 12 * s, fontWeight: '600', color: C.mocha, marginTop: 1 },
   replaceRowAction: { fontSize: 13 * s, fontWeight: '900', color: C.berry },
-  replaceStartBtn: {
-    backgroundColor: '#F2A9BC', borderRadius: BakeryRadii.pill,
-    paddingVertical: 14 * s, alignItems: 'center', marginTop: Spacing.one * s, ...BakeryShadow,
-  },
-  replaceStartText: { fontSize: 15 * s, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.3 },
   replaceCancel: { alignItems: 'center', paddingVertical: 8 * s },
   replaceCancelText: { fontSize: 14 * s, fontWeight: '800', color: C.mocha },
 

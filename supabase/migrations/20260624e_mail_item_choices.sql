@@ -18,7 +18,7 @@ alter table public.mail add column if not exists item_choices text[];
 -- 1) Welcome gift: claim any ONE of the three pajama sets, free.
 insert into public.mail (title, body, item_choices)
 values (
-  'Welcome — pick a pajama set! 🌙',
+  'Welcome — pick a pajama set!',
   'A cozy welcome gift: choose any one of our three pajama outfits, on the house. (You''ll need to unlock its character before you can wear it.)',
   array['outfit_bun_dreams', 'outfit_tira_sleepover', 'outfit_honey_zzz']
 );
@@ -26,7 +26,7 @@ values (
 -- 2) Thanks-for-downloading gift: 500 coins (separate mail).
 insert into public.mail (title, body, coins)
 values (
-  'Thanks for downloading! 💝',
+  'Thanks for downloading!',
   'Here are 500 coins to get you started. Happy studying!',
   500
 );

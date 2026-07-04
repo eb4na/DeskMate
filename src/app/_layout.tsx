@@ -15,6 +15,7 @@ import { InviteListener } from '@/components/invite-listener';
 import { CharacterObtainedModal } from '@/components/character-obtained-modal';
 import { LegalConsentGate } from '@/components/legal-consent-gate';
 import { StarterChooser } from '@/components/starter-chooser';
+import { TutorialPortal } from '@/components/home-tutorial';
 import { PopupHost } from '@/components/popup-host';
 import { AppProvider } from '@/context/app-context';
 import { useApp } from '@/context/app-context';
@@ -424,6 +425,9 @@ function AppShell() {
           </ErrorBoundary>
         </LandscapeLetterbox>
         <InviteListener />
+        {/* Root-mounted so the coachmark overlay paints ABOVE the bottom tab bar
+            (Home drives its visibility via the tutorial signal). */}
+        <TutorialPortal />
         <PopupHost />
         <CharacterObtainedModal />
       </StudyRoomProvider>

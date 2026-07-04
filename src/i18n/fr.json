@@ -332,6 +332,8 @@
     "subjectHeader": "MATIÈRE (OPTIONNEL)",
     "savePresetTitle": "ENREGISTRER COMME PRÉRÉGLAGE",
     "savePresetSub": "Enregistre ta session pour la prochaine fois",
+    "addPreset": "Ajouter un préréglage",
+    "presetSaved": "Préréglage enregistré !",
     "presetLimitTitle": "Limite de préréglages atteinte",
     "presetLimitSub": "Tu peux enregistrer jusqu'à {{max}} préréglages. Choisis-en un à remplacer :",
     "replaceAction": "Remplacer",
@@ -1630,7 +1632,11 @@
     "claimedMsg": "Tu as reçu {{reward}}.",
     "claimedPlain": "Profite bien !",
     "chooseOne": "Choisis-en un à réclamer :",
-    "wearNote": "Il faudra débloquer le personnage correspondant pour pouvoir le porter."
+    "wearNote": "Il faudra débloquer le personnage correspondant pour pouvoir le porter.",
+    "welcomeTitle": "Bienvenue — choisis un pyjama !",
+    "welcomeBody": "Un cadeau de bienvenue tout doux : choisis l'un de nos trois pyjamas, offert. (Tu devras débloquer son personnage avant de pouvoir le porter.)",
+    "thanksTitle": "Merci d'avoir téléchargé !",
+    "thanksBody": "Voici 500 pièces pour bien démarrer. Bonnes révisions !"
   },
   "cake": {
     "back": "‹ Retour",

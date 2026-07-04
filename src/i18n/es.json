@@ -332,6 +332,8 @@
     "subjectHeader": "MATERIA (OPCIONAL)",
     "savePresetTitle": "GUARDAR COMO AJUSTE",
     "savePresetSub": "Guarda tu sesión para la próxima vez",
+    "addPreset": "Añadir ajuste",
+    "presetSaved": "¡Ajuste guardado!",
     "presetLimitTitle": "Límite de ajustes alcanzado",
     "presetLimitSub": "Puedes guardar hasta {{max}} ajustes. Elige uno para reemplazar:",
     "replaceAction": "Reemplazar",
@@ -1630,7 +1632,11 @@
     "claimedMsg": "Has recibido {{reward}}.",
     "claimedPlain": "¡Disfruta!",
     "chooseOne": "Elige uno para reclamar:",
-    "wearNote": "Tendrás que desbloquear el personaje correspondiente para poder usarlo."
+    "wearNote": "Tendrás que desbloquear el personaje correspondiente para poder usarlo.",
+    "welcomeTitle": "¡Bienvenida! Elige un pijama",
+    "welcomeBody": "Un acogedor regalo de bienvenida: elige uno de nuestros tres pijamas, gratis. (Tendrás que desbloquear su personaje antes de poder ponértelo.)",
+    "thanksTitle": "¡Gracias por descargar!",
+    "thanksBody": "Aquí tienes 500 monedas para empezar. ¡Feliz estudio!"
   },
   "cake": {
     "back": "‹ Atrás",

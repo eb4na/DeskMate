@@ -332,6 +332,8 @@
     "subjectHeader": "科目（任意）",
     "savePresetTitle": "プリセットとして保存",
     "savePresetSub": "次回のためにセッションを保存",
+    "addPreset": "プリセットを追加",
+    "presetSaved": "プリセットを保存しました！",
     "presetLimitTitle": "プリセットの上限に達しました",
     "presetLimitSub": "プリセットは最大{{max}}個まで保存できます。置き換えるものを選んでください：",
     "replaceAction": "置き換える",
@@ -1630,7 +1632,11 @@
     "claimedMsg": "{{reward}}を手に入れた！",
     "claimedPlain": "どうぞ！",
     "chooseOne": "ひとつ選んで受け取ってね：",
-    "wearNote": "着るには、対応するキャラクターを先に解放する必要があるよ。"
+    "wearNote": "着るには、対応するキャラクターを先に解放する必要があるよ。",
+    "welcomeTitle": "ようこそ — パジャマを選んでね！",
+    "welcomeBody": "ほっこりする歓迎ギフト：3着のパジャマから好きな1着を無料で選んでね。（着るには、そのキャラクターを先に解放する必要があります。）",
+    "thanksTitle": "ダウンロードありがとう！",
+    "thanksBody": "スタート応援に500コインをどうぞ。楽しく勉強してね！"
   },
   "cake": {
     "back": "‹ 戻る",

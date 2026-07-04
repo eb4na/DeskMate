@@ -27,7 +27,7 @@ import { getReminderStyleEffect } from '@/constants/shop-effects';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { nextLoginReward, todayISO, useApp } from '@/context/app-context';
-import { HomeTutorial } from '@/components/home-tutorial';
+import { setTutorialVisible } from '@/lib/tutorial-signal';
 import { DiscoBackdrop } from '@/components/disco-backdrop';
 import { setTutorialTarget } from '@/lib/tutorial-targets';
 import i18n, { useTranslation } from '@/i18n';
@@ -528,7 +528,6 @@ export default function HomeScreen() {
     starterChosen,
     legalAccepted,
     tutorialSeen,
-    markTutorialSeen,
     ambienceId,
     equippedShopItems,
     examCountdowns,
@@ -725,6 +724,20 @@ export default function HomeScreen() {
       .catch(() => {});
     return () => { cancelled = true; setHomeFocused(false); };
   }, [startBounce, user?.id]));
+
+  // First-launch coachmark tour — only after onboarding, and only once the
+  // daily-reward popup is out of the way (so the two never stack). Replaying it
+  // from Settings just flips tutorialSeen back off. Home owns the gate but the
+  // overlay is PAINTED by a root-mounted TutorialPortal (via this signal) so it
+  // sits ABOVE the bottom tab bar — otherwise the tasks/shop step cards hide
+  // behind the bar (the Tabs navigator paints the bar over every tab screen).
+  const showTutorial =
+    homeFocused && !activeSession && legalAccepted && starterChosen && !tutorialSeen &&
+    !nextLoginReward({ loginRewardDate, streak, isPlus, streakFreezes }, todayISO()).available;
+  useEffect(() => {
+    setTutorialVisible(showTutorial);
+    return () => setTutorialVisible(false);
+  }, [showTutorial]);
 
 
   const handleIngredientDropped = (id: DragId) => {
@@ -1411,13 +1424,8 @@ export default function HomeScreen() {
         }}
         onSkip={() => setEarlyEndMoodMinutes(null)}
       />
-      {/* First-launch coachmark tour — only after onboarding, and only once the
-          daily-reward popup is out of the way (so the two never stack). Replaying
-          it from Settings just flips tutorialSeen back off. */}
-      {homeFocused && legalAccepted && starterChosen && !tutorialSeen &&
-        !nextLoginReward({ loginRewardDate, streak, isPlus, streakFreezes }, todayISO()).available && (
-          <HomeTutorial onDone={markTutorialSeen} />
-        )}
+      {/* Coachmark tour is painted at the root (TutorialPortal) so it sits above
+          the tab bar — its visibility is driven by the effect above via the signal. */}
       <DevKnobs screen="home" knobs={homeKnobs} onChange={(key, value) => setDialed((p) => ({ ...p, [key]: value }))} />
     </ThemedView>
   );

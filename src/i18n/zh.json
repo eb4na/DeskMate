@@ -332,6 +332,8 @@
     "subjectHeader": "科目（可选）",
     "savePresetTitle": "保存为预设",
     "savePresetSub": "保存本次会话以便下次使用",
+    "addPreset": "添加预设",
+    "presetSaved": "预设已保存！",
     "presetLimitTitle": "预设已达上限",
     "presetLimitSub": "最多可保存 {{max}} 个预设。请选择一个替换：",
     "replaceAction": "替换",
@@ -1630,7 +1632,11 @@
     "claimedMsg": "你获得了 {{reward}}。",
     "claimedPlain": "尽情享受吧！",
     "chooseOne": "选择一件领取：",
-    "wearNote": "需要先解锁对应的角色，才能穿上它哦。"
+    "wearNote": "需要先解锁对应的角色，才能穿上它哦。",
+    "welcomeTitle": "欢迎 — 挑选一套睡衣吧！",
+    "welcomeBody": "温馨的欢迎礼物：从三套睡衣中任选一套，免费赠送。（需要先解锁对应角色才能穿上哦。）",
+    "thanksTitle": "感谢下载！",
+    "thanksBody": "送你500金币作为起步。学习愉快！"
   },
   "cake": {
     "back": "‹ 返回",

@@ -10,6 +10,8 @@ import { useTranslation } from '@/i18n';
 
 import { ThemedText } from '@/components/themed-text';
 import { measureTutorialTarget, type TargetRect } from '@/lib/tutorial-targets';
+import { subscribeTutorialVisible } from '@/lib/tutorial-signal';
+import { useApp } from '@/context/app-context';
 import { BakeryColors } from '@/constants/theme';
 
 // The most important starting features, in order. Edit this array to change which
@@ -24,6 +26,20 @@ const STEPS: { target: string; titleKey: string; bodyKey: string }[] = [
   { target: 'tasks', titleKey: 'tutorial.tasks_title', bodyKey: 'tutorial.tasks_body' },
   { target: 'shop', titleKey: 'tutorial.shop_title', bodyKey: 'tutorial.shop_body' },
 ];
+
+// Mounted once at the app ROOT (a sibling of the whole navigator) so the coachmark
+// overlay paints ABOVE the bottom tab bar — the Tabs navigator draws the bar on top
+// of every tab screen, so a tutorial rendered inside Home would hide its tasks/shop
+// step cards behind the bar. Home decides *when* to show it via the tutorial signal;
+// this portal only paints. onDone flips `tutorialSeen`, which flips Home's gate off,
+// which publishes `false` back here — so it hides reactively.
+export function TutorialPortal() {
+  const { markTutorialSeen } = useApp();
+  const [visible, setVisible] = useState(false);
+  useEffect(() => subscribeTutorialVisible(setVisible), []);
+  if (!visible) return null;
+  return <HomeTutorial onDone={markTutorialSeen} />;
+}
 
 const CARD_W = 250;
 const SCREEN_PAD = 16;

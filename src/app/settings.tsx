@@ -45,8 +45,8 @@ import { useAuth } from '@/context/auth-context';
 import { supabase } from '@/lib/supabase';
 import { linkProvider } from '@/lib/oauth';
 import { AppleLogoIcon, GoogleGIcon, LockIcon } from '@/components/auth-icons';
+import { ReplayGlyph, TrashGlyph } from '@/components/settings-glyphs';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
-import { getAmbienceName } from '@/app/ambience-picker';
 import i18n, { LANGUAGES, useTranslation } from '@/i18n';
 import { DateWheelPicker } from '@/components/date-wheel-picker';
 
@@ -135,7 +135,6 @@ export default function SettingsScreen() {
     coins,
     isPlus,
     profileDisplayName,
-    ambienceId,
     reminderEnabled,
     language,
     setLanguage,
@@ -559,13 +558,6 @@ export default function SettingsScreen() {
               value={t('settings.manageSubjectsNote')}
               onPress={() => router.push('/manage-subjects')}
             />
-            <View style={styles.divider} />
-            <SettingRow
-              icon={<SettingsIcon name="radio" />}
-              label={t('settings.ambienceSounds')}
-              value={ambienceId ? getAmbienceName(ambienceId) : isPlus ? t('settings.noneSelected') : t('settings.plusFeature')}
-              onPress={() => router.push('/ambience-picker')}
-            />
           </ThemedView>
 
           {/* Reminders */}
@@ -590,13 +582,6 @@ export default function SettingsScreen() {
                 thumbColor="#FFF"
               />
             </View>
-            <View style={styles.divider} />
-            <SettingRow
-              icon={<SettingsIcon name="gear" />}
-              label={t('settings.reminderSettings')}
-              value={t('settings.reminderSettingsNote')}
-              onPress={() => router.push('/reminder-settings')}
-            />
             <View style={styles.divider} />
             <View style={styles.row}>
               <View style={styles.rowIconImage}>
@@ -686,24 +671,10 @@ export default function SettingsScreen() {
             )}
             <View style={styles.divider} />
             <SettingRow
-              icon={<SettingsIcon name="reset" />}
+              icon={<ReplayGlyph />}
               label={t('tutorial.replay')}
               value={t('tutorial.replayNote')}
               onPress={() => { replayTutorial(); router.back(); }}
-            />
-            <View style={styles.divider} />
-            <SettingRow
-              icon={<SettingsIcon name="progress" />}
-              label={t('settings.progressStats')}
-              value={t('settings.progressStatsNote')}
-              onPress={() => router.push('/progress')}
-            />
-            <View style={styles.divider} />
-            <SettingRow
-              icon={<SettingsIcon name="feedback" />}
-              label={t('settings.sendFeedback')}
-              value={t('settings.sendFeedbackNote')}
-              onPress={() => Linking.openURL('mailto:hello@memobun.app?subject=Memobun%20Feedback')}
             />
             <View style={styles.divider} />
             <SettingRow
@@ -734,7 +705,7 @@ export default function SettingsScreen() {
               onPress={() => setDeleteOpen(true)}
               style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
               <View style={styles.rowIconImage}>
-                <SettingsIcon name="reset" />
+                <TrashGlyph />
               </View>
               <View style={styles.rowBody}>
                 <ThemedText type="smallBold" style={styles.dangerText}>

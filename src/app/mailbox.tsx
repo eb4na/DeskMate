@@ -17,7 +17,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useIsTablet } from '@/hooks/use-device-class';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
-import { fetchMail, fetchMailClaims, type Mail } from '@/lib/mail';
+import { fetchMail, fetchMailClaims, localizeMail, type Mail } from '@/lib/mail';
 import { BUN_SKINS, COMPANION_SKINS, localizeCompanionName, localizeOutfitName } from '@/lib/companion-utils';
 import { SHOP_ITEMS } from '@/constants/shop-data';
 import { BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -137,7 +137,7 @@ export default function MailboxScreen() {
                   style={({ pressed }) => [styles.envRow, isTablet && styles.envRowTablet, pressed && styles.pressed]}>
                   <EnvelopeClosed width={isTablet ? 92 : 58} sealed={!claimed} />
                   <ThemedText type="smallBold" numberOfLines={2} style={[styles.envTitle, isTablet && styles.envTitleTablet, claimed && styles.envTitleRead]}>
-                    {m.title}
+                    {localizeMail(m, t).title}
                   </ThemedText>
                   <ThemedText style={[styles.chev, isTablet && styles.chevTablet]}>›</ThemedText>
                 </Pressable>
@@ -167,10 +167,11 @@ function OpenLetter({ mail: m, isTablet, claimed, pickedId, onPick, onClaim, t }
   const needsPick = isChoice && !pickedId;
   const imgSize = isTablet ? 168 : 92;
 
+  const ml = localizeMail(m, t);
   return (
     <ThemedView type="backgroundElement" style={styles.letter}>
-      <ThemedText type="smallBold" style={styles.letterTitle}>{m.title}</ThemedText>
-      {!!m.body && <ThemedText type="small" themeColor="textSecondary" style={styles.letterBody}>{m.body}</ThemedText>}
+      <ThemedText type="smallBold" style={styles.letterTitle}>{ml.title}</ThemedText>
+      {!!ml.body && <ThemedText type="small" themeColor="textSecondary" style={styles.letterBody}>{ml.body}</ThemedText>}
 
       {/* Coins + a single fixed item reward (with preview). */}
       {(m.coins > 0 || !!m.itemId) && (
