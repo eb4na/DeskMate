@@ -1606,6 +1606,7 @@
   },
   "calendar": {
     "calendar": "Calendrier",
+    "noDate": "Sans date",
     "searchPreview": "Rechercher et aperçu",
     "searchTasks": "Rechercher des tâches…",
     "noMatch": "Aucune tâche ne correspond à « {{query}} ».",

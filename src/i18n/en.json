@@ -1606,6 +1606,7 @@
   },
   "calendar": {
     "calendar": "Calendar",
+    "noDate": "No date",
     "searchPreview": "Search & preview",
     "searchTasks": "Search tasks…",
     "noMatch": "No tasks match “{{query}}”.",

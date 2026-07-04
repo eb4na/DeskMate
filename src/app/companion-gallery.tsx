@@ -12,7 +12,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { noteModalTransition, useReportModalTransition } from '@/lib/modal-traffic';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
@@ -170,6 +170,8 @@ function GalleryContent() {
   const [wardrobeFor, setWardrobeFor] = useState<{ id: string; name: string } | null>(null);
   // In-place unlock popup for a coin-priced item (a locked companion or skin).
   const [buyItem, setBuyItem] = useState<{ id: string; name: string; image: number | null; price: number } | null>(null);
+  // When the unlock popup is buying a wardrobe skin, wear it right after purchase.
+  const buySkinRef = useRef<BunSkin | null>(null);
   // Plus-exclusive outfit popup (custom — replaces the native alert).
   const [plusAlertName, setPlusAlertName] = useState<string | null>(null);
   // Generic IN-FILE alert/confirm. Replaces root showPopup, which cannot present over
@@ -205,6 +207,11 @@ function GalleryContent() {
       return;
     }
     purchaseShopItem(buyItem.id, buyPrice);
+    // A wardrobe-skin purchase is worn immediately so the player sees it on.
+    if (buySkinRef.current) {
+      equipWardrobeSkin(buySkinRef.current.id);
+      buySkinRef.current = null;
+    }
     setBuyItem(null);
   };
 
@@ -240,33 +247,19 @@ function GalleryContent() {
   };
   const wardrobeIsBun = wardrobeFor?.id === getStarterActiveId('girl');
   // Skins for the open wardrobe (Bun uses its own list; shop companions use COMPANION_SKINS).
-  const wardrobeSkins = wardrobeFor ? (wardrobeIsBun ? BUN_SKINS : getCompanionSkins(wardrobeFor.id)) : [];
+  // Shown cheapest -> most expensive; base/owned skins (no shop item) count as 0 and sort
+  // first. Sort a copy so the source lists keep their data order.
+  const skinPrice = (skin: { shopItemId?: string | null }) =>
+    skin.shopItemId ? (getShopItem(skin.shopItemId)?.price ?? 0) : 0;
+  const wardrobeSkins = wardrobeFor
+    ? [...(wardrobeIsBun ? BUN_SKINS : getCompanionSkins(wardrobeFor.id))].sort((a, b) => skinPrice(a) - skinPrice(b))
+    : [];
   const wardrobeEquipped = wardrobeIsBun
     ? (bunSkinId ?? 'classic')
     : (wardrobeFor ? (companionSkins[wardrobeFor.id] ?? 'classic') : 'classic');
   const equipWardrobeSkin = (skinId: string) => {
     if (wardrobeIsBun) setBunSkin(skinId);
     else if (wardrobeFor) setCompanionSkin(wardrobeFor.id, skinId);
-  };
-
-  // Leave for the Shop with the buy popup pre-opened (a locked outfit, or a chain-link
-  // look that still needs buying). The wardrobe is a native <Modal>; navigating while
-  // it's still on screen risks the iOS stacked-modal freeze, so on iOS we close it
-  // first and navigate on its REAL onDismiss (see handleWardrobeDismissed).
-  const shopRoute = useRef<Record<string, string> | null>(null);
-  const leaveToShop = (params: Record<string, string>) => {
-    const go = () => {
-      // Stamp the route dismiss so the Shop's buy popup waits it out before it
-      // presents (else it collides with this modal screen sliding away → freeze).
-      noteModalTransition();
-      router.replace({ pathname: '/shop', params });
-    };
-    if (Platform.OS !== 'ios') {
-      if (wardrobeFor) { setWardrobeFor(null); setTimeout(go, 350); } else go();
-      return;
-    }
-    if (wardrobeFor) { shopRoute.current = params; setWardrobeFor(null); }
-    else go();
   };
 
   // The chain icon: set the outfit's matched room (background + desk) and wear the
@@ -280,10 +273,9 @@ function GalleryContent() {
     // The whole look is owned only when the room AND the outfit are owned.
     const lookOwned = isPairOwned(pair, ownedShopItems) && (!skin.shopItemId || ownedShopItems.includes(skin.shopItemId));
     if (!lookOwned) {
-      // Send them to the Shop with the matched look's buy popup open (room + outfit).
-      const params: Record<string, string> = { buyPair: (pair.backgroundId ?? pair.deskId) as string };
-      if (skin.shopItemId) params.buyOutfit = skin.shopItemId;
-      leaveToShop(params);
+      // Buy the whole look (room + outfit) in place — the pair-buy popup presents
+      // fine over this screen, unlike a navigation to the Shop mid-modal (freeze).
+      setPairBuy({ pair, skin });
       return;
     }
     // Fully owned — preview the room (and its desk, if any) and confirm before applying.
@@ -351,17 +343,6 @@ function GalleryContent() {
   // onDismiss of the wardrobe sheet: once it's fully gone, leave for home (only when a
   // teardown is in flight — a plain wardrobe close must stay put).
   const handleWardrobeDismissed = () => {
-    // A pending shop route (locked outfit / chain-link buy) leaves for the Shop once
-    // the wardrobe is fully gone — no navigation while the modal is still transitioning.
-    if (shopRoute.current) {
-      const params = shopRoute.current;
-      shopRoute.current = null;
-      // Stamp the route dismiss so the Shop's buy popup waits it out before it
-      // presents (else it collides with this modal screen sliding away → freeze).
-      noteModalTransition();
-      router.replace({ pathname: '/shop', params });
-      return;
-    }
     if (teardownStage.current === 'goHome') {
       teardownStage.current = null;
       goHome();
@@ -510,7 +491,6 @@ function GalleryContent() {
         </Pressable>
       </SafeAreaView>
 
-
       {/* Wardrobe — per-companion outfit picker */}
       <Modal
         visible={!!wardrobeFor}
@@ -519,10 +499,13 @@ function GalleryContent() {
         onDismiss={handleWardrobeDismissed}
         onRequestClose={() => { if (lorePopup) { setLorePopup(null); } else { setWardrobeFor(null); } }}>
         <View style={styles.wardrobeBackdrop}>
-          <View style={styles.wardrobeSheet}>
+          <View style={[styles.wardrobeSheet, { maxHeight: winH * 0.85 }]}>
             <Text style={styles.wardrobeTitle}>{t('gallery.wardrobeTitle', { name: wardrobeFor?.name ?? '' })}</Text>
             {wardrobeSkins.length > 0 ? (
-              <>
+              <ScrollView
+                style={styles.wardrobeScroll}
+                contentContainerStyle={styles.wardrobeScrollContent}
+                showsVerticalScrollIndicator={false}>
                 <Text style={styles.wardrobeSubtitle}>{t('gallery.pickOutfit', { name: wardrobeFor?.name ?? '' })}</Text>
                 <View style={styles.skinGrid}>
                   {wardrobeSkins.map((skin) => {
@@ -539,8 +522,10 @@ function GalleryContent() {
                               if (item?.plusOnly) {
                                 setPlusAlertName(localizeOutfitName(skin.name, t));
                               } else if (item && wardrobeFor) {
-                                // Send them to the Shop with this outfit's buy popup open.
-                                leaveToShop({ outfitItem: item.id, outfitChar: wardrobeFor.id });
+                                // Buy in place — leaving for the Shop from inside the
+                                // wardrobe modal risks the iOS stacked-modal freeze.
+                                buySkinRef.current = skin;
+                                setBuyItem({ id: item.id, name: localizeOutfitName(skin.name, t), image: skin.image, price: item.price });
                               }
                             } else {
                               equipWardrobeSkin(skin.id);
@@ -569,7 +554,7 @@ function GalleryContent() {
                             <Text style={styles.skinTap}>
                               {skin.shopItemId && getShopItem(skin.shopItemId)?.plusOnly
                                 ? t('gallery.plusOnlyHint')
-                                : t('gallery.buyInShop')}
+                                : t('editRoom.tapToUnlock')}
                             </Text>
                           ) : equipped ? (
                             <View style={styles.skinPill}>
@@ -591,7 +576,7 @@ function GalleryContent() {
                     );
                   })}
                 </View>
-              </>
+              </ScrollView>
             ) : (
               <View style={styles.wardrobeEmpty}>
                 <Text style={styles.wardrobeEmptyTitle}>{t('gallery.noOutfitsYet')}</Text>
@@ -917,6 +902,10 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     alignSelf: 'center',
   },
   wardrobeTitle: { fontSize: 20 * s, fontWeight: '800', color: P.brown, textAlign: 'center' },
+  // Scroll region between the fixed title and the pinned Done button, so wardrobes with
+  // many outfits stay reachable (the sheet itself is capped at 85% screen height).
+  wardrobeScroll: { flexShrink: 1, alignSelf: 'stretch' },
+  wardrobeScrollContent: { gap: Spacing.three * s, paddingBottom: Spacing.two * s },
   wardrobeSubtitle: { fontSize: 13 * s, color: P.mutedBrown, fontWeight: '500', textAlign: 'center', marginTop: -6 * s },
   wardrobeEmpty: { alignItems: 'center', gap: 6 * s, paddingVertical: Spacing.four * s },
   wardrobeEmptyTitle: { fontSize: 16 * s, fontWeight: '800', color: P.brown },

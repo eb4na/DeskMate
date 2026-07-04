@@ -1117,7 +1117,7 @@
     "companionBakery": "コンパニオンベーカリー",
     "chooseToday": "今日一緒に勉強する仲間を選ぼう",
     "myCompanions": "マイコンパニオン",
-    "level": "Lv{{level}}",
+    "level": "レベル{{level}}",
     "defaultTagline": "あなたの勉強仲間",
     "active": "使用中",
     "setActive": "使用する",
@@ -1606,6 +1606,7 @@
   },
   "calendar": {
     "calendar": "カレンダー",
+    "noDate": "日付なし",
     "searchPreview": "検索とプレビュー",
     "searchTasks": "タスクを検索…",
     "noMatch": "「{{query}}」に一致するタスクはありません。",

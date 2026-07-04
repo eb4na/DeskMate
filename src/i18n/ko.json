@@ -1117,7 +1117,7 @@
     "companionBakery": "친구 베이커리",
     "chooseToday": "오늘 함께 공부할 친구를 선택하세요",
     "myCompanions": "내 친구들",
-    "level": "Lv{{level}}",
+    "level": "레벨 {{level}}",
     "defaultTagline": "당신의 공부 친구",
     "active": "사용 중",
     "setActive": "사용 설정",
@@ -1606,6 +1606,7 @@
   },
   "calendar": {
     "calendar": "캘린더",
+    "noDate": "날짜 없음",
     "searchPreview": "검색 & 미리보기",
     "searchTasks": "작업 검색…",
     "noMatch": "「{{query}}」와(과) 일치하는 작업이 없습니다.",
