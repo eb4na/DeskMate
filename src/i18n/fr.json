@@ -1797,14 +1797,20 @@
     "chocoMint": "Choco Menthe",
     "sleepover": "Soirée Pyjama",
     "champion": "Champion",
-    "zzz": "ZZZ",
+    "zzz": "Dodo",
     "jiraiKei": "Jirai Kei",
     "bluePeony": "Pivoine Bleue",
     "bluebell": "Campanule",
     "berryPrincess": "Princesse Berry",
     "ivoryRose": "Rose Ivoire",
     "strawberryDreams": "Rêves de Fraise",
-    "afternoonTrain": "Carefree Days"
+    "afternoonTrain": "Jours Insouciants",
+    "strawberry": "Fraise",
+    "snowRabbit": "Lapin des Neiges",
+    "gracefulWalk": "Démarche Gracieuse",
+    "honeyBear": "Ours au Miel",
+    "cutestThingEver": "La Plus Mignonne",
+    "quietLavender": "Lavande Paisible"
   },
   "studyDesk": {
     "title": "Petite pause",

@@ -19,7 +19,7 @@ import { useAuth } from '@/context/auth-context';
 import i18n, { useTranslation } from '@/i18n';
 import { FREE_HISTORY_MONTHS, historyCutoffISO } from '@/lib/history-window';
 import { localizeSubjectName } from '@/lib/subject-utils';
-import { formatDuration } from '@/lib/format-duration';
+import { formatDuration, formatMinutesShort } from '@/lib/format-duration';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { AFTER_SESSION_MOODS, BEFORE_SESSION_MOODS } from '@/constants/placeholder-data';
 
@@ -244,7 +244,7 @@ export default function ProgressScreen() {
           {t(`moods.${entry.value}`, { defaultValue: entry.label })}
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.moodMeta}>
-          {entry.sessionMinutes}m · {dateStr}
+          {formatMinutesShort(entry.sessionMinutes, t)} · {dateStr}
         </ThemedText>
       </ThemedView>
     );
@@ -498,14 +498,14 @@ export default function ProgressScreen() {
               <ThemedText type="smallBold">{t('progress.sessionInsights')}</ThemedText>
               <ThemedView style={styles.insightRow}>
                 <ThemedView type="backgroundElement" style={styles.insightCard}>
-                  <ThemedText style={styles.insightValue}>{avgMinutes}m</ThemedText>
+                  <ThemedText style={styles.insightValue}>{formatMinutesShort(avgMinutes, t)}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary" style={styles.insightLabel}>
                     {t('progress.avgSession')}
                   </ThemedText>
                 </ThemedView>
                 {bestDayEntry && (
                   <ThemedView type="backgroundElement" style={styles.insightCard}>
-                    <ThemedText style={styles.insightValue}>{bestDayEntry[1]}m</ThemedText>
+                    <ThemedText style={styles.insightValue}>{formatMinutesShort(bestDayEntry[1], t)}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary" style={styles.insightLabel}>
                       {t('progress.bestDay', { date: formatDate(bestDayEntry[0]) })}
                     </ThemedText>

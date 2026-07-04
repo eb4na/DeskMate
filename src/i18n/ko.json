@@ -1797,14 +1797,20 @@
     "chocoMint": "초코민트",
     "sleepover": "파자마 파티",
     "champion": "챔피언",
-    "zzz": "ZZZ",
+    "zzz": "쿨쿨",
     "jiraiKei": "지뢰계",
     "bluePeony": "푸른 모란",
     "bluebell": "블루벨",
     "berryPrincess": "베리 프린세스",
     "ivoryRose": "아이보리 로즈",
     "strawberryDreams": "딸기 꿈",
-    "afternoonTrain": "Carefree Days"
+    "afternoonTrain": "여유로운 나날",
+    "strawberry": "딸기",
+    "snowRabbit": "눈토끼",
+    "gracefulWalk": "우아한 걸음",
+    "honeyBear": "허니 베어",
+    "cutestThingEver": "세상에서 제일 귀여워",
+    "quietLavender": "고요한 라벤더"
   },
   "studyDesk": {
     "title": "잠시 휴식 중",

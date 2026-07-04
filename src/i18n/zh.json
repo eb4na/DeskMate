@@ -1797,14 +1797,20 @@
     "chocoMint": "巧克力薄荷",
     "sleepover": "过夜派对",
     "champion": "冠军",
-    "zzz": "ZZZ",
+    "zzz": "呼呼",
     "jiraiKei": "地雷系",
     "bluePeony": "蓝牡丹",
     "bluebell": "蓝铃花",
     "berryPrincess": "莓果公主",
     "ivoryRose": "象牙玫瑰",
     "strawberryDreams": "草莓甜梦",
-    "afternoonTrain": "Carefree Days"
+    "afternoonTrain": "悠闲时光",
+    "strawberry": "草莓",
+    "snowRabbit": "雪兔",
+    "gracefulWalk": "优雅漫步",
+    "honeyBear": "蜂蜜熊",
+    "cutestThingEver": "最可爱的存在",
+    "quietLavender": "静谧薰衣草"
   },
   "studyDesk": {
     "title": "正在休息",

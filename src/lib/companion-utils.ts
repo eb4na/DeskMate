@@ -59,6 +59,13 @@ const OUTFIT_NAME_KEYS: Record<string, string> = {
   'Ivory Rose': 'outfitNames.ivoryRose',
   'Strawberry Dreams': 'outfitNames.strawberryDreams',
   'Carefree Days': 'outfitNames.afternoonTrain',
+  // Classic / default skins (were falling through to raw English in the wardrobe).
+  Strawberry: 'outfitNames.strawberry',
+  'Snow Rabbit': 'outfitNames.snowRabbit',
+  'Graceful Walk': 'outfitNames.gracefulWalk',
+  'Honey Bear': 'outfitNames.honeyBear',
+  'Cutest Thing Ever': 'outfitNames.cutestThingEver',
+  'Quiet Lavender': 'outfitNames.quietLavender',
 };
 
 /** Localize an outfit/skin name; returns the input unchanged if unmapped. */

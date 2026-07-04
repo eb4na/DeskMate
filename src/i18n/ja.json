@@ -1797,14 +1797,20 @@
     "chocoMint": "チョコミント",
     "sleepover": "お泊まり",
     "champion": "チャンピオン",
-    "zzz": "ZZZ",
+    "zzz": "スヤスヤ",
     "jiraiKei": "地雷系",
     "bluePeony": "青い牡丹",
     "bluebell": "ブルーベル",
     "berryPrincess": "ベリープリンセス",
     "ivoryRose": "アイボリーローズ",
     "strawberryDreams": "ストロベリードリーム",
-    "afternoonTrain": "Carefree Days"
+    "afternoonTrain": "のんびりな日々",
+    "strawberry": "ストロベリー",
+    "snowRabbit": "スノーラビット",
+    "gracefulWalk": "優雅な歩み",
+    "honeyBear": "ハニーベア",
+    "cutestThingEver": "世界一かわいい",
+    "quietLavender": "静かなラベンダー"
   },
   "studyDesk": {
     "title": "休憩中",

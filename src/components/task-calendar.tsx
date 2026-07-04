@@ -25,6 +25,7 @@ import { useApp } from '@/context/app-context';
 import type { Task } from '@/context/app-context';
 import i18n from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
+import { formatMinutesShort } from '@/lib/format-duration';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 
@@ -102,7 +103,7 @@ function TaskPreviewCard({ task }: { task: Task }) {
               <Text style={styles.taskMetaText}>{time}</Text>
             </View>
           )}
-          {task.estimatedMinutes ? <Text style={styles.taskMetaText}>{task.estimatedMinutes}m</Text> : null}
+          {task.estimatedMinutes ? <Text style={styles.taskMetaText}>{formatMinutesShort(task.estimatedMinutes, (k, o) => i18n.t(k, o))}</Text> : null}
         </View>
       </View>
     </Pressable>

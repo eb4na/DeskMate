@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import i18n from '@/i18n';
+import { formatMinutesShort } from '@/lib/format-duration';
 import { playTick } from '@/lib/sounds';
 import { BakeryColors, BakeryRadii, BakeryShadow } from '@/constants/theme';
 
@@ -120,7 +121,7 @@ export function DurationWheel({
         <View style={styles.pickRow}>
           {picks.map((m) => (
             <Pressable key={m} onPress={() => { playTick(); apply(m); }} style={[styles.pick, minutes === m && styles.pickActive]}>
-              <Text style={[styles.pickText, minutes === m && styles.pickTextActive]}>{m}m</Text>
+              <Text style={[styles.pickText, minutes === m && styles.pickTextActive]}>{formatMinutesShort(m, (k, o) => i18n.t(k, o))}</Text>
             </Pressable>
           ))}
         </View>
