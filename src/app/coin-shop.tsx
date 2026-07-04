@@ -161,19 +161,25 @@ export default function CoinShopScreen() {
         showPopup(t('coinShop.adLimitReached'), t('coinShop.adLimitReachedMsg', { total: DAILY_AD_LIMIT }));
       }
     };
+    // __DEV__ ONLY: grant without a real ad. The simulator has no real ad inventory,
+    // and a dev-client build may not even include the AdMob native module — so a real
+    // ad often can't show in dev. Never runs in production (fail-closed below).
+    const mockGrant = () =>
+      showPopup(t('coinShop.watchAdTitle'), t('coinShop.watchAdMock', { coins: AD_REWARD_COINS }), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('coinShop.watchAdButton'), onPress: grant },
+      ]);
     if (!adsReady()) {
-      if (__DEV__) {
-        showPopup(t('coinShop.watchAdTitle'), t('coinShop.watchAdMock', { coins: AD_REWARD_COINS }), [
-          { text: t('common.cancel'), style: 'cancel' },
-          { text: t('coinShop.watchAdButton'), onPress: grant },
-        ]);
-      } else {
-        showPopup(t('coinShop.adUnavailable'), t('coinShop.adUnavailableMsg'));
-      }
+      if (__DEV__) mockGrant();
+      else showPopup(t('coinShop.adUnavailable'), t('coinShop.adUnavailableMsg'));
       return;
     }
     const res = await showRewardedAd();
-    if (res.rewarded) grant();
+    if (res.rewarded) { grant(); return; }
+    // Real ad couldn't be shown (no inventory on the sim, or the native module isn't in
+    // this build). In dev, fall back to the mock grant so the reward flow stays testable;
+    // production stays fail-closed — coins are granted ONLY on a real EARNED_REWARD.
+    if (__DEV__) mockGrant();
     else showPopup(t('coinShop.adUnavailable'), t('coinShop.adUnavailableMsg'));
   };
 
@@ -311,7 +317,7 @@ export default function CoinShopScreen() {
                 <ThemedView style={styles.plusBadge}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     <LockBadge size={16 * scale} />
-                    <ThemedText style={styles.plusBadgeText}>Plus</ThemedText>
+                    <ThemedText style={styles.plusBadgeText}>{t('common.plusLabel')}</ThemedText>
                   </View>
                 </ThemedView>
               </ThemedView>

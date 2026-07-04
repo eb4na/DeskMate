@@ -152,6 +152,9 @@ export default function SettingsScreen() {
     bunSkinId,
     companionSkins,
     resetGameData,
+    previewBondLevelUp,
+    devLapseStreak,
+    devUnlockHanji,
     replayTutorial,
     claimedMailIds,
     profileBirthday,
@@ -489,6 +492,42 @@ export default function SettingsScreen() {
                 <ThemedText type="small" themeColor="textSecondary">Test button — keeps your account, removes everything owned (back to just Bun), grants 1M coins</ThemedText>
               </View>
             </Pressable>
+            {/* TEST — preview the bond/chef level-up celebration on Home without studying. */}
+            <Pressable
+              onPress={() => { previewBondLevelUp(); router.back(); }}
+              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
+              <View style={styles.rowIconImage}>
+                <SettingsIcon name="reset" />
+              </View>
+              <View style={styles.rowBody}>
+                <ThemedText type="smallBold">Preview level-up</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">Test button — shows the level-up celebration on Home for your active companion</ThemedText>
+              </View>
+            </Pressable>
+            {/* TEST — grant all recipes + badges, actually grant Hanji, and show the unlock celebration. */}
+            <Pressable
+              onPress={() => { devUnlockHanji(); router.back(); }}
+              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
+              <View style={styles.rowIconImage}>
+                <SettingsIcon name="reset" />
+              </View>
+              <View style={styles.rowBody}>
+                <ThemedText type="smallBold">Unlock Hanji</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">Test button — grants all recipes &amp; badges, gives you Hanji, and shows the unlock celebration on Home</ThemedText>
+              </View>
+            </Pressable>
+            {/* TEST — fake a 1-day streak lapse (+1 freeze) so the "Use streak freeze" rescue prompt shows on Home. */}
+            <Pressable
+              onPress={() => { devLapseStreak(); router.back(); }}
+              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
+              <View style={styles.rowIconImage}>
+                <SettingsIcon name="reset" />
+              </View>
+              <View style={styles.rowBody}>
+                <ThemedText type="smallBold">Test streak freeze</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">Test button — fakes a 1-day streak lapse and gives you a freeze, so the “Use streak freeze” prompt appears on Home</ThemedText>
+              </View>
+            </Pressable>
             </>
             )}
           </ThemedView>
@@ -681,8 +720,8 @@ export default function SettingsScreen() {
             <View style={styles.divider} />
             <SettingRow
               icon={<SettingsIcon name="info" />}
-              label="Privacy & Terms"
-              value="Privacy Policy & Terms of Service"
+              label={t('settings.privacyTerms')}
+              value={t('settings.privacyTermsDesc')}
               onPress={() => router.push('/legal')}
             />
             <View style={styles.divider} />

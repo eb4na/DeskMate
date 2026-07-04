@@ -130,7 +130,31 @@ export const MaxContentWidth = 800;
 
 // Every popup/dialog card should occupy at least 40% of the screen width, so they
 // don't look tiny on big tablets. Add `minWidth: MIN_POPUP_WIDTH` to a popup card's
-// style — minWidth clamps after maxWidth in Yoga, so it raises the floor on large
-// screens while being a no-op on phones (40% of a phone width is below the cards'
+// style; it's a no-op on phones (40% of a phone width is well below the cards'
 // existing maxWidth). Portrait-locked, so this once-captured value is stable.
-export const MIN_POPUP_WIDTH = Math.round(Dimensions.get('window').width * 0.4);
+//
+// IMPORTANT: cap it below the popup cards' maxWidth (the smallest is 320). On a big
+// tablet 40% of the width (~410pt) would EXCEED maxWidth, and a card with
+// minWidth > maxWidth is a degenerate Yoga constraint: the card resolves to the
+// larger minWidth but its `alignSelf: 'stretch'` children get sized against the
+// smaller maxWidth basis and left-anchored — so buttons render narrow and shoved to
+// the left (visible only on tablets). Keeping min <= max avoids that entirely.
+export const MIN_POPUP_WIDTH = Math.min(Math.round(Dimensions.get('window').width * 0.4), 300);
+
+// A popup/dialog card's `maxWidth` should grow on tablets so it doesn't look lost on a
+// big screen. Many popups build their StyleSheet INSIDE the component and already scale
+// width by the tablet `scale` from useTabletScale (`maxWidth: 340 * s`). But the static-
+// styled popups (global showPopup host, invite, reward/confirm modals) build their
+// StyleSheet at MODULE scope and can't read that hook — so they were stuck at the phone
+// width (320–360) and looked tiny on iPad. `popupMaxWidth(base)` applies the SAME tablet
+// multiplier at module scope so those cards match the hook-scaled ones exactly.
+//
+// The multiplier mirrors useTabletScale (hooks/use-tablet-scale): proportional to the
+// screen's shortest side, anchored so the 11" Pro (834pt) reproduces 1.3×, clamped
+// 1.1–1.7. Tablet class matches useIsTablet (shortest side ≥ 600pt). Portrait-locked and
+// computed once, same basis as MIN_POPUP_WIDTH. Phone = base unchanged (scale is 1).
+const _popupShortest = Math.min(Dimensions.get('window').width, Dimensions.get('window').height);
+export const POPUP_SCALE = _popupShortest >= 600 ? Math.min(1.7, Math.max(1.1, _popupShortest / 642)) : 1;
+export function popupMaxWidth(base: number): number {
+  return Math.round(base * POPUP_SCALE);
+}

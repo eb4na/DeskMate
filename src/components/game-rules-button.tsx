@@ -7,7 +7,7 @@ import { Modal, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } fr
 import { ThemedText } from '@/components/themed-text';
 import { useIsTablet } from '@/hooks/use-device-class';
 import { useTranslation } from '@/i18n';
-import { BakeryColors, MIN_POPUP_WIDTH } from '@/constants/theme';
+import { BakeryColors, MIN_POPUP_WIDTH, popupMaxWidth } from '@/constants/theme';
 
 export function GameRulesButton({
   title,
@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     minWidth: MIN_POPUP_WIDTH,
-    maxWidth: 360,
+    maxWidth: popupMaxWidth(360),
     backgroundColor: BakeryColors.frosting,
     borderRadius: 22,
     padding: 22,

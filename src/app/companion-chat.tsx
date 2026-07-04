@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { formatCoins } from '@/constants/placeholder-data';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -11,8 +10,9 @@ import {
   useColorScheme,
   View,
 } from 'react-native';
+import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { showPopup } from '@/lib/popup';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
 
@@ -109,6 +109,15 @@ export default function CompanionChatScreen() {
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+
+  // Lift the composer above the keyboard. KeyboardAvoidingView under-pads inside an iOS card
+  // modal, so measure the real keyboard height instead. SafeAreaView already pads insets.bottom
+  // below the composer, so only add the remaining difference.
+  const keyboard = useAnimatedKeyboard();
+  const insets = useSafeAreaInsets();
+  const kbSpacer = useAnimatedStyle(() => ({
+    height: Math.max(keyboard.height.value - insets.bottom, 0),
+  }));
 
   // Fire once when the chat screen opens.
   useEffect(() => {
@@ -214,10 +223,7 @@ export default function CompanionChatScreen() {
           </View>
         </View>
 
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}>
+        <View style={styles.flex}>
           {/* Faint room mascot, like the cozy background in the design */}
           <View pointerEvents="none" style={styles.bgMascot}>
             <BakeryBreadEmoji size={150} />
@@ -344,7 +350,8 @@ export default function CompanionChatScreen() {
               <SendIcon />
             </Pressable>
           </View>
-        </KeyboardAvoidingView>
+          <Animated.View style={kbSpacer} />
+        </View>
 
         {/* Bottom tab bar (matches the app shell) */}
         <View style={styles.tabBar}>

@@ -246,7 +246,7 @@ export default function ReminderSettingsScreen() {
               <ThemedView style={styles.sectionHeader}>
                 <ThemedText type="smallBold">
                   {t('reminder.extraReminders')}
-                  <ThemedText style={styles.plusTag}>  Plus</ThemedText>
+                  <ThemedText style={styles.plusTag}>  {t('common.plusLabel')}</ThemedText>
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   {reminders.length}/{MAX_EXTRA_REMINDERS}

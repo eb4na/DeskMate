@@ -2,7 +2,6 @@ import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -12,8 +11,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { showPopup } from '@/lib/popup';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { useApp } from '@/context/app-context';
@@ -113,6 +113,15 @@ export default function DmChatScreen() {
   const [online, setOnline] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+
+  // Lift the composer above the keyboard. KeyboardAvoidingView under-pads inside an iOS card
+  // modal, so measure the real keyboard height instead. SafeAreaView already pads insets.bottom
+  // below the composer, so only add the remaining difference.
+  const keyboard = useAnimatedKeyboard();
+  const insets = useSafeAreaInsets();
+  const kbSpacer = useAnimatedStyle(() => ({
+    height: Math.max(keyboard.height.value - insets.bottom, 0),
+  }));
 
   const scrollToEnd = () =>
     requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
@@ -255,10 +264,7 @@ export default function DmChatScreen() {
           <View style={styles.headerBtn} />
         </View>
 
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}>
+        <View style={styles.flex}>
           <ScrollView
             ref={scrollRef}
             style={styles.flex}
@@ -342,7 +348,8 @@ export default function DmChatScreen() {
               <SendIcon />
             </Pressable>
           </View>
-        </KeyboardAvoidingView>
+          <Animated.View style={kbSpacer} />
+        </View>
       </SafeAreaView>
 
       {/* Invite picker sheet */}

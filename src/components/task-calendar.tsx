@@ -24,6 +24,7 @@ import {
 import { useApp } from '@/context/app-context';
 import type { Task } from '@/context/app-context';
 import i18n from '@/i18n';
+import { localizeSubjectName } from '@/lib/subject-utils';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 
@@ -91,7 +92,7 @@ function TaskPreviewCard({ task }: { task: Task }) {
             <View style={[styles.subjectBadge, { backgroundColor: subject.color + '2E' }]}>
               <View style={[styles.subjectDot, { backgroundColor: subject.color }]} />
               <Text style={[styles.subjectText, { color: subject.color }]} numberOfLines={1}>
-                {subject.name}
+                {localizeSubjectName(subject.name, (k) => i18n.t(k))}
               </Text>
             </View>
           )}
@@ -321,7 +322,7 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
             style={({ pressed }) => [styles.modalAddBtn, pressed && styles.pressed]}
             onPress={() => {
               onClose();
-              if (iso) router.push({ pathname: '/add-task', params: { date: iso } });
+              router.push('/add-task');
             }}>
             <Text style={styles.modalAddText}>{i18n.t('calendar.addTaskForDay')}</Text>
           </Pressable>

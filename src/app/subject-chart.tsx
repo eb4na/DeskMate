@@ -10,6 +10,7 @@ import { useApp } from '@/context/app-context';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { useTranslation } from '@/i18n';
 import { historyCutoffISO } from '@/lib/history-window';
+import { localizeSubjectName } from '@/lib/subject-utils';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
 
 const RANGES = ['day', 'week', 'month', 'year'] as const;
@@ -98,7 +99,8 @@ export default function SubjectChartScreen() {
     });
   }, [slices, total]);
 
-  const subjectLabel = (name: string) => (name === GENERAL_KEY ? t('subjectChart.general') : name);
+  const subjectLabel = (name: string) =>
+    name === GENERAL_KEY ? t('subjectChart.general') : localizeSubjectName(name, t);
 
   return (
     <ThemedView style={styles.container}>

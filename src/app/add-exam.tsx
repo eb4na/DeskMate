@@ -12,8 +12,8 @@ import { TimeWheelPicker } from '@/components/time-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp, FREE_EXAM_LIMIT } from '@/context/app-context';
-import { type AdvancedExamFields } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
+import { localizeSubjectName } from '@/lib/subject-utils';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 
 function isValidDateISO(dateStr: string): boolean {
@@ -24,24 +24,15 @@ function isValidDateISO(dateStr: string): boolean {
   return true;
 }
 
-const CONFIDENCE_LABEL_KEYS: Record<number, string> = {
-  1: 'addExam.conf1',
-  2: 'addExam.conf2',
-  3: 'addExam.conf3',
-  4: 'addExam.conf4',
-  5: 'addExam.conf5',
-};
-
 export default function AddExamScreen() {
   const { t } = useTranslation();
-  const { examCountdowns, addExam, updateExam, isPlus, updateAdvancedExam, advancedExamMap, use24HourTime, subjects } = useApp();
+  const { examCountdowns, addExam, updateExam, isPlus, use24HourTime, subjects } = useApp();
   const activeSubjects = subjects.filter((s) => !s.archived);
 
   // When opened with ?examId=… we're editing an existing countdown; pre-fill from it.
   const { examId: examIdParam } = useLocalSearchParams<{ examId?: string }>();
   const existing = examIdParam ? examCountdowns.find((e) => e.id === examIdParam) : undefined;
   const editing = !!existing;
-  const existingAdvanced = existing ? advancedExamMap[existing.id] : undefined;
 
   const [name, setName] = useState(existing?.name ?? '');
   const [subject, setSubject] = useState(existing?.subject ?? '');
@@ -49,11 +40,6 @@ export default function AddExamScreen() {
   const [time, setTime] = useState(existing?.time ?? '09:00');
   const [reminderEnabled, setReminderEnabled] = useState(existing?.reminderEnabled ?? false);
   const [shape, setShape] = useState<CountdownShapeKey>((existing?.shape as CountdownShapeKey) ?? DEFAULT_COUNTDOWN_SHAPE);
-  // Plus advanced fields
-  const [topics, setTopics] = useState(existingAdvanced?.topics ?? '');
-  const [targetHours, setTargetHours] = useState(existingAdvanced?.targetHours != null ? String(existingAdvanced.targetHours) : '');
-  const [confidence, setConfidence] = useState<1 | 2 | 3 | 4 | 5>(existingAdvanced?.confidenceLevel ?? 3);
-  const [showAdvanced, setShowAdvanced] = useState(!!existingAdvanced);
   // Inline validation error. This screen is a native modal, so a root showPopup
   // can't present over it (the tap looked dead — "can't add"). Show the reason here.
   const [error, setError] = useState<string | null>(null);
@@ -99,15 +85,6 @@ export default function AddExamScreen() {
     }
 
     if (editing) updateExam(examId, fields);
-
-    if (isPlus) {
-      const advanced: AdvancedExamFields = {
-        topics: topics.trim(),
-        targetHours: targetHours ? parseInt(targetHours, 10) : null,
-        confidenceLevel: confidence,
-      };
-      updateAdvancedExam(examId, advanced);
-    }
 
     router.back();
   };
@@ -164,7 +141,7 @@ export default function AddExamScreen() {
                   type={subject === s.name ? 'backgroundSelected' : 'backgroundElement'}
                   style={styles.chip}>
                   <ThemedView style={[styles.subjectDot, { backgroundColor: s.color }]} />
-                  <ThemedText type="small">{s.name}</ThemedText>
+                  <ThemedText type="small">{localizeSubjectName(s.name, t)}</ThemedText>
                 </ThemedView>
               </Pressable>
             ))}
@@ -228,69 +205,8 @@ export default function AddExamScreen() {
           </ThemedText>
         </ThemedView>
 
-        {/* Plus advanced fields */}
-        {isPlus ? (
-          <ThemedView style={styles.advancedSection}>
-            <Pressable
-              onPress={() => setShowAdvanced((v) => !v)}
-              style={styles.advancedToggle}>
-              <ThemedText type="smallBold">{t('addExam.advancedPlanning')}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {showAdvanced ? t('addExam.hide') : t('addExam.show')}
-              </ThemedText>
-            </Pressable>
-
-            {showAdvanced && (
-              <ThemedView style={styles.advancedFields}>
-                <ThemedView style={styles.field}>
-                  <ThemedText type="smallBold">{t('addExam.topicsToCover')}</ThemedText>
-                  <TextInput
-                    style={inputStyle}
-                    value={topics}
-                    onChangeText={setTopics}
-                    placeholder={t('addExam.topicsPlaceholder')}
-                    placeholderTextColor={colors.textSecondary}
-                    maxLength={200}
-                    multiline
-                  />
-                </ThemedView>
-
-                <ThemedView style={styles.field}>
-                  <ThemedText type="smallBold">{t('addExam.targetHours')}</ThemedText>
-                  <TextInput
-                    style={inputStyle}
-                    value={targetHours}
-                    onChangeText={setTargetHours}
-                    placeholder={t('addExam.targetHoursPlaceholder')}
-                    placeholderTextColor={colors.textSecondary}
-                    keyboardType="number-pad"
-                    maxLength={4}
-                  />
-                </ThemedView>
-
-                <ThemedView style={styles.field}>
-                  <ThemedText type="smallBold">{t('addExam.confidenceLevel')}</ThemedText>
-                  <ThemedView style={styles.confidenceRow}>
-                    {([1, 2, 3, 4, 5] as const).map((level) => (
-                      <Pressable
-                        key={level}
-                        onPress={() => setConfidence(level)}
-                        style={[
-                          styles.confidenceBtn,
-                          confidence === level && styles.confidenceBtnActive,
-                        ]}>
-                        <ThemedText style={styles.confidenceNum}>{level}</ThemedText>
-                      </Pressable>
-                    ))}
-                  </ThemedView>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {t(CONFIDENCE_LABEL_KEYS[confidence])}
-                  </ThemedText>
-                </ThemedView>
-              </ThemedView>
-            )}
-          </ThemedView>
-        ) : examCountdowns.length >= FREE_EXAM_LIMIT ? (
+        {/* Free users at the cap get an upgrade nudge (unlimited exams is the Plus perk). */}
+        {!isPlus && examCountdowns.length >= FREE_EXAM_LIMIT ? (
           <Pressable onPress={() => router.push('/plus-upgrade')}>
             <ThemedView type="backgroundElement" style={[styles.upgradeCard, styles.noticeRow]}>
               <LockBadge size={16} />
@@ -382,27 +298,6 @@ const styles = StyleSheet.create({
   errorText: { color: '#C0392B', fontWeight: '700', textAlign: 'center', marginBottom: 4 },
   cancelBtn: { alignItems: 'center', paddingVertical: Spacing.two },
   note: { textAlign: 'center' },
-  advancedSection: { gap: Spacing.two },
-  advancedToggle: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: Spacing.two,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(0,0,0,0.1)',
-  },
-  advancedFields: { gap: Spacing.three },
-  confidenceRow: { flexDirection: 'row', gap: Spacing.two },
-  confidenceBtn: {
-    flex: 1,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: 'rgba(0,0,0,0.1)',
-    paddingVertical: Spacing.two,
-    alignItems: 'center',
-  },
-  confidenceBtnActive: { borderColor: '#7C6F5A', backgroundColor: 'rgba(124,111,90,0.1)' },
-  confidenceNum: { fontSize: 18, fontWeight: '700' },
   upgradeCard: {
     borderRadius: 12,
     padding: Spacing.three,

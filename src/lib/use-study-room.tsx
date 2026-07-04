@@ -97,6 +97,9 @@ type StudyRoomValue = {
   // host only triggers the synchronized start. The choice is broadcast so everyone's
   // avatar shows it, and each player then studies for their own duration/topic.
   setMyPrefs: (minutes: number, topic: string | null) => void;
+  // Each player also sets their OWN break length (0 = free on/off break). Read
+  // synchronously at session start, exactly like the length above.
+  setMyBreak: (minutes: number) => void;
 };
 
 const StudyRoomContext = createContext<StudyRoomValue | null>(null);
@@ -178,6 +181,8 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
   // so they pick a subject in-session). Read synchronously when the session begins,
   // so a player's own session is never blocked on the prefs round-trip.
   const myPreferredMinutes = useRef<number | null>(null);
+  // This player's own break length (null = not set → fall back to the host's/room's).
+  const myPreferredBreak = useRef<number | null>(null);
   const myTopic = useRef<string | null>(null);
   const beginTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Mirror of `begun` for synchronous reads inside the realtime closure, plus the
@@ -260,6 +265,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     setDiscoSuppressed(false);
     discoSuppressedRef.current = false;
     myPreferredMinutes.current = null;
+    myPreferredBreak.current = null;
     myTopic.current = null;
     begunRef.current = false;
     lastBeginRef.current = null;
@@ -484,8 +490,9 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
               subjectName: myTopic.current ?? null,
               taskId: d.taskId,
               taskTitle: d.taskTitle,
-              // Break length is a ROOM setting — everyone gets the host's value.
-              breakMinutes: d.breakMinutes,
+              // Break is per-player: use my own chosen length, falling back to the
+              // host's broadcast value if I never set one.
+              breakMinutes: myPreferredBreak.current ?? d.breakMinutes,
             });
           } else if (type === 'leave') {
             const code = (data as { code: string }).code;
@@ -567,9 +574,9 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     const startAt = Date.now() + 300;
     applyBeginRef.current(startAt, {
       ...opts,
-      // Inherit the host's room break (from the begin we received as a late joiner)
-      // unless this caller already specified one.
-      breakMinutes: opts.breakMinutes ?? lastBeginRef.current?.opts.breakMinutes,
+      // Per-player break: my own choice wins, then anything the caller passed, then
+      // the host's room break (inherited from the begin we got as a late joiner).
+      breakMinutes: myPreferredBreak.current ?? opts.breakMinutes ?? lastBeginRef.current?.opts.breakMinutes,
     });
   };
 
@@ -616,6 +623,12 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     if (!isHostRef.current) {
       room.current?.send('prefs', { code, minutes, topic });
     }
+  };
+
+  // Break length stays local (not shown on avatars, so no roster/broadcast needed) —
+  // it's read straight off the ref when this player's session begins.
+  const setMyBreak = (minutes: number) => {
+    myPreferredBreak.current = minutes;
   };
 
   // Host radio broadcast: while the host's synced session is live and their own
@@ -707,6 +720,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
       startSelf,
       setStatus,
       setMyPrefs,
+      setMyBreak,
     }),
     // joinRoom/leaveRoom/start/setStatus are stable enough (read refs); deps are the state they expose.
     // eslint-disable-next-line react-hooks/exhaustive-deps

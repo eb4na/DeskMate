@@ -11,6 +11,8 @@ import { CoinIcon } from '@/components/coin-icon';
 import { useApp, MAX_TIMER_PRESETS } from '@/context/app-context';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { useTranslation } from '@/i18n';
+import { localizeSubjectName } from '@/lib/subject-utils';
+import { formatMinutesShort } from '@/lib/format-duration';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
 
 const C = BakeryColors;
@@ -215,14 +217,14 @@ export default function CustomTimerScreen() {
           {/* Focus (or break) duration */}
           <Text style={styles.sectionLabel}>{t(isBreakMode ? 'customTimer.breakDuration' : 'customTimer.focusDuration')}</Text>
           <View style={styles.durCard}>
-            <WheelColumn values={HR_VALUES} value={focusHr} unit="hr" onChange={setFocusHr} />
+            <WheelColumn values={HR_VALUES} value={focusHr} unit={t('customTimer.hr')} onChange={setFocusHr} />
             <View style={styles.durDivider} />
-            <WheelColumn values={MIN_VALUES} value={focusMin} unit="min" onChange={setFocusMin} loop />
+            <WheelColumn values={MIN_VALUES} value={focusMin} unit={t('customTimer.min')} onChange={setFocusMin} loop />
           </View>
           <View style={styles.pickRow}>
             {(isBreakMode ? BREAK_PICKS : FOCUS_PICKS).map((m) => (
               <Pressable key={m} onPress={() => { playTick(); setFocusTotal(m); }} style={[styles.pick, focusMins === m && styles.pickActive]}>
-                <Text style={[styles.pickText, focusMins === m && styles.pickTextActive]}>{m}m</Text>
+                <Text style={[styles.pickText, focusMins === m && styles.pickTextActive]}>{formatMinutesShort(m, t)}</Text>
               </Pressable>
             ))}
           </View>
@@ -233,14 +235,14 @@ export default function CustomTimerScreen() {
               <Text style={styles.sectionLabel}>{t('customTimer.breakDuration')}</Text>
               <Text style={styles.sectionSub}>{t('customTimer.optionalBreak')}</Text>
               <View style={styles.durCard}>
-                <WheelColumn values={HR_VALUES} value={breakHr} unit="hr" onChange={setBreakHr} />
+                <WheelColumn values={HR_VALUES} value={breakHr} unit={t('customTimer.hr')} onChange={setBreakHr} />
                 <View style={styles.durDivider} />
-                <WheelColumn values={MIN_VALUES} value={breakMin} unit="min" onChange={setBreakMin} loop />
+                <WheelColumn values={MIN_VALUES} value={breakMin} unit={t('customTimer.min')} onChange={setBreakMin} loop />
               </View>
               <View style={styles.pickRow}>
                 {BREAK_PICKS.map((m) => (
                   <Pressable key={m} onPress={() => { playTick(); setBreakTotal(m); }} style={[styles.pick, breakMins === m && styles.pickActive]}>
-                    <Text style={[styles.pickText, breakMins === m && styles.pickTextActive]}>{m}m</Text>
+                    <Text style={[styles.pickText, breakMins === m && styles.pickTextActive]}>{formatMinutesShort(m, t)}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -256,7 +258,7 @@ export default function CustomTimerScreen() {
                         key={s.id}
                         style={[styles.chip, { borderColor: isActive ? s.color : C.shortbread, backgroundColor: isActive ? s.color + '2E' : '#fff' }]}
                         onPress={() => setSelectedSubjectId(isActive ? null : s.id)}>
-                        <Text style={[styles.chipText, isActive && { color: s.color }]}>{s.emoji ? `${s.emoji} ` : ''}{s.name}</Text>
+                        <Text style={[styles.chipText, isActive && { color: s.color }]}>{s.emoji ? `${s.emoji} ` : ''}{localizeSubjectName(s.name, t)}</Text>
                       </Pressable>
                     );
                   })}

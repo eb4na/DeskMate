@@ -101,6 +101,7 @@ export default function SessionCompleteScreen() {
     earnedToday,
     streak,
     streakFreezes,
+    streakRescuePending,
     activeCompanionId,
     companionMinutes,
   } = useApp();
@@ -180,11 +181,13 @@ export default function SessionCompleteScreen() {
       }
     };
 
-    // Streak lapsed 1–3 days ago and the user has a freeze available → ask whether
-    // to spend one to keep the streak (otherwise it resets to day 1).
+    // Streak lapsed 1–3 days ago and the user owns a freeze → ask whether to spend one
+    // to keep the streak (otherwise it resets to day 1). Suppressed once the on-open
+    // rescue prompt has already been handled today (streakRescuePending goes false), so
+    // the two surfaces never double-prompt. Freezes are no longer Plus-gated to use.
     const last = streak.lastStudyDate;
     const gap = last ? daysFromToday(last) : 0;
-    const canRescue = gap >= 2 && gap <= 4 && isPlus && streakFreezes > 0;
+    const canRescue = gap >= 2 && gap <= 4 && streakFreezes > 0 && streakRescuePending;
 
     if (canRescue) {
       showPopup(

@@ -9,9 +9,10 @@ import { ThemedView } from '@/components/themed-view';
 import { ArrowUpIcon, ArrowDownIcon, RemoveIcon } from '@/components/subject-icons';
 import { useApp, MAX_SUBJECTS_FREE, MAX_SUBJECTS_PLUS } from '@/context/app-context';
 import { containsProfanity } from '@/lib/profanity';
+import { localizeSubjectName } from '@/lib/subject-utils';
 import { SUBJECT_COLORS } from '@/constants/placeholder-data';
 import { useTranslation } from '@/i18n';
-import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, MIN_POPUP_WIDTH, popupMaxWidth, Spacing } from '@/constants/theme';
 
 export default function ManageSubjectsScreen() {
   const { t } = useTranslation();
@@ -22,7 +23,6 @@ export default function ManageSubjectsScreen() {
   const isDark = scheme === 'dark';
 
   const [newName, setNewName] = useState('');
-  const [newEmoji, setNewEmoji] = useState('');
   const [selectedColor, setSelectedColor] = useState<string>(SUBJECT_COLORS[0]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -49,7 +49,7 @@ export default function ManageSubjectsScreen() {
       showPopup(t('common.inappropriateLanguage'));
       return;
     }
-    const added = addSubject(newName.trim(), selectedColor, newEmoji.trim());
+    const added = addSubject(newName.trim(), selectedColor);
     if (!added) {
       showPopup(
         t('manageSubjects.subjectLimitReached'),
@@ -60,7 +60,6 @@ export default function ManageSubjectsScreen() {
       return;
     }
     setNewName('');
-    setNewEmoji('');
     setSelectedColor(nextColor());
   };
 
@@ -147,8 +146,7 @@ export default function ManageSubjectsScreen() {
                 ) : (
                   <Pressable style={styles.subjectInfo} onPress={() => handleRenameStart(sub.id, sub.name)}>
                     <ThemedView style={[styles.colorDot, { backgroundColor: sub.color }]} />
-                    {sub.emoji ? <ThemedText style={styles.subjectEmoji}>{sub.emoji}</ThemedText> : null}
-                    <ThemedText style={styles.subjectName}>{sub.name}</ThemedText>
+                    <ThemedText style={styles.subjectName}>{localizeSubjectName(sub.name, t)}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary" style={styles.editHint}>
                       {t('manageSubjects.tapToRename')}
                     </ThemedText>
@@ -195,15 +193,6 @@ export default function ManageSubjectsScreen() {
                 {t('common.inappropriateLanguage')}
               </ThemedText>
             )}
-
-            <TextInput
-              style={inputStyle}
-              placeholder={t('manageSubjects.emojiPlaceholder')}
-              placeholderTextColor={isDark ? '#666' : '#AAA'}
-              value={newEmoji}
-              onChangeText={setNewEmoji}
-              maxLength={2}
-            />
 
             {/* Color picker */}
             <ThemedView style={styles.colorGrid}>
@@ -285,7 +274,6 @@ const styles = StyleSheet.create({
   },
   subjectInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   colorDot: { width: 12, height: 12, borderRadius: 6 },
-  subjectEmoji: { fontSize: 16, lineHeight: 20 },
   subjectName: { flex: 1 },
   editHint: { fontSize: 11 },
   subjectActions: { flexDirection: 'row', gap: 2 },
@@ -325,7 +313,7 @@ const styles = StyleSheet.create({
   doneBtn: { alignItems: 'center', paddingVertical: Spacing.two },
   confirmBackdrop: { flex: 1, backgroundColor: 'rgba(60,40,35,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
   confirmCard: {
-    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 360, backgroundColor: BakeryColors.frosting,
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: popupMaxWidth(360), backgroundColor: BakeryColors.frosting,
     borderRadius: BakeryRadii.panel, borderWidth: 2, borderColor: '#E8A0A0',
     padding: Spacing.four, gap: Spacing.two, ...BakeryShadow,
   },

@@ -6,6 +6,7 @@ import { SoundPreviewButton } from '@/components/sound-preview-button';
 import type { StyleProp, TextStyle } from 'react-native';
 import { showPopup } from '@/lib/popup';
 import { stopPreview } from '@/lib/ambience-audio';
+import { useModalSafeVisible } from '@/lib/modal-traffic';
 import { track } from '@/lib/analytics';
 import { PRODUCT_IDS, fetchPrices, purchaseProduct, purchasesReady, type PriceMap } from '@/lib/purchases';
 import { useIsTablet } from '@/hooks/use-device-class';
@@ -29,7 +30,7 @@ import {
 } from '@/constants/shop-data';
 import { outfitsForCharacter } from '@/constants/outfit-data';
 import { pairForItem, isPairOwned, partnerItemId, ROOM_PAIRS } from '@/constants/room-data';
-import { SHOP_COMPANIONS, STARTER_COMPANION_IMAGES, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, BUN_SKINS, getCompanionSkins, pickSkinLore, skinLores } from '@/lib/companion-utils';
+import { SHOP_COMPANIONS, STARTER_COMPANION_IMAGES, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, localizeShopItemName, BUN_SKINS, getCompanionSkins, pickSkinLore, skinLores } from '@/lib/companion-utils';
 import { RECIPE_IDS, hasAllRecipeBadges } from '@/app/food-gallery';
 import { DAILY_EARN_CAP, formatCoins } from '@/constants/placeholder-data';
 import {
@@ -90,12 +91,6 @@ const _isTabletDevice = _shortest >= 600;
 // fixed tablet sizes ("so it's bigger"). 1.0 on phone — phone layout is unchanged.
 // Dial the 1.15 to taste.
 const SHOP_TS = _isTabletDevice ? Math.max(1, _shortest / 834) * 1.15 : 1;
-// The unlock/buy confirm popup reads fine on the 11" Pro but tiny on the 13" (its
-// fixed sizes don't scale). Enlarge it on the 13" ONLY (shortest side ≥ 1000pt);
-// the 11" + phone keep the base sizes. Reuses SHOP_TS so it matches the rest of the
-// tablet shop scale; BUY_TS is 1 everywhere except the 13".
-const _isLargeTablet = _shortest >= 1000;
-const BUY_TS = _isLargeTablet ? SHOP_TS : 1;
 // Scale a fixed size up on tablets (1× on phones, since SHOP_TS is 1 there).
 // Used for popups whose fixed sizes don't otherwise grow on a big iPad.
 const ts = (n: number) => n * SHOP_TS;
@@ -227,28 +222,31 @@ export default function ShopScreen() {
   const tCapLabel = isTablet && { fontSize: 11 * SHOP_TS, lineHeight: 16 * SHOP_TS };
   const tChefBadge = isTablet && { paddingHorizontal: 7 * SHOP_TS, paddingVertical: 2 * SHOP_TS };
   const tChefText = isTablet && { fontSize: 10 * SHOP_TS };
-  // Buy/unlock confirm popup — bigger on the 13" only (BUY_TS is 1 elsewhere, so
-  // these all collapse to `false` and the base styles apply unchanged on 11"/phone).
-  const bs = (n: number) => n * BUY_TS;
-  const big = _isLargeTablet;
+  // Buy/unlock confirm popup — scaled on EVERY tablet by SHOP_TS so it stays
+  // proportional to the rest of the shop. Previously only the 13" (≥1000pt) scaled,
+  // so on the 11"/Air/mini the popup stayed phone-sized while everything around it
+  // was enlarged → it read small + uneven. Phone is untouched (SHOP_TS is 1 and
+  // `big` is false there). Sizes below are the tablet base; they get ×SHOP_TS on top.
+  const bs = (n: number) => n * SHOP_TS;
+  const big = isTablet;
   const ltCard = big && { maxWidth: bs(360), padding: bs(Spacing.four), borderRadius: bs(26), gap: bs(Spacing.three) };
-  const ltTitle = big && { fontSize: bs(19) };
+  const ltTitle = big && { fontSize: bs(21) };
   const ltHeroImg = big && { width: bs(150), height: bs(150) };
-  const ltHeroDesc = big && { fontSize: bs(13), lineHeight: bs(18) };
+  const ltHeroDesc = big && { fontSize: bs(14), lineHeight: bs(19) };
   const ltHeroEmoji = big && { fontSize: bs(96) };
   const ltItems = big && { gap: bs(Spacing.two) };
   const ltItemRow = big && { borderRadius: bs(16), padding: bs(Spacing.two), gap: bs(Spacing.two) };
   const ltItemImg = big && { width: bs(52), height: bs(52), borderRadius: bs(10) };
   const ltItemEmoji = big && { fontSize: bs(40), width: bs(52) };
-  const ltItemName = big && { fontSize: bs(14.5) };
-  const ltItemDesc = big && { fontSize: bs(11.5), lineHeight: bs(15) };
-  const ltItemPrice = big && { fontSize: bs(15) };
-  const ltBalanceLabel = big && { fontSize: bs(13) };
-  const ltBalanceNum = big && { fontSize: bs(15) };
-  const ltShortfall = big && { fontSize: bs(12.5) };
+  const ltItemName = big && { fontSize: bs(16.5) };
+  const ltItemDesc = big && { fontSize: bs(12), lineHeight: bs(16) };
+  const ltItemPrice = big && { fontSize: bs(16.5) };
+  const ltBalanceLabel = big && { fontSize: bs(14.5) };
+  const ltBalanceNum = big && { fontSize: bs(16.5) };
+  const ltShortfall = big && { fontSize: bs(13.5) };
   const ltConfirmBtn = big && { borderRadius: bs(18), paddingVertical: bs(Spacing.three) };
-  const ltConfirmText = big && { fontSize: bs(16) };
-  const ltCancelText = big && { fontSize: bs(13.5) };
+  const ltConfirmText = big && { fontSize: bs(18) };
+  const ltCancelText = big && { fontSize: bs(15) };
   const buyIconSize = Math.round(bs(20));
   const {
     coins,
@@ -286,7 +284,7 @@ export default function ShopScreen() {
 
   // Open straight to a category when navigated with a `category` param (e.g. from
   // a locked recipe in the Bakery Menu). Consumed once so it doesn't stick.
-  const { category: categoryParam, buyPair: buyPairParam, buyOutfit: buyOutfitParam } = useLocalSearchParams<{ category?: string; buyPair?: string; buyOutfit?: string }>();
+  const { category: categoryParam, buyPair: buyPairParam, buyOutfit: buyOutfitParam, buyItem: buyItemParam, outfitItem: outfitItemParam, outfitChar: outfitCharParam } = useLocalSearchParams<{ category?: string; buyPair?: string; buyOutfit?: string; buyItem?: string; outfitItem?: string; outfitChar?: string }>();
   useEffect(() => {
     if (categoryParam && CATEGORIES.includes(categoryParam as ShopCategory)) {
       setActiveCategory(categoryParam as ShopCategory);
@@ -298,8 +296,18 @@ export default function ShopScreen() {
   const [lorePop, setLorePop] = useState<{ name: string; text: string } | null>(null);
   // The purchase the white confirm popup is currently asking about.
   const [buyReq, setBuyReq] = useState<BuyReq | null>(null);
-  // After a successful buy, ask whether to equip the new item now.
+  // Gate the buy popup through the anti-freeze settle window: when we arrive here
+  // from a native-modal screen (e.g. the companion gallery's wardrobe → "buy this
+  // locked outfit"), that screen is still sliding away as this mounts. Presenting
+  // the buy <Modal> mid-transition freezes iOS and the popup never appears — so we
+  // wait out msUntilModalSafe() (stamped at the gallery→shop navigation).
+  const buyVisible = useModalSafeVisible(buyReq !== null);
+  // After a successful buy, ask whether to equip the new item now. confirmBuy sets
+  // this in the SAME tick it clears buyReq, so the equip <Modal> would try to present
+  // while the buy <Modal> is still dismissing — the stacked-native-modal freeze. Gate
+  // it through the settle window so it only presents once the buy popup is fully gone.
   const [equipPrompt, setEquipPrompt] = useState<{ name: string; equip: () => void } | null>(null);
+  const equipVisible = useModalSafeVisible(equipPrompt !== null);
 
   // Live App Store prices keyed by product id (localized currency). Falls back to
   // the hardcoded pack.price strings when IAP is unavailable / fetch fails.
@@ -391,7 +399,7 @@ export default function ShopScreen() {
     // production build we MUST refuse — never hand out coins for free.
     if (!purchasesReady()) {
       if (__DEV__) {
-        showPopup(t('shop.buyPackQ', { name: pack.name }), t('shop.packDetail', { coins: pack.coins, price }), [
+        showPopup(t('shop.buyPackQ', { name: t(`coinShop.pack_${pack.id}`) }), t('shop.packDetail', { coins: pack.coins, price }), [
           { text: t('common.cancel'), style: 'cancel' },
           { text: t('shop.buyForMock', { price }), onPress: grant },
         ]);
@@ -413,8 +421,8 @@ export default function ShopScreen() {
     if (ownedShopItems.includes(item.id)) return;
     if (item.requiresAllRecipes && !allRecipesDone) {
       showPopup(
-        t('shop.recipeLockTitle', { name: localizeCompanionName(item.name, t) }),
-        t('shop.recipeLockMsg', { name: localizeCompanionName(item.name, t), done: recipesDoneCount, total: RECIPE_IDS.length }),
+        t('shop.recipeLockTitle', { name: localizeShopItemName(item, t) }),
+        t('shop.recipeLockMsg', { name: localizeShopItemName(item, t), done: recipesDoneCount, total: RECIPE_IDS.length }),
       );
       return;
     }
@@ -430,11 +438,11 @@ export default function ShopScreen() {
       : isEquipableCategory(item.category) ? () => { equipShopItem(item.id); }
       : undefined;
     setBuyReq({
-      title: t('shop.buyItemQ', { name: localizeCompanionName(item.name, t) }),
+      title: t('shop.buyItemQ', { name: localizeShopItemName(item, t) }),
       items: [item],
       total: Math.floor(item.price * discount),
       equip,
-      equipName: localizeCompanionName(item.name, t),
+      equipName: localizeShopItemName(item, t),
     });
   };
 
@@ -481,6 +489,47 @@ export default function ShopScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buyPairParam]);
 
+  // Arriving with a `buyItem` param (e.g. from a locked recipe in the Bakery Menu
+  // or a locked sound in the ambience picker) switches to that item's category and
+  // opens its buy popup straight away, so the player can purchase in one tap
+  // instead of hunting for the item on the category tab.
+  useEffect(() => {
+    if (!buyItemParam) return;
+    const item = SHOP_ITEMS.find((s) => s.id === buyItemParam);
+    if (item) {
+      setActiveCategory(item.category as ShopCategory);
+      openBuy(item);
+    }
+    router.setParams({ buyItem: undefined });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buyItemParam]);
+
+  // Arriving with `outfitItem` + `outfitChar` (from a locked outfit in a companion's
+  // wardrobe) opens that outfit's buy popup on the Outfits tab. Outfits can't use the
+  // generic `buyItem` path: skins are worn via setBunSkin/setCompanionSkin, not the
+  // equippedShopItems slot that openBuy would set — so wire the correct skin-equip here.
+  useEffect(() => {
+    if (!outfitItemParam || !outfitCharParam) return;
+    const item = SHOP_ITEMS.find((s) => s.id === outfitItemParam);
+    const isBun = outfitCharParam === getStarterActiveId('girl');
+    const skin = (isBun ? BUN_SKINS : getCompanionSkins(outfitCharParam)).find((s) => s.shopItemId === outfitItemParam);
+    if (item && skin) {
+      setActiveCategory('outfits');
+      setOutfitCharId(outfitCharParam);
+      if (!ownedShopItems.includes(item.id)) {
+        setBuyReq({
+          title: t('shop.buyItemQ', { name: localizeOutfitName(skin.name, t) }),
+          items: [{ id: item.id, name: skin.name, emoji: item.emoji, description: '', price: item.price, category: 'outfits', image: skin.image }],
+          total: Math.floor(item.price * discount),
+          equip: () => { if (isBun) setBunSkin(skin.id); else setCompanionSkin(outfitCharParam, skin.id); },
+          equipName: localizeOutfitName(skin.name, t),
+        });
+      }
+    }
+    router.setParams({ outfitItem: undefined, outfitChar: undefined });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outfitItemParam]);
+
   // Confirm the popup: buy everything it lists, then ask whether to equip it now.
   const confirmBuy = () => {
     if (!buyReq) return;
@@ -509,7 +558,7 @@ export default function ShopScreen() {
       // purchase and point the player there instead of showing a do-nothing prompt.
       showPopup(
         t('shop.recipeBoughtTitle'),
-        t('shop.recipeBoughtMsg', { name: equipName ?? localizeCompanionName(items[0].name, t) }),
+        t('shop.recipeBoughtMsg', { name: equipName ?? localizeShopItemName(items[0], t) }),
       );
     }
   };
@@ -547,7 +596,7 @@ export default function ShopScreen() {
     if (!pair) return;
     if (item.category === 'background') setEquippedBackground(pair.id);
     else setEquippedDesk(pair.id);
-    showPopup(t('shop.equippedTitle'), t('shop.nowActive', { name: localizeCompanionName(item.name, t) }));
+    showPopup(t('shop.equippedTitle'), t('shop.nowActive', { name: localizeShopItemName(item, t) }));
   };
 
   return (
@@ -836,14 +885,14 @@ export default function ShopScreen() {
                           } else if (item.category === 'sound') {
                             // Toggle this sound as the active ambience.
                             setAmbience(isEquipped ? null : item.id.replace('sound_', ''));
-                            if (!isEquipped) showPopup(t('shop.equippedTitle'), t('shop.nowActive', { name: localizeCompanionName(item.name, t) }));
+                            if (!isEquipped) showPopup(t('shop.equippedTitle'), t('shop.nowActive', { name: localizeShopItemName(item, t) }));
                           } else if (equipable && !isEquipped) {
                             handleEquip(item.id, item.name);
                           }
                         } else if (item.plusOnly) {
                           showPopup(
-                            t('shop.plusExclusive', { name: localizeCompanionName(item.name, t) }),
-                            t('shop.plusExclusiveMsg', { name: localizeCompanionName(item.name, t) }),
+                            t('shop.plusExclusive', { name: localizeShopItemName(item, t) }),
+                            t('shop.plusExclusiveMsg', { name: localizeShopItemName(item, t) }),
                           );
                         } else {
                           openBuy(item);
@@ -911,7 +960,7 @@ export default function ShopScreen() {
                             textStyle={[styles.priceText, !canAfford && styles.priceTextDim]}
                           />
                         )}
-                        <FitText style={[styles.itemName, tName]}>{localizeCompanionName(item.name, t)}</FitText>
+                        <FitText style={[styles.itemName, tName]}>{localizeShopItemName(item, t)}</FitText>
                         {item.category === 'recipe' && item.owner && (
                           <ThemedText style={styles.useHint} numberOfLines={1}>{t('foodGallery.ownerTag', { name: localizeCompanionName(item.owner, t) })}</ThemedText>
                         )}
@@ -956,7 +1005,7 @@ export default function ShopScreen() {
                   <RNImage source={PACK_IMAGES[pack.id] ?? PACK_IMAGES.pouch} style={[styles.menuIcon, tMenuIcon]} resizeMode="contain" />
                   <View style={styles.menuBody}>
                     <View style={styles.menuTopLine}>
-                      <ThemedText style={[styles.menuName, tMenuName]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{pack.name}</ThemedText>
+                      <ThemedText style={[styles.menuName, tMenuName]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{t(`coinShop.pack_${pack.id}`)}</ThemedText>
                       <View style={styles.menuLeader} />
                       <ThemedText style={[styles.menuPrice, tMenuPrice]}>{packPrice(pack)}</ThemedText>
                     </View>
@@ -1032,7 +1081,7 @@ export default function ShopScreen() {
       </Modal>
 
       {/* White confirm popup — shows the item picture + Buy / Cancel. */}
-      <Modal visible={buyReq !== null} transparent animationType="fade" onRequestClose={() => setBuyReq(null)}>
+      <Modal visible={buyVisible} transparent animationType="fade" onRequestClose={() => setBuyReq(null)}>
         <Pressable style={styles.buyBackdrop} onPress={() => setBuyReq(null)}>
           <Pressable style={[styles.buyCard, ltCard]} onPress={(e) => e.stopPropagation?.()}>
             {buyReq && (
@@ -1047,7 +1096,7 @@ export default function ShopScreen() {
                     ) : (
                       <ThemedText style={[styles.buyHeroEmoji, ltHeroEmoji]}>{buyReq.items[0].emoji}</ThemedText>
                     )}
-                    <ThemedText style={[styles.buyItemName, ltItemName]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{localizeCompanionName(buyReq.items[0].name, t)}</ThemedText>
+                    <ThemedText style={[styles.buyItemName, ltItemName]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{localizeShopItemName(buyReq.items[0], t)}</ThemedText>
                     {!!buyReq.items[0].description && (
                       <ThemedText style={[styles.buyHeroDesc, ltHeroDesc]} numberOfLines={3}>{buyReq.items[0].description}</ThemedText>
                     )}
@@ -1063,7 +1112,7 @@ export default function ShopScreen() {
                           <ThemedText style={[styles.buyItemEmoji, ltItemEmoji]}>{it.emoji}</ThemedText>
                         )}
                         <View style={styles.buyItemInfo}>
-                          <ThemedText style={[styles.buyItemName, ltItemName]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{localizeCompanionName(it.name, t)}</ThemedText>
+                          <ThemedText style={[styles.buyItemName, ltItemName]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{localizeShopItemName(it, t)}</ThemedText>
                           {!!it.description && (
                             <ThemedText style={[styles.buyItemDesc, ltItemDesc]} numberOfLines={2}>{it.description}</ThemedText>
                           )}
@@ -1084,6 +1133,13 @@ export default function ShopScreen() {
 
                 {coins < buyReq.total && (
                   <ThemedText style={[styles.buyShortfall, ltShortfall]}>{t('gallery.shortfall', { count: buyReq.total - coins })}</ThemedText>
+                )}
+
+                {/* Sounds are free to play while you're Plus — buying just keeps them
+                    permanently if Plus ever lapses. Tell Plus members so the price
+                    doesn't read as paying for access they already have. */}
+                {isPlus && buyReq.items.length === 1 && buyReq.items[0].category === 'sound' && (
+                  <ThemedText style={styles.buyPlusNote}>{t('shop.plusAlreadyHaveSound')}</ThemedText>
                 )}
 
                 <SoundPressable
@@ -1118,7 +1174,7 @@ export default function ShopScreen() {
       </Modal>
 
       {/* After a successful buy: ask whether to equip the new item now. */}
-      <Modal visible={equipPrompt !== null} transparent animationType="fade" onRequestClose={() => setEquipPrompt(null)}>
+      <Modal visible={equipVisible} transparent animationType="fade" onRequestClose={() => setEquipPrompt(null)}>
         <Pressable style={styles.buyBackdrop} onPress={() => setEquipPrompt(null)}>
           <Pressable style={[styles.buyCard, ltCard]} onPress={(e) => e.stopPropagation?.()}>
             {equipPrompt && (
@@ -1246,11 +1302,14 @@ const styles = StyleSheet.create({
   buyItemName: { fontSize: 14.5, fontWeight: '800', color: BakeryColors.cocoaDark },
   buyItemDesc: { fontSize: 11.5, color: BakeryColors.mocha, lineHeight: 15 },
   buyItemPrice: { fontSize: 15, fontWeight: '800', color: BakeryColors.cocoaDark },
-  buyBalanceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  // Centered (not space-between) so this row matches the rest of the centered card —
+  // a lone label-left / value-right row read as "uneven" against everything else.
+  buyBalanceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   buyBalanceLabel: { fontSize: 13, fontWeight: '600', color: BakeryColors.mocha },
   buyBalance: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   buyBalanceNum: { fontSize: 15, fontWeight: '800', color: BakeryColors.cocoaDark },
   buyShortfall: { fontSize: 12.5, color: BakeryColors.berry, fontWeight: '700', textAlign: 'center' },
+  buyPlusNote: { fontSize: 12.5, color: BakeryColors.mocha, fontWeight: '800', textAlign: 'center', marginTop: 2 },
   buyConfirmBtn: {
     backgroundColor: BakeryColors.buttonPink, borderRadius: 18, paddingVertical: Spacing.three, alignItems: 'center',
   },

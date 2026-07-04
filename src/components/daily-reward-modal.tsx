@@ -45,9 +45,10 @@ export function DailyRewardModal() {
     isPlus, streakFreezes,
     profileBirthday, birthdayRewardYear,
     characterObtainedPending,
+    streakRescuePending, streakRescueDismissedDate,
   } = useApp();
 
-  const reward = nextLoginReward({ loginRewardDate, streak, isPlus, streakFreezes }, todayISO());
+  const reward = nextLoginReward({ loginRewardDate, streak, isPlus, streakFreezes, streakRescueDismissedDate }, todayISO());
   // On the player's birthday the birthday gift shows first — hold the daily reward
   // until it's claimed so the two cards never stack.
   const birthdayPending = birthdayRewardAvailable({ profileBirthday, birthdayRewardYear }, todayISO());
@@ -78,7 +79,10 @@ export function DailyRewardModal() {
   // — both are native <Modal>s, and picking a starter sets characterObtainedPending
   // in the SAME commit that flips starterChosen (→ onboarded) true, so without this
   // the two try to present at once and iOS freezes (no card shows at all).
-  const visible = reward.available && armed && onboarded && !characterObtainedPending && !hanjiUnlockPending && !recipeBadgePending && !birthdayPending && !leaving;
+  // Hold the daily reward until the streak-rescue prompt is resolved, so a lapsed
+  // streak is saved before claiming (which would advance/reset it) and the two native
+  // modals never stack.
+  const visible = reward.available && armed && onboarded && !characterObtainedPending && !hanjiUnlockPending && !recipeBadgePending && !birthdayPending && !streakRescuePending && !leaving;
   useReportModalTransition(visible);
 
   return (
@@ -87,7 +91,7 @@ export function DailyRewardModal() {
         <View style={styles.backdrop} />
         <View style={styles.card}>
           <Text style={styles.title}>{t('dailyReward.title')}</Text>
-          <Text style={styles.subtitle}>{t('dailyReward.subtitle', { max: isPlus ? DAILY_REWARD_CAP * 2 : DAILY_REWARD_CAP })}</Text>
+          <Text style={styles.subtitle}>{t('dailyReward.subtitle', { max: DAILY_REWARD_CAP })}</Text>
 
           {/* Today's reward: streak day N pays N coins (capped at 200). */}
           <View style={styles.hero}>

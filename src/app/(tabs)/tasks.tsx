@@ -18,6 +18,7 @@ import type { Task } from '@/context/app-context';
 import { computeTaskRollover } from '@/lib/task-recurrence';
 import { cancelTaskNotification, scheduleTaskNotification } from '@/lib/notifications';
 import i18n, { useTranslation } from '@/i18n';
+import { localizeSubjectName } from '@/lib/subject-utils';
 import {
   BakeryColors,
   BakeryRadii,
@@ -46,6 +47,7 @@ function formatDueDate(dateISO: string): string {
 
 function SubjectBadge({ subjectId }: { subjectId: string | null }) {
   const { subjects } = useApp();
+  const { t } = useTranslation();
   const { scale, contentWidth } = useTabletScale();
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   if (!subjectId) return null;
@@ -54,7 +56,7 @@ function SubjectBadge({ subjectId }: { subjectId: string | null }) {
   return (
     <ThemedView style={[styles.badge, { backgroundColor: subject.color + '30' }]}>
       <ThemedView style={[styles.badgeDot, { backgroundColor: subject.color }]} />
-      <ThemedText style={[styles.badgeText, { color: subject.color }]}>{subject.name}</ThemedText>
+      <ThemedText style={[styles.badgeText, { color: subject.color }]}>{localizeSubjectName(subject.name, t)}</ThemedText>
     </ThemedView>
   );
 }
@@ -268,7 +270,7 @@ export default function TasksScreen() {
                   ? subjects.find((s) => s.id === task.subjectId)?.name
                   : null;
                 const nudge = subjectName
-                  ? t('tasks.nudgeSubject', { subject: subjectName })
+                  ? t('tasks.nudgeSubject', { subject: localizeSubjectName(subjectName, t) })
                   : t('tasks.nudgeGeneric');
                 return (
                   <ThemedView key={task.id} type="backgroundElement" style={styles.nudgeCard}>
@@ -346,7 +348,7 @@ export default function TasksScreen() {
                     </View>
                     <View style={styles.examSubRow}>
                       <ThemedText type="small" themeColor="textSecondary" style={styles.examMeta}>
-                        {exam.subject ? `${exam.subject} · ` : ''}{exam.dateISO}
+                        {exam.subject ? `${localizeSubjectName(exam.subject, t)} · ` : ''}{exam.dateISO}
                       </ThemedText>
                       {exam.reminderEnabled && <BakeryBellEmoji size={11 * cardScale} />}
                     </View>

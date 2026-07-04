@@ -36,7 +36,7 @@ import { roomAccent } from '@/lib/room-accent';
 import { joinPresence, setMyPresenceStatus } from '@/lib/game-net';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { useTranslation } from '@/i18n';
-import { BakeryColors, BakeryRadii, BakeryShadow, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, MIN_POPUP_WIDTH, popupMaxWidth, Spacing } from '@/constants/theme';
 
 // Active-companion id → pet-line persona key (the i18n `pet.<key>` voice). Tapping
 // a character during a session shows one of its lines. Custom/AI slots map to
@@ -707,12 +707,25 @@ export function StudyRoomView({
     return room.statusMap[code ?? ''] ?? 'studying';
   };
 
+  // End a timed break early: resume studying now instead of waiting out the countdown.
+  // Break start pushed the FULL break onto the session start (to pause the study timer),
+  // so give back the still-unused portion (`breakLeft`) — otherwise the leftover seconds
+  // would be added to the study time. Mirrors the auto-resume at breakLeft === 0.
+  const endBreakEarly = () => {
+    shiftSessionStart(-breakLeft);
+    setBreakLeft(0);
+    setOnBreak(false);
+    setFrozenSecs(null);
+    if (!isSolo) room.setStatus('studying');
+  };
+
   const handleBreak = () => {
     if (isTimedBreak) {
-      // One timed break per session; not interruptible (auto-resumes). Same for
-      // solo and for a Plus-host room — in a room we also broadcast the break status
-      // so friends see the pink "on break" state.
-      if (breakUsed || onBreak) return;
+      // One timed break per session. Tapping while ON the break ends it early and
+      // resumes studying; otherwise it starts the break. In a room we also broadcast
+      // the break status so friends see the pink "on break" state.
+      if (onBreak) { endBreakEarly(); return; }
+      if (breakUsed) return;
       setBreakUsed(true);
       setFrozenSecs(secondsLeft); // freeze the study display
       shiftSessionStart(breakMinutes * 60); // pause the study timer
@@ -727,10 +740,11 @@ export function StudyRoomView({
     }
   };
 
-  // A timed break is one-shot (disabled once used/active); the soft toggle is not.
-  const breakDisabled = isTimedBreak && (breakUsed || onBreak);
+  // A timed break is one-shot: once it's been SPENT (used and no longer active) the
+  // button is disabled. While ON the break it stays active as the "End break" control.
+  const breakDisabled = isTimedBreak && breakUsed && !onBreak;
   const breakLabel = isTimedBreak
-    ? (onBreak ? t('studyRoom.breakOnBreak') : t('studyRoom.break'))
+    ? (onBreak ? t('studyRoom.endBreak') : t('studyRoom.break'))
     : (onBreak ? t('studyRoom.resume') : t('studyRoom.break'));
   // Freeze the study countdown during any timed break (frozenSecs is only set then);
   // the MP soft toggle leaves the timer running, as before.
@@ -1229,7 +1243,9 @@ export function StudyRoomView({
           {centeredParticipants.map((p) => (
             <View key={p.code} style={[styles.partyMember, { width: partySlotW }]}>
               {talk.code === p.code && (
-                <PetBubble key={talk.id} line={talk.line} scale={0.72} onDone={() => setTalk(null)} />
+                // Bigger on tablet — the 0.72 party scale reads too small on a 13" iPad.
+                // (Don't pass isTablet: that prop *shrinks* the bubble font; scale is the knob.)
+                <PetBubble key={talk.id} line={talk.line} scale={isTablet ? 1.1 : 0.72} onDone={() => setTalk(null)} />
               )}
             </View>
           ))}
@@ -1250,7 +1266,10 @@ export function StudyRoomView({
             disabled={!onBreak}
             style={({ pressed }) => [styles.gameBtnWrap, isTablet && { width: 64, height: 56 }, pressed && onBreak && styles.pressed]}
             hitSlop={6}>
-            {onBreak && <Image source={GAME_BTN} style={[styles.gameBtn, isTablet && { width: 64, height: 56 }, focus && { tintColor: focusFg }]} contentFit="contain" />}
+            {/* No focus tint: GAME_BTN is a full-colour illustrated icon (cream/pink
+                controller), not a glyph — tinting it flattens the whole squircle into a
+                solid white box. Its own art already reads on the dark disco background. */}
+            {onBreak && <Image source={GAME_BTN} style={[styles.gameBtn, isTablet && { width: 64, height: 56 }]} contentFit="contain" />}
           </Pressable>
         </View>
         {showBreakButton && (
@@ -1556,7 +1575,7 @@ const styles = StyleSheet.create({
   // light enough that the resting characters/desk show through behind the card.
   finishOverlayLight: { ...StyleSheet.absoluteFill, zIndex: 50, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent', padding: 28 },
   finishCard: {
-    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 320, backgroundColor: BakeryColors.frosting,
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: popupMaxWidth(320), backgroundColor: BakeryColors.frosting,
     borderRadius: BakeryRadii.panel, borderWidth: 2, borderColor: BakeryColors.shortbread,
     padding: Spacing.four, gap: Spacing.two, alignItems: 'stretch', ...BakeryShadow,
   },
@@ -1570,7 +1589,7 @@ const styles = StyleSheet.create({
   // "+" room-members sheet
   memberOverlay: { ...StyleSheet.absoluteFill, zIndex: 60, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(78,53,40,0.18)', padding: 28 },
   memberCard: {
-    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 320, backgroundColor: BakeryColors.frosting,
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: popupMaxWidth(320), backgroundColor: BakeryColors.frosting,
     borderRadius: BakeryRadii.panel, borderWidth: 2, borderColor: BakeryColors.shortbread,
     padding: Spacing.four, gap: Spacing.two, alignItems: 'stretch', ...BakeryShadow,
   },

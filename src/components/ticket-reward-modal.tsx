@@ -9,7 +9,7 @@ import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { MIN_POPUP_WIDTH } from '@/constants/theme';
+import { MIN_POPUP_WIDTH, popupMaxWidth } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { isLoadingActive, subscribeLoadingDone } from '@/lib/loading-signal';
 import { useReportModalTransition } from '@/lib/modal-traffic';
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
   card: {
-    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 340, backgroundColor: P.card, borderRadius: 24,
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: popupMaxWidth(340), backgroundColor: P.card, borderRadius: 24,
     borderWidth: 2, borderColor: P.purpleSoft, padding: 22, alignItems: 'center', gap: 6,
   },
   ticket: { width: 132, height: 90, marginBottom: 4, backgroundColor: 'transparent' },

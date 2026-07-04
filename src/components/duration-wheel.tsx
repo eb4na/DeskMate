@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import i18n from '@/i18n';
 import { playTick } from '@/lib/sounds';
 import { BakeryColors, BakeryRadii, BakeryShadow } from '@/constants/theme';
 
@@ -18,8 +19,8 @@ const MIN_VALUES = range(0, 59); // 0–59 so a clean hour (e.g. 60m) shows :00,
 // height + text so the wheel matches the surrounding tablet-scaled layout; the snap
 // math is all derived from the scaled ITEM_H, so it stays consistent.
 export function WheelColumn({
-  values, value, unit, onChange, loop = false, scale = 1, resnap = 0,
-}: { values: number[]; value: number; unit: string; onChange: (v: number) => void; loop?: boolean; scale?: number; resnap?: number }) {
+  values, value, unit, onChange, loop = false, scale = 1, resnap = 0, format,
+}: { values: number[]; value: number; unit: string; onChange: (v: number) => void; loop?: boolean; scale?: number; resnap?: number; format?: (v: number) => string }) {
   const ITEM_H = Math.round(BASE_ITEM_H * scale);
   const styles = useMemo(() => makeWheelStyles(scale, ITEM_H), [scale, ITEM_H]);
   const ref = useRef<ScrollView>(null);
@@ -78,11 +79,11 @@ export function WheelColumn({
         onScrollEndDrag={commit}>
         {data.map((v, i) => (
           <View key={i} style={styles.wheelItem}>
-            <Text style={[styles.wheelNum, v === value && styles.wheelNumActive]}>{String(v).padStart(2, '0')}</Text>
+            <Text style={[styles.wheelNum, v === value && styles.wheelNumActive]}>{format ? format(v) : String(v).padStart(2, '0')}</Text>
           </View>
         ))}
       </ScrollView>
-      <Text style={styles.wheelUnit}>{unit}</Text>
+      {unit ? <Text style={styles.wheelUnit}>{unit}</Text> : null}
     </View>
   );
 }
@@ -111,9 +112,9 @@ export function DurationWheel({
   return (
     <>
       <View style={styles.durCard}>
-        <WheelColumn values={HR_VALUES} value={hr} unit="hr" scale={scale} resnap={resnap} onChange={(h) => apply(h * 60 + mn)} />
+        <WheelColumn values={HR_VALUES} value={hr} unit={i18n.t('customTimer.hr')} scale={scale} resnap={resnap} onChange={(h) => apply(h * 60 + mn)} />
         <View style={styles.durDivider} />
-        <WheelColumn values={minuteValues} value={mn} unit="min" loop scale={scale} resnap={resnap} onChange={(m) => apply(hr * 60 + m)} />
+        <WheelColumn values={minuteValues} value={mn} unit={i18n.t('customTimer.min')} loop scale={scale} resnap={resnap} onChange={(m) => apply(hr * 60 + m)} />
       </View>
       {picks && picks.length > 0 && (
         <View style={styles.pickRow}>
@@ -125,6 +126,22 @@ export function DurationWheel({
         </View>
       )}
     </>
+  );
+}
+
+// A single-column flick wheel in the same white card as DurationWheel — used for
+// the multiplayer break-length picker so it matches the Session length selector.
+// `format` lets the caller localize labels (e.g. 0 → "Off", 5 → "5m").
+export function BreakWheel({
+  value, values, onChange, format, scale = 1,
+}: { value: number; values: number[]; onChange: (m: number) => void; format: (v: number) => string; scale?: number }) {
+  const styles = useMemo(() => makeCardStyles(scale), [scale]);
+  const [resnap, setResnap] = useState(0);
+  const apply = (v: number) => { onChange(v); setResnap((n) => n + 1); };
+  return (
+    <View style={styles.durCard}>
+      <WheelColumn values={values} value={value} unit="" scale={scale} resnap={resnap} format={format} onChange={apply} />
+    </View>
   );
 }
 

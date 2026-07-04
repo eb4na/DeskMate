@@ -18,6 +18,8 @@ import { RECIPE_IDS } from '@/constants/recipes';
 import { useAuth } from '@/context/auth-context';
 import i18n, { useTranslation } from '@/i18n';
 import { FREE_HISTORY_MONTHS, historyCutoffISO } from '@/lib/history-window';
+import { localizeSubjectName } from '@/lib/subject-utils';
+import { formatDuration } from '@/lib/format-duration';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { AFTER_SESSION_MOODS, BEFORE_SESSION_MOODS } from '@/constants/placeholder-data';
 
@@ -549,10 +551,10 @@ export default function ProgressScreen() {
                       <ThemedView type="transparent" style={styles.subjectRowTop}>
                         <ThemedView type="transparent" style={styles.subjectLeft}>
                           <ThemedView style={[styles.subjectDot, { backgroundColor: barColor }]} />
-                          <ThemedText type="small" style={styles.subjectName}>{name}</ThemedText>
+                          <ThemedText type="small" style={styles.subjectName}>{localizeSubjectName(name, t)}</ThemedText>
                         </ThemedView>
                         <ThemedText type="smallBold" style={styles.subjectMinutes}>
-                          {minutes}m
+                          {formatDuration(minutes, t)}
                         </ThemedText>
                       </ThemedView>
                       <ThemedView style={styles.subjectBar}>
@@ -571,14 +573,14 @@ export default function ProgressScreen() {
                 <View style={styles.highlightItem}>
                   <BakeryTrophyEmoji size={15 * ps} />
                   <ThemedText type="small" themeColor="textSecondary">
-                    {t('progress.mostStudied')}<ThemedText type="smallBold">{mostStudied[0]}</ThemedText>
+                    {t('progress.mostStudied')}<ThemedText type="smallBold">{localizeSubjectName(mostStudied[0], t)}</ThemedText>
                   </ThemedText>
                 </View>
                 {leastStudied && (
                   <View style={styles.highlightItem}>
                     <BakerySleepEmoji size={15 * ps} />
                     <ThemedText type="small" themeColor="textSecondary">
-                      {t('progress.leastStudied')}<ThemedText type="smallBold">{leastStudied[0]}</ThemedText>
+                      {t('progress.leastStudied')}<ThemedText type="smallBold">{localizeSubjectName(leastStudied[0], t)}</ThemedText>
                     </ThemedText>
                   </View>
                 )}

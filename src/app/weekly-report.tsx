@@ -10,16 +10,10 @@ import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import i18n, { useTranslation } from '@/i18n';
+import { localizeSubjectName } from '@/lib/subject-utils';
+import { formatDuration } from '@/lib/format-duration';
 import { coinsForMinutes } from '@/constants/placeholder-data';
 import { Spacing } from '@/constants/theme';
-
-function formatMinutes(total: number): string {
-  const h = Math.floor(total / 60);
-  const m = total % 60;
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
-}
 
 function formatDateRange(): string {
   const end = new Date();
@@ -114,12 +108,12 @@ export default function WeeklyReportScreen() {
   const hasSummary = weekMinutes > 0 || weekSessionCount > 0 || weekTasks.length > 0 || weekDays > 0;
   const summaryText = hasSummary
     ? t('weeklyReport.summaryFull', {
-        time: weekMinutes > 0 ? formatMinutes(weekMinutes) : '0m',
+        time: formatDuration(weekMinutes, t),
         sessions: weekSessionCount,
         tasks: weekTasks.length,
         days: weekDays,
       }) +
-      (topSubject ? t('weeklyReport.topSubjectClause', { subject: topSubject[0] }) : '') +
+      (topSubject ? t('weeklyReport.topSubjectClause', { subject: localizeSubjectName(topSubject[0], t) }) : '') +
       (estimatedCoins > 0 ? t('weeklyReport.coinsClause', { coins: estimatedCoins }) : '')
     : null;
 
@@ -136,7 +130,7 @@ export default function WeeklyReportScreen() {
 
   const stats = [
     { label: t('weeklyReport.statSessions'), value: String(weekSessionCount), emoji: '' },
-    { label: t('weeklyReport.statStudyTime'), value: weekMinutes > 0 ? formatMinutes(weekMinutes) : '—', emoji: '' },
+    { label: t('weeklyReport.statStudyTime'), value: weekMinutes > 0 ? formatDuration(weekMinutes, t) : '—', emoji: '' },
     { label: t('weeklyReport.statDaysShowedUp'), value: String(weekDays), emoji: '' },
     { label: t('weeklyReport.statTasksDone'), value: String(weekTasks.length), emoji: '' },
     { label: t('weeklyReport.statStreakNow'), value: `${streak.currentStreak}d`, emoji: '' },
@@ -219,10 +213,10 @@ export default function WeeklyReportScreen() {
                       <ThemedView type="transparent" style={styles.subjectMeta}>
                         <ThemedView style={[styles.subjectDot, { backgroundColor: barColor }]} />
                         <ThemedText type="small" style={styles.subjectName}>
-                          {name}
+                          {localizeSubjectName(name, t)}
                         </ThemedText>
                         <ThemedText type="smallBold" style={styles.subjectTime}>
-                          {formatMinutes(minutes)}
+                          {formatDuration(minutes, t)}
                         </ThemedText>
                       </ThemedView>
                       <ThemedView style={styles.subjectBar}>

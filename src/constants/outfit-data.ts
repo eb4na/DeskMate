@@ -19,29 +19,29 @@ export const CHARACTER_OUTFITS: Record<string, Outfit[]> = {
   // Each outfit's `id` matches its shop item id so buying it unlocks the matching
   // wardrobe skin. Wearable from the Companion Bakery → that companion's Wardrobe.
   'starter:girl': [
-    { id: 'outfit_bun_angel', name: 'Angel', emoji: '', price: 1500, characterId: 'starter:girl', image: require('@/assets/images/bun/bun-angel.png') },
-    { id: 'outfit_bun_snowrabbit', name: 'Snow Rabbit', emoji: '', price: 1500, characterId: 'starter:girl', image: require('@/assets/images/bun/bun-snowrabbit.png') },
-    { id: 'outfit_bun_dreams', name: 'Strawberry Dreams', emoji: '', price: 1500, characterId: 'starter:girl', image: require('@/assets/images/bun/bun-dreams.png') },
+    { id: 'outfit_bun_angel', name: 'Angel', emoji: '', price: 4500, characterId: 'starter:girl', image: require('@/assets/images/bun/bun-angel.png') },
+    { id: 'outfit_bun_snowrabbit', name: 'Snow Rabbit', emoji: '', price: 4500, characterId: 'starter:girl', image: require('@/assets/images/bun/bun-snowrabbit.png') },
+    { id: 'outfit_bun_dreams', name: 'Strawberry Dreams', emoji: '', price: 4500, characterId: 'starter:girl', image: require('@/assets/images/bun/bun-dreams.png') },
   ],
   'shop:companion_cocoa': [
-    { id: 'outfit_cocoa_demon', name: 'Demon', emoji: '', price: 1500, characterId: 'shop:companion_cocoa', image: require('@/assets/images/cocoa/cocoa-demon.png') },
+    { id: 'outfit_cocoa_demon', name: 'Demon', emoji: '', price: 4500, characterId: 'shop:companion_cocoa', image: require('@/assets/images/cocoa/cocoa-demon.png') },
   ],
   'shop:companion_tira': [
-    { id: 'outfit_tira_chocomint', name: 'Choco Mint', emoji: '', price: 1500, characterId: 'shop:companion_tira', image: require('@/assets/images/tira/tira-chocomint.png') },
-    { id: 'outfit_tira_sleepover', name: 'Sleepover', emoji: '', price: 1500, characterId: 'shop:companion_tira', image: require('@/assets/images/tira/tira-sleepover.png') },
-    { id: 'outfit_tira_afternoontrain', name: 'Carefree Days', emoji: '', price: 1500, characterId: 'shop:companion_tira', image: require('@/assets/images/tira/tira-afternoon-train.png') },
+    { id: 'outfit_tira_chocomint', name: 'Choco Mint', emoji: '', price: 4500, characterId: 'shop:companion_tira', image: require('@/assets/images/tira/tira-chocomint.png') },
+    { id: 'outfit_tira_sleepover', name: 'Sleepover', emoji: '', price: 4500, characterId: 'shop:companion_tira', image: require('@/assets/images/tira/tira-sleepover.png') },
+    { id: 'outfit_tira_afternoontrain', name: 'Carefree Days', emoji: '', price: 4500, characterId: 'shop:companion_tira', image: require('@/assets/images/tira/tira-afternoon-train.png') },
   ],
   'shop:companion_honey': [
-    { id: 'outfit_honey_champion', name: 'Champion', emoji: '', price: 1500, characterId: 'shop:companion_honey', image: require('@/assets/images/honey/honey-champion.png') },
-    { id: 'outfit_honey_zzz', name: 'ZZZ', emoji: '', price: 1500, characterId: 'shop:companion_honey', image: require('@/assets/images/honey/honey-zzz.png') },
+    { id: 'outfit_honey_champion', name: 'Champion', emoji: '', price: 4500, characterId: 'shop:companion_honey', image: require('@/assets/images/honey/honey-champion.png') },
+    { id: 'outfit_honey_zzz', name: 'ZZZ', emoji: '', price: 4500, characterId: 'shop:companion_honey', image: require('@/assets/images/honey/honey-zzz.png') },
   ],
   'shop:companion_bunny': [
-    { id: 'outfit_bunny_jiraikei', name: 'Jirai Kei', emoji: '', price: 1500, characterId: 'shop:companion_bunny', image: require('@/assets/images/bunny/bunny-jiraikei.png') },
-    { id: 'outfit_bunny_palace', name: 'Blue Peony', emoji: '', price: 1500, characterId: 'shop:companion_bunny', image: require('@/assets/images/bunny/bunny-palace.png') },
-    { id: 'outfit_bunny_bluebell', name: 'Bluebell', emoji: '', price: 1500, characterId: 'shop:companion_bunny', image: require('@/assets/images/bunny/bunny-bluebell.png') },
+    { id: 'outfit_bunny_jiraikei', name: 'Jirai Kei', emoji: '', price: 4500, characterId: 'shop:companion_bunny', image: require('@/assets/images/bunny/bunny-jiraikei.png') },
+    { id: 'outfit_bunny_palace', name: 'Blue Peony', emoji: '', price: 4500, characterId: 'shop:companion_bunny', image: require('@/assets/images/bunny/bunny-palace.png') },
+    { id: 'outfit_bunny_bluebell', name: 'Bluebell', emoji: '', price: 4500, characterId: 'shop:companion_bunny', image: require('@/assets/images/bunny/bunny-bluebell.png') },
   ],
   'shop:companion_hanji': [
-    { id: 'outfit_hanji_ivoryrose', name: 'Ivory Rose', emoji: '', price: 1500, characterId: 'shop:companion_hanji', image: require('@/assets/images/hanji/hanji-ivoryrose.png') },
+    { id: 'outfit_hanji_ivoryrose', name: 'Ivory Rose', emoji: '', price: 4500, characterId: 'shop:companion_hanji', image: require('@/assets/images/hanji/hanji-ivoryrose.png') },
   ],
 };
 

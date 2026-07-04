@@ -19,6 +19,7 @@ import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { navigateWithLoading, companionPrefetchUri, STUDY_ASSETS } from '@/lib/preload-nav';
 import { SESSION_LENGTHS, autoBreakMinutes, coinsForMinutes, formatCoins } from '@/constants/placeholder-data';
 import { useTranslation } from '@/i18n';
+import { localizeSubjectName } from '@/lib/subject-utils';
 import { BakeryColors, BakeryRadii, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 
 const C = BakeryColors;
@@ -237,7 +238,7 @@ export default function SessionPickerScreen() {
                     ]}
                     onPress={() => setSelectedSubjectId(isActive ? null : s.id)}>
                     <Text style={[styles.chipText, isTablet && styles.chipTextTablet, isActive && { color: s.color }]}>
-                      {s.emoji ? `${s.emoji} ` : ''}{s.name}
+                      {s.emoji ? `${s.emoji} ` : ''}{localizeSubjectName(s.name, t)}
                     </Text>
                   </Pressable>
                 );

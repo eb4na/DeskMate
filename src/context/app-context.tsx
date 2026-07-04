@@ -19,7 +19,7 @@ import { uploadProfile } from '@/lib/profile-sync';
 import { claimMailRemote } from '@/lib/mail';
 import { companionLevelInfo } from '@/lib/companion-level';
 import { uploadStudyDay } from '@/lib/study-buddy';
-import { HANJI_COMPANION_ID, recipeBadgeKey, badgesFromMadeFoods, hasAllCharacterBadges, RECIPE_IDS, starterRecipe } from '@/constants/recipes';
+import { HANJI_COMPANION_ID, recipeBadgeKey, badgesFromMadeFoods, hasAllCharacterBadges, RECIPE_IDS, RECIPE_BADGES, starterRecipe } from '@/constants/recipes';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -177,12 +177,6 @@ export type ReminderEntry = {
 export type EquipableShopCategory = Exclude<ShopCategory, 'game'>;
 export type EquippedShopItems = Record<EquipableShopCategory, string | null>;
 
-export type AdvancedExamFields = {
-  topics: string;
-  targetHours: number | null;
-  confidenceLevel: 1 | 2 | 3 | 4 | 5;
-};
-
 // ─── Seed subjects from Wave 1 static data ───────────────────────────────────
 
 const INITIAL_SUBJECTS: Subject[] = STATIC_SUBJECTS.map((s, i) => ({
@@ -252,6 +246,9 @@ type PersistedState = {
   plusUntil: string;                     // ISO expiry — Plus lapses past this date
   streakFreezes: number;
   streakFreezeResetMonth: string;
+  // todayISO of the day the on-open streak-rescue prompt was last resolved/dismissed,
+  // so it only shows once per calendar day.
+  streakRescueDismissedDate: string;
   savedTimerPresets: TimerPreset[];
   savedBreakPresets: TimerPreset[];
   ambienceId: string | null;
@@ -282,7 +279,6 @@ type PersistedState = {
   chatThread: ChatTurn[];
   purchasedCoins: number;
   multipleReminders: ReminderEntry[];
-  advancedExamMap: Record<string, AdvancedExamFields>;
 
   // Food / baking
   selectedFoodId: string;
@@ -434,6 +430,7 @@ const DEFAULTS: PersistedState = {
   plusUntil: '',
   streakFreezes: 0,
   streakFreezeResetMonth: '',
+  streakRescueDismissedDate: '',
   savedTimerPresets: [],
   savedBreakPresets: [],
   ambienceId: null,
@@ -459,7 +456,6 @@ const DEFAULTS: PersistedState = {
   chatThread: [],
   purchasedCoins: 0,
   multipleReminders: [],
-  advancedExamMap: {},
   selectedFoodId: 'strawberry-shortcake',
   deskFoodReset: true,
   madeFoods: [],
@@ -670,19 +666,34 @@ function nextStreakState(
   return { changed: true, next: 1, isComeback: true, useFreeze: false };
 }
 
-// True when a lapsed streak can STILL be rescued by a freeze: Plus, has ≥1 freeze,
-// and the gap since last activity is within the 2–4 day freeze window (mirrors the
-// session-complete rescue gate). The login reward + home streak display consult this
-// so neither shows nor commits a reset for a streak the freeze prompt can still save
-// — without it, claiming the daily reward before studying silently wastes the freeze.
+// True when a lapsed streak can STILL be rescued: the gap since last activity is
+// within the 2–4 day freeze window. Rescue is possible for ANY user here — they can
+// use an owned freeze OR buy one on the spot (freezes are no longer Plus-only to use),
+// so this depends only on the gap, not on Plus or current inventory. The login reward
+// + home streak display consult it so neither shows nor commits a reset for a streak
+// the rescue prompt can still save — without it, claiming the daily reward (or the
+// login flow advancing the streak) before rescuing would silently kill the streak.
 export function streakRescueAvailable(
-  s: { isPlus: boolean; streakFreezes: number; streak: StreakData },
+  s: { streak: StreakData },
   today: string,
 ): boolean {
   const last = s.streak.lastStudyDate;
-  if (!last || !s.isPlus || s.streakFreezes <= 0) return false;
+  if (!last) return false;
   const gap = daysBetween(last, today);
   return gap >= 2 && gap <= 4;
+}
+
+// The streak is rescuable AND today's on-open rescue prompt hasn't been resolved yet.
+// This is the "hold" gate: while pending, the streak display is held at its current
+// value, the login reward neither previews nor commits a reset, and the Home prompt
+// shows. Once the player decides (picks "Let it reset", or uses/buys a freeze), the
+// dismissed date is stamped to today → pending goes false → the streak reverts to its
+// normal projection (a decline resets it on the next claim/study; a rescue continues it).
+export function streakRescuePending(
+  s: { streak: StreakData; streakRescueDismissedDate: string },
+  today: string,
+): boolean {
+  return streakRescueAvailable(s, today) && s.streakRescueDismissedDate !== today;
 }
 
 // Pure daily-login-reward transition. Single source of truth shared by the popup
@@ -698,13 +709,16 @@ export function streakRescueAvailable(
 // has already been claimed today.
 export type LoginReward = { available: boolean; day: number; coins: number; baseCoins: number };
 export function nextLoginReward(
-  s: { loginRewardDate: string; streak: StreakData; isPlus: boolean; streakFreezes: number },
+  s: { loginRewardDate: string; streak: StreakData; isPlus: boolean; streakFreezes: number; streakRescueDismissedDate?: string },
   today: string,
 ): LoginReward {
-  // When a freeze could still rescue the streak, claiming the login reward must NOT
-  // reset it — preview (and later award) the preserved current streak day instead of
-  // the day-1 projection, leaving the rescue decision to the study-session flow.
-  const day = streakRescueAvailable(s, today) ? s.streak.currentStreak : nextStreakState(s.streak, today).next;
+  // While the on-open rescue prompt is still pending, claiming the login reward must
+  // NOT reset the streak — preview (and later award) the preserved current streak day
+  // instead of the day-1 projection, leaving the decision to the rescue prompt. Once
+  // it's resolved (dismissedDate stamped), fall back to the normal projection so a
+  // declined streak resets on claim (matches claimLoginReward).
+  const pending = streakRescuePending({ streak: s.streak, streakRescueDismissedDate: s.streakRescueDismissedDate ?? '' }, today);
+  const day = pending ? s.streak.currentStreak : nextStreakState(s.streak, today).next;
   const baseCoins = dailyRewardCoins(day);
   return { available: s.loginRewardDate !== today, day, baseCoins, coins: s.isPlus ? baseCoins * 2 : baseCoins };
 }
@@ -972,6 +986,10 @@ type AppContextType = {
   plusPlan: 'monthly' | 'annual' | null;
   plusUntil: string;
   streakFreezes: number;
+  // True when the streak lapsed 2–4 days ago and today's on-open rescue prompt hasn't
+  // been resolved yet — drives the Home StreakRescueModal and gates the daily reward.
+  streakRescuePending: boolean;
+  streakRescueDismissedDate: string;
   savedTimerPresets: TimerPreset[];
   savedBreakPresets: TimerPreset[];
   ambienceId: string | null;
@@ -996,7 +1014,6 @@ type AppContextType = {
   chatThread: ChatTurn[];
   purchasedCoins: number;
   multipleReminders: ReminderEntry[];
-  advancedExamMap: Record<string, AdvancedExamFields>;
   language: string;
   languageSelected: boolean;
   legalAccepted: boolean;
@@ -1010,13 +1027,21 @@ type AppContextType = {
   markFoodMade: (id: string) => void;
   hanjiUnlockPending: boolean;
   clearHanjiUnlock: () => void;
-  devTriggerHanjiUnlock: () => void;
+  devUnlockHanji: () => void;
   recipeBadgePending: string | null;
   clearRecipeBadge: () => void;
   // Shop SKU of a just-obtained companion → drives the one-shot "character
   // obtained" celebration. Transient (not persisted); cleared on dismiss.
   characterObtainedPending: string | null;
   clearCharacterObtained: () => void;
+  // A companion whose bond level just increased (from studying) → drives the
+  // one-shot Home level-up celebration. Transient (not persisted); cleared on dismiss.
+  bondLevelUp: { companionId: string; level: number } | null;
+  clearBondLevelUp: () => void;
+  /** DEV-only: fire the bond level-up celebration for the active companion at its next level. */
+  previewBondLevelUp: () => void;
+  /** DEV-only: fake a 1-day streak lapse (+1 freeze) so the "Use streak freeze" rescue prompt shows on Home. */
+  devLapseStreak: () => void;
   // True once this account's saved state has been *reliably* loaded (local/cloud) —
   // distinct from `loaded`, which also flips true when a load fails and saving is
   // paused. Guards the abandoned-onboarding reset from acting on default fallbacks.
@@ -1160,6 +1185,10 @@ type AppContextType = {
   // Wave 4 actions
   setIsPlus: (value: boolean, plan?: 'monthly' | 'annual', untilOverride?: string) => void;
   useStreakFreeze: () => boolean;
+  // Bridge the streak after buying a freeze on the spot (net-zero inventory).
+  rescueStreakByPurchase: () => boolean;
+  // Mark today's on-open rescue prompt handled so it doesn't reshow.
+  dismissStreakRescue: () => void;
   saveTimerPreset: (preset: Omit<TimerPreset, 'id'>) => void;
   deleteTimerPreset: (id: string) => void;
   saveBreakPreset: (preset: Omit<TimerPreset, 'id'>) => void;
@@ -1188,7 +1217,6 @@ type AppContextType = {
   addPurchasedCoins: (amount: number) => void;
   addStreakFreeze: (count?: number) => void;
   setMultipleReminders: (reminders: ReminderEntry[]) => void;
-  updateAdvancedExam: (examId: string, fields: AdvancedExamFields) => void;
 };
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -1213,6 +1241,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // popup. In-memory only (auto-dismisses after a few seconds).
   const [recipeBadgePending, setRecipeBadgePending] = useState<string | null>(null);
   const [characterObtainedPending, setCharacterObtainedPending] = useState<string | null>(null);
+  const [bondLevelUp, setBondLevelUp] = useState<{ companionId: string; level: number } | null>(null);
   // Last profile-card upload error (null once a sync succeeds). Drives the Friends-screen
   // "your code can't be found" diagnostic — a failed upload means no `profiles` row, so
   // friends searching this code get "user doesn't exist".
@@ -1533,10 +1562,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // the `lastStudyDate` gate with study sessions so the two can't both bump it.
       const r = nextStreakState(prev.streak, today);
       const countedToday = prev.streak.lastStudyDate === today;
-      // But if the streak is still rescuable by a freeze, DON'T let the login reward
-      // reset it — leave it untouched so the session-complete freeze prompt can save
-      // it. Pay out the preserved streak day; the streak isn't advanced today.
-      const rescuePending = streakRescueAvailable(prev, today);
+      // But if the on-open rescue prompt is still pending, DON'T let the login reward
+      // reset the streak — leave it untouched so the prompt can save it. Pay out the
+      // preserved streak day; the streak isn't advanced today. Once the prompt is
+      // resolved (dismissed/rescued), this goes false and a declined streak resets here.
+      const rescuePending = streakRescuePending(prev, today);
       const streak = countedToday || rescuePending
         ? prev.streak
         : {
@@ -1576,7 +1606,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const recordSession = (minutes: number) =>
+  const recordSession = (minutes: number) => {
+    // Detect a bond level-up for the active companion so Home can celebrate it. The
+    // context value is rebuilt every render (not memoized), so this `s` closure is
+    // current; the actual credit below uses `prev` unchanged. Same cap math as below.
+    {
+      const id = s.activeCompanionId;
+      const bondToday = s.companionBondDate === todayISO() ? s.companionBondToday : 0;
+      const credited = Math.max(0, Math.min(minutes, Math.floor(DAILY_EARN_CAP / COINS_PER_MINUTE) - bondToday));
+      if (credited > 0) {
+        const prevMins = s.companionMinutes?.[id] ?? 0;
+        const oldLevel = companionLevelInfo(prevMins).level;
+        const newLevel = companionLevelInfo(prevMins + credited).level;
+        if (newLevel > oldLevel) setBondLevelUp({ companionId: id, level: newLevel });
+      }
+    }
     setS((prev) => {
       const today = todayISO();
       const bondToday = prev.companionBondDate === today ? prev.companionBondToday : 0;
@@ -1600,6 +1644,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         companionBondDate: today,
       };
     });
+  };
 
   // Petting the companion on the home screen: a tiny daily-capped bond nudge toward the
   // active companion's level (flavour, not a grind — at most a few bond/day).
@@ -1769,7 +1814,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     opts?: { rescueWithFreeze?: boolean },
   ): { bonus: number; isComeback: boolean; rescued: boolean } => {
     const today = todayISO();
-    const canRescue = !!opts?.rescueWithFreeze && s.isPlus && s.streakFreezes > 0;
+    // Freezes are usable by anyone who owns one (not Plus-gated) — Plus only affects
+    // the free monthly allotment, not the ability to spend a freeze you have/bought.
+    const canRescue = !!opts?.rescueWithFreeze && s.streakFreezes > 0;
     // Compute synchronously from current state for the return value (the setS
     // updater below runs later, so reading its result there would be too late).
     const result = nextStreakState(s.streak, today, canRescue);
@@ -1777,7 +1824,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (result.changed) {
       setS((prev) => {
         // Recompute against `prev` to stay correct under React batching.
-        const prevCanRescue = !!opts?.rescueWithFreeze && prev.isPlus && prev.streakFreezes > 0;
+        const prevCanRescue = !!opts?.rescueWithFreeze && prev.streakFreezes > 0;
         const r = nextStreakState(prev.streak, today, prevCanRescue);
         if (!r.changed) return prev;
         return {
@@ -2095,12 +2142,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const canFreezeGap = (gap: number) => gap >= 2 && gap <= 4;
 
   const useStreakFreeze = (): boolean => {
-    if (!s.isPlus || s.streakFreezes <= 0) return false;
+    if (s.streakFreezes <= 0) return false;
     const { lastStudyDate } = s.streak;
     if (!lastStudyDate || !canFreezeGap(daysBetween(lastStudyDate, todayISO()))) return false;
 
     setS((prev) => {
-      if (!prev.isPlus || prev.streakFreezes <= 0) return prev;
+      if (prev.streakFreezes <= 0) return prev;
       const { lastStudyDate: last } = prev.streak;
       if (!last || !canFreezeGap(daysBetween(last, todayISO()))) return prev;
       return {
@@ -2112,6 +2159,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
     return true;
   };
+
+  // Rescue the streak after buying a freeze on the spot (the on-open rescue prompt's
+  // "Buy a freeze" path). The purchase and the spend cancel out — net-zero inventory —
+  // so we bridge the gap directly instead of add-then-consume (which would hit a stale
+  // `streakFreezes` read across two setS calls). Window-checked like useStreakFreeze.
+  const rescueStreakByPurchase = (): boolean => {
+    const { lastStudyDate } = s.streak;
+    if (!lastStudyDate || !canFreezeGap(daysBetween(lastStudyDate, todayISO()))) return false;
+    setS((prev) => {
+      const { lastStudyDate: last } = prev.streak;
+      if (!last || !canFreezeGap(daysBetween(last, todayISO()))) return prev;
+      return {
+        ...prev,
+        // Bridge exactly one missed day; freezes unchanged (bought one, spent it).
+        streak: { ...prev.streak, lastStudyDate: yesterdayISO() },
+        streakRescueDismissedDate: todayISO(),
+      };
+    });
+    return true;
+  };
+
+  // Mark the on-open streak-rescue prompt handled for today so it doesn't reshow (used
+  // when the player picks "Let it reset", or after a successful use/purchase rescue).
+  const dismissStreakRescue = () =>
+    setS((prev) => ({ ...prev, streakRescueDismissedDate: todayISO() }));
 
   // Newest preset goes to the front; the list is a fixed-size queue, so the
   // oldest (last) preset is dropped once the cap is reached.
@@ -2352,12 +2424,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const clearHanjiUnlock = () => setS((prev) => ({ ...prev, hanjiUnlockPending: false }));
-  const devTriggerHanjiUnlock = () => {
-    setS((prev) => ({ ...prev, hanjiUnlockPending: true }));
-    setRecipeBadgePending('berry-croissant');
+  // TEST: fully unlock Hanji in one tap — mark every recipe as made (which derives
+  // all five character badges), grant every recipe SKU, actually grant Hanji, and
+  // arm the one-time unlock celebration so you can see it fire. Not gated behind a
+  // recipe-badge popup, so the Hanji modal shows immediately on Home.
+  const devUnlockHanji = () => {
+    setRecipeBadgePending(null);
+    setS((prev) => {
+      const madeFoods = Array.from(new Set([...prev.madeFoods, ...RECIPE_IDS]));
+      const recipeSkus = RECIPE_BADGES.map((b) => b.recipeItem).filter((x): x is string => !!x);
+      const ownedShopItems = Array.from(
+        new Set([...prev.ownedShopItems, ...recipeSkus, HANJI_COMPANION_ID]),
+      );
+      return {
+        ...prev,
+        madeFoods,
+        bakedWith: badgesFromMadeFoods(madeFoods),
+        ownedShopItems,
+        hanjiUnlockPending: true,
+      };
+    });
   };
   const clearRecipeBadge = () => setRecipeBadgePending(null);
   const clearCharacterObtained = () => setCharacterObtainedPending(null);
+  const clearBondLevelUp = () => setBondLevelUp(null);
+
+  // DEV-only preview: celebrate the active companion advancing to its NEXT level,
+  // without actually crediting minutes. Lets us eyeball the modal on demand.
+  const previewBondLevelUp = () => {
+    const id = s.activeCompanionId;
+    const mins = s.companionMinutes?.[id] ?? 0;
+    setBondLevelUp({ companionId: id, level: companionLevelInfo(mins).level + 1 });
+  };
+
+  // DEV-only: simulate a streak that lapsed one full day (gap = 2, the freeze window)
+  // and hand the player a freeze, so the on-open "Use streak freeze" rescue prompt fires
+  // next time Home renders. Lets us verify the rescue flow without waiting 2 real days.
+  const devLapseStreak = () => {
+    setS((prev) => ({
+      ...prev,
+      streak: {
+        ...prev.streak,
+        currentStreak: Math.max(1, prev.streak.currentStreak),
+        lastStudyDate: addDaysISO(todayISO(), -2),
+      },
+      streakFreezes: Math.max(1, prev.streakFreezes),
+      streakRescueDismissedDate: '', // un-dismiss so the prompt is pending again today
+    }));
+  };
 
   // TEST/PLACEHOLDER: wipe game progress + purchases WITHOUT erasing the account.
   // The user stays signed in (legal/birthday kept) but is dropped back to the
@@ -2537,12 +2651,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setMultipleReminders = (reminders: ReminderEntry[]) =>
     setS((prev) => ({ ...prev, multipleReminders: reminders }));
 
-  const updateAdvancedExam = (examId: string, fields: AdvancedExamFields) =>
-    setS((prev) => ({
-      ...prev,
-      advancedExamMap: { ...prev.advancedExamMap, [examId]: fields },
-    }));
-
   const setLanguage = (lang: string) => {
     i18n.changeLanguage(lang);
     setS((prev) => ({ ...prev, language: lang }));
@@ -2656,7 +2764,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // even before the user has claimed/studied. So a fresh login shows day 1, a
         // continued one shows N+1, and a lapsed one shows 1 — the chip never sits at
         // a stale number while you're looking at it.
-        todayStreakDay: streakRescueAvailable(s, todayISO()) ? s.streak.currentStreak : nextStreakState(s.streak, todayISO()).next,
+        todayStreakDay: streakRescuePending(s, todayISO()) ? s.streak.currentStreak : nextStreakState(s.streak, todayISO()).next,
         earnedToday: s.earnedDate === todayISO() ? s.earnedToday : 0,
         adRewardCount: s.adRewardDate === todayISO() ? s.adRewardCount : 0,
         loginStreak: s.loginStreak,
@@ -2723,6 +2831,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         plusPlan: s.plusPlan,
         plusUntil: s.plusUntil,
         streakFreezes: s.streakFreezes,
+        streakRescuePending: streakRescuePending(s, todayISO()),
+        streakRescueDismissedDate: s.streakRescueDismissedDate,
         savedTimerPresets: s.savedTimerPresets,
         savedBreakPresets: s.savedBreakPresets,
         ambienceId: s.ambienceId,
@@ -2746,7 +2856,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         chatThread: s.chatThread,
         purchasedCoins: s.purchasedCoins,
         multipleReminders: s.multipleReminders,
-        advancedExamMap: s.advancedExamMap,
         selectedFoodId: s.selectedFoodId ?? 'strawberry-shortcake',
         madeFoods: s.madeFoods ?? [],
         bakedWith: s.bakedWith ?? [],
@@ -2754,11 +2863,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         markFoodMade,
         hanjiUnlockPending: s.hanjiUnlockPending ?? false,
         clearHanjiUnlock,
-        devTriggerHanjiUnlock,
+        devUnlockHanji,
         recipeBadgePending,
         clearRecipeBadge,
         characterObtainedPending,
         clearCharacterObtained,
+        bondLevelUp,
+        clearBondLevelUp,
+        previewBondLevelUp,
+        devLapseStreak,
         persistedStateReady,
         resetAccountForAbandonedOnboarding,
         resetGameData,
@@ -2801,6 +2914,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         claimMail,
         setIsPlus,
         useStreakFreeze,
+        rescueStreakByPurchase,
+        dismissStreakRescue,
         saveTimerPreset,
         deleteTimerPreset,
         saveBreakPreset,
@@ -2826,7 +2941,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addPurchasedCoins,
         addStreakFreeze,
         setMultipleReminders,
-        updateAdvancedExam,
         language: s.language ?? 'en',
         languageSelected: s.languageSelected ?? false,
         legalAccepted: s.legalAccepted ?? false,

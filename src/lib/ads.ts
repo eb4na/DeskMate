@@ -28,6 +28,12 @@ export const DAILY_AD_LIMIT = 3;
 // How long to wait for an ad to load before giving up (so a hung load() can't leave
 // the await hanging forever with no popup).
 const LOAD_TIMEOUT_MS = 12000;
+// SDK init (ATT prompt + initialize()) can hang on the simulator or when the native
+// module isn't actually in the running binary — and it's awaited BEFORE the load
+// timeout below, so an unbounded hang here freezes the whole flow with zero feedback
+// ("nothing happens" on tap). Cap it so we always fall through to the load path,
+// which has its own timeout and reports `unavailable`.
+const INIT_TIMEOUT_MS = 5000;
 
 // The production rewarded ad unit id, per platform. In __DEV__ we always swap in
 // Google's TEST unit id below — showing real ads to yourself is an AdMob ban risk.
@@ -109,7 +115,12 @@ export async function showRewardedAd(): Promise<AdResult> {
   const unitId = activeUnitId();
   if (!unitId) return { rewarded: false, unavailable: true };
   try {
-    await ensureInit();
+    // Never let a hung init (missing native module / stalled ATT prompt on the sim)
+    // block forever — race it against a timeout, then proceed to load() regardless.
+    await Promise.race([
+      ensureInit(),
+      new Promise<void>((r) => setTimeout(r, INIT_TIMEOUT_MS)),
+    ]);
     const { RewardedAd, RewardedAdEventType, AdEventType } = GoogleMobileAds;
     const ad = RewardedAd.createForAdRequest(unitId, {
       requestNonPersonalizedAdsOnly: !trackingAllowed,

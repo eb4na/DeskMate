@@ -18,6 +18,7 @@ import type { TaskStatus } from '@/context/app-context';
 import { containsProfanity } from '@/lib/profanity';
 import { cancelTaskNotification, scheduleTaskNotification } from '@/lib/notifications';
 import { useTranslation } from '@/i18n';
+import { localizeSubjectName } from '@/lib/subject-utils';
 import { BakeryColors, BakeryRadii, MaxContentWidth, Spacing } from '@/constants/theme';
 
 const STATUS_OPTIONS: { value: TaskStatus; labelKey: string }[] = [
@@ -31,7 +32,7 @@ const REMINDER_OFFSETS = [5, 15, 30];
 
 export default function AddTaskScreen() {
   const { t } = useTranslation();
-  const { taskId, date } = useLocalSearchParams<{ taskId?: string; date?: string }>();
+  const { taskId } = useLocalSearchParams<{ taskId?: string }>();
   const { tasks, subjects, addTask, updateTask, use24HourTime } = useApp();
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
@@ -43,7 +44,7 @@ export default function AddTaskScreen() {
   const [title, setTitle] = useState(existingTask?.title ?? '');
   const [subjectId, setSubjectId] = useState<string | null>(existingTask?.subjectId ?? null);
   const [dueDateEnabled, setDueDateEnabled] = useState(existingTask?.dueDate != null || !editing);
-  const [dueDate, setDueDate] = useState(existingTask?.dueDate ?? date ?? todayISO);
+  const [dueDate, setDueDate] = useState(existingTask?.dueDate ?? todayISO);
   // A due time is optional — dated tasks default to "All day" (no time).
   const [dueTimeEnabled, setDueTimeEnabled] = useState(editing ? existingTask?.dueTime != null : false);
   const [dueTime, setDueTime] = useState(existingTask?.dueTime ?? '09:00');
@@ -54,7 +55,7 @@ export default function AddTaskScreen() {
     setRepeatDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort((a, b) => a - b)));
   // Optional end date for the repeat ("repeat until …"). Off = repeats with no end.
   const [repeatUntilEnabled, setRepeatUntilEnabled] = useState(existingTask?.repeatUntil != null);
-  const [repeatUntil, setRepeatUntil] = useState(existingTask?.repeatUntil ?? existingTask?.dueDate ?? date ?? todayISO);
+  const [repeatUntil, setRepeatUntil] = useState(existingTask?.repeatUntil ?? existingTask?.dueDate ?? todayISO);
 
   // Notification reminder — fires N minutes before the task's due time (or off).
   const deriveOffset = (): number | null => {
@@ -199,7 +200,7 @@ export default function AddTaskScreen() {
                     type={subjectId === s.id ? 'backgroundSelected' : 'backgroundElement'}
                     style={styles.chip}>
                     <ThemedView style={[styles.subjectDot, { backgroundColor: s.color }]} />
-                    <ThemedText type="small">{s.name}</ThemedText>
+                    <ThemedText type="small">{localizeSubjectName(s.name, t)}</ThemedText>
                   </ThemedView>
                 </Pressable>
               ))}
@@ -355,7 +356,7 @@ export default function AddTaskScreen() {
                 {REMINDER_OFFSETS.map((off) => (
                   <Pressable key={off} onPress={() => setNotifyOffset(off)} style={({ pressed }) => [pressed && styles.pressed]}>
                     <ThemedView type={notifyOffset === off ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
-                      <ThemedText type="small">{off} min before</ThemedText>
+                      <ThemedText type="small">{t('addTask.minBefore', { n: off })}</ThemedText>
                     </ThemedView>
                   </Pressable>
                 ))}

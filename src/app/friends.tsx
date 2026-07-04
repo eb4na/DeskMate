@@ -570,9 +570,9 @@ export default function FriendsScreen() {
                         </View>
                         <View style={styles.friendInfo}>
                           <View style={styles.nameRow}>
-                            <Text style={styles.friendName}>{f.displayName || f.name}</Text>
+                            <Text style={styles.friendName}>{f.displayName || t('friends.newUser')}</Text>
                           </View>
-                          <Text style={styles.friendCode}>{onlineCodes.has(f.code) ? t('friends.onlineNow') : f.code}</Text>
+                          <Text style={styles.friendCode}>{onlineCodes.has(f.code) ? t('friends.onlineNow') : t('friends.offline')}</Text>
                         </View>
                       </Pressable>
                       <Pressable
@@ -590,7 +590,7 @@ export default function FriendsScreen() {
                       <Pressable style={({ pressed }) => [styles.playBtn, pressed && styles.pressed]} onPress={() => setPlayFor(f)}>
                         <Text style={styles.playBtnText}>{t('friends.play')}</Text>
                       </Pressable>
-                      <Pressable hitSlop={8} onPress={() => confirmRemove(f.code, f.name)} style={styles.friendRemove}>
+                      <Pressable hitSlop={8} onPress={() => confirmRemove(f.code, f.displayName || t('friends.newUser'))} style={styles.friendRemove}>
                         <Text style={styles.friendRemoveText}>✕</Text>
                       </Pressable>
                     </View>

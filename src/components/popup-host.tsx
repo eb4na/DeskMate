@@ -8,7 +8,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { subscribePopup, type PopupButton, type PopupConfig } from '@/lib/popup';
 import { msUntilModalSafe, useReportModalTransition } from '@/lib/modal-traffic';
 import { useTranslation } from '@/i18n';
-import { BakeryColors as C, BakeryRadii, BakeryShadow, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
+import { BakeryColors as C, BakeryRadii, BakeryShadow, MIN_POPUP_WIDTH, popupMaxWidth, Spacing } from '@/constants/theme';
 
 export function PopupHost() {
   const { t } = useTranslation();
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     minWidth: MIN_POPUP_WIDTH,
-    maxWidth: 340,
+    maxWidth: popupMaxWidth(340),
     backgroundColor: '#FFFDF8',
     borderRadius: BakeryRadii.panel,
     padding: Spacing.four,

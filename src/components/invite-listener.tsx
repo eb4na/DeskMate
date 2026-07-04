@@ -7,7 +7,7 @@ import { router, usePathname } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { MIN_POPUP_WIDTH } from '@/constants/theme';
+import { MIN_POPUP_WIDTH, popupMaxWidth } from '@/constants/theme';
 
 import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     minWidth: MIN_POPUP_WIDTH,
-    maxWidth: 320,
+    maxWidth: popupMaxWidth(320),
     backgroundColor: P.card,
     borderRadius: 24,
     borderWidth: 2,

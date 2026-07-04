@@ -19,6 +19,7 @@ const STUDIED_ICON = require('@/assets/images/profile/studied-book.png');
 const BIRTHDAY_ICON = require('@/assets/images/profile/birthday-candle.png');
 import { useApp } from '@/context/app-context';
 import i18n, { useTranslation } from '@/i18n';
+import { formatDuration } from '@/lib/format-duration';
 import { ROOM_PAIRS, backgroundOwned } from '@/constants/room-data';
 import { cardColors, CARD_COLORS, type CardColorKey } from '@/constants/card-colors';
 import { ColorWheelPicker, hslToHex } from '@/components/color-wheel-picker';
@@ -120,9 +121,7 @@ export default function ProfileScreen() {
         .imageSource;
 
   const bgRoom = ROOM_PAIRS.find((r) => r.id === profileBackgroundId) ?? ROOM_PAIRS[0];
-  const hours = Math.floor(totalMinutes / 60);
-  const mins = totalMinutes % 60;
-  const hoursLabel = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  const hoursLabel = formatDuration(totalMinutes, t);
   const name = profileDisplayName.trim() || t('profileCard.studyBuddy');
 
   const shareCard = async () => {

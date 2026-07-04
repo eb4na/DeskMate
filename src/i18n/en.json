@@ -115,6 +115,10 @@
     "ok": "Sweet!"
   },
   "common": {
+    "plusLabel": "Plus",
+    "durHM": "{{h}}h {{m}}m",
+    "durH": "{{h}}h",
+    "durM": "{{m}}m",
     "ok": "OK",
     "cancel": "Cancel",
     "skip": "Skip",
@@ -308,6 +312,7 @@
     "breakInfoMulti": "Take breaks anytime in multiplayer"
   },
   "customTimer": {
+    "hr": "hr",
     "title": "Custom Timer",
     "subtitle": "Choose your focus recipe",
     "quickPicks": "QUICK PICKS",
@@ -393,6 +398,12 @@
     "pausedLeft": "Paused · {{count}} pauses left",
     "resume": "Resume",
     "pause": "Pause"
+  },
+  "streakRescue": {
+    "title": "Save your streak?",
+    "msgUse": "You missed a few days. Use a Streak Freeze to keep your {{count}}-day streak going?",
+    "msgBuy": "You missed a few days. Buy a Streak Freeze to keep your {{count}}-day streak going?",
+    "buyButton": "Buy a freeze · {{price}}"
   },
   "sessionComplete": {
     "title": "Session Complete!",
@@ -599,6 +610,7 @@
     "streakFreezeDesc": "Saves your streak when you miss a day.",
     "freezeOwned": "{{count}} owned",
     "freezeAdded": "Streak freeze added!",
+    "plusAlreadyHaveSound": "You already have this free with Plus — buy to keep it forever.",
     "notEnoughCoinsMsg": "You need {{price}} coins but only have {{coins}}.",
     "buyItemQ": "Buy \"{{name}}\"?",
     "spendCoins": "Spend {{price}} coins.",
@@ -626,6 +638,8 @@
     "ambience": "Ambience",
     "theme": "Theme",
     "about": "About",
+    "privacyTerms": "Privacy & Terms",
+    "privacyTermsDesc": "Privacy Policy & Terms of Service",
     "version": "Version",
     "plus": "Memobun Plus",
     "upgradePlus": "Upgrade to Plus",
@@ -768,6 +782,7 @@
     "seePlusFeatures": "See Plus features"
   },
   "addTask": {
+    "minBefore": "{{n}} min before",
     "title": "Task",
     "taskTitle": "Task title",
     "subject": "Subject",
@@ -1142,6 +1157,31 @@
     "name_Miel": "Miel",
     "name_Tira": "Tira"
   },
+  "shopNames": {
+    "bg_modern_kitchen": "Modern Kitchen",
+    "bg_washitsu": "Beach",
+    "bg_tiras_room": "Tira's Room",
+    "bg_buns_room": "Bun's Room",
+    "bg_miels_room": "Miel's Room",
+    "bg_afternoon_train": "Afternoon Train",
+    "bg_tranquil": "Tranquil",
+    "bg_landmine": "Landmine",
+    "bg_lavender_palace": "Lavender Palace",
+    "bg_frostbloom_shrine": "Frostbloom Shrine",
+    "bg_strawberry_palace": "Golden Teahouse",
+    "bg_bluebell_lagoon": "Bluebell Lagoon",
+    "desk_marble": "Marble Desk",
+    "desk_wood": "Wood Desk",
+    "desk_pink": "Pink Desk",
+    "desk_pale_wood": "Pale Wood Desk",
+    "desk_miels": "Miel's Desk",
+    "desk_afternoon_train": "Afternoon Train Desk",
+    "desk_maple": "Maplewood Desk",
+    "desk_landmine": "Noir Desk",
+    "desk_lavender": "Lavender Desk",
+    "desk_strawberry": "Golden Teahouse Desk",
+    "desk_snow": "Snow Desk"
+  },
   "friends": {
     "guestGateTitle": "Friends need an account",
     "guestGateBody": "Create a free account to add friends and study together. Your progress comes with you.",
@@ -1164,6 +1204,8 @@
     "noFriendsYet": "No friends yet",
     "noFriendsHint": "Add a friend with their code to get started.",
     "onlineNow": "Online now",
+    "offline": "Offline",
+    "newUser": "New user",
     "play": "Play",
     "infoNote": "Send a request with a code; once they accept, you'll see each other's cards. Sign in so friends can find you.",
     "signInNeeded": "Sign in needed",
@@ -1278,6 +1320,7 @@
     "todaysPlan": "Today's Plan",
     "noTasksFocus": "No tasks for today — just focus",
     "breakOnBreak": "On break",
+    "endBreak": "End break",
     "break": "Break",
     "resume": "Resume",
     "leaveRoom": "Leave room",
@@ -1740,6 +1783,11 @@
     "relieved": "Relieved",
     "exhausted": "Exhausted"
   },
+  "subjectNames": {
+    "math": "Math",
+    "biology": "Biology",
+    "history": "History"
+  },
   "outfitNames": {
     "classic": "Classic",
     "angel": "Angel",
@@ -1826,6 +1874,11 @@
     "title": "You got {{name}}!",
     "message": "A new study buddy joined your bakery!",
     "button": "Meet {{name}}"
+  },
+  "bondLevelUp": {
+    "title": "Level {{level}}!",
+    "message": "Your bond with {{name}} grew stronger!",
+    "dismiss": "Tap to continue"
   },
   "recipeBadge": {
     "title": "Badge collected!",

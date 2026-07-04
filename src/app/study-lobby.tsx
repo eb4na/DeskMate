@@ -6,14 +6,15 @@ import { SoundPressable } from '@/components/sound-pressable';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DevKnobs } from '@/components/dev-knobs';
-import { DurationWheel } from '@/components/duration-wheel';
+import { BreakWheel, DurationWheel } from '@/components/duration-wheel';
 import { ThemedView } from '@/components/themed-view';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
-import { SESSION_LENGTHS } from '@/constants/placeholder-data';
+import { BREAK_LENGTHS, SESSION_LENGTHS } from '@/constants/placeholder-data';
 import { bunAvatarNudge, getCompanionImage } from '@/lib/companion-utils';
 import { useApp } from '@/context/app-context';
 import { useStudyRoom, STUDY_ROOM_MAX } from '@/lib/use-study-room';
+import { localizeSubjectName } from '@/lib/subject-utils';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, Spacing } from '@/constants/theme';
 
@@ -35,8 +36,8 @@ export default function StudyLobbyScreen() {
   const { scale, contentWidth } = useTabletScale();
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('studylobby', LOBBY_ELEMENTS);
-  const { active, isHost, canStartSelf, myCode, roster, presentCodes, netStatus, roomId, start, startSelf, leaveRoom, setMyPrefs } = useStudyRoom();
-  const { subjects, isPlus } = useApp();
+  const { active, isHost, canStartSelf, myCode, roster, presentCodes, netStatus, roomId, start, startSelf, leaveRoom, setMyPrefs, setMyBreak } = useStudyRoom();
+  const { subjects, isPlus, savedBreakPresets } = useApp();
   // Custom length is a Plus perk. It's offered to everyone in the room when the
   // HOST has Plus (the host shares their perk with guests) — or to a Plus member
   // for their own session. Guests still can't save presets (the lobby has none).
@@ -59,8 +60,14 @@ export default function StudyLobbyScreen() {
   // Host-set room break length (minutes) — a Plus HOST perk. 0 = no timed break
   // (the room keeps its free on/off break). Applies to everyone once the host starts.
   const [breakMins, setBreakMins] = useState(0);
-  const BREAK_PICKS = [0, 5, 10, 15, 20];
-  const canSetBreak = isHost && isPlus;
+  // Break options mirror the app's convention (see session-complete): the standard
+  // break lengths plus any the user saved as presets. 0 = free on/off break.
+  const breakPicks = Array.from(
+    new Set([0, ...BREAK_LENGTHS, ...(isPlus ? savedBreakPresets.map((p) => p.minutes) : [])]),
+  ).sort((a, b) => a - b);
+  // Choosing a break is a custom-timer perk — offered on this player's own Plus, OR
+  // shared by a Plus host. Otherwise the break is fixed (free on/off in-session).
+  const canSetBreak = canCustom;
 
   // Everyone picks their own length + topic up front; broadcast the choice so every
   // member's avatar shows it, and so this player's session runs with their picks.
@@ -77,6 +84,12 @@ export default function StudyLobbyScreen() {
     setMyPrefs(minutes, topic);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Keep my per-player break in sync (mirrors how my length rides myPreferredMinutes).
+  // Only when I'm allowed to set one; otherwise it stays unset (→ fixed free break).
+  useEffect(() => {
+    if (canSetBreak) setMyBreak(breakMins);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [breakMins, canSetBreak]);
 
   // If we somehow landed here without a room, bail home.
   if (!active) {
@@ -111,7 +124,8 @@ export default function StudyLobbyScreen() {
             {roster.map((e) => {
               const present = presentCodes.includes(e.code);
               const minsLabel = e.minutes ? t('lobby.minShort', { n: e.minutes }) : null;
-              const pref = minsLabel && e.topic ? `${minsLabel} · ${e.topic}` : minsLabel ?? e.topic ?? '—';
+              const topicLabel = e.topic ? localizeSubjectName(e.topic, t) : null;
+              const pref = minsLabel && topicLabel ? `${minsLabel} · ${topicLabel}` : minsLabel ?? topicLabel ?? '—';
               return (
                 <View key={e.code} style={styles.member}>
                   <View style={styles.avatarCircle}>
@@ -148,14 +162,19 @@ export default function StudyLobbyScreen() {
               {customViaHost && <Text style={styles.customNote}>{t('lobby.hostPlusCustom')}</Text>}
             </>
           ) : (
-            <View style={styles.lenGrid}>
+            // No custom-timer perk here → pick from the standard preset lengths (the
+            // same set as the solo Start Session screen), so the length isn't frozen to
+            // whatever was chosen before entering multiplayer. The arbitrary hr/min
+            // wheel stays a Plus perk. Each player's pick rides the same per-player sync.
+            <View style={styles.topicRow}>
               {SESSION_LENGTHS.map((opt) => (
                 <Pressable
                   key={opt.minutes}
                   onPress={() => pickMinutes(opt.minutes)}
-                  style={[styles.lenCard, minutes === opt.minutes && styles.lenCardActive]}>
-                  <Text style={[styles.lenNum, minutes === opt.minutes && styles.lenNumActive]}>{opt.minutes}</Text>
-                  <Text style={styles.lenLabel}>{t('lobby.min')}</Text>
+                  style={[styles.topicChip, minutes === opt.minutes && styles.topicChipActive]}>
+                  <Text style={[styles.topicText, minutes === opt.minutes && styles.topicTextActive]}>
+                    {t('lobby.minShort', { n: opt.minutes })}
+                  </Text>
                 </Pressable>
               ))}
             </View>
@@ -173,30 +192,27 @@ export default function StudyLobbyScreen() {
                   onPress={() => pickTopic(s.name)}
                   style={[styles.topicChip, topic === s.name && styles.topicChipActive]}>
                   {s.emoji ? <Text style={styles.topicEmoji}>{s.emoji}</Text> : null}
-                  <Text style={[styles.topicText, topic === s.name && styles.topicTextActive]} numberOfLines={1}>{s.name}</Text>
+                  <Text style={[styles.topicText, topic === s.name && styles.topicTextActive]} numberOfLines={1}>{localizeSubjectName(s.name, t)}</Text>
                 </Pressable>
               ))}
             </View>
           )}
 
-          {/* Break time — a Plus HOST perk. The host picks one break length for the
-              whole room; everyone then gets a personal timed break of that length
-              (freeze + auto-resume). 0 = keep the free on/off break. */}
+          {/* Break time — a custom-timer perk, per player. Each player picks their own
+              break length (from their preset times); they then get a personal timed
+              break of that length (freeze + auto-resume). 0 = free on/off break.
+              Unlocked by this player's own Plus, or shared by a Plus host. */}
           {canSetBreak && (
             <>
               <Text style={styles.label}>{t('lobby.breakTime')}</Text>
-              <View style={styles.topicRow}>
-                {BREAK_PICKS.map((m) => (
-                  <Pressable
-                    key={m}
-                    onPress={() => setBreakMins(m)}
-                    style={[styles.topicChip, breakMins === m && styles.topicChipActive]}>
-                    <Text style={[styles.topicText, breakMins === m && styles.topicTextActive]}>
-                      {m === 0 ? t('lobby.breakOff') : t('lobby.minShort', { n: m })}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
+              <BreakWheel
+                value={breakMins}
+                values={breakPicks}
+                onChange={setBreakMins}
+                scale={scale}
+                format={(m) => (m === 0 ? t('lobby.breakOff') : t('lobby.minShort', { n: m }))}
+              />
+              {customViaHost && <Text style={styles.customNote}>{t('lobby.hostPlusCustom')}</Text>}
             </>
           )}
         </ScrollView>
@@ -221,7 +237,7 @@ export default function StudyLobbyScreen() {
             // own session (their own clock + chosen length) whenever ready.
             <SoundPressable
               sound="confirm"
-              onPress={() => startSelf({ durationMinutes: minutes, subjectName: topic, taskId: null, taskTitle: null })}
+              onPress={() => startSelf({ durationMinutes: minutes, subjectName: topic, taskId: null, taskTitle: null, ...(breakMins > 0 ? { breakMinutes: breakMins } : {}) })}
               style={({ pressed }) => [styles.startBtn, tw('startBtn'), pressed && styles.pressed]}>
               <Text style={styles.startText}>{t('lobby.startStudying')}</Text>
             </SoundPressable>
@@ -277,24 +293,12 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   topicEmoji: { fontSize: 14 * s },
   topicText: { fontSize: 13 * s, fontWeight: '700', color: BakeryColors.mocha },
   topicTextActive: { color: BakeryColors.cocoaDark },
-  lenGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  lenCard: {
-    width: '47%',
-    flexGrow: 1,
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'center',
-    gap: 4 * s,
-    paddingVertical: Spacing.three * s,
-    borderRadius: BakeryRadii.card,
-    borderWidth: 1.5,
-    borderColor: BakeryColors.shortbread,
-    backgroundColor: BakeryColors.glass,
+  // Read-only length shown when this player can't customize (no Plus, non-Plus host).
+  fixedLenCard: {
+    flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 4 * s,
+    paddingVertical: Spacing.four * s, borderRadius: BakeryRadii.card,
+    borderWidth: 1.5, borderColor: BakeryColors.shortbread, backgroundColor: BakeryColors.glass,
   },
-  lenCardActive: { borderColor: '#F7A7B8', backgroundColor: BakeryColors.rose },
-  lenNum: { fontSize: 22 * s, fontWeight: '900', color: BakeryColors.mocha },
-  lenNumActive: { color: BakeryColors.cocoaDark },
-  lenLabel: { fontSize: 12 * s, color: BakeryColors.mocha },
   customRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.three * s },
   stepBtn: {
     width: 44 * s, height: 44 * s, borderRadius: 22 * s,

@@ -15,7 +15,7 @@ import { useApp } from '@/context/app-context';
 import { useIsTablet } from '@/hooks/use-device-class';
 import { useTranslation } from '@/i18n';
 import { PRODUCT_IDS, fetchPrices, purchasePlus, purchasesReady, restorePlus, type PriceMap } from '@/lib/purchases';
-import { MaxContentWidth, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
+import { MaxContentWidth, MIN_POPUP_WIDTH, popupMaxWidth, Spacing } from '@/constants/theme';
 
 // Each feature shows the same in-game art used for that feature elsewhere, so the
 // paywall reads as a tour of real Memobun content rather than generic line icons.
@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
   confirmCard: {
     width: '100%',
     minWidth: MIN_POPUP_WIDTH,
-    maxWidth: 340,
+    maxWidth: popupMaxWidth(340),
     backgroundColor: '#FFFDF8',
     borderRadius: 22,
     padding: Spacing.four,

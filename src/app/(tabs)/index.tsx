@@ -14,8 +14,10 @@ import { StudyRoomView } from '@/components/study-room-view';
 import { HanjiUnlockModal } from '@/components/hanji-unlock-modal';
 import { RecipeBadgeModal } from '@/components/recipe-badge-modal';
 import { DailyRewardModal } from '@/components/daily-reward-modal';
+import { StreakRescueModal } from '@/components/streak-rescue-modal';
 import { BirthdayRewardModal } from '@/components/birthday-reward-modal';
 import { TicketRewardModal } from '@/components/ticket-reward-modal';
+import { BondLevelUpModal } from '@/components/bond-levelup-modal';
 import { AfterMoodPrompt } from '@/components/after-mood-prompt';
 import { useStudyRoom } from '@/lib/use-study-room';
 import { BakeryGearEmoji } from '@/components/bakery-emoji';
@@ -29,6 +31,7 @@ import { HomeTutorial } from '@/components/home-tutorial';
 import { DiscoBackdrop } from '@/components/disco-backdrop';
 import { setTutorialTarget } from '@/lib/tutorial-targets';
 import i18n, { useTranslation } from '@/i18n';
+import { localizeSubjectName } from '@/lib/subject-utils';
 import { autoBreakMinutes, coinsForMinutes, formatCoins } from '@/constants/placeholder-data';
 import { hanjiIsAnimated, resolveActiveCompanion } from '@/lib/companion-utils';
 import { HanjiFigure } from '@/components/hanji-figure';
@@ -1162,7 +1165,7 @@ export default function HomeScreen() {
                                   <View style={styles.examSubjectChip}>
                                     <View style={[styles.examSubjectDot, { backgroundColor: examSubjectColor }]} />
                                     <ThemedText style={styles.examSubjectText} numberOfLines={1}>
-                                      {featuredExam.subject}
+                                      {localizeSubjectName(featuredExam.subject, t)}
                                     </ThemedText>
                                   </View>
                                 ) : null}
@@ -1391,9 +1394,13 @@ export default function HomeScreen() {
           active session — these reward popups hold until the user is back on Home. */}
       {homeFocused && !activeSession && <HanjiUnlockModal />}
       {homeFocused && !activeSession && <RecipeBadgeModal />}
+      {/* Streak-rescue prompt shows just before the daily reward, so a lapsed streak is
+          saved before the login reward can advance/reset it. */}
+      {homeFocused && !activeSession && <StreakRescueModal />}
       {homeFocused && !activeSession && <DailyRewardModal />}
       {homeFocused && !activeSession && <BirthdayRewardModal />}
       {homeFocused && !activeSession && <TicketRewardModal />}
+      {homeFocused && !activeSession && <BondLevelUpModal />}
       {/* After-mood for a session ended early but still recorded — the only place
           its mood is captured (the session-complete screen is skipped on early end). */}
       <AfterMoodPrompt

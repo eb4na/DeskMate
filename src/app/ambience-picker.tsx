@@ -56,7 +56,7 @@ function AmbienceContent() {
                 onPress={() =>
                   unlocked
                     ? setAmbience(selected ? null : opt.id)
-                    : router.replace({ pathname: '/shop', params: { category: 'sound' } })
+                    : router.replace({ pathname: '/shop', params: { buyItem: `sound_${opt.id}` } })
                 }>
                 <ThemedView
                   type="backgroundElement"

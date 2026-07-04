@@ -10,6 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { coinsForMinutes } from '@/constants/placeholder-data';
 import { getCompanionLine } from '@/constants/companion-lines';
+import { localizeSubjectName } from '@/lib/subject-utils';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
@@ -127,7 +128,7 @@ export default function SessionScreen() {
       <SafeAreaView style={styles.safeArea}>
         {/* Subject / task label + companion line */}
         <ThemedText type="small" themeColor="textSecondary" style={styles.subjectLabel}>
-          {subject && subject.length > 0 ? subject : t('home.generalStudy')}
+          {localizeSubjectName(subject, t)}
           {taskTitle && taskTitle.length > 0 ? ` · ${taskTitle}` : ''}
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.companionLine}>

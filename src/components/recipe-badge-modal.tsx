@@ -9,7 +9,7 @@ import { Image } from 'expo-image';
 import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-import { MIN_POPUP_WIDTH } from '@/constants/theme';
+import { MIN_POPUP_WIDTH, popupMaxWidth } from '@/constants/theme';
 
 import { useApp } from '@/context/app-context';
 import { useIsTablet } from '@/hooks/use-device-class';
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
   card: {
-    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 320, backgroundColor: P.card, borderRadius: 24,
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: popupMaxWidth(320), backgroundColor: P.card, borderRadius: 24,
     borderWidth: 2, borderColor: P.pinkSoft, padding: 22, alignItems: 'center', gap: 6,
   },
   wisteria: { position: 'absolute', top: -10, right: 6, zIndex: 3, transform: [{ rotate: '18deg' }] },

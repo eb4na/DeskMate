@@ -7,11 +7,11 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { MIN_POPUP_WIDTH } from '@/constants/theme';
+import { MIN_POPUP_WIDTH, popupMaxWidth } from '@/constants/theme';
 
 import { useApp } from '@/context/app-context';
 import { useIsTablet } from '@/hooks/use-device-class';
-import { useReportModalTransition } from '@/lib/modal-traffic';
+import { useModalSafeVisible } from '@/lib/modal-traffic';
 import { useTranslation } from '@/i18n';
 
 const HANJI_IMG = require('@/assets/images/hanji/hanji.png');
@@ -26,8 +26,12 @@ export function HanjiUnlockModal() {
   // first and only reveal Hanji once that popup is dismissed (recipeBadgePending
   // cleared). Also hold behind the just-obtained-companion card — both are native
   // <Modal>s and co-presenting freezes iOS (see daily-reward-modal).
-  const visible = hanjiUnlockPending && !recipeBadgePending && !characterObtainedPending;
-  useReportModalTransition(!!visible);
+  // Gate presentation through the global settle window so this native <Modal> can
+  // never try to present while another modal (e.g. Settings, where the dev "Unlock
+  // Hanji" button lives) is still dismissing — that race makes iOS silently drop the
+  // presentation and no popup ever appears. Mirrors BondLevelUpModal.
+  const want = hanjiUnlockPending && !recipeBadgePending && !characterObtainedPending;
+  const visible = useModalSafeVisible(!!want);
 
   const meet = () => {
     clearHanjiUnlock();
@@ -61,7 +65,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
   card: {
-    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 320, backgroundColor: P.card, borderRadius: 24,
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: popupMaxWidth(320), backgroundColor: P.card, borderRadius: 24,
     borderWidth: 2, borderColor: P.purpleSoft, padding: 22, alignItems: 'center', gap: 8,
   },
   avatar: {

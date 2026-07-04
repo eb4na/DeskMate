@@ -67,6 +67,42 @@ export function localizeOutfitName(name: string, t: (key: string) => string): st
   return key ? t(key) : name;
 }
 
+// Recipe shop-item id → food-gallery id (recipe display names live in
+// foodGallery.food_*, already translated — reuse them instead of duplicating).
+const RECIPE_FOOD_ID: Record<string, string> = {
+  recipe_pudding: 'pudding',
+  recipe_sakura: 'sakura-mochi',
+  recipe_matcha: 'matcha-crepe',
+  recipe_croissant: 'berry-croissant',
+};
+
+/** Localized display name for ANY shop item, resolved by category:
+ *  companion → gallery.name_*, outfit → outfitNames.*, recipe → foodGallery.food_*,
+ *  sound → ambience.name_*, background/desk → shopNames.<id>. Falls back to the raw
+ *  English `name` for anything unmapped. Use this everywhere a shop item name shows. */
+export function localizeShopItemName(
+  item: { id: string; name: string; category: string },
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string {
+  switch (item.category) {
+    case 'companion':
+      return localizeCompanionName(item.name, t);
+    case 'outfits':
+      return localizeOutfitName(item.name, t);
+    case 'recipe': {
+      const fid = RECIPE_FOOD_ID[item.id];
+      return fid ? t(`foodGallery.food_${fid}`) : item.name;
+    }
+    case 'sound':
+      return t(`ambience.name_${item.id.replace('sound_', '')}`);
+    case 'background':
+    case 'desk':
+      return t(`shopNames.${item.id}`, { defaultValue: item.name });
+    default:
+      return item.name;
+  }
+}
+
 export const STARTER_COMPANION_IMAGES: Record<DefaultCompanionId, number> = {
   girl: require('@/assets/images/bun/bun-home.png'),
   dude: require('@/assets/images/bun/bun-home.png'),

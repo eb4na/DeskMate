@@ -1,9 +1,10 @@
 import { Image } from 'expo-image';
 import { formatCoins } from '@/constants/placeholder-data';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,7 +12,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { useReportModalTransition } from '@/lib/modal-traffic';
+import { noteModalTransition, useReportModalTransition } from '@/lib/modal-traffic';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
@@ -187,7 +188,7 @@ function GalleryContent() {
   // Report this screen's native <Modal>s (buy / pair-buy / pair-confirm / lore / Plus
   // alert) to the global anti-freeze signal so popups never present mid-transition.
   useReportModalTransition(
-    buyItem !== null || plusAlertName !== null || pairBuy !== null || pairConfirm !== null || lorePopup !== null || galleryAlert !== null,
+    wardrobeFor !== null || buyItem !== null || plusAlertName !== null || pairBuy !== null || pairConfirm !== null || lorePopup !== null || galleryAlert !== null,
   );
   const buyDiscount = isPlus ? 0.75 : 1;
   const buyPrice = buyItem ? Math.floor(buyItem.price * buyDiscount) : 0;
@@ -231,13 +232,11 @@ function GalleryContent() {
     // Deskless scene rooms keep the player's current desk (see equipMatchedRoom).
     if (pair.deskId) setEquippedDesk(pair.id);
     equipWardrobeSkin(skin.id);
-    setPairBuy(null);
     // Drop back home so the new room + outfit are visible (matches character-equip).
-    // Defer navigation until the buy modal has finished dismissing — dismissing this
-    // in-file <Modal> AND the gallery modal SCREEN in the same tick freezes iOS (two
-    // native dismissals at once). No success popup — a root popup can't present over
-    // this modal screen either.
-    setTimeout(goHome, 350);
+    // The buy modal sits on TOP of the still-open wardrobe sheet (itself atop the gallery
+    // native modal); finishMatchedRoomEquip tears all three down deterministically so the
+    // gallery never dismisses while the wardrobe is still transitioning (iOS freeze).
+    finishMatchedRoomEquip(() => setPairBuy(null));
   };
   const wardrobeIsBun = wardrobeFor?.id === getStarterActiveId('girl');
   // Skins for the open wardrobe (Bun uses its own list; shop companions use COMPANION_SKINS).
@@ -250,6 +249,26 @@ function GalleryContent() {
     else if (wardrobeFor) setCompanionSkin(wardrobeFor.id, skinId);
   };
 
+  // Leave for the Shop with the buy popup pre-opened (a locked outfit, or a chain-link
+  // look that still needs buying). The wardrobe is a native <Modal>; navigating while
+  // it's still on screen risks the iOS stacked-modal freeze, so on iOS we close it
+  // first and navigate on its REAL onDismiss (see handleWardrobeDismissed).
+  const shopRoute = useRef<Record<string, string> | null>(null);
+  const leaveToShop = (params: Record<string, string>) => {
+    const go = () => {
+      // Stamp the route dismiss so the Shop's buy popup waits it out before it
+      // presents (else it collides with this modal screen sliding away → freeze).
+      noteModalTransition();
+      router.replace({ pathname: '/shop', params });
+    };
+    if (Platform.OS !== 'ios') {
+      if (wardrobeFor) { setWardrobeFor(null); setTimeout(go, 350); } else go();
+      return;
+    }
+    if (wardrobeFor) { shopRoute.current = params; setWardrobeFor(null); }
+    else go();
+  };
+
   // The chain icon: set the outfit's matched room (background + desk) and wear the
   // outfit so the whole look comes together. If the room isn't owned, open an
   // in-place buy popup (an in-file <Modal>, which presents fine over this native-
@@ -258,11 +277,16 @@ function GalleryContent() {
   const equipMatchedRoom = (skin: BunSkin) => {
     const pair = roomById(skin.roomId);
     if (!pair) return;
-    if (!isPairOwned(pair, ownedShopItems)) {
-      setPairBuy({ pair, skin });
+    // The whole look is owned only when the room AND the outfit are owned.
+    const lookOwned = isPairOwned(pair, ownedShopItems) && (!skin.shopItemId || ownedShopItems.includes(skin.shopItemId));
+    if (!lookOwned) {
+      // Send them to the Shop with the matched look's buy popup open (room + outfit).
+      const params: Record<string, string> = { buyPair: (pair.backgroundId ?? pair.deskId) as string };
+      if (skin.shopItemId) params.buyOutfit = skin.shopItemId;
+      leaveToShop(params);
       return;
     }
-    // Owned — preview the room (and its desk, if any) and confirm before applying.
+    // Fully owned — preview the room (and its desk, if any) and confirm before applying.
     setPairConfirm({ pair, skin });
   };
 
@@ -277,15 +301,72 @@ function GalleryContent() {
     if (pair.deskId) setEquippedDesk(pair.id);
     // Wear the outfit too — but only if it's unlocked (a locked skin can't be worn).
     const skinLocked = !!skin.shopItemId && !ownedShopItems.includes(skin.shopItemId);
+    // Must run before the closes below — equipWardrobeSkin reads the current-render
+    // `wardrobeFor`, and the deferred setWardrobeFor(null) would otherwise starve it.
     if (!skinLocked) equipWardrobeSkin(skin.id);
-    setPairConfirm(null);
-    // Defer until the preview modal has dismissed (see confirmPairBuy) — avoids the
-    // in-file-modal + screen dismissal colliding.
-    setTimeout(goHome, 350);
+    // Deterministic teardown of confirm → wardrobe → navigate (see finishMatchedRoomEquip).
+    finishMatchedRoomEquip(() => setPairConfirm(null));
   };
 
   // Equipping a character drops you straight back to the home screen.
   const goHome = () => (router.canGoBack() ? router.back() : router.replace('/'));
+
+  // Matched-room equip tears down THREE stacked native modals in a row: the confirm/buy
+  // popup (top) → the wardrobe sheet → the gallery screen itself (goHome dismisses it).
+  // Dismissing two at once — or on fixed setTimeouts that under load outlast the slide
+  // animation — collides two native-modal transitions and freezes iOS (every tap, incl.
+  // the pink Done, goes dead). On iOS we chain off each modal's REAL onDismiss so the next
+  // close only begins once the previous modal is fully gone. Android has neither onDismiss
+  // nor the double-present freeze, so the old fixed stagger is kept there.
+  // Tracks the next teardown step, keyed off each modal's REAL onDismiss (a ref, so the
+  // native async callbacks never read a stale render's state). null = no teardown in
+  // flight (normal cancels/closes must not navigate). equipMatchedRoom can fire with the
+  // wardrobe open (chain link) OR closed (card button), so we decide the path up front.
+  const teardownStage = useRef<null | 'closeWardrobe' | 'goHome'>(null);
+  const finishMatchedRoomEquip = (closeTopModal: () => void) => {
+    if (Platform.OS === 'ios') {
+      // If the wardrobe is open it must dismiss before we navigate; otherwise go straight
+      // home once the pair popup is gone. Either way the gallery only dismisses (goHome)
+      // after the modal above it has fully transitioned — no double-present freeze.
+      teardownStage.current = wardrobeFor ? 'closeWardrobe' : 'goHome';
+      closeTopModal();
+    } else {
+      // Android has neither onDismiss nor the double-present freeze — old stagger is fine.
+      closeTopModal();
+      setTimeout(() => setWardrobeFor(null), 350);
+      setTimeout(goHome, 700);
+    }
+  };
+  // onDismiss of the pair buy/confirm popup: close the wardrobe next (its onDismiss then
+  // navigates), or navigate now if the wardrobe was never open.
+  const handlePairModalDismissed = () => {
+    if (teardownStage.current === 'closeWardrobe') {
+      teardownStage.current = 'goHome';
+      setWardrobeFor(null);
+    } else if (teardownStage.current === 'goHome') {
+      teardownStage.current = null;
+      goHome();
+    }
+  };
+  // onDismiss of the wardrobe sheet: once it's fully gone, leave for home (only when a
+  // teardown is in flight — a plain wardrobe close must stay put).
+  const handleWardrobeDismissed = () => {
+    // A pending shop route (locked outfit / chain-link buy) leaves for the Shop once
+    // the wardrobe is fully gone — no navigation while the modal is still transitioning.
+    if (shopRoute.current) {
+      const params = shopRoute.current;
+      shopRoute.current = null;
+      // Stamp the route dismiss so the Shop's buy popup waits it out before it
+      // presents (else it collides with this modal screen sliding away → freeze).
+      noteModalTransition();
+      router.replace({ pathname: '/shop', params });
+      return;
+    }
+    if (teardownStage.current === 'goHome') {
+      teardownStage.current = null;
+      goHome();
+    }
+  };
 
   const handleUseSlot = (slotId: string, hasRenderableImage: boolean) => {
     if (!hasRenderableImage) {
@@ -435,6 +516,7 @@ function GalleryContent() {
         visible={!!wardrobeFor}
         animationType="slide"
         transparent
+        onDismiss={handleWardrobeDismissed}
         onRequestClose={() => { if (lorePopup) { setLorePopup(null); } else { setWardrobeFor(null); } }}>
         <View style={styles.wardrobeBackdrop}>
           <View style={styles.wardrobeSheet}>
@@ -456,8 +538,9 @@ function GalleryContent() {
                               const item = skin.shopItemId ? getShopItem(skin.shopItemId) : null;
                               if (item?.plusOnly) {
                                 setPlusAlertName(localizeOutfitName(skin.name, t));
-                              } else if (item) {
-                                setBuyItem({ id: item.id, name: localizeOutfitName(skin.name, t), image: skin.image, price: item.price });
+                              } else if (item && wardrobeFor) {
+                                // Send them to the Shop with this outfit's buy popup open.
+                                leaveToShop({ outfitItem: item.id, outfitChar: wardrobeFor.id });
                               }
                             } else {
                               equipWardrobeSkin(skin.id);
@@ -596,6 +679,7 @@ function GalleryContent() {
         visible={pairBuy !== null}
         transparent
         animationType="fade"
+        onDismiss={handlePairModalDismissed}
         onRequestClose={() => setPairBuy(null)}>
         <Pressable style={styles.buyBackdrop} onPress={() => setPairBuy(null)}>
           <Pressable style={styles.buyCard} onPress={(e) => e.stopPropagation?.()}>
@@ -651,6 +735,7 @@ function GalleryContent() {
         visible={pairConfirm !== null}
         transparent
         animationType="fade"
+        onDismiss={handlePairModalDismissed}
         onRequestClose={() => setPairConfirm(null)}>
         <Pressable style={styles.buyBackdrop} onPress={() => setPairConfirm(null)}>
           <Pressable style={styles.buyCard} onPress={(e) => e.stopPropagation?.()}>

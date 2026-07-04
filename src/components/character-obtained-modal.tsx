@@ -8,7 +8,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { MIN_POPUP_WIDTH } from '@/constants/theme';
+import { MIN_POPUP_WIDTH, popupMaxWidth } from '@/constants/theme';
 
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
   card: {
-    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 320, backgroundColor: P.card, borderRadius: 24,
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: popupMaxWidth(320), backgroundColor: P.card, borderRadius: 24,
     borderWidth: 2, borderColor: 'rgba(255,255,255,0.85)', padding: 22, alignItems: 'center', gap: 8,
     shadowColor: '#5B3A2E', shadowOpacity: 0.18, shadowRadius: 16, shadowOffset: { width: 0, height: 6 },
     elevation: 6,

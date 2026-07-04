@@ -2,7 +2,8 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
-import { BakeryColors, BakeryRadii, BakeryShadow, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
+import { localizeSubjectName } from '@/lib/subject-utils';
+import { BakeryColors, BakeryRadii, BakeryShadow, MIN_POPUP_WIDTH, popupMaxWidth, Spacing } from '@/constants/theme';
 
 const C = BakeryColors;
 
@@ -43,7 +44,7 @@ export function SubjectPickerModal({
                   pressed && styles.pressed,
                 ]}>
                 <Text style={[styles.chipText, { color: C.cocoaDark }]} numberOfLines={1}>
-                  {s.emoji ? `${s.emoji} ` : ''}{s.name}
+                  {s.emoji ? `${s.emoji} ` : ''}{localizeSubjectName(s.name, t)}
                 </Text>
               </Pressable>
             ))}
@@ -63,7 +64,7 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     minWidth: MIN_POPUP_WIDTH,
-    maxWidth: 340,
+    maxWidth: popupMaxWidth(340),
     maxHeight: '70%',
     backgroundColor: C.frosting,
     borderRadius: BakeryRadii.panel,
