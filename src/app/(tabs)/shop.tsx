@@ -201,6 +201,7 @@ export default function ShopScreen() {
   const tImg = isTablet && { width: 110 * SHOP_TS, height: 110 * SHOP_TS };
   const tEmoji = isTablet && { fontSize: 80 * SHOP_TS, lineHeight: 92 * SHOP_TS };
   const tName = isTablet && { fontSize: 14 * SHOP_TS };
+  const tHint = isTablet && { fontSize: 12 * SHOP_TS, lineHeight: 16 * SHOP_TS };
   // Tablet: the Bakery Menu coin packs are sized to the phone base × SHOP_TS so they
   // stay proportional to the rest of the shop (the 11" Pro is the design reference).
   // They were previously over-inflated (icon 100, name/price 25) which read huge on
@@ -962,10 +963,10 @@ export default function ShopScreen() {
                         )}
                         <FitText style={[styles.itemName, tName]}>{localizeShopItemName(item, t)}</FitText>
                         {item.category === 'recipe' && item.owner && (
-                          <ThemedText style={styles.useHint} numberOfLines={1}>{t('foodGallery.ownerTag', { name: localizeCompanionName(item.owner, t) })}</ThemedText>
+                          <ThemedText style={[styles.useHint, tHint]} numberOfLines={1}>{t('foodGallery.ownerTag', { name: localizeCompanionName(item.owner, t) })}</ThemedText>
                         )}
                         {USE_HINTS[item.category] && (
-                          <ThemedText style={styles.useHint} numberOfLines={1}>{t('shop.setActiveInGallery')}</ThemedText>
+                          <ThemedText style={[styles.useHint, tHint]} numberOfLines={1}>{t('shop.setActiveInGallery')}</ThemedText>
                         )}
                         {/* Locked: frost the whole card. */}
                         {!owned && <LockOverlay size={36} radius={BakeryRadii.card} />}
@@ -1556,7 +1557,7 @@ const styles = StyleSheet.create({
   },
   badgeOwned: { backgroundColor: '#F2A0B525' },
   badgeEquipped: { backgroundColor: `${BakeryColors.honey}25` },
-  useHint: { fontSize: 10, color: BakeryColors.latte, textAlign: 'center', lineHeight: 13, marginTop: 1 },
+  useHint: { fontSize: 11.5, color: BakeryColors.mocha, textAlign: 'center', lineHeight: 15, marginTop: 2 },
   charBadge: { marginTop: 4, borderRadius: BakeryRadii.chip, paddingHorizontal: 8, paddingVertical: 2 },
   charLockedBadge: { backgroundColor: 'rgba(124,111,90,0.14)' },
   charLockedText: { fontSize: 11, fontWeight: '700', color: BakeryColors.mocha },

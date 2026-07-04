@@ -1203,6 +1203,7 @@
     "friendRequests": "Solicitudes de amistad ({{count}})",
     "accept": "Aceptar",
     "myFriends": "Mis amigos ({{count}})",
+    "searchFriends": "Buscar amigos…",
     "noFriendsYet": "Aún no hay amigos",
     "noFriendsHint": "Añade a un amigo con su código para empezar.",
     "onlineNow": "En línea ahora",

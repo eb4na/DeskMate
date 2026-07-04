@@ -1203,6 +1203,7 @@
     "friendRequests": "フレンドリクエスト ({{count}})",
     "accept": "承認",
     "myFriends": "マイフレンド ({{count}})",
+    "searchFriends": "フレンドを検索…",
     "noFriendsYet": "まだフレンドがいません",
     "noFriendsHint": "コードを入力してフレンドを追加しましょう。",
     "onlineNow": "オンライン",

@@ -1203,6 +1203,7 @@
     "friendRequests": "好友请求（{{count}}）",
     "accept": "接受",
     "myFriends": "我的好友（{{count}}）",
+    "searchFriends": "搜索好友…",
     "noFriendsYet": "还没有好友",
     "noFriendsHint": "用好友码添加一位好友来开始吧。",
     "onlineNow": "在线",

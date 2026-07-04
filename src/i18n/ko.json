@@ -1203,6 +1203,7 @@
     "friendRequests": "친구 요청 ({{count}})",
     "accept": "수락",
     "myFriends": "내 친구 ({{count}})",
+    "searchFriends": "친구 검색…",
     "noFriendsYet": "아직 친구가 없습니다",
     "noFriendsHint": "친구 코드로 친구를 추가해 시작하세요.",
     "onlineNow": "지금 온라인",

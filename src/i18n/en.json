@@ -1203,6 +1203,7 @@
     "friendRequests": "Friend Requests ({{count}})",
     "accept": "Accept",
     "myFriends": "My Friends ({{count}})",
+    "searchFriends": "Search friends…",
     "noFriendsYet": "No friends yet",
     "noFriendsHint": "Add a friend with their code to get started.",
     "onlineNow": "Online now",

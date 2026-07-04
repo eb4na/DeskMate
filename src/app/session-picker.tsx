@@ -105,8 +105,8 @@ export default function SessionPickerScreen() {
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         {/* Top bar — slim: just back + coin pill; the title lives in the menu header */}
         <View style={[styles.topBar, { paddingTop: insets.top + Spacing.one }]}>
-          <Pressable style={({ pressed }) => [styles.iconBtn, tw('back'), pressed && styles.pressed]} onPress={goBack} hitSlop={8}>
-            <Text style={styles.backChevron}>‹</Text>
+          <Pressable style={({ pressed }) => [styles.iconBtn, isTablet && styles.iconBtnTablet, tw('back'), pressed && styles.pressed]} onPress={goBack} hitSlop={8}>
+            <Text style={[styles.backChevron, isTablet && styles.backChevronTablet]}>‹</Text>
           </Pressable>
           <View style={styles.topSpacer} />
           <Pressable style={({ pressed }) => [styles.coinPill, tw('coinPill'), pressed && styles.pressed]} onPress={() => router.push('/coin-shop')}>
@@ -320,7 +320,11 @@ const makeStyles = (g: number) => StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.85)', borderWidth: 1.5, borderColor: C.shortbread,
     alignItems: 'center', justifyContent: 'center',
   },
+  // On iPad the 38px circle reads tiny next to the coin pill — give it a bigger,
+  // more tappable target (borderWidth grows too so it doesn't look thin).
+  iconBtnTablet: { width: 50 * g, height: 50 * g, borderRadius: 25 * g, borderWidth: 2 },
   backChevron: { fontSize: 22 * g, fontWeight: '800', color: C.cocoaDark, marginTop: -2 * g },
+  backChevronTablet: { fontSize: 30 * g, marginTop: -3 * g },
   topSpacer: { flex: 1 },
   coinPill: {
     flexDirection: 'row', alignItems: 'center', gap: 5 * g,
