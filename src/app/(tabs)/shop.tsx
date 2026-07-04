@@ -16,6 +16,7 @@ import { CoinAmount, CoinIcon } from '@/components/coin-icon';
 import { STREAK_FREEZE_ICON } from '@/components/streak-freeze-icon';
 import { DecoIcon, OutfitIcon, ThemeIcon, PoseIcon, GameIcon, ReminderIcon } from '@/components/category-icons';
 import { BakeryStarEmoji } from '@/components/bakery-emoji';
+import { BadgeIcon, MagnifierIcon } from '@/components/settings-icons';
 import { LockOverlay } from '@/components/lock-badge';
 import { ThemedText } from '@/components/themed-text';
 import { FitText } from '@/components/fit-text';
@@ -30,8 +31,8 @@ import {
 } from '@/constants/shop-data';
 import { outfitsForCharacter } from '@/constants/outfit-data';
 import { pairForItem, isPairOwned, partnerItemId, ROOM_PAIRS } from '@/constants/room-data';
-import { SHOP_COMPANIONS, STARTER_COMPANION_IMAGES, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, localizeShopItemName, BUN_SKINS, getCompanionSkins, pickSkinLore, skinLores } from '@/lib/companion-utils';
-import { RECIPE_IDS, hasAllRecipeBadges } from '@/app/food-gallery';
+import { SHOP_COMPANIONS, STARTER_COMPANION_IMAGES, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, localizeShopItemName, localizeShopItemDescription, BUN_SKINS, getCompanionSkins, pickSkinLore, skinLores } from '@/lib/companion-utils';
+import { FOOD_ITEMS, RECIPE_IDS, hasAllRecipeBadges } from '@/app/food-gallery';
 import { DAILY_EARN_CAP, formatCoins } from '@/constants/placeholder-data';
 import {
   BakeryColors,
@@ -79,7 +80,6 @@ function CategoryIcon({ id, size }: { id: ShopCategory; size?: number }) {
   return <PoseIcon size={size} />;
 }
 
-const MAGNIFIER_ICON = require('@/assets/images/shop/magnifier.png');
 const TICKET_ICON = require('@/assets/images/shop/ticket.png');
 
 const _win = Dimensions.get('window');
@@ -113,13 +113,13 @@ const GAP = 8;
 const PAGE_W = WIN_W;
 const CARD = Math.floor((PAGE_W - H_PAD * 2 - GAP) / COLS);
 
-type CoinPack = { id: string; name: string; coins: number; price: string; popular?: boolean };
+type CoinPack = { id: string; name: string; coins: number; price: string; popular?: boolean; bestValue?: boolean };
 const COIN_PACKS: CoinPack[] = [
-  { id: 'pouch', name: 'Strawberry Cupcake', coins: 200, price: '$0.99' },
-  { id: 'bag', name: 'Lemon Slice', coins: 600, price: '$2.99' },
-  { id: 'chest', name: 'Chocolate Cake', coins: 1444, price: '$6.70', popular: true },
-  { id: 'vault', name: 'Red Velvet', coins: 5000, price: '$19.99' },
-  { id: 'treasury', name: 'Together With You', coins: 50000, price: '$99.99' },
+  { id: 'pouch', name: 'Strawberry Cupcake', coins: 600, price: '$0.99' },
+  { id: 'bag', name: 'Lemon Slice', coins: 2000, price: '$2.99' },
+  { id: 'chest', name: 'Chocolate Cake', coins: 5000, price: '$6.70', popular: true },
+  { id: 'vault', name: 'Red Velvet', coins: 15000, price: '$19.99' },
+  { id: 'treasury', name: 'Together With You', coins: 100000, price: '$99.99', bestValue: true },
 ];
 
 
@@ -202,6 +202,10 @@ export default function ShopScreen() {
   const tEmoji = isTablet && { fontSize: 80 * SHOP_TS, lineHeight: 92 * SHOP_TS };
   const tName = isTablet && { fontSize: 14 * SHOP_TS };
   const tHint = isTablet && { fontSize: 12 * SHOP_TS, lineHeight: 16 * SHOP_TS };
+  const tOutfitBackChevron = isTablet && { fontSize: 32 * SHOP_TS, lineHeight: 34 * SHOP_TS };
+  const tOutfitBackText = isTablet && { fontSize: 19 * SHOP_TS };
+  const tLoreBadge = isTablet && { width: 22 * SHOP_TS, height: 22 * SHOP_TS, borderRadius: 11 * SHOP_TS };
+  const tLoreBadgeText = isTablet && { fontSize: 11 * SHOP_TS, lineHeight: 14 * SHOP_TS };
   // Tablet: the Bakery Menu coin packs are sized to the phone base × SHOP_TS so they
   // stay proportional to the rest of the shop (the 11" Pro is the design reference).
   // They were previously over-inflated (icon 100, name/price 25) which read huge on
@@ -344,6 +348,10 @@ export default function ShopScreen() {
   // Resolve from the full list so an unowned character's wardrobe can still be
   // browsed (view-only). `owned` decides buy vs. preview-only downstream.
   const outfitChar = allOutfitCharacters.find((c) => c.id === outfitCharId) ?? null;
+  // Skins listed cheapest → most expensive (display order only; data order untouched).
+  const charOutfits = outfitChar
+    ? [...outfitsForCharacter(outfitChar.id)].sort((a, b) => a.price - b.price)
+    : [];
   const itemScrollRef = useRef<ScrollView>(null);
 
   const [catScrollX, setCatScrollX] = useState(0);
@@ -520,7 +528,7 @@ export default function ShopScreen() {
       if (!ownedShopItems.includes(item.id)) {
         setBuyReq({
           title: t('shop.buyItemQ', { name: localizeOutfitName(skin.name, t) }),
-          items: [{ id: item.id, name: skin.name, emoji: item.emoji, description: '', price: item.price, category: 'outfits', image: skin.image }],
+          items: [{ id: item.id, name: skin.name, emoji: item.emoji, description: item.description, price: item.price, category: 'outfits', image: skin.image }],
           total: Math.floor(item.price * discount),
           equip: () => { if (isBun) setBunSkin(skin.id); else setCompanionSkin(outfitCharParam, skin.id); },
           equipName: localizeOutfitName(skin.name, t),
@@ -732,8 +740,9 @@ export default function ShopScreen() {
                 </>
               ) : (
                 <>
-                  <Pressable style={styles.outfitBack} onPress={() => setOutfitCharId(null)}>
-                    <ThemedText style={styles.outfitBackText}>{t('shop.charOutfits', { name: localizeCompanionName(outfitChar.name, t) })}</ThemedText>
+                  <Pressable style={styles.outfitBack} onPress={() => setOutfitCharId(null)} hitSlop={8}>
+                    <ThemedText style={[styles.outfitBackChevron, tOutfitBackChevron]}>‹</ThemedText>
+                    <ThemedText style={[styles.outfitBackText, tOutfitBackText]}>{t('shop.charOutfits', { name: localizeCompanionName(outfitChar.name, t) })}</ThemedText>
                   </Pressable>
                   {/* Unowned character → wardrobe is view-only. Tapping a costume
                       previews it on the player's current desk; buying needs the
@@ -743,14 +752,14 @@ export default function ShopScreen() {
                       <ThemedText style={styles.viewOnlyNoteText}>{t('shop.charLockedMsg', { name: localizeCompanionName(outfitChar.name, t) })}</ThemedText>
                     </View>
                   )}
-                  {outfitsForCharacter(outfitChar.id).length === 0 && (
+                  {charOutfits.length === 0 && (
                     <View style={styles.emptyCard}>
                       <ThemedText style={styles.emptyTitle}>{t('shop.noOutfitsYet')}</ThemedText>
                       <ThemedText style={styles.emptyText}>{t('shop.wardrobeEmpty', { name: localizeCompanionName(outfitChar.name, t) })}</ThemedText>
                     </View>
                   )}
                   <View style={styles.outfitGrid}>
-                    {outfitsForCharacter(outfitChar.id).map((o) => {
+                    {charOutfits.map((o) => {
                       const charOwned = outfitChar.owned;
                       const owned = o.price === 0 || ownedShopItems.includes(o.id);
                       const canAfford = coins >= o.price;
@@ -770,7 +779,7 @@ export default function ShopScreen() {
                                 : undefined;
                               setBuyReq({
                                 title: t('shop.buyItemQ', { name: localizeOutfitName(o.name, t) }),
-                                items: [{ id: o.id, name: o.name, emoji: o.emoji, description: '', price: o.price, category: 'outfits', image: o.image }],
+                                items: [{ id: o.id, name: o.name, emoji: o.emoji, description: SHOP_ITEMS.find((s) => s.id === o.id)?.description ?? '', price: o.price, category: 'outfits', image: o.image }],
                                 total: Math.floor(o.price * discount),
                                 equip,
                                 equipName: localizeOutfitName(o.name, t),
@@ -787,16 +796,17 @@ export default function ShopScreen() {
                                       e.stopPropagation?.();
                                       setZoomImage(o.image ?? null);
                                     }}>
-                                    <RNImage source={MAGNIFIER_ICON} style={styles.zoomIcon} resizeMode="contain" />
+                                    <MagnifierIcon size={30} />
                                   </Pressable>
                                 </>
                               ) : (
                                 <ThemedText style={[styles.itemEmoji, tEmoji]}>{o.emoji}</ThemedText>
                               )}
                               {!charOwned ? (
-                                <View style={[styles.priceBadge, styles.charLockedBadge]}>
-                                  <ThemedText style={styles.charLockedText}>{t('shop.lockedBadge')}</ThemedText>
-                                </View>
+                                // Character not unlocked yet — still show what the
+                                // skin costs (the note above explains it can't be
+                                // bought until the companion is).
+                                <PriceTag price={o.price} discount={discount} size={22} textStyle={styles.priceText} />
                               ) : owned ? (
                                 <View style={[styles.priceBadge, styles.badgeOwned]}>
                                   <ThemedText style={styles.badgeText}>{o.price === 0 ? t('shop.defaultBadge') : t('shop.ownedBadge')}</ThemedText>
@@ -809,10 +819,10 @@ export default function ShopScreen() {
                           </Pressable>
                           {skin && skinLores(skin).length > 0 && (
                             <Pressable
-                              style={({ pressed }) => [styles.outfitLoreBadge, pressed && { opacity: 0.7 }]}
+                              style={({ pressed }) => [styles.outfitLoreBadge, tLoreBadge, pressed && { opacity: 0.7 }]}
                               hitSlop={8}
-                              onPress={() => setLorePop({ name: localizeOutfitName(o.name, t), text: pickSkinLore(skin) })}>
-                              <ThemedText style={styles.outfitLoreBadgeText}>i</ThemedText>
+                              onPress={() => setLorePop({ name: localizeOutfitName(o.name, t), text: pickSkinLore(skin, t) })}>
+                              <ThemedText style={[styles.outfitLoreBadgeText, tLoreBadgeText]}>i</ThemedText>
                             </Pressable>
                           )}
                         </View>
@@ -855,9 +865,12 @@ export default function ShopScreen() {
                   }
                   // Companions: the chosen free starter counts as owned (even
                   // grandfathered Bun, which has no SKU in ownedShopItems).
+                  // Free recipes (price 0, e.g. Bun's roll cake) belong to everyone.
                   const owned = item.category === 'companion'
                     ? isCompanionOwned(item.id, starterCompanionId, ownedShopItems)
-                    : ownedShopItems.includes(item.id);
+                    : item.category === 'recipe' && item.price === 0
+                      ? true
+                      : ownedShopItems.includes(item.id);
                   const recipeLocked = !!item.requiresAllRecipes && !owned && !allRecipesDone;
                   const discountedPrice = Math.floor(item.price * discount);
                   const canAfford = coins >= discountedPrice;
@@ -925,7 +938,7 @@ export default function ShopScreen() {
                                   e.stopPropagation?.();
                                   setZoomImage(item.image ?? null);
                                 }}>
-                                <RNImage source={MAGNIFIER_ICON} style={styles.zoomIcon} resizeMode="contain" />
+                                <MagnifierIcon size={30} />
                               </Pressable>
                             )}
                             {partnerItemId(item.id) && (
@@ -941,6 +954,26 @@ export default function ShopScreen() {
                             )}
                           </>
                         )}
+                        {item.category === 'recipe' && (() => {
+                          // Top-right: view the recipe's collectible badge art (the
+                          // one earned by baking it) in the zoom modal.
+                          const badge = FOOD_ITEMS.find((f) =>
+                            f.requiresItem === item.id ||
+                            // Bun's free roll cake has no unlock SKU to match on.
+                            (item.id === 'recipe_rollcake' && f.id === 'strawberry-shortcake'),
+                          )?.madeBadge;
+                          return badge ? (
+                            <Pressable
+                              style={styles.badgeBtn}
+                              hitSlop={8}
+                              onPress={(e) => {
+                                e.stopPropagation?.();
+                                setZoomImage(badge);
+                              }}>
+                              <BadgeIcon size={26} />
+                            </Pressable>
+                          ) : null;
+                        })()}
                         {owned ? (
                           <View style={[styles.priceBadge, isEquipped ? styles.badgeEquipped : styles.badgeOwned]}>
                             <ThemedText style={styles.badgeText}>{isEquipped ? t('shop.equippedBadge') : t('shop.ownedBadge')}</ThemedText>
@@ -964,6 +997,9 @@ export default function ShopScreen() {
                         <FitText style={[styles.itemName, tName]}>{localizeShopItemName(item, t)}</FitText>
                         {item.category === 'recipe' && item.owner && (
                           <ThemedText style={[styles.useHint, tHint]} numberOfLines={1}>{t('foodGallery.ownerTag', { name: localizeCompanionName(item.owner, t) })}</ThemedText>
+                        )}
+                        {item.category === 'recipe' && !!item.description && (
+                          <ThemedText style={[styles.itemDesc, tHint]}>{localizeShopItemDescription(item, t)}</ThemedText>
                         )}
                         {USE_HINTS[item.category] && (
                           <ThemedText style={[styles.useHint, tHint]} numberOfLines={1}>{t('shop.setActiveInGallery')}</ThemedText>
@@ -1014,6 +1050,9 @@ export default function ShopScreen() {
                       <CoinAmount amount={pack.coins} size={isTablet ? 18 * SHOP_TS : 20} textStyle={[styles.menuCoinText, tMenuCoin]} />
                       {pack.popular && (
                         <View style={[styles.chefBadge, tChefBadge]}><ThemedText style={[styles.chefText, tChefText]}>{t('shop.chefsPick')}</ThemedText></View>
+                      )}
+                      {pack.bestValue && (
+                        <View style={[styles.bestValueBadge, tChefBadge]}><ThemedText style={[styles.bestValueText, tChefText]}>{t('shop.ultimateDeal')}</ThemedText></View>
                       )}
                     </View>
                   </View>
@@ -1099,7 +1138,7 @@ export default function ShopScreen() {
                     )}
                     <ThemedText style={[styles.buyItemName, ltItemName]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{localizeShopItemName(buyReq.items[0], t)}</ThemedText>
                     {!!buyReq.items[0].description && (
-                      <ThemedText style={[styles.buyHeroDesc, ltHeroDesc]} numberOfLines={3}>{buyReq.items[0].description}</ThemedText>
+                      <ThemedText style={[styles.buyHeroDesc, ltHeroDesc]} numberOfLines={3}>{localizeShopItemDescription(buyReq.items[0], t)}</ThemedText>
                     )}
                     <PriceTag price={buyReq.items[0].price} discount={discount} size={buyIconSize} textStyle={[styles.buyItemPrice, ltItemPrice]} />
                   </View>
@@ -1115,7 +1154,7 @@ export default function ShopScreen() {
                         <View style={styles.buyItemInfo}>
                           <ThemedText style={[styles.buyItemName, ltItemName]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{localizeShopItemName(it, t)}</ThemedText>
                           {!!it.description && (
-                            <ThemedText style={[styles.buyItemDesc, ltItemDesc]} numberOfLines={2}>{it.description}</ThemedText>
+                            <ThemedText style={[styles.buyItemDesc, ltItemDesc]} numberOfLines={2}>{localizeShopItemDescription(it, t)}</ThemedText>
                           )}
                         </View>
                         <PriceTag price={it.price} discount={discount} size={buyIconSize} textStyle={[styles.buyItemPrice, ltItemPrice]} />
@@ -1201,7 +1240,11 @@ export default function ShopScreen() {
         <Pressable style={styles.loreBackdrop} onPress={() => setLorePop(null)}>
           <Pressable style={styles.loreCard} onPress={() => {}}>
             <ThemedText style={styles.loreTitle}>{lorePop?.name}</ThemedText>
-            <ThemedText style={styles.loreText}>{lorePop?.text}</ThemedText>
+            {/* Lores are long multi-paragraph stories — scroll inside the card
+                (mirrors the gallery wardrobe's lore popup). */}
+            <ScrollView style={styles.loreScroll} contentContainerStyle={styles.loreScrollContent} showsVerticalScrollIndicator nestedScrollEnabled>
+              <ThemedText style={styles.loreText}>{lorePop?.text}</ThemedText>
+            </ScrollView>
             <Pressable style={({ pressed }) => [styles.loreClose, pressed && { opacity: 0.75 }]} onPress={() => setLorePop(null)}>
               <ThemedText style={styles.loreCloseText}>{t('common.close')}</ThemedText>
             </Pressable>
@@ -1246,6 +1289,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 5,
   },
+  // Recipe badge-view button — top-right, mirrors zoomBtn (top-left). Sits above
+  // the locked frosted veil.
+  badgeBtn: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderWidth: 1.5,
+    borderColor: BakeryColors.jam,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 5,
+  },
+  // Recipe description — under the name/owner, like the Bakery Menu cards.
+  // Generous side padding keeps the words in a narrow centered block.
+  itemDesc: { fontSize: 11, color: BakeryColors.mocha, textAlign: 'center', lineHeight: 15, marginTop: 2, paddingHorizontal: 24 },
   pairGlyph: { width: 20, height: 12, justifyContent: 'center' },
   pairRing: {
     position: 'absolute',
@@ -1522,8 +1584,9 @@ const styles = StyleSheet.create({
   },
   mysteryMark: { fontSize: 48, lineHeight: 56, fontWeight: '800', color: '#B7A4E3', textAlign: 'center' },
   outfitItemImg: { width: 62, height: 62 },
-  outfitBack: { paddingVertical: 4 },
-  outfitBackText: { fontSize: 14, fontWeight: '800', color: '#C4607A' },
+  outfitBack: { paddingVertical: 4, flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' },
+  outfitBackChevron: { fontSize: 26, lineHeight: 28, fontWeight: '800', color: '#C4607A', marginTop: -2 },
+  outfitBackText: { fontSize: 17, fontWeight: '800', color: '#C4607A' },
   outfitGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
   emptyCard: {
     backgroundColor: '#FFFDF8',
@@ -1624,6 +1687,15 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   chefText: { fontSize: 10, fontWeight: '700', color: BakeryColors.mocha },
+  // Ultimate-deal badge: a solid jam fill (vs. Chef's soft honey chip) so the
+  // best-value pack visibly reads as a standout discount.
+  bestValueBadge: {
+    backgroundColor: BakeryColors.jam,
+    borderRadius: BakeryRadii.chip,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  bestValueText: { fontSize: 10, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.3 },
   menuDivider: { height: 1, backgroundColor: `${BakeryColors.shortbread}99` },
   sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionTitle: { fontSize: 15, lineHeight: 20 },
@@ -1678,7 +1750,7 @@ const styles = StyleSheet.create({
   outfitLoreBadge: {
     position: 'absolute', top: 8, right: 8, zIndex: 10,
     width: 22, height: 22, borderRadius: 11,
-    backgroundColor: 'rgba(91,58,46,0.55)',
+    backgroundColor: '#F7A7B8',
     alignItems: 'center', justifyContent: 'center',
   },
   outfitLoreBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', lineHeight: 14 },
@@ -1690,11 +1762,13 @@ const styles = StyleSheet.create({
   loreCard: {
     backgroundColor: '#FFFDF8', borderRadius: 24,
     padding: ts(24), gap: ts(12), alignItems: 'center',
-    maxWidth: ts(320), width: '100%',
+    maxWidth: ts(360), width: '100%', maxHeight: '80%',
     shadowColor: '#5B3A2E', shadowOpacity: 0.18, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
   },
   loreTitle: { fontSize: ts(22), fontWeight: '900', textAlign: 'center' },
-  loreText: { fontSize: ts(19), lineHeight: ts(27), textAlign: 'center', fontStyle: 'italic' },
+  loreScroll: { alignSelf: 'stretch', flexShrink: 1 },
+  loreScrollContent: { paddingVertical: 2 },
+  loreText: { fontSize: ts(14.5), lineHeight: ts(21), textAlign: 'left' },
   loreClose: { marginTop: 4, backgroundColor: '#F0739A', borderRadius: 18, paddingVertical: ts(10), paddingHorizontal: ts(28) },
   loreCloseText: { color: '#fff', fontSize: ts(14), fontWeight: '800' },
 });

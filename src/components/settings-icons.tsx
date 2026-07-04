@@ -239,6 +239,57 @@ export function CookieChatIcon({ size = 32 }: IconProps) {
   );
 }
 
+// ── 📜 Privacy & Terms → Contract scroll with heart wax seal ──────────────────
+export function ScrollSealIcon({ size = 32 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 48 48">
+      {/* rolled top */}
+      <Path d="M5 8.5 Q5 3 11 3 L38 3 Q44 3 44 8 Q44 13 38 13 L10 13 Z"
+        fill={B} stroke={S} strokeWidth="2" strokeLinejoin="round" />
+      <Circle cx="38" cy="8" r="2" fill={C} stroke={S} strokeWidth="1.4" />
+      {/* paper body */}
+      <Path d="M5 8.5 L5 40 Q5 45 10 45 L34 45 Q39 45 39 40 L39 13 L10 13 Q5 13 5 8.5 Z"
+        fill={C} stroke={S} strokeWidth="2" strokeLinejoin="round" />
+      {/* text lines */}
+      <Line x1="11" y1="20" x2="33" y2="20" stroke={S} strokeWidth="2" strokeLinecap="round" opacity={0.45} />
+      <Line x1="11" y1="26" x2="33" y2="26" stroke={S} strokeWidth="2" strokeLinecap="round" opacity={0.45} />
+      <Line x1="11" y1="32" x2="33" y2="32" stroke={S} strokeWidth="2" strokeLinecap="round" opacity={0.45} />
+      <Line x1="11" y1="38" x2="24" y2="38" stroke={S} strokeWidth="2" strokeLinecap="round" opacity={0.45} />
+    </Svg>
+  );
+}
+
+// ── 🔍 Shop zoom → Magnifying glass (single-color, outlined) ──────────────────
+export function MagnifierIcon({ size = 30 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 48 48">
+      {/* handle (same fill as frame) */}
+      <Line x1="31" y1="31" x2="41" y2="41" stroke={S} strokeWidth="9" strokeLinecap="round" />
+      <Line x1="31" y1="31" x2="41" y2="41" stroke={H} strokeWidth="5.5" strokeLinecap="round" />
+      {/* frame */}
+      <Circle cx="20" cy="20" r="13" fill="none" stroke={S} strokeWidth="9" />
+      <Circle cx="20" cy="20" r="13" fill="none" stroke={H} strokeWidth="5.5" />
+      {/* glass */}
+      <Circle cx="20" cy="20" r="8.5" fill={C} opacity={0.55} />
+      {/* shine */}
+      <Path d="M14.5 17 Q16 13.5 20 12.8" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" fill="none" opacity={0.8} />
+    </Svg>
+  );
+}
+
+// ── 🏅 Shop recipe → award badge (single-color rosette, white middle) ─────────
+export function BadgeIcon({ size = 30, color = '#E48A9A' }: IconProps & { color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 48 48">
+      {/* ribbon tails */}
+      <Path d="M16 24 L12 42 L20 37 L24 44 L28 37 L36 42 L32 24 Z" fill={color} />
+      {/* medal ring with white middle */}
+      <Circle cx="24" cy="18" r="13" fill={color} />
+      <Circle cx="24" cy="18" r="7.5" fill="#FFFFFF" />
+    </Svg>
+  );
+}
+
 // ── ℹ️ Version → Info badge ────────────────────────────────────────────────────
 export function InfoIcon({ size = 32 }: IconProps) {
   return (

@@ -40,7 +40,7 @@ export const FOOD_ITEMS: FoodItem[] = [
     id: 'pudding',
     image: require('@/assets/images/cake/pudding.png'),
     requiresItem: 'recipe_pudding',
-    price: 1800,
+    price: 5000,
     madeBadge: require('@/assets/images/cake/pudding-finished.png'),
     owner: 'Miel',
   },
@@ -48,7 +48,7 @@ export const FOOD_ITEMS: FoodItem[] = [
     id: 'sakura-mochi',
     image: require('@/assets/images/cake/sakura-mochi.png'),
     requiresItem: 'recipe_sakura',
-    price: 1800,
+    price: 5000,
     madeBadge: require('@/assets/images/cake/sakura-badge.png'),
     owner: 'Cocoa',
   },
@@ -56,7 +56,7 @@ export const FOOD_ITEMS: FoodItem[] = [
     id: 'matcha-crepe',
     image: require('@/assets/images/cake/matcha-crepe.png'),
     requiresItem: 'recipe_matcha',
-    price: 1800,
+    price: 5000,
     madeBadge: require('@/assets/images/cake/matcha-badge.png'),
     owner: 'Tira',
   },
@@ -64,7 +64,7 @@ export const FOOD_ITEMS: FoodItem[] = [
     id: 'berry-croissant',
     image: require('@/assets/images/cake/croissant.png'),
     requiresItem: 'recipe_croissant',
-    price: 1800,
+    price: 5000,
     madeBadge: require('@/assets/images/cake/croissant-badge.png'),
     owner: 'Bunny',
   },
@@ -142,7 +142,7 @@ export default function FoodGalleryScreen() {
                     </View>
                     <Text style={[styles.foodName, isTablet && styles.foodNameTablet]} numberOfLines={2}>{t(`foodGallery.food_${food.id}`)}</Text>
                     <Text style={[styles.foodOwner, isTablet && styles.foodOwnerTablet]} numberOfLines={1}>{t('foodGallery.ownerTag', { name: localizeCompanionName(food.owner, t) })}</Text>
-                    <Text style={[styles.foodDesc, isTablet && styles.foodDescTablet]} numberOfLines={2}>{t(`foodGallery.food_${food.id}_desc`)}</Text>
+                    <Text style={[styles.foodDesc, isTablet && styles.foodDescTablet]} numberOfLines={3}>{t(`foodGallery.food_${food.id}_desc`)}</Text>
                     {locked ? (
                       <Pressable
                         style={({ pressed }) => [styles.lockedBtn, isTablet && styles.btnTablet, pressed && styles.pressed]}

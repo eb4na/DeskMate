@@ -16,6 +16,9 @@ export type RoomPair = {
   // a colour that blends into the surface (e.g. a tiled floor's base tone).
   deskFit?: 'cover' | 'contain';
   deskTint?: string;
+  // Default room only: it has no shop item to carry a description, so it stores
+  // its own here (shown via the info badge). Localize with roomDescs.<id>.
+  description?: string;
 };
 
 export const DEFAULT_ROOM_BG = require('@/assets/images/home/home-room-bg.png');
@@ -28,6 +31,7 @@ export const ROOM_PAIRS: RoomPair[] = [
     deskId: null,
     backgroundImage: require('@/assets/images/home/home-room-bg.png'),
     deskImage: require('@/assets/images/home/desk-new.png'),
+    description: 'The snug pastel room you start in — a sunlit window, flower-dotted shelves, and a warm wooden baking desk.',
   },
   {
     id: 'modern',

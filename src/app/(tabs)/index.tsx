@@ -101,7 +101,7 @@ const HOME_TABLET = {
   ingScale: 1.5,
   ingSpread: 50,    // extra px pushing the outer two apart (idx 0 ← left, idx 2 → right)
   // Mixer — shared transform (preserves per-recipe base position/size)
-  mixerX: -105,     // nudged left
+  mixerX: 10,       // sits right of the character (was -105; pulled back right so it clears the companion on big iPads)
   mixerY: -50,
   mixerScale: 1.5,  // bigger mixer
   // Start Session button — on tablet it's centered by LAYOUT (see tStartRow), so it

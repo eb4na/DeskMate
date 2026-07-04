@@ -23,7 +23,7 @@ import {
 } from '@/components/bakery-emoji';
 import { useApp } from '@/context/app-context';
 import type { Task } from '@/context/app-context';
-import i18n from '@/i18n';
+import i18n, { useTranslation } from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
 import { formatMinutesShort } from '@/lib/format-duration';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -276,15 +276,15 @@ function TaskSlider() {
         return (
           <Pressable
             key={t.id}
-            style={({ pressed }) => [styles.sliderCard, s !== 1 && { width: 150 * s, borderRadius: BakeryRadii.card * s, paddingHorizontal: Spacing.three * s, paddingVertical: Spacing.two * s, gap: 4 * s }, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.sliderCard, s !== 1 && { width: 170 * s, borderRadius: BakeryRadii.card * s, paddingHorizontal: Spacing.three * s, paddingVertical: Spacing.two * s, gap: 5 * s }, pressed && styles.pressed]}
             onPress={() => router.push({ pathname: '/add-task', params: { taskId: t.id } })}>
-            <Text style={[styles.sliderTitle, s !== 1 && { fontSize: 13 * s }]} numberOfLines={1}>
+            <Text style={[styles.sliderTitle, s !== 1 && { fontSize: 15 * s }]} numberOfLines={1}>
               {t.title}
             </Text>
             <View style={[styles.sliderMeta, s !== 1 && { gap: 5 * s }]}>
-              {subject && <View style={[styles.subjectDot, s !== 1 && { width: 6 * s, height: 6 * s, borderRadius: 3 * s }, { backgroundColor: subject.color }]} />}
-              <Text style={[styles.sliderMetaText, s !== 1 && { fontSize: 11 * s }]} numberOfLines={1}>
-                {t.dueDate ? shortWeekday(t.dueDate.slice(0, 10)) : 'No date'}
+              {subject && <View style={[styles.subjectDot, s !== 1 && { width: 7 * s, height: 7 * s, borderRadius: 3.5 * s }, { backgroundColor: subject.color }]} />}
+              <Text style={[styles.sliderMetaText, s !== 1 && { fontSize: 12.5 * s }]} numberOfLines={1}>
+                {t.dueDate ? shortWeekday(t.dueDate.slice(0, 10)) : i18n.t('calendar.noDate')}
               </Text>
             </View>
           </Pressable>
@@ -418,6 +418,8 @@ function HorizontalPreview({ onClose }: { onClose: () => void }) {
 
 // ─── root ────────────────────────────────────────────────────────────────────
 export function TaskCalendar() {
+  // Subscribe via the hook (not raw i18n.t) so the title re-renders on language change.
+  const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const [monthOffset, setMonthOffset] = useState(0);
   const [modalDate, setModalDate] = useState<string | null>(null);
@@ -441,7 +443,7 @@ export function TaskCalendar() {
     <View style={styles.root}>
       <View style={styles.titleRow}>
         <View style={styles.titleLeft}>
-          <Text style={[styles.title, isTablet && { fontSize: 18 * scale }]}>{i18n.t('calendar.calendar')}</Text>
+          <Text style={[styles.title, isTablet && { fontSize: 18 * scale }]}>{t('calendar.calendar')}</Text>
         </View>
         <Pressable
           style={({ pressed }) => [styles.searchBtn, isTablet && { width: 36 * scale, height: 36 * scale, borderRadius: 18 * scale }, searchMode && styles.searchBtnActive, pressed && styles.pressed]}
@@ -675,7 +677,7 @@ const styles = StyleSheet.create({
   // Compact task slider
   sliderRow: { gap: Spacing.two, paddingVertical: 2, paddingHorizontal: 2 },
   sliderCard: {
-    width: 150,
+    width: 170,
     backgroundColor: C.glass,
     borderRadius: BakeryRadii.card,
     borderWidth: 1.5,
@@ -684,9 +686,9 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     gap: 4,
   },
-  sliderTitle: { fontSize: 13, fontWeight: '700', color: C.cocoaDark },
+  sliderTitle: { fontSize: 15, fontWeight: '700', color: C.cocoaDark },
   sliderMeta: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  sliderMetaText: { fontSize: 11, color: C.mocha, fontWeight: '600', flexShrink: 1 },
+  sliderMetaText: { fontSize: 12.5, color: C.mocha, fontWeight: '600', flexShrink: 1 },
 
   // Tapped-day modal
   modalRoot: { flex: 1, justifyContent: 'center', padding: Spacing.four },

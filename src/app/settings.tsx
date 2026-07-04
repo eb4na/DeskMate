@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DeleteAccountModal } from '@/components/delete-account-modal';
 import { InstagramFollowRow } from '@/components/instagram-follow-row';
 import { PlusIcon } from '@/components/plus-icon';
-import { EnvelopeIcon } from '@/components/settings-icons';
+import { EnvelopeIcon, ScrollSealIcon } from '@/components/settings-icons';
 import { fetchMail, fetchMailClaims } from '@/lib/mail';
 import { LockBadge } from '@/components/lock-badge';
 
@@ -690,7 +690,7 @@ export default function SettingsScreen() {
             />
             <View style={styles.divider} />
             <SettingRow
-              icon={<SettingsIcon name="info" />}
+              icon={<ScrollSealIcon size={40} />}
               label={t('settings.privacyTerms')}
               value={t('settings.privacyTermsDesc')}
               onPress={() => router.push('/legal')}

@@ -582,7 +582,7 @@ function GalleryContent() {
                         {skinLores(skin).length > 0 && (
                           <Pressable
                             style={({ pressed }) => [styles.loreBadge, pressed && styles.pressed]}
-                            onPress={() => setLorePopup({ name: localizeOutfitName(skin.name, t), text: pickSkinLore(skin) })}
+                            onPress={() => setLorePopup({ name: localizeOutfitName(skin.name, t), text: pickSkinLore(skin, t) })}
                             hitSlop={8}>
                             <Text style={styles.loreBadgeText}>i</Text>
                           </Pressable>

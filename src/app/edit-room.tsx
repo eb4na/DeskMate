@@ -21,6 +21,7 @@ import {
   type RoomPair,
 } from '@/constants/room-data';
 import { SHOP_ITEMS } from '@/constants/shop-data';
+import { localizeShopItemName, localizeShopItemDescription } from '@/lib/companion-utils';
 import { Fonts, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
 
 type BuyTarget = { room: RoomPair; kind: 'background' | 'desk' | 'pair' };
@@ -59,6 +60,11 @@ export default function EditRoomScreen() {
   // When the player taps something they don't own yet, we pop a little purchase
   // sheet for that exact item instead of sending them off to the Shop.
   const [buyTarget, setBuyTarget] = useState<BuyTarget | null>(null);
+  // Info-badge popup. A plain in-screen overlay (NOT a native <Modal> and NOT the
+  // root showPopup host): this screen is itself a natively-presented modal, so a
+  // root-hosted popup can fail to present above it. Same pattern as the gallery's
+  // lore popup.
+  const [infoPop, setInfoPop] = useState<{ title: string; message: string } | null>(null);
   const discount = isPlus ? 0.75 : 1;
 
   // Picking the pair applies BOTH halves at once.
@@ -113,8 +119,33 @@ export default function EditRoomScreen() {
       </Pressable>
     ) : null;
 
+  // Info badge — top-right of a card; shows the item's shop description (same
+  // little "i" badge as the wardrobe lore badge in the gallery).
+  const InfoButton = ({ room, itemId }: { room: RoomPair; itemId: string | null }) => {
+    const item = itemId ? getShopItem(itemId) : undefined;
+    // Shop-backed rooms describe themselves through their item; the default Cozy
+    // Bakery has no item, so it falls back to its own room-level description.
+    const title = item ? localizeShopItemName(item, t) : t(`roomNames.${room.id}`, { defaultValue: room.name });
+    const desc = item
+      ? localizeShopItemDescription(item, t)
+      : room.description ? t(`roomDescs.${room.id}`, { defaultValue: room.description }) : '';
+    if (!desc) return null;
+    return (
+      <Pressable
+        style={styles.infoBtn}
+        hitSlop={8}
+        onPress={(e) => {
+          e.stopPropagation?.();
+          setInfoPop({ title, message: desc });
+        }}>
+        <Text style={styles.infoBtnText}>i</Text>
+      </Pressable>
+    );
+  };
+
   const Card = ({
     room,
+    itemId,
     image,
     owned,
     active,
@@ -122,6 +153,7 @@ export default function EditRoomScreen() {
     onLocked,
   }: {
     room: RoomPair;
+    itemId: string | null;
     image: number;
     owned: boolean;
     active: boolean;
@@ -131,7 +163,6 @@ export default function EditRoomScreen() {
     <Pressable
       style={[styles.thumbCard, active && styles.thumbCardActive, !owned && styles.thumbCardLocked]}
       onPress={owned ? onPress : onLocked}>
-      <PairButton room={room} />
       <View style={styles.thumbImgWrap}>
         <Image source={image} style={styles.thumbImg} contentFit="cover" />
         {!owned && <LockOverlay size={Math.round(30 * scale)} radius={Math.round(12 * scale)} />}
@@ -144,6 +175,11 @@ export default function EditRoomScreen() {
       ) : (
         <Text style={styles.lockedText}>{t('editRoom.tapToUnlock')}</Text>
       )}
+      {/* Corner badges LAST so they sit above the image for touches too — an
+          earlier sibling raised only by zIndex paints on top but can lose the
+          tap to the overlapping image on the new RN architecture. */}
+      <PairButton room={room} />
+      <InfoButton room={room} itemId={itemId} />
     </Pressable>
   );
 
@@ -186,6 +222,7 @@ export default function EditRoomScreen() {
               <Card
                 key={room.id}
                 room={room}
+                itemId={room.backgroundId}
                 image={room.backgroundImage}
                 owned={backgroundOwned(room, ownedShopItems)}
                 active={equippedBackgroundRoomId === room.id}
@@ -201,6 +238,7 @@ export default function EditRoomScreen() {
               <Card
                 key={room.id}
                 room={room}
+                itemId={room.deskId}
                 image={room.deskImage!/* deskRooms filter excludes deskless rooms */}
                 owned={deskOwned(room, ownedShopItems)}
                 active={equippedDeskRoomId === room.id}
@@ -249,9 +287,9 @@ export default function EditRoomScreen() {
                         <Text style={styles.modalItemEmoji}>{it.emoji}</Text>
                       )}
                       <View style={styles.modalItemInfo}>
-                        <Text style={styles.modalItemName} numberOfLines={1}>{it.name}</Text>
+                        <Text style={styles.modalItemName} numberOfLines={1}>{localizeShopItemName(it, t)}</Text>
                         {!!it.description && (
-                          <Text style={styles.modalItemDesc} numberOfLines={2}>{it.description}</Text>
+                          <Text style={styles.modalItemDesc} numberOfLines={2}>{localizeShopItemDescription(it, t)}</Text>
                         )}
                       </View>
                       <CoinAmount amount={Math.floor(it.price * discount)} size={Math.round(20 * scale)} textStyle={styles.modalItemPrice} />
@@ -292,6 +330,21 @@ export default function EditRoomScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Info popup — in-screen overlay (see infoPop note above). */}
+      {infoPop && (
+        <Pressable style={styles.infoOverlay} onPress={() => setInfoPop(null)}>
+          <Pressable style={styles.infoCard} onPress={(e) => e.stopPropagation?.()}>
+            <Text style={styles.infoTitle}>{infoPop.title}</Text>
+            <Text style={styles.infoMessage}>{infoPop.message}</Text>
+            <Pressable
+              style={({ pressed }) => [styles.infoOkBtn, pressed && { opacity: 0.85 }]}
+              onPress={() => setInfoPop(null)}>
+              <Text style={styles.infoOkText}>{t('common.ok')}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      )}
     </ThemedView>
   );
 }
@@ -371,6 +424,30 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     borderWidth: 2, borderColor: P.jam, left: 0,
   },
   pairRing2: { left: 8 * s },
+  // Info badge — top-right of a card; same look as the gallery's wardrobe lore badge.
+  infoBtn: {
+    position: 'absolute', top: 12 * s, right: 12 * s, zIndex: 2,
+    width: 22 * s, height: 22 * s, borderRadius: 11 * s,
+    backgroundColor: P.pink,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  infoBtnText: { color: '#fff', fontSize: 11 * s, fontWeight: '800', lineHeight: 14 * s },
+  // Info popup overlay — covers the whole (modally presented) screen.
+  infoOverlay: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100,
+    backgroundColor: 'rgba(91,58,46,0.18)',
+    alignItems: 'center', justifyContent: 'center', padding: 24,
+  },
+  infoCard: {
+    width: '100%', minWidth: MIN_POPUP_WIDTH, maxWidth: 340 * s, backgroundColor: P.card,
+    borderRadius: 26 * s, padding: Spacing.four * s, gap: Spacing.three * s,
+    borderWidth: 1.5, borderColor: P.peach,
+    shadowColor: '#5B3A2E', shadowOpacity: 0.18, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
+  },
+  infoTitle: { fontSize: 19 * s, fontWeight: '800', color: P.brown, textAlign: 'center' },
+  infoMessage: { fontSize: 14 * s, fontWeight: '600', color: P.mutedBrown, textAlign: 'center', lineHeight: 20 * s },
+  infoOkBtn: { backgroundColor: P.pink, borderRadius: 18 * s, paddingVertical: Spacing.three * s, alignItems: 'center' },
+  infoOkText: { color: '#FFF', fontSize: 16 * s, fontWeight: '800' },
   thumbName: { fontSize: 13 * s, fontWeight: '800', color: P.brown },
   activePill: {
     backgroundColor: '#DCF3EF', borderRadius: 999, paddingHorizontal: 12 * s, paddingVertical: 4 * s,
