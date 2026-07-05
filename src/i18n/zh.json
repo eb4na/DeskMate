@@ -569,6 +569,7 @@
     "cat_theme": "主题",
     "cat_pose": "姿势",
     "plusDiscount": "会员 −25%",
+    "plusPriceHint": "会员价{{price}}",
     "dailyEarn": "每日获得 {{earned}}/{{cap}}",
     "leftAmount": "还可 +{{count}}",
     "full": "已满！",

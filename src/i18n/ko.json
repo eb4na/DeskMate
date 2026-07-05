@@ -569,6 +569,7 @@
     "cat_theme": "테마",
     "cat_pose": "포즈",
     "plusDiscount": "프리미엄 −25%",
+    "plusPriceHint": "프리미엄 시 {{price}}",
     "dailyEarn": "일일 획득 {{earned}}/{{cap}}",
     "leftAmount": "+{{count}} 남음",
     "full": "가득 참!",

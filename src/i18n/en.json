@@ -569,6 +569,7 @@
     "cat_theme": "Theme",
     "cat_pose": "Pose",
     "plusDiscount": "Plus −25%",
+    "plusPriceHint": "Plus: {{price}}",
     "dailyEarn": "Daily earn {{earned}}/{{cap}}",
     "leftAmount": "+{{count}} left",
     "full": "Full!",

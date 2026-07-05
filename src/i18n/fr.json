@@ -569,6 +569,7 @@
     "cat_theme": "Thème",
     "cat_pose": "Pose",
     "plusDiscount": "Premium −25%",
+    "plusPriceHint": "Premium : {{price}}",
     "dailyEarn": "Gain quotidien {{earned}}/{{cap}}",
     "leftAmount": "+{{count}} restants",
     "full": "Plein !",

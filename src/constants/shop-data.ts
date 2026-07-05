@@ -58,7 +58,7 @@ export const CATEGORIES: ShopCategory[] = [
 ];
 
 export const SHOP_ITEMS: ShopItem[] = [
-  // ─── Companions (5000 coins) ─────────────────────────────────────────────
+  // ─── Companions (10000 coins) ─────────────────────────────────────────────
   // Bun is one of the five "starter" companions: a player picks one for free on
   // their first launch (see StarterChooser); the other four — Bun included — are
   // bought here. Bun's active id stays `starter:girl`, so this SKU exists only so
@@ -69,7 +69,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Bun',
     emoji: '',
     description: 'A cheery strawberry bunny in a frilly café apron.',
-    price: 5000,
+    price: 10000,
     category: 'companion',
     image: require('@/assets/images/bun/bun-home.png'),
   },
@@ -78,7 +78,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Cocoa',
     emoji: '',
     description: 'A laid-back kitty in a cozy autumn kimono.',
-    price: 5000,
+    price: 10000,
     category: 'companion',
     image: require('@/assets/images/cocoa/cocoa.png'),
   },
@@ -87,7 +87,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Bunny',
     emoji: '',
     description: 'A princess bunny in a frilly pink gown.',
-    price: 5000,
+    price: 10000,
     category: 'companion',
     image: require('@/assets/images/bunny/bunny.png'),
   },
@@ -96,7 +96,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Miel',
     emoji: '',
     description: 'A sweet honey-bear baker in a gingham chef coat.',
-    price: 5000,
+    price: 10000,
     category: 'companion',
     image: require('@/assets/images/honey/honey.png'),
   },
@@ -105,7 +105,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Tira',
     emoji: '',
     description: 'A tiramisu bunny with a cocoa-dusted apron.',
-    price: 5000,
+    price: 10000,
     category: 'companion',
     image: require('@/assets/images/tira/tira.png'),
   },
@@ -114,7 +114,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Hanji',
     emoji: '',
     description: 'An elegant black cat in a lavender hanfu with wisteria charms.',
-    price: 5000,
+    price: 10000,
     category: 'companion',
     image: require('@/assets/images/hanji/hanji.png'),
     requiresAllRecipes: true,

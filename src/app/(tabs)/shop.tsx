@@ -167,18 +167,34 @@ type ShopItemT = (typeof SHOP_ITEMS)[number];
 // items to buy; `equip` runs after a successful purchase so the thing shows up.
 type BuyReq = { title: string; items: ShopItemT[]; total: number; equip?: () => void; equipName?: string };
 
+// Plus members get 25% off every coin price.
+const PLUS_DISCOUNT = 0.75;
+
 // Price display. When a discount applies (Plus members get 25% off), show the
-// original price struck through next to the discounted price; otherwise just the
-// price. `discount` is the multiplier (1 = no discount, 0.75 = Plus).
+// original price struck through next to the discounted price. Non-Plus users
+// instead get a small "Plus: <discounted>" hint under the regular price, so
+// the member price is visible before upgrading. `discount` is the multiplier
+// (1 = no discount, PLUS_DISCOUNT = Plus).
 function PriceTag({ price, discount, size = 22, textStyle }: {
   price: number;
   discount: number;
   size?: number;
   textStyle?: StyleProp<TextStyle>;
 }) {
+  const { t } = useTranslation();
   const discounted = Math.floor(price * discount);
-  if (discount >= 1 || price <= 0) {
+  if (price <= 0) {
     return <CoinAmount amount={discounted} size={size} textStyle={textStyle} />;
+  }
+  if (discount >= 1) {
+    return (
+      <View style={styles.priceTagCol}>
+        <CoinAmount amount={price} size={size} textStyle={textStyle} />
+        <ThemedText style={styles.plusPriceHint}>
+          {t('shop.plusPriceHint', { price: formatCoins(Math.floor(price * PLUS_DISCOUNT)) })}
+        </ThemedText>
+      </View>
+    );
   }
   return (
     <View style={styles.priceTagRow}>
@@ -360,7 +376,7 @@ export default function ShopScreen() {
 
 
 
-  const discount = isPlus ? 0.75 : 1;
+  const discount = isPlus ? PLUS_DISCOUNT : 1;
   // Some companions aren't sold: Plus-exclusive (Tira) are granted with Plus, and
   // badge-reward ones (Hanji, requiresAllRecipes) are granted by collecting every
   // recipe badge. Their data stays in SHOP_ITEMS for the gallery & wardrobe.
@@ -1004,8 +1020,19 @@ export default function ShopScreen() {
                         {USE_HINTS[item.category] && (
                           <ThemedText style={[styles.useHint, tHint]} numberOfLines={1}>{t('shop.setActiveInGallery')}</ThemedText>
                         )}
-                        {/* Locked: frost the whole card. */}
-                        {!owned && <LockOverlay size={36} radius={BakeryRadii.card} />}
+                        {/* Locked: frost the whole card, but pin the padlock over the
+                            artwork — centered it would sit right on the price and
+                            hide it. */}
+                        {!owned && (
+                          <LockOverlay
+                            size={36}
+                            radius={BakeryRadii.card}
+                            style={{
+                              justifyContent: 'flex-start',
+                              paddingTop: Spacing.three + (isTablet ? (130 * SHOP_TS) / 2 : 42) - 18,
+                            }}
+                          />
+                        )}
                       </View>
                     </Pressable>
                   );
@@ -1635,6 +1662,9 @@ const styles = StyleSheet.create({
   // Plus discount: original price struck through, shown before the discounted one.
   priceTagRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   priceOrig: { fontSize: 12, fontWeight: '600', color: BakeryColors.latte, textDecorationLine: 'line-through' },
+  // Non-Plus upsell: the would-be member price under the regular one (Plus brand pink).
+  priceTagCol: { alignItems: 'center', gap: 1 },
+  plusPriceHint: { fontSize: 11, fontWeight: '700', color: '#C75A78', lineHeight: 14 },
 
   // Coin packs horizontal scroll
   // ─── Bakery menu of coin packs ───────────────────────────────────────────

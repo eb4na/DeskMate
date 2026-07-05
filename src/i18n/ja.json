@@ -569,6 +569,7 @@
     "cat_theme": "テーマ",
     "cat_pose": "ポーズ",
     "plusDiscount": "プラス −25%",
+    "plusPriceHint": "プラスなら{{price}}",
     "dailyEarn": "本日の獲得 {{earned}}/{{cap}}",
     "leftAmount": "+{{count}} 残り",
     "full": "上限！",
