@@ -273,7 +273,7 @@ function makeStyles(s: number) {
       fontSize: 12 * s,
       color: '#C4728A',
       fontWeight: '500',
-      marginTop: -6 * s,
+      marginTop: -3 * s,
     },
     labelActive: {
       color: '#D94F72',
