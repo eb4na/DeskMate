@@ -27,6 +27,7 @@ import { SoundPickerModal } from '@/components/sound-picker-modal';
 import { DevKnobs } from '@/components/dev-knobs';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { getCompanionImage, hanjiIsAnimated, isHanjiActiveId, resolveActiveCompanion } from '@/lib/companion-utils';
+import { companionFigureKey, figureHeadFrac, figureStyle } from '@/lib/figure-height';
 import { FloatingHeart, makeHearts, PetBubble, type Heart } from '@/components/companion-pet';
 import { getPetLine } from '@/constants/pet-lines';
 import { HanjiFigure } from '@/components/hanji-figure';
@@ -620,16 +621,16 @@ export function StudyRoomView({
       ? 1.24
       : focus
         ? (phone3p ? 1.66 : 1.4) // disco — unchanged
-        : (phone3p ? 2.05 : 1.6); // desk scene — bigger (trimmed a touch)
+        : (phone3p ? 1.7 : 1.35); // desk scene — between the original (too big) and the 1.15 trim (too small)
   const MP_SPREAD = partyCount <= 1 ? 1 : isTablet ? 0.93 : phone3p ? 0.92 : 0.84;
   const partyCharSize = Math.round(baseFit * MP_SIZE);
   const partySlotW = Math.round(baseFit * MP_SPREAD);
   // Book grows with the character; the desk book row only renders in the desk scene
-  // (focus hides it), so the ratio is tuned to the desk MP_SIZE above. The ratios are
-  // chosen to keep the on-desk book size ~constant as the characters grow (the books
-  // already nearly fill the row and can't grow without colliding): 3p ≈ 2.05·0.45 and
-  // 2p ≈ 1.6·0.58 land near the books' previous on-desk size.
-  const partyBookSize = Math.round(partyCharSize * (isTablet ? 0.60 : phone3p ? 0.45 : 0.58));
+  // (focus hides it), so the ratio is tuned to the desk MP_SIZE above. Phone books
+  // are deliberately smaller than the old near-row-filling size (they read too big
+  // alongside the shrunken characters): 3p ≈ 1.7·0.43 and 2p ≈ 1.35·0.53 hold the
+  // approved smaller book size (~20% under the original) as the characters grew.
+  const partyBookSize = Math.round(partyCharSize * (isTablet ? 0.60 : phone3p ? 0.43 : 0.53));
   // When you're the only one in the room (others left, or before they begin), the
   // party row would render a single oversized, off-center character/book that floats
   // off the desk — so render the solo scene (big centered character + desk book) instead.
@@ -670,8 +671,9 @@ export function StudyRoomView({
   const partyCharBottom = deskEdgeY - 0.44 * partyCharSize;
   // Characters are lifted higher than that baseline so more of the body shows above
   // the desk — but ONLY the character layer uses this, so the books stay on the desk
-  // (don't float up with the characters).
-  const partyCharBottomRaised = partyCharBottom + 0.09 * partyCharSize;
+  // (don't float up with the characters). Disco keeps the original lift (frozen, like
+  // its sizing); the desk scene lifts a touch more.
+  const partyCharBottomRaised = partyCharBottom + (focus ? 0.09 : 0.13) * partyCharSize;
   // Hide fraction: how much of the solo character tucks below the desk lip. Lowered
   // from 0.42 so ~75% of the body shows (paired with a lower deskTopT, the desk line
   // drops while the character stays put — revealing more of them).
@@ -1013,9 +1015,14 @@ export function StudyRoomView({
                 on tap) wraps the idle-bounce layer — mirrors Home's CompanionPet. */}
             <Animated.View style={{ width: '100%', height: '100%', transform: [{ scale: tapScale }], transformOrigin: 'center bottom' }}>
               <Animated.View style={soloCharTransform}>
-                {soloCharContent}
-                {/* Alpha-locked disco wash — inside the bounce wrapper so it rides with the jump. */}
-                {discoCharTintNode}
+                {/* Height calibration (see figure-height.ts): scale about the feet so
+                    every companion's standing height matches its HEIGHT_LADDER entry.
+                    The disco tint sits inside so the wash stays glued to the figure. */}
+                <View style={[styles.characterFill, figureStyle(soloBookKey, mySkin, 350)]}>
+                  {soloCharContent}
+                  {/* Alpha-locked disco wash — inside the bounce wrapper so it rides with the jump. */}
+                  {discoCharTintNode}
+                </View>
               </Animated.View>
             </Animated.View>
             {talk?.code === friendCode && hearts.map((h) => (
@@ -1042,8 +1049,11 @@ export function StudyRoomView({
           style={[{ position: 'absolute', left: 0, right: 0, bottom: focus ? soloCharBottomT - 230 : soloCharBottomT, alignItems: 'center', zIndex: 1 }, soloCharTransform]}>
           <Pressable style={{ width: soloCharSize, height: soloCharSize }} onPress={() => talkAs(friendCode, myPersona, mySkin, 1.25)}>
             <Animated.View style={{ flex: 1, transform: [{ scale: tapScale }], transformOrigin: 'center bottom' }}>
-              {soloCharContent}
-              {discoCharTintNode}
+              {/* Height calibration — same feet-anchored ladder scale as the phone path. */}
+              <View style={[styles.characterFill, figureStyle(soloBookKey, mySkin, soloCharSize)]}>
+                {soloCharContent}
+                {discoCharTintNode}
+              </View>
             </Animated.View>
             {talk?.code === friendCode && hearts.map((h) => (
               <FloatingHeart key={h.id} heart={h} size={18 * heartScale} onDone={() => setHearts((cur) => cur.filter((x) => x.id !== h.id))} />
@@ -1077,6 +1087,10 @@ export function StudyRoomView({
             // lines show, matching how the avatar already renders Bun for no id.
             const persona = p.code === friendCode ? myPersona : (p.companionId ? PERSONA_BY_COMPANION[p.companionId] : 'bun');
             const skin = p.code === friendCode ? mySkin : p.skinId;
+            // Height calibration (figure-height.ts): mine reuses soloBookKey (which
+            // also knows custom slot companions → no-op); friends only ever sync
+            // shop companions, so their id maps directly.
+            const figKey = p.code === friendCode ? soloBookKey : companionFigureKey(p.companionId);
             return (
               <Pressable
                 key={p.code}
@@ -1093,11 +1107,13 @@ export function StudyRoomView({
                 <Animated.View style={{ transform: [{ scale: talk?.code === p.code ? tapScale : 1 }], transformOrigin: 'center bottom' }}>
                   <Animated.View
                     style={{ transform: [{ translateY: charTranslateY }, { scaleX: charScaleX }, { scaleY: charScaleY }] }}>
-                    {pIsHanji ? (
-                      <HanjiFigure style={{ width: partyCharSize, height: partyCharSize }} />
-                    ) : (
-                      <Image source={img} style={{ width: partyCharSize, height: partyCharSize }} contentFit="contain" />
-                    )}
+                    <View style={[{ width: partyCharSize, height: partyCharSize }, figureStyle(figKey, skin, partyCharSize)]}>
+                      {pIsHanji ? (
+                        <HanjiFigure style={styles.characterFill} />
+                      ) : (
+                        <Image source={img} style={styles.characterFill} contentFit="contain" />
+                      )}
+                    </View>
                     {/* The host crown is NOT drawn here — inside the party layer
                         (zIndex 1) it gets hidden behind overlapping neighbours. It's
                         rendered in a high-zIndex overlay below (partyCrownLayer) so it
@@ -1220,15 +1236,22 @@ export function StudyRoomView({
           the host's head. Rides the shared idle bounce via charTranslateY. */}
       {!soloScene && (
         <View style={[styles.partyLayer, { bottom: partyCharBottomRaised, zIndex: 5 }]} pointerEvents="none">
-          {centeredParticipants.map((p) => (
-            <View key={p.code} style={[styles.partyMember, { width: partySlotW, height: partyCharSize }]}>
-              {p.isHost && (
-                <Animated.View style={{ position: 'absolute', top: -partyCharSize * 0.08, left: 0, right: 0, alignItems: 'center', transform: [{ translateY: charTranslateY }] }}>
-                  <HostCrown size={Math.round(partyCharSize * 0.17)} />
-                </Animated.View>
-              )}
-            </View>
-          ))}
+          {centeredParticipants.map((p) => {
+            // Anchor the crown to the host's actual HEAD height (per the height
+            // ladder — heads no longer share the box top), keeping the same
+            // crown-to-head gap the old box-top anchor gave Bunny.
+            const figKey = p.code === friendCode ? soloBookKey : companionFigureKey(p.companionId);
+            const crownTop = partyCharSize * (1 - figureHeadFrac(figKey)) - partyCharSize * 0.13;
+            return (
+              <View key={p.code} style={[styles.partyMember, { width: partySlotW, height: partyCharSize }]}>
+                {p.isHost && (
+                  <Animated.View style={{ position: 'absolute', top: crownTop, left: 0, right: 0, alignItems: 'center', transform: [{ translateY: charTranslateY }] }}>
+                    <HostCrown size={Math.round(partyCharSize * 0.17)} />
+                  </Animated.View>
+                )}
+              </View>
+            );
+          })}
         </View>
       )}
 
