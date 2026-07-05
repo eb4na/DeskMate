@@ -12,7 +12,7 @@ import { PlusIcon } from '@/components/plus-icon';
 import { LockBadge } from '@/components/lock-badge';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
-import { useApp } from '@/context/app-context';
+import { useApp, type TimerPreset } from '@/context/app-context';
 import { newRoomId } from '@/lib/game-net';
 import { useStudyRoom } from '@/lib/use-study-room';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
@@ -67,12 +67,16 @@ export default function SessionPickerScreen() {
   const studyRoom = useStudyRoom();
   const { t } = useTranslation();
   const [selected, setSelected] = useState(30);
+  // The saved preset the duration came from, if any — a preset carries its own
+  // break length, so we must know WHICH row was tapped, not just the minutes.
+  const [chosenPreset, setChosenPreset] = useState<TimerPreset | null>(null);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>('single');
 
   const activeSubjects = subjects.filter((s) => !s.archived).sort((a, b) => a.order - b.order);
-  // Single-player break: 5 min for sessions under an hour, 10 min for an hour or more.
-  const breakForSelected = autoBreakMinutes(selected);
+  // Single-player break: the preset's saved break when a preset is chosen, else
+  // the automatic one (5 min under an hour, 10 min for an hour or more).
+  const breakForSelected = chosenPreset?.breakMinutes ?? autoBreakMinutes(selected);
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
@@ -81,6 +85,7 @@ export default function SessionPickerScreen() {
       pathname: '/subject-picker',
       params: {
         sessionLength: String(selected),
+        ...(chosenPreset?.breakMinutes ? { breakMinutes: String(chosenPreset.breakMinutes) } : {}),
         ...(selectedSubjectId ? { subjectId: selectedSubjectId } : {}),
       },
     });
@@ -92,7 +97,14 @@ export default function SessionPickerScreen() {
     // lobby roster / study room once it loads.
     const meImg = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins).imageSource;
     navigateWithLoading(
-      () => router.push({ pathname: '/study-lobby', params: { minutes: String(selected) } }),
+      () =>
+        router.push({
+          pathname: '/study-lobby',
+          params: {
+            minutes: String(selected),
+            ...(chosenPreset?.breakMinutes ? { break: String(chosenPreset.breakMinutes) } : {}),
+          },
+        }),
       { assets: STUDY_ASSETS, prefetch: [companionPrefetchUri(meImg)] },
     );
   }
@@ -137,13 +149,13 @@ export default function SessionPickerScreen() {
             {/* Focus time — each duration is a menu line-item */}
             <Text style={[styles.sectionLabel, isTablet && styles.sectionLabelTablet]}>{t('sessionPicker.chooseDuration')}</Text>
             {SESSION_LENGTHS.map((opt, i) => {
-              const isActive = selected === opt.minutes;
+              const isActive = !chosenPreset && selected === opt.minutes;
               const brk = autoBreakMinutes(opt.minutes);
               return (
                 <View key={opt.minutes}>
                   <Pressable
                     style={({ pressed }) => [styles.menuRow, isTablet && styles.menuRowTablet, isActive && styles.menuRowActive, pressed && styles.pressed]}
-                    onPress={() => { playTick(); setSelected(opt.minutes); }}>
+                    onPress={() => { playTick(); setSelected(opt.minutes); setChosenPreset(null); }}>
                     <Image source={CARD_IMG[opt.minutes]} style={[styles.menuIcon, isTablet && styles.menuIconTablet]} contentFit="contain" />
                     <View style={styles.menuBody}>
                       <View style={styles.menuTopLine}>
@@ -181,12 +193,12 @@ export default function SessionPickerScreen() {
                 <View style={styles.sectionRule} />
                 <Text style={[styles.sectionLabel, isTablet && styles.sectionLabelTablet]}>{t('sessionPicker.presetsHeader')}</Text>
                 {savedTimerPresets.map((p, i) => {
-                  const isActive = selected === p.minutes;
+                  const isActive = chosenPreset?.id === p.id;
                   return (
                     <View key={p.id}>
                       <Pressable
                         style={({ pressed }) => [styles.menuRow, isTablet && styles.menuRowTablet, isActive && styles.menuRowActive, pressed && styles.pressed]}
-                        onPress={() => { playTick(); setSelected(p.minutes); }}>
+                        onPress={() => { playTick(); setSelected(p.minutes); setChosenPreset(p); }}>
                         <View style={[styles.customIconWrap, isTablet && styles.customIconWrapTablet]}>
                           <PlusIcon size={isTablet ? Math.round(28 * grow) : 22} />
                         </View>
@@ -199,7 +211,14 @@ export default function SessionPickerScreen() {
                             <CoinIcon size={isTablet ? Math.round(18 * grow) : 14} />
                             <Text style={[styles.menuPrice, isTablet && styles.menuPriceTablet]}>+{coinsForMinutes(p.minutes)}</Text>
                           </View>
-                          <Text style={[styles.menuCoinText, isTablet && styles.menuCoinTextTablet]}>{p.minutes} {t('customTimer.min')}</Text>
+                          <View style={styles.menuSubLine}>
+                            <Text style={[styles.menuCoinText, isTablet && styles.menuCoinTextTablet]}>{p.minutes} {t('customTimer.min')}</Text>
+                            {!!p.breakMinutes && (
+                              <View style={[styles.breakChip, isTablet && styles.breakChipTablet]}>
+                                <Text style={[styles.breakChipText, isTablet && styles.breakChipTextTablet]}>{t('sessionPicker.menuBreak', { min: p.breakMinutes })}</Text>
+                              </View>
+                            )}
+                          </View>
                         </View>
                         {isActive && (
                           <View style={[styles.checkBadge, isTablet && styles.checkBadgeTablet]}>
@@ -209,7 +228,10 @@ export default function SessionPickerScreen() {
                         <Pressable
                           hitSlop={10}
                           style={({ pressed }) => [styles.presetDelete, pressed && styles.pressed]}
-                          onPress={() => deleteTimerPreset(p.id)}
+                          onPress={() => {
+                            if (chosenPreset?.id === p.id) setChosenPreset(null);
+                            deleteTimerPreset(p.id);
+                          }}
                           accessibilityLabel={t('common.delete')}>
                           <Text style={styles.presetDeleteText}>✕</Text>
                         </Pressable>

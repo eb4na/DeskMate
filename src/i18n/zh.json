@@ -334,6 +334,7 @@
     "savePresetSub": "保存本次会话以便下次使用",
     "addPreset": "添加预设",
     "presetSaved": "预设已保存！",
+    "noPresets": "还没有预设——在下方保存一个吧！",
     "presetLimitTitle": "预设已达上限",
     "presetLimitSub": "最多可保存 {{max}} 个预设。请选择一个替换：",
     "replaceAction": "替换",

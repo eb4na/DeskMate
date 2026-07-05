@@ -334,6 +334,7 @@
     "savePresetSub": "다음에 쓸 수 있도록 세션을 저장하세요",
     "addPreset": "프리셋 추가",
     "presetSaved": "프리셋을 저장했어요!",
+    "noPresets": "아직 프리셋이 없어요. 아래에서 저장해 보세요!",
     "presetLimitTitle": "프리셋 한도에 도달했어요",
     "presetLimitSub": "프리셋은 최대 {{max}}개까지 저장할 수 있어요. 교체할 항목을 선택하세요:",
     "replaceAction": "교체",

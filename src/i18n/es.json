@@ -334,6 +334,7 @@
     "savePresetSub": "Guarda tu sesión para la próxima vez",
     "addPreset": "Añadir ajuste",
     "presetSaved": "¡Ajuste guardado!",
+    "noPresets": "Aún no hay ajustes guardados. ¡Guarda uno abajo!",
     "presetLimitTitle": "Límite de ajustes alcanzado",
     "presetLimitSub": "Puedes guardar hasta {{max}} ajustes. Elige uno para reemplazar:",
     "replaceAction": "Reemplazar",

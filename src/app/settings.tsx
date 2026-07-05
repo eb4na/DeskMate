@@ -549,7 +549,11 @@ export default function SettingsScreen() {
               label={t('settings.customTimer')}
               value={isPlus ? t('settings.customTimerOn') : t('settings.plusFeature')}
               lock={!isPlus}
-              onPress={() => router.push(isPlus ? '/custom-timer' : '/plus-upgrade')}
+              onPress={() =>
+                isPlus
+                  ? router.push({ pathname: '/custom-timer', params: { from: 'settings' } })
+                  : router.push('/plus-upgrade')
+              }
             />
             <View style={styles.divider} />
             <SettingRow

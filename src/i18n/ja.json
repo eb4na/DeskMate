@@ -334,6 +334,7 @@
     "savePresetSub": "次回のためにセッションを保存",
     "addPreset": "プリセットを追加",
     "presetSaved": "プリセットを保存しました！",
+    "noPresets": "プリセットはまだありません。下から保存できます！",
     "presetLimitTitle": "プリセットの上限に達しました",
     "presetLimitSub": "プリセットは最大{{max}}個まで保存できます。置き換えるものを選んでください：",
     "replaceAction": "置き換える",

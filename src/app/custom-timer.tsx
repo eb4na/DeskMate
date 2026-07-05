@@ -122,8 +122,12 @@ export default function CustomTimerScreen() {
   // height so its scroll-snap math stays exact).
   const { scale, contentWidth } = useTabletScale();
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
-  const { mode } = useLocalSearchParams<{ mode?: TimerMode }>();
+  const { mode, from } = useLocalSearchParams<{ mode?: TimerMode; from?: string }>();
   const isBreakMode = mode === 'break';
+  // Opened from Settings the screen is a pure preset editor: no session gets
+  // started from here, so the Start button and subject picker are hidden and
+  // the saved presets are listed for managing/deleting instead.
+  const isPresetEditor = from === 'settings';
   const { subjects, saveTimerPreset, deleteTimerPreset, savedTimerPresets, isPlus, coins } = useApp();
 
   const [focusHr, setFocusHr] = useState(0);
@@ -167,7 +171,7 @@ export default function CustomTimerScreen() {
     });
 
   const savePresetNow = (mins: number) => {
-    saveTimerPreset({ label: presetName.trim() || `${mins} ${t('customTimer.min')}`, minutes: mins });
+    saveTimerPreset({ label: presetName.trim() || `${mins} ${t('customTimer.min')}`, minutes: mins, breakMinutes: breakMins });
     setPresetName('');
     showPopup(t('customTimer.presetSaved'));
   };
@@ -251,26 +255,31 @@ export default function CustomTimerScreen() {
                 ))}
               </View>
 
-              {/* Subject */}
-              <Text style={styles.sectionLabel}>{t('customTimer.subjectHeader')}</Text>
-              <View style={styles.softCard}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-                  {activeSubjects.map((s) => {
-                    const isActive = selectedSubjectId === s.id;
-                    return (
-                      <Pressable
-                        key={s.id}
-                        style={[styles.chip, { borderColor: isActive ? s.color : C.shortbread, backgroundColor: isActive ? s.color + '2E' : '#fff' }]}
-                        onPress={() => setSelectedSubjectId(isActive ? null : s.id)}>
-                        <Text style={[styles.chipText, isActive && { color: s.color }]}>{s.emoji ? `${s.emoji} ` : ''}{localizeSubjectName(s.name, t)}</Text>
+              {/* Subject — only when a session can be started from here (a preset
+                  doesn't store a subject, so the editor hides the picker). */}
+              {!isPresetEditor && (
+                <>
+                  <Text style={styles.sectionLabel}>{t('customTimer.subjectHeader')}</Text>
+                  <View style={styles.softCard}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+                      {activeSubjects.map((s) => {
+                        const isActive = selectedSubjectId === s.id;
+                        return (
+                          <Pressable
+                            key={s.id}
+                            style={[styles.chip, { borderColor: isActive ? s.color : C.shortbread, backgroundColor: isActive ? s.color + '2E' : '#fff' }]}
+                            onPress={() => setSelectedSubjectId(isActive ? null : s.id)}>
+                            <Text style={[styles.chipText, isActive && { color: s.color }]}>{s.emoji ? `${s.emoji} ` : ''}{localizeSubjectName(s.name, t)}</Text>
+                          </Pressable>
+                        );
+                      })}
+                      <Pressable style={[styles.chip, styles.chipAdd]} onPress={() => router.push('/manage-subjects')}>
+                        <Text style={[styles.chipText, { color: C.berry }]}>{t('common.addChip')}</Text>
                       </Pressable>
-                    );
-                  })}
-                  <Pressable style={[styles.chip, styles.chipAdd]} onPress={() => router.push('/manage-subjects')}>
-                    <Text style={[styles.chipText, { color: C.berry }]}>{t('common.addChip')}</Text>
-                  </Pressable>
-                </ScrollView>
-              </View>
+                    </ScrollView>
+                  </View>
+                </>
+              )}
 
               {/* Save as preset — add the current duration to your saved presets
                   without starting a session. */}
@@ -294,13 +303,48 @@ export default function CustomTimerScreen() {
                   <Text style={styles.addPresetText}>＋ {t('customTimer.addPreset')}</Text>
                 </SoundPressable>
               </View>
+
+              {/* Your saved presets — editor mode only: manage/delete them here. */}
+              {isPresetEditor && (
+                <>
+                  <Text style={styles.sectionLabel}>{t('sessionPicker.presetsHeader')}</Text>
+                  {savedTimerPresets.length === 0 ? (
+                    <View style={styles.softCard}>
+                      <Text style={styles.noPresetsText}>{t('customTimer.noPresets')}</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.presetList}>
+                      {savedTimerPresets.map((p) => (
+                        <View key={p.id} style={styles.replaceRow}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.replaceRowName} numberOfLines={1}>{p.label}</Text>
+                            <Text style={styles.replaceRowMins}>
+                              {p.minutes} {t('customTimer.min')}
+                              {p.breakMinutes ? ` · ${t('sessionPicker.menuBreak', { min: p.breakMinutes })}` : ''}
+                            </Text>
+                          </View>
+                          <Pressable
+                            hitSlop={10}
+                            style={({ pressed }) => [styles.presetDelete, pressed && styles.pressed]}
+                            onPress={() => deleteTimerPreset(p.id)}
+                            accessibilityLabel={t('common.delete')}>
+                            <Text style={styles.presetDeleteText}>✕</Text>
+                          </Pressable>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </>
+              )}
             </>
           )}
 
-          {/* Start */}
-          <SoundPressable sound="confirm" style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]} onPress={handleStart}>
-            <Text style={styles.startBtnText}>{t('customTimer.startSession')}  →</Text>
-          </SoundPressable>
+          {/* Start — hidden in the Settings preset editor (nothing to start there). */}
+          {!isPresetEditor && (
+            <SoundPressable sound="confirm" style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]} onPress={handleStart}>
+              <Text style={styles.startBtnText}>{t('customTimer.startSession')}  →</Text>
+            </SoundPressable>
+          )}
         </ScrollView>
       </SafeAreaView>
 
@@ -416,6 +460,15 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     backgroundColor: 'rgba(228,138,154,0.12)', paddingVertical: 11 * s, alignItems: 'center',
   },
   addPresetText: { fontSize: 14 * s, fontWeight: '900', color: C.berry, letterSpacing: 0.2 },
+
+  // Saved-presets list (Settings preset-editor mode)
+  presetList: { gap: Spacing.two * s, marginTop: 4 * s },
+  noPresetsText: { fontSize: 13 * s, color: C.mocha, fontWeight: '600', textAlign: 'center', paddingVertical: Spacing.two * s },
+  presetDelete: {
+    width: 26 * s, height: 26 * s, borderRadius: 13 * s, marginLeft: 4 * s,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: `${C.shortbread}80`,
+  },
+  presetDeleteText: { fontSize: 12 * s, color: C.mocha, fontWeight: '800', lineHeight: 14 * s },
 
   // Start
   startBtn: {

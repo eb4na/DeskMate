@@ -117,6 +117,9 @@ export type TimerPreset = {
   id: string;
   label: string;
   minutes: number;
+  // Break length saved with the preset. Absent on presets saved before breaks
+  // were part of a preset — those fall back to the auto/default break.
+  breakMinutes?: number;
 };
 
 export type Friend = {

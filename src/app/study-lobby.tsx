@@ -37,7 +37,7 @@ export default function StudyLobbyScreen() {
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('studylobby', LOBBY_ELEMENTS);
   const { active, isHost, canStartSelf, myCode, roster, presentCodes, netStatus, roomId, start, startSelf, leaveRoom, setMyPrefs, setMyBreak } = useStudyRoom();
-  const { subjects, isPlus, savedBreakPresets } = useApp();
+  const { subjects, isPlus, savedBreakPresets, savedTimerPresets } = useApp();
   // Custom length is a Plus perk. It's offered to everyone in the room when the
   // HOST has Plus (the host shares their perk with guests) — or to a Plus member
   // for their own session. Guests still can't save presets (the lobby has none).
@@ -49,21 +49,30 @@ export default function StudyLobbyScreen() {
   const clampCustom = (m: number) => Math.max(5, Math.min(300, m));
   const activeSubjects = subjects.filter((s) => !s.archived).sort((a, b) => a.order - b.order);
 
-  // A length may be passed in from the Start Session screen; use it as the default
-  // but still show the picker here so this player can change it.
-  const { minutes: minutesParam } = useLocalSearchParams<{ minutes?: string }>();
+  // A length (and a preset's break) may be passed in from the Start Session screen;
+  // use them as defaults but still show the pickers here so this player can change them.
+  const { minutes: minutesParam, break: breakParam } = useLocalSearchParams<{ minutes?: string; break?: string }>();
   const parsedPreset = Number(minutesParam);
   const presetMinutes = Number.isFinite(parsedPreset) && parsedPreset > 0 ? parsedPreset : null;
+  const parsedBreak = Number(breakParam);
+  const presetBreak = Number.isFinite(parsedBreak) && parsedBreak > 0 ? Math.min(300, parsedBreak) : null;
   const [minutes, setMinutes] = useState(presetMinutes ?? 30);
   // This player's chosen topic (subject name), or null = not chosen yet.
   const [topic, setTopic] = useState<string | null>(null);
   // Host-set room break length (minutes) — a Plus HOST perk. 0 = no timed break
   // (the room keeps its free on/off break). Applies to everyone once the host starts.
-  const [breakMins, setBreakMins] = useState(0);
+  const [breakMins, setBreakMins] = useState(isPlus && presetBreak ? presetBreak : 0);
   // Break options mirror the app's convention (see session-complete): the standard
-  // break lengths plus any the user saved as presets. 0 = free on/off break.
+  // break lengths plus any the user saved as presets (both the break-only presets
+  // and the breaks carried by session presets). 0 = free on/off break.
   const breakPicks = Array.from(
-    new Set([0, ...BREAK_LENGTHS, ...(isPlus ? savedBreakPresets.map((p) => p.minutes) : [])]),
+    new Set([
+      0,
+      ...BREAK_LENGTHS,
+      ...(isPlus ? savedBreakPresets.map((p) => p.minutes) : []),
+      ...(isPlus ? savedTimerPresets.map((p) => p.breakMinutes ?? 0).filter((m) => m > 0) : []),
+      ...(presetBreak ? [presetBreak] : []),
+    ]),
   ).sort((a, b) => a - b);
   // Choosing a break is a custom-timer perk — offered on this player's own Plus, OR
   // shared by a Plus host. Otherwise the break is fixed (free on/off in-session).
@@ -160,6 +169,38 @@ export default function StudyLobbyScreen() {
                 scale={scale}
               />
               {customViaHost && <Text style={styles.customNote}>{t('lobby.hostPlusCustom')}</Text>}
+              {/* Saved presets — gated on this player's OWN Plus (a Plus host shares
+                  the wheel with guests, but never a presets row; guests see their own
+                  presets only if they're Plus themselves). Tapping one applies its
+                  session length (broadcast) and its saved break (personal). */}
+              {isPlus && savedTimerPresets.length > 0 && (
+                <>
+                  <Text style={styles.presetHeader}>{t('sessionPicker.presetsHeader')}</Text>
+                  <View style={styles.topicRow}>
+                    {savedTimerPresets.map((p) => {
+                      const pBreak = p.breakMinutes ?? 0;
+                      const isActive = minutes === clampCustom(p.minutes) && breakMins === pBreak;
+                      return (
+                        <Pressable
+                          key={p.id}
+                          onPress={() => {
+                            pickMinutes(clampCustom(p.minutes));
+                            setBreakMins(pBreak);
+                          }}
+                          style={[styles.topicChip, isActive && styles.topicChipActive]}>
+                          <Text style={[styles.topicText, isActive && styles.topicTextActive]} numberOfLines={1}>
+                            {p.label}
+                          </Text>
+                          <Text style={styles.presetChipDetail}>
+                            {t('lobby.minShort', { n: p.minutes })}
+                            {pBreak > 0 ? ` + ${t('lobby.minShort', { n: pBreak })}` : ''}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
             </>
           ) : (
             // No custom-timer perk here → pick from the standard preset lengths (the
@@ -310,6 +351,8 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   customNum: { fontSize: 30 * s, fontWeight: '900', color: BakeryColors.cocoaDark },
   customUnit: { fontSize: 13 * s, fontWeight: '700', color: BakeryColors.mocha },
   customNote: { fontSize: 11.5 * s, fontWeight: '700', color: BakeryColors.mocha, textAlign: 'center' },
+  presetHeader: { fontSize: 11 * s, fontWeight: '800', color: BakeryColors.latte, letterSpacing: 1, marginTop: Spacing.one },
+  presetChipDetail: { fontSize: 11 * s, fontWeight: '700', color: BakeryColors.latte },
   hint: { fontSize: 12 * s, color: BakeryColors.mocha, textAlign: 'center' },
   actions: { gap: Spacing.two, paddingVertical: Spacing.two },
   inviteBtn: { paddingVertical: 11 * s, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: BakeryColors.glass, borderWidth: 1.5, borderColor: BakeryColors.shortbread },

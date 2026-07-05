@@ -334,6 +334,7 @@
     "savePresetSub": "Save your session for next time",
     "addPreset": "Add preset",
     "presetSaved": "Preset saved!",
+    "noPresets": "No presets yet — save one below!",
     "presetLimitTitle": "Preset limit reached",
     "presetLimitSub": "You can save up to {{max}} presets. Pick one to replace:",
     "replaceAction": "Replace",

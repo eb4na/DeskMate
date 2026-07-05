@@ -334,6 +334,7 @@
     "savePresetSub": "Enregistre ta session pour la prochaine fois",
     "addPreset": "Ajouter un préréglage",
     "presetSaved": "Préréglage enregistré !",
+    "noPresets": "Aucun préréglage pour l'instant — enregistres-en un ci-dessous !",
     "presetLimitTitle": "Limite de préréglages atteinte",
     "presetLimitSub": "Tu peux enregistrer jusqu'à {{max}} préréglages. Choisis-en un à remplacer :",
     "replaceAction": "Remplacer",
