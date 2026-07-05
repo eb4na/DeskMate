@@ -32,6 +32,10 @@ export type MoodEntry = {
   type: 'before' | 'after';
   sessionMinutes: number;
   timestamp: string;
+  /** Id of the study session this mood belongs to — links a session's before +
+   *  after moods together (independent of duration, so early-ended sessions still
+   *  pair). Optional: moods recorded before this field existed won't have it. */
+  sessionId?: string;
 };
 
 export type ExamCountdown = {
@@ -1164,7 +1168,7 @@ type AppContextType = {
     breakMinutes?: number;
     /** True when auto-started by the post-break next-session countdown. */
     autoStarted?: boolean;
-  }) => void;
+  }) => string; // returns the new session's id (for linking before/after moods)
   clearActiveSession: () => void;
   /** Pushes the active session's start forward by `seconds` (pause-for-break). */
   shiftSessionStart: (seconds: number) => void;
@@ -2037,8 +2041,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     breakMinutes?: number;
     autoStarted?: boolean;
   }) => {
+    const sessionId = uid();
     setActiveSession({
-      id: uid(),
+      id: sessionId,
       durationMinutes,
       subjectName,
       taskId,
@@ -2048,6 +2053,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       breakMinutes,
       autoStarted,
     });
+    return sessionId;
   };
 
   const clearActiveSession = () => {

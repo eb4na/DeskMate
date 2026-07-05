@@ -76,7 +76,7 @@ function ReceiptRow({
 }
 
 export default function SessionCompleteScreen() {
-  const { sessionLength, subject, coinsEarned, taskId, taskTitle, breakMinutes, autoStarted } = useLocalSearchParams<{
+  const { sessionLength, subject, coinsEarned, taskId, taskTitle, breakMinutes, autoStarted, sessionId } = useLocalSearchParams<{
     sessionLength: string;
     subject: string;
     coinsEarned: string;
@@ -84,6 +84,7 @@ export default function SessionCompleteScreen() {
     taskTitle?: string;
     breakMinutes?: string;
     autoStarted?: string;
+    sessionId?: string;
   }>();
 
   const {
@@ -221,6 +222,7 @@ export default function SessionCompleteScreen() {
           label: opt.label,
           type: 'after',
           sessionMinutes: minutes,
+          sessionId: sessionId && sessionId.length > 0 ? sessionId : undefined,
           timestamp: new Date().toISOString(),
         });
       }

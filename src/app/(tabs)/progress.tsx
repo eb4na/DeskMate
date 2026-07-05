@@ -610,6 +610,9 @@ export default function ProgressScreen() {
                 {(() => {
                   // Group each session's after+before rows (an 'after' immediately
                   // followed by its 'before') and join them with a connector line.
+                  // Match by sessionId when both have one (reliable even if the session
+                  // ended early); fall back to matching duration for older moods that
+                  // predate sessionId.
                   const rows: ReactNode[] = [];
                   for (let i = 0; i < recentMoods.length; i++) {
                     const entry = recentMoods[i];
@@ -617,7 +620,9 @@ export default function ProgressScreen() {
                     const paired =
                       entry.type === 'after' &&
                       next?.type === 'before' &&
-                      next.sessionMinutes === entry.sessionMinutes;
+                      (entry.sessionId && next.sessionId
+                        ? next.sessionId === entry.sessionId
+                        : next.sessionMinutes === entry.sessionMinutes);
                     if (paired) {
                       rows.push(
                         <View key={entry.id} style={styles.moodPair}>

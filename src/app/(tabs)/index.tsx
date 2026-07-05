@@ -600,6 +600,8 @@ export default function HomeScreen() {
   // Minutes of an early-ended-but-recorded session awaiting its after-mood (null = none).
   // Only the manual stop sets this; the walk-away auto-stop leaves it null (no one's there).
   const [earlyEndMoodMinutes, setEarlyEndMoodMinutes] = useState<number | null>(null);
+  // Session id of a just-early-ended session, so its after-mood links to the before-mood.
+  const [earlyEndMoodSessionId, setEarlyEndMoodSessionId] = useState<string | null>(null);
   const [dragSession, setDragSession] = useState<DragSessionData | null>(null);
   // The streak + coin pills are two separate buttons that should always be the same
   // width. Each reports its natural (content-sized) width; we take the larger and
@@ -765,10 +767,12 @@ export default function HomeScreen() {
             setDroppedIds(new Set());
           }, { until: preloadStudyAssets(studyCharacterSource) });
           if (ds) {
+            const sessionId = startActiveSession({ durationMinutes: ds.durationMinutes, subjectName: ds.subjectName, taskId: ds.taskId, taskTitle: ds.taskTitle, breakMinutes: ds.breakMinutes, startedAt: FROZEN_START });
             if (ds.moodValue && ds.moodLabel) {
-              addMoodEntry({ value: ds.moodValue, label: ds.moodLabel, type: 'before', sessionMinutes: ds.durationMinutes, timestamp: new Date().toISOString() });
+              // Tag the before-mood with the session id so Progress can pair it with
+              // this session's after-mood (works even if the session ends early).
+              addMoodEntry({ value: ds.moodValue, label: ds.moodLabel, type: 'before', sessionMinutes: ds.durationMinutes, sessionId, timestamp: new Date().toISOString() });
             }
-            startActiveSession({ durationMinutes: ds.durationMinutes, subjectName: ds.subjectName, taskId: ds.taskId, taskTitle: ds.taskTitle, breakMinutes: ds.breakMinutes, startedAt: FROZEN_START });
           }
         }, 300);
       }
@@ -904,6 +908,8 @@ export default function HomeScreen() {
       // and whether THIS session was itself auto-started (caps auto-start chaining).
       breakMinutes: String(activeSession.breakMinutes ?? autoBreakMinutes(activeSession.durationMinutes)),
       autoStarted: activeSession.autoStarted ? '1' : '',
+      // Carried to session-complete so its after-mood links to this session's before-mood.
+      sessionId: activeSession.id,
     };
     setFinishingSession(true);
   }, [activeSession, sessionSecondsLeft]);
@@ -929,6 +935,7 @@ export default function HomeScreen() {
         taskTitle: activeSession.taskTitle ?? '',
         breakMinutes: String(activeSession.breakMinutes ?? autoBreakMinutes(activeSession.durationMinutes)),
         autoStarted: activeSession.autoStarted ? '1' : '',
+        sessionId: activeSession.id,
       };
       setFinishingSession(true);
     };
@@ -1004,6 +1011,7 @@ export default function HomeScreen() {
             recordSession(sessionElapsedMinutes);
             addSubjectTime(endedSession.subjectName, sessionElapsedMinutes);
             setEarlyEndMoodMinutes(sessionElapsedMinutes);
+            setEarlyEndMoodSessionId(endedSession.id);
           }
         },
       },
@@ -1419,10 +1427,11 @@ export default function HomeScreen() {
       <AfterMoodPrompt
         minutes={earlyEndMoodMinutes}
         onPick={(value, label, sessionMinutes) => {
-          addMoodEntry({ value, label, type: 'after', sessionMinutes, timestamp: new Date().toISOString() });
+          addMoodEntry({ value, label, type: 'after', sessionMinutes, sessionId: earlyEndMoodSessionId ?? undefined, timestamp: new Date().toISOString() });
           setEarlyEndMoodMinutes(null);
+          setEarlyEndMoodSessionId(null);
         }}
-        onSkip={() => setEarlyEndMoodMinutes(null)}
+        onSkip={() => { setEarlyEndMoodMinutes(null); setEarlyEndMoodSessionId(null); }}
       />
       {/* Coachmark tour is painted at the root (TutorialPortal) so it sits above
           the tab bar — its visibility is driven by the effect above via the signal. */}
