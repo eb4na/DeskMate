@@ -782,14 +782,14 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   emptyCard: { borderRadius: BakeryRadii.card * s, padding: Spacing.four * s, alignItems: 'center', backgroundColor: BakeryColors.glass, borderWidth: 1.5, borderColor: BakeryColors.shortbread },
   emptyText: { textAlign: 'center', lineHeight: 20 * s },
   moodList: { gap: Spacing.two * s },
-  // before+after of one session, joined by a short vertical connector line.
+  // before+after of one session, joined by a short vertical pink connector line.
   moodPair: {},
   moodConnector: {
-    width: 3 * s,
-    height: 12 * s,
+    width: 3.5 * s,
+    height: 14 * s,
     marginLeft: 34 * s,
     borderRadius: 2 * s,
-    backgroundColor: BakeryColors.latte,
+    backgroundColor: BakeryColors.buttonPink,
   },
   moodRow: {
     borderRadius: BakeryRadii.card * s,
