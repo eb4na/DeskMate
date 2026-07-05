@@ -2511,8 +2511,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Drop back to the starter chooser so the reset re-runs the "pick your free
       // companion" step (DEFAULTS already reset starterCompanionId/activeCompanionId).
       starterChosen: false,
-      // Already-onboarded account — don't replay the first-launch coachmark tour.
-      tutorialSeen: prev.tutorialSeen,
+      // The reset re-runs the whole new-account flow (legal gate, starter chooser,
+      // day-1 reward), so replay the first-launch coachmark tour with it —
+      // tutorialSeen falls back to DEFAULTS (false) and Home shows the tour after
+      // the day-1 login reward is claimed.
       coins: 1_000_000,
     }));
   };
