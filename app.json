@@ -68,6 +68,14 @@
         {
           "userTrackingPermission": "Memobun uses this to show you more relevant ads. Your choice won't change how many coins you can earn."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "2.2.20"
+          }
+        }
       ]
     ],
     "experiments": {
