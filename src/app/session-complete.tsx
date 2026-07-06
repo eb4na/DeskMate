@@ -96,7 +96,6 @@ export default function SessionCompleteScreen() {
     addCoins,
     completeTask,
     isPlus,
-    savedBreakPresets,
     selectedFoodId,
     markFoodMade,
     earnedToday,
@@ -281,9 +280,9 @@ export default function SessionCompleteScreen() {
     });
   const openCustomBreak = () =>
     router.push({ pathname: '/custom-timer', params: { mode: 'break' } });
-  const breakOptions = Array.from(
-    new Set([...BREAK_LENGTHS, ...(isPlus ? savedBreakPresets.map((preset) => preset.minutes) : [])]),
-  ).sort((a, b) => a - b);
+  // Standard break lengths only — break presets were removed (presets are
+  // session-length only now); Plus users can still dial any break via the link.
+  const breakOptions = [...BREAK_LENGTHS];
 
   return (
     <ThemedView style={styles.container}>
@@ -412,16 +411,9 @@ export default function SessionCompleteScreen() {
                 ))}
               </ThemedView>
               {isPlus ? (
-                <>
-                  {savedBreakPresets.length > 0 && (
-                    <ThemedText type="small" themeColor="textSecondary" style={styles.breakHint}>
-                      {t('sessionComplete.savedPresetsIncluded')}
-                    </ThemedText>
-                  )}
-                  <Pressable onPress={openCustomBreak} style={styles.customBreakLink}>
-                    <ThemedText type="linkPrimary">{t('sessionComplete.customBreak')}</ThemedText>
-                  </Pressable>
-                </>
+                <Pressable onPress={openCustomBreak} style={styles.customBreakLink}>
+                  <ThemedText type="linkPrimary">{t('sessionComplete.customBreak')}</ThemedText>
+                </Pressable>
               ) : null}
             </ThemedView>
 

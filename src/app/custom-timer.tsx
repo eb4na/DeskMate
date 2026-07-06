@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { formatCoins } from '@/constants/placeholder-data';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ImageBackground, NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ImageBackground, NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { playTick } from '@/lib/sounds';
 import { showPopup } from '@/lib/popup';
@@ -135,7 +135,6 @@ export default function CustomTimerScreen() {
   const [breakHr, setBreakHr] = useState(0);
   const [breakMin, setBreakMin] = useState(10);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
-  const [presetName, setPresetName] = useState('');
   // When the user is at the preset cap and asks to save, we can't just drop the
   // oldest — we open this picker so they choose which one the new preset replaces.
   const [showReplace, setShowReplace] = useState(false);
@@ -170,9 +169,10 @@ export default function CustomTimerScreen() {
       },
     });
 
+  // Presets are session-length ONLY (no name, no break — breaks are always picked
+  // fresh from the fixed quick pills). The label is just the formatted duration.
   const savePresetNow = (mins: number) => {
-    saveTimerPreset({ label: presetName.trim() || `${mins} ${t('customTimer.min')}`, minutes: mins, breakMinutes: breakMins });
-    setPresetName('');
+    saveTimerPreset({ label: formatMinutesShort(mins, t), minutes: mins });
     showPopup(t('customTimer.presetSaved'));
   };
 
@@ -239,6 +239,27 @@ export default function CustomTimerScreen() {
 
           {!isBreakMode && (
             <>
+              {/* Saved presets — session-length pills right under the standard
+                  quick picks. ＋ adds the currently dialed focus time as a new
+                  pill; at the cap the replace picker makes the user delete one.
+                  Tap a pill to set the wheel; ✕ (editor mode) deletes. */}
+              <Text style={styles.sectionLabel}>{t('sessionPicker.presetsHeader')}</Text>
+              <View style={[styles.pickRow, styles.presetRow]}>
+                {savedTimerPresets.map((p) => (
+                  <Pressable
+                    key={p.id}
+                    onPress={() => { playTick(); setFocusTotal(p.minutes); }}
+                    style={[styles.pick, styles.presetPick, focusMins === p.minutes && styles.pickActive]}>
+                    <Text style={[styles.pickText, focusMins === p.minutes && styles.pickTextActive]}>{formatMinutesShort(p.minutes, t)}</Text>
+                  </Pressable>
+                ))}
+                <SoundPressable
+                  sound="confirm"
+                  onPress={handleAddPreset}
+                  style={({ pressed }) => [styles.pick, styles.presetPick, styles.pickAdd, pressed && styles.pressed]}>
+                  <Text style={[styles.pickText, styles.pickAddText]}>{t('common.addChip')}</Text>
+                </SoundPressable>
+              </View>
               {/* Break duration */}
               <Text style={styles.sectionLabel}>{t('customTimer.breakDuration')}</Text>
               <Text style={styles.sectionSub}>{t('customTimer.optionalBreak')}</Text>
@@ -281,29 +302,6 @@ export default function CustomTimerScreen() {
                 </>
               )}
 
-              {/* Save as preset — add the current duration to your saved presets
-                  without starting a session. */}
-              <View style={styles.presetCard}>
-                <View style={styles.presetTextWrap}>
-                  <Text style={styles.presetTitle}>{t('customTimer.savePresetTitle')}</Text>
-                  <Text style={styles.presetSub}>{t('customTimer.savePresetSub')}</Text>
-                </View>
-                <TextInput
-                  style={styles.presetInput}
-                  value={presetName}
-                  onChangeText={setPresetName}
-                  placeholder={t('customTimer.presetNamePlaceholder')}
-                  placeholderTextColor={C.latte}
-                  returnKeyType="done"
-                />
-                <SoundPressable
-                  sound="confirm"
-                  style={({ pressed }) => [styles.addPresetBtn, pressed && styles.pressed]}
-                  onPress={handleAddPreset}>
-                  <Text style={styles.addPresetText}>＋ {t('customTimer.addPreset')}</Text>
-                </SoundPressable>
-              </View>
-
               {/* Your saved presets — editor mode only: manage/delete them here. */}
               {isPresetEditor && (
                 <>
@@ -318,10 +316,7 @@ export default function CustomTimerScreen() {
                         <View key={p.id} style={styles.replaceRow}>
                           <View style={{ flex: 1 }}>
                             <Text style={styles.replaceRowName} numberOfLines={1}>{p.label}</Text>
-                            <Text style={styles.replaceRowMins}>
-                              {p.minutes} {t('customTimer.min')}
-                              {p.breakMinutes ? ` · ${t('sessionPicker.menuBreak', { min: p.breakMinutes })}` : ''}
-                            </Text>
+                            <Text style={styles.replaceRowMins}>{p.minutes} {t('customTimer.min')}</Text>
                           </View>
                           <Pressable
                             hitSlop={10}
@@ -430,6 +425,13 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   pickActive: { backgroundColor: C.jam, borderColor: C.jam },
   pickText: { fontSize: 13 * s, fontWeight: '800', color: C.mocha },
   pickTextActive: { color: '#fff' },
+  // Preset pills lay out as a tidy 3-per-row grid (the quick picks above stay
+  // free-flowing): 3 × 31% + 2 gaps fills the row edge to edge.
+  presetRow: { justifyContent: 'flex-start' },
+  presetPick: { width: '30%', alignItems: 'center', paddingHorizontal: 0 },
+  // Dashed "+ Add" pill at the end of the presets row (mirrors the subject chips).
+  pickAdd: { borderColor: C.jam, borderStyle: 'dashed', backgroundColor: 'transparent' },
+  pickAddText: { color: C.berry },
 
   // Subject card
   softCard: {
@@ -441,25 +443,6 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   chip: { borderRadius: BakeryRadii.pill, borderWidth: 1.5, paddingHorizontal: 13 * s, paddingVertical: 8 * s },
   chipAdd: { borderColor: C.jam, borderStyle: 'dashed', backgroundColor: 'transparent' },
   chipText: { fontSize: 13.5 * s, color: C.mocha, fontWeight: '700' },
-
-  // Save as preset
-  presetCard: {
-    backgroundColor: '#fff', borderRadius: BakeryRadii.card * s,
-    borderWidth: 1.5, borderColor: 'rgba(195,143,114,0.18)',
-    padding: Spacing.three * s, marginTop: 4 * s, gap: Spacing.two * s, ...BakeryShadow,
-  },
-  presetTextWrap: { flex: 1 },
-  presetTitle: { fontSize: 12 * s, fontWeight: '800', color: C.cocoaDark, letterSpacing: 0.5 },
-  presetSub: { fontSize: 11.5 * s, color: C.mocha, marginTop: 1 },
-  presetInput: {
-    borderWidth: 1.5, borderColor: C.shortbread, borderRadius: BakeryRadii.button,
-    paddingHorizontal: 12 * s, paddingVertical: 10 * s, fontSize: 14 * s, color: C.cocoaDark, backgroundColor: C.frosting,
-  },
-  addPresetBtn: {
-    borderRadius: BakeryRadii.pill, borderWidth: 1.5, borderColor: C.jam,
-    backgroundColor: 'rgba(228,138,154,0.12)', paddingVertical: 11 * s, alignItems: 'center',
-  },
-  addPresetText: { fontSize: 14 * s, fontWeight: '900', color: C.berry, letterSpacing: 0.2 },
 
   // Saved-presets list (Settings preset-editor mode)
   presetList: { gap: Spacing.two * s, marginTop: 4 * s },

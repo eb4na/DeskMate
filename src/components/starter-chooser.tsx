@@ -114,6 +114,13 @@ export function StarterChooser() {
   // already warm on the chosen character. The loader's own failsafe lifts it even
   // if the preload hangs, so this can never get stuck.
   const [submitting, setSubmitting] = useState(false);
+  // "Choose" first opens an are-you-sure card (the pick is permanent — the other
+  // four become paid shop items), and only the card's Yes actually commits.
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const askConfirm = () => {
+    playTapConfirm();
+    setConfirmOpen(true);
+  };
   const confirm = () => {
     if (submitting) return;
     setSubmitting(true);
@@ -186,12 +193,33 @@ export function StarterChooser() {
         <View style={styles.footer}>
           <Text style={styles.hint}>{t('starter.hint')}</Text>
           <Pressable
-            onPress={confirm}
+            onPress={askConfirm}
             style={({ pressed }) => [styles.confirmBtn, pressed && styles.pressed]}>
             <Text style={styles.confirmText}>{t('starter.choose', { name })}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
+      )}
+
+      {/* Are-you-sure card — an in-screen overlay (NOT a native Modal, which could
+          stack with other root modals). Tapping the dim backdrop goes back to the
+          carousel; only the pink Yes commits the pick. */}
+      {confirmOpen && !submitting && (
+        <Pressable style={styles.confirmBackdrop} onPress={() => setConfirmOpen(false)}>
+          <Pressable style={styles.confirmCard} onPress={() => {}}>
+            <Image source={choice.image} style={styles.confirmImage} contentFit="contain" />
+            <Text style={styles.confirmTitle}>{t('starter.confirmTitle', { name })}</Text>
+            <Text style={styles.confirmBody}>{t('starter.confirmBody', { name })}</Text>
+            <Pressable
+              onPress={confirm}
+              style={({ pressed }) => [styles.confirmBtn, styles.confirmYesBtn, pressed && styles.pressed]}>
+              <Text style={styles.confirmText}>{t('starter.confirmYes')}</Text>
+            </Pressable>
+            <Pressable onPress={() => setConfirmOpen(false)} hitSlop={8} style={({ pressed }) => [pressed && styles.pressed]}>
+              <Text style={styles.confirmBackText}>{t('starter.confirmBack')}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
       )}
     </View>
   );
@@ -287,4 +315,37 @@ const styles = StyleSheet.create({
   },
   confirmText: { fontSize: 17, fontWeight: '800', color: '#FFFFFF' },
   pressed: { opacity: 0.85 },
+
+  // Are-you-sure overlay
+  confirmBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(91, 58, 46, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 28,
+  },
+  confirmCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: P.card,
+    borderRadius: 24,
+    paddingVertical: 22,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    gap: 10,
+    shadowColor: '#5B3A2E',
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  confirmImage: { width: 120, height: 120, backgroundColor: 'transparent' },
+  confirmTitle: { fontSize: 20, fontWeight: '900', color: P.brown, textAlign: 'center' },
+  confirmBody: { fontSize: 14, color: P.mutedBrown, fontWeight: '600', textAlign: 'center', lineHeight: 20 },
+  confirmYesBtn: { alignSelf: 'stretch', marginTop: 6 },
+  confirmBackText: { fontSize: 14.5, fontWeight: '700', color: P.mutedBrown, padding: 6 },
 });

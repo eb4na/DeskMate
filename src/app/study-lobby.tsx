@@ -12,7 +12,9 @@ import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { BREAK_LENGTHS, SESSION_LENGTHS } from '@/constants/placeholder-data';
 import { bunAvatarNudge, getCompanionImage } from '@/lib/companion-utils';
-import { useApp } from '@/context/app-context';
+import { useApp, MAX_TIMER_PRESETS } from '@/context/app-context';
+import { formatMinutesShort } from '@/lib/format-duration';
+import { showPopup } from '@/lib/popup';
 import { useStudyRoom, STUDY_ROOM_MAX } from '@/lib/use-study-room';
 import { localizeSubjectName } from '@/lib/subject-utils';
 import { useTranslation } from '@/i18n';
@@ -37,15 +39,13 @@ export default function StudyLobbyScreen() {
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('studylobby', LOBBY_ELEMENTS);
   const { active, isHost, canStartSelf, myCode, roster, presentCodes, netStatus, roomId, start, startSelf, leaveRoom, setMyPrefs, setMyBreak } = useStudyRoom();
-  const { subjects, isPlus, savedBreakPresets, savedTimerPresets } = useApp();
-  // Custom length is a Plus perk. It's offered to everyone in the room when the
-  // HOST has Plus (the host shares their perk with guests) — or to a Plus member
-  // for their own session. Guests still can't save presets (the lobby has none).
+  const { subjects, isPlus, savedTimerPresets, saveTimerPreset, deleteTimerPreset } = useApp();
+  // Custom-length matrix (per player):
+  //  - own Plus (host or guest)            → wheel + saved presets (+ add)
+  //  - no Plus, but the HOST has Plus      → wheel only (shared perk, no presets)
+  //  - no Plus and a non-Plus host         → the standard default lengths
   const hostIsPlus = !!roster.find((e) => e.isHost)?.isPlus;
   const canCustom = isPlus || hostIsPlus;
-  // Show the "thanks to your host" note only when it's unlocked BY the host (not
-  // by this player's own Plus).
-  const customViaHost = !isPlus && hostIsPlus;
   const clampCustom = (m: number) => Math.max(5, Math.min(300, m));
   const activeSubjects = subjects.filter((s) => !s.archived).sort((a, b) => a.order - b.order);
 
@@ -62,17 +62,11 @@ export default function StudyLobbyScreen() {
   // Host-set room break length (minutes) — a Plus HOST perk. 0 = no timed break
   // (the room keeps its free on/off break). Applies to everyone once the host starts.
   const [breakMins, setBreakMins] = useState(isPlus && presetBreak ? presetBreak : 0);
-  // Break options mirror the app's convention (see session-complete): the standard
-  // break lengths plus any the user saved as presets (both the break-only presets
-  // and the breaks carried by session presets). 0 = free on/off break.
+  // Break options mirror the app's convention (see session-complete): just the
+  // standard break lengths — presets are session-length only and carry no break.
+  // 0 = free on/off break.
   const breakPicks = Array.from(
-    new Set([
-      0,
-      ...BREAK_LENGTHS,
-      ...(isPlus ? savedBreakPresets.map((p) => p.minutes) : []),
-      ...(isPlus ? savedTimerPresets.map((p) => p.breakMinutes ?? 0).filter((m) => m > 0) : []),
-      ...(presetBreak ? [presetBreak] : []),
-    ]),
+    new Set([0, ...BREAK_LENGTHS, ...(presetBreak ? [presetBreak] : [])]),
   ).sort((a, b) => a - b);
   // Choosing a break is a custom-timer perk — offered on this player's own Plus, OR
   // shared by a Plus host. Otherwise the break is fixed (free on/off in-session).
@@ -86,6 +80,23 @@ export default function StudyLobbyScreen() {
     setMyPrefs(nextMinutes, nextTopic);
   };
   const pickMinutes = (m: number) => applyPrefs(m, topic);
+  // Save the currently dialed length as a preset — same session-length-only
+  // presets as the Custom Timer screen. At the cap, the replace picker below
+  // makes the player delete one to make room.
+  const [showReplace, setShowReplace] = useState(false);
+  const savePresetNow = (mins: number) => {
+    saveTimerPreset({ label: formatMinutesShort(mins, t), minutes: mins });
+    showPopup(t('customTimer.presetSaved'));
+  };
+  const handleAddPreset = () => {
+    if (savedTimerPresets.length >= MAX_TIMER_PRESETS) { setShowReplace(true); return; }
+    savePresetNow(minutes);
+  };
+  const replaceWith = (id: string) => {
+    deleteTimerPreset(id);
+    savePresetNow(minutes);
+    setShowReplace(false);
+  };
   // Tapping the selected topic again clears it (back to "not chosen").
   const pickTopic = (name: string) => applyPrefs(minutes, topic === name ? null : name);
   useEffect(() => {
@@ -156,10 +167,10 @@ export default function StudyLobbyScreen() {
             })}
           </View>
 
-          {/* Session length — each player picks their own. Plus members (or anyone in
-              a Plus host's room) get the full hr/min wheel (same as the solo custom
-              timer); everyone else gets the preset cards. Either way the chosen value
-              rides the same per-player prefs sync. */}
+          {/* Session length — each player picks their own. Plus members get the full
+              hr/min wheel (same as the solo custom timer); everyone else — host
+              included — gets the preset cards. Either way the chosen value rides the
+              same per-player prefs sync. */}
           <Text style={styles.label}>{t('lobby.sessionLength')}</Text>
           {canCustom ? (
             <>
@@ -168,36 +179,35 @@ export default function StudyLobbyScreen() {
                 onChange={(m) => pickMinutes(clampCustom(m))}
                 scale={scale}
               />
-              {customViaHost && <Text style={styles.customNote}>{t('lobby.hostPlusCustom')}</Text>}
-              {/* Saved presets — gated on this player's OWN Plus (a Plus host shares
-                  the wheel with guests, but never a presets row; guests see their own
-                  presets only if they're Plus themselves). Tapping one applies its
-                  session length (broadcast) and its saved break (personal). */}
-              {isPlus && savedTimerPresets.length > 0 && (
+              {/* Saved presets — like the wheel, gated on this player's own Plus.
+                  Tapping one applies its session length (broadcast) and its saved
+                  break (personal). */}
+              {isPlus && (
                 <>
                   <Text style={styles.presetHeader}>{t('sessionPicker.presetsHeader')}</Text>
                   <View style={styles.topicRow}>
                     {savedTimerPresets.map((p) => {
-                      const pBreak = p.breakMinutes ?? 0;
-                      const isActive = minutes === clampCustom(p.minutes) && breakMins === pBreak;
+                      // Presets are session-length only — applying one never touches
+                      // this player's break choice.
+                      const isActive = minutes === clampCustom(p.minutes);
                       return (
                         <Pressable
                           key={p.id}
-                          onPress={() => {
-                            pickMinutes(clampCustom(p.minutes));
-                            setBreakMins(pBreak);
-                          }}
-                          style={[styles.topicChip, isActive && styles.topicChipActive]}>
+                          onPress={() => pickMinutes(clampCustom(p.minutes))}
+                          style={[styles.topicChip, styles.presetChip, isActive && styles.topicChipActive]}>
                           <Text style={[styles.topicText, isActive && styles.topicTextActive]} numberOfLines={1}>
                             {p.label}
-                          </Text>
-                          <Text style={styles.presetChipDetail}>
-                            {t('lobby.minShort', { n: p.minutes })}
-                            {pBreak > 0 ? ` + ${t('lobby.minShort', { n: pBreak })}` : ''}
                           </Text>
                         </Pressable>
                       );
                     })}
+                    {/* ＋ saves the currently dialed wheel length as a new preset. */}
+                    <SoundPressable
+                      sound="confirm"
+                      onPress={handleAddPreset}
+                      style={({ pressed }) => [styles.topicChip, styles.presetChip, styles.presetAdd, pressed && styles.pressed]}>
+                      <Text style={[styles.topicText, styles.presetAddText]}>{t('common.addChip')}</Text>
+                    </SoundPressable>
                   </View>
                 </>
               )}
@@ -242,7 +252,7 @@ export default function StudyLobbyScreen() {
           {/* Break time — a custom-timer perk, per player. Each player picks their own
               break length (from their preset times); they then get a personal timed
               break of that length (freeze + auto-resume). 0 = free on/off break.
-              Unlocked by this player's own Plus, or shared by a Plus host. */}
+              Unlocked only by this player's own Plus. */}
           {canSetBreak && (
             <>
               <Text style={styles.label}>{t('lobby.breakTime')}</Text>
@@ -253,7 +263,6 @@ export default function StudyLobbyScreen() {
                 scale={scale}
                 format={(m) => (m === 0 ? t('lobby.breakOff') : t('lobby.minShort', { n: m }))}
               />
-              {customViaHost && <Text style={styles.customNote}>{t('lobby.hostPlusCustom')}</Text>}
             </>
           )}
         </ScrollView>
@@ -290,6 +299,30 @@ export default function StudyLobbyScreen() {
           </Pressable>
         </View>
       </SafeAreaView>
+
+      {/* Replace-a-preset picker — in-tree overlay (NOT a native Modal, so it can't
+          stack-freeze). Shown when ＋ is tapped at the preset cap: the player picks
+          which saved preset the new length replaces. */}
+      {showReplace && (
+        <View style={styles.replaceOverlay}>
+          <View style={styles.replaceCard}>
+            <Text style={styles.replaceTitle}>{t('customTimer.presetLimitTitle')}</Text>
+            <Text style={styles.replaceSub}>{t('customTimer.presetLimitSub', { max: MAX_TIMER_PRESETS })}</Text>
+            {savedTimerPresets.map((p) => (
+              <Pressable
+                key={p.id}
+                style={({ pressed }) => [styles.replaceRow, pressed && styles.pressed]}
+                onPress={() => replaceWith(p.id)}>
+                <Text style={styles.replaceRowName} numberOfLines={1}>{p.label}</Text>
+                <Text style={styles.replaceRowAction}>{t('customTimer.replaceAction')}</Text>
+              </Pressable>
+            ))}
+            <Pressable style={({ pressed }) => [styles.replaceCancel, pressed && styles.pressed]} onPress={() => setShowReplace(false)}>
+              <Text style={styles.replaceCancelText}>{t('common.cancel')}</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
       <DevKnobs screen="studylobby" knobs={twKnobs} onChange={twChange} />
     </ThemedView>
   );
@@ -324,6 +357,36 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   memberPref: { fontSize: 11 * s, fontWeight: '700', color: BakeryColors.mocha, maxWidth: 96 * s, textAlign: 'center' },
   label: { fontSize: 14 * s, fontWeight: '800', color: BakeryColors.cocoaDark },
   topicRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  // Saved-preset chips lay out as a tidy 3-per-row grid (unlike the free-flowing
+  // topic chips): 3 × 31% + 2 gaps fits the row on phone and tablet alike.
+  presetChip: { width: '31%', alignItems: 'center' },
+  // Dashed "add a preset" chip at the end of the grid.
+  presetAdd: { borderColor: BakeryColors.jam, borderStyle: 'dashed', backgroundColor: 'transparent' },
+  presetAddText: { color: BakeryColors.berry },
+  // Replace-a-preset overlay (at the preset cap).
+  replaceOverlay: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(74,49,42,0.45)',
+    alignItems: 'center', justifyContent: 'center', padding: Spacing.four,
+  },
+  replaceCard: {
+    width: '100%', maxWidth: 420 * s,
+    backgroundColor: BakeryColors.frosting, borderRadius: BakeryRadii.card * s,
+    borderWidth: 1.5, borderColor: BakeryColors.shortbread,
+    padding: Spacing.four * s, gap: Spacing.two * s,
+  },
+  replaceTitle: { fontSize: 18 * s, fontWeight: '900', color: BakeryColors.cocoaDark, textAlign: 'center' },
+  replaceSub: { fontSize: 13 * s, color: BakeryColors.mocha, textAlign: 'center', fontWeight: '600', marginBottom: Spacing.one * s },
+  replaceRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two * s,
+    backgroundColor: '#fff', borderRadius: BakeryRadii.button,
+    borderWidth: 1.5, borderColor: BakeryColors.shortbread,
+    paddingHorizontal: 14 * s, paddingVertical: 12 * s,
+  },
+  replaceRowName: { flex: 1, fontSize: 14.5 * s, fontWeight: '800', color: BakeryColors.cocoaDark },
+  replaceRowAction: { fontSize: 13 * s, fontWeight: '900', color: BakeryColors.berry },
+  replaceCancel: { alignItems: 'center', paddingVertical: 8 * s },
+  replaceCancelText: { fontSize: 14 * s, fontWeight: '800', color: BakeryColors.mocha },
   topicChip: {
     flexDirection: 'row', alignItems: 'center', gap: 5 * s,
     paddingHorizontal: Spacing.three * s, paddingVertical: 9 * s,
@@ -350,9 +413,7 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   customDisplay: { flexDirection: 'row', alignItems: 'baseline', gap: 4 * s, minWidth: 92 * s, justifyContent: 'center' },
   customNum: { fontSize: 30 * s, fontWeight: '900', color: BakeryColors.cocoaDark },
   customUnit: { fontSize: 13 * s, fontWeight: '700', color: BakeryColors.mocha },
-  customNote: { fontSize: 11.5 * s, fontWeight: '700', color: BakeryColors.mocha, textAlign: 'center' },
   presetHeader: { fontSize: 11 * s, fontWeight: '800', color: BakeryColors.latte, letterSpacing: 1, marginTop: Spacing.one },
-  presetChipDetail: { fontSize: 11 * s, fontWeight: '700', color: BakeryColors.latte },
   hint: { fontSize: 12 * s, color: BakeryColors.mocha, textAlign: 'center' },
   actions: { gap: Spacing.two, paddingVertical: Spacing.two },
   inviteBtn: { paddingVertical: 11 * s, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: BakeryColors.glass, borderWidth: 1.5, borderColor: BakeryColors.shortbread },

@@ -12,7 +12,7 @@ import { PlusIcon } from '@/components/plus-icon';
 import { LockBadge } from '@/components/lock-badge';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
-import { useApp, type TimerPreset } from '@/context/app-context';
+import { useApp } from '@/context/app-context';
 import { newRoomId } from '@/lib/game-net';
 import { useStudyRoom } from '@/lib/use-study-room';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
@@ -63,20 +63,18 @@ export default function SessionPickerScreen() {
   const grow = isTablet ? Math.max(1, scale / 1.3) : 1;
   const styles = useMemo(() => makeStyles(grow), [grow]);
   const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('sessionpicker', PICKER_ELEMENTS);
-  const { subjects, coins, isPlus, savedTimerPresets, deleteTimerPreset, activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins } = useApp();
+  const { subjects, coins, isPlus, activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins } = useApp();
   const studyRoom = useStudyRoom();
   const { t } = useTranslation();
   const [selected, setSelected] = useState(30);
-  // The saved preset the duration came from, if any — a preset carries its own
-  // break length, so we must know WHICH row was tapped, not just the minutes.
-  const [chosenPreset, setChosenPreset] = useState<TimerPreset | null>(null);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>('single');
 
   const activeSubjects = subjects.filter((s) => !s.archived).sort((a, b) => a.order - b.order);
-  // Single-player break: the preset's saved break when a preset is chosen, else
-  // the automatic one (5 min under an hour, 10 min for an hour or more).
-  const breakForSelected = chosenPreset?.breakMinutes ?? autoBreakMinutes(selected);
+  // Single-player break: the automatic one (5 min under an hour, 10 min for an
+  // hour or more). Saved presets live on the Custom Timer screen now, and they
+  // carry no break of their own.
+  const breakForSelected = autoBreakMinutes(selected);
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
@@ -85,7 +83,6 @@ export default function SessionPickerScreen() {
       pathname: '/subject-picker',
       params: {
         sessionLength: String(selected),
-        ...(chosenPreset?.breakMinutes ? { breakMinutes: String(chosenPreset.breakMinutes) } : {}),
         ...(selectedSubjectId ? { subjectId: selectedSubjectId } : {}),
       },
     });
@@ -100,10 +97,7 @@ export default function SessionPickerScreen() {
       () =>
         router.push({
           pathname: '/study-lobby',
-          params: {
-            minutes: String(selected),
-            ...(chosenPreset?.breakMinutes ? { break: String(chosenPreset.breakMinutes) } : {}),
-          },
+          params: { minutes: String(selected) },
         }),
       { assets: STUDY_ASSETS, prefetch: [companionPrefetchUri(meImg)] },
     );
@@ -138,6 +132,15 @@ export default function SessionPickerScreen() {
             </Pressable>
           </View>
 
+          {/* Multiplayer caveat — only solo sessions bake a recipe, so multiplayer
+              never earns recipe badges. Shown as soon as Multiplayer is picked so
+              nobody finds out after a session. */}
+          {mode === 'multi' && (
+            <View style={styles.multiWarn}>
+              <Text style={styles.multiWarnText}>{t('sessionPicker.multiNoRecipeWarn')}</Text>
+            </View>
+          )}
+
           {/* One parchment "menu" — durations, subjects and custom all on one paper */}
           <View style={[styles.card, styles.menuCard, isTablet && styles.menuCardTablet]}>
             {/* Menu header */}
@@ -149,13 +152,13 @@ export default function SessionPickerScreen() {
             {/* Focus time — each duration is a menu line-item */}
             <Text style={[styles.sectionLabel, isTablet && styles.sectionLabelTablet]}>{t('sessionPicker.chooseDuration')}</Text>
             {SESSION_LENGTHS.map((opt, i) => {
-              const isActive = !chosenPreset && selected === opt.minutes;
+              const isActive = selected === opt.minutes;
               const brk = autoBreakMinutes(opt.minutes);
               return (
                 <View key={opt.minutes}>
                   <Pressable
                     style={({ pressed }) => [styles.menuRow, isTablet && styles.menuRowTablet, isActive && styles.menuRowActive, pressed && styles.pressed]}
-                    onPress={() => { playTick(); setSelected(opt.minutes); setChosenPreset(null); }}>
+                    onPress={() => { playTick(); setSelected(opt.minutes); }}>
                     <Image source={CARD_IMG[opt.minutes]} style={[styles.menuIcon, isTablet && styles.menuIconTablet]} contentFit="contain" />
                     <View style={styles.menuBody}>
                       <View style={styles.menuTopLine}>
@@ -186,62 +189,8 @@ export default function SessionPickerScreen() {
               );
             })}
 
-            {/* Your saved presets (Plus) — custom durations saved from the custom
-                timer. Tap to select; ✕ to remove. */}
-            {isPlus && savedTimerPresets.length > 0 && (
-              <>
-                <View style={styles.sectionRule} />
-                <Text style={[styles.sectionLabel, isTablet && styles.sectionLabelTablet]}>{t('sessionPicker.presetsHeader')}</Text>
-                {savedTimerPresets.map((p, i) => {
-                  const isActive = chosenPreset?.id === p.id;
-                  return (
-                    <View key={p.id}>
-                      <Pressable
-                        style={({ pressed }) => [styles.menuRow, isTablet && styles.menuRowTablet, isActive && styles.menuRowActive, pressed && styles.pressed]}
-                        onPress={() => { playTick(); setSelected(p.minutes); setChosenPreset(p); }}>
-                        <View style={[styles.customIconWrap, isTablet && styles.customIconWrapTablet]}>
-                          <PlusIcon size={isTablet ? Math.round(28 * grow) : 22} />
-                        </View>
-                        <View style={styles.menuBody}>
-                          <View style={styles.menuTopLine}>
-                            <Text style={[styles.menuName, isTablet && styles.menuNameTablet, isActive && styles.menuNameActive]} numberOfLines={1}>
-                              {p.label}
-                            </Text>
-                            <View style={styles.menuLeader} />
-                            <CoinIcon size={isTablet ? Math.round(18 * grow) : 14} />
-                            <Text style={[styles.menuPrice, isTablet && styles.menuPriceTablet]}>+{coinsForMinutes(p.minutes)}</Text>
-                          </View>
-                          <View style={styles.menuSubLine}>
-                            <Text style={[styles.menuCoinText, isTablet && styles.menuCoinTextTablet]}>{p.minutes} {t('customTimer.min')}</Text>
-                            {!!p.breakMinutes && (
-                              <View style={[styles.breakChip, isTablet && styles.breakChipTablet]}>
-                                <Text style={[styles.breakChipText, isTablet && styles.breakChipTextTablet]}>{t('sessionPicker.menuBreak', { min: p.breakMinutes })}</Text>
-                              </View>
-                            )}
-                          </View>
-                        </View>
-                        {isActive && (
-                          <View style={[styles.checkBadge, isTablet && styles.checkBadgeTablet]}>
-                            <Text style={[styles.checkIcon, isTablet && styles.checkIconTablet]}>✓</Text>
-                          </View>
-                        )}
-                        <Pressable
-                          hitSlop={10}
-                          style={({ pressed }) => [styles.presetDelete, pressed && styles.pressed]}
-                          onPress={() => {
-                            if (chosenPreset?.id === p.id) setChosenPreset(null);
-                            deleteTimerPreset(p.id);
-                          }}
-                          accessibilityLabel={t('common.delete')}>
-                          <Text style={styles.presetDeleteText}>✕</Text>
-                        </Pressable>
-                      </Pressable>
-                      {i < savedTimerPresets.length - 1 && <View style={styles.menuDivider} />}
-                    </View>
-                  );
-                })}
-              </>
-            )}
+            {/* Saved presets no longer live here — they're pills on the Custom
+                Timer screen (session-length only), where they're added/managed. */}
 
             <View style={styles.sectionRule} />
 
@@ -437,6 +386,17 @@ const makeStyles = (g: number) => StyleSheet.create({
   modeSegActive: { backgroundColor: C.jam },
   modeText: { fontSize: 14 * g, fontWeight: '800', color: C.mocha },
   modeTextActive: { color: '#fff' },
+  // Multiplayer "no recipe badges" notice, right under the toggle.
+  multiWarn: {
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    borderRadius: BakeryRadii.card,
+    borderWidth: 1.5,
+    borderColor: C.shortbread,
+    paddingVertical: 8 * g,
+    paddingHorizontal: 12 * g,
+    marginTop: Spacing.one * g,
+  },
+  multiWarnText: { fontSize: 12.5 * g, fontWeight: '700', color: C.mocha, textAlign: 'center', lineHeight: 17 * g },
 
   // Start block — quiet caption + the single CTA
   startBlock: { alignItems: 'center', gap: Spacing.two * g, marginTop: Spacing.one * g },
