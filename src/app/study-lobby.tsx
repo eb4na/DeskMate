@@ -49,25 +49,20 @@ export default function StudyLobbyScreen() {
   const clampCustom = (m: number) => Math.max(5, Math.min(300, m));
   const activeSubjects = subjects.filter((s) => !s.archived).sort((a, b) => a.order - b.order);
 
-  // A length (and a preset's break) may be passed in from the Start Session screen;
-  // use them as defaults but still show the pickers here so this player can change them.
-  const { minutes: minutesParam, break: breakParam } = useLocalSearchParams<{ minutes?: string; break?: string }>();
+  // A length may be passed in from the Start Session screen; use it as the default
+  // but still show the pickers here so this player can change it.
+  const { minutes: minutesParam } = useLocalSearchParams<{ minutes?: string }>();
   const parsedPreset = Number(minutesParam);
   const presetMinutes = Number.isFinite(parsedPreset) && parsedPreset > 0 ? parsedPreset : null;
-  const parsedBreak = Number(breakParam);
-  const presetBreak = Number.isFinite(parsedBreak) && parsedBreak > 0 ? Math.min(300, parsedBreak) : null;
   const [minutes, setMinutes] = useState(presetMinutes ?? 30);
   // This player's chosen topic (subject name), or null = not chosen yet.
   const [topic, setTopic] = useState<string | null>(null);
   // Host-set room break length (minutes) — a Plus HOST perk. 0 = no timed break
   // (the room keeps its free on/off break). Applies to everyone once the host starts.
-  const [breakMins, setBreakMins] = useState(isPlus && presetBreak ? presetBreak : 0);
+  const [breakMins, setBreakMins] = useState(0);
   // Break options mirror the app's convention (see session-complete): just the
-  // standard break lengths — presets are session-length only and carry no break.
-  // 0 = free on/off break.
-  const breakPicks = Array.from(
-    new Set([0, ...BREAK_LENGTHS, ...(presetBreak ? [presetBreak] : [])]),
-  ).sort((a, b) => a - b);
+  // standard fixed break lengths. 0 = free on/off break.
+  const breakPicks = [0, ...BREAK_LENGTHS];
   // Choosing a break is a custom-timer perk — offered on this player's own Plus, OR
   // shared by a Plus host. Otherwise the break is fixed (free on/off in-session).
   const canSetBreak = canCustom;

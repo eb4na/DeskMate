@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, TextInput, useColorScheme } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, TextInput } from 'react-native';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,7 +12,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { type ReminderEntry } from '@/context/app-context';
 import i18n, { useTranslation } from '@/i18n';
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { syncStudyReminders } from '@/lib/notifications';
 import {
   getCompanionReminderEmoji,
@@ -21,6 +21,7 @@ import {
 } from '@/constants/companion-reminder-lines';
 import { localizeCompanionName, resolveActiveCompanion } from '@/lib/companion-utils';
 import { type Task } from '@/context/app-context';
+import { useTheme } from '@/hooks/use-theme';
 
 function isValidTime(t: string): boolean {
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(t.trim());
@@ -83,8 +84,7 @@ export default function ReminderSettingsScreen() {
   const [newLabel, setNewLabel] = useState('');
   const [newWeekdays, setNewWeekdays] = useState(false);
   const [saving, setSaving] = useState(false);
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const colors = useTheme();
   const reminderStyle = getReminderStyleEffect(equippedShopItems);
 
   // Reminder text comes from whoever is equipped — one voice per character,

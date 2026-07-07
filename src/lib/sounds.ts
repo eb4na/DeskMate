@@ -8,6 +8,7 @@ type AudioPlayer = {
   volume: number;
   isLoaded: boolean;
   play(): void;
+  pause(): void;
   seekTo(pos: number): Promise<void>;
   addListener(event: string, cb: (status: any) => void): { remove(): void };
 };
@@ -53,7 +54,12 @@ function makePool(asset: number, volume = VOLUME, size = POOL_SIZE): Pool | null
     const p = ExpoAudio!.createAudioPlayer(asset);
     p.volume = volume;
     p.addListener('playbackStatusUpdate', (status) => {
-      if (status.didJustFinish) p.seekTo(0).catch(() => {});
+      if (status.didJustFinish) {
+        // Pause BEFORE rewinding: Android's player auto-resumes after a seek on a
+        // finished track (iOS stays stopped), which looped every sound forever.
+        try { p.pause(); } catch {}
+        p.seekTo(0).catch(() => {});
+      }
     });
     return p;
   });
@@ -166,4 +172,20 @@ export function playCoin() { play(getCoinPool); }
 export function prewarmPop() {
   if (!enabled || !ExpoAudio) return;
   try { ensureAudioMode(); getPopPool(); } catch {}
+}
+
+/** Warm the audio session + every sound heard first after launch/login (button
+ *  taps, confirms, the companion's bubble pop, the coin chime) so the app's very
+ *  first sound isn't dropped or late while the iOS audio session activates and
+ *  the players load. Called once from the root layout at startup; lazy loading
+ *  still covers the rarer sounds. */
+export function prewarmCoreSounds() {
+  if (!enabled || !ExpoAudio) return;
+  try {
+    ensureAudioMode();
+    getTapPool();
+    getConfirmPool();
+    getPopPool();
+    getCoinPool();
+  } catch {}
 }

@@ -119,9 +119,12 @@ export default function PartyInviteScreen() {
               const isStudying = status === 'studying';
               const isInvited = invited.has(f.code);
               const inRoom = inRoomCodes.has(f.code);
-              // For a break-game invite, a friend who's focused-studying can't be pulled
-              // in; on-break or free friends can. Study-room invites keep online-only.
-              const canInvite = online && (!isGameInvite || !isStudying);
+              // Who can be invited: for a break-game invite, a friend who's
+              // focused-studying can't be pulled in (on-break or free friends can).
+              // For a STUDY invite, anyone already in a session — studying or on
+              // its break — can't be invited; only free friends can.
+              const inSession = isStudying || status === 'break';
+              const canInvite = online && (isGameInvite ? !isStudying : !inSession);
               const dotStyle = !online
                 ? styles.statusOffline
                 : isStudying ? styles.statusStudying
@@ -174,9 +177,11 @@ export default function PartyInviteScreen() {
                           ? t('party.invited')
                           : canInvite
                             ? t('party.invite')
-                            : isStudying && isGameInvite
-                              ? t('party.studying')
-                              : t('party.offline')}
+                            : !online
+                              ? t('party.offline')
+                              : isStudying
+                                ? t('party.studying')
+                                : t('party.onBreak')}
                     </Text>
                   </Pressable>
                 </View>

@@ -7,7 +7,6 @@ import {
   ScrollView,
   StyleSheet,
   TextInput,
-  useColorScheme,
   View,
 } from 'react-native';
 import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
@@ -32,7 +31,8 @@ import { sendCompanionChat } from '@/lib/companion-chat';
 import { track } from '@/lib/analytics';
 import { localizeCompanionName, resolveActiveCompanion } from '@/lib/companion-utils';
 import { useTranslation } from '@/i18n';
-import { BakeryColors, BakeryRadii, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 function BackIcon() {
   return (
@@ -101,8 +101,7 @@ export default function CompanionChatScreen() {
   const activeSlotId = companion.type === 'slot' ? companion.slot.id : null;
   const chatTotal = dailyChatRemaining + chatMessages;
 
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const colors = useTheme();
 
   // Seed from the cached thread so the conversation survives leaving/restarting.
   const [messages, setMessages] = useState<ChatTurn[]>(() => chatThread);

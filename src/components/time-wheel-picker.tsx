@@ -1,11 +1,13 @@
 import { Picker } from '@expo/ui/community/picker';
 import { useMemo, useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, useColorScheme, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { WheelOptionList } from '@/components/wheel-option-list';
+import { useTheme } from '@/hooks/use-theme';
 import i18n, { useTranslation } from '@/i18n';
 import { playTick } from '@/lib/sounds';
-import { BakeryColors, BakeryRadii, BakeryShadow, Colors, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
 
 type TimeWheelPickerProps = {
   /** Value as a 24-hour "HH:MM" string. */
@@ -43,8 +45,7 @@ export function formatTimeLabel(value: string, use24Hour: boolean) {
 
 export function TimeWheelPicker({ value, onChange, use24Hour = false }: TimeWheelPickerProps) {
   const { t } = useTranslation();
-  const scheme = useColorScheme();
-  const theme = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const theme = useTheme();
   const [isOpen, setIsOpen] = useState(false);
 
   const { hour, minute } = useMemo(() => parse(value), [value]);
@@ -124,18 +125,30 @@ export function TimeWheelPicker({ value, onChange, use24Hour = false }: TimeWhee
                     styles.pickerShell,
                     { backgroundColor: theme.backgroundElement, borderColor: BakeryColors.border },
                   ]}>
-                  <Picker
-                    selectedValue={selectedHourValue}
-                    onValueChange={(nextValue) =>
-                      use24Hour
-                        ? commit({ hour: Number(nextValue) })
-                        : commit({ hour12: Number(nextValue) })
-                    }
-                    style={styles.picker}>
-                    {hours.map((h) => (
-                      <Picker.Item key={h} label={String(h)} value={String(h)} style={pickerItemStyle} />
-                    ))}
-                  </Picker>
+                  {Platform.OS === 'ios' ? (
+                    <Picker
+                      selectedValue={selectedHourValue}
+                      onValueChange={(nextValue) =>
+                        use24Hour
+                          ? commit({ hour: Number(nextValue) })
+                          : commit({ hour12: Number(nextValue) })
+                      }
+                      style={styles.picker}>
+                      {hours.map((h) => (
+                        <Picker.Item key={h} label={String(h)} value={String(h)} style={pickerItemStyle} />
+                      ))}
+                    </Picker>
+                  ) : (
+                    <WheelOptionList
+                      options={hours.map((h) => ({ label: String(h), value: String(h) }))}
+                      selectedValue={selectedHourValue}
+                      onSelect={(nextValue) =>
+                        use24Hour
+                          ? commit({ hour: Number(nextValue) })
+                          : commit({ hour12: Number(nextValue) })
+                      }
+                    />
+                  )}
                 </View>
               </View>
 
@@ -148,19 +161,27 @@ export function TimeWheelPicker({ value, onChange, use24Hour = false }: TimeWhee
                     styles.pickerShell,
                     { backgroundColor: theme.backgroundElement, borderColor: BakeryColors.border },
                   ]}>
-                  <Picker
-                    selectedValue={String(minute)}
-                    onValueChange={(nextValue) => commit({ minute: Number(nextValue) })}
-                    style={styles.picker}>
-                    {minutes.map((mm) => (
-                      <Picker.Item
-                        key={mm}
-                        label={String(mm).padStart(2, '0')}
-                        value={String(mm)}
-                        style={pickerItemStyle}
-                      />
-                    ))}
-                  </Picker>
+                  {Platform.OS === 'ios' ? (
+                    <Picker
+                      selectedValue={String(minute)}
+                      onValueChange={(nextValue) => commit({ minute: Number(nextValue) })}
+                      style={styles.picker}>
+                      {minutes.map((mm) => (
+                        <Picker.Item
+                          key={mm}
+                          label={String(mm).padStart(2, '0')}
+                          value={String(mm)}
+                          style={pickerItemStyle}
+                        />
+                      ))}
+                    </Picker>
+                  ) : (
+                    <WheelOptionList
+                      options={minutes.map((mm) => ({ label: String(mm).padStart(2, '0'), value: String(mm) }))}
+                      selectedValue={String(minute)}
+                      onSelect={(nextValue) => commit({ minute: Number(nextValue) })}
+                    />
+                  )}
                 </View>
               </View>
 
@@ -174,13 +195,24 @@ export function TimeWheelPicker({ value, onChange, use24Hour = false }: TimeWhee
                       styles.pickerShell,
                       { backgroundColor: theme.backgroundElement, borderColor: BakeryColors.border },
                     ]}>
-                    <Picker
-                      selectedValue={period}
-                      onValueChange={(nextValue) => commit({ period: nextValue as 'AM' | 'PM' })}
-                      style={styles.picker}>
-                      <Picker.Item label={t('pickers.am')} value="AM" style={pickerItemStyle} />
-                      <Picker.Item label={t('pickers.pm')} value="PM" style={pickerItemStyle} />
-                    </Picker>
+                    {Platform.OS === 'ios' ? (
+                      <Picker
+                        selectedValue={period}
+                        onValueChange={(nextValue) => commit({ period: nextValue as 'AM' | 'PM' })}
+                        style={styles.picker}>
+                        <Picker.Item label={t('pickers.am')} value="AM" style={pickerItemStyle} />
+                        <Picker.Item label={t('pickers.pm')} value="PM" style={pickerItemStyle} />
+                      </Picker>
+                    ) : (
+                      <WheelOptionList
+                        options={[
+                          { label: t('pickers.am'), value: 'AM' },
+                          { label: t('pickers.pm'), value: 'PM' },
+                        ]}
+                        selectedValue={period}
+                        onSelect={(nextValue) => commit({ period: nextValue as 'AM' | 'PM' })}
+                      />
+                    )}
                   </View>
                 </View>
               )}
@@ -225,7 +257,8 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'transparent',
+    // Warm-brown dim (darkGlass hue) so the picker clearly floats over the page.
+    backgroundColor: 'rgba(78, 53, 40, 0.35)',
   },
   modalCard: {
     borderRadius: BakeryRadii.panel,
@@ -247,7 +280,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   pickerShell: {
-    minHeight: Platform.OS === 'ios' ? 176 : 54,
+    minHeight: 176,
     borderRadius: BakeryRadii.card,
     borderWidth: 1.5,
     justifyContent: 'center',

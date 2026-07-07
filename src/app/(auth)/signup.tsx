@@ -8,7 +8,6 @@ import {
   StyleSheet,
   TextInput,
   View,
-  useColorScheme,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,9 +15,10 @@ import { Image } from 'expo-image';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BakeryColors, BakeryRadii, BakeryShadow, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 import { authCallbackUrl, supabase } from '@/lib/supabase';
 import i18n, { useTranslation } from '@/i18n';
+import { useTheme } from '@/hooks/use-theme';
 
 // Password-visibility toggle: a normal (open-eyed) bear while the password is
 // hidden as dots, and an eyes-covered bear while it's revealed.
@@ -35,8 +35,7 @@ export default function SignupScreen() {
   const [existingAccountMessage, setExistingAccountMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const normalizedEmail = email.trim().toLowerCase();
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const colors = useTheme();
 
   const inputStyle = {
     borderWidth: 1.5,

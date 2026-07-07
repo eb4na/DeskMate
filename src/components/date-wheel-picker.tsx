@@ -1,11 +1,13 @@
 import { Picker } from '@expo/ui/community/picker';
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, useColorScheme, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { WheelOptionList } from '@/components/wheel-option-list';
+import { useTheme } from '@/hooks/use-theme';
 import i18n, { useTranslation } from '@/i18n';
 import { playTick } from '@/lib/sounds';
-import { BakeryColors, BakeryRadii, BakeryShadow, Colors, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
 
 type DateParts = {
   year: number;
@@ -97,8 +99,7 @@ export function DateWheelPicker({
   hideYear,
 }: DateWheelPickerProps) {
   const { t } = useTranslation();
-  const scheme = useColorScheme();
-  const theme = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const theme = useTheme();
   const todayParts = parseISODate(getTodayISO())!;
   const [isOpen, setIsOpen] = useState(false);
   const minParts = useMemo(() => parseISODate(minimumDateISO) ?? null, [minimumDateISO]);
@@ -209,19 +210,27 @@ export function DateWheelPicker({
                     styles.pickerShell,
                     { backgroundColor: theme.backgroundElement, borderColor: BakeryColors.border },
                   ]}>
-                  <Picker
-                    selectedValue={selectedMonth}
-                    onValueChange={(nextValue) => handleChange({ month: Number(nextValue) })}
-                    style={styles.picker}>
-                    {months.map((month) => (
-                      <Picker.Item
-                        key={month}
-                        label={monthLabel(month)}
-                        value={String(month)}
-                        style={pickerItemStyle}
-                      />
-                    ))}
-                  </Picker>
+                  {Platform.OS === 'ios' ? (
+                    <Picker
+                      selectedValue={selectedMonth}
+                      onValueChange={(nextValue) => handleChange({ month: Number(nextValue) })}
+                      style={styles.picker}>
+                      {months.map((month) => (
+                        <Picker.Item
+                          key={month}
+                          label={monthLabel(month)}
+                          value={String(month)}
+                          style={pickerItemStyle}
+                        />
+                      ))}
+                    </Picker>
+                  ) : (
+                    <WheelOptionList
+                      options={months.map((month) => ({ label: monthLabel(month), value: String(month) }))}
+                      selectedValue={selectedMonth}
+                      onSelect={(nextValue) => handleChange({ month: Number(nextValue) })}
+                    />
+                  )}
                 </View>
               </View>
 
@@ -234,19 +243,27 @@ export function DateWheelPicker({
                     styles.pickerShell,
                     { backgroundColor: theme.backgroundElement, borderColor: BakeryColors.border },
                   ]}>
-                  <Picker
-                    selectedValue={selectedDay}
-                    onValueChange={(nextValue) => handleChange({ day: Number(nextValue) })}
-                    style={styles.picker}>
-                    {days.map((day) => (
-                      <Picker.Item
-                        key={day}
-                        label={String(day)}
-                        value={String(day)}
-                        style={pickerItemStyle}
-                      />
-                    ))}
-                  </Picker>
+                  {Platform.OS === 'ios' ? (
+                    <Picker
+                      selectedValue={selectedDay}
+                      onValueChange={(nextValue) => handleChange({ day: Number(nextValue) })}
+                      style={styles.picker}>
+                      {days.map((day) => (
+                        <Picker.Item
+                          key={day}
+                          label={String(day)}
+                          value={String(day)}
+                          style={pickerItemStyle}
+                        />
+                      ))}
+                    </Picker>
+                  ) : (
+                    <WheelOptionList
+                      options={days.map((day) => ({ label: String(day), value: String(day) }))}
+                      selectedValue={selectedDay}
+                      onSelect={(nextValue) => handleChange({ day: Number(nextValue) })}
+                    />
+                  )}
                 </View>
               </View>
 
@@ -260,19 +277,27 @@ export function DateWheelPicker({
                       styles.pickerShell,
                       { backgroundColor: theme.backgroundElement, borderColor: BakeryColors.border },
                     ]}>
-                    <Picker
-                      selectedValue={selectedYear}
-                      onValueChange={(nextValue) => handleChange({ year: Number(nextValue) })}
-                      style={styles.picker}>
-                      {years.map((year) => (
-                        <Picker.Item
-                          key={year}
-                          label={String(year)}
-                          value={String(year)}
-                          style={pickerItemStyle}
-                        />
-                      ))}
-                    </Picker>
+                    {Platform.OS === 'ios' ? (
+                      <Picker
+                        selectedValue={selectedYear}
+                        onValueChange={(nextValue) => handleChange({ year: Number(nextValue) })}
+                        style={styles.picker}>
+                        {years.map((year) => (
+                          <Picker.Item
+                            key={year}
+                            label={String(year)}
+                            value={String(year)}
+                            style={pickerItemStyle}
+                          />
+                        ))}
+                      </Picker>
+                    ) : (
+                      <WheelOptionList
+                        options={years.map((year) => ({ label: String(year), value: String(year) }))}
+                        selectedValue={selectedYear}
+                        onSelect={(nextValue) => handleChange({ year: Number(nextValue) })}
+                      />
+                    )}
                   </View>
                 </View>
               )}
@@ -316,7 +341,8 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'transparent',
+    // Warm-brown dim (darkGlass hue) so the picker clearly floats over the page.
+    backgroundColor: 'rgba(78, 53, 40, 0.35)',
   },
   modalCard: {
     borderRadius: BakeryRadii.panel,
@@ -338,7 +364,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   pickerShell: {
-    minHeight: Platform.OS === 'ios' ? 176 : 54,
+    minHeight: 176,
     borderRadius: BakeryRadii.card,
     borderWidth: 1.5,
     justifyContent: 'center',

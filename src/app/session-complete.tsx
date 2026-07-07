@@ -95,7 +95,6 @@ export default function SessionCompleteScreen() {
     addSubjectTime,
     addCoins,
     completeTask,
-    isPlus,
     selectedFoodId,
     markFoodMade,
     earnedToday,
@@ -278,10 +277,8 @@ export default function SessionCompleteScreen() {
         autoStarted: wasAutoStarted ? '1' : '',
       },
     });
-  const openCustomBreak = () =>
-    router.push({ pathname: '/custom-timer', params: { mode: 'break' } });
-  // Standard break lengths only — break presets were removed (presets are
-  // session-length only now); Plus users can still dial any break via the link.
+  // Fixed break lengths only — the whole app offers 5/10/15/30 or no break
+  // ("Back to Home" below); custom break lengths were removed.
   const breakOptions = [...BREAK_LENGTHS];
 
   return (
@@ -410,11 +407,6 @@ export default function SessionCompleteScreen() {
                   </Pressable>
                 ))}
               </ThemedView>
-              {isPlus ? (
-                <Pressable onPress={openCustomBreak} style={styles.customBreakLink}>
-                  <ThemedText type="linkPrimary">{t('sessionComplete.customBreak')}</ThemedText>
-                </Pressable>
-              ) : null}
             </ThemedView>
 
             <Pressable
@@ -683,5 +675,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: BakeryColors.cream,
   },
-  customBreakLink: { paddingVertical: Spacing.one },
 });

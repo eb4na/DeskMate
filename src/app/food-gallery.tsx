@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Image, ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useApp } from '@/context/app-context';
@@ -100,7 +101,8 @@ export default function FoodGalleryScreen() {
   const [zoomBadge, setZoomBadge] = useState<number | null>(null);
 
   return (
-    <ImageBackground source={BAKERY_BG} resizeMode="cover" style={styles.container}>
+    <View style={styles.container}>
+      <Image source={BAKERY_BG} style={StyleSheet.absoluteFill} contentFit="cover" pointerEvents="none" />
       <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
         <SafeAreaView style={styles.safeArea}>
           {/* Header — a big bubbly title (no banner frame). */}
@@ -128,7 +130,7 @@ export default function FoodGalleryScreen() {
                         style={[styles.madeBadgeBtn, isTablet && styles.madeBadgeBtnTablet]}
                         hitSlop={6}
                         onPress={() => setZoomBadge(food.madeBadge ?? BUN_FINISHED)}>
-                        <Image source={food.madeBadge ?? BUN_FINISHED} style={styles.madeBadgeImg} resizeMode="cover" />
+                        <Image source={food.madeBadge ?? BUN_FINISHED} style={styles.madeBadgeImg} contentFit="cover" />
                       </Pressable>
                     ) : (
                       <View style={[styles.badgeSlotEmpty, isTablet && styles.madeBadgeBtnTablet]} />
@@ -137,7 +139,7 @@ export default function FoodGalleryScreen() {
                       <Image
                         source={food.image}
                         style={[styles.foodImg, isTablet && styles.foodImgTablet, locked && styles.lockedImg]}
-                        resizeMode="contain"
+                        contentFit="contain"
                       />
                     </View>
                     <Text style={[styles.foodName, isTablet && styles.foodNameTablet]} numberOfLines={2}>{t(`foodGallery.food_${food.id}`)}</Text>
@@ -182,18 +184,18 @@ export default function FoodGalleryScreen() {
         <Pressable style={styles.zoomBackdrop} onPress={() => setZoomBadge(null)}>
           {zoomBadge !== null && (
             <View style={styles.zoomCard}>
-              <Image source={zoomBadge} style={[styles.zoomBadgeImg, isTablet && styles.zoomBadgeImgTablet]} resizeMode="contain" />
+              <Image source={zoomBadge} style={[styles.zoomBadgeImg, isTablet && styles.zoomBadgeImgTablet]} contentFit="contain" />
               <Text style={[styles.zoomHint, isTablet && styles.zoomHintTablet]}>{t('shop.tapToClose')}</Text>
             </View>
           )}
         </Pressable>
       </Modal>
-    </ImageBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#FFF8F1' },
   scroll: { backgroundColor: 'transparent' },
   safeArea: {
     padding: Spacing.four,

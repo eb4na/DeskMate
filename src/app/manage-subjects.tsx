@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, TextInput, useColorScheme } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -19,8 +19,6 @@ export default function ManageSubjectsScreen() {
   const { subjects, addSubject, renameSubject, deleteSubject, reorderSubjects, isPlus } =
     useApp();
   const subjectLimit = isPlus ? MAX_SUBJECTS_PLUS : MAX_SUBJECTS_FREE;
-  const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
 
   const [newName, setNewName] = useState('');
   const [selectedColor, setSelectedColor] = useState<string>(SUBJECT_COLORS[0]);
@@ -106,7 +104,7 @@ export default function ManageSubjectsScreen() {
 
   const inputStyle = [
     styles.input,
-    { color: isDark ? '#fff' : '#000', borderColor: isDark ? '#444' : '#DDD', backgroundColor: isDark ? '#1A1A1A' : '#FAFAFA' },
+    { color: '#000', borderColor: '#DDD', backgroundColor: '#FAFAFA' },
   ];
 
   return (
@@ -182,7 +180,7 @@ export default function ManageSubjectsScreen() {
             <TextInput
               style={inputStyle}
               placeholder={t('manageSubjects.subjectNamePlaceholder')}
-              placeholderTextColor={isDark ? '#666' : '#AAA'}
+              placeholderTextColor={'#AAA'}
               value={newName}
               onChangeText={setNewName}
               maxLength={30}

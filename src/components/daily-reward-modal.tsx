@@ -86,7 +86,7 @@ export function DailyRewardModal() {
   useReportModalTransition(visible);
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={claimLoginReward}>
       <View style={styles.root}>
         <View style={styles.backdrop} />
         <View style={styles.card}>

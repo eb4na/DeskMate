@@ -7,17 +7,17 @@ import {
   ScrollView,
   StyleSheet,
   TextInput,
-  useColorScheme,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/context/auth-context';
-import { BakeryColors, BakeryRadii, BakeryShadow, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 import { showPopup } from '@/lib/popup';
 import { useTranslation } from '@/i18n';
+import { useTheme } from '@/hooks/use-theme';
 
 type VerifyMode = 'login' | 'signup';
 
@@ -30,8 +30,7 @@ export default function VerifyCodeScreen() {
   const [successMessage, setSuccessMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [resending, setResending] = useState(false);
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const colors = useTheme();
 
   const normalizedEmail = typeof email === 'string' ? email : '';
   const verifyMode: VerifyMode = mode === 'signup' ? 'signup' : 'login';

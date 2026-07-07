@@ -19,9 +19,8 @@ const C = BakeryColors;
 const SCREEN_BG = require('@/assets/images/home/session-bg-cakes.png');
 
 const FOCUS_PICKS = [15, 25, 45, 60, 90];
-const BREAK_PICKS = [5, 10, 15, 20, 30];
-
-type TimerMode = 'focus' | 'break';
+// Breaks are fixed picks everywhere in the app (no custom break lengths): off/5/10/15/30.
+const BREAK_PICKS = [0, 5, 10, 15, 30];
 
 const range = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 const HR_VALUES = range(0, 5);
@@ -122,8 +121,7 @@ export default function CustomTimerScreen() {
   // height so its scroll-snap math stays exact).
   const { scale, contentWidth } = useTabletScale();
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
-  const { mode, from } = useLocalSearchParams<{ mode?: TimerMode; from?: string }>();
-  const isBreakMode = mode === 'break';
+  const { from } = useLocalSearchParams<{ from?: string }>();
   // Opened from Settings the screen is a pure preset editor: no session gets
   // started from here, so the Start button and subject picker are hidden and
   // the saved presets are listed for managing/deleting instead.
@@ -131,9 +129,8 @@ export default function CustomTimerScreen() {
   const { subjects, saveTimerPreset, deleteTimerPreset, savedTimerPresets, isPlus, coins } = useApp();
 
   const [focusHr, setFocusHr] = useState(0);
-  const [focusMin, setFocusMin] = useState(isBreakMode ? 10 : 45);
-  const [breakHr, setBreakHr] = useState(0);
-  const [breakMin, setBreakMin] = useState(10);
+  const [focusMin, setFocusMin] = useState(45);
+  const [breakMins, setBreakMins] = useState(10);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   // When the user is at the preset cap and asks to save, we can't just drop the
   // oldest — we open this picker so they choose which one the new preset replaces.
@@ -141,11 +138,10 @@ export default function CustomTimerScreen() {
 
   const activeSubjects = subjects.filter((s) => !s.archived).sort((a, b) => a.order - b.order);
   const focusMins = focusHr * 60 + focusMin;
-  const breakMins = breakHr * 60 + breakMin;
   // Back should return to the session (timer) screen, not all the way home.
   const goBack = () => {
     if (router.canGoBack()) router.back();
-    else router.replace(isBreakMode ? '/' : '/session-picker');
+    else router.replace('/session-picker');
   };
 
   // Custom timer is a Plus feature — guard the screen itself so no path (deep
@@ -155,7 +151,6 @@ export default function CustomTimerScreen() {
   }, [isPlus]);
 
   const setFocusTotal = (m: number) => { setFocusHr(Math.floor(m / 60)); setFocusMin(m % 60); };
-  const setBreakTotal = (m: number) => { setBreakHr(Math.floor(m / 60)); setBreakMin(m % 60); };
 
   // Navigate into the session. Kept separate from handleStart so both the normal
   // path and the "replace a preset" confirm can reuse it.
@@ -179,10 +174,6 @@ export default function CustomTimerScreen() {
   const handleStart = () => {
     const mins = focusMins;
     if (mins < 1 || mins > 300) { showPopup(t('customTimer.between1And300')); return; }
-    if (isBreakMode) {
-      router.replace({ pathname: '/break-game', params: { breakMinutes: String(mins), fromSession: '1' } });
-      return;
-    }
     goToSession(mins);
   };
 
@@ -222,23 +213,22 @@ export default function CustomTimerScreen() {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          {/* Focus (or break) duration */}
-          <Text style={styles.sectionLabel}>{t(isBreakMode ? 'customTimer.breakDuration' : 'customTimer.focusDuration')}</Text>
+          {/* Focus duration */}
+          <Text style={styles.sectionLabel}>{t('customTimer.focusDuration')}</Text>
           <View style={styles.durCard}>
             <WheelColumn values={HR_VALUES} value={focusHr} unit={t('customTimer.hr')} onChange={setFocusHr} />
             <View style={styles.durDivider} />
             <WheelColumn values={MIN_VALUES} value={focusMin} unit={t('customTimer.min')} onChange={setFocusMin} loop />
           </View>
           <View style={styles.pickRow}>
-            {(isBreakMode ? BREAK_PICKS : FOCUS_PICKS).map((m) => (
+            {FOCUS_PICKS.map((m) => (
               <Pressable key={m} onPress={() => { playTick(); setFocusTotal(m); }} style={[styles.pick, focusMins === m && styles.pickActive]}>
                 <Text style={[styles.pickText, focusMins === m && styles.pickTextActive]}>{formatMinutesShort(m, t)}</Text>
               </Pressable>
             ))}
           </View>
 
-          {!isBreakMode && (
-            <>
+          <>
               {/* Saved presets — session-length pills right under the standard
                   quick picks. ＋ adds the currently dialed focus time as a new
                   pill; at the cap the replace picker makes the user delete one.
@@ -260,18 +250,13 @@ export default function CustomTimerScreen() {
                   <Text style={[styles.pickText, styles.pickAddText]}>{t('common.addChip')}</Text>
                 </SoundPressable>
               </View>
-              {/* Break duration */}
+              {/* Break duration — fixed picks only (no break / 5 / 10 / 15 / 30) */}
               <Text style={styles.sectionLabel}>{t('customTimer.breakDuration')}</Text>
               <Text style={styles.sectionSub}>{t('customTimer.optionalBreak')}</Text>
-              <View style={styles.durCard}>
-                <WheelColumn values={HR_VALUES} value={breakHr} unit={t('customTimer.hr')} onChange={setBreakHr} />
-                <View style={styles.durDivider} />
-                <WheelColumn values={MIN_VALUES} value={breakMin} unit={t('customTimer.min')} onChange={setBreakMin} loop />
-              </View>
               <View style={styles.pickRow}>
                 {BREAK_PICKS.map((m) => (
-                  <Pressable key={m} onPress={() => { playTick(); setBreakTotal(m); }} style={[styles.pick, breakMins === m && styles.pickActive]}>
-                    <Text style={[styles.pickText, breakMins === m && styles.pickTextActive]}>{formatMinutesShort(m, t)}</Text>
+                  <Pressable key={m} onPress={() => { playTick(); setBreakMins(m); }} style={[styles.pick, breakMins === m && styles.pickActive]}>
+                    <Text style={[styles.pickText, breakMins === m && styles.pickTextActive]}>{m === 0 ? t('customTimer.noBreak') : formatMinutesShort(m, t)}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -331,8 +316,7 @@ export default function CustomTimerScreen() {
                   )}
                 </>
               )}
-            </>
-          )}
+          </>
 
           {/* Start — hidden in the Settings preset editor (nothing to start there). */}
           {!isPresetEditor && (

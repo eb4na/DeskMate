@@ -202,7 +202,9 @@ main#top {
 .hero-art { position: relative; }
 .stage { position: relative; height: 480px; display: flex; align-items: center; justify-content: center; }
 .phone-mock {
-  position: relative; width: 256px; aspect-ratio: 9 / 18; z-index: 3;
+  /* Aspect matches a real iPhone screenshot (1206×2622) so the app capture
+     inside fits edge-to-edge with no cropping. */
+  position: relative; width: 238px; aspect-ratio: 1206 / 2622; z-index: 3;
   border-radius: 34px; overflow: hidden; border: 7px solid #fff; box-shadow: var(--shadow);
   background: var(--pink-soft);
 }

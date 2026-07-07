@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { playTick } from '@/lib/sounds';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -71,7 +71,7 @@ export default function SessionPickerScreen() {
   const [mode, setMode] = useState<Mode>('single');
 
   const activeSubjects = subjects.filter((s) => !s.archived).sort((a, b) => a.order - b.order);
-  // Single-player break: the automatic one (5 min under an hour, 10 min for an
+  // Single-player break: the automatic one (5 min under an hour, 15 min for an
   // hour or more). Saved presets live on the Custom Timer screen now, and they
   // carry no break of their own.
   const breakForSelected = autoBreakMinutes(selected);
@@ -106,7 +106,8 @@ export default function SessionPickerScreen() {
   const onStart = () => (mode === 'single' ? startSolo() : startMultiplayer());
 
   return (
-    <ImageBackground source={SCREEN_BG} style={styles.screen} resizeMode="cover">
+    <View style={styles.screen}>
+      <Image source={SCREEN_BG} style={StyleSheet.absoluteFill} contentFit="cover" pointerEvents="none" />
       <View style={styles.bgOverlay} pointerEvents="none" />
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         {/* Top bar — slim: just back + coin pill; the title lives in the menu header */}
@@ -229,7 +230,7 @@ export default function SessionPickerScreen() {
                   style={({ pressed }) => [styles.menuRow, isTablet && styles.menuRowTablet, pressed && styles.pressed]}
                   onPress={() =>
                     isPlus
-                      ? router.push({ pathname: '/custom-timer', params: { mode: 'focus' } })
+                      ? router.push('/custom-timer')
                       : router.push('/plus-upgrade')
                   }>
                   <View style={[styles.customIconWrap, isTablet && styles.customIconWrapTablet]}>
@@ -269,7 +270,7 @@ export default function SessionPickerScreen() {
         </ScrollView>
       </SafeAreaView>
       <DevKnobs screen="sessionpicker" knobs={twKnobs} onChange={twChange} />
-    </ImageBackground>
+    </View>
   );
 }
 

@@ -146,7 +146,6 @@ export default function PlusUpgradeScreen() {
           {/* Status banner (if already Plus) */}
           {isPlus && (
             <ThemedView type="backgroundElement" style={styles.activeBanner}>
-              <ThemedText style={styles.activeEmoji}></ThemedText>
               <ThemedText type="smallBold" style={isTablet && styles.bannerTitleTablet}>{t('plus.plusMember')}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={isTablet && styles.secondaryTextTablet}>
                 {t('plus.allUnlocked')}
@@ -409,7 +408,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#F2A0B5',
   },
-  activeEmoji: { fontSize: 32, lineHeight: 40 },
   featureList: { gap: Spacing.two },
   featureRow: {
     flexDirection: 'row',

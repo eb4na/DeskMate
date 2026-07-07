@@ -1,8 +1,8 @@
 import { Asset } from 'expo-asset';
 import { useFonts } from 'expo-font';
 import { Image as ExpoImage } from 'expo-image';
-import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
-import { Animated, Easing, StyleSheet, Text, useColorScheme, useWindowDimensions, View } from 'react-native';
+import { DefaultTheme, ThemeProvider, Stack } from 'expo-router';
+import { Animated, Appearance, Easing, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { PostHogProvider } from 'posthog-react-native';
@@ -20,7 +20,7 @@ import { PopupHost } from '@/components/popup-host';
 import { AppProvider } from '@/context/app-context';
 import { useApp } from '@/context/app-context';
 import { StudyRoomProvider } from '@/lib/use-study-room';
-import { setTapSoundEnabled } from '@/lib/sounds';
+import { prewarmCoreSounds, setTapSoundEnabled } from '@/lib/sounds';
 import { setLoadingActive, subscribeLoadingScreen, takeLoadingDone } from '@/lib/loading-signal';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { posthog, identifyUser, resetUser } from '@/lib/analytics';
@@ -30,6 +30,11 @@ import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { BakeryColors, Spacing } from '@/constants/theme';
 import '@/lib/notifications';
 import i18n, { useTranslation } from '@/i18n';
+
+// Memobun is locked to light mode (see hooks/use-color-scheme.ts). iOS enforces
+// this natively via userInterfaceStyle, but on Android the system dark setting
+// still reaches react-native's useColorScheme, so force it app-wide here.
+Appearance.setColorScheme('light');
 
 const LOADING_IMGS = [
   require('@/assets/images/home/loading4.png'),
@@ -141,6 +146,21 @@ function RootNavigator() {
 
   // Keep the tap-sound helper's gate in sync with the user's setting.
   useEffect(() => { setTapSoundEnabled(soundEffectsEnabled); }, [soundEffectsEnabled]);
+  // Warm the audio session + first-heard sound pools while the launch loader is
+  // still up, so the app's very first sound (button tap, companion pop, coin
+  // chime after login) plays instantly instead of silently loading.
+  useEffect(() => { prewarmCoreSounds(); }, []);
+  // Dev only: expo-image's disk cache persists across Metro restarts, keyed by
+  // asset URL + content hash. If Metro's asset map was ever corrupted (duplicate
+  // basenames from worktrees/website copies), the WRONG bytes get cached under the
+  // RIGHT key and keep rendering (e.g. flag/bear/sign where the desk mixer and
+  // ingredients belong) even after `expo start -c` — the poison lives on the
+  // device. Purging at launch in dev makes any such episode self-heal on reload.
+  useEffect(() => {
+    if (!__DEV__) return;
+    ExpoImage.clearMemoryCache().catch(() => {});
+    ExpoImage.clearDiskCache().catch(() => {});
+  }, []);
   const [assetsReady, setAssetsReady] = useState(false);
   // Loading overlay is shown on first launch and re-shown on every login/sign-in.
   const [loadingVisible, setLoadingVisible] = useState(true);
@@ -436,13 +456,11 @@ function AppShell() {
 }
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <I18nextProvider i18n={i18n}>
       <AuthProvider>
         <AppProvider>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <ThemeProvider value={DefaultTheme}>
             <AnimatedSplashOverlay />
             <AppShell />
           </ThemeProvider>

@@ -15,6 +15,7 @@
 
 import { Asset } from 'expo-asset';
 import { Image as ExpoImage } from 'expo-image';
+import { router } from 'expo-router';
 
 import { showLoadingScreen } from '@/lib/loading-signal';
 
@@ -88,7 +89,19 @@ export function navigateWithLoading(navigate: () => void, { assets, prefetch }: 
   // Navigate only once assets are cached, so the destination slides in warm. The
   // overlay (over the source screen) lifts right after `navigate()`, by which
   // point the destination renders fully on its first frame.
-  const until = preloaded.then(() => navigate());
+  const until = preloaded.then(() => {
+    // Refresh-under-the-loader: collapse every screen piled up on the stack
+    // BEFORE navigating, so the destination sits directly on the tabs root
+    // (old screens unmount → less memory/re-render work, and Back/leave from
+    // the destination lands home instead of on a stale screen). The overlay
+    // covers the whole swap, so the user never sees the intermediate pop.
+    // Same canDismiss→dismissAll idiom as subject-picker/use-study-room.
+    // Fail-open: a dismiss hiccup must never block the navigation itself.
+    try {
+      if (router.canDismiss()) router.dismissAll();
+    } catch {}
+    navigate();
+  });
 
   showLoadingScreen(undefined, { quick: true, until });
 }

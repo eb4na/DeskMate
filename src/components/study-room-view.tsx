@@ -138,7 +138,7 @@ function OutlinedTimer({ value, fontStyle, fill, outline, stroke }: { value: str
 // character. (Round stroke joins puff the peaks; the circles add the bubbly bobbles.)
 function HostCrown({ size }: { size: number }) {
   const fill = '#FFD63D';   // saturated light yellow
-  const line = '#C98A2E';   // golden-brown outline
+  const line = '#D68D1F';   // golden-brown outline (saturated)
   const ow = 1.3;           // outline width (viewBox units) — modest so the peak V's don't fill in
   const D = 'M2.5 17 L4 6 L8 11 L12 4 L16 11 L20 6 L21.5 17 Z';
   return (
@@ -1241,7 +1241,7 @@ export function StudyRoomView({
             // ladder — heads no longer share the box top), keeping the same
             // crown-to-head gap the old box-top anchor gave Bunny.
             const figKey = p.code === friendCode ? soloBookKey : companionFigureKey(p.companionId);
-            const crownTop = partyCharSize * (1 - figureHeadFrac(figKey)) - partyCharSize * 0.13;
+            const crownTop = partyCharSize * (1 - figureHeadFrac(figKey)) - partyCharSize * 0.18;
             return (
               <View key={p.code} style={[styles.partyMember, { width: partySlotW, height: partyCharSize }]}>
                 {p.isHost && (

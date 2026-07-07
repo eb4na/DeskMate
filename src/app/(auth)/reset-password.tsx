@@ -7,15 +7,15 @@ import {
   ScrollView,
   StyleSheet,
   TextInput,
-  useColorScheme,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BakeryColors, BakeryRadii, BakeryShadow, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 import { useTranslation } from '@/i18n';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function ResetPasswordScreen() {
   const { t } = useTranslation();
@@ -24,8 +24,7 @@ export default function ResetPasswordScreen() {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const colors = useTheme();
 
   const inputStyle = {
     borderWidth: 1.5,

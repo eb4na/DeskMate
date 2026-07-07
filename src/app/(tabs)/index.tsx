@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, AppState, Easing, Image as RNImage, ImageBackground, type LayoutChangeEvent, PanResponder, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Animated, AppState, Easing, type LayoutChangeEvent, PanResponder, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { playSwoosh } from '@/lib/sounds';
 import { showPopup } from '@/lib/popup';
@@ -341,7 +341,7 @@ function DraggableIngredient({
       style={[style, { transform: [{ translateX: baseX }, { translateY: baseY }, { translateX: pan.x }, { translateY: pan.y }, { scale: baseScale }, { scale }], opacity, zIndex: 20 }]}
       {...pr.panHandlers}
     >
-      <RNImage source={src} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+      <Image source={src} style={{ width: '100%', height: '100%' }} contentFit="contain" />
     </Animated.View>
   );
 }
@@ -399,9 +399,32 @@ export default function HomeScreen() {
   const PHONE_REF_H = 852;
   const phW = isTablet ? 1 : winW / PHONE_REF_W;
   const phH = isTablet ? 1 : winH / PHONE_REF_H;
+  // Fraction of the home character hidden behind the desk lip — the SAME fraction
+  // on every phone (the study room's trick, see study-room-view.tsx), so tall 20:9
+  // Androids no longer bury the companion up to its chin. Calibrated on the
+  // iPhone 17 Pro reference (393×852, insets 59/34): scene = 759, desk top =
+  // 0.54·759 − 34 = 375.86 above the scene bottom, and the approved bottom:'38%'
+  // put the feet at 0.38·759 = 288.42 → 87.44px of the 300px character hidden.
+  const CHAR_HIDE_FRAC = 87.44 / 300;
   const ph = useMemo(() => {
     const rnd = Math.round;
+    // Scene box = SafeAreaView (default edges) inside a full-window root; the tab
+    // bar is an absolute overlay, so the scene height is exactly winH − insets.
+    const sceneH = winH - insets.top - insets.bottom;
+    // Desk top edge above the scene bottom — MUST mirror deskNewLayer/deskTopEdge:
+    // height '54%' of the scene, dropped by the inline bottom:-insets.bottom bleed.
+    const deskTopY = 0.54 * sceneH - insets.bottom;
+    const charSize = rnd(300 * phW);
     return {
+      // Character: feet anchored to the desk top, hiding a fixed FRACTION of the
+      // body so the visible proportion is identical on every phone. charBottom is
+      // deliberately NOT rounded: on the reference device it must reproduce the
+      // old bottom:'38%' (288.42) to the exact float.
+      charSize,
+      charLayerH: rnd(280 * phW),
+      charBottom: deskTopY - CHAR_HIDE_FRAC * charSize,
+      // Start row — was a fixed bottom:155, which stranded on tall phones.
+      startBottom: rnd(155 * phH),
       // Left-column button tops (same corner-pin left: 4 stays in StyleSheet)
       btnTops: [210, 292, 376, 452].map((t) => rnd(t * phH)),
       // Sizes: large (80), medium (72), friend (62)
@@ -420,7 +443,7 @@ export default function HomeScreen() {
       butLeft:   rnd(284 * phW), butW:   rnd(82 * phW), butH:   rnd(69 * phW),
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phW, phH]);
+  }, [phW, phH, winH, insets.top, insets.bottom]);
 
   const homeKnobs: Knob[] = [
     { key: 'leftInset', label: 'Left buttons X', value: ht.leftInset, min: -20, max: 120, step: 1 },
@@ -474,7 +497,7 @@ export default function HomeScreen() {
   const tCharImg = isTablet && { width: 300 * htScaled.charScale, height: 300 * htScaled.charScale };
   // tCharLayer is built lower down (it needs the resolved companion so Cocoa can
   // take an extra downward nudge — see `tCharLayer` near the character render).
-  const tDesk = isTablet && { height: `${htScaled.deskHeight}%`, transform: [{ translateY: htScaled.deskY ?? 0 }, { scale: htScaled.deskZoom }] };
+  const tDesk = isTablet && { height: `${htScaled.deskHeight}%` as const, transform: [{ translateY: htScaled.deskY ?? 0 }, { scale: htScaled.deskZoom }] };
   // Hairline (table edge). It gets its OWN vertical nudge (deskEdgeY) so the desk
   // can be dropped independently to meet it, and is scaled out horizontally by the
   // same deskZoom as the desk so the line spans the full (zoomed) desk width — on
@@ -788,7 +811,7 @@ export default function HomeScreen() {
   // A multiplayer GUEST follows the host's synced state (so the host enabling it gives
   // every player the disco background, Plus or not); host + solo use their own setting.
   const followsHostDisco = studyRoom.active && !studyRoom.isHost;
-  const discoBgOn = !!activeSession && (followsHostDisco ? studyRoom.hostDiscoOn : (spotifyBgEnabled && isPlus));
+  const discoBgOn = !!activeSession && (followsHostDisco ? studyRoom.hostDiscoOn : (spotifyBgEnabled && isPlus && !studyRoom.discoSuppressed));
   const discoBgColor = followsHostDisco ? studyRoom.hostDiscoColor : spotifyBgColor;
   const deskRoom = ROOM_PAIRS.find((r) => r.id === equippedDeskRoomId) ?? ROOM_PAIRS[0];
   const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
@@ -817,6 +840,12 @@ export default function HomeScreen() {
   const companionTranslateY = isCocoaCompanion ? 30 : 0;
   const tCharLayer =
     isTablet && { transform: [{ translateY: htScaled.charY + (isCocoaCompanion ? (htScaled.cocoaY ?? 0) : 0) }] };
+  // Phone character geometry — desk-anchored via `ph` so every phone shows the
+  // same proportion of the body above the desk (tablet keeps the static styles +
+  // htScaled knobs). The !isTablet gate is mandatory: tCharLayer only sets a
+  // transform and would NOT override a wrong bottom.
+  const phCharLayer = isTablet ? null : { bottom: ph.charBottom, height: ph.charLayerH };
+  const phCharImg = isTablet ? null : { width: ph.charSize, height: ph.charSize };
   const reminderStyle = getReminderStyleEffect(equippedShopItems);
   // Home shows only the soonest still-upcoming exam (today or later). Passed
   // exams are never featured here — if none are upcoming, the card shows its
@@ -1306,17 +1335,17 @@ export default function HomeScreen() {
                 </Pressable>
               )}
 
-              <View style={[styles.homeCharacterLayer, tCharLayer]} pointerEvents="box-none">
+              <View style={[styles.homeCharacterLayer, phCharLayer, tCharLayer]} pointerEvents="box-none">
                 <CompanionPet onPet={petCompanion} disabled={!!dragSession} scale={isTablet ? htScaled.charScale : 1} companionName={activeCompanion.name} skinId={activeSkinId}>
                   <Animated.View
                     style={{ transform: [{ translateY: charTranslateY }, { scaleX: charScaleX }, { scaleY: charScaleY }] }}>
                     {hanjiIsAnimated(activeCompanionId, companionSkins?.[activeCompanionId ?? '']) ? (
-                      <HanjiFigure style={[styles.homeCharacterImage, tCharImg]} />
+                      <HanjiFigure style={[styles.homeCharacterImage, phCharImg, tCharImg]} />
                     ) : (
-                      <RNImage
+                      <Image
                         source={homeCompanionSource}
-                        style={[styles.homeCharacterImage, tCharImg, (companionScale !== 1 || companionTranslateY !== 0) && { transform: [{ translateY: companionTranslateY }, { scale: companionScale }], transformOrigin: 'center bottom' }]}
-                        resizeMode="contain"
+                        style={[styles.homeCharacterImage, phCharImg, tCharImg, (companionScale !== 1 || companionTranslateY !== 0) && { transform: [{ translateY: companionTranslateY }, { scale: companionScale }], transformOrigin: 'center bottom' }]}
+                        contentFit="contain"
                       />
                     )}
                   </Animated.View>
@@ -1326,20 +1355,21 @@ export default function HomeScreen() {
               {/* Pet cloud bubble — own high-zIndex layer (so it floats over the desk).
                   PetCloudHost manages its own state from the tap bus, so a tap doesn't
                   re-render this big home component. */}
-              <View style={[styles.homeCharacterLayer, tCharLayer, styles.petBubbleLayer]} pointerEvents="none">
+              <View style={[styles.homeCharacterLayer, phCharLayer, tCharLayer, styles.petBubbleLayer]} pointerEvents="none">
                 <PetCloudHost isTablet={isTablet} scale={isTablet ? htScaled.charScale : 1} />
               </View>
 
-              {/* Desk surface — top edge fixed at 53%; bleeds past the bottom safe-area
-                  inset so the desk (not the room background) fills the very bottom strip.
+              {/* Desk surface — top edge at 46% of the scene (height '54%'); bleeds past
+                  the bottom safe-area inset so the desk (not the room background) fills
+                  the very bottom strip. The character anchors to this edge via ph.charBottom.
                   Deskless rooms (deskImage === null, e.g. Bluebell Lagoon) skip it so the
                   full scene shows. */}
               {deskRoom.deskImage != null && (
                 <>
-                  <RNImage
+                  <Image
                     source={deskRoom.deskImage}
                     style={[styles.deskNewLayer, tDesk, { bottom: -insets.bottom }, deskRoom.deskTint ? { backgroundColor: deskRoom.deskTint } : null]}
-                    resizeMode={deskRoom.deskFit ?? 'cover'}
+                    contentFit={deskRoom.deskFit ?? 'cover'}
                     pointerEvents="none"
                   />
                   {/* A hairline along the desk's top edge so it reads as a table edge
@@ -1349,7 +1379,7 @@ export default function HomeScreen() {
                 </>
               )}
               {/* Mixer on desk — matches the equipped dessert */}
-              <RNImage source={deskKit.mixer} style={[styles.deskMixer, { width: ph.mixerW, height: ph.mixerH }, deskKit.mixerStyle, tMixer]} resizeMode="contain" pointerEvents="none" />
+              <Image source={deskKit.mixer} style={[styles.deskMixer, { width: ph.mixerW, height: ph.mixerH }, deskKit.mixerStyle, tMixer]} contentFit="contain" pointerEvents="none" />
 
               {/* Ingredients — draggable in drag mode, static otherwise. The 3
                   ingredients fill the 3 fixed desk slots, by index. */}
@@ -1384,12 +1414,12 @@ export default function HomeScreen() {
               ) : (
                 <>
                   {deskKit.ingredients.map((ing, idx) => (
-                    <RNImage key={ing.id} source={ing.src} style={[...DESK_SLOT_STYLES[idx], ing.style, tIngFor(idx)]} resizeMode="contain" />
+                    <Image key={ing.id} source={ing.src} style={[...DESK_SLOT_STYLES[idx], ing.style, tIngFor(idx)]} contentFit="contain" />
                   ))}
                 </>
               )}
 
-              {!dragSession && <View style={[styles.startSessionPressable, { bottom: 155 }, tStart, tStartRow]}>
+              {!dragSession && <View style={[styles.startSessionPressable, { bottom: ph.startBottom }, tStart, tStartRow]}>
                 <View ref={(n) => setTutorialTarget('start', n)}>
                   <SoundPressable
                     style={({ pressed }) => [styles.startSessionInner, tStartInner, pressed && styles.startButtonPressed]}
@@ -1496,10 +1526,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   friendBtnImg: {},
+  // The friend-button PNG is a circle with ~15% transparent padding at the
+  // bottom-right corner, so inset the badge/dot onto the visible rim (never
+  // negative offsets — those land in the transparent zone, floating off the art).
   friendReqBadge: {
     position: 'absolute',
-    bottom: -2,
-    right: -2,
+    bottom: 0,
+    right: 0,
     minWidth: 20,
     height: 20,
     borderRadius: 10,
@@ -1513,8 +1546,8 @@ const styles = StyleSheet.create({
   // Plain red dot (no count) for unread friend DMs.
   friendDmDot: {
     position: 'absolute',
-    bottom: -1,
-    right: -1,
+    bottom: 4,
+    right: 4,
     width: 14,
     height: 14,
     borderRadius: 7,
@@ -1538,8 +1571,8 @@ const styles = StyleSheet.create({
   },
   // iPad: bigger dot, inset onto the larger circular button's rim.
   settingsAlertDotTablet: { right: 14, bottom: 14, width: 22, height: 22, borderRadius: 11, borderWidth: 3 },
-  friendReqBadgeTablet: { right: 16, bottom: 4 },
-  friendDmDotTablet: { right: 16, bottom: 4, width: 22, height: 22, borderRadius: 11, borderWidth: 3 },
+  friendReqBadgeTablet: { right: 4, bottom: 4 },
+  friendDmDotTablet: { right: 4, bottom: 4, width: 22, height: 22, borderRadius: 11, borderWidth: 3 },
   friendReqBadgeText: { color: '#FFFFFF', fontSize: 11, lineHeight: 14, fontWeight: '900' },
   gameFloating: {
     backgroundColor: 'transparent',
@@ -1613,11 +1646,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    // Keep in sync with the 0.54 in the ph memo's deskTopY — the phone character
+    // anchors its feet to this desk edge.
     height: '54%',
     zIndex: 2,
   },
   // Hairline on the desk's top edge. Must mirror deskNewLayer's height so its top
-  // border lands exactly on the desk's top edge (keep the height in sync).
+  // border lands exactly on the desk's top edge (keep the height in sync — and in
+  // sync with the ph memo's deskTopY 0.54).
   deskTopEdge: {
     position: 'absolute',
     left: 0,
@@ -1880,6 +1916,9 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  // Phones override bottom/height inline via phCharLayer (desk-anchored, see the
+  // ph memo) — these static values are the tablet baseline (and the reference
+  // phone reproduces them exactly by construction).
   homeCharacterLayer: {
     position: 'absolute',
     left: 0,
@@ -1892,6 +1931,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     overflow: 'visible',
   },
+  // Phones override the size inline via phCharImg (300·phW); tablet baseline here.
   homeCharacterImage: {
     width: 300,
     height: 300,

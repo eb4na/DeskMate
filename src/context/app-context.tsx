@@ -8,6 +8,7 @@ import { dailyGoalIds, getQuest, getAchievement } from '@/constants/quests';
 import { useAuth } from '@/context/auth-context';
 import { getAppStateScope, loadScopedAppState, saveScopedAppState, isGuestUpgradePending, clearGuestUpgradePending, loadGuestState } from '@/lib/app-state-repository';
 import { probeCloudState, pushCloudState, pushCloudStateDebounced } from '@/lib/cloud-sync';
+import { showPopup } from '@/lib/popup';
 import { getEffectiveBunSkinId, getEffectiveCompanionSkins } from '@/lib/companion-utils';
 import { maskProfanity } from '@/lib/profanity';
 import { playCoin } from '@/lib/sounds';
@@ -113,13 +114,12 @@ export type ActiveSession = {
 
 // ─── Wave 4 types ─────────────────────────────────────────────────────────────
 
+// Presets are session-length ONLY — a preset never stores a break (breaks are
+// picked fresh each session, or fall back to the auto break).
 export type TimerPreset = {
   id: string;
   label: string;
   minutes: number;
-  // Break length saved with the preset. Absent on presets saved before breaks
-  // were part of a preset — those fall back to the auto/default break.
-  breakMinutes?: number;
 };
 
 export type Friend = {
@@ -257,7 +257,6 @@ type PersistedState = {
   // so it only shows once per calendar day.
   streakRescueDismissedDate: string;
   savedTimerPresets: TimerPreset[];
-  savedBreakPresets: TimerPreset[];
   ambienceId: string | null;
   defaultCompanionId: DefaultCompanionId;
   activeCompanionId: ActiveCompanionId;
@@ -439,7 +438,6 @@ const DEFAULTS: PersistedState = {
   streakFreezeResetMonth: '',
   streakRescueDismissedDate: '',
   savedTimerPresets: [],
-  savedBreakPresets: [],
   ambienceId: null,
   defaultCompanionId: 'girl',
   activeCompanionId: 'starter:girl',
@@ -998,7 +996,6 @@ type AppContextType = {
   streakRescuePending: boolean;
   streakRescueDismissedDate: string;
   savedTimerPresets: TimerPreset[];
-  savedBreakPresets: TimerPreset[];
   ambienceId: string | null;
   defaultCompanionId: DefaultCompanionId;
   activeCompanionId: ActiveCompanionId;
@@ -1198,8 +1195,6 @@ type AppContextType = {
   dismissStreakRescue: () => void;
   saveTimerPreset: (preset: Omit<TimerPreset, 'id'>) => void;
   deleteTimerPreset: (id: string) => void;
-  saveBreakPreset: (preset: Omit<TimerPreset, 'id'>) => void;
-  deleteBreakPreset: (id: string) => void;
   setAmbience: (id: string | null) => void;
   setDefaultCompanion: (id: DefaultCompanionId) => void;
   setActiveCompanion: (id: ActiveCompanionId) => void;
@@ -2088,6 +2083,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setIsPlus = (value: boolean, plan: 'monthly' | 'annual' = 'monthly', untilOverride?: string) => {
     const month = new Date().toISOString().slice(0, 7);
     const today = todayISO();
+    // Popup decided OUTSIDE the state updater (updaters can run twice in dev and
+    // must stay side-effect-free). Same condition the updater applies below.
+    if (value && (!s.streakFreezeResetMonth || s.streakFreezeResetMonth < month)) {
+      showPopup(i18n.t('plus.freezesGrantedTitle'), i18n.t('plus.freezesGrantedMsg'));
+    }
     setS((prev) => {
       const updates: Partial<PersistedState> = { isPlus: value };
       // Plus members automatically wear the gold crown avatar frame; it clears when
@@ -2121,6 +2121,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (value && prev.aiTicketsResetMonth !== month) {
         updates.aiTickets = 3;
         updates.aiTicketsResetMonth = month;
+      }
+      // Grant this month's 3 streak freezes THE MOMENT Plus activates (the
+      // load-merge grant only runs on the next app launch, which made a fresh
+      // purchase feel like it gave nothing). Idempotent per month, and Math.max
+      // never lowers freezes the user separately bought. A confirmation popup
+      // shows only when this actually grants (so the launch-time entitlement
+      // re-sync can't spam it).
+      if (value && (!prev.streakFreezeResetMonth || prev.streakFreezeResetMonth < month)) {
+        updates.streakFreezes = Math.max(prev.streakFreezes, 3);
+        updates.streakFreezeResetMonth = month;
+        // If their streak lapsed and today's rescue prompt was already dismissed
+        // (e.g. they had no freeze to use, then went and bought Plus), un-dismiss
+        // it so the Home rescue re-offers — the new freezes can save the streak
+        // the same day.
+        if (streakRescueAvailable({ streak: prev.streak }, today) && prev.streakRescueDismissedDate === today) {
+          updates.streakRescueDismissedDate = '';
+        }
       }
       // First room ticket the moment they go Plus, and anchor the monthly cadence to
       // today's day-of-month. Idempotent per day so a restore/double-call can't
@@ -2206,18 +2223,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setS((prev) => ({
       ...prev,
       savedTimerPresets: prev.savedTimerPresets.filter((p) => p.id !== id),
-    }));
-
-  const saveBreakPreset = (preset: Omit<TimerPreset, 'id'>) =>
-    setS((prev) => ({
-      ...prev,
-      savedBreakPresets: [{ ...preset, label: maskProfanity(preset.label), id: uid() }, ...prev.savedBreakPresets].slice(0, MAX_TIMER_PRESETS),
-    }));
-
-  const deleteBreakPreset = (id: string) =>
-    setS((prev) => ({
-      ...prev,
-      savedBreakPresets: prev.savedBreakPresets.filter((p) => p.id !== id),
     }));
 
   const setAmbience = (id: string | null) =>
@@ -2845,7 +2850,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         streakRescuePending: streakRescuePending(s, todayISO()),
         streakRescueDismissedDate: s.streakRescueDismissedDate,
         savedTimerPresets: s.savedTimerPresets,
-        savedBreakPresets: s.savedBreakPresets,
         ambienceId: s.ambienceId,
         defaultCompanionId: s.defaultCompanionId,
         activeCompanionId: s.activeCompanionId,
@@ -2929,8 +2933,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dismissStreakRescue,
         saveTimerPreset,
         deleteTimerPreset,
-        saveBreakPreset,
-        deleteBreakPreset,
         setAmbience,
         setDefaultCompanion,
         setActiveCompanion,

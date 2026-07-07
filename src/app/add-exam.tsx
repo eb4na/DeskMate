@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, TextInput, useColorScheme } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, TextInput } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -14,7 +14,8 @@ import { ThemedView } from '@/components/themed-view';
 import { useApp, FREE_EXAM_LIMIT } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 function isValidDateISO(dateStr: string): boolean {
   const parts = dateStr.split('-');
@@ -43,8 +44,7 @@ export default function AddExamScreen() {
   // Inline validation error. This screen is a native modal, so a root showPopup
   // can't present over it (the tap looked dead — "can't add"). Show the reason here.
   const [error, setError] = useState<string | null>(null);
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const colors = useTheme();
 
   // Editing never adds a row, so the cap can't block a save.
   const canAdd = editing || isPlus || examCountdowns.length < FREE_EXAM_LIMIT;

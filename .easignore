@@ -1,0 +1,47 @@
+# EAS uses this file INSTEAD of .gitignore when present, so it must repeat every
+# .gitignore exclude, then add the extra files that the native build never needs.
+# Trimming the upload keeps the build archive small (was 503 MB) and cuts memory
+# pressure on the cloud builder.
+
+# --- mirrors .gitignore ---
+node_modules/
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store
+*.pem
+.env
+.env.*
+!.env.example
+*.keystore
+google-services.json
+GoogleService-Info.plist
+secrets*.json
+serviceAccount*.json
+AuthKey_*.p8
+*.tsbuildinfo
+example
+/ios
+/android
+__pycache__/
+
+# --- extra: not needed to build the mobile app ---
+.git/
+.claude/
+website/
+scripts/
+supabase/
+plugins/**/*.md
+*.md

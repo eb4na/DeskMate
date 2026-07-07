@@ -129,8 +129,11 @@ export function StreakRescueModal() {
     });
   };
 
+  // Android hardware back is a no-op here: this is a streak-saving *decision*, so a
+  // stray back-press must not silently forfeit today's rescue — the player picks one
+  // of the three explicit buttons (use / buy / let it reset).
   return (
-    <Modal visible={visible} transparent animationType="fade">
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={() => {}}>
       <View style={styles.root}>
         <View style={styles.backdrop} />
         <View style={styles.card}>

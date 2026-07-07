@@ -8,9 +8,9 @@ export const SESSION_LENGTHS = [
 export type SessionLengthOption = (typeof SESSION_LENGTHS)[number];
 
 // Auto-break length for a solo session: a flat 5 min break for sessions under an
-// hour, and 10 min for an hour or longer.
+// hour, and 15 min for an hour or longer.
 export function autoBreakMinutes(focusMinutes: number): number {
-  return focusMinutes < 60 ? 5 : 10;
+  return focusMinutes < 60 ? 5 : 15;
 }
 
 // Coins earned per minute studied.
@@ -28,7 +28,7 @@ export const DAILY_EARN_CAP = 500;
 // Max number of friends a user can add.
 export const MAX_FRIENDS = 150;
 
-export const BREAK_LENGTHS = [5, 10, 15] as const;
+export const BREAK_LENGTHS = [5, 10, 15, 30] as const;
 
 // Auto-assign colors for new subjects (Wave 2)
 export const SUBJECT_COLORS = [
