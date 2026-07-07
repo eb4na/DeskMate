@@ -12,6 +12,7 @@
       "bundleIdentifier": "com.sophialin.memobun",
       "supportsTablet": true,
       "requireFullScreen": true,
+      "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -39,6 +40,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-apple-authentication",
       "expo-notifications",
       [
         "expo-splash-screen",
@@ -76,11 +78,19 @@
             "kotlinVersion": "2.2.20"
           }
         }
+      ],
+      "./plugins/with-android-kotlin-pin.js",
+      "./plugins/with-ios-google-signin-modular-headers.js",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.135242985402-f6c9vik5cjdph2qj25l1oqpg489n44o8"
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
-      "reactCompiler": true
+      "reactCompiler": false
     },
     "extra": {
       "router": {},
