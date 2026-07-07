@@ -5,8 +5,10 @@
   "dependencies": {
     "@expo/ui": "~56.0.13",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-google-signin/google-signin": "^16.1.2",
     "@supabase/supabase-js": "^2.106.1",
     "expo": "~56.0.4",
+    "expo-apple-authentication": "~56.0.4",
     "expo-audio": "~56.0.12",
     "expo-build-properties": "~56.0.21",
     "expo-clipboard": "~56.0.4",

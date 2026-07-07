@@ -14,10 +14,39 @@
 //   • Apple Developer: a Services ID + Sign in with Apple key.
 //   • For `linkProvider`, enable "Manual linking" in Supabase auth settings.
 
+import { Platform } from 'react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import * as WebBrowser from 'expo-web-browser';
 import type { Provider } from '@supabase/supabase-js';
 
 import { supabase, authCallbackUrl } from '@/lib/supabase';
+
+// Google Cloud OAuth client IDs (NOT secrets — they ship in the app binary). The
+// WEB client id is the one Supabase already knows (Google provider config); the
+// native iOS sign-in returns an id token whose audience is the iOS client id, so
+// both must be added to the Supabase Google provider's Authorized Client IDs.
+// When these are unset we fall back to the web OAuth flow, so Google keeps working
+// until the native path is fully configured.
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+const googleNativeConfigured = !!GOOGLE_WEB_CLIENT_ID && !!GOOGLE_IOS_CLIENT_ID;
+
+// The @react-native-google-signin native module is loaded LAZILY (require inside
+// the sign-in fn), never at import time. This keeps a dev binary that predates the
+// pod from red-screening ("Cannot find native module") just for importing this
+// file — the module is only touched once Google native is actually configured+used.
+type GoogleSigninModule = typeof import('@react-native-google-signin/google-signin');
+let googleModule: GoogleSigninModule | null = null;
+function getGoogleModule(): GoogleSigninModule {
+  if (googleModule) return googleModule;
+  const mod: GoogleSigninModule = require('@react-native-google-signin/google-signin');
+  mod.GoogleSignin.configure({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    iosClientId: GOOGLE_IOS_CLIENT_ID,
+  });
+  googleModule = mod;
+  return mod;
+}
 
 export type OAuthResult = { ok: boolean; cancelled?: boolean; error?: string; alreadyLinked?: boolean };
 
@@ -60,8 +89,87 @@ async function runOAuth(getUrl: () => Promise<UrlResult>): Promise<OAuthResult> 
   return { ok: true };
 }
 
+// Native Sign in with Apple: shows the system sheet instead of a web session, so
+// iOS never displays the "…supabase.co wants to sign in" consent prompt. We hand
+// Apple's identity token straight to Supabase (signInWithIdToken), which verifies
+// it against Apple's keys. No nonce: Supabase's native Apple verifier doesn't use
+// one, and a nonce sent to Apple but not matched here fails verification.
+//
+// Requires (one-time, Supabase dashboard): the app's bundle id
+// `com.sophialin.memobun` added to the Apple provider's Client IDs list, ALONGSIDE
+// the existing Services ID (the web/link flow still needs the Services ID). The
+// native token's audience is the bundle id, so without it verification fails with
+// an audience-mismatch error.
+async function signInWithAppleNative(): Promise<OAuthResult> {
+  let credential: AppleAuthentication.AppleAuthenticationCredential;
+  try {
+    credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+    });
+  } catch (e) {
+    // User dismissed the Apple sheet (or it was canceled) — treat as a cancel, not
+    // an error, so the UI stays quiet.
+    if (e instanceof Error && 'code' in e && (e as { code?: string }).code === 'ERR_REQUEST_CANCELED') {
+      return { ok: false, cancelled: true };
+    }
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+
+  if (!credential.identityToken) return { ok: false, error: 'Apple did not return an identity token.' };
+
+  const { error } = await supabase.auth.signInWithIdToken({
+    provider: 'apple',
+    token: credential.identityToken,
+  });
+  if (error) return { ok: false, error: error.message, alreadyLinked: isAlreadyLinked(error.message) };
+  return { ok: true };
+}
+
+// Native Google sign-in: shows the system Google account picker instead of a web
+// session, so there's no "…supabase.co wants to sign in" prompt. We hand Google's
+// id token to Supabase (signInWithIdToken). Only runs when both client ids are set
+// (see GOOGLE_*_CLIENT_ID); otherwise the caller uses the web flow.
+async function signInWithGoogleNative(): Promise<OAuthResult> {
+  const { GoogleSignin, isSuccessResponse, isErrorWithCode, statusCodes } = getGoogleModule();
+  try {
+    await GoogleSignin.hasPlayServices();
+    const response = await GoogleSignin.signIn();
+    if (!isSuccessResponse(response)) return { ok: false, cancelled: true };
+
+    const idToken = response.data.idToken;
+    if (!idToken) return { ok: false, error: 'Google did not return an id token.' };
+
+    const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken });
+    if (error) return { ok: false, error: error.message, alreadyLinked: isAlreadyLinked(error.message) };
+    return { ok: true };
+  } catch (e) {
+    if (isErrorWithCode(e) && e.code === statusCodes.SIGN_IN_CANCELLED) {
+      return { ok: false, cancelled: true };
+    }
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 /** Sign in (or sign up) with a social provider. */
 export function signInWithProvider(provider: Provider): Promise<OAuthResult> {
+  // Apple + Google on iOS use their native sheets (no supabase.co web prompt).
+  // Everything else — non-iOS, an unavailable native API, or Google before its
+  // client ids are configured — falls back to the web OAuth flow.
+  if (provider === 'apple' && Platform.OS === 'ios') {
+    return AppleAuthentication.isAvailableAsync().then((available) =>
+      available ? signInWithAppleNative() : webSignInWithProvider(provider),
+    );
+  }
+  if (provider === 'google' && Platform.OS === 'ios' && googleNativeConfigured) {
+    return signInWithGoogleNative();
+  }
+  return webSignInWithProvider(provider);
+}
+
+function webSignInWithProvider(provider: Provider): Promise<OAuthResult> {
   return runOAuth(async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
