@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { useKeepAwake } from 'expo-keep-awake';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
@@ -182,6 +183,9 @@ export function StudyRoomView({
   finishing?: boolean;
 }) {
   const { t } = useTranslation();
+  // Hold a screen wake-lock for the whole session: if the device auto-locked, the
+  // app would background and the away timer below would force-end the session.
+  useKeepAwake('memobun-study-session', { suppressDeactivateWarnings: true });
   // Tablet: shrink the timer ("oven") and enlarge the character / desk / book /
   // bottom buttons. Sizes only (no transforms) so the character's bounce animation
   // isn't disturbed.
