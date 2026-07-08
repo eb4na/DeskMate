@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Memobun — Sign in</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #FFF6EF;
+      color: #8A6552;
+      font-family: -apple-system, "Segoe UI", sans-serif;
+      font-size: 17px;
+    }
+  </style>
+</head>
+<body>
+  <p>Taking you to sign in…</p>
+  <script>
+    // Hop page for the app's sign-in: the iOS consent alert shows the domain the
+    // auth session STARTS on, so the app opens memobun.app/auth (this page) with
+    // the real Supabase authorize URL in the #fragment, and we forward instantly.
+    // Only forwards into our own Supabase auth path — never anywhere else — so
+    // this can't be used as an open redirect. Fragments also never reach server
+    // logs, keeping the OAuth params out of hosting analytics.
+    (function () {
+      var ALLOWED_PREFIX = 'https://vorwfhlnemgkixksejmd.supabase.co/auth/v1/';
+      var target = '';
+      try {
+        target = decodeURIComponent(location.hash.slice(1));
+      } catch (e) { /* malformed fragment — fall through to home */ }
+      location.replace(target.indexOf(ALLOWED_PREFIX) === 0 ? target : 'https://memobun.app/');
+    })();
+  </script>
+</body>
+</html>

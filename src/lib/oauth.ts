@@ -66,6 +66,16 @@ function isAlreadyLinked(msg?: string | null): boolean {
   );
 }
 
+// The iOS consent alert ("Memobun" Wants to Use "…" to Sign In) shows the host of
+// the FIRST url the auth session opens — the raw <project>.supabase.co domain looks
+// wrong to players. So the session starts on our own domain: memobun.app/auth
+// instantly forwards to the Supabase authorize URL carried in the #fragment (the
+// page refuses anything outside our Supabase /auth/v1/ path, so it isn't an open
+// redirect). Redirects after that first page don't change the alert text.
+function brandAuthUrl(url: string): string {
+  return `https://memobun.app/auth#${encodeURIComponent(url)}`;
+}
+
 async function runOAuth(getUrl: () => Promise<UrlResult>): Promise<OAuthResult> {
   const { url, error } = await getUrl();
   if (error) return { ok: false, error: error.message, alreadyLinked: isAlreadyLinked(error.message) };
@@ -73,7 +83,7 @@ async function runOAuth(getUrl: () => Promise<UrlResult>): Promise<OAuthResult> 
 
   // Opens the provider's login in a secure in-app browser and resolves once it
   // redirects back to our scheme (or the user cancels).
-  const result = await WebBrowser.openAuthSessionAsync(url, authCallbackUrl);
+  const result = await WebBrowser.openAuthSessionAsync(brandAuthUrl(url), authCallbackUrl);
   if (result.type === 'cancel' || result.type === 'dismiss') return { ok: false, cancelled: true };
   if (result.type !== 'success' || !result.url) return { ok: false, error: 'Sign-in was not completed.' };
 
