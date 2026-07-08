@@ -208,7 +208,10 @@ const plateStyles = StyleSheet.create({
   },
   sil: { alignItems: 'center', justifyContent: 'flex-end', backgroundColor: '#F3E7DA' },
   info: { flex: 1, minWidth: 0, gap: 5 },
-  name: { color: '#8A5A3B', fontSize: 15, lineHeight: 19 },
+  // No fixed lineHeight here: this label uses adjustsFontSizeToFit, and a pinned
+  // lineHeight breaks the auto-shrink (clips instead of shrinking — worst on
+  // tablet). ThemedText derives a proportional lineHeight from fontSize.
+  name: { color: '#8A5A3B', fontSize: 15 },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1108,15 +1111,6 @@ export default function BreakGameScreen() {
                 <ThemedView style={[styles.progressFill, { width: `${pct}%` as unknown as number }]} />
               </ThemedView>
             </ThemedView>
-            <Pressable
-              onPress={goHome}
-              hitSlop={8}
-              style={({ pressed }) => [styles.skipBreakBtn, pressed && styles.pressed]}
-              accessibilityLabel={t('breakGame.skipBreak')}>
-              <ThemedText type="smallBold" numberOfLines={1} style={styles.skipBreakText}>
-                {t('breakGame.skipBreak')}
-              </ThemedText>
-            </Pressable>
           </ThemedView>
         )}
 
@@ -1316,15 +1310,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   progressFill: { height: '100%', borderRadius: 3, backgroundColor: '#7C6F5A' },
-  skipBreakBtn: {
-    borderRadius: 999,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 7,
-    borderWidth: 1.5,
-    borderColor: '#F2A0B5',
-    backgroundColor: 'rgba(242,160,181,0.16)',
-  },
-  skipBreakText: { color: '#D86F9C', fontSize: 13 },
   selectContent: { gap: Spacing.three, paddingBottom: Spacing.four },
   selectHeader: { alignItems: 'center', gap: 4, paddingTop: Spacing.one, backgroundColor: 'transparent' },
   selectTitle: {

@@ -3,8 +3,6 @@ export type DragSessionData = {
   subjectName: string | null;
   taskId: string | null;
   taskTitle: string | null;
-  moodValue: string | null;
-  moodLabel: string | null;
   /** Optional custom break length (minutes) chosen on the custom timer. */
   breakMinutes?: number;
 };

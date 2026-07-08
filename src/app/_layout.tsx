@@ -304,7 +304,6 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         {/* Session flow */}
         <Stack.Screen name="session-picker" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
-        <Stack.Screen name="subject-picker" options={{ presentation: 'modal', title: t('screens.subjectMood') }} />
         <Stack.Screen name="session" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="session-complete" options={{ headerShown: false }} />
         {/* Wave 1 modals */}
@@ -315,10 +314,10 @@ function RootNavigator() {
         <Stack.Screen name="manage-subjects" options={{ presentation: 'modal', title: t('screens.subjects') }} />
         {/* Wave 3 */}
         <Stack.Screen name="weekly-report" options={{ presentation: 'modal', title: t('screens.weeklyReport') }} />
-        <Stack.Screen name="mood-chart" options={{ presentation: 'modal', title: t('screens.moodChart') }} />
         <Stack.Screen name="subject-chart" options={{ presentation: 'modal', title: t('screens.subjectChart') }} />
         <Stack.Screen name="break-game" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="next-session" options={{ headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="session-checkpoint" options={{ headerShown: false, gestureEnabled: false, animation: 'fade', presentation: 'transparentModal', contentStyle: { backgroundColor: 'transparent' } }} />
         <Stack.Screen name="cake-game" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="party-invite" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="study-lobby" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />

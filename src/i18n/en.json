@@ -338,24 +338,6 @@
     "replaceAction": "Replace",
     "replaceStartWithout": "Start without saving"
   },
-  "subjectPicker": {
-    "title": "Pick a subject (optional)",
-    "manage": "Manage →",
-    "noSubjects": "No subjects yet.",
-    "addOne": "Add one →",
-    "pickTask": "Pick a task (optional)",
-    "startWithTask": "Start session",
-    "startWithoutTask": "Start without task",
-    "skipTask": "Skip for now",
-    "skipSubject": "Skip subject for now",
-    "studySubject": "Study {{name}}",
-    "session": "{{length}} minute session",
-    "nudge": "Want to add subjects so your progress reports look better?",
-    "manageSubjects": "Manage subjects →",
-    "moodTitle": "How are you feeling?",
-    "moodSubtitle": "Track your mood to see patterns over time",
-    "skipMood": "Skip and start session"
-  },
   "session": {
     "awayTitle": "Come back to studying!",
     "awayBody": "Your study session will stop if you don't return within a minute.",
@@ -425,6 +407,9 @@
     "yesFinished": "✓ Yes, finished",
     "notYet": "Not yet",
     "continue": "Continue",
+    "keepStudyingTitle": "Keep studying?",
+    "continueStudying": "Continue studying",
+    "restForNow": "Rest for now",
     "howDoYouFeel": "How do you feel?",
     "afterStudying": "After studying",
     "skip": "Skip for now",
@@ -448,8 +433,7 @@
     "rescueStreakQ": "Keep your streak?",
     "rescueStreakMsg": "You missed a few days. Use a Streak Freeze to keep your {{count}}-day streak going?",
     "letItReset": "Let it reset",
-    "freezeUsedMsg": "Streak freeze used. {{count}} left this month.",
-    "moodPrompt": "How do you feel after studying?"
+    "freezeUsedMsg": "Streak freeze used. {{count}} left this month."
   },
   "tasks": {
     "title": "Tasks",
@@ -520,13 +504,7 @@
     "tagSessionsHint": "Tag sessions with a subject to see your breakdown here.",
     "mostStudied": "Most studied:",
     "leastStudied": "Least studied:",
-    "moodTracker": "Mood tracker",
-    "moodChartBtn": "Mood chart",
     "subjectChartBtn": "Subject chart",
-    "moodEmptyHint": "Your mood check-ins will appear here after sessions.",
-    "before": "Before",
-    "after": "After",
-    "moodInsightText": "You selected a more positive mood after {{pct}}% of logged sessions.",
     "historyCapTitle": "Your full history",
     "historyCapDesc": "Free accounts show your last {{months}} months of progress. Unlock your full study history with Plus.",
     "companions": "Companions",
@@ -887,8 +865,6 @@
     "statStreakNow": "Streak now",
     "statEstCoins": "Est. coins",
     "subjectBreakdown": "Subject breakdown",
-    "moodInsight": "Mood insight",
-    "moodInsightText": "You selected a more positive mood after {{pct}}% of logged sessions this week.",
     "goalNextWeek": "Goal for next week",
     "advancedInsights": "Advanced insights",
     "bestStudyHours": "Best Study Hours",
@@ -1010,6 +986,7 @@
     "birthday": "Birthday",
     "friendCodeLabel": "FRIEND CODE",
     "friendFallback": "Friend {{code}}",
+    "newUser": "New user",
     "addFriend": "Add friend",
     "addingFriend": "Sending…",
     "requestSentTitle": "Request sent!",
@@ -1359,7 +1336,6 @@
     "general": "General Study"
   },
   "screens": {
-    "subjectMood": "Subject & mood",
     "addExamCountdown": "Add exam countdown",
     "dailyReminder": "Daily reminder",
     "task": "Task",
@@ -1369,7 +1345,6 @@
     "ambience": "Ambience",
     "settings": "Settings",
     "getCoins": "Get Coins",
-    "moodChart": "Mood Chart",
     "subjectChart": "Subject Chart"
   },
   "studyRoom": {
@@ -1828,32 +1803,6 @@
     "playAgain": "Play again",
     "rematch": "Rematch",
     "leave": "Leave"
-  },
-  "moodChart": {
-    "pickMood": "Pick a mood",
-    "headline": "You've felt {{mood}}",
-    "totalTimes": "{{count}} times total",
-    "last8Weeks": "Last 8 weeks",
-    "allTimes": "Every time",
-    "noData": "Log your mood after sessions and it'll chart here."
-  },
-  "moods": {
-    "motivated": "Motivated",
-    "ready": "Ready",
-    "calm": "Calm",
-    "excited": "Excited",
-    "happy": "Happy",
-    "okay": "Okay",
-    "sleepy": "Sleepy",
-    "tired": "Tired",
-    "stressed": "Stressed",
-    "lost": "Lost",
-    "frustrated": "Frustrated",
-    "down": "Down",
-    "proud": "Proud",
-    "better": "Better",
-    "relieved": "Relieved",
-    "exhausted": "Exhausted"
   },
   "subjectNames": {
     "math": "Math",

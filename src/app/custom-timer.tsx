@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { setPendingDragSession } from '@/lib/drag-session';
 import { formatCoins } from '@/constants/placeholder-data';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ImageBackground, NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -154,15 +155,20 @@ export default function CustomTimerScreen() {
 
   // Navigate into the session. Kept separate from handleStart so both the normal
   // path and the "replace a preset" confirm can reuse it.
-  const goToSession = (mins: number) =>
-    router.push({
-      pathname: '/subject-picker',
-      params: {
-        sessionLength: String(mins),
-        ...(breakMins > 0 ? { breakMinutes: String(breakMins) } : {}),
-        ...(selectedSubjectId ? { subjectId: selectedSubjectId } : {}),
-      },
+  const goToSession = (mins: number) => {
+    const subjectName = selectedSubjectId
+      ? subjects.find((s) => s.id === selectedSubjectId && !s.archived)?.name ?? null
+      : null;
+    setPendingDragSession({
+      durationMinutes: mins,
+      subjectName,
+      taskId: null,
+      taskTitle: null,
+      ...(breakMins > 0 ? { breakMinutes: breakMins } : {}),
     });
+    if (router.canDismiss()) router.dismissAll();
+    else router.replace('/');
+  };
 
   // Presets are session-length ONLY (no name, no break — breaks are always picked
   // fresh from the fixed quick pills). The label is just the formatted duration.

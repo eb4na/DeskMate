@@ -214,9 +214,11 @@ export function StudyRoomView({
     profileDisplayName,
     friendCode,
     shiftSessionStart,
+    setActiveSessionSubject,
     markSessionMultiplayer,
     startActiveSession,
     clearActiveSession,
+    subjects,
     addCoins,
     recordSession,
     recordQuestSession,
@@ -425,6 +427,8 @@ export function StudyRoomView({
   const [membersOpen, setMembersOpen] = useState(false);
   // Multiplayer: each player picks their own subject when the session begins.
   const [mpSubjectPicked, setMpSubjectPicked] = useState(false);
+  // Solo: prompt for a subject at the start if the user didn't pick one in setup.
+  const [soloSubjectPicked, setSoloSubjectPicked] = useState(false);
   // Radio: pick a bought sound to play while studying.
   const [soundOpen, setSoundOpen] = useState(false);
   // "Someone left" notice: when a fellow studier leaves mid-session we don't
@@ -798,6 +802,28 @@ export function StudyRoomView({
         isMultiplayer: true,
       });
     }
+  };
+
+  // Solo mirror of the multiplayer start-subject prompt: if the user hit Start
+  // Session without choosing a subject, ask them here once the session is actually
+  // live. The solo session mounts behind the loading overlay with a far-future
+  // "frozen" startedAt that beginSession shifts to ~now when the overlay lifts, so we
+  // gate on startedAt being in the past — that's how we avoid popping over the loader.
+  // Only when they have subjects to pick, and not for auto-started (post-break) loops.
+  // Skippable ("Just focus") like multiplayer. Sets the subject in place (no new
+  // session id) so it can't remount the room or drop the session's break config.
+  const hasActiveSubjects = subjects.some((s) => !s.archived);
+  const needSoloSubject =
+    isSolo &&
+    !soloSubjectPicked &&
+    !!activeSession &&
+    !activeSession.subjectName &&
+    !activeSession.autoStarted &&
+    hasActiveSubjects &&
+    Date.parse(activeSession.startedAt) <= Date.now();
+  const pickSoloSubject = (subjectName: string | null) => {
+    setSoloSubjectPicked(true);
+    if (subjectName) setActiveSessionSubject(subjectName);
   };
 
   // Multiplayer finish (no cake): credit coins once, then offer study-again/break/exit.
@@ -1317,6 +1343,15 @@ export function StudyRoomView({
         onClose={() => pickStartSubject(null)}
       />
 
+      {/* Solo: prompt for a subject at the start if none was chosen in setup
+          (mirrors multiplayer). Mutually exclusive with needStartSubject (isSolo). */}
+      <SubjectPickerModal
+        visible={needSoloSubject}
+        title={t('studyRoom.whatStudying')}
+        onPick={pickSoloSubject}
+        onClose={() => pickSoloSubject(null)}
+      />
+
       {/* "+" → room members sheet. A plain in-view overlay (NOT a native Modal) so
           opening a member's friend-card on top never stacks native modals. */}
       {membersOpen && (
@@ -1352,8 +1387,9 @@ export function StudyRoomView({
         <View style={styles.finishOverlayLight}>
           <View style={styles.finishCard}>
             <Text style={styles.finishTitle}>{t('studyRoom.onBreakBadge')}</Text>
-            <SoundPressable sound="confirm" onPress={endFinishBreak} style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
-              <Text style={styles.finishBtnText}>{t('sessionComplete.continue')}</Text>
+            {/* Resting in the room — the button resumes studying (picks a length). */}
+            <SoundPressable sound="confirm" onPress={() => { endFinishBreak(); setDurationPickerOpen(true); }} style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
+              <Text style={styles.finishBtnText}>{t('sessionComplete.continueStudying')}</Text>
             </SoundPressable>
           </View>
         </View>
@@ -1371,10 +1407,10 @@ export function StudyRoomView({
               <CompanionLevel minutes={companionMinutes?.[activeCompanionId] ?? 0} scale={1.1} />
             </View>
             <SoundPressable onPress={() => setDurationPickerOpen(true)} style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
-              <Text style={styles.finishBtnText}>{t('studyRoom.studyAgain')}</Text>
+              <Text style={styles.finishBtnText}>{t('sessionComplete.continueStudying')}</Text>
             </SoundPressable>
             <SoundPressable onPress={startFinishBreak} style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
-              <Text style={styles.finishBtnText}>{t('studyRoom.takeBreak')}</Text>
+              <Text style={styles.finishBtnText}>{t('sessionComplete.restForNow')}</Text>
             </SoundPressable>
             <Pressable onPress={handleFinishExit} style={({ pressed }) => [styles.finishBtnGhost, pressed && styles.pressed]}>
               <Text style={styles.finishBtnGhostText}>{t('studyRoom.exit')}</Text>

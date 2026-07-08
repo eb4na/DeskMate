@@ -95,7 +95,7 @@ export function navigateWithLoading(navigate: () => void, { assets, prefetch }: 
     // (old screens unmount → less memory/re-render work, and Back/leave from
     // the destination lands home instead of on a stale screen). The overlay
     // covers the whole swap, so the user never sees the intermediate pop.
-    // Same canDismiss→dismissAll idiom as subject-picker/use-study-room.
+    // Same canDismiss→dismissAll idiom as session-picker/use-study-room.
     // Fail-open: a dismiss hiccup must never block the navigation itself.
     try {
       if (router.canDismiss()) router.dismissAll();

@@ -338,24 +338,6 @@
     "replaceAction": "Reemplazar",
     "replaceStartWithout": "Empezar sin guardar"
   },
-  "subjectPicker": {
-    "title": "Elige una materia (opcional)",
-    "manage": "Gestionar →",
-    "noSubjects": "Sin materias aún.",
-    "addOne": "Agregar →",
-    "pickTask": "Elige una tarea (opcional)",
-    "startWithTask": "Iniciar sesión",
-    "startWithoutTask": "Iniciar sin tarea",
-    "skipTask": "Omitir por ahora",
-    "skipSubject": "Omitir materia",
-    "studySubject": "Estudiar {{name}}",
-    "session": "Sesión de {{length}} minutos",
-    "nudge": "¿Quieres agregar materias para mejores informes de progreso?",
-    "manageSubjects": "Gestionar materias →",
-    "moodTitle": "¿Cómo te sientes?",
-    "moodSubtitle": "Registra tu ánimo para ver patrones con el tiempo",
-    "skipMood": "Omitir y empezar sesión"
-  },
   "session": {
     "awayTitle": "¡Vuelve a estudiar!",
     "awayBody": "Tu sesión de estudio se detendrá si no vuelves en un minuto.",
@@ -425,6 +407,9 @@
     "yesFinished": "✓ Sí, terminada",
     "notYet": "Todavía no",
     "continue": "Continuar",
+    "keepStudyingTitle": "¿Seguir estudiando?",
+    "continueStudying": "Seguir estudiando",
+    "restForNow": "Descansar por ahora",
     "howDoYouFeel": "¿Cómo te sientes?",
     "afterStudying": "Después de estudiar",
     "skip": "Omitir por ahora",
@@ -448,8 +433,7 @@
     "rescueStreakQ": "¿Mantener tu racha?",
     "rescueStreakMsg": "Te saltaste algunos días. ¿Usar una congelación de racha para mantener tu racha de {{count}} días?",
     "letItReset": "Dejar que se reinicie",
-    "freezeUsedMsg": "Congelación de racha usada. Te quedan {{count}} este mes.",
-    "moodPrompt": "¿Cómo te sientes después de estudiar?"
+    "freezeUsedMsg": "Congelación de racha usada. Te quedan {{count}} este mes."
   },
   "tasks": {
     "title": "Tareas",
@@ -520,13 +504,7 @@
     "tagSessionsHint": "Etiqueta las sesiones con una asignatura para ver tu desglose aquí.",
     "mostStudied": "Más estudiado:",
     "leastStudied": "Menos estudiado:",
-    "moodTracker": "Registro de ánimo",
-    "moodChartBtn": "Gráfico de ánimo",
     "subjectChartBtn": "Gráfico por asignatura",
-    "moodEmptyHint": "Tus registros de ánimo aparecerán aquí después de las sesiones.",
-    "before": "Antes",
-    "after": "Después",
-    "moodInsightText": "Elegiste un ánimo más positivo después del {{pct}}% de las sesiones registradas.",
     "historyCapTitle": "Tu historial completo",
     "historyCapDesc": "Las cuentas gratuitas muestran tus últimos {{months}} meses de progreso. Desbloquea tu historial de estudio completo con Premium.",
     "companions": "Compañeros",
@@ -887,8 +865,6 @@
     "statStreakNow": "Racha actual",
     "statEstCoins": "Monedas est.",
     "subjectBreakdown": "Desglose por asignatura",
-    "moodInsight": "Análisis de ánimo",
-    "moodInsightText": "Esta semana elegiste un ánimo más positivo después del {{pct}}% de las sesiones registradas.",
     "goalNextWeek": "Objetivo para la próxima semana",
     "advancedInsights": "Análisis avanzado",
     "bestStudyHours": "Mejores horas de estudio",
@@ -1010,6 +986,7 @@
     "birthday": "Cumpleaños",
     "friendCodeLabel": "CÓDIGO DE AMIGO",
     "friendFallback": "Amigo {{code}}",
+    "newUser": "Usuario nuevo",
     "addFriend": "Agregar amigo",
     "addingFriend": "Enviando…",
     "requestSentTitle": "¡Solicitud enviada!",
@@ -1359,7 +1336,6 @@
     "general": "Estudio general"
   },
   "screens": {
-    "subjectMood": "Asignatura y ánimo",
     "addExamCountdown": "Añadir cuenta atrás de examen",
     "dailyReminder": "Recordatorio diario",
     "task": "Tarea",
@@ -1369,7 +1345,6 @@
     "ambience": "Ambiente",
     "settings": "Ajustes",
     "getCoins": "Conseguir monedas",
-    "moodChart": "Gráfico de ánimo",
     "subjectChart": "Gráfico por asignatura"
   },
   "studyRoom": {
@@ -1828,32 +1803,6 @@
     "playAgain": "Jugar de nuevo",
     "rematch": "Revancha",
     "leave": "Salir"
-  },
-  "moodChart": {
-    "pickMood": "Elige un ánimo",
-    "headline": "Te sentiste {{mood}}",
-    "totalTimes": "{{count}} veces en total",
-    "last8Weeks": "Últimas 8 semanas",
-    "allTimes": "Cada vez",
-    "noData": "Registra tu ánimo tras las sesiones y aparecerá aquí en un gráfico."
-  },
-  "moods": {
-    "motivated": "Motivado",
-    "ready": "Listo",
-    "calm": "Tranquilo",
-    "excited": "Emocionado",
-    "happy": "Feliz",
-    "okay": "Bien",
-    "sleepy": "Con sueño",
-    "tired": "Cansado",
-    "stressed": "Estresado",
-    "lost": "Perdido",
-    "frustrated": "Frustrado",
-    "down": "Decaído",
-    "proud": "Orgulloso",
-    "better": "Mejor",
-    "relieved": "Aliviado",
-    "exhausted": "Agotado"
   },
   "subjectNames": {
     "math": "Matemáticas",

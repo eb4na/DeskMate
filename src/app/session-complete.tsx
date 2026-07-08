@@ -1,25 +1,18 @@
 import { Image } from 'expo-image';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { useEffect, useMemo, useRef } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
-import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BakeryHeartEmoji } from '@/components/bakery-emoji';
 import { CoinIcon } from '@/components/coin-icon';
-import { Companion } from '@/components/companion';
 import { CompanionLevel } from '@/components/companion-level';
 import { DevKnobs } from '@/components/dev-knobs';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
-import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { daysBetween, todayISO, useApp } from '@/context/app-context';
-import { AFTER_SESSION_MOODS, BREAK_LENGTHS, DAILY_EARN_CAP } from '@/constants/placeholder-data';
-import { getCompanionLine } from '@/constants/companion-lines';
+import { useApp } from '@/context/app-context';
 import { showLoadingScreen } from '@/lib/loading-signal';
-import { playFinishDing } from '@/lib/sounds';
-import { track } from '@/lib/analytics';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 
@@ -45,14 +38,6 @@ const FP = {
   muted: '#9A7B6D',
 };
 
-type Stage = 'reward' | 'break';
-
-// Whole days between an ISO date (YYYY-MM-DD) and today. Uses the streak engine's
-// own basis (daysBetween + todayISO) so the rescue prompt fires exactly when
-// updateStreak treats the gap as rescuable — no timezone off-by-one.
-function daysFromToday(dateISO: string): number {
-  return daysBetween(dateISO, todayISO());
-}
 
 function ReceiptRow({
   label,
@@ -76,31 +61,10 @@ function ReceiptRow({
 }
 
 export default function SessionCompleteScreen() {
-  const { sessionLength, subject, coinsEarned, taskId, taskTitle, breakMinutes, autoStarted, sessionId } = useLocalSearchParams<{
-    sessionLength: string;
-    subject: string;
-    coinsEarned: string;
-    taskId?: string;
-    taskTitle?: string;
-    breakMinutes?: string;
-    autoStarted?: string;
-    sessionId?: string;
-  }>();
-
   const {
-    recordSession,
-    recordQuestSession,
-    addMoodEntry,
-    updateStreak,
-    addSubjectTime,
-    addCoins,
-    completeTask,
+    clearSessionRun,
+    sessionRun,
     selectedFoodId,
-    markFoodMade,
-    earnedToday,
-    streak,
-    streakFreezes,
-    streakRescuePending,
     activeCompanionId,
     companionMinutes,
   } = useApp();
@@ -108,37 +72,16 @@ export default function SessionCompleteScreen() {
   const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('sessioncomplete', [
     { name: 'badge', label: 'Badge' },
     { name: 'doneBtn', label: 'Done btn' },
-    { name: 'breakBlock', label: 'Break card' },
-    { name: 'homeBtn', label: 'Home btn' },
   ]);
-  const credited = useRef(false);
-  const moodSaved = useRef(false);
-  const moodRing = useRef(new Animated.Value(0)).current;
-  const [stage, setStage] = useState<Stage>('reward');
-  const [selectedMood, setSelectedMood] = useState<string | null>(null);
-  const [streakBonus, setStreakBonus] = useState(0);
-  const [isComeback, setIsComeback] = useState(false);
-  const [taskAnswered, setTaskAnswered] = useState(false);
-  const [taskDone, setTaskDone] = useState(false);
-  const sessionEndLine = useMemo(() => getCompanionLine('sessionEnd'), []);
 
-  const earned = parseInt(coinsEarned ?? '0', 10);
-  const minutes = parseInt(sessionLength ?? '25', 10);
-  // Break length picked at setup. Counts toward the recorded total + lifetime stats
-  // (study + break), but NOT coins (coins stay study-only). Drives the post-session
-  // break too — no re-pick (the user already chose it at the start of the session).
-  const breakMin = Math.max(0, parseInt(breakMinutes ?? '0', 10) || 0);
-  const totalWithBreak = minutes + breakMin;
-  const wasAutoStarted = autoStarted === '1';
-  const subjectName = subject && subject.length > 0 ? subject : null;
-
-  // Coins actually credited after the daily cap (snapshot earnedToday before crediting).
-  const earnedTodayAtMount = useRef(earnedToday).current;
-  const actualEarned = Math.min(earned, Math.max(0, DAILY_EARN_CAP - earnedTodayAtMount));
-
-  // Break game is offered only for longer sessions: floor(minutes / 12) > 1.
-  const breakUnits = Math.floor(minutes / 12);
-  const showBreakGame = breakUnits > 1;
+  // Display-only: every block already credited itself (finishStudyBlock). The receipt
+  // sums the whole run from the accumulator — the totals across all "Continue
+  // studying" blocks since this run began.
+  const run = sessionRun ?? { minutes: 0, coins: 0, subjectName: null, streakBonus: 0, isComeback: false };
+  const minutes = run.minutes;
+  const actualEarned = run.coins;
+  const streakBonus = run.streakBonus;
+  const isComeback = run.isComeback;
 
   // Receipt details for the finished-session card (computed once).
   const receipt = useMemo(() => {
@@ -151,101 +94,13 @@ export default function SessionCompleteScreen() {
     };
   }, []);
 
+  // Everything (coins/streak/bond/quests) was credited per block in finishStudyBlock —
+  // this receipt is pure display. It just releases the run accumulator on the way out
+  // (Done → Home) so the next fresh session starts a clean run.
   useEffect(() => {
-    if (credited.current) return;
-    credited.current = true;
-    playFinishDing(); // oven-timer "ding": your study session is done
-    addCoins(earned);
-    // Record the whole session including the break (study + break) toward lifetime
-    // total minutes + companion bond. Coins/quests/subject-time stay study-only below.
-    recordSession(totalWithBreak);
-    // Solo finish → counts toward daily quests/achievements (not friend quests).
-    recordQuestSession({ minutes });
-    addSubjectTime(subjectName, minutes);
-    if (selectedFoodId) markFoodMade(selectedFoodId);
-    track('study_session_completed', { minutes, subject: subjectName, coins: earned });
-
-    const commit = (rescueWithFreeze: boolean) => {
-      const { bonus, isComeback: comeback, rescued } = updateStreak(
-        rescueWithFreeze ? { rescueWithFreeze: true } : undefined,
-      );
-      setStreakBonus(bonus);
-      setIsComeback(comeback);
-      if (rescued) {
-        // streakFreezes is the pre-spend value here (state update is still pending).
-        showPopup(
-          t('progress.streakProtected'),
-          t('sessionComplete.freezeUsedMsg', { count: Math.max(0, streakFreezes - 1) }),
-        );
-      }
-    };
-
-    // Streak lapsed 1–3 days ago and the user owns a freeze → ask whether to spend one
-    // to keep the streak (otherwise it resets to day 1). Suppressed once the on-open
-    // rescue prompt has already been handled today (streakRescuePending goes false), so
-    // the two surfaces never double-prompt. Freezes are no longer Plus-gated to use.
-    const last = streak.lastStudyDate;
-    const gap = last ? daysFromToday(last) : 0;
-    const canRescue = gap >= 2 && gap <= 4 && streakFreezes > 0 && streakRescuePending;
-
-    if (canRescue) {
-      showPopup(
-        t('sessionComplete.rescueStreakQ'),
-        t('sessionComplete.rescueStreakMsg', { count: streak.currentStreak }),
-        [
-          { text: t('sessionComplete.letItReset'), style: 'cancel', onPress: () => commit(false) },
-          { text: t('progress.useFreeze'), onPress: () => commit(true) },
-        ],
-      );
-    } else {
-      commit(false);
-    }
+    return () => clearSessionRun();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const handleMoodSelect = (value: string) => {
-    setSelectedMood(value);
-    // Pink circle sweep around the chosen mood.
-    moodRing.setValue(0);
-    Animated.spring(moodRing, { toValue: 1, useNativeDriver: true, friction: 5, tension: 80 }).start();
-  };
-
-  // Persist the chosen mood (once) and continue to the break offer.
-  const commitMoodAndContinue = () => {
-    if (selectedMood && !moodSaved.current) {
-      const opt = AFTER_SESSION_MOODS.find((m) => m.value === selectedMood);
-      if (opt) {
-        moodSaved.current = true;
-        addMoodEntry({
-          value: opt.value,
-          label: opt.label,
-          type: 'after',
-          sessionMinutes: minutes,
-          sessionId: sessionId && sessionId.length > 0 ? sessionId : undefined,
-          timestamp: new Date().toISOString(),
-        });
-      }
-    }
-    // Break length was already chosen at session setup — go straight into it (no
-    // re-pick). The break-game then hands off to the next-session picker. If there's
-    // no break, skip straight to the next-session picker.
-    if (breakMin > 0) {
-      startBreak(breakMin);
-    } else {
-      goNextSession();
-    }
-  };
-
-  const handleTaskComplete = () => {
-    if (taskId) {
-      completeTask(taskId);
-      setTaskDone(true);
-    }
-    setTaskAnswered(true);
-  };
-
-  const handleTaskSkip = () => {
-    setTaskAnswered(true);
-  };
 
   const goHome = () => {
     showLoadingScreen(undefined, { quick: true });
@@ -255,37 +110,11 @@ export default function SessionCompleteScreen() {
     }
     router.replace('/');
   };
-  const startBreak = (breakMins: number) =>
-    router.replace({
-      pathname: '/break-game',
-      params: {
-        breakMinutes: String(breakMins),
-        fromSession: '1',
-        // After this break, hand off to the next-session picker (not Home).
-        nextMinutes: String(minutes),
-        nextSubject: subjectName ?? '',
-        nextAutoStarted: wasAutoStarted ? '1' : '',
-      },
-    });
-  // No break → straight to the next-session picker (1-minute countdown).
-  const goNextSession = () =>
-    router.replace({
-      pathname: '/next-session',
-      params: {
-        lastMinutes: String(minutes),
-        subject: subjectName ?? '',
-        autoStarted: wasAutoStarted ? '1' : '',
-      },
-    });
-  // Fixed break lengths only — the whole app offers 5/10/15/30 or no break
-  // ("Back to Home" below); custom break lengths were removed.
-  const breakOptions = [...BREAK_LENGTHS];
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        {stage === 'reward' && (
-          <ScrollView
+        <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.receiptScroll}>
             {/* Circular badge — the companion enjoying the baked recipe (or the
@@ -309,17 +138,11 @@ export default function SessionCompleteScreen() {
               <ReceiptRow label={t('pickers.date')} value={receipt.date} />
               <ReceiptRow label={t('pickers.time')} value={receipt.time} />
               <ReceiptRow label={t('sessionComplete.studyTimeLabel')} value={`${minutes} ${t('sessionComplete.min')}`} />
-              {breakMin > 0 && (
-                <ReceiptRow label={t('sessionComplete.totalTimeLabel')} value={`${totalWithBreak} ${t('sessionComplete.min')}`} />
-              )}
               <ReceiptRow
                 label={t('sessionComplete.coinsEarnedLabel')}
                 value={`+${actualEarned}`}
                 valueIcon={<CoinIcon size={16} />}
               />
-              {actualEarned < earned && (
-                <Text style={styles.capNote}>{t('sessionComplete.dailyCapReached', { cap: DAILY_EARN_CAP })}</Text>
-              )}
               {streakBonus > 0 && (
                 <ReceiptRow
                   label={isComeback ? t('sessionComplete.welcomeBackBonus') : t('sessionComplete.streakBonusLabel')}
@@ -337,87 +160,13 @@ export default function SessionCompleteScreen() {
 
             <View style={styles.heartDivider}><BakeryHeartEmoji size={16} /></View>
 
-            {/* Mood picker inline at the bottom of the receipt */}
-            <Text style={styles.moodPrompt}>{t('sessionComplete.moodPrompt')}</Text>
-            <View style={styles.moodRow}>
-              {AFTER_SESSION_MOODS.map((opt) => {
-                const isSelected = selectedMood === opt.value;
-                return (
-                  <Pressable
-                    key={opt.value}
-                    style={styles.moodOption}
-                    onPress={() => handleMoodSelect(opt.value)}>
-                    <View style={styles.moodCircle}>
-                      <Image source={opt.image} style={styles.moodFace} contentFit="contain" />
-                      {isSelected && (
-                        <Animated.View
-                          pointerEvents="none"
-                          style={[
-                            styles.moodRing,
-                            {
-                              opacity: moodRing,
-                              transform: [
-                                {
-                                  scale: moodRing.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: [1.4, 1],
-                                  }),
-                                },
-                              ],
-                            },
-                          ]}
-                        />
-                      )}
-                    </View>
-                    <Text style={[styles.moodLabel, isSelected && styles.moodLabelActive]} numberOfLines={1}>
-                      {t(`moods.${opt.value}`, { defaultValue: opt.label })}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
             <SoundPressable
               sound="confirm"
               style={({ pressed }) => [styles.doneBtn, tw('doneBtn'), pressed && styles.btnPressed]}
-              onPress={commitMoodAndContinue}>
+              onPress={goHome}>
               <Text style={styles.doneBtnText}>{t('common.done')}</Text>
             </SoundPressable>
-          </ScrollView>
-        )}
-
-        {stage === 'break' && (
-          <>
-            <Companion pose="break" size="full" />
-
-            <ThemedView style={[styles.breakBlock, tw('breakBlock')]}>
-              <ThemedText type="subtitle" style={styles.breakTitle}>
-                {t('sessionComplete.takeABreak')}
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {t('sessionComplete.youEarnedIt')}
-              </ThemedText>
-              <ThemedView style={styles.breakButtons}>
-                {breakOptions.map((len) => (
-                  <Pressable
-                    key={len}
-                    style={({ pressed }) => [styles.breakBtn, pressed && styles.btnPressed]}
-                    onPress={() => startBreak(len)}>
-                    <ThemedText type="smallBold">{len} {t('sessionComplete.min')}</ThemedText>
-                  </Pressable>
-                ))}
-              </ThemedView>
-            </ThemedView>
-
-            <Pressable
-              style={({ pressed }) => [styles.primaryBtn, tw('homeBtn'), pressed && styles.btnPressed]}
-              onPress={goHome}>
-              <ThemedText type="smallBold" style={styles.primaryBtnText}>
-                {t('sessionComplete.backToHome')}
-              </ThemedText>
-            </Pressable>
-          </>
-        )}
+        </ScrollView>
       </SafeAreaView>
       <DevKnobs screen="sessioncomplete" knobs={twKnobs} onChange={twChange} />
     </ThemedView>
@@ -541,43 +290,6 @@ const styles = StyleSheet.create({
     color: FP.brown,
     textAlign: 'center',
   },
-  moodPrompt: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: FP.brown,
-    textAlign: 'center',
-    marginBottom: Spacing.one,
-  },
-  moodRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: Spacing.three,
-    marginBottom: Spacing.three,
-  },
-  moodOption: { alignItems: 'center', gap: 4, width: 64 },
-  moodCircle: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: FP.pinkSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  moodFace: { width: 46, height: 46 },
-  moodRing: {
-    position: 'absolute',
-    top: -4,
-    left: -4,
-    right: -4,
-    bottom: -4,
-    borderRadius: 30,
-    borderWidth: 3,
-    borderColor: FP.pink,
-  },
-  moodLabel: { fontSize: 10, color: FP.muted, fontWeight: '500', textAlign: 'center' },
-  moodLabelActive: { color: FP.pink, fontWeight: '800' },
-
   rewardBlock: { alignItems: 'center', gap: Spacing.three },
   rewardTitle: { fontSize: 26, lineHeight: 32 },
   coinRow: {
@@ -643,24 +355,6 @@ const styles = StyleSheet.create({
   },
   btnPressed: { opacity: 0.85 },
   primaryBtnText: { color: BakeryColors.cocoaDark, fontSize: 16 },
-  moodBlock: { alignItems: 'center', gap: Spacing.three },
-  moodTitle: { fontSize: 24, lineHeight: 30 },
-  moodGrid: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    marginTop: Spacing.two,
-  },
-  moodBtn: {
-    alignItems: 'center',
-    padding: Spacing.two,
-    borderRadius: BakeryRadii.card,
-    gap: 4,
-    minWidth: 76,
-    backgroundColor: BakeryColors.glass,
-  },
-  moodEmoji: { fontSize: 32, lineHeight: 40 },
   skipBtn: { alignItems: 'center', paddingVertical: Spacing.two },
   breakBlock: { alignItems: 'center', gap: Spacing.three },
   breakTitle: { fontSize: 24, lineHeight: 30 },

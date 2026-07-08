@@ -1,9 +1,8 @@
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, AppState, Easing, type LayoutChangeEvent, PanResponder, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Animated, AppState, Easing, type LayoutChangeEvent, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
-import { playSwoosh } from '@/lib/sounds';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -18,7 +17,6 @@ import { StreakRescueModal } from '@/components/streak-rescue-modal';
 import { BirthdayRewardModal } from '@/components/birthday-reward-modal';
 import { TicketRewardModal } from '@/components/ticket-reward-modal';
 import { BondLevelUpModal } from '@/components/bond-levelup-modal';
-import { AfterMoodPrompt } from '@/components/after-mood-prompt';
 import { useStudyRoom } from '@/lib/use-study-room';
 import { BakeryGearEmoji } from '@/components/bakery-emoji';
 import { CountdownShape } from '@/components/countdown-shapes';
@@ -32,7 +30,7 @@ import { DiscoBackdrop } from '@/components/disco-backdrop';
 import { setTutorialTarget } from '@/lib/tutorial-targets';
 import i18n, { useTranslation } from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
-import { autoBreakMinutes, coinsForMinutes, formatCoins } from '@/constants/placeholder-data';
+import { coinsForMinutes, formatCoins } from '@/constants/placeholder-data';
 import { hanjiIsAnimated, resolveActiveCompanion } from '@/lib/companion-utils';
 import { HanjiFigure } from '@/components/hanji-figure';
 import { CompanionPet, PetCloudHost } from '@/components/companion-pet';
@@ -292,60 +290,6 @@ const DESK_KITS: Record<string, DeskKit> = {
 };
 const DEFAULT_DESK_FOOD = 'strawberry-shortcake';
 
-type DragId = string;
-
-function DraggableIngredient({
-  id, src, style, onDropped, mixerCenterX, mixerCenterY, baseX = 0, baseY = 0, baseScale = 1, dropRadius = 100,
-}: {
-  id: DragId; src: any; style: any;
-  onDropped: () => void;
-  mixerCenterX: number; mixerCenterY: number;
-  baseX?: number; baseY?: number; baseScale?: number; dropRadius?: number;
-}) {
-  const pan = useRef(new Animated.ValueXY()).current;
-  const scale = useRef(new Animated.Value(1)).current;
-  const opacity = useRef(new Animated.Value(1)).current;
-  const dropped = useRef(false);
-
-  const pr = useRef(PanResponder.create({
-    onStartShouldSetPanResponder: () => !dropped.current,
-    onMoveShouldSetPanResponder: () => !dropped.current,
-    onPanResponderGrant: () => {
-      pan.setOffset({ x: (pan.x as any)._value, y: (pan.y as any)._value });
-      pan.setValue({ x: 0, y: 0 });
-      // All animations here must share the JS driver, because `pan` is driven by
-      // Animated.event with useNativeDriver:false. Mixing native + JS on the same
-      // view promotes `pan` to native and crashes the spring-back on release.
-      Animated.spring(scale, { toValue: 1.2, useNativeDriver: false }).start();
-    },
-    onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
-    onPanResponderRelease: (_, g) => {
-      pan.flattenOffset();
-      Animated.spring(scale, { toValue: 1, useNativeDriver: false }).start();
-      const dist = Math.hypot(g.moveX - mixerCenterX, g.moveY - mixerCenterY);
-      if (dist < dropRadius) {
-        dropped.current = true;
-        playSwoosh(); // ingredient lands in the mixer
-        Animated.parallel([
-          Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: false }),
-          Animated.spring(scale, { toValue: 0.5, useNativeDriver: false }),
-        ]).start(onDropped);
-      } else {
-        Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: false }).start();
-      }
-    },
-  })).current;
-
-  return (
-    <Animated.View
-      style={[style, { transform: [{ translateX: baseX }, { translateY: baseY }, { translateX: pan.x }, { translateY: pan.y }, { scale: baseScale }, { scale }], opacity, zIndex: 20 }]}
-      {...pr.panHandlers}
-    >
-      <Image source={src} style={{ width: '100%', height: '100%' }} contentFit="contain" />
-    </Animated.View>
-  );
-}
-
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
@@ -568,8 +512,9 @@ export default function HomeScreen() {
     companionSkins,
     equippedBackgroundRoomId,
     equippedDeskRoomId,
-    addMoodEntry,
     startActiveSession,
+    finishStudyBlock,
+    clearSessionRun,
     shiftSessionStart,
     selectedFoodId,
     recordSession,
@@ -620,12 +565,9 @@ export default function HomeScreen() {
   const [finishingSession, setFinishingSession] = useState(false);
   const finishParamsRef = useRef<Record<string, string> | null>(null);
   const [homeFocused, setHomeFocused] = useState(false);
-  // Minutes of an early-ended-but-recorded session awaiting its after-mood (null = none).
-  // Only the manual stop sets this; the walk-away auto-stop leaves it null (no one's there).
-  const [earlyEndMoodMinutes, setEarlyEndMoodMinutes] = useState<number | null>(null);
-  // Session id of a just-early-ended session, so its after-mood links to the before-mood.
-  const [earlyEndMoodSessionId, setEarlyEndMoodSessionId] = useState<string | null>(null);
-  const [dragSession, setDragSession] = useState<DragSessionData | null>(null);
+  // A session queued by the session picker (via takePendingDragSession), waiting
+  // to auto-start once Home has focus. A separate effect below consumes it.
+  const [pendingStart, setPendingStart] = useState<DragSessionData | null>(null);
   // The streak + coin pills are two separate buttons that should always be the same
   // width. Each reports its natural (content-sized) width; we take the larger and
   // force both to it — so they match without stretching full-width, and it adapts to
@@ -636,7 +578,6 @@ export default function HomeScreen() {
     const w = e.nativeEvent.layout.width;
     setHudChipW((prev) => (prev !== undefined && prev >= w ? prev : w));
   };
-  const [droppedIds, setDroppedIds] = useState<Set<DragId>>(new Set());
 
   // Celebrate the streak ticking up: a quick pop on the chip + flame, and a
   // floating "+1". Driven purely by currentStreak rising (no date math) — fires on
@@ -702,18 +643,6 @@ export default function HomeScreen() {
   const charScaleY = charBounce.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1.02] });
   const charScaleX = charBounce.interpolate({ inputRange: [0, 1], outputRange: [1.02, 0.99] });
 
-  // Mixer bowl centre (approx) — right:-30, bottom:30%, size 285×235. Uses the
-  // REAL screen size (not a hardcoded iPhone 393×852) and, on tablet, follows the
-  // mixer's dialed offset so the drop zone lands where the mixer actually appears.
-  // The scene is capped at MaxContentWidth and centered (safeArea), so on a tablet
-  // the desk/mixer sit in a narrower centered column — anchor the drop X to that
-  // column's right edge, not the full window, or the target is off by hundreds of
-  // px and ingredients never register as dropped. (On phones sceneRight === winW,
-  // so this is byte-identical to before.)
-  const sceneRight = (winW + Math.min(winW, MaxContentWidth)) / 2;
-  const MIXER_CX = sceneRight - 30 - 285 / 2 + 285 * 0.35 + (isTablet ? htScaled.mixerX : 0);
-  const MIXER_CY_FROM_TOP = winH * (1 - 0.30) - 235 * 0.55 + (isTablet ? htScaled.mixerY : 0);
-
   useFocusEffect(useCallback(() => {
     // Track Home focus so the recipe-badge popup waits until the player is back on
     // Home (not over the session-complete screen right after studying).
@@ -721,10 +650,7 @@ export default function HomeScreen() {
     // Make sure the idle bounce is running each time Home regains focus.
     startBounce();
     const session = takePendingDragSession();
-    if (session) {
-      setDragSession(session);
-      setDroppedIds(new Set());
-    }
+    if (session) setPendingStart(session);
     // Refresh the pending friend-request count for the badge.
     let cancelled = false;
     if (user?.id) {
@@ -765,43 +691,32 @@ export default function HomeScreen() {
   }, [showTutorial]);
 
 
-  const handleIngredientDropped = (id: DragId) => {
-    setDroppedIds(prev => {
-      const next = new Set(prev);
-      next.add(id);
-      if (next.size === 3) {
-        const ds = dragSession;
-        setTimeout(() => {
-          // Show the loading overlay, then START the session behind it (instead of
-          // in onDone). Previously the session only started once the overlay had
-          // lifted, so the studying view mounted onto a bare screen and its art
-          // popped in. Now the scene mounts and fully renders/decodes its art while
-          // the overlay still covers it, so it's ready the instant the loader ends.
-          //
-          // The session starts with a far-future start time so the timer stays
-          // frozen at full duration while the loader plays (getSessionSecondsLeft
-          // clamps via sessionNowMs — nothing ticks down behind the overlay). When
-          // the overlay lifts (onDone), we snap the start to *now* so the user gets
-          // the full duration from the moment they actually see the screen.
-          const FROZEN_START = new Date(Date.now() + 3_600_000).toISOString();
-          showLoadingScreen(() => {
-            if (ds) shiftSessionStart((Date.now() - new Date(FROZEN_START).getTime()) / 1000);
-            setDragSession(null);
-            setDroppedIds(new Set());
-          }, { until: preloadStudyAssets(studyCharacterSource) });
-          if (ds) {
-            const sessionId = startActiveSession({ durationMinutes: ds.durationMinutes, subjectName: ds.subjectName, taskId: ds.taskId, taskTitle: ds.taskTitle, breakMinutes: ds.breakMinutes, startedAt: FROZEN_START });
-            if (ds.moodValue && ds.moodLabel) {
-              // Tag the before-mood with the session id so Progress can pair it with
-              // this session's after-mood (works even if the session ends early).
-              addMoodEntry({ value: ds.moodValue, label: ds.moodLabel, type: 'before', sessionMinutes: ds.durationMinutes, sessionId, timestamp: new Date().toISOString() });
-            }
-          }
-        }, 300);
-      }
-      return next;
-    });
+  const beginSession = (ds: DragSessionData) => {
+    // Show the loading overlay, then START the session behind it (instead of
+    // in onDone). The scene mounts and fully renders/decodes its art while the
+    // overlay still covers it, so it's ready the instant the loader ends.
+    //
+    // The session starts with a far-future start time so the timer stays frozen at
+    // full duration while the loader plays (getSessionSecondsLeft clamps via
+    // sessionNowMs — nothing ticks down behind the overlay). When the overlay lifts
+    // (onDone), we snap the start to *now* so the user gets the full duration from
+    // the moment they actually see the screen.
+    const FROZEN_START = new Date(Date.now() + 3_600_000).toISOString();
+    showLoadingScreen(() => {
+      shiftSessionStart((Date.now() - new Date(FROZEN_START).getTime()) / 1000);
+    }, { until: preloadStudyAssets(studyCharacterSource) });
+    startActiveSession({ durationMinutes: ds.durationMinutes, subjectName: ds.subjectName, taskId: ds.taskId, taskTitle: ds.taskTitle, breakMinutes: ds.breakMinutes, startedAt: FROZEN_START });
   };
+
+  // Auto-start a session queued by the session picker. Runs in its own effect
+  // (not inside the memoized focus callback) so it closes over the current render's
+  // studyCharacterSource. takePendingDragSession already nulled the queue, and we
+  // clear pendingStart here, so this fires exactly once per queued session.
+  useEffect(() => {
+    if (!pendingStart) return;
+    beginSession(pendingStart);
+    setPendingStart(null);
+  }, [pendingStart]);
   const activeSessionId = activeSession?.id ?? null;
   const myBgRoom = ROOM_PAIRS.find((r) => r.id === equippedBackgroundRoomId) ?? ROOM_PAIRS[0];
   // In a multiplayer study session, everyone studies in the host's room.
@@ -880,11 +795,11 @@ export default function HomeScreen() {
     ? getSessionElapsedMinutes(activeSession.startedAt, activeSession.durationMinutes, sessionNowMs)
     : 0;
 
-  // Hide the bottom tab bar while dragging ingredients or studying.
+  // Hide the bottom tab bar while studying.
   useEffect(() => {
-    setDragActive(!!dragSession || !!activeSession);
+    setDragActive(!!activeSession);
     return () => setDragActive(false);
-  }, [dragSession, activeSession]);
+  }, [activeSession]);
 
   useEffect(() => {
     setDidHomeImageFail(false);
@@ -925,20 +840,19 @@ export default function HomeScreen() {
     if (activeSession.isMultiplayer) return;
 
     handledCompletionId.current = activeSession.id;
-    // Stash the finish params, then let the study view play the recipe-pop out of
-    // the timer for a beat before we navigate (see the effect below).
+    // Credit this block NOW (coins/streak/bond) and stash the checkpoint params, then
+    // let the study view play the recipe-pop for a beat before we navigate (below).
+    finishStudyBlock({
+      minutes: activeSession.durationMinutes,
+      coins: coinsForMinutes(activeSession.durationMinutes),
+      subjectName: activeSession.subjectName ?? null,
+      firstOfRun: !activeSession.continuedRun,
+    });
     finishParamsRef.current = {
-      sessionLength: String(activeSession.durationMinutes),
+      lastMinutes: String(activeSession.durationMinutes),
       subject: activeSession.subjectName ?? '',
-      coinsEarned: String(coinsForMinutes(activeSession.durationMinutes)),
       taskId: activeSession.taskId ?? '',
       taskTitle: activeSession.taskTitle ?? '',
-      // Break length picked at setup (flows to the post-session break + the record),
-      // and whether THIS session was itself auto-started (caps auto-start chaining).
-      breakMinutes: String(activeSession.breakMinutes ?? autoBreakMinutes(activeSession.durationMinutes)),
-      autoStarted: activeSession.autoStarted ? '1' : '',
-      // Carried to session-complete so its after-mood links to this session's before-mood.
-      sessionId: activeSession.id,
     };
     setFinishingSession(true);
   }, [activeSession, sessionSecondsLeft]);
@@ -956,15 +870,17 @@ export default function HomeScreen() {
     const finishNow = () => {
       if (handledCompletionId.current === activeSession.id) return;
       handledCompletionId.current = activeSession.id;
+      finishStudyBlock({
+        minutes: activeSession.durationMinutes,
+        coins: coinsForMinutes(activeSession.durationMinutes),
+        subjectName: activeSession.subjectName ?? null,
+        firstOfRun: !activeSession.continuedRun,
+      });
       finishParamsRef.current = {
-        sessionLength: String(activeSession.durationMinutes),
+        lastMinutes: String(activeSession.durationMinutes),
         subject: activeSession.subjectName ?? '',
-        coinsEarned: String(coinsForMinutes(activeSession.durationMinutes)),
         taskId: activeSession.taskId ?? '',
         taskTitle: activeSession.taskTitle ?? '',
-        breakMinutes: String(activeSession.breakMinutes ?? autoBreakMinutes(activeSession.durationMinutes)),
-        autoStarted: activeSession.autoStarted ? '1' : '',
-        sessionId: activeSession.id,
       };
       setFinishingSession(true);
     };
@@ -975,27 +891,23 @@ export default function HomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSession]);
 
-  // After the recipe pops out of the timer, hand off to the finish screen.
+  // After the recipe pops out of the timer, hand off to the checkpoint ("Continue
+  // studying / Rest for now"). The block was already credited in finishStudyBlock, so
+  // this is a pure choice screen — no receipt between blocks.
   useEffect(() => {
     if (!finishingSession) return;
-    let clearId: ReturnType<typeof setTimeout>;
     const id = setTimeout(() => {
-      // Push the receipt FIRST, then clear the session a beat later. If we cleared
-      // first, Home would instantly re-render its top HUD (streak chip + coins) and
-      // that chip would flash behind the receipt as it slides in — looking like the
-      // streak "showed up on the receipt." Deferring the clear keeps the in-session
-      // view up until the receipt has fully covered Home.
       if (finishParamsRef.current) {
-        router.push({ pathname: '/session-complete', params: finishParamsRef.current });
+        // IMPORTANT: do NOT clearActiveSession here. The session stays alive so
+        // "Continue studying" can start the next block in the same run; the session is
+        // only cleared at Rest (from the checkpoint). The checkpoint covers Home, so
+        // the 00:00 study view underneath is hidden.
+        router.push({ pathname: '/session-checkpoint', params: finishParamsRef.current });
         finishParamsRef.current = null;
       }
       setFinishingSession(false);
-      clearId = setTimeout(() => clearActiveSession(), 450);
     }, 1700);
-    return () => {
-      clearTimeout(id);
-      clearTimeout(clearId);
-    };
+    return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finishingSession]);
 
@@ -1030,17 +942,14 @@ export default function HomeScreen() {
           // Play the loading overlay over the study→home transition.
           showLoadingScreen(undefined, { quick: true });
           clearActiveSession();
+          clearSessionRun(); // drop any accumulated run (ending early shows no receipt)
 
           // No coins for an early end, but still log the time studied toward
-          // streak/stats if they put in a meaningful chunk — and capture the
-          // after-mood (the session-complete screen, which normally records it,
-          // is skipped on an early end). Gated on the same threshold as the record
-          // so a too-short session leaves neither a stat nor a mood entry.
+          // streak/stats if they put in a meaningful chunk. Gated on the same
+          // threshold as the record so a too-short session leaves no stat.
           if (sessionElapsedMinutes >= MIN_MINUTES_FOR_COINS) {
             recordSession(sessionElapsedMinutes);
             addSubjectTime(endedSession.subjectName, sessionElapsedMinutes);
-            setEarlyEndMoodMinutes(sessionElapsedMinutes);
-            setEarlyEndMoodSessionId(endedSession.id);
           }
         },
       },
@@ -1055,6 +964,7 @@ export default function HomeScreen() {
     const endedSession = activeSession;
     showLoadingScreen(undefined, { quick: true });
     clearActiveSession();
+    clearSessionRun(); // drop any accumulated run (ending early shows no receipt)
     // Leaving mid-session ends it early → no coins (same rule as a manual end),
     // but still log the study time toward streak/stats.
     if (sessionElapsedMinutes >= MIN_MINUTES_FOR_COINS) {
@@ -1132,7 +1042,7 @@ export default function HomeScreen() {
             </View>
           ) : (
             <>
-              {!dragSession && <View style={[styles.topHud, tTopHud]}>
+              <View style={[styles.topHud, tTopHud]}>
                 <View style={styles.statusRow}>
                   <View style={styles.streakChipWrap} ref={(n) => setTutorialTarget('streak', n)}>
                     <Animated.View
@@ -1268,75 +1178,65 @@ export default function HomeScreen() {
                     </View>
                   </Pressable>
                 </View>
-              </View>}
+              </View>
 
               {/* Switch character button — top left, below exam card */}
-              {!dragSession && (
-                <Pressable
-                  style={({ pressed }) => [styles.switchCharBtn, { top: ph.btnTops[0], width: ph.szLg, height: ph.szLg }, tBtn(210, 0, 80), pressed && styles.startButtonPressed]}
-                  onPress={() => router.push('/companion-gallery')}
-                  ref={(n) => setTutorialTarget('switchChar', n)}
-                  accessibilityLabel={t('home.a11ySwitchCharacter')}>
-                  <Image source={SWITCH_CHARACTER_BTN} style={[styles.switchCharImg, { width: ph.szLg, height: ph.szLg }, tImg(80)]} contentFit="contain" />
-                </Pressable>
-              )}
+              <Pressable
+                style={({ pressed }) => [styles.switchCharBtn, { top: ph.btnTops[0], width: ph.szLg, height: ph.szLg }, tBtn(210, 0, 80), pressed && styles.startButtonPressed]}
+                onPress={() => router.push('/companion-gallery')}
+                ref={(n) => setTutorialTarget('switchChar', n)}
+                accessibilityLabel={t('home.a11ySwitchCharacter')}>
+                <Image source={SWITCH_CHARACTER_BTN} style={[styles.switchCharImg, { width: ph.szLg, height: ph.szLg }, tImg(80)]} contentFit="contain" />
+              </Pressable>
 
               {/* Food menu button — top left, below switch character */}
-              {!dragSession && (
-                <Pressable
-                  style={({ pressed }) => [styles.foodMenuBtn, { top: ph.btnTops[1], width: ph.szLg, height: ph.szLg }, tBtn(292, 1, 80), pressed && styles.startButtonPressed]}
-                  onPress={() => router.push('/food-gallery')}
-                  ref={(n) => setTutorialTarget('food', n)}
-                  accessibilityLabel={t('home.a11yFoodMenu')}>
-                  <Image source={FOOD_MENU_BTN} style={[styles.foodMenuImg, { width: ph.szLg, height: ph.szLg }, tImg(80)]} contentFit="contain" />
-                </Pressable>
-              )}
+              <Pressable
+                style={({ pressed }) => [styles.foodMenuBtn, { top: ph.btnTops[1], width: ph.szLg, height: ph.szLg }, tBtn(292, 1, 80), pressed && styles.startButtonPressed]}
+                onPress={() => router.push('/food-gallery')}
+                ref={(n) => setTutorialTarget('food', n)}
+                accessibilityLabel={t('home.a11yFoodMenu')}>
+                <Image source={FOOD_MENU_BTN} style={[styles.foodMenuImg, { width: ph.szLg, height: ph.szLg }, tImg(80)]} contentFit="contain" />
+              </Pressable>
 
               {/* Edit Room button — top left, above settings */}
-              {!dragSession && (
-                <Pressable
-                  style={({ pressed }) => [styles.editRoomBtn, { top: ph.btnTops[2], width: ph.szMd, height: ph.szMd }, tBtn(376, 2, 72), pressed && styles.startButtonPressed]}
-                  onPress={() => router.push('/edit-room')}
-                  ref={(n) => setTutorialTarget('editRoom', n)}
-                  accessibilityLabel={t('home.a11yEditRoom')}>
-                  <Image source={EDIT_ROOM_BTN} style={[styles.editRoomImg, { width: ph.szMd, height: ph.szMd }, tImg(72)]} contentFit="contain" />
-                </Pressable>
-              )}
+              <Pressable
+                style={({ pressed }) => [styles.editRoomBtn, { top: ph.btnTops[2], width: ph.szMd, height: ph.szMd }, tBtn(376, 2, 72), pressed && styles.startButtonPressed]}
+                onPress={() => router.push('/edit-room')}
+                ref={(n) => setTutorialTarget('editRoom', n)}
+                accessibilityLabel={t('home.a11yEditRoom')}>
+                <Image source={EDIT_ROOM_BTN} style={[styles.editRoomImg, { width: ph.szMd, height: ph.szMd }, tImg(72)]} contentFit="contain" />
+              </Pressable>
 
               {/* Settings button — top left, below food menu */}
-              {!dragSession && (
-                <Pressable
-                  style={({ pressed }) => [styles.topSettingsBtn, { top: ph.btnTops[3], width: ph.szMd, height: ph.szMd }, tBtn(452, 3, 72), pressed && styles.startButtonPressed]}
-                  onPress={() => router.push('/settings')}
-                  accessibilityLabel={t('home.a11yOpenSettings')}>
-                  <Image source={SETTINGS_BTN} style={[styles.topSettingsImg, { width: ph.szMd, height: ph.szMd }, tImg(72)]} contentFit="contain" />
-                  {settingsHasAlert && (
-                    <View style={[styles.settingsAlertDot, isTablet && styles.settingsAlertDotTablet]} pointerEvents="none" />
-                  )}
-                </Pressable>
-              )}
+              <Pressable
+                style={({ pressed }) => [styles.topSettingsBtn, { top: ph.btnTops[3], width: ph.szMd, height: ph.szMd }, tBtn(452, 3, 72), pressed && styles.startButtonPressed]}
+                onPress={() => router.push('/settings')}
+                accessibilityLabel={t('home.a11yOpenSettings')}>
+                <Image source={SETTINGS_BTN} style={[styles.topSettingsImg, { width: ph.szMd, height: ph.szMd }, tImg(72)]} contentFit="contain" />
+                {settingsHasAlert && (
+                  <View style={[styles.settingsAlertDot, isTablet && styles.settingsAlertDotTablet]} pointerEvents="none" />
+                )}
+              </Pressable>
 
               {/* Friend button — right side */}
-              {!dragSession && (
-                <Pressable
-                  style={({ pressed }) => [styles.friendBtn, { top: ph.friendTop, width: ph.szFr, height: ph.szFr }, tFriend, pressed && styles.startButtonPressed]}
-                  onPress={() => router.push('/friends')}
-                  accessibilityLabel={t('home.a11yFriends')}>
-                  <Image source={FRIEND_BTN} style={[styles.friendBtnImg, { width: ph.szFr, height: ph.szFr }, tFriendImg]} contentFit="contain" />
-                  {pendingRequests > 0 ? (
-                    <View style={[styles.friendReqBadge, isTablet && styles.friendReqBadgeTablet]} pointerEvents="none">
-                      <ThemedText style={styles.friendReqBadgeText}>
-                        {pendingRequests > 9 ? '9+' : pendingRequests}
-                      </ThemedText>
-                    </View>
-                  ) : hasUnreadDM ? (
-                    <View style={[styles.friendDmDot, isTablet && styles.friendDmDotTablet]} pointerEvents="none" />
-                  ) : null}
-                </Pressable>
-              )}
+              <Pressable
+                style={({ pressed }) => [styles.friendBtn, { top: ph.friendTop, width: ph.szFr, height: ph.szFr }, tFriend, pressed && styles.startButtonPressed]}
+                onPress={() => router.push('/friends')}
+                accessibilityLabel={t('home.a11yFriends')}>
+                <Image source={FRIEND_BTN} style={[styles.friendBtnImg, { width: ph.szFr, height: ph.szFr }, tFriendImg]} contentFit="contain" />
+                {pendingRequests > 0 ? (
+                  <View style={[styles.friendReqBadge, isTablet && styles.friendReqBadgeTablet]} pointerEvents="none">
+                    <ThemedText style={styles.friendReqBadgeText}>
+                      {pendingRequests > 9 ? '9+' : pendingRequests}
+                    </ThemedText>
+                  </View>
+                ) : hasUnreadDM ? (
+                  <View style={[styles.friendDmDot, isTablet && styles.friendDmDotTablet]} pointerEvents="none" />
+                ) : null}
+              </Pressable>
 
               <View style={[styles.homeCharacterLayer, phCharLayer, tCharLayer]} pointerEvents="box-none">
-                <CompanionPet onPet={petCompanion} disabled={!!dragSession} scale={isTablet ? htScaled.charScale : 1} companionName={activeCompanion.name} skinId={activeSkinId}>
+                <CompanionPet onPet={petCompanion} scale={isTablet ? htScaled.charScale : 1} companionName={activeCompanion.name} skinId={activeSkinId}>
                   <Animated.View
                     style={{ transform: [{ translateY: charTranslateY }, { scaleX: charScaleX }, { scaleY: charScaleY }] }}>
                     {hanjiIsAnimated(activeCompanionId, companionSkins?.[activeCompanionId ?? '']) ? (
@@ -1381,45 +1281,13 @@ export default function HomeScreen() {
               {/* Mixer on desk — matches the equipped dessert */}
               <Image source={deskKit.mixer} style={[styles.deskMixer, { width: ph.mixerW, height: ph.mixerH }, deskKit.mixerStyle, tMixer]} contentFit="contain" pointerEvents="none" />
 
-              {/* Ingredients — draggable in drag mode, static otherwise. The 3
-                  ingredients fill the 3 fixed desk slots, by index. */}
-              {dragSession ? (
-                <>
-                  {deskKit.ingredients.map((ing, idx) => (
-                    droppedIds.has(ing.id) ? null : (
-                      <DraggableIngredient
-                        key={ing.id}
-                        id={ing.id}
-                        src={ing.src}
-                        style={[...DESK_SLOT_STYLES[idx], ing.style]}
-                        baseX={isTablet ? htScaled.ingX + (idx - 1) * htScaled.ingSpread : 0}
-                        baseY={isTablet ? htScaled.ingY : 0}
-                        baseScale={isTablet ? htScaled.ingScale : 1}
-                        dropRadius={isTablet ? 160 : 100}
-                        onDropped={() => handleIngredientDropped(ing.id)}
-                        mixerCenterX={MIXER_CX}
-                        mixerCenterY={MIXER_CY_FROM_TOP}
-                      />
-                    )
-                  ))}
-                  {/* Drag prompt */}
-                  <View style={[styles.dragPrompt, { top: insets.top + 16 }]}>
-                    <View style={styles.dragPromptBubble}>
-                      <ThemedText style={styles.dragPromptText}>
-                        {droppedIds.size === 3 ? t('home.letsStudy') : t('home.dragAllIngredients')}
-                      </ThemedText>
-                    </View>
-                  </View>
-                </>
-              ) : (
-                <>
-                  {deskKit.ingredients.map((ing, idx) => (
-                    <Image key={ing.id} source={ing.src} style={[...DESK_SLOT_STYLES[idx], ing.style, tIngFor(idx)]} contentFit="contain" />
-                  ))}
-                </>
-              )}
+              {/* Ingredients — static desk decor. The 3 ingredients fill the 3
+                  fixed desk slots, by index. */}
+              {deskKit.ingredients.map((ing, idx) => (
+                <Image key={ing.id} source={ing.src} style={[...DESK_SLOT_STYLES[idx], ing.style, tIngFor(idx)]} contentFit="contain" />
+              ))}
 
-              {!dragSession && <View style={[styles.startSessionPressable, { bottom: ph.startBottom }, tStart, tStartRow]}>
+              <View style={[styles.startSessionPressable, { bottom: ph.startBottom }, tStart, tStartRow]}>
                 <View ref={(n) => setTutorialTarget('start', n)}>
                   <SoundPressable
                     style={({ pressed }) => [styles.startSessionInner, tStartInner, pressed && styles.startButtonPressed]}
@@ -1435,7 +1303,7 @@ export default function HomeScreen() {
                   accessibilityLabel={t('home.a11yPlayGame')}>
                   <Image source={GAME_BTN} style={styles.gameFloatingImg} contentFit="contain" />
                 </Pressable>
-              </View>}
+              </View>
             </>
           )}
         </View>
@@ -1452,17 +1320,6 @@ export default function HomeScreen() {
       {homeFocused && !activeSession && <BirthdayRewardModal />}
       {homeFocused && !activeSession && <TicketRewardModal />}
       {homeFocused && !activeSession && <BondLevelUpModal />}
-      {/* After-mood for a session ended early but still recorded — the only place
-          its mood is captured (the session-complete screen is skipped on early end). */}
-      <AfterMoodPrompt
-        minutes={earlyEndMoodMinutes}
-        onPick={(value, label, sessionMinutes) => {
-          addMoodEntry({ value, label, type: 'after', sessionMinutes, sessionId: earlyEndMoodSessionId ?? undefined, timestamp: new Date().toISOString() });
-          setEarlyEndMoodMinutes(null);
-          setEarlyEndMoodSessionId(null);
-        }}
-        onSkip={() => { setEarlyEndMoodMinutes(null); setEarlyEndMoodSessionId(null); }}
-      />
       {/* Coachmark tour is painted at the root (TutorialPortal) so it sits above
           the tab bar — its visibility is driven by the effect above via the signal. */}
       <DevKnobs screen="home" knobs={homeKnobs} onChange={(key, value) => setDialed((p) => ({ ...p, [key]: value }))} />
@@ -1581,26 +1438,6 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
   gameFloatingImg: { width: 72, height: 72 },
-  dragPrompt: {
-    position: 'absolute',
-    left: 0, right: 0,
-    alignItems: 'center',
-    zIndex: 30,
-  },
-  dragPromptBubble: {
-    backgroundColor: 'rgba(255,248,240,0.96)',
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderWidth: 1.5,
-    borderColor: '#F4C2C8',
-  },
-  dragPromptText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#C4607A',
-    textAlign: 'center',
-  },
   scene: {
     flex: 1,
     // overflow stays visible so the desk surface can bleed past the bottom

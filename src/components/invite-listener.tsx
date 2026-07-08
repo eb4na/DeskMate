@@ -37,8 +37,8 @@ const GAME_LABEL_KEY: Record<OnlineGameId, string> = {
 // in-progress match is never interrupted.
 const SURFACE_INVITE_OVER = new Set([
   '/settings', '/friends', '/profile', '/friend-card', '/dm-chat', '/companion-chat', '/companion-pfp',
-  '/session-picker', '/subject-picker', '/add-task', '/add-exam', '/reminder-settings', '/manage-subjects',
-  '/weekly-report', '/mood-chart', '/subject-chart', '/plus-upgrade', '/coin-shop', '/ambience-picker',
+  '/session-picker', '/add-task', '/add-exam', '/reminder-settings', '/manage-subjects',
+  '/weekly-report', '/subject-chart', '/plus-upgrade', '/coin-shop', '/ambience-picker',
   '/companion-gallery', '/edit-room', '/food-gallery', '/legal', '/party-invite', '/custom-timer',
 ]);
 

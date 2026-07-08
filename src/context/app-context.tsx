@@ -11,7 +11,8 @@ import { probeCloudState, pushCloudState, pushCloudStateDebounced } from '@/lib/
 import { showPopup } from '@/lib/popup';
 import { getEffectiveBunSkinId, getEffectiveCompanionSkins } from '@/lib/companion-utils';
 import { maskProfanity } from '@/lib/profanity';
-import { playCoin } from '@/lib/sounds';
+import { playCoin, playFinishDing } from '@/lib/sounds';
+import { track } from '@/lib/analytics';
 import { AD_REWARD_COINS, DAILY_AD_LIMIT } from '@/lib/ads';
 import { loadBlockedCodes, blockUserRemote, unblockUserRemote } from '@/lib/moderation';
 import { syncStreakReminders } from '@/lib/notifications';
@@ -25,19 +26,6 @@ import { HANJI_COMPANION_ID, recipeBadgeKey, badgesFromMadeFoods, hasAllCharacte
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type ChatTurn = { role: 'user' | 'assistant'; content: string; at?: number };
-
-export type MoodEntry = {
-  id: string;
-  value: string;
-  label: string;
-  type: 'before' | 'after';
-  sessionMinutes: number;
-  timestamp: string;
-  /** Id of the study session this mood belongs to — links a session's before +
-   *  after moods together (independent of duration, so early-ended sessions still
-   *  pair). Optional: moods recorded before this field existed won't have it. */
-  sessionId?: string;
-};
 
 export type ExamCountdown = {
   id: string;
@@ -110,6 +98,25 @@ export type ActiveSession = {
   /** True when this session began via the post-break auto-start (no human pick).
    *  Used to cap auto-start to ONE in a row — see the next-session picker. */
   autoStarted?: boolean;
+  /** True when this block is a "Continue studying" continuation of the same run
+   *  (see the session-checkpoint flow). A continued block keeps accumulating into
+   *  `sessionRun`; a fresh (non-continued) start resets the run accumulator. */
+  continuedRun?: boolean;
+};
+
+// A solo study "run" = one or more back-to-back blocks joined by "Continue
+// studying" at the checkpoint. Each finished block credits itself immediately
+// (see finishStudyBlock); this accumulator is pure display for the checkpoint and
+// the final (Rest) receipt so no interim receipt is shown between blocks.
+export type SessionRun = {
+  /** Cumulative study minutes across the run's blocks (excludes breaks). */
+  minutes: number;
+  /** Cumulative coins actually credited (after the daily cap) — for the receipt. */
+  coins: number;
+  subjectName: string | null;
+  /** Streak bonus awarded during the run (nonzero only on the first block/day). */
+  streakBonus: number;
+  isComeback: boolean;
 };
 
 // ─── Wave 4 types ─────────────────────────────────────────────────────────────
@@ -202,7 +209,6 @@ type PersistedState = {
   coins: number;
   sessionsCompleted: number;
   totalMinutes: number;
-  moodEntries: MoodEntry[];
   examCountdowns: ExamCountdown[];
   reminderEnabled: boolean;
   reminderTime: string;
@@ -389,7 +395,6 @@ const DEFAULTS: PersistedState = {
   coins: 1000,
   sessionsCompleted: 0,
   totalMinutes: 0,
-  moodEntries: [],
   examCountdowns: [],
   reminderEnabled: false,
   reminderTime: '20:00',
@@ -633,8 +638,6 @@ export const FREE_EXAM_LIMIT = 3;
 const MAX_EXAMS_PLUS = 50;
 // Total tasks a user can keep at once.
 export const MAX_TASKS = 500;
-// Mood journal keeps only the most recent entries so it can't grow forever.
-const MAX_MOOD_ENTRIES = 365;
 const STREAK_MAX = 200; // study-day streak caps here
 
 // Whole-day difference between two YYYY-MM-DD strings via pure UTC calendar math
@@ -946,7 +949,6 @@ type AppContextType = {
   coins: number;
   sessionsCompleted: number;
   totalMinutes: number;
-  moodEntries: MoodEntry[];
   examCountdowns: ExamCountdown[];
   reminderEnabled: boolean;
   reminderTime: string;
@@ -971,7 +973,7 @@ type AppContextType = {
   lifetimeTasksCompleted: number;
   lifetimeFriendSessions: number;
   claimedAchievements: string[];
-  recordQuestSession: (opts: { minutes: number; withFriend?: boolean }) => void;
+  recordQuestSession: (opts: { minutes: number; withFriend?: boolean; countSession?: boolean }) => void;
   claimQuestReward: (id: string) => void;
   claimAchievement: (id: string) => void;
 
@@ -985,6 +987,8 @@ type AppContextType = {
   sessionHistory: SessionRecord[];
   companionMinutes: Record<string, number>;
   activeSession: ActiveSession | null;
+  /** Accumulator for the current solo run (checkpoint + Rest receipt display). */
+  sessionRun: SessionRun | null;
 
   // Wave 4 state
   isPlus: boolean;
@@ -1123,7 +1127,6 @@ type AppContextType = {
   claimBirthdayReward: () => void;
   recordSession: (minutes: number) => void;
   petCompanion: () => void;
-  addMoodEntry: (entry: Omit<MoodEntry, 'id'>) => void;
   addExam: (exam: Omit<ExamCountdown, 'id'>) => string | null;
   removeExam: (id: string) => void;
   updateExam: (id: string, patch: Partial<Omit<ExamCountdown, 'id'>>) => void;
@@ -1168,10 +1171,21 @@ type AppContextType = {
     breakMinutes?: number;
     /** True when auto-started by the post-break next-session countdown. */
     autoStarted?: boolean;
-  }) => string; // returns the new session's id (for linking before/after moods)
+    /** True when this block continues the same run (keeps the run accumulator). */
+    continuedRun?: boolean;
+  }) => string; // returns the new session's id
   clearActiveSession: () => void;
+  /** Credit one finished solo study block (coins/streak/bond/subject/quests) immediately
+   *  and accumulate it into `sessionRun`. `coins` is the pre-cap amount; `firstOfRun`
+   *  ticks the quest session counter once per run (false on continued blocks). */
+  finishStudyBlock: (block: { minutes: number; coins: number; subjectName: string | null; firstOfRun: boolean }) => void;
+  /** Reset the run accumulator (on Rest/Done or an early stop). */
+  clearSessionRun: () => void;
   /** Pushes the active session's start forward by `seconds` (pause-for-break). */
   shiftSessionStart: (seconds: number) => void;
+  /** Set the active session's subject in place (no new session id) — used when a
+   *  solo/MP player picks their subject after the session has already started. */
+  setActiveSessionSubject: (subjectName: string | null) => void;
   /** Flag the active session as multiplayer (e.g. a solo session promoted to a room
    *  when the studier invites a friend in), so completion credits "with friend". */
   markSessionMultiplayer: () => void;
@@ -1234,6 +1248,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const sRef = useRef(s);
   sRef.current = s;
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
+  const [sessionRun, setSessionRun] = useState<SessionRun | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [loadedScopeKey, setLoadedScopeKey] = useState<string | null>(null);
   // Unread DM counts keyed by the sender's friend code. In-memory only — it's
@@ -1649,13 +1664,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   // Petting the companion on the home screen: a tiny daily-capped bond nudge toward the
-  // active companion's level (flavour, not a grind — at most a few bond/day).
+  // active companion's level (flavour, not a grind). Each tap ≈ a 10-minute study
+  // session's bond, and only 3 taps/day count (3 × PET_BOND = PET_DAILY_CAP).
   const petCompanion = () =>
     setS((prev) => {
       const today = todayISO();
       const petToday = prev.petBondDate === today ? prev.petBondToday : 0;
-      const PET_BOND = 1;
-      const PET_DAILY_CAP = 5;
+      const PET_BOND = 10;      // one tap ≈ a 10-minute study session's bond
+      const PET_DAILY_CAP = 30; // 3 taps/day
       const credited = Math.max(0, Math.min(PET_BOND, PET_DAILY_CAP - petToday));
       if (credited === 0) return prev; // already at today's pet cap
       const id = prev.activeCompanionId;
@@ -1670,11 +1686,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
       };
     });
 
-  // Record a FULLY-COMPLETED study session toward daily quests + achievements.
-  // Called only from the two real-completion funnels (solo session-complete and the
-  // multiplayer finish), deliberately NOT from recordSession — early-ended sessions
-  // go through recordSession too but pay no coins, so they must not advance quests.
-  const recordQuestSession = ({ minutes, withFriend }: { minutes: number; withFriend?: boolean }) =>
+  // Record a FULLY-COMPLETED study block toward daily quests + achievements.
+  // Called only from real-completion funnels (solo finishStudyBlock + the multiplayer
+  // finish), deliberately NOT from recordSession — early-ended sessions go through
+  // recordSession too but pay no coins, so they must not advance quests.
+  //
+  // `countSession` gates the sessions-completed tally: minutes ALWAYS count (so a solo
+  // "Continue studying" run never loses minutes toward a study-time quest), but the
+  // session counter ticks once per RUN — pass `false` on continued blocks so the whole
+  // run reads as a single completed session (matching the cumulative Rest receipt).
+  const recordQuestSession = ({
+    minutes,
+    withFriend,
+    countSession = true,
+  }: {
+    minutes: number;
+    withFriend?: boolean;
+    countSession?: boolean;
+  }) =>
     setS((prev) => {
       const today = todayISO();
       const q = rolledQuests(prev.quests, today);
@@ -1683,7 +1712,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...prev,
         quests: {
           ...q,
-          sessionsToday: q.sessionsToday + 1,
+          sessionsToday: q.sessionsToday + (countSession ? 1 : 0),
           minutesToday: q.minutesToday + minutes,
           beforeNoonMinutesToday: q.beforeNoonMinutesToday + (beforeNoon ? minutes : 0),
           friendSessionsToday: q.friendSessionsToday + (withFriend ? 1 : 0),
@@ -1725,12 +1754,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         claimedAchievements: [...prev.claimedAchievements, id],
       };
     });
-
-  const addMoodEntry = (entry: Omit<MoodEntry, 'id'>) =>
-    setS((prev) => ({
-      ...prev,
-      moodEntries: [{ ...entry, id: uid() }, ...prev.moodEntries].slice(0, MAX_MOOD_ENTRIES),
-    }));
 
   const addExam = (exam: Omit<ExamCountdown, 'id'>): string | null => {
     const newId = uid();
@@ -2029,6 +2052,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isMultiplayer,
     breakMinutes,
     autoStarted,
+    continuedRun,
   }: {
     durationMinutes: number;
     subjectName: string | null;
@@ -2038,8 +2062,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isMultiplayer?: boolean;
     breakMinutes?: number;
     autoStarted?: boolean;
+    continuedRun?: boolean;
   }) => {
     const sessionId = uid();
+    // A fresh (non-continued) session starts a new run — wipe the accumulator so the
+    // next Rest receipt only sums this run's blocks. A continued block keeps it.
+    if (!continuedRun) setSessionRun(null);
     setActiveSession({
       id: sessionId,
       durationMinutes,
@@ -2050,6 +2078,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isMultiplayer,
       breakMinutes,
       autoStarted,
+      continuedRun,
     });
     return sessionId;
   };
@@ -2058,12 +2087,94 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setActiveSession(null);
   };
 
+  const clearSessionRun = () => setSessionRun(null);
+
+  // Credit ONE finished solo study block the instant its timer hits zero, and add it
+  // to the run accumulator. This is the crediting that used to live in the
+  // session-complete receipt's mount effect — moved here so the checkpoint can show
+  // "Continue / Rest" without a receipt while nothing is ever double-credited (the
+  // streak/cap/bond calls below are all idempotent-or-cumulative per day) and no
+  // study is lost if the app is killed at the checkpoint. Quest MINUTES count every
+  // block; the quest SESSION counter ticks only on the run's first block (firstOfRun)
+  // so a continued run reads as one completed session.
+  const finishStudyBlock = ({
+    minutes,
+    coins,
+    subjectName,
+    firstOfRun,
+  }: {
+    minutes: number;
+    coins: number;
+    subjectName: string | null;
+    firstOfRun: boolean;
+  }) => {
+    playFinishDing(); // oven-timer "ding": this block is done
+    // Coins actually credited after the daily cap (snapshot BEFORE addCoins) — the
+    // receipt shows the run's real total, matching the old receipt's cap note.
+    const actualEarned = Math.min(coins, Math.max(0, DAILY_EARN_CAP - s.earnedToday));
+    addCoins(coins);
+    recordSession(minutes);
+    addSubjectTime(subjectName, minutes);
+    recordQuestSession({ minutes, countSession: firstOfRun });
+    if (s.selectedFoodId) markFoodMade(s.selectedFoodId);
+    track('study_session_completed', { minutes, subject: subjectName, coins });
+
+    // Accumulate minutes/coins synchronously; streak bonus is folded in once the
+    // streak commits (which may wait on the rescue prompt below).
+    setSessionRun((prev) => {
+      const base = prev ?? { minutes: 0, coins: 0, subjectName, streakBonus: 0, isComeback: false };
+      return {
+        ...base,
+        minutes: base.minutes + minutes,
+        coins: base.coins + actualEarned,
+        subjectName: base.subjectName ?? subjectName,
+      };
+    });
+
+    const commit = (rescueWithFreeze: boolean) => {
+      const { bonus, isComeback, rescued } = updateStreak(
+        rescueWithFreeze ? { rescueWithFreeze: true } : undefined,
+      );
+      setSessionRun((prev) =>
+        prev ? { ...prev, streakBonus: prev.streakBonus + bonus, isComeback: prev.isComeback || isComeback } : prev,
+      );
+      if (rescued) {
+        showPopup(
+          i18n.t('progress.streakProtected'),
+          i18n.t('sessionComplete.freezeUsedMsg', { count: Math.max(0, s.streakFreezes - 1) }),
+        );
+      }
+    };
+
+    // Streak lapsed 2–4 days ago and the user owns a freeze → ask whether to spend one
+    // (same guard the receipt used). Otherwise commit straight through.
+    const last = s.streak.lastStudyDate;
+    const gap = last ? daysBetween(last, todayISO()) : 0;
+    const canRescue = gap >= 2 && gap <= 4 && s.streakFreezes > 0 && streakRescuePending(s, todayISO());
+    if (canRescue) {
+      showPopup(
+        i18n.t('sessionComplete.rescueStreakQ'),
+        i18n.t('sessionComplete.rescueStreakMsg', { count: s.streak.currentStreak }),
+        [
+          { text: i18n.t('sessionComplete.letItReset'), style: 'cancel', onPress: () => commit(false) },
+          { text: i18n.t('progress.useFreeze'), onPress: () => commit(true) },
+        ],
+      );
+    } else {
+      commit(false);
+    }
+  };
+
   // Push the session's start time forward by `seconds` — used to pause the timer
   // during a break (the displayed countdown is frozen meanwhile).
   const shiftSessionStart = (seconds: number) => {
     setActiveSession((prev) =>
       prev ? { ...prev, startedAt: new Date(new Date(prev.startedAt).getTime() + seconds * 1000).toISOString() } : prev,
     );
+  };
+
+  const setActiveSessionSubject = (subjectName: string | null) => {
+    setActiveSession((prev) => (prev ? { ...prev, subjectName } : prev));
   };
 
   const markSessionMultiplayer = () => {
@@ -2766,7 +2877,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         coins: s.coins,
         sessionsCompleted: s.sessionsCompleted,
         totalMinutes: s.totalMinutes,
-        moodEntries: s.moodEntries,
         examCountdowns: s.examCountdowns,
         reminderEnabled: s.reminderEnabled,
         reminderTime: s.reminderTime,
@@ -2804,13 +2914,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         sessionHistory: s.sessionHistory,
         companionMinutes: s.companionMinutes ?? {},
         activeSession,
+        sessionRun,
         addCoins,
         claimAdReward,
         claimLoginReward,
         claimBirthdayReward,
         recordSession,
         petCompanion,
-        addMoodEntry,
         addExam,
         removeExam,
         updateExam,
@@ -2834,7 +2944,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addSubjectTime,
         startActiveSession,
         clearActiveSession,
+        finishStudyBlock,
+        clearSessionRun,
         shiftSessionStart,
+        setActiveSessionSubject,
         markSessionMultiplayer,
         incrementSkipSubjectCount,
         resetSkipSubjectCount,

@@ -338,24 +338,6 @@
     "replaceAction": "置き換える",
     "replaceStartWithout": "保存せずに開始"
   },
-  "subjectPicker": {
-    "title": "科目を選ぶ（任意）",
-    "manage": "管理 →",
-    "noSubjects": "科目がありません。",
-    "addOne": "追加 →",
-    "pickTask": "タスクを選ぶ（任意）",
-    "startWithTask": "セッション開始",
-    "startWithoutTask": "タスクなしで開始",
-    "skipTask": "今はスキップ",
-    "skipSubject": "科目をスキップ",
-    "studySubject": "{{name}}を学習",
-    "session": "{{length}}分セッション",
-    "nudge": "科目を追加すると進捗レポートが充実します！",
-    "manageSubjects": "科目を管理 →",
-    "moodTitle": "今の気分は？",
-    "moodSubtitle": "気分を記録してパターンを確認しよう",
-    "skipMood": "スキップしてセッション開始"
-  },
   "session": {
     "awayTitle": "勉強に戻ろう！",
     "awayBody": "1分以内に戻らないと、勉強セッションが終了します。",
@@ -425,6 +407,9 @@
     "yesFinished": "✓ 完了した",
     "notYet": "まだ",
     "continue": "続ける",
+    "keepStudyingTitle": "勉強を続けますか？",
+    "continueStudying": "勉強を続ける",
+    "restForNow": "今は休憩する",
     "howDoYouFeel": "今の気分は？",
     "afterStudying": "学習後",
     "skip": "今はスキップ",
@@ -448,8 +433,7 @@
     "rescueStreakQ": "ストリークを維持しますか？",
     "rescueStreakMsg": "数日空いてしまいました。ストリークフリーズを使って{{count}}日のストリークを維持しますか？",
     "letItReset": "リセットする",
-    "freezeUsedMsg": "ストリークフリーズを使用しました。今月は残り{{count}}個です。",
-    "moodPrompt": "勉強した後の気分は？"
+    "freezeUsedMsg": "ストリークフリーズを使用しました。今月は残り{{count}}個です。"
   },
   "tasks": {
     "title": "タスク",
@@ -520,13 +504,7 @@
     "tagSessionsHint": "セッションに科目を付けると、ここに内訳が表示されます。",
     "mostStudied": "最も勉強した科目:",
     "leastStudied": "最も少ない科目:",
-    "moodTracker": "気分トラッカー",
-    "moodChartBtn": "気分チャート",
     "subjectChartBtn": "科目チャート",
-    "moodEmptyHint": "セッション後の気分チェックインがここに表示されます。",
-    "before": "前",
-    "after": "後",
-    "moodInsightText": "記録したセッションの{{pct}}%で、より前向きな気分を選びました。",
     "historyCapTitle": "すべての履歴",
     "historyCapDesc": "無料アカウントでは直近{{months}}か月分の記録が表示されます。プラスですべての学習履歴をアンロックしましょう。",
     "companions": "コンパニオン",
@@ -887,8 +865,6 @@
     "statStreakNow": "現在のストリーク",
     "statEstCoins": "推定コイン",
     "subjectBreakdown": "科目の内訳",
-    "moodInsight": "気分の分析",
-    "moodInsightText": "今週、記録したセッションの{{pct}}%でより前向きな気分を選びました。",
     "goalNextWeek": "来週の目標",
     "advancedInsights": "高度な分析",
     "bestStudyHours": "最適な学習時間",
@@ -1010,6 +986,7 @@
     "birthday": "誕生日",
     "friendCodeLabel": "フレンドコード",
     "friendFallback": "フレンド {{code}}",
+    "newUser": "新規ユーザー",
     "addFriend": "フレンド追加",
     "addingFriend": "送信中…",
     "requestSentTitle": "リクエストを送信しました！",
@@ -1359,7 +1336,6 @@
     "general": "一般学習"
   },
   "screens": {
-    "subjectMood": "科目と気分",
     "addExamCountdown": "試験カウントダウンを追加",
     "dailyReminder": "毎日のリマインダー",
     "task": "タスク",
@@ -1369,7 +1345,6 @@
     "ambience": "環境音",
     "settings": "設定",
     "getCoins": "コインを入手",
-    "moodChart": "気分チャート",
     "subjectChart": "科目チャート"
   },
   "studyRoom": {
@@ -1828,32 +1803,6 @@
     "playAgain": "もう一度",
     "rematch": "再戦",
     "leave": "退出"
-  },
-  "moodChart": {
-    "pickMood": "気分を選ぶ",
-    "headline": "「{{mood}}」になった回数",
-    "totalTimes": "合計{{count}}回",
-    "last8Weeks": "過去8週間",
-    "allTimes": "すべての記録",
-    "noData": "セッション後に気分を記録すると、ここにグラフが表示されます。"
-  },
-  "moods": {
-    "motivated": "やる気満々",
-    "ready": "準備OK",
-    "calm": "穏やか",
-    "excited": "ワクワク",
-    "happy": "ハッピー",
-    "okay": "まあまあ",
-    "sleepy": "眠い",
-    "tired": "疲れた",
-    "stressed": "ストレス",
-    "lost": "迷っている",
-    "frustrated": "イライラ",
-    "down": "落ち込み",
-    "proud": "誇らしい",
-    "better": "スッキリ",
-    "relieved": "ほっとした",
-    "exhausted": "ヘトヘト"
   },
   "subjectNames": {
     "math": "数学",

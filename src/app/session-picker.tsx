@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { setPendingDragSession } from '@/lib/drag-session';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
@@ -79,13 +80,17 @@ export default function SessionPickerScreen() {
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   function startSolo() {
-    router.push({
-      pathname: '/subject-picker',
-      params: {
-        sessionLength: String(selected),
-        ...(selectedSubjectId ? { subjectId: selectedSubjectId } : {}),
-      },
+    const subjectName = selectedSubjectId
+      ? subjects.find((s) => s.id === selectedSubjectId && !s.archived)?.name ?? null
+      : null;
+    setPendingDragSession({
+      durationMinutes: selected,
+      subjectName,
+      taskId: null,
+      taskTitle: null,
     });
+    if (router.canDismiss()) router.dismissAll();
+    else router.replace('/');
   }
 
   function startMultiplayer() {

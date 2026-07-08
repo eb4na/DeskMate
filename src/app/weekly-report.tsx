@@ -44,7 +44,7 @@ function slicePath(startAngle: number, endAngle: number): string {
 
 export default function WeeklyReportScreen() {
   const { t } = useTranslation();
-  const { sessionHistory, tasks, moodEntries, streak, subjects } = useApp();
+  const { sessionHistory, tasks, streak, subjects } = useApp();
   // Tablet: scale every size by ONE shared factor so all text (preset-based AND
   // explicitly-sized) grows together and stays uniform — no more "some huge, some tiny."
   const { scale, contentWidth } = useTabletScale();
@@ -61,10 +61,6 @@ export default function WeeklyReportScreen() {
 
   const weekTasks = tasks.filter(
     (task) => task.completedAt && task.completedAt.split('T')[0] >= weekStartISO,
-  );
-
-  const weekMoods = moodEntries.filter(
-    (m) => m.timestamp >= sevenDaysAgo.toISOString(),
   );
 
   // Subject breakdown
@@ -94,15 +90,6 @@ export default function WeeklyReportScreen() {
 
   // Estimated coins — 1 coin per minute studied (matches the earn rule).
   const estimatedCoins = weekSessions.reduce((sum, r) => sum + coinsForMinutes(r.minutes), 0);
-
-  // Mood improvement
-  const weekAfterMoods = weekMoods.filter((m) => m.type === 'after');
-  const POSITIVE = new Set(['proud', 'better', 'relieved']);
-  const positiveCount = weekAfterMoods.filter((m) => POSITIVE.has(m.value)).length;
-  const moodPct =
-    weekAfterMoods.length >= 3
-      ? Math.round((positiveCount / weekAfterMoods.length) * 100)
-      : null;
 
   // Summary sentence
   const hasSummary = weekMinutes > 0 || weekSessionCount > 0 || weekTasks.length > 0 || weekDays > 0;
@@ -234,19 +221,6 @@ export default function WeeklyReportScreen() {
             </ThemedView>
           )}
 
-          {/* Mood insight */}
-          {moodPct !== null && (
-            <ThemedView style={styles.section}>
-              <ThemedText type="smallBold" style={styles.sectionTitle}>{t('weeklyReport.moodInsight')}</ThemedText>
-              <ThemedView type="backgroundElement" style={styles.moodInsightCard}>
-                <ThemedText style={styles.moodInsightEmoji}></ThemedText>
-                <ThemedText type="small" style={styles.moodInsightText}>
-                  {t('weeklyReport.moodInsightText', { pct: moodPct })}
-                </ThemedText>
-              </ThemedView>
-            </ThemedView>
-          )}
-
           {/* Suggested goal */}
           <ThemedView style={styles.section}>
             <ThemedText type="smallBold" style={styles.sectionTitle}>{t('weeklyReport.goalNextWeek')}</ThemedText>
@@ -326,15 +300,6 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     overflow: 'hidden',
   },
   subjectBarFill: { height: '100%', borderRadius: 2 * s },
-  moodInsightCard: {
-    borderRadius: 16 * s,
-    padding: Spacing.three * s,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two * s,
-  },
-  moodInsightEmoji: { fontSize: 28 * s, lineHeight: 34 * s },
-  moodInsightText: { flex: 1, fontSize: 13 * s, lineHeight: 20 * s },
   goalCard: {
     borderRadius: 16 * s,
     padding: Spacing.three * s,

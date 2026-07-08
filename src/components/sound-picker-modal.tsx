@@ -264,28 +264,9 @@ export function SoundPickerModal({
                 {mode === 'sounds' ? `Spotify  →` : `←  ${t('soundPicker.title')}`}
               </Text>
             </Pressable>
-            {/* Top-right "Spotify background" toggle — Plus only (locked otherwise). */}
-            {mode === 'spotify' && (
-              <Pressable
-                onPress={() => {
-                  // In a room, only the host controls disco — guests follow. Tapping
-                  // does nothing; the caption below the row spells out why.
-                  if (discoHostOnly) return;
-                  if (isPlus) { setSpotifyBgEnabled(!spotifyBgEnabled); } else { onClose(); router.push('/plus-upgrade'); }
-                }}
-                accessibilityLabel={t('soundPicker.spotifyBg')}
-                style={({ pressed }) => [styles.bgIconBtn, pressed && styles.pressed]}
-                hitSlop={8}>
-                <DiscoBallGlyph on={isPlus && spotifyBgEnabled} locked={!isPlus} />
-              </Pressable>
-            )}
+            {/* Disco ("Spotify background") toggle removed — the feature is dormant.
+                Its rendering/broadcast code stays in place but is now unreachable. */}
           </View>
-
-          {/* Non-host in a room: disco is host-controlled, so always tell them here
-              (rendered outside the spotify sub-states so it can't get hidden). */}
-          {discoHostOnly && mode === 'spotify' && (
-            <Text style={styles.hostHint}>{t('soundPicker.discoHostOnly')}</Text>
-          )}
 
           {mode === 'sounds' ? (
             /* Record + centre play/pause on the left, owned shop sounds on the right */
@@ -399,20 +380,8 @@ export function SoundPickerModal({
             })}
           </View>
 
-          {/* Black/white pick for the Spotify background (the on/off toggle lives in the
-              top-right of this popup). Only shown once the background is enabled. */}
-          {mode === 'spotify' && isPlus && spotifyBgEnabled && (
-            <View style={styles.bgRow}>
-              <Pressable
-                onPress={() => setSpotifyBgColor('black')}
-                style={[styles.bgSwatch, { backgroundColor: '#000000' }, spotifyBgColor === 'black' && styles.bgSwatchSelected]}
-                hitSlop={4} />
-              <Pressable
-                onPress={() => setSpotifyBgColor('white')}
-                style={[styles.bgSwatch, { backgroundColor: '#FFFFFF' }, spotifyBgColor === 'white' && styles.bgSwatchSelected]}
-                hitSlop={4} />
-            </View>
-          )}
+          {/* Disco ("Spotify background") black/white colour picker removed — the
+              feature is dormant, so this control no longer appears. */}
 
           <Pressable onPress={onClose} style={({ pressed }) => [styles.doneBtn, isTablet && styles.doneBtnTablet, pressed && styles.pressed]}>
             <Text style={[styles.doneBtnText, isTablet && styles.doneBtnTextTablet]}>{t('common.done')}</Text>

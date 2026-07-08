@@ -384,9 +384,8 @@ export default function FriendsScreen() {
                         <Image source={getCompanionImage(s.companionId, s.skinId)} style={styles.miniCardFig} contentFit="contain" />
                       </View>
                       <Text style={styles.suggestName} numberOfLines={1}>
-                        {s.displayName || t('friendCard.friendFallback', { code: s.friendCode })}
+                        {s.displayName || t('friendCard.newUser')}
                       </Text>
-                      <Text style={styles.friendCode}>{s.friendCode}</Text>
                       <Pressable
                         disabled={sent}
                         style={({ pressed }) => [styles.suggestAddBtn, sent && styles.suggestAddedBtn, pressed && !sent && styles.pressed]}

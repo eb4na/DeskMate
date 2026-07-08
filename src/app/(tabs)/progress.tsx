@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -21,12 +20,6 @@ import { FREE_HISTORY_MONTHS, historyCutoffISO } from '@/lib/history-window';
 import { localizeSubjectName } from '@/lib/subject-utils';
 import { formatDuration, formatMinutesShort } from '@/lib/format-duration';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
-import { AFTER_SESSION_MOODS, BEFORE_SESSION_MOODS } from '@/constants/placeholder-data';
-
-const MOOD_IMAGE: Record<string, number> = {};
-for (const m of [...BEFORE_SESSION_MOODS, ...AFTER_SESSION_MOODS]) {
-  if (!(m.value in MOOD_IMAGE)) MOOD_IMAGE[m.value] = m.image;
-}
 import {
   BakeryColors,
   BakeryRadii,
@@ -73,7 +66,6 @@ export default function ProgressScreen() {
     sessionsCompleted,
     totalMinutes,
     streak,
-    moodEntries,
     subjects,
     sessionHistory,
     isPlus,
@@ -218,37 +210,8 @@ export default function ProgressScreen() {
   // Lifetime counters (sessionsCompleted/totalMinutes/streak) stay uncapped.
   const cutoff = historyCutoffISO(isPlus);
   const visibleSessions = cutoff ? sessionHistory.filter((r) => r.dateISO >= cutoff) : sessionHistory;
-  const visibleMoods = cutoff ? moodEntries.filter((e) => e.timestamp >= cutoff) : moodEntries;
   const hasOlderHistory =
-    !!cutoff &&
-    (sessionHistory.some((r) => r.dateISO < cutoff) || moodEntries.some((e) => e.timestamp < cutoff));
-
-  const recentMoods = visibleMoods.slice(0, 10);
-
-  // One mood card (before/after). Extracted so before+after rows of the same
-  // session can be grouped and joined with a connector line.
-  const renderMoodRow = (entry: (typeof recentMoods)[number]) => {
-    const dateStr = new Date(entry.timestamp).toLocaleDateString(i18n.language || 'en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
-    return (
-      <ThemedView key={entry.id} type="backgroundElement" style={styles.moodRow}>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.moodType}>
-          {entry.type === 'before' ? t('progress.before') : t('progress.after')}
-        </ThemedText>
-        {MOOD_IMAGE[entry.value] && (
-          <Image source={MOOD_IMAGE[entry.value]} style={styles.moodImage} contentFit="contain" />
-        )}
-        <ThemedText type="smallBold" style={styles.moodLabel}>
-          {t(`moods.${entry.value}`, { defaultValue: entry.label })}
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.moodMeta}>
-          {formatMinutesShort(entry.sessionMinutes, t)} · {dateStr}
-        </ThemedText>
-      </ThemedView>
-    );
-  };
+    !!cutoff && sessionHistory.some((r) => r.dateISO < cutoff);
 
   // ── Streak status ─────────────────────────────────────────────────────────
   // Days since last study: <=1 active, 2–4 broken-but-rescuable (1–3 missed days,
@@ -266,14 +229,6 @@ export default function ProgressScreen() {
   const weekSessions = visibleSessions.filter((r) => r.dateISO >= weekStartISO);
   const weekMinutes = weekSessions.reduce((s, r) => s + r.minutes, 0);
   const weekDays = new Set(weekSessions.map((r) => r.dateISO)).size;
-
-  // ── Mood insight ──────────────────────────────────────────────────────────
-  const afterMoods = visibleMoods.filter((m) => m.type === 'after');
-  const POSITIVE = new Set(['proud', 'better', 'relieved']);
-  const posCount = afterMoods.filter((m) => POSITIVE.has(m.value)).length;
-  const moodInsightPct = afterMoods.length >= 5
-    ? Math.round((posCount / afterMoods.length) * 100)
-    : null;
 
   // ── Subject time breakdown ────────────────────────────────────────────────
   // Recomputed from the visible (windowed) history so it stays in step with the
@@ -521,7 +476,7 @@ export default function ProgressScreen() {
               <ThemedText type="smallBold">{t('progress.timeBySubject')}</ThemedText>
               <View style={styles.subjectHeaderBtns}>
                 <Pressable
-                  style={({ pressed }) => [styles.moodChartBtn, pressed && styles.pressed]}
+                  style={({ pressed }) => [styles.chartBtn, pressed && styles.pressed]}
                   onPress={() => router.push('/subject-chart')}>
                   <ChartIcon size={14 * ps} />
                   <ThemedText type="small" themeColor="textSecondary">{t('progress.subjectChartBtn')}</ThemedText>
@@ -587,70 +542,6 @@ export default function ProgressScreen() {
               </ThemedView>
             )}
           </ThemedView>
-
-          {/* ── Mood tracker ──────────────────────────────────────────────── */}
-          <ThemedView style={styles.section}>
-            <ThemedView style={styles.sectionHeader}>
-              <ThemedText type="smallBold">{t('progress.moodTracker')}</ThemedText>
-              <Pressable
-                style={({ pressed }) => [styles.moodChartBtn, pressed && styles.pressed]}
-                onPress={() => router.push('/mood-chart')}>
-                <ChartIcon size={14 * ps} />
-                <ThemedText type="small" themeColor="textSecondary">{t('progress.moodChartBtn')}</ThemedText>
-              </Pressable>
-            </ThemedView>
-            {recentMoods.length === 0 ? (
-              <ThemedView type="backgroundElement" style={styles.emptyCard}>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                  {t('progress.moodEmptyHint')}
-                </ThemedText>
-              </ThemedView>
-            ) : (
-              <ThemedView style={styles.moodList}>
-                {(() => {
-                  // Group each session's after+before rows (an 'after' immediately
-                  // followed by its 'before') and join them with a connector line.
-                  // Match by sessionId when both have one (reliable even if the session
-                  // ended early); fall back to matching duration for older moods that
-                  // predate sessionId.
-                  const rows: ReactNode[] = [];
-                  for (let i = 0; i < recentMoods.length; i++) {
-                    const entry = recentMoods[i];
-                    const next = recentMoods[i + 1];
-                    const paired =
-                      entry.type === 'after' &&
-                      next?.type === 'before' &&
-                      (entry.sessionId && next.sessionId
-                        ? next.sessionId === entry.sessionId
-                        : next.sessionMinutes === entry.sessionMinutes);
-                    if (paired) {
-                      rows.push(
-                        <View key={entry.id} style={styles.moodPair}>
-                          {renderMoodRow(entry)}
-                          <View style={styles.moodConnector} />
-                          {renderMoodRow(next)}
-                        </View>,
-                      );
-                      i++; // consume the paired 'before'
-                    } else {
-                      rows.push(renderMoodRow(entry));
-                    }
-                  }
-                  return rows;
-                })()}
-              </ThemedView>
-            )}
-          </ThemedView>
-
-          {/* ── Mood insight ─────────────────────────────────────────────── */}
-          {moodInsightPct !== null && (
-            <ThemedView type="backgroundElement" style={styles.moodInsightCard}>
-              <ThemedText style={styles.moodInsightEmoji}></ThemedText>
-              <ThemedText type="small" style={styles.moodInsightText}>
-                {t('progress.moodInsightText', { pct: moodInsightPct })}
-              </ThemedText>
-            </ThemedView>
-          )}
 
           {/* ── Full-history upsell — only when older data is actually hidden ── */}
           {hasOlderHistory && (
@@ -756,7 +647,7 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     borderWidth: 1.5,
     borderColor: BakeryColors.shortbread,
   },
-  moodChartBtn: {
+  chartBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6 * s,
@@ -781,30 +672,6 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   highlightItem: { flexDirection: 'row', alignItems: 'center', gap: 6 * s },
   emptyCard: { borderRadius: BakeryRadii.card * s, padding: Spacing.four * s, alignItems: 'center', backgroundColor: BakeryColors.glass, borderWidth: 1.5, borderColor: BakeryColors.shortbread },
   emptyText: { textAlign: 'center', lineHeight: 20 * s },
-  moodList: { gap: Spacing.two * s },
-  // before+after of one session, joined by a short vertical pink connector line.
-  moodPair: {},
-  moodConnector: {
-    width: 3.5 * s,
-    height: 14 * s,
-    marginLeft: 34 * s,
-    borderRadius: 2 * s,
-    backgroundColor: BakeryColors.buttonPink,
-  },
-  moodRow: {
-    borderRadius: BakeryRadii.card * s,
-    padding: Spacing.three * s,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two * s,
-    backgroundColor: BakeryColors.glass,
-    borderWidth: 1.5,
-    borderColor: BakeryColors.shortbread,
-  },
-  moodType: { width: 40 * s, fontSize: 11 * s },
-  moodImage: { width: 30 * s, height: 30 * s },
-  moodLabel: { flex: 1 },
-  moodMeta: { fontSize: 11 * s },
   examCard: {
     borderRadius: BakeryRadii.card * s,
     padding: Spacing.three * s,
@@ -912,16 +779,4 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   dgFill: { height: '100%', borderRadius: 5 * s, backgroundColor: '#F4A6B6' },
   dgFillDone: { backgroundColor: '#F2607E' },
   dgFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
-  moodInsightCard: {
-    borderRadius: BakeryRadii.card * s,
-    padding: Spacing.three * s,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two * s,
-    backgroundColor: BakeryColors.glass,
-    borderWidth: 1.5,
-    borderColor: BakeryColors.shortbread,
-  },
-  moodInsightEmoji: { fontSize: 28 * s, lineHeight: 34 * s },
-  moodInsightText: { flex: 1, lineHeight: 20 * s },
 });

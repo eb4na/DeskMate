@@ -338,24 +338,6 @@
     "replaceAction": "Remplacer",
     "replaceStartWithout": "Commencer sans enregistrer"
   },
-  "subjectPicker": {
-    "title": "Choisir une matière (optionnel)",
-    "manage": "Gérer →",
-    "noSubjects": "Aucune matière encore.",
-    "addOne": "Ajouter →",
-    "pickTask": "Choisir une tâche (optionnel)",
-    "startWithTask": "Démarrer la session",
-    "startWithoutTask": "Démarrer sans tâche",
-    "skipTask": "Passer pour l'instant",
-    "skipSubject": "Passer la matière",
-    "studySubject": "Étudier {{name}}",
-    "session": "Session de {{length}} minutes",
-    "nudge": "Ajoutez des matières pour de meilleurs rapports de progression !",
-    "manageSubjects": "Gérer les matières →",
-    "moodTitle": "Comment te sens-tu ?",
-    "moodSubtitle": "Note ton humeur pour repérer des tendances au fil du temps",
-    "skipMood": "Passer et démarrer la session"
-  },
   "session": {
     "awayTitle": "Reviens étudier !",
     "awayBody": "Ta session d'étude s'arrêtera si tu ne reviens pas dans une minute.",
@@ -425,6 +407,9 @@
     "yesFinished": "✓ Oui, terminée",
     "notYet": "Pas encore",
     "continue": "Continuer",
+    "keepStudyingTitle": "Continuer à étudier ?",
+    "continueStudying": "Continuer à étudier",
+    "restForNow": "Faire une pause",
     "howDoYouFeel": "Comment te sens-tu ?",
     "afterStudying": "Après avoir étudié",
     "skip": "Passer pour l'instant",
@@ -448,8 +433,7 @@
     "rescueStreakQ": "Garder ta série ?",
     "rescueStreakMsg": "Tu as manqué quelques jours. Utiliser un gel de série pour conserver ta série de {{count}} jours ?",
     "letItReset": "Laisser réinitialiser",
-    "freezeUsedMsg": "Gel de série utilisé. Il t'en reste {{count}} ce mois-ci.",
-    "moodPrompt": "Comment te sens-tu après avoir étudié ?"
+    "freezeUsedMsg": "Gel de série utilisé. Il t'en reste {{count}} ce mois-ci."
   },
   "tasks": {
     "title": "Tâches",
@@ -520,13 +504,7 @@
     "tagSessionsHint": "Associe une matière à tes sessions pour voir ta répartition ici.",
     "mostStudied": "Le plus étudié :",
     "leastStudied": "Le moins étudié :",
-    "moodTracker": "Suivi de l'humeur",
-    "moodChartBtn": "Graphique d'humeur",
     "subjectChartBtn": "Graphique par matière",
-    "moodEmptyHint": "Tes relevés d'humeur apparaîtront ici après les sessions.",
-    "before": "Avant",
-    "after": "Après",
-    "moodInsightText": "Tu as choisi une humeur plus positive après {{pct}}% des sessions enregistrées.",
     "historyCapTitle": "Ton historique complet",
     "historyCapDesc": "Les comptes gratuits affichent tes {{months}} derniers mois de progression. Débloque tout ton historique d'étude avec Premium.",
     "companions": "Compagnons",
@@ -887,8 +865,6 @@
     "statStreakNow": "Série actuelle",
     "statEstCoins": "Pièces est.",
     "subjectBreakdown": "Répartition par matière",
-    "moodInsight": "Analyse de l'humeur",
-    "moodInsightText": "Cette semaine, tu as choisi une humeur plus positive après {{pct}}% des sessions enregistrées.",
     "goalNextWeek": "Objectif pour la semaine prochaine",
     "advancedInsights": "Analyses avancées",
     "bestStudyHours": "Meilleures heures d'étude",
@@ -1010,6 +986,7 @@
     "birthday": "Anniversaire",
     "friendCodeLabel": "CODE AMI",
     "friendFallback": "Ami {{code}}",
+    "newUser": "Nouvel utilisateur",
     "addFriend": "Ajouter un ami",
     "addingFriend": "Envoi…",
     "requestSentTitle": "Demande envoyée !",
@@ -1359,7 +1336,6 @@
     "general": "Étude générale"
   },
   "screens": {
-    "subjectMood": "Matière et humeur",
     "addExamCountdown": "Ajouter un compte à rebours d'examen",
     "dailyReminder": "Rappel quotidien",
     "task": "Tâche",
@@ -1369,7 +1345,6 @@
     "ambience": "Ambiance",
     "settings": "Réglages",
     "getCoins": "Obtenir des pièces",
-    "moodChart": "Graphique d'humeur",
     "subjectChart": "Graphique par matière"
   },
   "studyRoom": {
@@ -1828,32 +1803,6 @@
     "playAgain": "Rejouer",
     "rematch": "Revanche",
     "leave": "Quitter"
-  },
-  "moodChart": {
-    "pickMood": "Choisis une humeur",
-    "headline": "Tu t'es senti {{mood}}",
-    "totalTimes": "{{count}} fois au total",
-    "last8Weeks": "8 dernières semaines",
-    "allTimes": "Chaque fois",
-    "noData": "Enregistre ton humeur après les sessions pour la voir ici en graphique."
-  },
-  "moods": {
-    "motivated": "Motivé",
-    "ready": "Prêt",
-    "calm": "Calme",
-    "excited": "Excité",
-    "happy": "Heureux",
-    "okay": "Ça va",
-    "sleepy": "Endormi",
-    "tired": "Fatigué",
-    "stressed": "Stressé",
-    "lost": "Perdu",
-    "frustrated": "Frustré",
-    "down": "Abattu",
-    "proud": "Fier",
-    "better": "Mieux",
-    "relieved": "Soulagé",
-    "exhausted": "Épuisé"
   },
   "subjectNames": {
     "math": "Mathématiques",

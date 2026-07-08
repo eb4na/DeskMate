@@ -338,24 +338,6 @@
     "replaceAction": "替换",
     "replaceStartWithout": "不保存直接开始"
   },
-  "subjectPicker": {
-    "title": "选择科目（可选）",
-    "manage": "管理 →",
-    "noSubjects": "暂无科目。",
-    "addOne": "添加 →",
-    "pickTask": "选择任务（可选）",
-    "startWithTask": "开始学习",
-    "startWithoutTask": "不选任务开始",
-    "skipTask": "暂时跳过",
-    "skipSubject": "跳过科目",
-    "studySubject": "学习 {{name}}",
-    "session": "{{length}} 分钟专注",
-    "nudge": "添加科目可以让进度报告更详细哦！",
-    "manageSubjects": "管理科目 →",
-    "moodTitle": "你现在感觉如何？",
-    "moodSubtitle": "记录心情，发现长期的规律",
-    "skipMood": "跳过并开始专注"
-  },
   "session": {
     "awayTitle": "快回来学习吧！",
     "awayBody": "如果你一分钟内不回来，学习时段就会停止。",
@@ -425,6 +407,9 @@
     "yesFinished": "✓ 是的，完成了",
     "notYet": "还没",
     "continue": "继续",
+    "keepStudyingTitle": "继续学习？",
+    "continueStudying": "继续学习",
+    "restForNow": "先休息一下",
     "howDoYouFeel": "你感觉如何？",
     "afterStudying": "学习之后",
     "skip": "暂时跳过",
@@ -448,8 +433,7 @@
     "rescueStreakQ": "保留你的连续记录？",
     "rescueStreakMsg": "你错过了几天。要使用连续冻结来保留 {{count}} 天的连续记录吗？",
     "letItReset": "让它重置",
-    "freezeUsedMsg": "已使用连续冻结。本月还剩 {{count}} 个。",
-    "moodPrompt": "学习后感觉如何？"
+    "freezeUsedMsg": "已使用连续冻结。本月还剩 {{count}} 个。"
   },
   "tasks": {
     "title": "任务",
@@ -520,13 +504,7 @@
     "tagSessionsHint": "给专注标记科目，即可在此查看明细。",
     "mostStudied": "学习最多：",
     "leastStudied": "学习最少：",
-    "moodTracker": "心情追踪",
-    "moodChartBtn": "心情图表",
     "subjectChartBtn": "科目图表",
-    "moodEmptyHint": "专注结束后，你的心情记录会显示在这里。",
-    "before": "之前",
-    "after": "之后",
-    "moodInsightText": "在 {{pct}}% 的已记录专注后，你选择了更积极的心情。",
     "historyCapTitle": "完整的学习记录",
     "historyCapDesc": "免费账户仅显示最近 {{months}} 个月的进度。升级会员解锁完整的学习记录。",
     "companions": "伙伴",
@@ -887,8 +865,6 @@
     "statStreakNow": "当前连续",
     "statEstCoins": "预计金币",
     "subjectBreakdown": "科目明细",
-    "moodInsight": "心情洞察",
-    "moodInsightText": "本周，在 {{pct}}% 的已记录专注后，你选择了更积极的心情。",
     "goalNextWeek": "下周目标",
     "advancedInsights": "高级洞察",
     "bestStudyHours": "最佳学习时段",
@@ -1010,6 +986,7 @@
     "birthday": "生日",
     "friendCodeLabel": "好友码",
     "friendFallback": "好友 {{code}}",
+    "newUser": "新用户",
     "addFriend": "添加好友",
     "addingFriend": "发送中…",
     "requestSentTitle": "请求已发送！",
@@ -1359,7 +1336,6 @@
     "general": "通用学习"
   },
   "screens": {
-    "subjectMood": "科目与心情",
     "addExamCountdown": "添加考试倒计时",
     "dailyReminder": "每日提醒",
     "task": "任务",
@@ -1369,7 +1345,6 @@
     "ambience": "环境音",
     "settings": "设置",
     "getCoins": "获取金币",
-    "moodChart": "心情图表",
     "subjectChart": "科目图表"
   },
   "studyRoom": {
@@ -1828,32 +1803,6 @@
     "playAgain": "再玩一次",
     "rematch": "再来一局",
     "leave": "离开"
-  },
-  "moodChart": {
-    "pickMood": "选择心情",
-    "headline": "你感到{{mood}}",
-    "totalTimes": "共{{count}}次",
-    "last8Weeks": "最近8周",
-    "allTimes": "全部记录",
-    "noData": "学习后记录心情，这里就会生成图表。"
-  },
-  "moods": {
-    "motivated": "干劲十足",
-    "ready": "准备就绪",
-    "calm": "平静",
-    "excited": "兴奋",
-    "happy": "开心",
-    "okay": "还行",
-    "sleepy": "困倦",
-    "tired": "疲惫",
-    "stressed": "有压力",
-    "lost": "迷茫",
-    "frustrated": "沮丧",
-    "down": "低落",
-    "proud": "自豪",
-    "better": "轻松多了",
-    "relieved": "松了口气",
-    "exhausted": "精疲力尽"
   },
   "subjectNames": {
     "math": "数学",
