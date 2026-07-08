@@ -153,17 +153,27 @@ async function signInWithGoogleNative(): Promise<OAuthResult> {
   }
 }
 
+// Native Google id-token sign-in is DISABLED. Confirmed empirically (2026-07-07):
+// on iOS the GoogleSignIn SDK always stamps a fresh `nonce` claim into the id token
+// (a different value every sign-in, even after signOut), but @react-native-google-
+// signin v16 exposes no way to set or read that nonce — so we can never pass the
+// matching value to supabase.auth.signInWithIdToken, and Supabase rejects the token
+// ("Passed nonce and nonce in id_token should either both exist or not"). Until the
+// library supports a nonce, Google uses the web OAuth flow (Supabase owns the nonce
+// end-to-end there, so it just works). Apple native is unaffected — its verifier
+// doesn't use a nonce. Flip this to re-enable native Google if the lib gains support.
+const GOOGLE_NATIVE_ENABLED = false;
+
 /** Sign in (or sign up) with a social provider. */
 export function signInWithProvider(provider: Provider): Promise<OAuthResult> {
-  // Apple + Google on iOS use their native sheets (no supabase.co web prompt).
-  // Everything else — non-iOS, an unavailable native API, or Google before its
-  // client ids are configured — falls back to the web OAuth flow.
+  // Apple on iOS uses its native sheet (no supabase.co web prompt). Google and
+  // everything else fall back to the web OAuth flow (see GOOGLE_NATIVE_ENABLED).
   if (provider === 'apple' && Platform.OS === 'ios') {
     return AppleAuthentication.isAvailableAsync().then((available) =>
       available ? signInWithAppleNative() : webSignInWithProvider(provider),
     );
   }
-  if (provider === 'google' && Platform.OS === 'ios' && googleNativeConfigured) {
+  if (provider === 'google' && Platform.OS === 'ios' && googleNativeConfigured && GOOGLE_NATIVE_ENABLED) {
     return signInWithGoogleNative();
   }
   return webSignInWithProvider(provider);
