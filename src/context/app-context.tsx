@@ -1,7 +1,7 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import i18n, { detectDeviceLanguage } from '@/i18n';
-import { COINS_PER_MINUTE, DAILY_EARN_CAP, MAX_FRIENDS, STATIC_SUBJECTS } from '@/constants/placeholder-data';
+import { capCoins, COINS_PER_MINUTE, DAILY_EARN_CAP, MAX_FRIENDS, STATIC_SUBJECTS } from '@/constants/placeholder-data';
 import { SHOP_ITEMS, type ShopCategory } from '@/constants/shop-data';
 import { dailyRewardCoins } from '@/constants/login-rewards';
 import { dailyGoalIds, getQuest, getAchievement } from '@/constants/quests';
@@ -1050,6 +1050,9 @@ type AppContextType = {
   previewBondLevelUp: () => void;
   /** DEV-only: fake a 1-day streak lapse (+1 freeze) so the "Use streak freeze" rescue prompt shows on Home. */
   devLapseStreak: () => void;
+  /** DEV-only: max out the account — own the whole shop catalog, all recipes/badges
+   *  (incl. Hanji), 9,999,999 coins, high bond with every companion, Plus active. */
+  devMaxOutAccount: () => void;
   // True once this account's saved state has been *reliably* loaded (local/cloud) —
   // distinct from `loaded`, which also flips true when a load fails and saving is
   // paused. Guards the abandoned-onboarding reset from acting on default fallbacks.
@@ -1538,7 +1541,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const actualAdd = Math.min(amount, remaining);
       return {
         ...prev,
-        coins: prev.coins + actualAdd,
+        coins: capCoins(prev.coins + actualAdd),
         earnedToday: basedToday + actualAdd,
         earnedDate: today,
       };
@@ -1561,7 +1564,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (b >= DAILY_AD_LIMIT) return cur;
       return {
         ...cur,
-        coins: cur.coins + AD_REWARD_COINS,
+        coins: capCoins(cur.coins + AD_REWARD_COINS),
         adRewardCount: b + 1,
         adRewardDate: t0,
       };
@@ -1598,7 +1601,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return {
         ...prev,
         streak,
-        coins: prev.coins + payout,
+        coins: capCoins(prev.coins + payout),
         loginRewardDate: today,
       };
     });
@@ -1617,7 +1620,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (realBirthday && prev.birthdayRewardYear === year) return prev;
       return {
         ...prev,
-        coins: prev.coins + BIRTHDAY_REWARD_COINS,
+        coins: capCoins(prev.coins + BIRTHDAY_REWARD_COINS),
         birthdayRewardYear: realBirthday ? year : prev.birthdayRewardYear,
       };
     });
@@ -1733,7 +1736,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!def || (q as any)[def.statKey] < def.goal) return { ...prev, quests: q };
       return {
         ...prev,
-        coins: prev.coins + def.reward,
+        coins: capCoins(prev.coins + def.reward),
         quests: { ...q, claimedToday: [...q.claimedToday, id] },
       };
     });
@@ -1750,7 +1753,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (value < def.goal) return prev;
       return {
         ...prev,
-        coins: prev.coins + def.reward,
+        coins: capCoins(prev.coins + def.reward),
         claimedAchievements: [...prev.claimedAchievements, id],
       };
     });
@@ -1861,7 +1864,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           },
           // Award `next` coins once per day (intentionally not daily-capped).
           // Plus members earn double the streak bonus.
-          coins: prev.coins + (prev.isPlus ? r.next * 2 : r.next),
+          coins: capCoins(prev.coins + (prev.isPlus ? r.next * 2 : r.next)),
           // A rescued streak consumes one freeze.
           streakFreezes: r.useFreeze ? prev.streakFreezes - 1 : prev.streakFreezes,
         };
@@ -2505,7 +2508,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addPurchasedCoins = (amount: number) =>
     setS((prev) => ({
       ...prev,
-      coins: prev.coins + amount,
+      coins: capCoins(prev.coins + amount),
       purchasedCoins: prev.purchasedCoins + amount,
     }));
 
@@ -2596,6 +2599,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
       streakFreezes: Math.max(1, prev.streakFreezes),
       streakRescueDismissedDate: '', // un-dismiss so the prompt is pending again today
     }));
+  };
+
+  // TEST: one-tap "everything" account — owns the entire shop catalog (companions,
+  // outfits, backgrounds, desks, sounds, recipe packs), marks every recipe baked
+  // (which derives all character badges, so Hanji's unlock condition is also met),
+  // grants 9,999,999 coins, a high bond level with every companion, and activates
+  // Plus through the normal grant path (freezes/tickets/gold frame follow along).
+  // Purely additive: never downgrades anything the account already has.
+  const devMaxOutAccount = () => {
+    setRecipeBadgePending(null);
+    setS((prev) => {
+      const madeFoods = Array.from(new Set([...prev.madeFoods, ...RECIPE_IDS]));
+      const ownedShopItems = Array.from(
+        new Set([...prev.ownedShopItems, ...SHOP_ITEMS.map((item) => item.id)]),
+      );
+      // ~10,000 bond minutes ≈ level 30 — deep into the curve for every companion.
+      const companionMinutes = { ...prev.companionMinutes };
+      const bondIds = [
+        prev.starterCompanionId,
+        ...SHOP_ITEMS.filter((item) => item.category === 'companion').map((item) => `shop:${item.id}`),
+      ];
+      for (const id of bondIds) {
+        companionMinutes[id] = Math.max(companionMinutes[id] ?? 0, 10_000);
+      }
+      return {
+        ...prev,
+        coins: Math.max(prev.coins, 9_999_999),
+        ownedShopItems,
+        madeFoods,
+        bakedWith: badgesFromMadeFoods(madeFoods),
+        companionMinutes,
+      };
+    });
+    setIsPlus(true, 'annual');
   };
 
   // TEST/PLACEHOLDER: wipe game progress + purchases WITHOUT erasing the account.
@@ -2767,7 +2804,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const grantItem = !!mail.itemId && !prev.ownedShopItems.includes(mail.itemId);
       return {
         ...prev,
-        coins: prev.coins + (mail.coins || 0),
+        coins: capCoins(prev.coins + (mail.coins || 0)),
         ownedShopItems: grantItem ? [...prev.ownedShopItems, mail.itemId as string] : prev.ownedShopItems,
         claimedMailIds: [...prev.claimedMailIds, mail.id],
       };
@@ -2803,7 +2840,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setS((prev) =>
       prev.instagramFollowClaimed
         ? prev
-        : { ...prev, instagramFollowClaimed: true, coins: prev.coins + 100 },
+        : { ...prev, instagramFollowClaimed: true, coins: capCoins(prev.coins + 100) },
     );
 
   const setBirthday = (iso: string) =>
@@ -3000,6 +3037,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         clearBondLevelUp,
         previewBondLevelUp,
         devLapseStreak,
+        devMaxOutAccount,
         persistedStateReady,
         resetAccountForAbandonedOnboarding,
         resetGameData,

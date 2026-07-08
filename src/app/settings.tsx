@@ -153,6 +153,7 @@ export default function SettingsScreen() {
     resetGameData,
     previewBondLevelUp,
     devLapseStreak,
+    devMaxOutAccount,
     devUnlockHanji,
     replayTutorial,
     claimedMailIds,
@@ -489,6 +490,18 @@ export default function SettingsScreen() {
               <View style={styles.rowBody}>
                 <ThemedText type="smallBold" style={styles.dangerText}>Reset items &amp; progress</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">Test button — keeps your account, removes everything owned (back to just Bun), grants 1M coins</ThemedText>
+              </View>
+            </Pressable>
+            {/* TEST — max out the account: own everything, all badges, 9,999,999 coins, Plus. */}
+            <Pressable
+              onPress={() => { devMaxOutAccount(); router.back(); }}
+              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
+              <View style={styles.rowIconImage}>
+                <SettingsIcon name="reset" />
+              </View>
+              <View style={styles.rowBody}>
+                <ThemedText type="smallBold">Max out account</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">Test button — grants every shop item, all recipes &amp; badges (incl. Hanji), 9,999,999 coins, max companion bond, and Plus</ThemedText>
               </View>
             </Pressable>
             {/* TEST — preview the bond/chef level-up celebration on Home without studying. */}

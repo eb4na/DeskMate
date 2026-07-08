@@ -25,6 +25,12 @@ export const formatCoins = (n: number | string): string =>
 // Max coins a user can earn from studying in a single day.
 export const DAILY_EARN_CAP = 500;
 
+// Hard ceiling on the coin BALANCE — the wallet can never grow past this, from any
+// source (study, rewards, mail, even purchased packs). Spending is unaffected.
+export const MAX_COIN_BALANCE = 9_999_999;
+/** Clamp a would-be new balance to MAX_COIN_BALANCE. Wrap every wallet credit. */
+export const capCoins = (n: number) => Math.min(n, MAX_COIN_BALANCE);
+
 // Max number of friends a user can add.
 export const MAX_FRIENDS = 150;
 
