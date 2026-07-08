@@ -43,7 +43,7 @@ export function SubjectPickerModal({
                   { borderColor: s.color, backgroundColor: s.color + '22' },
                   pressed && styles.pressed,
                 ]}>
-                <Text style={[styles.chipText, { color: C.cocoaDark }]} numberOfLines={1}>
+                <Text style={[styles.chipText, { color: C.cocoaDark }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
                   {s.emoji ? `${s.emoji} ` : ''}{localizeSubjectName(s.name, t)}
                 </Text>
               </Pressable>

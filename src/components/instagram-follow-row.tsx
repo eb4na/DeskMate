@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Linking, Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
+import { FitText } from '@/components/fit-text';
 import { ThemedText } from '@/components/themed-text';
 import { CoinIcon } from '@/components/coin-icon';
 import { useApp } from '@/context/app-context';
@@ -92,9 +93,9 @@ export function InstagramFollowRow() {
       </View>
       <View style={styles.body}>
         <ThemedText type="smallBold">{t('settings.followInstagram')}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+        <FitText type="small" themeColor="textSecondary" numberOfLines={1}>
           {instagramFollowClaimed ? t('settings.followInstagramNote') : t('settings.followInstagramReward')}
-        </ThemedText>
+        </FitText>
       </View>
 
       {justClaimed ? (

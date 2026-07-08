@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BakeryCalendarEmoji, BakerySleepEmoji, BakeryTrophyEmoji } from '@/components/bakery-emoji';
 import { PlusGateCard } from '@/components/plus-gate';
+import { FitText } from '@/components/fit-text';
 import { ChartIcon, MusicNoteIcon, PawIcon } from '@/components/settings-icons';
 import { StreakFreezeIcon } from '@/components/streak-freeze-icon';
 import { ThemedText } from '@/components/themed-text';
@@ -161,9 +162,9 @@ export default function ProgressScreen() {
       onPress={onPress}>
       <ThemedView type="backgroundElement" style={styles.dgCardInner}>
         <ThemedView type="transparent" style={styles.dgHead}>
-          <ThemedText type="smallBold" numberOfLines={1} style={styles.dgTitle}>
+          <FitText type="smallBold" numberOfLines={1} style={styles.dgTitle}>
             {title}
-          </ThemedText>
+          </FitText>
           {claimable && <View style={styles.claimDot} />}
         </ThemedView>
 
@@ -178,9 +179,9 @@ export default function ProgressScreen() {
               return (
                 <ThemedView key={it.id} type="transparent" style={styles.dgItem}>
                   <ThemedView type="transparent" style={styles.dgItemTop}>
-                    <ThemedText type="small" numberOfLines={1} style={styles.dgItemName}>
+                    <FitText type="small" numberOfLines={1} style={styles.dgItemName}>
                       {it.name}
-                    </ThemedText>
+                    </FitText>
                     <ThemedText
                       type="small"
                       themeColor="textSecondary"

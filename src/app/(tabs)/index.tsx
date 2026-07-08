@@ -22,6 +22,7 @@ import { BakeryGearEmoji } from '@/components/bakery-emoji';
 import { CountdownShape } from '@/components/countdown-shapes';
 import { CookieChatIcon } from '@/components/settings-icons';
 import { getReminderStyleEffect } from '@/constants/shop-effects';
+import { FitText } from '@/components/fit-text';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { nextLoginReward, todayISO, useApp } from '@/context/app-context';
@@ -56,11 +57,16 @@ import {
 const MIN_MINUTES_FOR_COINS = 10;
 const DEFAULT_BREAK_MINUTES = 5;
 
-// Tablet-only layout overrides for the home corner buttons. On phones these are
+// Tablet-only layout overrides for the home screen. On phones these are
 // never applied (gated on useIsTablet → phones stay byte-identical). The numbers
 // below are the *baked* tablet values; defaults equal the phone layout (no shift
 // until dialed). Author them live via the 🎛 panel in Tablet mode, "Log values",
-// then paste the numbers here. Base coords live in the StyleSheet:
+// then paste the numbers here. ALL knobs are authored at 11-inch iPad scale
+// (834×1210, the M5 sim) — other tablets derive automatically: screen-relative UI scales
+// X ×tsW / Y ×tsH, while desk decor (ingredients/mixer/character/start row)
+// scales uniformly ×u and rides the desk line via deskDriftY, so the approved
+// composition looks the same on a 13-inch iPad or any Android tablet.
+// Base coords live in the StyleSheet:
 //   switchChar top:210 / food top:292 (both 80px, left:4)
 //   editRoom top:376 / settings top:452 (both 72px, left:4)
 //   friend top:300 / right:12 (62px)
@@ -305,23 +311,34 @@ export default function HomeScreen() {
   const [dialed, setDialed] = useState<Partial<typeof HOME_TABLET>>({});
   const ht = { ...HOME_TABLET, ...dialed };
 
-  // 11-inch iPad Pro (834 × 1194 pt portrait) is the tablet layout reference.
-  // We use SEPARATE horizontal (tsW) and vertical (tsH) factors because 11-inch
-  // and 13-inch iPads have slightly different aspect ratios — a single factor
-  // based on the shorter side would over-scale Y positions on the 13-inch.
-  // Corner pins (leftInset, friendRight) stay fixed regardless of screen size.
+  // The tablet layout was dialed and approved on the 11-inch iPad Pro M5 sim
+  // (834 × 1210 pt portrait, insets 32 top / 25 bottom). tsW/tsH keep the
+  // HISTORICAL 834 × 1194 divisor: the knobs were authored with those factors
+  // applied (tsH = 1210/1194 on the reference sim), so changing the divisor
+  // would shift the approved screen-relative UI. Screen-relative UI (corner
+  // buttons, HUD, cards, start-button raise) scales X by tsW and Y by tsH so it
+  // stays proportional to the screen. Desk DECOR does NOT use tsH: it scales
+  // uniformly by u (= tsW) and rides the desk line via deskDriftY below — see
+  // that comment for why.
   const TABLET_REF_W = 834;
   const TABLET_REF_H = 1194;
   const tsW = isTablet ? winW / TABLET_REF_W : 1; // horizontal: widths + X positions
   const tsH = isTablet ? winH / TABLET_REF_H : 1; // vertical:   heights + Y positions
-  // Y-axis knob keys (scale by tsH); all other scalable keys use tsW.
+  // Screen-height-relative Y knobs (scale by tsH). Desk-decor Y knobs (ingY,
+  // mixerY, charY, cocoaY, deskY, deskEdgeY) are deliberately NOT here — they
+  // scale by tsW like their X twins so the desk composition never stretches on
+  // a different aspect ratio.
   const Y_KEYS = new Set([
-    'stackTop', 'btnGap', 'friendTop', 'charY', 'cocoaY',
-    'deskY', 'deskEdgeY', 'cardsTop', 'cardsGapTop',
-    'ingY', 'mixerY', 'startY', 'examY', 'taskY',
+    'stackTop', 'btnGap', 'friendTop', 'cardsTop', 'cardsGapTop',
+    'startY', 'examY', 'taskY',
   ]);
-  // These are ratios/percentages/corner-pins — never scaled.
-  const FIXED_KEYS = new Set(['leftInset', 'friendRight', 'deskHeight', 'deskZoom', 'cardRatio']);
+  // Ratios/percentages/corner-pins — never scaled. The decor transform scales
+  // (ingScale, mixerScale, charScale) are FIXED because the decor boxes they
+  // apply to are already ×u-sized; auto-scaling them too would double-scale.
+  const FIXED_KEYS = new Set([
+    'leftInset', 'friendRight', 'deskHeight', 'deskZoom', 'cardRatio',
+    'ingScale', 'mixerScale', 'charScale',
+  ]);
   const htScaled = useMemo(
     () => Object.fromEntries(
       Object.entries(ht).map(([k, v]) => {
@@ -333,6 +350,26 @@ export default function HomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [ht, tsW, tsH],
   );
+
+  // ── Uniform tablet frame for the desk decor ────────────────────────────────
+  // The approved 11-inch layout is treated as a fixed frame that scales
+  // UNIFORMLY by u (= tsW) on every other tablet — X, Y and sizes all ×u, so the
+  // desk composition (ingredients / mixer / character / start row) never
+  // stretches on a different aspect ratio (13-inch iPad, Android tablets).
+  // The desk line itself sits at a scene-height percentage ('54%' desk layer),
+  // which moves differently than ×u when the aspect ratio changes — deskDriftY
+  // is exactly that difference, and every piece of desk furniture adds it so
+  // the whole cluster rides the desk line. At 834×1210 with the M5 11-inch
+  // iPad's real insets (32 top / 25 bottom, verified via runtime log) u = 1 and
+  // deskDriftY = 0 algebraically, so the reference device renders the
+  // hand-dialed layout untouched.
+  const TAB_REF_SCENE_H = 1153; // 1210 − 32 (top inset) − 25 (bottom inset)
+  const TAB_REF_INSET_BOTTOM = 25;
+  const u = tsW;
+  const tabSceneH = winH - insets.top - insets.bottom;
+  const deskDriftY = isTablet
+    ? 0.54 * (tabSceneH - TAB_REF_SCENE_H * u) - insets.bottom + TAB_REF_INSET_BOTTOM * u
+    : 0;
 
   // iPhone 17 Pro (≈393×852pt) is the phone layout reference. On any other phone
   // size we compute linear scale factors and apply them to all pixel positions and
@@ -437,8 +474,10 @@ export default function HomeScreen() {
   const fScale = htScaled.friendScale ?? 1.4;
   const tFriend = isTablet && { right: htScaled.friendRight - sideMargin, top: Math.round(300 * tsH) + htScaled.friendTop, width: 62 * fScale, height: 62 * fScale };
   const tFriendImg = isTablet ? { width: 62 * fScale, height: 62 * fScale } : null;
-  // Desk-scene tablet overrides (identity defaults compose cleanly with base styles).
-  const tCharImg = isTablet && { width: 300 * htScaled.charScale, height: 300 * htScaled.charScale };
+  // Desk-scene tablet overrides. These fully specify each decor box (position +
+  // size, all ×u, plus deskDriftY on bottoms) — they're last in every style
+  // array, so the phone-reference base values underneath become inert on tablet.
+  const tCharImg = isTablet && { width: 300 * htScaled.charScale * u, height: 300 * htScaled.charScale * u };
   // tCharLayer is built lower down (it needs the resolved companion so Cocoa can
   // take an extra downward nudge — see `tCharLayer` near the character render).
   const tDesk = isTablet && { height: `${htScaled.deskHeight}%` as const, transform: [{ translateY: htScaled.deskY ?? 0 }, { scale: htScaled.deskZoom }] };
@@ -456,11 +495,57 @@ export default function HomeScreen() {
   const tCardBox = isTablet && { aspectRatio: htScaled.cardRatio ?? 2.6 };
   const cardFont = (sz: number, lh: number) =>
     isTablet ? { fontSize: sz * (htScaled.cardTextScale ?? 1.3), lineHeight: lh * (htScaled.cardTextScale ?? 1.3) } : null;
-  // Per-ingredient: shared group shift/scale plus a spread that pushes the outer
-  // two apart (idx 0 left, idx 1 centre, idx 2 right) so they don't bunch up.
-  const tIngFor = (idx: number) =>
-    isTablet && { transform: [{ translateX: htScaled.ingX + (idx - 1) * htScaled.ingSpread }, { translateY: htScaled.ingY }, { scale: htScaled.ingScale }] };
-  const tMixer = isTablet && { transform: [{ translateX: htScaled.mixerX }, { translateY: htScaled.mixerY }, { scale: htScaled.mixerScale }] };
+  // Card text auto-shrinks (FitText) ONLY on tablet, where the scaled-up fonts
+  // can overflow the flat cards. On phones the aspect-constrained cards compress
+  // their text block vertically, which makes adjustsFontSizeToFit over-shrink —
+  // so phones keep the plain ThemedText (ellipsis) behavior, byte-identical.
+  const CardText = isTablet ? FitText : ThemedText;
+  // Per-ingredient: full ×u box (slot pin + size, riding the desk via
+  // deskDriftY) plus the shared group shift/scale and a spread that pushes the
+  // outer two apart (idx 0 left, idx 1 centre, idx 2 right) so they don't bunch
+  // up. Slot values mirror the phone-reference StyleSheet/ph numbers; a kit's
+  // per-ingredient `style` (matcha) only overrides width/height.
+  const ING_SLOTS = [
+    { left: 96, width: 92, height: 76 },
+    { left: 194, width: 82, height: 69 },
+    { left: 284, width: 82, height: 69 },
+  ];
+  const ING_BOTTOM = 250;
+  const tIngFor = (idx: number, ing: DeskIngredient) => {
+    if (!isTablet) return null;
+    const box = { ...ING_SLOTS[idx], ...(ing.style as { width?: number; height?: number } | undefined) };
+    return {
+      left: box.left * u,
+      bottom: ING_BOTTOM * u + deskDriftY,
+      width: box.width * u,
+      height: box.height * u,
+      transform: [
+        { translateX: htScaled.ingX + (idx - 1) * htScaled.ingSpread },
+        { translateY: htScaled.ingY },
+        { scale: htScaled.ingScale },
+      ],
+    };
+  };
+  // Mixer: same full ×u box treatment. A kit's mixerStyle bottom is a
+  // scene-height percentage on phones; on tablet it's converted against the
+  // REFERENCE scene height so the anchor scales with u instead of stretching
+  // with this screen's aspect ratio (deskDriftY re-ties it to the live desk).
+  const tMixer = (kit: DeskKit) => {
+    if (!isTablet) return null;
+    const ms = (kit.mixerStyle ?? {}) as { right?: number; bottom?: string; width?: number; height?: number };
+    const bottomPct = ms.bottom != null ? parseFloat(ms.bottom) / 100 : 0.3;
+    return {
+      right: (ms.right ?? -48) * u,
+      bottom: bottomPct * TAB_REF_SCENE_H * u + deskDriftY,
+      width: (ms.width ?? 285) * u,
+      height: (ms.height ?? 235) * u,
+      transform: [
+        { translateX: htScaled.mixerX },
+        { translateY: htScaled.mixerY },
+        { scale: htScaled.mixerScale },
+      ],
+    };
+  };
   // Tablet: the start button is centered by LAYOUT (full-width row, justified center)
   // so it lands consistently on EVERY tablet width — not a fixed offset that only works
   // on one size. `tStart` keeps just the vertical nudge + scale (no translateX).
@@ -470,18 +555,23 @@ export default function HomeScreen() {
   // points left of true center — a constant shift on any width (no scale/size
   // dependence), and the game icon (anchored to this row's 50%) follows along.
   const LEFT_OF_CENTER = 40;
-  const tStartRow = isTablet && { left: 0, right: LEFT_OF_CENTER * 2, justifyContent: 'center' as const };
+  // The row is desk furniture: base bottom 155 ×u + drift so the button keeps
+  // its distance to the desk on every tablet (the startY knob raise stays ×tsH
+  // since it exists to clear the screen-anchored bottom nav bar).
+  const tStartRow = isTablet && { left: 0, right: LEFT_OF_CENTER * 2, justifyContent: 'center' as const, bottom: 155 * u + deskDriftY };
   const tStartInner = isTablet && { marginRight: 0 }; // remove the phone gap so the centered child is truly centered
   // Game icon: anchored to screen center and pushed just past the start button's right
   // edge (the button is 232 wide; half = 116). GAME_GAP keeps it close ("not too far").
+  // Pin + size ×u so the icon tracks the (×u-scaled) button on bigger tablets.
   const GAME_GAP = 18;
   const tGame = isTablet && {
     position: 'absolute' as const,
     left: '50%' as const,
-    marginLeft: 116 + GAME_GAP,
+    marginLeft: (116 + GAME_GAP) * u,
     top: '50%' as const,
-    marginTop: -36, // vertically center the 72-tall icon on the row
+    marginTop: -36 * u, // vertically center the (72·u)-tall icon on the row
   };
+  const tGameImg = isTablet && { width: 72 * u, height: 72 * u };
 
   const {
     coins,
@@ -753,8 +843,14 @@ export default function HomeScreen() {
   // Cocoa's art reads tall — nudge every Cocoa skin down a little on phones too
   // (the tablet has its own cocoaY knob above).
   const companionTranslateY = isCocoaCompanion ? 30 : 0;
+  // Full ×u box (the static bottom:'38%' converted against the REFERENCE scene
+  // height, riding the desk via deskDriftY) + the knob nudges as transform.
   const tCharLayer =
-    isTablet && { transform: [{ translateY: htScaled.charY + (isCocoaCompanion ? (htScaled.cocoaY ?? 0) : 0) }] };
+    isTablet && {
+      bottom: 0.38 * TAB_REF_SCENE_H * u + deskDriftY,
+      height: 280 * u,
+      transform: [{ translateY: htScaled.charY + (isCocoaCompanion ? (htScaled.cocoaY ?? 0) : 0) }],
+    };
   // Phone character geometry — desk-anchored via `ph` so every phone shows the
   // same proportion of the body above the desk (tablet keeps the static styles +
   // htScaled knobs). The !isTablet gate is mandatory: tCharLayer only sets a
@@ -1096,7 +1192,7 @@ export default function HomeScreen() {
                       <View style={styles.metaCardHeader}>
                         <View style={styles.examTitleRow}>
                           <Image source={EXAM_BOOK_ICON} style={styles.examBookIcon} contentFit="contain" accessibilityLabel="" />
-                          <ThemedText style={[styles.metaCardTitle, cardFont(15, 19)]}>{t('home.upcomingExam')}</ThemedText>
+                          <CardText style={[styles.metaCardTitle, cardFont(15, 19)]} numberOfLines={1}>{t('home.upcomingExam')}</CardText>
                         </View>
                       </View>
                       <View style={styles.metaCardContent}>
@@ -1105,13 +1201,13 @@ export default function HomeScreen() {
                             <>
                               <View style={styles.examHeadlineRow}>
                                 <CountdownShape shape={featuredExam.shape} size={15} />
-                                <ThemedText style={[styles.metaHeadline, styles.examHeadlineText, cardFont(12.5, 14)]} numberOfLines={1}>
+                                <CardText style={[styles.metaHeadline, styles.examHeadlineText, cardFont(12.5, 14)]} numberOfLines={1}>
                                   {featuredExam.name}
-                                </ThemedText>
+                                </CardText>
                               </View>
-                              <ThemedText style={[styles.metaSubline, cardFont(10.5, 13)]} numberOfLines={1}>{formatExamDate(featuredExam.dateISO)}</ThemedText>
+                              <CardText style={[styles.metaSubline, cardFont(10.5, 13)]} numberOfLines={1}>{formatExamDate(featuredExam.dateISO)}</CardText>
                               <View style={styles.examCountdownRow}>
-                                <ThemedText
+                                <CardText
                                   style={[
                                     styles.metaAccentText,
                                     examIsUrgent && styles.metaAccentTextUrgent,
@@ -1120,21 +1216,21 @@ export default function HomeScreen() {
                                   ]}
                                   numberOfLines={1}>
                                   {examCountdownText}
-                                </ThemedText>
+                                </CardText>
                                 {featuredExam.subject ? (
                                   <View style={styles.examSubjectChip}>
                                     <View style={[styles.examSubjectDot, { backgroundColor: examSubjectColor }]} />
-                                    <ThemedText style={styles.examSubjectText} numberOfLines={1}>
+                                    <CardText style={styles.examSubjectText} numberOfLines={1}>
                                       {localizeSubjectName(featuredExam.subject, t)}
-                                    </ThemedText>
+                                    </CardText>
                                   </View>
                                 ) : null}
                               </View>
                             </>
                           ) : (
                             <>
-                              <ThemedText style={[styles.metaHeadline, cardFont(12.5, 14)]}>{t('home.noExamYet')}</ThemedText>
-                              <ThemedText style={[styles.metaSubline, cardFont(10.5, 13)]}>{t('home.tapToAdd')}</ThemedText>
+                              <CardText style={[styles.metaHeadline, cardFont(12.5, 14)]}>{t('home.noExamYet')}</CardText>
+                              <CardText style={[styles.metaSubline, cardFont(10.5, 13)]}>{t('home.tapToAdd')}</CardText>
                             </>
                           )}
                         </View>
@@ -1149,28 +1245,28 @@ export default function HomeScreen() {
                       <View style={styles.metaCardHeader}>
                         <View style={styles.reminderTitleRow}>
                           <Image source={REMINDER_BELL_ICON} style={styles.reminderBellIcon} contentFit="contain" accessibilityLabel="" />
-                          <ThemedText style={[styles.metaCardTitle, cardFont(15, 19)]}>{t('home.upcomingTask')}</ThemedText>
+                          <CardText style={[styles.metaCardTitle, cardFont(15, 19)]} numberOfLines={1}>{t('home.upcomingTask')}</CardText>
                         </View>
                       </View>
                       <View style={styles.metaCardContent}>
                         <View style={styles.metaCardTextBlock}>
                           {nextTask ? (
                             <>
-                              <ThemedText style={[styles.metaHeadline, cardFont(12.5, 14)]} numberOfLines={1}>{nextTask.title}</ThemedText>
-                              <ThemedText style={[styles.metaSubline, cardFont(10.5, 13)]} numberOfLines={1}>{formatExamDate(nextTask.dueDate!)}</ThemedText>
+                              <CardText style={[styles.metaHeadline, cardFont(12.5, 14)]} numberOfLines={1}>{nextTask.title}</CardText>
+                              <CardText style={[styles.metaSubline, cardFont(10.5, 13)]} numberOfLines={1}>{formatExamDate(nextTask.dueDate!)}</CardText>
                               {nextTask.subjectId ? (
                                 <View style={styles.examSubjectChip}>
                                   <View style={[styles.examSubjectDot, { backgroundColor: nextTaskColor }]} />
-                                  <ThemedText style={styles.examSubjectText} numberOfLines={1}>
+                                  <CardText style={styles.examSubjectText} numberOfLines={1}>
                                     {subjects.find((s) => s.id === nextTask.subjectId)?.name}
-                                  </ThemedText>
+                                  </CardText>
                                 </View>
                               ) : null}
                             </>
                           ) : (
                             <>
-                              <ThemedText style={[styles.metaHeadline, cardFont(12.5, 14)]}>{t('home.noTaskYet')}</ThemedText>
-                              <ThemedText style={[styles.metaSubline, cardFont(10.5, 13)]}>{t('home.tapToAdd')}</ThemedText>
+                              <CardText style={[styles.metaHeadline, cardFont(12.5, 14)]}>{t('home.noTaskYet')}</CardText>
+                              <CardText style={[styles.metaSubline, cardFont(10.5, 13)]}>{t('home.tapToAdd')}</CardText>
                             </>
                           )}
                         </View>
@@ -1236,7 +1332,7 @@ export default function HomeScreen() {
               </Pressable>
 
               <View style={[styles.homeCharacterLayer, phCharLayer, tCharLayer]} pointerEvents="box-none">
-                <CompanionPet onPet={petCompanion} scale={isTablet ? htScaled.charScale : 1} companionName={activeCompanion.name} skinId={activeSkinId}>
+                <CompanionPet onPet={petCompanion} scale={isTablet ? htScaled.charScale * u : 1} companionName={activeCompanion.name} skinId={activeSkinId}>
                   <Animated.View
                     style={{ transform: [{ translateY: charTranslateY }, { scaleX: charScaleX }, { scaleY: charScaleY }] }}>
                     {hanjiIsAnimated(activeCompanionId, companionSkins?.[activeCompanionId ?? '']) ? (
@@ -1256,7 +1352,7 @@ export default function HomeScreen() {
                   PetCloudHost manages its own state from the tap bus, so a tap doesn't
                   re-render this big home component. */}
               <View style={[styles.homeCharacterLayer, phCharLayer, tCharLayer, styles.petBubbleLayer]} pointerEvents="none">
-                <PetCloudHost isTablet={isTablet} scale={isTablet ? htScaled.charScale : 1} />
+                <PetCloudHost isTablet={isTablet} scale={isTablet ? htScaled.charScale * u : 1} />
               </View>
 
               {/* Desk surface — top edge at 46% of the scene (height '54%'); bleeds past
@@ -1279,12 +1375,12 @@ export default function HomeScreen() {
                 </>
               )}
               {/* Mixer on desk — matches the equipped dessert */}
-              <Image source={deskKit.mixer} style={[styles.deskMixer, { width: ph.mixerW, height: ph.mixerH }, deskKit.mixerStyle, tMixer]} contentFit="contain" pointerEvents="none" />
+              <Image source={deskKit.mixer} style={[styles.deskMixer, { width: ph.mixerW, height: ph.mixerH }, deskKit.mixerStyle, tMixer(deskKit)]} contentFit="contain" pointerEvents="none" />
 
               {/* Ingredients — static desk decor. The 3 ingredients fill the 3
                   fixed desk slots, by index. */}
               {deskKit.ingredients.map((ing, idx) => (
-                <Image key={ing.id} source={ing.src} style={[...DESK_SLOT_STYLES[idx], ing.style, tIngFor(idx)]} contentFit="contain" />
+                <Image key={ing.id} source={ing.src} style={[...DESK_SLOT_STYLES[idx], ing.style, tIngFor(idx, ing)]} contentFit="contain" />
               ))}
 
               <View style={[styles.startSessionPressable, { bottom: ph.startBottom }, tStart, tStartRow]}>
@@ -1301,7 +1397,7 @@ export default function HomeScreen() {
                   style={({ pressed }) => [styles.settingsFloating, styles.gameFloating, tGame, pressed && styles.startButtonPressed]}
                   onPress={() => router.push({ pathname: '/break-game', params: { browse: '1' } })}
                   accessibilityLabel={t('home.a11yPlayGame')}>
-                  <Image source={GAME_BTN} style={styles.gameFloatingImg} contentFit="contain" />
+                  <Image source={GAME_BTN} style={[styles.gameFloatingImg, tGameImg]} contentFit="contain" />
                 </Pressable>
               </View>
             </>

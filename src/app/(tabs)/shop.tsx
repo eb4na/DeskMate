@@ -1012,13 +1012,13 @@ export default function ShopScreen() {
                         )}
                         <FitText style={[styles.itemName, tName]}>{localizeShopItemName(item, t)}</FitText>
                         {item.category === 'recipe' && item.owner && (
-                          <ThemedText style={[styles.useHint, tHint]} numberOfLines={1}>{t('foodGallery.ownerTag', { name: localizeCompanionName(item.owner, t) })}</ThemedText>
+                          <FitText style={[styles.useHint, tHint]} numberOfLines={1}>{t('foodGallery.ownerTag', { name: localizeCompanionName(item.owner, t) })}</FitText>
                         )}
                         {item.category === 'recipe' && !!item.description && (
                           <ThemedText style={[styles.itemDesc, tHint]}>{localizeShopItemDescription(item, t)}</ThemedText>
                         )}
                         {USE_HINTS[item.category] && (
-                          <ThemedText style={[styles.useHint, tHint]} numberOfLines={1}>{t('shop.setActiveInGallery')}</ThemedText>
+                          <FitText style={[styles.useHint, tHint]} numberOfLines={1}>{t('shop.setActiveInGallery')}</FitText>
                         )}
                         {/* Locked: frost the whole card, but pin the padlock over the
                             artwork — centered it would sit right on the price and
@@ -1069,7 +1069,7 @@ export default function ShopScreen() {
                   <RNImage source={PACK_IMAGES[pack.id] ?? PACK_IMAGES.pouch} style={[styles.menuIcon, tMenuIcon]} resizeMode="contain" />
                   <View style={styles.menuBody}>
                     <View style={styles.menuTopLine}>
-                      <ThemedText style={[styles.menuName, tMenuName]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{t(`coinShop.pack_${pack.id}`)}</ThemedText>
+                      <FitText style={[styles.menuName, tMenuName]} numberOfLines={1} minScale={0.7}>{t(`coinShop.pack_${pack.id}`)}</FitText>
                       <View style={styles.menuLeader} />
                       <ThemedText style={[styles.menuPrice, tMenuPrice]}>{packPrice(pack)}</ThemedText>
                     </View>
@@ -1097,7 +1097,7 @@ export default function ShopScreen() {
                 <RNImage source={STREAK_FREEZE_ICON} style={[styles.menuIcon, tMenuIcon]} resizeMode="contain" />
                 <View style={styles.menuBody}>
                   <View style={styles.menuTopLine}>
-                    <ThemedText style={[styles.menuName, tMenuName]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{t('shop.streakFreezeName')}</ThemedText>
+                    <FitText style={[styles.menuName, tMenuName]} numberOfLines={1} minScale={0.7}>{t('shop.streakFreezeName')}</FitText>
                     <View style={styles.menuLeader} />
                     <ThemedText style={[styles.menuPrice, tMenuPrice]}>{storePrices[PRODUCT_IDS.streakFreeze] ?? '$1.99'}</ThemedText>
                   </View>

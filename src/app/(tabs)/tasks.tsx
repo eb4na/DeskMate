@@ -9,6 +9,7 @@ import Svg, { Path } from 'react-native-svg';
 import { BakeryBellEmoji } from '@/components/bakery-emoji';
 import { CountdownShape } from '@/components/countdown-shapes';
 import { LockBadge } from '@/components/lock-badge';
+import { FitText } from '@/components/fit-text';
 import { TaskCalendar } from '@/components/task-calendar';
 import { formatTimeLabel } from '@/components/time-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
@@ -274,9 +275,9 @@ export default function TasksScreen() {
                   : t('tasks.nudgeGeneric');
                 return (
                   <ThemedView key={task.id} type="backgroundElement" style={styles.nudgeCard}>
-                    <ThemedText type="smallBold" style={styles.nudgeTitle} numberOfLines={1}>
+                    <FitText type="smallBold" style={styles.nudgeTitle} numberOfLines={1}>
                       {task.title}
-                    </ThemedText>
+                    </FitText>
                     <ThemedText type="small" themeColor="textSecondary" style={styles.nudgeText}>
                       {nudge}
                     </ThemedText>

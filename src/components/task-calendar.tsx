@@ -92,7 +92,7 @@ function TaskPreviewCard({ task }: { task: Task }) {
           {subject && (
             <View style={[styles.subjectBadge, { backgroundColor: subject.color + '2E' }]}>
               <View style={[styles.subjectDot, { backgroundColor: subject.color }]} />
-              <Text style={[styles.subjectText, { color: subject.color }]} numberOfLines={1}>
+              <Text style={[styles.subjectText, { color: subject.color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
                 {localizeSubjectName(subject.name, (k) => i18n.t(k))}
               </Text>
             </View>
@@ -278,12 +278,12 @@ function TaskSlider() {
             key={t.id}
             style={({ pressed }) => [styles.sliderCard, s !== 1 && { width: 170 * s, borderRadius: BakeryRadii.card * s, paddingHorizontal: Spacing.three * s, paddingVertical: Spacing.two * s, gap: 5 * s }, pressed && styles.pressed]}
             onPress={() => router.push({ pathname: '/add-task', params: { taskId: t.id } })}>
-            <Text style={[styles.sliderTitle, s !== 1 && { fontSize: 15 * s }]} numberOfLines={1}>
+            <Text style={[styles.sliderTitle, s !== 1 && { fontSize: 15 * s }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
               {t.title}
             </Text>
             <View style={[styles.sliderMeta, s !== 1 && { gap: 5 * s }]}>
               {subject && <View style={[styles.subjectDot, s !== 1 && { width: 7 * s, height: 7 * s, borderRadius: 3.5 * s }, { backgroundColor: subject.color }]} />}
-              <Text style={[styles.sliderMetaText, s !== 1 && { fontSize: 12.5 * s }]} numberOfLines={1}>
+              <Text style={[styles.sliderMetaText, s !== 1 && { fontSize: 12.5 * s }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
                 {t.dueDate ? shortWeekday(t.dueDate.slice(0, 10)) : i18n.t('calendar.noDate')}
               </Text>
             </View>
