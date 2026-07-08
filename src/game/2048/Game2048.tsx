@@ -367,6 +367,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: 6,
     ...BakeryShadow,
+    // Android's elevation shadow renders as an ugly opaque block behind these
+    // translucent cards (iOS's soft rgba shadow is invisible on the watery bg).
+    // Drop it on Android so the cards stay flat/airy like iOS. See statPanel/restartBtn.
+    elevation: 0,
   },
   chatText: { color: '#7A8FA0' },
   panelRow: { flexDirection: 'row', alignItems: 'stretch', gap: Spacing.two, marginTop: Spacing.one },
@@ -378,6 +382,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: PANEL_BG,
     ...BakeryShadow,
+    elevation: 0, // no Android elevation block behind the translucent card (see chatBubble)
   },
   statLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1, color: '#8FB4C6' },
   statValue: { fontSize: 24, lineHeight: 30, fontWeight: '800', color: '#4E7E96' },
@@ -389,6 +394,7 @@ const styles = StyleSheet.create({
     gap: 2,
     backgroundColor: PANEL_BG,
     ...BakeryShadow,
+    elevation: 0, // no Android elevation block behind the translucent card (see chatBubble)
   },
   restartText: { fontSize: 11, fontWeight: '700', color: '#5A8FB0' },
   board: { position: 'relative', marginTop: Spacing.two },
