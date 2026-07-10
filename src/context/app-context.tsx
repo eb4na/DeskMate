@@ -2554,12 +2554,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const clearHanjiUnlock = () => setS((prev) => ({ ...prev, hanjiUnlockPending: false }));
-  // TEST: fully unlock Hanji in one tap — mark every recipe as made (which derives
-  // all five character badges), grant every recipe SKU, actually grant Hanji, and
-  // arm the one-time unlock celebration so you can see it fire. Not gated behind a
-  // recipe-badge popup, so the Hanji modal shows immediately on Home.
+  // TEST: replay the FULL final-badge flow in one tap — mark every recipe as made
+  // (which derives all five character badges), grant every recipe SKU, actually
+  // grant Hanji, and arm the one-time unlock celebration. Also arms the 5/5
+  // recipe-badge progress popup (as if the last badge was just earned): it shows
+  // FIRST, and the Hanji modal — gated on recipeBadgePending being clear — appears
+  // once that popup is dismissed, exactly like the real "bake the last recipe" path.
   const devUnlockHanji = () => {
-    setRecipeBadgePending(null);
+    setRecipeBadgePending(RECIPE_IDS[RECIPE_IDS.length - 1]);
     setS((prev) => {
       const madeFoods = Array.from(new Set([...prev.madeFoods, ...RECIPE_IDS]));
       const recipeSkus = RECIPE_BADGES.map((b) => b.recipeItem).filter((x): x is string => !!x);

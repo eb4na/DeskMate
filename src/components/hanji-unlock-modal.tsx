@@ -72,7 +72,10 @@ const styles = StyleSheet.create({
     width: 100, height: 100, borderRadius: 50, backgroundColor: P.purpleSoft,
     overflow: 'hidden', marginBottom: 2,
   },
-  avatarImg: { width: 180, height: 180, position: 'absolute', top: 0, left: -40 },
+  // Frame Hanji's head (orig px x[216,868], y[10,552] in the 1108² art) inside the
+  // 100px circle with a small margin, centered — larger/offset values zoomed in so
+  // the ears clipped the top edge.
+  avatarImg: { width: 143, height: 143, position: 'absolute', top: 14, left: -20 },
   title: { fontSize: 18, fontWeight: '900', color: P.brown, textAlign: 'center' },
   message: { fontSize: 14, color: P.muted, fontWeight: '600', textAlign: 'center', lineHeight: 20 },
   button: {

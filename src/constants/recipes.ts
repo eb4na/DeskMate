@@ -13,8 +13,8 @@ export const HANJI_COMPANION_ID = 'companion_hanji';
 // shortcake, which is free for everyone and needs no SKU.
 export const RECIPE_BADGES: { recipeId: string; owner: string; companionId: string; recipeItem: string | null }[] = [
   { recipeId: 'strawberry-shortcake', owner: 'Bun', companionId: '', recipeItem: null },
-  { recipeId: 'berry-croissant', owner: 'Bunny', companionId: 'shop:companion_bunny', recipeItem: 'recipe_croissant' },
   { recipeId: 'sakura-mochi', owner: 'Cocoa', companionId: 'shop:companion_cocoa', recipeItem: 'recipe_sakura' },
+  { recipeId: 'berry-croissant', owner: 'Bunny', companionId: 'shop:companion_bunny', recipeItem: 'recipe_croissant' },
   { recipeId: 'pudding', owner: 'Miel', companionId: 'shop:companion_honey', recipeItem: 'recipe_pudding' },
   { recipeId: 'matcha-crepe', owner: 'Tira', companionId: 'shop:companion_tira', recipeItem: 'recipe_matcha' },
 ];

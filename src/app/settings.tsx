@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { showPopup } from '@/lib/popup';
+import { noteModalTransition } from '@/lib/modal-traffic';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DeleteAccountModal } from '@/components/delete-account-modal';
@@ -494,7 +495,12 @@ export default function SettingsScreen() {
             </Pressable>
             {/* TEST — max out the account: own everything, all badges, 9,999,999 coins, Plus. */}
             <Pressable
-              onPress={() => { devMaxOutAccount(); router.back(); }}
+              // Stamp the anti-freeze signal before closing: these dev buttons arm a
+              // Home popup (a native <Modal> gated by useModalSafeVisible), and Settings
+              // is itself a native modal. Without the stamp the popup tries to present
+              // while Settings is still dismissing and iOS silently drops it — so the
+              // celebration never appears. The stamp makes it wait out the dismiss.
+              onPress={() => { devMaxOutAccount(); noteModalTransition(); router.back(); }}
               style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
               <View style={styles.rowIconImage}>
                 <SettingsIcon name="reset" />
@@ -506,7 +512,7 @@ export default function SettingsScreen() {
             </Pressable>
             {/* TEST — preview the bond/chef level-up celebration on Home without studying. */}
             <Pressable
-              onPress={() => { previewBondLevelUp(); router.back(); }}
+              onPress={() => { previewBondLevelUp(); noteModalTransition(); router.back(); }}
               style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
               <View style={styles.rowIconImage}>
                 <SettingsIcon name="reset" />
@@ -518,19 +524,19 @@ export default function SettingsScreen() {
             </Pressable>
             {/* TEST — grant all recipes + badges, actually grant Hanji, and show the unlock celebration. */}
             <Pressable
-              onPress={() => { devUnlockHanji(); router.back(); }}
+              onPress={() => { devUnlockHanji(); noteModalTransition(); router.back(); }}
               style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
               <View style={styles.rowIconImage}>
                 <SettingsIcon name="reset" />
               </View>
               <View style={styles.rowBody}>
                 <ThemedText type="smallBold">Unlock Hanji</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">Test button — grants all recipes &amp; badges, gives you Hanji, and shows the unlock celebration on Home</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">Test button — grants all recipes &amp; badges, gives you Hanji, and shows the 5/5 badge screen then the Hanji unlock celebration on Home</ThemedText>
               </View>
             </Pressable>
             {/* TEST — fake a 1-day streak lapse (+1 freeze) so the "Use streak freeze" rescue prompt shows on Home. */}
             <Pressable
-              onPress={() => { devLapseStreak(); router.back(); }}
+              onPress={() => { devLapseStreak(); noteModalTransition(); router.back(); }}
               style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
               <View style={styles.rowIconImage}>
                 <SettingsIcon name="reset" />

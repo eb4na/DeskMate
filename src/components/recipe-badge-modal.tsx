@@ -14,7 +14,7 @@ import { MIN_POPUP_WIDTH, popupMaxWidth } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { useIsTablet } from '@/hooks/use-device-class';
 import { getCompanionImage, localizeCompanionName } from '@/lib/companion-utils';
-import { useReportModalTransition } from '@/lib/modal-traffic';
+import { useModalSafeVisible } from '@/lib/modal-traffic';
 import { RECIPE_BADGES, RECIPE_IDS } from '@/constants/recipes';
 import { useTranslation } from '@/i18n';
 
@@ -26,7 +26,7 @@ const P = { card: '#FFFDF8', pink: '#F491A9', pinkSoft: '#FBDCE4', brown: '#5B3A
 // is the reference (16); the others are raised so their heads aren't cut off.
 const SLOT_OFFSETS: Record<string, { x?: number; y: number; scale?: number }> = {
   '': { y: 8 },
-  'shop:companion_cocoa': { y: 16 },
+  'shop:companion_cocoa': { x: -4, y: 13, scale: 1.06 },
   'shop:companion_bunny': { y: 8 },
   'shop:companion_honey': { x: 1, y: 10, scale: 0.93 },
   'shop:companion_tira': { x: 1, y: 8, scale: 0.93 },
@@ -88,12 +88,18 @@ export function RecipeBadgeModal() {
   // recipe's designated character.
   const justEarned = RECIPE_BADGES.find((b) => b.recipeId === recipeBadgePending);
   const count = RECIPE_BADGES.filter((b) => bakedWith.includes(b.companionId)).length;
-  useReportModalTransition(!!recipeBadgePending && !characterObtainedPending);
+  // Gate presentation through the global settle window (like HanjiUnlockModal) so this
+  // native <Modal> never tries to present while another modal is still dismissing —
+  // e.g. Settings, from which the dev "Unlock Hanji" button arms this popup. iOS
+  // silently drops a mid-dismiss present, which would leave recipeBadgePending stuck
+  // set and, in turn, block the Hanji celebration that's gated behind it.
+  const want = !!recipeBadgePending && !characterObtainedPending;
+  const visible = useModalSafeVisible(want);
 
   // Hold behind the just-obtained-companion card — both are native <Modal>s and
   // co-presenting freezes iOS (see daily-reward-modal).
   return (
-    <Modal visible={!!recipeBadgePending && !characterObtainedPending} transparent animationType="fade" onRequestClose={clearRecipeBadge}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={clearRecipeBadge}>
       <View style={styles.root}>
         <Pressable style={styles.backdrop} onPress={clearRecipeBadge} />
         {/* Uniform scale-up on the big iPad — the fixed 320px card reads tiny there. */}
