@@ -1,10 +1,10 @@
 /**
- * On-open streak-rescue prompt, shown on Home the day the streak has lapsed 2–4 days
- * ago (the freeze window) and hasn't been handled yet today. It's the primary place a
- * lapsed streak is saved: if the player owns a freeze they can spend one; if they own
- * none they can buy one on the spot ($1.99) which bridges the streak directly. Picking
- * "Let it reset" just marks it handled — the streak resets naturally on the next study
- * session (or once the gap passes 4 days).
+ * On-open streak-rescue prompt, shown on Home the day the streak has lapsed 2–5 days
+ * ago (the freeze window — up to 4 missed days) and hasn't been handled yet today. It's
+ * the primary place a lapsed streak is saved: if the player owns a freeze they can spend
+ * one; if they own none they can buy one on the spot ($1.99) which bridges the streak
+ * directly. Picking "Let it reset" just marks it handled — the streak resets naturally
+ * on the next study session (or once the gap passes 5 days).
  *
  * Gated behind the celebratory popups (character/hanji/recipe/birthday) and shown just
  * BEFORE the daily reward so the rescue is resolved before the login reward can advance

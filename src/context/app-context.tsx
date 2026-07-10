@@ -653,8 +653,9 @@ export function daysBetween(a: string, b: string): number {
 // Pure streak transition for a study completion on `today`. `changed` is false when
 // the day already counts (so callers can leave state untouched and award no bonus).
 // `next` is both the new streak number and the coin bonus for the day. When `rescue`
-// is set and the gap is within the 3-day freeze window (2–4 days), the streak is
-// bridged and continued (consuming a freeze) instead of resetting.
+// is set and the gap is within the freeze window (2–5 days, i.e. up to 4 missed days —
+// 3 days after the first missed day), the streak is bridged and continued (consuming a
+// freeze) instead of resetting.
 function nextStreakState(
   st: StreakData,
   today: string,
@@ -666,7 +667,7 @@ function nextStreakState(
   if (diff === 1) {
     return { changed: true, next: Math.min(STREAK_MAX, st.currentStreak + 1), isComeback: false, useFreeze: false };
   }
-  if (rescue && diff <= 4) {
+  if (rescue && diff <= 5) {
     // Bridge the missed days with a freeze and continue the streak.
     return { changed: true, next: Math.min(STREAK_MAX, st.currentStreak + 1), isComeback: false, useFreeze: true };
   }
@@ -675,7 +676,8 @@ function nextStreakState(
 }
 
 // True when a lapsed streak can STILL be rescued: the gap since last activity is
-// within the 2–4 day freeze window. Rescue is possible for ANY user here — they can
+// within the 2–5 day freeze window (up to 4 missed days — 3 days after the first
+// missed day). Rescue is possible for ANY user here — they can
 // use an owned freeze OR buy one on the spot (freezes are no longer Plus-only to use),
 // so this depends only on the gap, not on Plus or current inventory. The login reward
 // + home streak display consult it so neither shows nor commits a reset for a streak
@@ -688,7 +690,7 @@ export function streakRescueAvailable(
   const last = s.streak.lastStudyDate;
   if (!last) return false;
   const gap = daysBetween(last, today);
-  return gap >= 2 && gap <= 4;
+  return gap >= 2 && gap <= 5;
 }
 
 // The streak is rescuable AND today's on-open rescue prompt hasn't been resolved yet.
@@ -995,7 +997,7 @@ type AppContextType = {
   plusPlan: 'monthly' | 'annual' | null;
   plusUntil: string;
   streakFreezes: number;
-  // True when the streak lapsed 2–4 days ago and today's on-open rescue prompt hasn't
+  // True when the streak lapsed 2–5 days ago and today's on-open rescue prompt hasn't
   // been resolved yet — drives the Home StreakRescueModal and gates the daily reward.
   streakRescuePending: boolean;
   streakRescueDismissedDate: string;
@@ -2149,11 +2151,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // Streak lapsed 2–4 days ago and the user owns a freeze → ask whether to spend one
+    // Streak lapsed 2–5 days ago and the user owns a freeze → ask whether to spend one
     // (same guard the receipt used). Otherwise commit straight through.
     const last = s.streak.lastStudyDate;
     const gap = last ? daysBetween(last, todayISO()) : 0;
-    const canRescue = gap >= 2 && gap <= 4 && s.streakFreezes > 0 && streakRescuePending(s, todayISO());
+    const canRescue = gap >= 2 && gap <= 5 && s.streakFreezes > 0 && streakRescuePending(s, todayISO());
     if (canRescue) {
       showPopup(
         i18n.t('sessionComplete.rescueStreakQ'),
@@ -2277,9 +2279,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // A freeze rescues a streak missed for up to 3 days (daysBetween 2–4). One freeze
+  // A freeze rescues a streak missed for up to 4 days (daysBetween 2–5). One freeze
   // bridges the whole gap to yesterday, so studying today continues the streak.
-  const canFreezeGap = (gap: number) => gap >= 2 && gap <= 4;
+  const canFreezeGap = (gap: number) => gap >= 2 && gap <= 5;
 
   const useStreakFreeze = (): boolean => {
     if (s.streakFreezes <= 0) return false;
@@ -2293,7 +2295,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return {
         ...prev,
         streakFreezes: prev.streakFreezes - 1,
-        // Bridge exactly one missed day; no coins awarded.
+        // Bridge the whole gap to yesterday; no coins awarded.
         streak: { ...prev.streak, lastStudyDate: yesterdayISO() },
       };
     });
