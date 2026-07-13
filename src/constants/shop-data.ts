@@ -160,9 +160,9 @@ export const SHOP_ITEMS: ShopItem[] = [
   },
   {
     id: 'outfit_cocoa_demon',
-    name: 'Demon Cocoa',
+    name: 'Demon',
     emoji: '',
-    description: "A gothic demon-lord coat with horns, bat wings & a spade tail. Wear it from Cocoa's Wardrobe.",
+    description: "A gothic demon-lord coat with horns, bat wings & a spade tail. Wear it from Aki's Wardrobe.",
     price: 10000,
     category: 'outfits',
     image: require('@/assets/images/cocoa/cocoa-demon.png'),

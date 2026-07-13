@@ -41,13 +41,12 @@ const LOADING_IMGS = [
   require('@/assets/images/home/loading11.png'),
   require('@/assets/images/home/loading8.png'),
   require('@/assets/images/home/loading9.png'),
-  require('@/assets/images/home/loading10.png'),
-  require('@/assets/images/home/loading12.png'),
+  require('@/assets/images/home/loading13.png'),
 ];
 
 // Index-aligned with LOADING_IMGS: true where the art's bottom (under the label)
 // is too dark or too pink for the default pink label to read — use white there.
-const LOADING_TEXT_WHITE = [true, true, true, true, false, true];
+const LOADING_TEXT_WHITE = [true, true, true, true, true];
 
 // Full-screen loading splash shown OVER the app — the home screen mounts behind
 // it (loading its art) and stays hidden until everything is ready. Only when
