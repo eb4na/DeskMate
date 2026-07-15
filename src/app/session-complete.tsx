@@ -23,7 +23,7 @@ const BUN_FINISHED = require('@/assets/images/bun/bun-finished.png');
 const FINISH_IMG: Record<string, number> = {
   'strawberry-shortcake': require('@/assets/images/cake/strawberry-badge.png'),
   'sakura-mochi': require('@/assets/images/cake/sakura-badge.png'),
-  pudding: require('@/assets/images/cake/pudding-finished.png'),
+  pudding: require('@/assets/images/cake/pudding-badge.png'),
   'matcha-crepe': require('@/assets/images/cake/matcha-badge.png'),
   'berry-croissant': require('@/assets/images/cake/croissant-badge.png'),
 };

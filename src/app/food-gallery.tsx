@@ -42,7 +42,7 @@ export const FOOD_ITEMS: FoodItem[] = [
     image: require('@/assets/images/cake/pudding.png'),
     requiresItem: 'recipe_pudding',
     price: 5000,
-    madeBadge: require('@/assets/images/cake/pudding-finished.png'),
+    madeBadge: require('@/assets/images/cake/pudding-badge.png'),
     owner: 'Miel',
   },
   {

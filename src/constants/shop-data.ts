@@ -168,6 +168,15 @@ export const SHOP_ITEMS: ShopItem[] = [
     image: require('@/assets/images/cocoa/cocoa-demon.png'),
   },
   {
+    id: 'outfit_cocoa_relax',
+    name: 'Relax',
+    emoji: '',
+    description: "A warm brown haori for slow autumn strolls, with a stray maple leaf resting on his head. Wear it from Aki's Wardrobe.",
+    price: 10000,
+    category: 'outfits',
+    image: require('@/assets/images/cocoa/cocoa-relax.png'),
+  },
+  {
     id: 'outfit_tira_chocomint',
     name: 'Choco Mint Tira',
     emoji: '',

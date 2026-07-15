@@ -609,19 +609,14 @@ function GalleryContent() {
               </View>
             </View>
           )}
-        </View>
-      </Modal>
-
-      {/* Unlock popup — buy the exact locked companion / skin in place. */}
-      <Modal
-        visible={buyItem !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setBuyItem(null)}>
-        <Pressable style={styles.buyBackdrop} onPress={() => setBuyItem(null)}>
-          <Pressable style={styles.buyCard} onPress={(e) => e.stopPropagation?.()}>
-            {buyItem && (
-              <>
+          {/* Unlock popup — buy the exact locked skin in place. An inline overlay
+              like the lore popup, NOT a native <Modal>: iOS silently refuses to
+              present a third stacked modal (screen → wardrobe sheet → popup), so a
+              Modal here never appears. */}
+          {buyItem && (
+            <View style={styles.buyOverlay}>
+              <Pressable style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onPress={() => setBuyItem(null)} />
+              <View style={styles.buyCard}>
                 <Text style={styles.buyTitle}>{t('gallery.unlockTitle', { name: buyItem.name })}</Text>
                 {buyItem.image && (
                   <Image source={buyItem.image} style={styles.buyImage} contentFit="contain" />
@@ -652,10 +647,10 @@ function GalleryContent() {
                 <Pressable style={styles.buyCancel} onPress={() => setBuyItem(null)}>
                   <Text style={styles.buyCancelText}>{t('gallery.maybeLater')}</Text>
                 </Pressable>
-              </>
-            )}
-          </Pressable>
-        </Pressable>
+              </View>
+            </View>
+          )}
+        </View>
       </Modal>
 
       {/* Matched-room buy popup — purchase the outfit's paired room (background +
@@ -1079,6 +1074,14 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24 * s,
+  },
+  // In-sheet variant of buyBackdrop — absolute overlay inside the wardrobe modal
+  // (a native <Modal> can't present at this depth; see the unlock popup comment).
+  buyOverlay: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100,
+    backgroundColor: 'rgba(91,58,46,0.45)',
+    alignItems: 'center', justifyContent: 'center', padding: 24 * s,
+    borderRadius: 28 * s,
   },
   buyCard: {
     width: '100%',

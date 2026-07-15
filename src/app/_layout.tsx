@@ -41,7 +41,7 @@ const LOADING_IMGS = [
   require('@/assets/images/home/loading11.png'),
   require('@/assets/images/home/loading8.png'),
   require('@/assets/images/home/loading9.png'),
-  require('@/assets/images/home/loading13.png'),
+  require('@/assets/images/home/loading14.png'),
 ];
 
 // Index-aligned with LOADING_IMGS: true where the art's bottom (under the label)
