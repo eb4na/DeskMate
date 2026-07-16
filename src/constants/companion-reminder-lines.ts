@@ -9,7 +9,7 @@ import { COMPANION_LINES } from '@/constants/companion-lines';
 //
 // Voices:
 //   Bun    — sweet, devoted, earnest; gentle "bun" puns.
-//   Cocoa  — cozy barista cat; "work hard now, treat later"; coffee/tea metaphors.
+//   Cocoa  — cozy barista red panda; "work hard now, treat later"; coffee/tea metaphors.
 //   Bunny  — vain little princess; speaks in third person; cute-bratty.
 //   Miel   — sleepy honey-bear; "nap now, study after"; drowsy but shows up.
 //   Tira   — deadpan dropout; dry irony; "I dropped out, but you should study".

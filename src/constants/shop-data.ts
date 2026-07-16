@@ -77,7 +77,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     id: 'companion_cocoa',
     name: 'Cocoa',
     emoji: '',
-    description: 'A laid-back kitty in a cozy autumn kimono.',
+    description: 'A laid-back red panda in a cozy autumn kimono.',
     price: 10000,
     category: 'companion',
     image: require('@/assets/images/cocoa/cocoa.png'),
