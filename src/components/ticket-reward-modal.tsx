@@ -1,18 +1,21 @@
 /**
  * Monthly Plus "room ticket" popup, shown on Home when one (or more) tickets were
- * just granted (on the purchase day-of-month anniversary, or at purchase). Mirrors
- * BirthdayRewardModal: armed ~1.5s after the launch splash and gated behind the
- * Hanji/recipe/daily/birthday popups so cards never stack. The ticket is already
- * granted in app-context; this only acknowledges it (clears the pending count).
+ * just granted (on the purchase day-of-month anniversary, or at purchase). Armed
+ * ~1.5s after the launch splash, and the LOWEST-priority launch popup: it defers to
+ * the character/Hanji/recipe cards AND to the birthday, streak-rescue, and daily
+ * reward popups (all native <Modal>s — two presenting at once wedges iOS), then
+ * presents through useModalSafeVisible so the handoff from a just-dismissed popup
+ * waits out the settle window. The ticket is already granted in app-context; this
+ * only acknowledges it (clears the pending count).
  */
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { MIN_POPUP_WIDTH, popupMaxWidth } from '@/constants/theme';
-import { useApp } from '@/context/app-context';
+import { birthdayRewardAvailable, nextLoginReward, todayISO, useApp } from '@/context/app-context';
 import { isLoadingActive, subscribeLoadingDone } from '@/lib/loading-signal';
-import { useReportModalTransition } from '@/lib/modal-traffic';
+import { useModalSafeVisible } from '@/lib/modal-traffic';
 import { useTranslation } from '@/i18n';
 
 const TICKET = require('@/assets/images/shop/ticket.png');
@@ -29,6 +32,9 @@ export function TicketRewardModal() {
     hanjiUnlockPending, recipeBadgePending,
     legalAccepted, starterChosen,
     characterObtainedPending,
+    loginRewardDate, streak, isPlus, streakFreezes, streakRescueDismissedDate,
+    profileBirthday, birthdayRewardYear,
+    streakRescuePending,
   } = useApp();
 
   // Hold the popup until the launch splash has lifted, then wait ~1.5s so it greets
@@ -44,8 +50,14 @@ export function TicketRewardModal() {
 
   const count = exchangeTicketPending;
   const onboarded = legalAccepted && starterChosen;
-  const visible = count > 0 && armed && onboarded && !characterObtainedPending && !hanjiUnlockPending && !recipeBadgePending;
-  useReportModalTransition(visible);
+  // Defer to every other launch popup (same availability math they use themselves) —
+  // the ticket card shows only once the rest of the chain is fully resolved.
+  const dailyPending = nextLoginReward({ loginRewardDate, streak, isPlus, streakFreezes, streakRescueDismissedDate }, todayISO()).available;
+  const birthdayPending = birthdayRewardAvailable({ profileBirthday, birthdayRewardYear }, todayISO());
+  const want = count > 0 && armed && onboarded && !characterObtainedPending && !hanjiUnlockPending && !recipeBadgePending && !dailyPending && !birthdayPending && !streakRescuePending;
+  // Presenter-gated (not just reported): waits out the settle window after the
+  // previous popup's dismissal, so the handoff can't double-present either.
+  const visible = useModalSafeVisible(want);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={clearExchangeTicketPending}>
