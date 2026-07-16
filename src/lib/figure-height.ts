@@ -18,6 +18,13 @@ export const HEIGHT_LADDER: Record<string, number> = {
   hanji: 1.0,
 };
 
+// Per-companion baseline lift — a small UPWARD nudge (fraction of the render box)
+// on top of the shared baseline, for art whose visual mass sits low even with its
+// feet landed correctly (Aki's chef art hides too much behind the desk otherwise).
+export const BASELINE_LIFT: Record<string, number> = {
+  companion_cocoa: 0.03, // Aki — ~10px in the solo 350 box
+};
+
 // Bunny's classic art defines the baseline: every figure is scaled so its content
 // height = ladder × Bunny's content height, and its feet land on Bunny's baseline.
 const REF = FIGURE_METRICS['companion_bunny/classic'];
@@ -45,7 +52,8 @@ export function figureStyle(
   const m = FIGURE_METRICS[`${figureKey}/${skinId || 'classic'}`];
   if (!ladder || !m) return undefined;
   const scale = (REF.fill * ladder) / m.fill;
-  const translateY = (scale * m.pad - REF.pad) * boxSize;
+  const lift = BASELINE_LIFT[figureKey] ?? 0;
+  const translateY = (scale * m.pad - REF.pad - lift) * boxSize;
   if (Math.abs(scale - 1) < 0.001 && Math.abs(translateY) < 0.5) return undefined;
   return { transform: [{ translateY }, { scale }], transformOrigin: 'center bottom' };
 }
@@ -54,5 +62,5 @@ export function figureStyle(
  * of the box — exact by construction once figureStyle is applied. Anchors the MP
  * host crown to the actual head instead of the (shared) box top. */
 export function figureHeadFrac(figureKey: string): number {
-  return REF.pad + (HEIGHT_LADDER[figureKey] ?? 1) * REF.fill;
+  return REF.pad + (HEIGHT_LADDER[figureKey] ?? 1) * REF.fill + (BASELINE_LIFT[figureKey] ?? 0);
 }

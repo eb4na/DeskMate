@@ -82,7 +82,7 @@ const HOME_TABLET = {
   // Character (base 300×300, layer anchored bottom:38%)
   charScale: 1.5,  // character size multiplier
   charY: -6,       // character vertical shift (− = up) — nudged down a tiny bit
-  cocoaY: 30,      // EXTRA downward shift applied only to Cocoa (+ all Cocoa skins); she sits higher than the others, so drop her more
+  cocoaY: 15,      // EXTRA downward shift applied only to Aki (+ all Aki skins); was 30 for the old Cocoa art, halved for the new chef art which sits lower in its box
   // Desk surface (marble) — height % from the bottom + texture zoom
   deskHeight: 46,
   deskZoom: 1.35,  // scales the desk image so the surface texture reads larger
@@ -840,9 +840,10 @@ export default function HomeScreen() {
   // Tablet character layer. Cocoa (every Cocoa skin keeps id `companion_cocoa`)
   // sits higher in her art than the others, so drop her by an extra `cocoaY`.
   const isCocoaCompanion = activeCompanion.type === 'shop' && activeCompanion.id === 'companion_cocoa';
-  // Cocoa's art reads tall — nudge every Cocoa skin down a little on phones too
-  // (the tablet has its own cocoaY knob above).
-  const companionTranslateY = isCocoaCompanion ? 30 : 0;
+  // Aki's art reads tall — nudge every Aki skin down a little on phones too
+  // (the tablet has its own cocoaY knob above). Was 30 for the old Cocoa art;
+  // the new chef art sits lower in its box, so halved to keep him above the desk.
+  const companionTranslateY = isCocoaCompanion ? 15 : 0;
   // Full ×u box (the static bottom:'38%' converted against the REFERENCE scene
   // height, riding the desk via deskDriftY) + the knob nudges as transform.
   const tCharLayer =
@@ -1358,8 +1359,7 @@ export default function HomeScreen() {
               {/* Desk surface — top edge at 46% of the scene (height '54%'); bleeds past
                   the bottom safe-area inset so the desk (not the room background) fills
                   the very bottom strip. The character anchors to this edge via ph.charBottom.
-                  Deskless rooms (deskImage === null, e.g. Bluebell Lagoon) skip it so the
-                  full scene shows. */}
+                  Deskless rooms (deskImage === null) skip it so the full scene shows. */}
               {deskRoom.deskImage != null && (
                 <>
                   <Image
