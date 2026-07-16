@@ -141,17 +141,6 @@ export const ROOM_PAIRS: RoomPair[] = [
     // surface as a load-time safety net.
     deskTint: '#384F64',
   },
-  {
-    // Matched set for Bunny's Bluebell outfit — a pink-and-blue water-park
-    // background with NO desk: the scene (pool + deck) is the whole view, so the
-    // home/study render skips the desk surface entirely for this room.
-    id: 'bluebell-lagoon',
-    name: 'Bluebell Lagoon',
-    backgroundId: 'bg_bluebell_lagoon',
-    deskId: null,
-    backgroundImage: require('@/assets/images/backgrounds/bluebell-room.png'),
-    deskImage: null,
-  },
 ];
 
 /** The pair that contains the given shop item id (background or desk), if any. */

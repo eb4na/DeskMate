@@ -38,7 +38,7 @@ create policy mail_read on public.mail
 --
 --   -- Give everyone coins + unlock a shop item (use the item''s shop id):
 --   insert into public.mail (title, body, coins, item_id)
---   values ('Surprise outfit!', 'A new look, on the house.', 200, 'outfit_bunny_bluebell');
+--   values ('Surprise outfit!', 'A new look, on the house.', 200, 'outfit_bunny_palace');
 --
 --   -- Announcement only (no reward): coins 0, item_id null.
 --   insert into public.mail (title, body) values ('Update 1.2 is here', 'New games + skins added!');

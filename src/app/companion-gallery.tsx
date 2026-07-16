@@ -287,8 +287,8 @@ function GalleryContent() {
     if (!pairConfirm) return;
     const { pair, skin } = pairConfirm;
     setEquippedBackground(pair.id);
-    // Some matched rooms (e.g. Bluebell Lagoon) are a full scene with no desk
-    // surface. Don't switch the player onto a deskless room — keep whatever desk
+    // A matched room can be a full scene with no desk surface (deskId null).
+    // Don't switch the player onto a deskless room — keep whatever desk
     // they're currently using; only swap the desk when the room actually has one.
     if (pair.deskId) setEquippedDesk(pair.id);
     // Wear the outfit too — but only if it's unlocked (a locked skin can't be worn).

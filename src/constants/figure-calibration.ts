@@ -9,7 +9,6 @@ export const FIGURE_METRICS: Record<string, { fill: number; pad: number }> = {
   'bun/dreams': { fill: 0.8644, pad: 0.0550 },
   'bun/snowrabbit': { fill: 0.8309, pad: 0.0766 },
   'bun/strawberry': { fill: 0.7974, pad: 0.0766 },
-  'companion_bunny/bluebell': { fill: 0.8636, pad: 0.0638 },
   'companion_bunny/classic': { fill: 0.8939, pad: 0.0502 },
   'companion_bunny/jiraikei': { fill: 0.8190, pad: 0.0750 },
   'companion_bunny/palace': { fill: 0.9370, pad: 0.0407 },

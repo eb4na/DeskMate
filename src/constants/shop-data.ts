@@ -120,7 +120,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     requiresAllRecipes: true,
   },
 
-  // ─── Outfits / wardrobe skins (10000; Bluebell + Carefree Days 7000; the 3 pajama sets 4000) ──
+  // ─── Outfits / wardrobe skins (10000; Carefree Days 7000; the 3 pajama sets 4000) ──
   {
     id: 'outfit_bun_angel',
     name: 'Angel Bun',
@@ -240,15 +240,6 @@ export const SHOP_ITEMS: ShopItem[] = [
     image: require('@/assets/images/bunny/bunny-palace.png'),
   },
   {
-    id: 'outfit_bunny_bluebell',
-    name: 'Bluebell Bunny',
-    emoji: '',
-    description: "A frilly blue-and-pink sweet lolita dress with ribbon bows. Bunny turns soft and sugary in her reminders while wearing it — wear it from Bunny's Wardrobe.",
-    price: 7000,
-    category: 'outfits',
-    image: require('@/assets/images/bunny/bunny-bluebell.png'),
-  },
-  {
     id: 'outfit_hanji_ivoryrose',
     name: 'Ivory Rose Hanji',
     emoji: '',
@@ -358,15 +349,6 @@ export const SHOP_ITEMS: ShopItem[] = [
     category: 'background',
     image: require('@/assets/images/backgrounds/strawberry-palace.png'),
     plusOnly: true,
-  },
-  {
-    id: 'bg_bluebell_lagoon',
-    name: 'Bluebell Lagoon',
-    emoji: '',
-    description: 'A pink-and-blue water park — twisty slides, heart floats, and a sunny pool. Pairs with Bunny\'s Bluebell outfit.',
-    price: 8000,
-    category: 'background',
-    image: require('@/assets/images/backgrounds/bluebell-room.png'),
   },
   // ─── Desks / study surfaces (5000 coins) ────────────────────────────────
   {

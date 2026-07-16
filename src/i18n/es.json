@@ -15,8 +15,7 @@
     "bunny": {
       "classic": ["Llegó Conejo. El cuarto mejoró.", "Ser linda es una responsabilidad seria.", "Admira a Conejo. Conejo lo permite."],
       "jiraikei": ["Lazo dulce, pequeña advertencia afilada.", "Conejo sonríe. Elige con cuidado.", "El encaje rosa también muerde."],
-      "palace": ["Las peonías se inclinan cuando paso.", "Conejo ya habló. Obviamente.", "Azul real, ánimo real."],
-      "bluebell": ["Las campanitas de azúcar suenan suaves.", "Conejo es dulce, no inofensiva.", "Los lazos azules mejoran los días."]
+      "palace": ["Las peonías se inclinan cuando paso.", "Conejo ya habló. Obviamente.", "Azul real, ánimo real."]
     },
     "miel": {
       "classic": ["Algo cálido está casi listo.", "La miel hace el cuarto más suave.", "Te guardé el rincón acogedor."],
@@ -1156,7 +1155,6 @@
     "bg_lavender_palace": "Palacio de Lavanda",
     "bg_frostbloom_shrine": "Santuario de Escarcha",
     "bg_strawberry_palace": "Casa de Té Dorada",
-    "bg_bluebell_lagoon": "Laguna de Campanillas",
     "desk_marble": "Escritorio de Mármol",
     "desk_wood": "Escritorio de Madera",
     "desk_pink": "Escritorio Rosa",
@@ -1190,7 +1188,6 @@
     "outfit_honey_zzz": "Un pijama de tarro de miel con gorro de dormir. Con él puesto, Miel murmura adormilado «primero estudiar, luego mimos» — póntelo desde el armario de Miel.",
     "outfit_bunny_jiraikei": "Un conjunto lolita jirai kei en rosa y negro. Con él puesto, Conejo se vuelve adorable pero amenazante en sus recordatorios — póntelo desde el armario de Conejo.",
     "outfit_bunny_palace": "Una lujosa túnica palaciega de peonía azul con tocado. Con ella puesta, Conejo emite recordatorios regios por decreto real — póntela desde el armario de Conejo.",
-    "outfit_bunny_bluebell": "Un vestido sweet lolita azul y rosa con lazos de cinta. Con él puesto, Conejo se vuelve suave y azucarada en sus recordatorios — póntelo desde el armario de Conejo.",
     "outfit_hanji_ivoryrose": "Una capota de encaje marfil y un hanfu crema de glicina con una rosa blanca. Póntelo desde el armario de Hanji.",
     "bg_modern_kitchen": "Un fondo de cocina moderna y elegante — combina con el Escritorio de Mármol.",
     "bg_washitsu": "Un fondo de playa soleada junto al mar — combina con el Escritorio de Madera.",
@@ -1203,7 +1200,6 @@
     "bg_lavender_palace": "Un palacio sereno de glicinas — puerta de luna, flores de lavanda y madera cálida. Combina con el Escritorio de Lavanda.",
     "bg_frostbloom_shrine": "Un patio de santuario en silencio nevado — ciruelos blancos en flor, farolillos escarchados y un cielo invernal despejado.",
     "bg_strawberry_palace": "Un palacio real rosa fresa — trono dorado, cortinas de cinta y una mesa de té dulce como las bayas. Gratis con Premium.",
-    "bg_bluebell_lagoon": "Un parque acuático rosa y azul — toboganes serpenteantes, flotadores de corazón y una piscina soleada. Combina con el conjunto Campanilla de Conejo.",
     "desk_marble": "Una superficie de estudio de mármol blanco impecable.",
     "desk_wood": "Una superficie de estudio de madera natural cálida — combina con la habitación Playa.",
     "desk_pink": "Una superficie de estudio rosa suave — combina con la Habitación de Bun.",
@@ -1822,7 +1818,6 @@
     "zzz": "Dormilón",
     "jiraiKei": "Jirai Kei",
     "bluePeony": "Peonía Azul",
-    "bluebell": "Campanilla",
     "berryPrincess": "Princesa Berry",
     "ivoryRose": "Rosa Marfil",
     "strawberryDreams": "Sueños de Fresa",
@@ -2039,7 +2034,6 @@
     "bunny_classic": "Conejo vivía en un palacio rosa donde cada cortina parecía ondear solo para ella y cada espejo reflejaba exactamente lo que ya sabía: que era, sin discusión, lo más lindo de la sala. Caminaba por los grandes salones con su vestido de volantes, saludando al día con esa confianza que la mayoría de la realeza tarda años en aprender. Era dulce, sí, pero jamás ingenua. Conejo conocía el efecto que tenía en la gente, y llevaba ese conocimiento como un lazo más.\n\nAun así, ser adorable no era lo mismo que estar de brazos cruzados. Conejo tomaba decisiones rápido, esperaba que se cumplieran y nunca necesitó alzar la voz para que la obedecieran. Los jardineros se enderezaban a su paso. Los sirvientes apuraban un poco el paso. Hasta los invitados parecían sentarse con mejores modales bajo su mirada. Y sin embargo, nunca era cruel. Había simplemente una autoridad natural en su dulzura, como si el encanto mismo hubiera decidido convertirse en princesa y gobernar la sala.",
     "bunny_jiraikei": "En la ciudad, la gente siempre tenía algo que decir. Cuchicheaban sobre la ropa, miraban de reojo la seguridad ajena y juzgaban todo lo que no entendían. Conejo aprendió pronto que, si escuchaba cada voz a su alrededor, nunca sería lo bastante libre para sonar como ella misma. Así que se vestía exactamente como quería —lazos y encaje en rosa y negro, suave a primera vista, afilada si mirabas más tiempo— y cruzaba las calles como si las opiniones de los demás estuvieran hechas de papel.\n\nLas miradas nunca cesaron del todo, pero dejaron de importar. Conejo se movía con esa certeza fría que hace que la burla se sienta pequeña. Si alguien se reía, no se inmutaba. Si alguien la subestimaba, lo dejaba hacer. Había algo casi peligroso en lo poco que le afectaba, en la limpieza con la que se negaba a doblarse solo para resultar más fácil de entender. Parecía dulce, pero había acero bajo el encaje, y todos podían sentirlo.",
     "bunny_palace": "La túnica azul de Conejo se movía como agua mientras cruzaba los jardines del palacio, con las peonías bordadas atrapando la luz entre las sombras de los cipreses y los farolillos de piedra tallada. Los senderos se curvaban entre estanques, puertas de luna y árboles en flor, y los asistentes la seguían unos pasos por detrás, cuidando de no perturbar la quietud que la rodeaba. No necesitaba decir mucho. El ritmo de sus pasos bastaba para silenciar un lugar.\n\nSolía venir al jardín a media tarde, cuando el cielo empezaba a suavizarse y los tejados brillaban bajo el sol que se apagaba. Allí, entre flores azules y mangas de seda flotantes, parecía menos alguien que tomaba prestada la elegancia y más alguien nacido de ella. Se detenía a mirar las carpas moverse bajo el agua, a tocar los pétalos de una peonía, a dejar que la brisa pasara entre sus adornos del pelo. Todo a su alrededor se sentía deliberado, grácil y antiguo. Conejo atravesaba ese mundo con la misma autoridad serena que llevaba a todas partes: hermosa, inconfundible e imposible de ignorar.",
-    "bunny_bluebell": "El parque acuático parecía construido de azúcar. Las torres se enroscaban como algodón de feria, los toboganes se curvaban en bucles pastel y el aire olía suavemente a sirope y viento de mar. Conejo lo adoró al instante. Con su vestido de volantes azul y rosa, parecía pertenecer allí más que nadie, como si todo el lugar se hubiera construido a juego con su humor. Los niños corrían con las manos pegajosas y la risa en la boca, pero Conejo, de algún modo, conseguía que aquel caos de algodón de azúcar pareciera ordenado.\n\nPasó el día flotando de atracción en atracción como una pequeña reina de la dulzura. Recorrió el río lento con una postura perfecta, declaró qué helados eran aceptables y señaló la mejor vista desde el tobogán más alto. Al atardecer, las luces se encendieron en suaves reflejos azules y rosas sobre el agua, y el parque entero se volvió de ensueño. Conejo se quedó bajo los carteles brillantes y la bruma del agua con una sonrisa que decía que siempre había esperado que existiera un mundo así de lindo — y, por supuesto, era de justicia que ella fuera quien mejor luciera en él.",
     "hanji_classic": "Hanji vivía en una residencia tranquila escondida tras un jardín de glicinas, donde el aire siempre olía levemente a lavanda y a lluvia. Hablaba bajito, se movía con suavidad y tenía esa clase de presencia que hacía que una habitación se serenara en cuanto entraba. Las campanas y el bullicio pertenecían a otros lugares. El mundo de Hanji estaba hecho de mangas de seda, flores pálidas y el silencio de las páginas que se pasan a media tarde.\n\nLe gustaban las horas en que las sombras del jardín se alargaban y la luz se volvía tierna. Entonces caminaba bajo las glicinas colgantes y dejaba que los dijes de sus mangas se mecieran despacio en la brisa. La gente solía confundir su silencio con distancia, pero no era eso. Hanji simplemente se comportaba como alguien que no necesita competir con el ruido. Era callada, sí — pero de ese silencio que perdura, fragante e inolvidable.",
     "hanji_ivoryrose": "Hanji caminaba por la concurrida calle japonesa con la postura de alguien educada con esmero y con cariño para no apresurarse jamás. A su alrededor, la ciudad se movía en oleadas —tenderos llamando, bicicletas pasando, letreros brillando suavemente sobre la multitud—, y sin embargo ella permanecía serena con su capota de marfil y su vestido crema, como una dama de verdad cruzando un mundo que había olvidado cómo ir despacio. Se conducía con tanta pulcritud que hasta la esquina más ajetreada parecía ordenarse un poco a su paso.\n\nSe detenía en el puesto de flores, en el escaparate de la confitería, en el pequeño salón de té encajado entre fachadas más llamativas. La ciudad estaba viva y llena, pero Hanji nunca parecía abrumada por ella. La atravesaba con una gracia silenciosa, como si la elegancia no fuera algo que se pone en ocasiones especiales, sino simplemente la forma de su naturaleza. Contra la calle inquieta parecía casi de otra época — y por eso mismo más hermosa, como una rosa sostenida en calma en medio del movimiento."
   }

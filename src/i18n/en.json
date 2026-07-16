@@ -15,8 +15,7 @@
     "bunny": {
       "classic": ["Bunny arrived. The room improved.", "Cute is a serious responsibility.", "Admire bunny. Bunny permits it."],
       "jiraikei": ["Sweet bow, sharp little warning.", "Bunny smiles. Choose wisely.", "Pink lace can still bite."],
-      "palace": ["The peonies bow when I pass.", "Bunny has spoken. Obviously.", "Royal blue, royal mood."],
-      "bluebell": ["Sugar bells are ringing softly.", "Bunny is sweet, not harmless.", "Blue ribbons make better days."]
+      "palace": ["The peonies bow when I pass.", "Bunny has spoken. Obviously.", "Royal blue, royal mood."]
     },
     "miel": {
       "classic": ["Something warm is almost ready.", "Honey makes the room softer.", "I saved you the cozy corner."],
@@ -1156,7 +1155,6 @@
     "bg_lavender_palace": "Lavender Palace",
     "bg_frostbloom_shrine": "Frostbloom Shrine",
     "bg_strawberry_palace": "Golden Teahouse",
-    "bg_bluebell_lagoon": "Bluebell Lagoon",
     "desk_marble": "Marble Desk",
     "desk_wood": "Wood Desk",
     "desk_pink": "Pink Desk",
@@ -1190,7 +1188,6 @@
     "outfit_honey_zzz": "Cozy honey-pot pajamas & nightcap. Miel mumbles sleepy 'study-first, snuggle-after' reminders while wearing it — wear it from Miel's Wardrobe.",
     "outfit_bunny_jiraikei": "A pink-and-black jirai kei lolita outfit. Bunny turns cute-but-menacing in her reminders while wearing it — wear it from Bunny's Wardrobe.",
     "outfit_bunny_palace": "An ornate blue peony palace robe & headdress. Bunny issues regal by-royal-decree reminders while wearing it — wear it from Bunny's Wardrobe.",
-    "outfit_bunny_bluebell": "A frilly blue-and-pink sweet lolita dress with ribbon bows. Bunny turns soft and sugary in her reminders while wearing it — wear it from Bunny's Wardrobe.",
     "outfit_hanji_ivoryrose": "An ivory lace bonnet & cream wisteria hanfu with a white rose. Wear it from Hanji's Wardrobe.",
     "bg_modern_kitchen": "A sleek modern kitchen backdrop — pairs with the Marble desk.",
     "bg_washitsu": "A sunny seaside beach backdrop — pairs with the Wood desk.",
@@ -1203,7 +1200,6 @@
     "bg_lavender_palace": "A serene wisteria palace — moon gate, lavender blooms, and warm wood. Pairs with the Lavender desk.",
     "bg_frostbloom_shrine": "A snow-hushed shrine courtyard — white plum blossoms, frosted lanterns, and a clear winter sky.",
     "bg_strawberry_palace": "A royal strawberry-pink palace — gilded throne, ribbon drapes, and a berry-sweet tea table. Yours free with Plus.",
-    "bg_bluebell_lagoon": "A pink-and-blue water park — twisty slides, heart floats, and a sunny pool. Pairs with Bunny's Bluebell outfit.",
     "desk_marble": "A clean white marble study surface.",
     "desk_wood": "A warm natural wood study surface — pairs with the Beach room.",
     "desk_pink": "A soft pink study surface — pairs with Bun's Room.",
@@ -1822,7 +1818,6 @@
     "zzz": "ZZZ",
     "jiraiKei": "Jirai Kei",
     "bluePeony": "Blue Peony",
-    "bluebell": "Bluebell",
     "berryPrincess": "Berry Princess",
     "ivoryRose": "Ivory Rose",
     "strawberryDreams": "Strawberry Dreams",
@@ -2040,7 +2035,6 @@
     "bunny_classic": "Bunny lived in a pink palace where every curtain seemed to flutter just for her and every mirror reflected exactly what she already knew — that she was, undeniably, the cutest thing in the room. She walked through grand halls in a frilly gown, greeting the day with the kind of confidence most royals spent years trying to learn. She was sweet, yes, but never unaware. Bunny knew the effect she had on people, and she wore that knowledge like another ribbon.\n\nStill, being adorable was not the same as being idle. Bunny made decisions quickly, expected them followed, and never needed to raise her voice to be obeyed. Gardeners straightened when she passed. Servants hurried a little faster. Even guests seemed to sit up with better manners under her gaze. Yet she was never cruel about it. There was simply a natural authority in her sweetness, as if charm itself had decided to become a princess and rule the room.",
     "bunny_jiraikei": "In the city, people always had something to say. They whispered over outfits, side-eyed confidence, and judged anything they did not understand. Bunny learned early that if she listened to every voice around her, she would never be free enough to sound like herself. So she dressed exactly how she pleased — ribbons and lace in pink and black, soft at first glance, sharp if you looked longer — and walked through the streets as though other people's opinions were made of paper.\n\nThe stares never really stopped, but they stopped mattering. Bunny carried herself with the kind of cool certainty that made mockery feel small. If someone laughed, she did not flinch. If someone underestimated her, she let them. There was something almost dangerous in how unbothered she was, how cleanly she refused to bend just to be easier for others to understand. She looked sweet, but there was steel under the lace, and everyone could feel it.",
     "bunny_palace": "Bunny's blue robe moved like water as she walked through the palace gardens, embroidered peonies catching the light between cypress shadows and carved stone lanterns. The pathways curved through ponds, moon gates, and flowering trees, and attendants followed a few steps behind, careful not to disturb the hush around her. She did not need to say much. The rhythm of her steps alone seemed enough to quiet a space.\n\nShe often came to the garden in the late afternoon, when the sky was beginning to soften and the tiled roofs glowed under the fading sun. There, among blue blossoms and drifting silk sleeves, she seemed less like someone borrowing elegance and more like someone born from it. She paused to watch koi move beneath the water, to touch the petals of a peony, to let the breeze move through her hair ornaments. Everything around her felt deliberate, graceful, and old. Bunny walked through that world with the same poised authority she carried everywhere — beautiful, unmistakable, and impossible to ignore.",
-    "bunny_bluebell": "The waterpark looked like it had been built from sugar. Towers swirled like spun candy, the slides curved in pastel loops, and the air smelled faintly of syrup and sea wind. Bunny adored it instantly. In her frilly blue-and-pink dress, she looked like she belonged there more than anyone else, as if the whole place had been made just to match her mood. Children raced around with sticky hands and laughing mouths, but Bunny still somehow managed to make the cotton-candy chaos feel organized.\n\nShe spent the day drifting from attraction to attraction like a little queen of sweetness. She rode the lazy river with perfect posture, declared which frozen treats were acceptable, and pointed out the best view from the tallest slide. At sunset, the lights came on in soft blue and pink reflections across the water, and the whole park turned dreamlike. Bunny stood beneath glowing signs and misty spray with a smile that said she had always expected a world this cute to exist — and of course, it would only be right that she looked best in it.",
     "hanji_classic": "Hanji lived in a quiet residence tucked behind a wisteria garden where the air always smelled faintly of lavender and rain. She spoke softly, moved gently, and had the kind of presence that made a room settle the moment she entered it. Bells and chatter belonged to other places. Hanji's world was made of silk sleeves, pale blossoms, and the hush of pages turning in the late afternoon.\n\nShe liked the hours when the garden shadows stretched long and the light became tender. Then she would walk beneath the hanging wisteria and let the charms at her sleeves sway softly in the breeze. People often mistook her silence for distance, but it was not that. Hanji simply carried herself like someone who had no need to compete with noise. She was quiet, yes — but the kind of quiet that lingers, fragrant and unforgettable.",
     "hanji_ivoryrose": "Hanji walked along the busy Japanese street with the posture of someone taught carefully, lovingly, never to rush. Around her, the city moved in waves — shopkeepers calling, bicycles passing, signs glowing softly above the crowds — yet she remained composed in her ivory bonnet and cream dress, like a proper lady stepping through a world that had forgotten how to slow down. She carried herself so neatly that even the busiest corner seemed to grow a little more orderly when she passed.\n\nShe stopped at the flower stand, at the confectionery window, at the little tea shop tucked between brighter storefronts. The city was alive and full, but Hanji never seemed overwhelmed by it. She moved through it with quiet grace, as if elegance were not something put on for special occasions, but simply the shape of her nature. Against the restless street, she looked almost old-fashioned — and all the more beautiful for it, like a rose held steady in the middle of motion."
   }

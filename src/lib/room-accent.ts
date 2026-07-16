@@ -16,7 +16,6 @@ const ACCENTS: Record<string, string> = {
   'frostbloom-shrine': '#7DB4D8', // Frostbloom Shrine — icy blue
   'strawberry-palace': '#E8896B', // Golden Teahouse — pastel orange-red (coral)
   'afternoon-train': '#D84B4B',// Afternoon Train — red
-  'bluebell-lagoon': '#5AA0CC', // Bluebell Lagoon — bluebell blue
 };
 const DEFAULT_ACCENT = '#C98A5A';
 
