@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 import { useReportModalTransition } from '@/lib/modal-traffic';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { CoinIcon } from '@/components/coin-icon';
@@ -125,6 +125,7 @@ function GalleryContent() {
   const { scale, contentWidth } = useTabletScale();
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const { height: winH } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const {
     activeCompanionId,
     starterCompanionId,
@@ -499,7 +500,10 @@ function GalleryContent() {
         onDismiss={handleWardrobeDismissed}
         onRequestClose={() => { if (lorePopup) { setLorePopup(null); } else { setWardrobeFor(null); } }}>
         <View style={styles.wardrobeBackdrop}>
-          <View style={[styles.wardrobeSheet, { maxHeight: winH * 0.85 }]}>
+          {/* Bottom-anchored sheet: pad the bottom by the safe-area inset so the pinned
+              Done button sits ABOVE the home-indicator gesture zone — taps down there
+              are swallowed by iOS, which reads as "the Done button doesn't work". */}
+          <View style={[styles.wardrobeSheet, { maxHeight: winH * 0.85, paddingBottom: Spacing.four * scale + insets.bottom }]}>
             <Text style={styles.wardrobeTitle}>{t('gallery.wardrobeTitle', { name: wardrobeFor?.name ?? '' })}</Text>
             {wardrobeSkins.length > 0 ? (
               <ScrollView
