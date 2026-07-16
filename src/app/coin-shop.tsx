@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { showPopup } from '@/lib/popup';
 import { track } from '@/lib/analytics';
@@ -148,7 +148,11 @@ export default function CoinShopScreen() {
   // granted ONLY after a real ad reward fires (showRewardedAd resolves rewarded:true)
   // — same fail-closed rule as coin packs: dev mock-grants, production refuses when no
   // ad / SDK is available. The 3×/day cap is enforced authoritatively in claimAdReward.
+  // While the SDK loads (or times out — up to ~17s when there's no inventory) the
+  // button shows a spinner, so a tap always gives instant feedback instead of silence.
+  const [adLoading, setAdLoading] = useState(false);
   const handleWatchAd = async () => {
+    if (adLoading) return;
     if (adsLeft <= 0) {
       showPopup(t('coinShop.adLimitReached'), t('coinShop.adLimitReachedMsg', { total: DAILY_AD_LIMIT }));
       return;
@@ -174,7 +178,13 @@ export default function CoinShopScreen() {
       else showPopup(t('coinShop.adUnavailable'), t('coinShop.adUnavailableMsg'));
       return;
     }
-    const res = await showRewardedAd();
+    setAdLoading(true);
+    let res: Awaited<ReturnType<typeof showRewardedAd>>;
+    try {
+      res = await showRewardedAd();
+    } finally {
+      setAdLoading(false);
+    }
     if (res.rewarded) { grant(); return; }
     // Real ad couldn't be shown (no inventory on the sim, or the native module isn't in
     // this build). In dev, fall back to the mock grant so the reward flow stays testable;
@@ -231,10 +241,12 @@ export default function CoinShopScreen() {
             </View>
             <SoundPressable
               sound="confirm"
-              disabled={adsLeft <= 0}
+              disabled={adsLeft <= 0 || adLoading}
               onPress={handleWatchAd}
               style={({ pressed }) => [styles.adBtn, adsLeft <= 0 && styles.adBtnDisabled, pressed && styles.pressed]}>
-              <ThemedText style={styles.adBtnText}>{t('coinShop.watchAdButton')}</ThemedText>
+              {adLoading
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <ThemedText style={styles.adBtnText}>{t('coinShop.watchAdButton')}</ThemedText>}
             </SoundPressable>
           </View>
 
