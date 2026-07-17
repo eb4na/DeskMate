@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Dimensions, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Dimensions, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -63,12 +63,15 @@ export default function PlusUpgradeScreen() {
   const { isPlus, setIsPlus, ownedShopItems } = useApp();
   // Chosen billing period — monthly Plus lapses after a month, annual after a year.
   const [plan, setPlan] = useState<'monthly' | 'annual'>('monthly');
-  // Confirm dialog rendered as a LOCAL <Modal> (not the root showPopup host): this
-  // screen is itself a native modal, and a root-mounted popup can fail to present
-  // over it. A local modal presents from this screen's own controller, so it always
-  // shows — and we don't call router.back() from its callback (dismissing two
-  // modals at once races on iOS); activating just flips the screen into its
-  // "Plus member" state and the user closes the screen themselves.
+  // Confirm dialog rendered as an INLINE absolute overlay (not the root showPopup
+  // host, and not a native <Modal> either): this screen is itself a native modal,
+  // and depending on where it was pushed from (session picker, daily-reward popup,
+  // …) it can sit 2+ native presentations deep — at that depth iOS silently drops
+  // a further native Modal, so "Start Plus" looked like a dead tap and the mock /
+  // reward / error dialogs never appeared. An in-tree overlay always renders.
+  // We don't call router.back() from its callback (dismissing two modals at once
+  // races on iOS); activating just flips the screen into its "Plus member" state
+  // and the user closes the screen themselves.
   // 'rewardSkin' → 'rewardRoom' are the two first-time-Plus unlock popups, shown
   // back-to-back only when the perks were actually newly granted.
   // 'activate' is the DEV-only mock-purchase confirm; the 'msg*' states are simple
@@ -285,8 +288,8 @@ export default function PlusUpgradeScreen() {
       </ScrollView>
 
       {/* Local confirm dialog — see note on `confirm` state above. */}
-      <Modal visible={confirm !== null} transparent animationType="fade" onRequestClose={() => setConfirm(null)}>
-        <Pressable style={styles.confirmBackdrop} onPress={() => setConfirm(null)}>
+      {confirm !== null && (
+        <Pressable style={styles.confirmOverlay} onPress={() => setConfirm(null)}>
           <Pressable style={styles.confirmCard} onPress={(e) => e.stopPropagation?.()}>
             {confirm === 'activate' ? (
               <>
@@ -382,7 +385,7 @@ export default function PlusUpgradeScreen() {
             )}
           </Pressable>
         </Pressable>
-      </Modal>
+      )}
     </ThemedView>
   );
 }
@@ -488,10 +491,16 @@ const styles = StyleSheet.create({
   legalLink: { alignItems: 'center', paddingVertical: Spacing.one },
   legalLinkText: { textDecorationLine: 'underline', color: '#7C6F5A', fontWeight: '700' },
 
-  // Local confirm dialog (activate / deactivate Plus).
-  confirmBackdrop: {
-    flex: 1,
-    backgroundColor: 'transparent',
+  // Local confirm dialog (activate / deactivate Plus) — in-tree absolute overlay,
+  // dimmed like the wardrobe unlock popup (see companion-gallery buyOverlay).
+  confirmOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 100,
+    backgroundColor: 'rgba(91,58,46,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: Spacing.four,
