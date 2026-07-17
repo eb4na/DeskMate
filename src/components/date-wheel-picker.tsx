@@ -8,6 +8,7 @@ import { useTheme } from '@/hooks/use-theme';
 import i18n, { useTranslation } from '@/i18n';
 import { playTick } from '@/lib/sounds';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 
 type DateParts = {
   year: number;
@@ -102,6 +103,7 @@ export function DateWheelPicker({
   const theme = useTheme();
   const todayParts = parseISODate(getTodayISO())!;
   const [isOpen, setIsOpen] = useState(false);
+  useReportModalTransition(isOpen);
   const minParts = useMemo(() => parseISODate(minimumDateISO) ?? null, [minimumDateISO]);
   const maxParts = useMemo(() => parseISODate(maximumDateISO) ?? null, [maximumDateISO]);
 

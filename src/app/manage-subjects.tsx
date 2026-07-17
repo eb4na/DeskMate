@@ -13,6 +13,7 @@ import { localizeSubjectName } from '@/lib/subject-utils';
 import { SUBJECT_COLORS } from '@/constants/placeholder-data';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, MIN_POPUP_WIDTH, popupMaxWidth, Spacing } from '@/constants/theme';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 
 export default function ManageSubjectsScreen() {
   const { t } = useTranslation();
@@ -27,6 +28,7 @@ export default function ManageSubjectsScreen() {
   // Local delete confirm — this screen is a native modal, so a root showPopup()
   // renders BEHIND it (see settings.tsx). A local <Modal> shows over the screen.
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  useReportModalTransition(deleteTarget !== null);
 
   const activeSubjects = subjects
     .filter((s) => !s.archived)

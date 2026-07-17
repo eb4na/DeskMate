@@ -20,7 +20,7 @@ import { MIN_POPUP_WIDTH } from '@/constants/theme';
 
 import { birthdayRewardAvailable, nextLoginReward, todayISO, useApp } from '@/context/app-context';
 import { DAILY_REWARD_CAP } from '@/constants/login-rewards';
-import { useReportModalTransition } from '@/lib/modal-traffic';
+import { useModalSafeVisible } from '@/lib/modal-traffic';
 import { isLoadingActive, subscribeLoadingDone } from '@/lib/loading-signal';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { useTranslation } from '@/i18n';
@@ -83,10 +83,10 @@ export function DailyRewardModal() {
   // streak is saved before claiming (which would advance/reset it) and the two native
   // modals never stack.
   const visible = reward.available && armed && onboarded && !characterObtainedPending && !hanjiUnlockPending && !recipeBadgePending && !birthdayPending && !streakRescuePending && !leaving;
-  useReportModalTransition(visible);
+  const safeVisible = useModalSafeVisible(visible);
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={claimLoginReward}>
+    <Modal visible={safeVisible} transparent animationType="fade" onRequestClose={claimLoginReward}>
       <View style={styles.root}>
         <View style={styles.backdrop} />
         <View style={styles.card}>

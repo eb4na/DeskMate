@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useIsTablet } from '@/hooks/use-device-class';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, MIN_POPUP_WIDTH, popupMaxWidth } from '@/constants/theme';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 
 export function GameRulesButton({
   title,
@@ -22,6 +23,7 @@ export function GameRulesButton({
   const { t } = useTranslation();
   const isTablet = useIsTablet();
   const [open, setOpen] = useState(false);
+  useReportModalTransition(open);
 
   // Bigger, easier tap target on tablets.
   const size = isTablet ? 56 : 38;

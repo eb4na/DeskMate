@@ -6,7 +6,7 @@ import { SoundPreviewButton } from '@/components/sound-preview-button';
 import type { StyleProp, TextStyle } from 'react-native';
 import { showPopup } from '@/lib/popup';
 import { stopPreview } from '@/lib/ambience-audio';
-import { useModalSafeVisible } from '@/lib/modal-traffic';
+import { useModalSafeVisible, useReportModalTransition } from '@/lib/modal-traffic';
 import { track } from '@/lib/analytics';
 import { PRODUCT_IDS, fetchPrices, purchaseProduct, purchasesReady, type PriceMap } from '@/lib/purchases';
 import { useIsTablet } from '@/hooks/use-device-class';
@@ -315,6 +315,7 @@ export default function ShopScreen() {
   const [outfitCharId, setOutfitCharId] = useState<string | null>(null);
   const [itemPage, setItemPage] = useState(0);
   const [lorePop, setLorePop] = useState<{ name: string; text: string } | null>(null);
+  useReportModalTransition(zoomImage !== null || outfitPreview !== null || lorePop !== null);
   // The purchase the white confirm popup is currently asking about.
   const [buyReq, setBuyReq] = useState<BuyReq | null>(null);
   // Gate the buy popup through the anti-freeze settle window: when we arrive here

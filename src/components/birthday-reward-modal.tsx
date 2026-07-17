@@ -13,7 +13,7 @@ import { MIN_POPUP_WIDTH, popupMaxWidth } from '@/constants/theme';
 
 import { BIRTHDAY_REWARD_COINS, birthdayRewardAvailable, todayISO, useApp } from '@/context/app-context';
 import { isLoadingActive, subscribeLoadingDone } from '@/lib/loading-signal';
-import { useReportModalTransition } from '@/lib/modal-traffic';
+import { useModalSafeVisible } from '@/lib/modal-traffic';
 import { useTranslation } from '@/i18n';
 
 const COIN = require('@/assets/images/home/coin-icon.png');
@@ -48,10 +48,10 @@ export function BirthdayRewardModal() {
 
   const onboarded = legalAccepted && starterChosen;
   const visible = available && armed && onboarded && !characterObtainedPending && !hanjiUnlockPending && !recipeBadgePending;
-  useReportModalTransition(visible);
+  const safeVisible = useModalSafeVisible(visible);
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={claimBirthdayReward}>
+    <Modal visible={safeVisible} transparent animationType="fade" onRequestClose={claimBirthdayReward}>
       <View style={styles.root}>
         <View style={styles.backdrop} />
         <View style={styles.card}>

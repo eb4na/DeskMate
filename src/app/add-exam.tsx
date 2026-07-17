@@ -4,7 +4,6 @@ import { Pressable, ScrollView, StyleSheet, Switch, TextInput } from 'react-nati
 import { SoundPressable } from '@/components/sound-pressable';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BakeryWrenchEmoji } from '@/components/bakery-emoji';
 import { LockBadge } from '@/components/lock-badge';
 import { CountdownShape, COUNTDOWN_SHAPES, DEFAULT_COUNTDOWN_SHAPE, type CountdownShapeKey } from '@/components/countdown-shapes';
 import { DateWheelPicker, getTodayISO } from '@/components/date-wheel-picker';
@@ -110,7 +109,7 @@ export default function AddExamScreen() {
         <SafeAreaView style={styles.safeArea}>
           <ThemedText type="default" themeColor="textSecondary" style={styles.hint}>
             {t('addExam.hint')}
-            {isPlus && t('addExam.hintPlus')}
+            {isPlus && ` ${t('addExam.hintPlus')}`}
           </ThemedText>
 
         <ThemedView style={styles.field}>
@@ -203,13 +202,6 @@ export default function AddExamScreen() {
           />
         </ThemedView>
 
-        <ThemedView type="backgroundElement" style={[styles.noticeCard, styles.noticeRow]}>
-          <BakeryWrenchEmoji size={16} />
-          <ThemedText type="small" themeColor="textSecondary" style={styles.noticeText}>
-            {t('addExam.pushNotice')}
-          </ThemedText>
-        </ThemedView>
-
         {/* Free users at the cap get an upgrade nudge (unlimited exams is the Plus perk). */}
         {!isPlus && examCountdowns.length >= FREE_EXAM_LIMIT ? (
           <Pressable onPress={() => router.push('/plus-upgrade')}>
@@ -288,9 +280,7 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   reminderInfo: { flex: 1, gap: 2 },
-  noticeCard: { borderRadius: 12, padding: Spacing.three },
   noticeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  noticeText: { textAlign: 'center', lineHeight: 20, flexShrink: 1 },
   actions: { gap: Spacing.three, marginTop: Spacing.two },
   saveBtn: {
     backgroundColor: '#7C6F5A',

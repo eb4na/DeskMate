@@ -25,6 +25,7 @@ import {
 } from '@/lib/spotify';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 
 const C = BakeryColors;
 
@@ -138,6 +139,7 @@ export function SoundPickerModal({
   const { ownedShopItems, equippedShopItems, setEquippedSound, isPlus, vinylColor, setVinylColor,
     spotifyBgEnabled, spotifyBgColor, setSpotifyBgEnabled, setSpotifyBgColor } = useApp();
   const { t } = useTranslation();
+  useReportModalTransition(visible);
   const isTablet = useIsTablet();
   // Plus members get every sound free while subscribed; coin-bought sounds are kept
   // forever. So a sound is available if Plus OR it's owned.

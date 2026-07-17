@@ -38,6 +38,7 @@ import {
 } from '@/lib/companion-utils';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 
 const P = {
   cream: '#FFF8EF',
@@ -90,6 +91,7 @@ export default function ProfileScreen() {
   // Birthday is set at onboarding (and changeable once, in Settings) — here it's a
   // read-only display. See settings.tsx for the change-once editor.
   const [showColorPicker, setShowColorPicker] = useState(false);
+  useReportModalTransition(showColorPicker);
 
   // Cloud profile sync (name + current character + stats) runs app-wide in
   // app-context now, so friends see my character even without opening this screen.

@@ -29,6 +29,7 @@ import { isPlusFrame } from '@/components/avatar-frame';
 import i18n, { useTranslation } from '@/i18n';
 import { formatDuration } from '@/lib/format-duration';
 import { MaxContentWidth, MIN_POPUP_WIDTH, popupMaxWidth, Spacing } from '@/constants/theme';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 
 const P = {
   cream: '#FFF8EF',
@@ -109,6 +110,7 @@ export default function FriendCardScreen() {
   // friend-card is presented as a native modal, so confirmations use a LOCAL modal —
   // the root showPopup renders BEHIND the native sheet and the tap just looks dead.
   const [mod, setMod] = useState<null | 'report' | 'block' | 'sent' | 'error' | 'reqSent' | 'reqFail'>(null);
+  useReportModalTransition(mod !== null);
   const [adding, setAdding] = useState(false);
   // Add friend: send a friend request (recipient must accept), mirroring the
   // Friends-tab flow. Show the result in the LOCAL modal (root popups render behind

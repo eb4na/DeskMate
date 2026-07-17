@@ -3,6 +3,7 @@ import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View 
 
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, MIN_POPUP_WIDTH, popupMaxWidth, Spacing } from '@/constants/theme';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 
 const C = BakeryColors;
 
@@ -23,6 +24,7 @@ export function DeleteAccountModal({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  useReportModalTransition(visible);
   const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState(false);
 

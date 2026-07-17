@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { showPopup } from '@/lib/popup';
-import { noteModalTransition } from '@/lib/modal-traffic';
+import { noteModalTransition, useReportModalTransition } from '@/lib/modal-traffic';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DeleteAccountModal } from '@/components/delete-account-modal';
@@ -165,6 +165,7 @@ export default function SettingsScreen() {
   // Birthday editor (set at onboarding; up to BIRTHDAY_CHANGE_LIMIT changes here).
   const bdayChangesLeft = BIRTHDAY_CHANGE_LIMIT - profileBirthdayChangeCount;
   const [bdayOpen, setBdayOpen] = useState(false);
+  useReportModalTransition(signOutOpen || pwOpen || resetOpen || bdayOpen);
   const [bdayDraft, setBdayDraft] = useState('2008-01-01');
 
   // Unread mail count for the Mailbox row badge (live fetch on open). Only count mail

@@ -23,6 +23,7 @@ import {
 import { SHOP_ITEMS } from '@/constants/shop-data';
 import { localizeShopItemName, localizeShopItemDescription } from '@/lib/companion-utils';
 import { Fonts, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 
 type BuyTarget = { room: RoomPair; kind: 'background' | 'desk' | 'pair' };
 
@@ -60,6 +61,7 @@ export default function EditRoomScreen() {
   // When the player taps something they don't own yet, we pop a little purchase
   // sheet for that exact item instead of sending them off to the Shop.
   const [buyTarget, setBuyTarget] = useState<BuyTarget | null>(null);
+  useReportModalTransition(buyTarget !== null);
   // Info-badge popup. A plain in-screen overlay (NOT a native <Modal> and NOT the
   // root showPopup host): this screen is itself a natively-presented modal, so a
   // root-hosted popup can fail to present above it. Same pattern as the gallery's

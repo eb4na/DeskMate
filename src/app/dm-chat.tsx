@@ -33,6 +33,7 @@ import {
 import { useStudyRoom } from '@/lib/use-study-room';
 import i18n, { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 
 const C = BakeryColors;
 
@@ -112,6 +113,7 @@ export default function DmChatScreen() {
   const [otherUserId, setOtherUserId] = useState<string | null>(null);
   const [online, setOnline] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  useReportModalTransition(sheetOpen);
   const scrollRef = useRef<ScrollView>(null);
 
   // Lift the composer above the keyboard. KeyboardAvoidingView under-pads inside an iOS card

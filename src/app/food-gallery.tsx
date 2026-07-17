@@ -9,6 +9,7 @@ import { useIsTablet } from '@/hooks/use-device-class';
 import { useTranslation } from '@/i18n';
 import { localizeCompanionName } from '@/lib/companion-utils';
 import { Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 
 const BAKERY_BG = require('@/assets/images/backgrounds/bakery-menu.png');
 
@@ -99,6 +100,7 @@ export default function FoodGalleryScreen() {
   const { selectedFoodId, madeFoods, setSelectedFood, ownedShopItems } = useApp();
   // Badge image currently shown enlarged in the zoom modal (null = closed).
   const [zoomBadge, setZoomBadge] = useState<number | null>(null);
+  useReportModalTransition(zoomBadge !== null);
 
   return (
     <View style={styles.container}>

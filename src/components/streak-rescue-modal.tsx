@@ -24,7 +24,7 @@ import { birthdayRewardAvailable, todayISO, useApp } from '@/context/app-context
 import { PRODUCT_IDS, fetchPrices, purchaseProduct, purchasesReady } from '@/lib/purchases';
 import { track } from '@/lib/analytics';
 import { showPopup } from '@/lib/popup';
-import { useReportModalTransition } from '@/lib/modal-traffic';
+import { useModalSafeVisible } from '@/lib/modal-traffic';
 import { isLoadingActive, subscribeLoadingDone } from '@/lib/loading-signal';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { useTranslation } from '@/i18n';
@@ -80,7 +80,7 @@ export function StreakRescueModal() {
   const visible =
     streakRescuePending && armed && onboarded && !leaving &&
     !characterObtainedPending && !hanjiUnlockPending && !recipeBadgePending && !birthdayPending;
-  useReportModalTransition(visible);
+  const safeVisible = useModalSafeVisible(visible);
 
   const onUse = () => {
     useStreakFreeze();       // bridges the gap; window-checked
@@ -133,7 +133,7 @@ export function StreakRescueModal() {
   // stray back-press must not silently forfeit today's rescue — the player picks one
   // of the three explicit buttons (use / buy / let it reset).
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={() => {}}>
+    <Modal visible={safeVisible} transparent animationType="fade" onRequestClose={() => {}}>
       <View style={styles.root}>
         <View style={styles.backdrop} />
         <View style={styles.card}>

@@ -4,6 +4,7 @@ import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
 import { BakeryColors, BakeryRadii, BakeryShadow, MIN_POPUP_WIDTH, popupMaxWidth, Spacing } from '@/constants/theme';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 
 const C = BakeryColors;
 
@@ -25,6 +26,7 @@ export function SubjectPickerModal({
 }) {
   const { t } = useTranslation();
   const { subjects } = useApp();
+  useReportModalTransition(visible);
   const active = subjects.filter((s) => !s.archived).sort((a, b) => a.order - b.order);
 
   return (

@@ -34,6 +34,7 @@ import { ROOM_PAIRS } from '@/constants/room-data';
 import { useTranslation } from '@/i18n';
 import { MaxContentWidth, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 
 function toFriendPatch(p: SyncedProfile): Partial<Friend> {
   return {
@@ -101,6 +102,7 @@ export default function FriendsScreen() {
   const [sentTo, setSentTo] = useState<string | null>(null); // shows the "request sent" confirmation
   const [sendDiag, setSendDiag] = useState<string | null>(null); // TEMP: inline send-failure reason
   const [playFor, setPlayFor] = useState<Friend | null>(null);
+  useReportModalTransition(!!playFor || !!sentTo);
   const [onlineCodes, setOnlineCodes] = useState<PresenceMap>(new Map());
   const [copied, setCopied] = useState(false);
   const [refreshing, setRefreshing] = useState(false);

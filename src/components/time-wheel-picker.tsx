@@ -8,6 +8,7 @@ import { useTheme } from '@/hooks/use-theme';
 import i18n, { useTranslation } from '@/i18n';
 import { playTick } from '@/lib/sounds';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 
 type TimeWheelPickerProps = {
   /** Value as a 24-hour "HH:MM" string. */
@@ -47,6 +48,7 @@ export function TimeWheelPicker({ value, onChange, use24Hour = false }: TimeWhee
   const { t } = useTranslation();
   const theme = useTheme();
   const [isOpen, setIsOpen] = useState(false);
+  useReportModalTransition(isOpen);
 
   const { hour, minute } = useMemo(() => parse(value), [value]);
 

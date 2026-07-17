@@ -32,6 +32,7 @@ import { useIsTablet } from '@/hooks/use-device-class';
 import { authCallbackUrl, supabase } from '@/lib/supabase';
 import { signInWithProvider } from '@/lib/oauth';
 import { LANGUAGES, type SupportedLanguage, useTranslation } from '@/i18n';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 
 const LOGIN_BG = require('@/assets/images/auth/login-bg.png');
 const LOGIN_CAT = require('@/assets/images/auth/login-cat.png');
@@ -130,6 +131,7 @@ export default function LoginScreen() {
   // moment we land here, once. The inline banner stays as a persistent reminder.
   const kickAlertShown = useRef(false);
   const [showKickModal, setShowKickModal] = useState(false);
+  useReportModalTransition(langMenuOpen || showKickModal);
   useEffect(() => {
     if (kickedReason && !kickAlertShown.current) {
       kickAlertShown.current = true;

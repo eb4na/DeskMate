@@ -340,6 +340,10 @@ function RootNavigator() {
         <Stack.Screen name="mailbox" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="legal" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="coin-shop" options={{ presentation: 'modal', title: t('screens.getCoins') }} />
+        {/* showPopup() fallback surface: pushed by PopupHost when the focused route
+            is itself modal-presented (a root <Modal> can't present then — iOS drops
+            it or wedges). Same options as session-checkpoint's transparent overlay. */}
+        <Stack.Screen name="popup" options={{ headerShown: false, gestureEnabled: false, animation: 'fade', presentation: 'transparentModal', contentStyle: { backgroundColor: 'transparent' } }} />
       </Stack.Protected>
     </Stack>
     {loadingVisible && (

@@ -28,6 +28,7 @@ import { localizeSubjectName } from '@/lib/subject-utils';
 import { formatMinutesShort } from '@/lib/format-duration';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
+import { useReportModalTransition } from '@/lib/modal-traffic';
 
 
 const C = BakeryColors;
@@ -297,6 +298,7 @@ function TaskSlider() {
 // ─── tapped-day tasks modal ──────────────────────────────────────────────────
 function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => void }) {
   const { tasks } = useApp();
+  useReportModalTransition(!!iso);
   const dayTasks = iso ? tasks.filter((t) => t.dueDate?.slice(0, 10) === iso) : [];
 
   return (
