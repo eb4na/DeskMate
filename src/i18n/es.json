@@ -1056,7 +1056,7 @@
     "birthdaySetOnceTitle": "Establece tu cumpleaños",
     "birthdaySetOnceMsg": "¿Establecer tu cumpleaños el {{date}}? Podrás cambiarlo una vez más después de esto.",
     "birthdaySetOnceConfirm": "Establecer cumpleaños",
-    "birthdayChangeTwiceNote": "Puedes cambiar tu cumpleaños hasta 2 veces, asegúrate de que sea correcto.",
+    "birthdayChangeNote": "Puedes cambiar tu cumpleaños {{times}} veces más, asegúrate de que sea correcto.",
     "birthdayChangeLastNote": "Este es tu último cambio de cumpleaños, asegúrate de que sea correcto.",
     "changeBirthday": "Cambiar cumpleaños",
     "birthdayChangeTitle": "¿Cambiar cumpleaños?",

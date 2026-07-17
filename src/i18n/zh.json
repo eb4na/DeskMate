@@ -1056,7 +1056,7 @@
     "birthdaySetOnceTitle": "设置生日",
     "birthdaySetOnceMsg": "将生日设为 {{date}}？设置后还可以再修改一次。",
     "birthdaySetOnceConfirm": "设置生日",
-    "birthdayChangeTwiceNote": "生日最多可以修改2次，请确认无误。",
+    "birthdayChangeNote": "生日还可以修改 {{times}} 次，请确认无误。",
     "birthdayChangeLastNote": "这是最后一次修改生日的机会，请确认无误。",
     "changeBirthday": "修改生日",
     "birthdayChangeTitle": "修改生日？",

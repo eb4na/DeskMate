@@ -1056,7 +1056,7 @@
     "birthdaySetOnceTitle": "誕生日を設定",
     "birthdaySetOnceMsg": "誕生日を{{date}}に設定しますか？設定後にもう一度だけ変更できます。",
     "birthdaySetOnceConfirm": "誕生日を設定",
-    "birthdayChangeTwiceNote": "誕生日は2回まで変更できます。間違いがないか確認してください。",
+    "birthdayChangeNote": "誕生日はあと{{times}}回変更できます。間違いがないか確認してください。",
     "birthdayChangeLastNote": "誕生日を変更できるのはこれが最後です。間違いがないか確認してください。",
     "changeBirthday": "誕生日を変更",
     "birthdayChangeTitle": "誕生日を変更しますか？",

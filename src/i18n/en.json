@@ -1056,7 +1056,7 @@
     "birthdaySetOnceTitle": "Set your birthday",
     "birthdaySetOnceMsg": "Set your birthday to {{date}}? You can change it one more time after this.",
     "birthdaySetOnceConfirm": "Set birthday",
-    "birthdayChangeTwiceNote": "You can change your birthday up to 2 times — make sure it's correct.",
+    "birthdayChangeNote": "You can change your birthday {{times}} more times — make sure it's correct.",
     "birthdayChangeLastNote": "This is your last birthday change — make sure it's correct.",
     "changeBirthday": "Change birthday",
     "birthdayChangeTitle": "Change birthday?",

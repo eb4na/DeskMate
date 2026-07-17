@@ -861,7 +861,7 @@ export default function SettingsScreen() {
                 ? t('settings.birthdaySetNote')
                 : bdayChangesLeft === 1
                   ? t('profileCard.birthdayChangeLastNote')
-                  : t('profileCard.birthdayChangeTwiceNote')}
+                  : t('profileCard.birthdayChangeNote', { times: bdayChangesLeft })}
             </ThemedText>
             <DateWheelPicker value={bdayDraft} onChange={setBdayDraft} hideYear />
             <Pressable

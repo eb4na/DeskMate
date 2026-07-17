@@ -1056,7 +1056,7 @@
     "birthdaySetOnceTitle": "Définir ton anniversaire",
     "birthdaySetOnceMsg": "Définir ton anniversaire au {{date}} ? Tu pourras le modifier une fois de plus après cela.",
     "birthdaySetOnceConfirm": "Définir l'anniversaire",
-    "birthdayChangeTwiceNote": "Tu peux modifier ton anniversaire jusqu'à 2 fois, vérifie bien la date.",
+    "birthdayChangeNote": "Tu peux encore modifier ton anniversaire {{times}} fois — vérifie bien la date.",
     "birthdayChangeLastNote": "C'est ta dernière modification d'anniversaire, vérifie bien la date.",
     "changeBirthday": "Modifier l'anniversaire",
     "birthdayChangeTitle": "Modifier l'anniversaire ?",
