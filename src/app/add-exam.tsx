@@ -13,6 +13,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp, FREE_EXAM_LIMIT } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
+import { requestNotificationPermission } from '@/lib/notifications';
 import { localizeSubjectName } from '@/lib/subject-utils';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -85,6 +86,10 @@ export default function AddExamScreen() {
     }
 
     if (editing) updateExam(examId, fields);
+
+    // Reminders are scheduled by app-context's exam sync; the only missing piece
+    // is the system permission, which we may only request on explicit opt-in.
+    if (reminderEnabled) void requestNotificationPermission();
 
     router.back();
   };

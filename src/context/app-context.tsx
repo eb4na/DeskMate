@@ -15,7 +15,7 @@ import { playCoin, playFinishDing } from '@/lib/sounds';
 import { track } from '@/lib/analytics';
 import { AD_REWARD_COINS, DAILY_AD_LIMIT } from '@/lib/ads';
 import { loadBlockedCodes, blockUserRemote, unblockUserRemote } from '@/lib/moderation';
-import { syncStreakReminders } from '@/lib/notifications';
+import { syncExamReminders, syncStreakReminders } from '@/lib/notifications';
 import { computeTaskRollover } from '@/lib/task-recurrence';
 import { uploadProfile } from '@/lib/profile-sync';
 import { claimMailRemote } from '@/lib/mail';
@@ -1434,6 +1434,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
     return () => sub.remove();
   }, [loaded]);
+
+  // Exam reminders: a day-before + (when the exam has a start time) 6-hours-before
+  // local notification for every countdown whose reminder toggle is on. Resynced on
+  // launch, foreground, and any exam change — add/edit/delete all reschedule the
+  // exact pending set. Like the streak nudges, this never *requests* permission;
+  // add-exam prompts when the toggle is switched on.
+  useEffect(() => {
+    const sync = () =>
+      void syncExamReminders({
+        exams: s.examCountdowns,
+        makeContent: (exam, kind) => ({
+          title: i18n.t(kind === 'dayBefore' ? 'notifications.examTomorrowTitle' : 'notifications.examSoonTitle'),
+          body: i18n.t(kind === 'dayBefore' ? 'notifications.examTomorrowBody' : 'notifications.examSoonBody', {
+            name: exam.name,
+          }),
+        }),
+      });
+    if (loaded) sync();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') sync();
+    });
+    return () => sub.remove();
+  }, [loaded, s.examCountdowns]);
 
   // Free users: past-due exam countdowns auto-erase once the day is over, freeing
   // their slots. Plus users keep every countdown (even when "Past due"). Runs on

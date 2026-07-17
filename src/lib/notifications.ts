@@ -265,6 +265,116 @@ export async function cancelComeBackNudge(notifId: string | null) {
   }
 }
 
+// Ask for notification permission on an explicit user opt-in (e.g. switching the
+// exam reminder toggle on). The background syncs never prompt — this is the only
+// exam-reminder path that may show the system permission dialog.
+export async function requestNotificationPermission(): Promise<boolean> {
+  await ensureReminderChannel();
+  return ensureNotificationPermission();
+}
+
+const EXAM_REMINDER_KIND = 'exam-reminder';
+// 2 notifications per exam × this many soonest exams stays far under iOS's silent
+// 64-pending cap, leaving room for task/study/streak reminders.
+const EXAM_REMINDER_MAX_EXAMS = 15;
+
+export type ExamReminderInput = {
+  id: string;
+  name: string;
+  dateISO: string; // YYYY-MM-DD
+  time?: string; // HH:MM, optional (legacy exams may lack it)
+  reminderEnabled: boolean;
+};
+
+export type ExamReminderKind = 'dayBefore' | 'sixHoursBefore';
+
+// When the two reminders for an exam should fire (nulls = don't schedule).
+// - dayBefore: 24h before the exam start; if the exam has no real start time
+//   (missing or midnight), 9:00 AM the previous day instead — a midnight
+//   notification would land while everyone sleeps.
+// - sixHoursBefore: 6h before the start, ONLY when a real (non-midnight) time is
+//   set; "6 hours before midnight" is meaningless and collides with dayBefore.
+// Past moments are returned as null so edits close to the exam degrade gracefully.
+export function examReminderTimes(
+  exam: { dateISO: string; time?: string },
+  now: number,
+): { dayBefore: Date | null; sixHoursBefore: Date | null } {
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(exam.dateISO.trim());
+  if (!dateMatch) return { dayBefore: null, sixHoursBefore: null };
+  const [y, mo, d] = [Number(dateMatch[1]), Number(dateMatch[2]), Number(dateMatch[3])];
+  const parsed = exam.time ? parseTime(exam.time) : null;
+  const hasRealTime = !!parsed && !(parsed.hour === 0 && parsed.minute === 0);
+
+  let dayBefore: Date;
+  let sixHoursBefore: Date | null = null;
+  if (hasRealTime) {
+    const start = new Date(y, mo - 1, d, parsed.hour, parsed.minute, 0, 0);
+    dayBefore = new Date(start.getTime() - 24 * 60 * 60 * 1000);
+    sixHoursBefore = new Date(start.getTime() - 6 * 60 * 60 * 1000);
+  } else {
+    dayBefore = new Date(y, mo - 1, d - 1, 9, 0, 0, 0);
+  }
+
+  return {
+    dayBefore: dayBefore.getTime() > now ? dayBefore : null,
+    sixHoursBefore: sixHoursBefore && sixHoursBefore.getTime() > now ? sixHoursBefore : null,
+  };
+}
+
+async function cancelExamReminders() {
+  const all = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.all(
+    all
+      .filter((n) => (n.content.data as { kind?: string } | undefined)?.kind === EXAM_REMINDER_KIND)
+      .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
+  );
+}
+
+// Exam reminders: for every countdown with its reminder toggle ON, schedule a
+// day-before and (when the exam has a real start time) a 6-hours-before local
+// notification. Same cancel-everything-and-reschedule model as the streak nudges,
+// so calling on launch / foreground / any exam change keeps the pending set exact
+// (edits move the reminders, deletions clear them). Never *requests* permission —
+// add-exam prompts when the toggle is switched on.
+export async function syncExamReminders(opts: {
+  exams: ExamReminderInput[];
+  makeContent: (exam: ExamReminderInput, kind: ExamReminderKind) => { title: string; body: string };
+}): Promise<void> {
+  await ensureReminderChannel();
+  await cancelExamReminders();
+
+  const enabled = opts.exams
+    .filter((e) => e.reminderEnabled)
+    .sort((a, b) => a.dateISO.localeCompare(b.dateISO))
+    .slice(0, EXAM_REMINDER_MAX_EXAMS);
+  if (enabled.length === 0) return;
+  if (!(await hasNotificationPermission())) return;
+
+  const now = Date.now();
+  for (const exam of enabled) {
+    const times = examReminderTimes(exam, now);
+    for (const kind of ['dayBefore', 'sixHoursBefore'] as const) {
+      const when = kind === 'dayBefore' ? times.dayBefore : times.sixHoursBefore;
+      if (!when) continue;
+      const { title, body } = opts.makeContent(exam, kind);
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title,
+          body,
+          sound: 'default',
+          data: { kind: EXAM_REMINDER_KIND, examId: exam.id },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: when,
+          channelId: STUDY_REMINDER_CHANNEL_ID,
+        },
+      });
+      if (__DEV__) console.log(`[exam-reminders] ${exam.name} ${kind} → ${when.toString()}`);
+    }
+  }
+}
+
 const STREAK_REMINDER_KIND = 'streak-reminder';
 // How many upcoming days to pre-schedule streak nudges for. Kept small on purpose:
 // iOS silently caps at 64 pending notifications and drops the overflow, so we must

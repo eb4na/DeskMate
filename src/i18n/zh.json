@@ -729,7 +729,7 @@
     "examDateReq": "考试日期 *",
     "examTime": "考试时间",
     "reminder": "提醒",
-    "reminderHint": "考试临近时收到提醒",
+    "reminderHint": "考试前一天和前 6 小时提醒你",
     "pushNotice": "推送通知将在未来更新中接入设备。",
     "advancedPlanning": "高级规划（会员）",
     "hide": "隐藏 ▲",
@@ -1873,7 +1873,11 @@
   "notifications": {
     "streakTitle": "别断了连续记录！🔥",
     "streakAfternoonBody": "今天还没学习哦——快进来保持你的连续记录吧。",
-    "streakEveningBody": "最后机会！午夜前学习，别让连续记录清零。🔥"
+    "streakEveningBody": "最后机会！午夜前学习，别让连续记录清零。🔥",
+    "examTomorrowTitle": "明天有考试",
+    "examTomorrowBody": "明天就是{{name}}了——今天复习一下，事半功倍。",
+    "examSoonTitle": "距离考试还有 6 小时",
+    "examSoonBody": "{{name}}大约 6 小时后开始。你可以的！"
   },
   "birthdayReward": {
     "title": "生日快乐！",

@@ -813,7 +813,7 @@
     "examDateReq": "考試日期 *",
     "examTime": "考試時間",
     "reminder": "提醒",
-    "reminderHint": "考試臨近時收到提醒",
+    "reminderHint": "考試前一天和前 6 小時提醒你",
     "pushNotice": "推送通知將在未來更新中接入裝置。",
     "advancedPlanning": "高階規劃（會員）",
     "hide": "隱藏 ▲",
@@ -1957,7 +1957,11 @@
   "notifications": {
     "streakTitle": "別斷了連續記錄！🔥",
     "streakAfternoonBody": "今天還沒學習哦——快進來保持你的連續記錄吧。",
-    "streakEveningBody": "最後機會！午夜前學習，別讓連續記錄清零。🔥"
+    "streakEveningBody": "最後機會！午夜前學習，別讓連續記錄清零。🔥",
+    "examTomorrowTitle": "明天有考試",
+    "examTomorrowBody": "明天就是{{name}}了——今天複習一下，事半功倍。",
+    "examSoonTitle": "距離考試還有 6 小時",
+    "examSoonBody": "{{name}}大約 6 小時後開始。你可以的！"
   },
   "birthdayReward": {
     "title": "生日快樂！",

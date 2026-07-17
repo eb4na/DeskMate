@@ -729,7 +729,7 @@
     "examDateReq": "試験日 *",
     "examTime": "試験時刻",
     "reminder": "リマインダー",
-    "reminderHint": "試験が近づいたら通知します",
+    "reminderHint": "前日と6時間前にお知らせします",
     "pushNotice": "プッシュ通知は今後のアップデートで端末に対応します。",
     "advancedPlanning": "高度な計画（プラス）",
     "hide": "隠す ▲",
@@ -1873,7 +1873,11 @@
   "notifications": {
     "streakTitle": "連続記録を絶やさないで！🔥",
     "streakAfternoonBody": "今日はまだ勉強していません。アプリを開いて連続記録をキープしよう。",
-    "streakEveningBody": "ラストチャンス！日付が変わる前に勉強して連続記録を守ろう。🔥"
+    "streakEveningBody": "ラストチャンス！日付が変わる前に勉強して連続記録を守ろう。🔥",
+    "examTomorrowTitle": "明日は試験です",
+    "examTomorrowBody": "「{{name}}」は明日です。今日のうちに少し復習しておきましょう。",
+    "examSoonTitle": "試験まであと6時間",
+    "examSoonBody": "「{{name}}」は約6時間後に始まります。きっと大丈夫！"
   },
   "birthdayReward": {
     "title": "お誕生日おめでとう！",

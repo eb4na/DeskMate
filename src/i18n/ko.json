@@ -729,7 +729,7 @@
     "examDateReq": "시험 날짜 *",
     "examTime": "시험 시간",
     "reminder": "알림",
-    "reminderHint": "시험이 가까워지면 알림을 받습니다",
+    "reminderHint": "하루 전과 6시간 전에 알려 드려요",
     "pushNotice": "푸시 알림은 향후 업데이트에서 기기에 연결됩니다.",
     "advancedPlanning": "고급 계획 (프리미엄)",
     "hide": "숨기기 ▲",
@@ -1873,7 +1873,11 @@
   "notifications": {
     "streakTitle": "연속 기록을 놓치지 마세요! 🔥",
     "streakAfternoonBody": "아직 오늘 공부하지 않았어요 — 앱에 들러 연속 기록을 이어가요.",
-    "streakEveningBody": "마지막 기회! 자정 전에 공부해서 연속 기록이 초기화되지 않게 하세요. 🔥"
+    "streakEveningBody": "마지막 기회! 자정 전에 공부해서 연속 기록이 초기화되지 않게 하세요. 🔥",
+    "examTomorrowTitle": "내일 시험이 있어요",
+    "examTomorrowBody": "내일은 {{name}} 시험이에요. 오늘 조금만 복습해 두면 큰 도움이 돼요.",
+    "examSoonTitle": "시험까지 6시간",
+    "examSoonBody": "{{name}} 시험이 약 6시간 후에 시작돼요. 잘할 수 있어요!"
   },
   "birthdayReward": {
     "title": "생일 축하해요!",

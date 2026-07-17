@@ -729,7 +729,7 @@
     "examDateReq": "Exam date *",
     "examTime": "Exam time",
     "reminder": "Reminder",
-    "reminderHint": "Get a nudge when this exam is close",
+    "reminderHint": "Reminds you the day before and 6 hours before",
     "pushNotice": "Push notifications will be wired to the device in a future update.",
     "advancedPlanning": "Advanced planning (Plus)",
     "hide": "Hide ▲",
@@ -1874,7 +1874,11 @@
   "notifications": {
     "streakTitle": "Don't lose your streak! 🔥",
     "streakAfternoonBody": "You haven't studied today yet — pop in to keep your streak alive.",
-    "streakEveningBody": "Last call! Study before midnight so your streak doesn't reset. 🔥"
+    "streakEveningBody": "Last call! Study before midnight so your streak doesn't reset. 🔥",
+    "examTomorrowTitle": "Exam tomorrow",
+    "examTomorrowBody": "{{name}} is tomorrow — a little review today goes a long way.",
+    "examSoonTitle": "Exam in 6 hours",
+    "examSoonBody": "{{name}} starts in about 6 hours. You've got this!"
   },
   "birthdayReward": {
     "title": "Happy Birthday!",

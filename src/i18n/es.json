@@ -729,7 +729,7 @@
     "examDateReq": "Fecha del examen *",
     "examTime": "Hora del examen",
     "reminder": "Recordatorio",
-    "reminderHint": "Recibe un aviso cuando el examen esté cerca",
+    "reminderHint": "Te avisamos el día anterior y 6 horas antes",
     "pushNotice": "Las notificaciones push se conectarán al dispositivo en una futura actualización.",
     "advancedPlanning": "Planificación avanzada (Premium)",
     "hide": "Ocultar ▲",
@@ -1873,7 +1873,11 @@
   "notifications": {
     "streakTitle": "¡No pierdas tu racha! 🔥",
     "streakAfternoonBody": "Aún no has estudiado hoy: entra para mantener tu racha viva.",
-    "streakEveningBody": "¡Última oportunidad! Estudia antes de medianoche para que tu racha no se reinicie. 🔥"
+    "streakEveningBody": "¡Última oportunidad! Estudia antes de medianoche para que tu racha no se reinicie. 🔥",
+    "examTomorrowTitle": "Examen mañana",
+    "examTomorrowBody": "{{name}} es mañana: un repaso hoy marca la diferencia.",
+    "examSoonTitle": "Examen en 6 horas",
+    "examSoonBody": "{{name}} empieza en unas 6 horas. ¡Tú puedes!"
   },
   "birthdayReward": {
     "title": "¡Feliz cumpleaños!",
