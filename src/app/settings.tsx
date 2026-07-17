@@ -41,7 +41,7 @@ function SettingsIcon({ name, size = 34 }: { name: keyof typeof SETTINGS_ICONS; 
 }
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useApp } from '@/context/app-context';
+import { BIRTHDAY_CHANGE_LIMIT, useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
 import { supabase } from '@/lib/supabase';
 import { linkProvider } from '@/lib/oauth';
@@ -159,10 +159,11 @@ export default function SettingsScreen() {
     replayTutorial,
     claimedMailIds,
     profileBirthday,
-    profileBirthdayChanged,
+    profileBirthdayChangeCount,
     updateProfile,
   } = useApp();
-  // Birthday change-once editor (set at onboarding; one change allowed here).
+  // Birthday editor (set at onboarding; up to BIRTHDAY_CHANGE_LIMIT changes here).
+  const bdayChangesLeft = BIRTHDAY_CHANGE_LIMIT - profileBirthdayChangeCount;
   const [bdayOpen, setBdayOpen] = useState(false);
   const [bdayDraft, setBdayDraft] = useState('2008-01-01');
 
@@ -349,14 +350,14 @@ export default function SettingsScreen() {
               value={isGuest ? t('settings.guestProgressNote') : user?.email ?? t('settings.accountFallback')}
             />
             <View style={styles.divider} />
-            {/* Birthday: set at onboarding, changeable exactly once here. Once that
-                one change is used (profileBirthdayChanged), the row locks for good. */}
+            {/* Birthday: set at onboarding, changeable up to BIRTHDAY_CHANGE_LIMIT times
+                here. Once every change is used, the row locks for good. */}
             <SettingRow
               icon={<Image source={BIRTHDAY_ICON} style={{ width: 30 * scale, height: 30 * scale }} contentFit="contain" />}
               label={t('profileCard.birthday')}
               value={profileBirthday ? formatBirthday(profileBirthday) : t('profileCard.addBirthday')}
-              onPress={profileBirthdayChanged ? undefined : () => { setBdayDraft(profileBirthday || '2008-01-01'); setBdayOpen(true); }}
-              lock={profileBirthdayChanged}
+              onPress={bdayChangesLeft <= 0 ? undefined : () => { setBdayDraft(profileBirthday || '2008-01-01'); setBdayOpen(true); }}
+              lock={bdayChangesLeft <= 0}
             />
             {/* Change password — only for email/password accounts (OAuth-only
                 accounts have no password to change). */}
@@ -848,27 +849,31 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
-      {/* Birthday change-once editor. A LOCAL modal (root showPopup can't present
-          over the Settings native modal). The warning note makes the one-shot
-          nature explicit, so Save commits directly without a second confirm. */}
+      {/* Birthday editor (limited changes). A LOCAL modal (root showPopup can't
+          present over the Settings native modal). The warning note makes the
+          limit explicit, so Save commits directly without a second confirm. */}
       <Modal visible={bdayOpen} transparent animationType="fade" onRequestClose={() => setBdayOpen(false)}>
         <View style={styles.resetBackdrop}>
           <View style={styles.resetCard}>
             <ThemedText style={styles.resetTitle}>{t('profileCard.birthday')}</ThemedText>
             <ThemedText style={styles.resetBody}>
-              {profileBirthday ? t('profileCard.birthdayChangeOnceNote') : t('settings.birthdaySetNote')}
+              {!profileBirthday
+                ? t('settings.birthdaySetNote')
+                : bdayChangesLeft === 1
+                  ? t('profileCard.birthdayChangeLastNote')
+                  : t('profileCard.birthdayChangeTwiceNote')}
             </ThemedText>
             <DateWheelPicker value={bdayDraft} onChange={setBdayDraft} hideYear />
             <Pressable
               style={({ pressed }) => [styles.resetBtn, pressed && styles.pressed]}
               onPress={() => {
-                // First-ever set (pre-onboarding-update users) doesn't burn the change;
-                // editing an existing birthday does (birthdayChanged: true → locks).
+                // First-ever set (pre-onboarding-update users) doesn't burn a change;
+                // editing an existing birthday does (birthdayChangeUsed increments).
                 const isChange = !!profileBirthday;
-                // Don't burn the one allowed change if nothing actually changed
+                // Don't burn an allowed change if nothing actually changed
                 // (e.g. they opened the picker, it defaulted to today's value, Save).
                 if (isChange && bdayDraft === profileBirthday) { setBdayOpen(false); return; }
-                updateProfile(isChange ? { birthday: bdayDraft, birthdayChanged: true } : { birthday: bdayDraft });
+                updateProfile(isChange ? { birthday: bdayDraft, birthdayChangeUsed: true } : { birthday: bdayDraft });
                 setBdayOpen(false);
               }}>
               <ThemedText style={styles.resetBtnText}>{t('profileCard.birthdaySave')}</ThemedText>

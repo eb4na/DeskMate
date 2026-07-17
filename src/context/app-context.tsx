@@ -318,9 +318,12 @@ type PersistedState = {
   profileDisplayName: string;
   profileDescription: string;
   profileBirthday: string; // YYYY-MM-DD or ''
-  // Profile birthday is set-once + change-once: after the initial set, the player
-  // may correct it exactly one time. This flag burns when that one change is used.
-  profileBirthdayChanged: boolean;
+  // Profile birthday changes are limited: after the initial set, the player may
+  // correct it up to BIRTHDAY_CHANGE_LIMIT times. This counts the changes used.
+  profileBirthdayChangeCount: number;
+  // Legacy pre-counter flag ("change-once" era); migrated to the counter in
+  // normalizePersistedState and never written again.
+  profileBirthdayChanged?: boolean;
   profileBackgroundId: string; // room id used as the card backdrop
   profileCardColor: string; // pastel key for the card outline + friend-code strip (Plus)
   profileCompanionId: string; // chosen character for the card ('' = use active)
@@ -477,7 +480,7 @@ const DEFAULTS: PersistedState = {
   profileDisplayName: '',
   profileDescription: '',
   profileBirthday: '',
-  profileBirthdayChanged: false,
+  profileBirthdayChangeCount: 0,
   profileBackgroundId: 'cozy',
   profileCardColor: 'pink',
   profileCompanionId: '',
@@ -736,6 +739,9 @@ export function nextLoginReward(
 // Birthday gift: a flat coin bonus granted once on the player's birthday each year.
 export const BIRTHDAY_REWARD_COINS = 1000;
 
+// How many times the profile birthday may be changed after its initial set.
+export const BIRTHDAY_CHANGE_LIMIT = 2;
+
 // True when `today` (account-timezone ISO) falls on the player's profile birthday.
 // profileBirthday is stored with an arbitrary year (the picker hides the year), so
 // only the month + day (MM-DD) are compared. An unset birthday never matches.
@@ -799,6 +805,14 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
   // friends see it on your card). This also migrates anyone off the old equippable
   // frame ids ('crown'/'catEars'/'dessert').
   merged.profileAvatarFrame = merged.isPlus ? 'gold' : 'none';
+
+  // Birthday edits used to be a change-once boolean; it's now a counter capped at
+  // BIRTHDAY_CHANGE_LIMIT. Players who burned their old single change get credited
+  // 1 used change, so they gain one more under the raised limit.
+  if (merged.profileBirthdayChangeCount === undefined) {
+    merged.profileBirthdayChangeCount = merged.profileBirthdayChanged ? 1 : 0;
+  }
+  delete merged.profileBirthdayChanged;
 
   // Only Plus members get the monthly allotment of free streak freezes.
   if (merged.isPlus && (!merged.streakFreezeResetMonth || merged.streakFreezeResetMonth < month)) {
@@ -1087,7 +1101,7 @@ type AppContextType = {
   profileDisplayName: string;
   profileDescription: string;
   profileBirthday: string;
-  profileBirthdayChanged: boolean;
+  profileBirthdayChangeCount: number;
   profileBackgroundId: string;
   profileCardColor: string;
   profileCompanionId: string;
@@ -1097,7 +1111,7 @@ type AppContextType = {
     displayName: string;
     description: string;
     birthday: string;
-    birthdayChanged: boolean;
+    birthdayChangeUsed: boolean;
     backgroundId: string;
     cardColor: string;
     companionId: string;
@@ -1815,7 +1829,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     displayName: string;
     description: string;
     birthday: string;
-    birthdayChanged: boolean;
+    birthdayChangeUsed: boolean;
     backgroundId: string;
     cardColor: string;
     companionId: string;
@@ -1827,7 +1841,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...(patch.displayName !== undefined ? { profileDisplayName: maskProfanity(patch.displayName) } : {}),
       ...(patch.description !== undefined ? { profileDescription: maskProfanity(patch.description) } : {}),
       ...(patch.birthday !== undefined ? { profileBirthday: patch.birthday } : {}),
-      ...(patch.birthdayChanged !== undefined ? { profileBirthdayChanged: patch.birthdayChanged } : {}),
+      ...(patch.birthdayChangeUsed
+        ? { profileBirthdayChangeCount: Math.min((prev.profileBirthdayChangeCount ?? 0) + 1, BIRTHDAY_CHANGE_LIMIT) }
+        : {}),
       ...(patch.backgroundId !== undefined ? { profileBackgroundId: patch.backgroundId } : {}),
       ...(patch.cardColor !== undefined ? { profileCardColor: patch.cardColor } : {}),
       ...(patch.companionId !== undefined ? { profileCompanionId: patch.companionId } : {}),
@@ -2661,7 +2677,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Re-verify age on reset: consent + the stored birthday are NOT kept, so the
       // Privacy Policy + Terms + date-of-birth gate runs again (and a fresh profile
       // birthday is set from it). These fall back to DEFAULTS — legalAccepted:false,
-      // birthday/profileBirthday cleared, profileBirthdayChanged:false.
+      // birthday/profileBirthday cleared, profileBirthdayChangeCount:0.
       // Profile text identity (display name/bio) is part of the account.
       profileDisplayName: prev.profileDisplayName,
       profileDescription: prev.profileDescription,
@@ -3063,7 +3079,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         profileDisplayName: s.profileDisplayName ?? '',
         profileDescription: s.profileDescription ?? '',
         profileBirthday: s.profileBirthday ?? '',
-        profileBirthdayChanged: s.profileBirthdayChanged ?? false,
+        profileBirthdayChangeCount: s.profileBirthdayChangeCount ?? 0,
         profileBackgroundId: s.profileBackgroundId ?? 'cozy',
         profileCardColor: s.profileCardColor ?? 'pink',
         profileCompanionId: s.profileCompanionId ?? '',
