@@ -19,7 +19,7 @@
 
 -- Per-user most-recent completed-session date, stored as the account-timezone ISO
 -- string the app already uses for streaks (todayISO()). This is the daily-study
--- signal a buddy's check-in reads — it did not exist server-side before.
+-- signal a buddy's check-in reads — it did not exist server-side before.um
 create table if not exists public.study_days (
   user_id uuid primary key references auth.users (id) on delete cascade,
   last_study_date text not null, -- YYYY-MM-DD in the account's captured timezone
