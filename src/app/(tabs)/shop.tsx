@@ -299,6 +299,10 @@ export default function ShopScreen() {
   const recipesDoneCount = RECIPE_IDS.filter((id) => madeFoods.includes(id)).length;
   const [activeCategory, setActiveCategory] = useState<ShopCategory>('companion');
   const [zoomImage, setZoomImage] = useState<number | null>(null);
+  // Optional caption shown under the zoomed image — used to move the recipe
+  // description off the (space-tight) card and into its magnifier view.
+  const [zoomCaption, setZoomCaption] = useState<string | null>(null);
+  const closeZoom = () => { setZoomImage(null); setZoomCaption(null); };
   // Desk-setup preview for an outfit on a character the player doesn't own yet
   // (view-only). Shows the costume art on the player's current room + desk.
   const [outfitPreview, setOutfitPreview] = useState<{ image: number | null; name: string; charName: string } | null>(null);
@@ -812,6 +816,7 @@ export default function ShopScreen() {
                                     onPress={(e) => {
                                       e.stopPropagation?.();
                                       setZoomImage(o.image ?? null);
+                                      setZoomCaption(null);
                                     }}>
                                     <MagnifierIcon size={30} />
                                   </Pressable>
@@ -954,6 +959,9 @@ export default function ShopScreen() {
                                 onPress={(e) => {
                                   e.stopPropagation?.();
                                   setZoomImage(item.image ?? null);
+                                  // Recipes carry their description in the magnifier instead of
+                                  // on the card (keeps the card compact); other items just zoom.
+                                  setZoomCaption(item.category === 'recipe' ? localizeShopItemDescription(item, t) : null);
                                 }}>
                                 <MagnifierIcon size={30} />
                               </Pressable>
@@ -986,6 +994,7 @@ export default function ShopScreen() {
                               onPress={(e) => {
                                 e.stopPropagation?.();
                                 setZoomImage(badge);
+                                setZoomCaption(null);
                               }}>
                               <BadgeIcon size={26} />
                             </Pressable>
@@ -1014,9 +1023,6 @@ export default function ShopScreen() {
                         <FitText style={[styles.itemName, tName]}>{localizeShopItemName(item, t)}</FitText>
                         {item.category === 'recipe' && item.owner && (
                           <FitText style={[styles.useHint, tHint]} numberOfLines={1}>{t('foodGallery.ownerTag', { name: localizeCompanionName(item.owner, t) })}</FitText>
-                        )}
-                        {item.category === 'recipe' && !!item.description && (
-                          <ThemedText style={[styles.itemDesc, tHint]}>{localizeShopItemDescription(item, t)}</ThemedText>
                         )}
                         {USE_HINTS[item.category] && (
                           <FitText style={[styles.useHint, tHint]} numberOfLines={1}>{t('shop.setActiveInGallery')}</FitText>
@@ -1114,11 +1120,12 @@ export default function ShopScreen() {
       </ScrollView>
 
       {/* Zoom-in viewer for companion art */}
-      <Modal visible={zoomImage !== null} transparent animationType="fade" onRequestClose={() => setZoomImage(null)}>
-        <Pressable style={styles.zoomBackdrop} onPress={() => setZoomImage(null)}>
+      <Modal visible={zoomImage !== null} transparent animationType="fade" onRequestClose={closeZoom}>
+        <Pressable style={styles.zoomBackdrop} onPress={closeZoom}>
           {zoomImage !== null && (
             <View style={styles.zoomCard}>
               <RNImage source={zoomImage} style={styles.zoomImage} resizeMode="contain" />
+              {!!zoomCaption && <ThemedText style={styles.zoomCaption}>{zoomCaption}</ThemedText>}
               <ThemedText style={styles.zoomHint}>{t('shop.tapToClose')}</ThemedText>
             </View>
           )}
@@ -1335,7 +1342,6 @@ const styles = StyleSheet.create({
   },
   // Recipe description — under the name/owner, like the Bakery Menu cards.
   // Generous side padding keeps the words in a narrow centered block.
-  itemDesc: { fontSize: 11, color: BakeryColors.mocha, textAlign: 'center', lineHeight: 15, marginTop: 2, paddingHorizontal: 24 },
   pairGlyph: { width: 20, height: 12, justifyContent: 'center' },
   pairRing: {
     position: 'absolute',
@@ -1364,6 +1370,12 @@ const styles = StyleSheet.create({
     maxWidth: 360 * (_isTabletDevice ? SHOP_TS : 1),
   },
   zoomImage: { width: '100%', height: 300 * (_isTabletDevice ? SHOP_TS : 1) },
+  zoomCaption: {
+    fontSize: 14 * (_isTabletDevice ? SHOP_TS : 1),
+    lineHeight: 20 * (_isTabletDevice ? SHOP_TS : 1),
+    color: '#6B4E3D',
+    textAlign: 'center',
+  },
   zoomHint: { fontSize: 12 * (_isTabletDevice ? SHOP_TS : 1), color: '#9A7B6D' },
 
   // White buy-confirmation popup

@@ -24,6 +24,7 @@ export const CHARACTER_OUTFITS: Record<string, Outfit[]> = {
     { id: 'outfit_bun_dreams', name: 'Strawberry Dreams', emoji: '', price: 4000, characterId: 'starter:girl', image: require('@/assets/images/bun/bun-dreams.png') },
   ],
   'shop:companion_cocoa': [
+    { id: 'outfit_cocoa_relax', name: 'Relax', emoji: '', price: 10000, characterId: 'shop:companion_cocoa', image: require('@/assets/images/cocoa/cocoa-relax.png') },
     { id: 'outfit_cocoa_demon', name: 'Demon', emoji: '', price: 10000, characterId: 'shop:companion_cocoa', image: require('@/assets/images/cocoa/cocoa-demon.png') },
   ],
   'shop:companion_tira': [

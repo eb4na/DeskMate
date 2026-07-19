@@ -10,7 +10,7 @@ import { useAuth } from '@/context/auth-context';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { bunAvatarNudge, getCompanionImage } from '@/lib/companion-utils';
 import { useStudyRoom } from '@/lib/use-study-room';
-import { joinPresence, sendInvite, type OnlineGameId, type PresenceMap } from '@/lib/game-net';
+import { joinPresence, sendInvite, subscribeToInviteAccepted, type OnlineGameId, type PresenceMap } from '@/lib/game-net';
 import { listAcceptedFriends, listBlocked } from '@/lib/friend-requests';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
@@ -45,6 +45,17 @@ export default function PartyInviteScreen() {
     if (!friendCode) return;
     return joinPresence(friendCode, setOnlineCodes);
   }, [friendCode]);
+
+  // Close this screen the instant an invited friend accepts a 1v1 match (the game
+  // has already started underneath). Acks are only sent for connect4/tictactoe, so
+  // batterdash/study invite screens never receive one and stay open. Match on our
+  // own `room` to ignore any stale/foreign ack.
+  useEffect(() => {
+    if (!friendCode) return;
+    return subscribeToInviteAccepted(friendCode, (accRoom) => {
+      if (accRoom === room && router.canGoBack()) router.back();
+    });
+  }, [friendCode, room]);
 
   // Pull accepted friends from the cloud when this screen opens. The local friends
   // list is otherwise only synced when the Friends tab is visited, so a friend who

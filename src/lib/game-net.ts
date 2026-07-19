@@ -49,6 +49,41 @@ export function sendInvite(toCode: string, invite: GameInvite): void {
   });
 }
 
+// Acknowledgement that a friend ACCEPTED your invite, sent back to the inviter so
+// their "invite friends" screen can close itself the instant the match starts.
+// Uses a DEDICATED `invite-ack:<code>` topic (not `invites:<code>`) so it never
+// collides with InviteListener's always-on subscription to `invites:<myCode>`
+// (Supabase can't have the same topic open twice in one client).
+function inviteAckChannel(code: string): string {
+  return `invite-ack:${code.trim().toUpperCase()}`;
+}
+
+/** Fire-and-forget "I accepted" ack to the inviter, carrying the joined room id. */
+export function sendInviteAccepted(toCode: string, room: string): void {
+  if (!toCode) return;
+  const channel = supabase.channel(inviteAckChannel(toCode));
+  channel.subscribe((status) => {
+    if (status === 'SUBSCRIBED') {
+      channel.send({ type: 'broadcast', event: 'accepted', payload: { room } });
+      setTimeout(() => supabase.removeChannel(channel), 1500);
+    }
+  });
+}
+
+/** Listen for accept-acks addressed to me. `onAccepted` gets the joined room id. */
+export function subscribeToInviteAccepted(myCode: string, onAccepted: (room: string) => void): () => void {
+  if (!myCode) return () => {};
+  const channel = supabase.channel(inviteAckChannel(myCode), { config: { broadcast: { self: false } } });
+  channel
+    .on('broadcast', { event: 'accepted' }, ({ payload }) => {
+      if (payload && typeof payload.room === 'string') onAccepted(payload.room);
+    })
+    .subscribe();
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
 export function newRoomId(): string {
   return Math.random().toString(36).slice(2, 10);
 }

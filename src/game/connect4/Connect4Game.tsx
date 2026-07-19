@@ -6,12 +6,14 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from '
 
 import { DevKnobs } from '@/components/dev-knobs';
 import { GameRulesButton } from '@/components/game-rules-button';
+import { OpponentLeftOverlay } from '@/components/opponent-left-overlay';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { useTranslation } from '@/i18n';
 import { getCompanionImage, resolveActiveCompanion, resolveProfileFigure } from '@/lib/companion-utils';
+import { activeCompanionMetricsId, companionMetricsId, faceCropShiftFrac, profileFigureMetricsId } from '@/lib/figure-height';
 import { joinConnect4Room, type Connect4Room, type PlayerMeta } from '@/lib/connect4-room';
 import { playPieceDrop } from '@/lib/sounds';
 import { BakeryColors, Spacing } from '@/constants/theme';
@@ -74,6 +76,12 @@ const FRAME_CENTER: Record<Player, { x: number; y: number }> = {
 const FRAME_SIZE = 86 * UI;
 const FACE_D = FRAME_SIZE * 0.66;
 const FACE_ZOOM = 1.7; // zoom into the upper half of the companion body
+// Where the head crown should sit inside the circular window (fraction from its
+// top). Per-character shift is derived from this via faceCropShiftFrac so every
+// companion's face lands here regardless of body height; FACE_TOP_FALLBACK is the
+// old fixed offset, used only for unmeasured art (custom / AI-generated).
+const FACE_CROWN_TARGET = 0.1;
+const FACE_TOP_FALLBACK = -0.12;
 
 // A piece that drops in from above the board when it first appears, so both
 // players can see exactly where it is being placed.
@@ -473,11 +481,25 @@ export function Connect4Game({
   // Pass & play shows two neutral silhouettes labelled Player 1 / Player 2.
   const leftAvatar = localMode || opp === 'ai' ? null : playerFigure;
   const rightAvatar = localMode ? null : opp === 'ai' ? opponent.imageSource : friendChar;
+
+  // Per-character vertical shift so each face lands centred in the circular window
+  // (see FACE_CROWN_TARGET). `you` uses your profile figure; the online opponent
+  // uses their synced companion; the AI opponent is your active companion.
+  const leftId = profileFigureMetricsId({
+    profileCompanionId, profileSkinId, activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins,
+  });
+  const rightId =
+    opp === 'ai'
+      ? activeCompanionMetricsId(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins)
+      : companionMetricsId(oppMeta?.companionId ?? friendRec?.companionId, oppMeta?.skinId ?? friendRec?.skinId);
+  const faceShiftOpts = { zoom: FACE_ZOOM, model: 'top' as const, target: FACE_CROWN_TARGET };
+  const leftShift = faceCropShiftFrac(leftId, faceShiftOpts);
+  const rightShift = faceCropShiftFrac(rightId, faceShiftOpts);
   const leftName = localMode ? t('games.player1') : t('connect4.you');
   const rightName = localMode ? t('games.player2') : opp === 'ai' ? opponent.name : oppMeta?.name || friendRec?.name || t('connect4.friend');
 
   // One player card: framed avatar (top-half face in the cut-out centre) + name.
-  const playerCard = (avatar: number | { uri: string } | null, name: string, piece: Player) => {
+  const playerCard = (avatar: number | { uri: string } | null, name: string, piece: Player, faceShift?: number) => {
     const { x, y } = FRAME_CENTER[piece];
     return (
       <View style={styles.playerCard}>
@@ -498,7 +520,7 @@ export function Connect4Game({
                 source={avatar}
                 style={{
                   position: 'absolute',
-                  top: -FACE_D * 0.12,
+                  top: FACE_D * (faceShift ?? FACE_TOP_FALLBACK),
                   left: -FACE_D * (FACE_ZOOM - 1) / 2,
                   width: FACE_D * FACE_ZOOM,
                   height: FACE_D * FACE_ZOOM,
@@ -538,9 +560,9 @@ export function Connect4Game({
 
       {/* Players — the "VS" badge is baked into the background between them. */}
       <View style={styles.playersRow}>
-        {playerCard(leftAvatar, leftName, myPlayer)}
+        {playerCard(leftAvatar, leftName, myPlayer, leftShift)}
         <View style={styles.vsGap} />
-        {playerCard(rightAvatar, rightName, oppPiece)}
+        {playerCard(rightAvatar, rightName, oppPiece, rightShift)}
       </View>
 
       {/* Status pill */}
@@ -614,6 +636,14 @@ export function Connect4Game({
         </View>
       )}
       <DevKnobs screen="connect4" knobs={twKnobs} onChange={twChange} />
+
+      {/* Opponent left an online match → force a Leave (can't keep playing). */}
+      <OpponentLeftOverlay
+        visible={opp === 'online' && oppLeft}
+        title={t('connect4.friendLeft')}
+        buttonLabel={t('connect4.leave')}
+        onLeave={onLeave}
+      />
     </View>
   );
 }

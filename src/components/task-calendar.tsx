@@ -22,7 +22,7 @@ import {
   BakeryCheckEmoji,
 } from '@/components/bakery-emoji';
 import { useApp } from '@/context/app-context';
-import type { Task } from '@/context/app-context';
+import type { ExamCountdown, Task } from '@/context/app-context';
 import i18n, { useTranslation } from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
 import { formatMinutesShort } from '@/lib/format-duration';
@@ -260,11 +260,15 @@ function TaskSlider() {
   const { isTablet, scale } = useTabletScale();
   const s = isTablet ? scale : 1;
 
+  // This is a non-virtualized peek slider, so cap it: with a huge task list,
+  // mapping every open task into a chip would render hundreds of views at once
+  // and jank the whole Tasks tab. Showing the soonest ~20 is plenty for a preview.
   const open = useMemo(
     () =>
       tasks
         .filter((t) => t.status !== 'done')
-        .sort((a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999')),
+        .sort((a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999'))
+        .slice(0, 20),
     [tasks],
   );
 
@@ -295,11 +299,48 @@ function TaskSlider() {
   );
 }
 
+// ─── shared exam preview card ────────────────────────────────────────────────
+function ExamPreviewCard({ exam }: { exam: ExamCountdown }) {
+  const { subjects, use24HourTime } = useApp();
+  const subject = exam.subject ? subjects.find((s) => s.name === exam.subject) : null;
+  const color = subject?.color ?? '#F4A8C0';
+  const time = exam.time
+    ? formatTime(`${exam.dateISO.slice(0, 10)}T${exam.time}:00`, use24HourTime)
+    : null;
+
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.taskCard, pressed && styles.pressed]}
+      onPress={() => router.push({ pathname: '/add-exam', params: { examId: exam.id } })}>
+      <View style={styles.taskIcon}>
+        <CountdownShape shape={exam.shape} color={color} size={22} />
+      </View>
+      <View style={styles.taskCardBody}>
+        <Text style={styles.taskTitle} numberOfLines={2}>
+          {exam.name}
+        </Text>
+        <View style={styles.taskMetaRow}>
+          {subject && (
+            <View style={[styles.subjectBadge, { backgroundColor: color + '2E' }]}>
+              <View style={[styles.subjectDot, { backgroundColor: color }]} />
+              <Text style={[styles.subjectText, { color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                {localizeSubjectName(exam.subject, (k) => i18n.t(k))}
+              </Text>
+            </View>
+          )}
+          {time && <Text style={styles.taskMetaText}>{time}</Text>}
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
 // ─── tapped-day tasks modal ──────────────────────────────────────────────────
 function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => void }) {
-  const { tasks } = useApp();
+  const { tasks, examCountdowns } = useApp();
   useReportModalTransition(!!iso);
   const dayTasks = iso ? tasks.filter((t) => t.dueDate?.slice(0, 10) === iso) : [];
+  const dayExams = iso ? examCountdowns.filter((e) => e.dateISO.slice(0, 10) === iso) : [];
 
   return (
     <Modal visible={!!iso} transparent animationType="fade" onRequestClose={onClose}>
@@ -313,8 +354,11 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
             </Pressable>
           </View>
 
-          {dayTasks.length > 0 && (
+          {(dayExams.length > 0 || dayTasks.length > 0) && (
             <View style={styles.previewList}>
+              {dayExams.map((e) => (
+                <ExamPreviewCard key={e.id} exam={e} />
+              ))}
               {dayTasks.map((t) => (
                 <TaskPreviewCard key={t.id} task={t} />
               ))}

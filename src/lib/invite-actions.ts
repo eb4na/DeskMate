@@ -4,7 +4,7 @@
 
 import { router } from 'expo-router';
 
-import type { GameInvite, OnlineGameId } from '@/lib/game-net';
+import { sendInviteAccepted, type GameInvite, type OnlineGameId } from '@/lib/game-net';
 import { navigateWithLoading, STUDY_ASSETS } from '@/lib/preload-nav';
 
 // Minimal shape of the study-room controller from `useStudyRoom()`.
@@ -18,6 +18,10 @@ export function acceptGameInvite(inv: GameInvite, studyRoom: StudyRoomLike): voi
   } else if (inv.game === 'batterdash') {
     router.push({ pathname: '/cake-game', params: { room: inv.room, role: 'guest', netmode: 'party' } });
   } else {
+    // 1v1 (connect4/tictactoe): the match starts the instant we join, so tell the
+    // inviter we accepted — their "invite friends" screen closes itself. Not sent
+    // for study/batterdash, whose invite screens intentionally stay open.
+    sendInviteAccepted(inv.fromCode, inv.room);
     router.push({ pathname: '/break-game', params: { game: inv.game, room: inv.room, role: 'guest' } });
   }
 }

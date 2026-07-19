@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Dimensions, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -81,6 +81,13 @@ export default function PlusUpgradeScreen() {
     null | 'activate' | 'deactivate' | 'rewardSkin' | 'rewardRoom' | 'msgUnavailable' | 'msgFailed' | 'msgRestored' | 'msgNoRestore'
   >(null);
 
+  // True while a StoreKit purchase/restore is in flight. Tap → getProducts →
+  // StoreKit sheet → Apple receipt validation is several seconds with no native
+  // feedback of its own, so without this the button looked dead/"slow" and users
+  // spam-tapped it, queuing duplicate purchase attempts. One flag covers both CTAs
+  // since they share the button area.
+  const [busy, setBusy] = useState(false);
+
   // Live App Store subscription prices (localized). Falls back to the hardcoded
   // i18n price strings when IAP is unavailable / fetch fails.
   const [prices, setPrices] = useState<PriceMap>({});
@@ -107,29 +114,40 @@ export default function PlusUpgradeScreen() {
   // "Start Plus" CTA. Real StoreKit purchase when available; DEV mock otherwise;
   // production with no store fails closed (never grants Plus for free).
   const startPlus = () => {
+    if (busy) return;
     if (!purchasesReady()) {
       setConfirm(__DEV__ ? 'activate' : 'msgUnavailable');
       return;
     }
-    purchasePlus(plan).then((res) => {
-      if (res.ok) activatePlus(res.until ?? undefined);
-      else if (!res.cancelled) setConfirm('msgFailed');
-    });
+    setBusy(true);
+    purchasePlus(plan)
+      .then((res) => {
+        if (res.ok) activatePlus(res.until ?? undefined);
+        else if (!res.cancelled) setConfirm('msgFailed');
+      })
+      // Always clear busy — including the cancel path, where purchasePlus resolves
+      // { ok:false, cancelled:true } and neither branch above fires. Without finally
+      // a dismissed StoreKit sheet would leave the button spinning forever.
+      .finally(() => setBusy(false));
   };
 
   const handleRestore = () => {
+    if (busy) return;
     if (!purchasesReady()) {
       setConfirm('msgUnavailable');
       return;
     }
-    restorePlus().then((res) => {
-      if (res.ok && res.until) {
-        setIsPlus(true, plan, res.until);
-        setConfirm('msgRestored');
-      } else {
-        setConfirm('msgNoRestore');
-      }
-    });
+    setBusy(true);
+    restorePlus()
+      .then((res) => {
+        if (res.ok && res.until) {
+          setIsPlus(true, plan, res.until);
+          setConfirm('msgRestored');
+        } else {
+          setConfirm('msgNoRestore');
+        }
+      })
+      .finally(() => setBusy(false));
   };
 
   return (
@@ -241,14 +259,19 @@ export default function PlusUpgradeScreen() {
             <>
               <SoundPressable
                 sound="confirm"
-                style={({ pressed }) => [styles.upgradeBtn, isTablet && styles.upgradeBtnTablet, pressed && styles.pressed]}
+                disabled={busy}
+                style={({ pressed }) => [styles.upgradeBtn, isTablet && styles.upgradeBtnTablet, pressed && styles.pressed, busy && styles.btnBusy]}
                 onPress={startPlus}>
-                <ThemedText type="smallBold" style={[styles.upgradeBtnText, isTablet && styles.upgradeBtnTextTablet]}>
-                  {t('plus.startPlus')}
-                </ThemedText>
+                {busy ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <ThemedText type="smallBold" style={[styles.upgradeBtnText, isTablet && styles.upgradeBtnTextTablet]}>
+                    {t('plus.startPlus')}
+                  </ThemedText>
+                )}
               </SoundPressable>
 
-              <Pressable onPress={handleRestore} style={styles.restoreBtn}>
+              <Pressable onPress={handleRestore} disabled={busy} style={[styles.restoreBtn, busy && styles.btnBusy]}>
                 <ThemedText type="small" themeColor="textSecondary" style={isTablet && styles.secondaryTextTablet}>
                   {t('plus.restorePurchases')}
                 </ThemedText>
@@ -485,6 +508,7 @@ const styles = StyleSheet.create({
   },
   upgradeBtnText: { color: '#FFF', fontSize: 16 },
   pressed: { opacity: 0.85 },
+  btnBusy: { opacity: 0.6 },
   restoreBtn: { alignItems: 'center', paddingVertical: Spacing.two },
   deactivateBtn: { alignItems: 'center', paddingVertical: Spacing.two },
   disclaimer: { textAlign: 'center', lineHeight: 18, fontSize: 11 },

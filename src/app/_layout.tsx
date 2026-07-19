@@ -24,7 +24,7 @@ import { prewarmCoreSounds, setTapSoundEnabled } from '@/lib/sounds';
 import { setLoadingActive, subscribeLoadingScreen, takeLoadingDone } from '@/lib/loading-signal';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { posthog, identifyUser, resetUser } from '@/lib/analytics';
-import { configurePurchases, currentPlusExpiry } from '@/lib/purchases';
+import { configurePurchases, currentPlusExpiry, onPlusEntitlementChange } from '@/lib/purchases';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { BakeryColors, Spacing } from '@/constants/theme';
@@ -135,7 +135,7 @@ const PRELOAD_ASSETS = [
 
 function RootNavigator() {
   const { initialized, isGuest, session, signOut, sessionRestoredAtLaunch } = useAuth();
-  const { loaded, legalAccepted, markLegalAccepted, setBirthday, updateProfile, soundEffectsEnabled, starterChosen, isPlus, plusPlan, setIsPlus, persistedStateReady, resetAccountForAbandonedOnboarding,
+  const { loaded, legalAccepted, markLegalAccepted, setBirthday, updateProfile, soundEffectsEnabled, starterChosen, isPlus, plusPlan, plusUntil, setIsPlus, persistedStateReady, resetAccountForAbandonedOnboarding,
     equippedBackgroundRoomId, equippedDeskRoomId, activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins } = useApp();
   const { t } = useTranslation();
 
@@ -265,6 +265,20 @@ function RootNavigator() {
   // entitlement: a subscription cancelled/renewed off-device is corrected here on
   // launch. No-ops entirely when IAP is unavailable (pre-rebuild / no API key) —
   // currentPlusExpiry returns undefined and local Plus state is left untouched.
+  // Activation-only entitlement handler, kept in a latest-ref so the once-registered
+  // listener always sees current Plus state (a stale `setIsPlus` closure would misfire
+  // its freezes-granted popup). Flips Plus ON for a purchase/renewal that happened
+  // ANYWHERE — another device, an Apple-side renewal, a deferred/Ask-to-Buy approval,
+  // or the app backgrounded mid-purchase — none of which hit the paywall's callback.
+  // It deliberately never turns Plus OFF: the customerInfo listener fires often (every
+  // foreground, coin-pack buy, transient grace state) and a momentary inactive read
+  // must not yank Plus mid-session — deactivation stays with the cold-launch reconcile
+  // below. Guarded so unrelated customerInfo updates don't cause re-render churn.
+  const plusActivateRef = useRef<(info: { until: string | null; plan: 'monthly' | 'annual' }) => void>(() => {});
+  plusActivateRef.current = ({ until, plan }) => {
+    if (until && (!isPlus || plusUntil !== until)) setIsPlus(true, plan, until);
+  };
+
   const plusReconciled = useRef(false);
   useEffect(() => {
     if (!initialized || !loaded || !authed || plusReconciled.current) return;
@@ -275,6 +289,8 @@ function RootNavigator() {
       // sandbox entitlement would re-grant Plus right after a reset.
       if (__DEV__) return;
       await configurePurchases(session?.user?.id);
+      // Activate Plus on any future entitlement change, from anywhere (see ref above).
+      onPlusEntitlementChange((info) => plusActivateRef.current(info));
       const until = await currentPlusExpiry();
       if (until === undefined) return; // IAP unavailable — leave local state as-is
       if (until) setIsPlus(true, plusPlan ?? 'monthly', until);

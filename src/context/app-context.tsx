@@ -640,7 +640,7 @@ export const FREE_EXAM_LIMIT = 3;
 // Plus users get a high exam cap rather than truly unlimited (mirrors subjects).
 const MAX_EXAMS_PLUS = 50;
 // Total tasks a user can keep at once.
-export const MAX_TASKS = 500;
+export const MAX_TASKS = 1000;
 const STREAK_MAX = 200; // study-day streak caps here
 
 // Whole-day difference between two YYYY-MM-DD strings via pure UTC calendar math

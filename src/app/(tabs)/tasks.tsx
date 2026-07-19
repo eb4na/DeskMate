@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { showPopup } from '@/lib/popup';
@@ -29,6 +29,32 @@ import {
   Spacing,
 } from '@/constants/theme';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
+
+// Long lists (tasks/exams) render 5 at a time so the screen stays fast no matter
+// how many a user piles up (MAX_TASKS is 1000). Each list is a collapsible
+// dropdown with a ‹ page/total › pager.
+const PAGE_SIZE = 5;
+
+function usePager(total: number) {
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // Clamp when the list shrinks (delete/complete on the last page) so we never
+  // sit on an out-of-range, blank page.
+  const effPage = Math.min(page, pageCount - 1);
+  useEffect(() => {
+    if (page !== effPage) setPage(effPage);
+  }, [page, effPage]);
+  const start = effPage * PAGE_SIZE;
+  return {
+    page: effPage,
+    pageCount,
+    slice<T>(arr: T[]): T[] {
+      return arr.slice(start, start + PAGE_SIZE);
+    },
+    next: () => setPage(Math.min(pageCount - 1, effPage + 1)),
+    prev: () => setPage(Math.max(0, effPage - 1)),
+  };
+}
 
 function daysUntil(dateISO: string): number {
   const today = new Date();
@@ -164,13 +190,79 @@ export default function TasksScreen() {
     removeExam,
     isPlus,
   } = useApp();
+  // Collapsible dropdown state — tasks & exams open by default, done stays tucked.
+  const [showTasks, setShowTasks] = useState(true);
   const [showDone, setShowDone] = useState(false);
+  const [showExams, setShowExams] = useState(true);
 
   const canAddExam = isPlus || examCountdowns.length < FREE_EXAM_LIMIT;
   const examLimitText = isPlus ? t('tasks.examsCount', { count: examCountdowns.length }) : `${examCountdowns.length}/${FREE_EXAM_LIMIT}`;
 
-  const todo = tasks.filter((t) => t.status !== 'done');
-  const done = tasks.filter((t) => t.status === 'done');
+  // Sort so page 1 is always the page that matters: open tasks by soonest due
+  // (undated last, matching the Home card's comparator), done by most recently
+  // finished, exams by soonest date.
+  const todo = useMemo(
+    () =>
+      tasks
+        .filter((tk) => tk.status !== 'done')
+        .sort((a, b) =>
+          ((a.dueDate ?? '9999-99-99') + (a.dueTime ?? '99:99')).localeCompare(
+            (b.dueDate ?? '9999-99-99') + (b.dueTime ?? '99:99'),
+          ),
+        ),
+    [tasks],
+  );
+  const done = useMemo(
+    () =>
+      tasks
+        .filter((tk) => tk.status === 'done')
+        .sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? '')),
+    [tasks],
+  );
+  const exams = useMemo(
+    () => [...examCountdowns].sort((a, b) => a.dateISO.localeCompare(b.dateISO)),
+    [examCountdowns],
+  );
+
+  const todoPager = usePager(todo.length);
+  const donePager = usePager(done.length);
+  const examPager = usePager(exams.length);
+
+  // ‹ 1 / N › pager footer — chevron-only (language-neutral), hidden for a single page.
+  const renderPager = (pager: ReturnType<typeof usePager>) => {
+    if (pager.pageCount <= 1) return null;
+    const atStart = pager.page === 0;
+    const atEnd = pager.page >= pager.pageCount - 1;
+    return (
+      <View style={styles.pager}>
+        <Pressable
+          disabled={atStart}
+          onPress={pager.prev}
+          hitSlop={8}
+          style={({ pressed }) => [styles.pagerBtn, atStart && styles.pagerBtnDisabled, pressed && !atStart && styles.pressed]}>
+          <ThemedText style={styles.pagerArrow}>‹</ThemedText>
+        </Pressable>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.pagerLabel}>
+          {pager.page + 1} / {pager.pageCount}
+        </ThemedText>
+        <Pressable
+          disabled={atEnd}
+          onPress={pager.next}
+          hitSlop={8}
+          style={({ pressed }) => [styles.pagerBtn, atEnd && styles.pagerBtnDisabled, pressed && !atEnd && styles.pressed]}>
+          <ThemedText style={styles.pagerArrow}>›</ThemedText>
+        </Pressable>
+      </View>
+    );
+  };
+
+  const renderDropdownHeader = (open: boolean, title: string, count: number, onToggle: () => void) => (
+    <Pressable onPress={onToggle} style={styles.doneToggle}>
+      <ThemedText type="smallBold" style={styles.sectionTitle}>
+        {open ? '▾' : '▸'} {title} ({count})
+      </ThemedText>
+    </Pressable>
+  );
 
   // Avoidance tracker: tasks with postponeCount >= 1, not done, sorted by count desc
   const needsAttention = tasks
@@ -204,35 +296,15 @@ export default function TasksScreen() {
     ]);
   };
 
-  const renderSection = (title: string, items: Task[], emptyMsg?: string) => {
-    if (items.length === 0 && !emptyMsg) return null;
-    return (
-      <ThemedView style={styles.section}>
-        <ThemedText type="smallBold" style={styles.sectionTitle}>
-          {title}
-        </ThemedText>
-        {items.length === 0 ? (
-          <ThemedView type="backgroundElement" style={styles.emptyCard}>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-              {emptyMsg}
-            </ThemedText>
-          </ThemedView>
-        ) : (
-          <ThemedView style={styles.taskList}>
-            {items.map((task) => (
-              <TaskRow
-                key={task.id}
-                task={task}
-                onToggle={() => handleToggle(task)}
-                onEdit={() => router.push({ pathname: '/add-task', params: { taskId: task.id } })}
-                onDelete={() => handleDelete(task)}
-              />
-            ))}
-          </ThemedView>
-        )}
-      </ThemedView>
-    );
-  };
+  const renderTaskRow = (task: Task) => (
+    <TaskRow
+      key={task.id}
+      task={task}
+      onToggle={() => handleToggle(task)}
+      onEdit={() => router.push({ pathname: '/add-task', params: { taskId: task.id } })}
+      onDelete={() => handleDelete(task)}
+    />
+  );
 
   return (
     <ThemedView style={styles.container}>
@@ -287,89 +359,101 @@ export default function TasksScreen() {
             </ThemedView>
           )}
 
-          {/* Task sections */}
-          {renderSection(t('tasks.notStarted'), todo)}
+          {/* Tasks dropdown — paginated 5 at a time */}
+          <ThemedView style={styles.section}>
+            {renderDropdownHeader(showTasks, t('tasks.notStarted'), todo.length, () => setShowTasks((v) => !v))}
+            {showTasks && (
+              todo.length === 0 ? (
+                <ThemedView type="backgroundElement" style={styles.emptyCard}>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
+                    {t('tasks.noTasks')}
+                  </ThemedText>
+                </ThemedView>
+              ) : (
+                <>
+                  <ThemedView style={styles.taskList}>
+                    {todoPager.slice(todo).map(renderTaskRow)}
+                  </ThemedView>
+                  {renderPager(todoPager)}
+                </>
+              )
+            )}
+          </ThemedView>
 
-          {/* Done section (collapsible) */}
+          {/* Done dropdown — paginated, tucked away by default */}
           {done.length > 0 && (
             <ThemedView style={styles.section}>
-              <Pressable onPress={() => setShowDone((v) => !v)} style={styles.doneToggle}>
-                <ThemedText type="smallBold" style={styles.sectionTitle}>
-                  {showDone ? '▾' : '▸'} {t('tasks.doneCount', { count: done.length })}
-                </ThemedText>
-              </Pressable>
+              {renderDropdownHeader(showDone, t('tasks.done'), done.length, () => setShowDone((v) => !v))}
               {showDone && (
-                <ThemedView style={styles.taskList}>
-                  {done.map((task) => (
-                    <TaskRow
-                      key={task.id}
-                      task={task}
-                      onToggle={() => handleToggle(task)}
-                      onEdit={() => router.push({ pathname: '/add-task', params: { taskId: task.id } })}
-                      onDelete={() => handleDelete(task)}
-                    />
-                  ))}
-                </ThemedView>
+                <>
+                  <ThemedView style={styles.taskList}>
+                    {donePager.slice(done).map(renderTaskRow)}
+                  </ThemedView>
+                  {renderPager(donePager)}
+                </>
               )}
             </ThemedView>
           )}
 
           {/* ── Exam countdowns (below the task list) ─────────────────────── */}
           <ThemedView style={styles.section}>
-            <ThemedView style={styles.examHeader}>
+            <Pressable onPress={() => setShowExams((v) => !v)} style={styles.examHeader}>
               <ThemedText type="smallBold" style={styles.sectionTitle}>
-                {t('tasks.examCountdowns')}
+                {showExams ? '▾' : '▸'} {t('tasks.examCountdowns')} ({exams.length})
               </ThemedText>
               <View style={styles.examLimitRow}>
                 <ThemedText type="small" themeColor="textSecondary">{examLimitText}</ThemedText>
               </View>
-            </ThemedView>
+            </Pressable>
 
-            {examCountdowns.length === 0 && (
+            {showExams && (exams.length === 0 ? (
               <ThemedView type="backgroundElement" style={styles.examEmptyCard}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
                   {t('tasks.noExamsYet')}{isPlus ? t('tasks.unlimitedWithPlus') : t('tasks.trackUpTo3')}
                 </ThemedText>
               </ThemedView>
-            )}
-
-            {examCountdowns.map((exam) => {
-              const days = daysUntil(exam.dateISO);
-              const isUrgent = days >= 0 && days <= 7;
-              const isPast = days < 0;
-              const isToday = days === 0;
-              return (
-                <ThemedView key={exam.id} type="backgroundElement" style={styles.examCard}>
-                  <Pressable
-                    style={({ pressed }) => [styles.examInfo, pressed && styles.pressed]}
-                    onPress={() => router.push({ pathname: '/add-exam', params: { examId: exam.id } })}>
-                    <View style={styles.examNameRow}>
-                      <CountdownShape shape={exam.shape} size={16 * cardScale} />
-                      <ThemedText type="smallBold" style={styles.examName}>{exam.name}</ThemedText>
-                    </View>
-                    <View style={styles.examSubRow}>
-                      <ThemedText type="small" themeColor="textSecondary" style={styles.examMeta}>
-                        {exam.subject ? `${localizeSubjectName(exam.subject, t)} · ` : ''}{exam.dateISO}
-                      </ThemedText>
-                      {exam.reminderEnabled && <BakeryBellEmoji size={11 * cardScale} />}
-                    </View>
-                  </Pressable>
-                  <View style={styles.examRight}>
-                    <ThemedText
-                      style={[
-                        styles.examDays,
-                        isUrgent && styles.examDaysUrgent,
-                        isPast && styles.examDaysPast,
-                      ]}>
-                      {isPast ? t('tasks.past') : isToday ? t('tasks.today') : `${days}d`}
-                    </ThemedText>
-                    <Pressable onPress={() => removeExam(exam.id)} style={styles.removeBtn} hitSlop={8}>
-                      <TrashIcon size={16 * cardScale} />
-                    </Pressable>
-                  </View>
-                </ThemedView>
-              );
-            })}
+            ) : (
+              <>
+                {examPager.slice(exams).map((exam) => {
+                  const days = daysUntil(exam.dateISO);
+                  const isUrgent = days >= 0 && days <= 7;
+                  const isPast = days < 0;
+                  const isToday = days === 0;
+                  return (
+                    <ThemedView key={exam.id} type="backgroundElement" style={styles.examCard}>
+                      <Pressable
+                        style={({ pressed }) => [styles.examInfo, pressed && styles.pressed]}
+                        onPress={() => router.push({ pathname: '/add-exam', params: { examId: exam.id } })}>
+                        <View style={styles.examNameRow}>
+                          <CountdownShape shape={exam.shape} size={16 * cardScale} />
+                          <ThemedText type="smallBold" style={styles.examName}>{exam.name}</ThemedText>
+                        </View>
+                        <View style={styles.examSubRow}>
+                          <ThemedText type="small" themeColor="textSecondary" style={styles.examMeta}>
+                            {exam.subject ? `${localizeSubjectName(exam.subject, t)} · ` : ''}{exam.dateISO}
+                          </ThemedText>
+                          {exam.reminderEnabled && <BakeryBellEmoji size={11 * cardScale} />}
+                        </View>
+                      </Pressable>
+                      <View style={styles.examRight}>
+                        <ThemedText
+                          style={[
+                            styles.examDays,
+                            isUrgent && styles.examDaysUrgent,
+                            isPast && styles.examDaysPast,
+                          ]}>
+                          {isPast ? t('tasks.past') : isToday ? t('tasks.today') : `${days}d`}
+                        </ThemedText>
+                        <Pressable onPress={() => removeExam(exam.id)} style={styles.removeBtn} hitSlop={8}>
+                          <TrashIcon size={16 * cardScale} />
+                        </Pressable>
+                      </View>
+                    </ThemedView>
+                  );
+                })}
+                {renderPager(examPager)}
+              </>
+            ))}
 
             {canAddExam ? (
               <Pressable
@@ -461,6 +545,21 @@ const makeStyles = (s: number, contentWidth: number) => {
   sectionTitle: { fontSize: 13 * s, textTransform: 'uppercase', letterSpacing: 0.5 },
   doneToggle: {},
   taskList: { gap: Spacing.two * s },
+  // ‹ 1 / N › pager footer
+  pager: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.four * s, paddingVertical: Spacing.two * s },
+  pagerBtn: {
+    width: 34 * s,
+    height: 34 * s,
+    borderRadius: 17 * s,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: BakeryColors.cream,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+  },
+  pagerBtnDisabled: { opacity: 0.4 },
+  pagerArrow: { fontSize: 20 * s, lineHeight: 22 * s, fontWeight: '800', color: BakeryColors.mocha },
+  pagerLabel: { fontSize: 13 * s, minWidth: 46 * s, textAlign: 'center' },
   // Task cards use cardS (slightly larger on tablet) so they balance the calendar.
   taskRow: {
     borderRadius: BakeryRadii.card * cardS,

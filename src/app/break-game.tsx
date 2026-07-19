@@ -13,6 +13,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Companion } from '@/components/companion';
 import { DevKnobs } from '@/components/dev-knobs';
 import { GameRulesButton } from '@/components/game-rules-button';
+import { OpponentLeftOverlay } from '@/components/opponent-left-overlay';
 import { SimpleHomeIcon } from '@/components/tab-icons';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import {
@@ -22,6 +23,13 @@ import {
   resolveProfileFigure,
   type CompanionImageSource,
 } from '@/lib/companion-utils';
+import {
+  activeCompanionMetricsId,
+  companionMetricsId,
+  faceCropShiftFrac,
+  profileFigureMetricsId,
+  type FigureMetricsId,
+} from '@/lib/figure-height';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
@@ -99,7 +107,11 @@ const ACCENT = {
 // image). The image fills the circle, then a centred scale + downward shift
 // brings the head to the middle — filling guarantees perfect horizontal centring.
 const AVATAR_ZOOM = 1.6;
-const AVATAR_DY = 0.14; // fraction of the avatar diameter to shift the head down
+const AVATAR_DY = 0.14; // fixed fallback shift for unmeasured art (custom / AI-generated)
+// Per-character shift lands each companion's head crown at this fraction from the
+// top of the circular avatar (via faceCropShiftFrac), cancelling the height
+// variance between characters; AVATAR_DY is the fallback when art isn't measured.
+const AVATAR_CROWN_TARGET = 0.1;
 
 // Head-and-shoulders placeholder used for human players (no companion art).
 function Silhouette({ size }: { size: number }) {
@@ -130,6 +142,7 @@ function PlayerPlate({
   active,
   isWinner,
   symbol,
+  faceShift,
 }: {
   avatar: CompanionImageSource | null;
   piece: number;
@@ -138,6 +151,7 @@ function PlayerPlate({
   active: boolean;
   isWinner: boolean;
   symbol: 'X' | 'O';
+  faceShift?: number;
 }) {
   const c = ACCENT[symbol];
   const avatarD = Math.round(width * 0.3);
@@ -159,7 +173,7 @@ function PlayerPlate({
             source={avatar}
             style={[
               StyleSheet.absoluteFill,
-              { transform: [{ translateY: avatarD * AVATAR_DY }, { scale: AVATAR_ZOOM }] },
+              { transform: [{ translateY: avatarD * (faceShift ?? AVATAR_DY) }, { scale: AVATAR_ZOOM }] },
             ]}
             contentFit="cover"
           />
@@ -307,6 +321,9 @@ function TicTacToeGame({
   const [mySymbol, setMySymbol] = useState<'X' | 'O' | null>(online ? (online.isHost ? 'X' : 'O') : null);
   const [opponentPresent, setOpponentPresent] = useState(false);
   const [oppMeta, setOppMeta] = useState<PlayerMeta | null>(null);
+  // Set once the opponent drops out of an in-progress online match, so we can show
+  // the "friend left the game" overlay instead of silently freezing the board.
+  const [oppLeft, setOppLeft] = useState(false);
   const [connecting, setConnecting] = useState(externalInvite);
   const roomRef = useRef<GameRoom | null>(null);
   const screenRef = useRef<'mode' | 'lobby' | 'play'>(externalInvite ? 'lobby' : 'mode');
@@ -347,6 +364,7 @@ function TicTacToeGame({
     setMode('online');
     setMySymbol(isHost ? 'X' : 'O');
     setOpponentPresent(false);
+    setOppLeft(false);
     setConnecting(true);
     setBoard(Array(9).fill(null));
     leaveRoom();
@@ -366,6 +384,7 @@ function TicTacToeGame({
       onPresence: (present) => {
         setOpponentPresent(present);
         if (present) {
+          setOppLeft(false); // a reconnect clears the "left" overlay
           setConnecting(false);
           if (screenRef.current !== 'play') {
             setBoard(Array(9).fill(null));
@@ -377,6 +396,10 @@ function TicTacToeGame({
             }
             setScreen('play');
           }
+        } else if (screenRef.current === 'play') {
+          // Opponent left mid-game — surface it (the `play` guard means this never
+          // trips during the initial self-only lobby wait).
+          setOppLeft(true);
         }
       },
       onOpponentMeta: (meta) => {
@@ -582,6 +605,20 @@ function TicTacToeGame({
   const xAvatar = isOnline ? (xIsYou ? youAvatar : oppChar) : null;
   const oAvatar = isOnline ? (oIsYou ? youAvatar : oppChar) : mode === 'ai' ? oppAvatar : null;
 
+  // Per-character face-crop shift so every companion's head lands centred in the
+  // plate circle regardless of body height (see AVATAR_CROWN_TARGET). Mirrors the
+  // avatar selection above: you → profile figure, online opp → synced companion,
+  // AI → active companion. Silhouette (null avatar) plates need none.
+  const youId = profileFigureMetricsId({
+    profileCompanionId, profileSkinId, activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins,
+  });
+  const oppId = companionMetricsId(oppMeta?.companionId, oppMeta?.skinId);
+  const aiId = activeCompanionMetricsId(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
+  const shiftFor = (id: FigureMetricsId | undefined) =>
+    faceCropShiftFrac(id, { zoom: AVATAR_ZOOM, model: 'center', target: AVATAR_CROWN_TARGET });
+  const xShift = shiftFor(isOnline ? (xIsYou ? youId : oppId) : undefined);
+  const oShift = shiftFor(isOnline ? (oIsYou ? youId : oppId) : mode === 'ai' ? aiId : undefined);
+
   return (
     <View style={tttStyles.screen}>
       <Image source={TTT_BG} style={StyleSheet.absoluteFill} contentFit="cover" />
@@ -676,6 +713,7 @@ function TicTacToeGame({
                 active={activeSymbol === 'X' && !gameOver}
                 isWinner={gameOver && winner === 'X'}
                 symbol="X"
+                faceShift={xShift}
               />
               <PlayerPlate
                 avatar={oAvatar}
@@ -685,6 +723,7 @@ function TicTacToeGame({
                 active={activeSymbol === 'O' && !gameOver}
                 isWinner={gameOver && winner === 'O'}
                 symbol="O"
+                faceShift={oShift}
               />
             </View>
 
@@ -737,6 +776,14 @@ function TicTacToeGame({
           </>
         )}
       </View>
+
+      {/* Opponent left an online match → force a Leave (can't keep playing). */}
+      <OpponentLeftOverlay
+        visible={isOnline && oppLeft && screen === 'play'}
+        title={t('connect4.friendLeft')}
+        buttonLabel={t('connect4.leave')}
+        onLeave={backFromPlay}
+      />
     </View>
   );
 }

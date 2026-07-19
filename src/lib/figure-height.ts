@@ -1,6 +1,7 @@
 import type { ViewStyle } from 'react-native';
+import type { ActiveCompanionId, CompanionSlot, DefaultCompanionId } from '@/context/app-context';
 import { FIGURE_METRICS } from '@/constants/figure-calibration';
-import { isHanjiActiveId } from '@/lib/companion-utils';
+import { isHanjiActiveId, resolveActiveCompanion } from '@/lib/companion-utils';
 
 // ─── Companion height ladder — THE tuning knob ─────────────────────────────
 // Each companion's standing height in the study room, relative to Bunny (= 1.0,
@@ -63,4 +64,77 @@ export function figureStyle(
  * host crown to the actual head instead of the (shared) box top. */
 export function figureHeadFrac(figureKey: string): number {
   return REF.pad + (HEIGHT_LADDER[figureKey] ?? 1) * REF.fill + (BASELINE_LIFT[figureKey] ?? 0);
+}
+
+// ─── Face-crop centring (tight circular avatars) ───────────────────────────────
+// The minigame player cards crop the upper body of a companion into a circle. Each
+// character's head sits at a DIFFERENT height in its square PNG, so a single fixed
+// vertical offset lands some heads too high and others too low. We centre on the
+// head CROWN — the content top — which in the raw art is `1 - fill - pad` of the
+// box measured from the top (NOT figureHeadFrac, which bakes in the study-room
+// height ladder and would re-introduce the height variance we're cancelling).
+
+export type FigureMetricsId = { figureKey: string; skinId: string };
+
+/** Fraction of the square PNG (from the top) where the head crown sits, or
+ * `undefined` when the art isn't measured (custom-slot / AI-only / unknown). */
+export function figureCrownFrac(figureKey: string, skinId: string | null | undefined): number | undefined {
+  const m = FIGURE_METRICS[`${figureKey}/${skinId || 'classic'}`];
+  return m ? 1 - m.fill - m.pad : undefined;
+}
+
+/** Metrics identity for a synced/friend companion id + skin (`shop:x`/Hanji/Bun).
+ * Custom-slot art isn't synced as a shared image, so this always yields a key. */
+export function companionMetricsId(companionId: string | null | undefined, skinId: string | null | undefined): FigureMetricsId {
+  return { figureKey: companionFigureKey(companionId), skinId: skinId || 'classic' };
+}
+
+/** Metrics identity for the resolved ACTIVE companion (also the vs-AI opponent).
+ * `undefined` for a custom-slot companion (unmeasured art). */
+export function activeCompanionMetricsId(
+  activeCompanionId: ActiveCompanionId | null | undefined,
+  defaultCompanionId: DefaultCompanionId,
+  companionSlots: CompanionSlot[],
+  bunSkinId?: string | null,
+  companionSkins?: Record<string, string>,
+): FigureMetricsId | undefined {
+  const c = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
+  if (c.type === 'slot') return undefined; // custom art, no metrics
+  if (c.type === 'shop') return { figureKey: companionFigureKey(activeCompanionId), skinId: companionSkins?.[activeCompanionId ?? ''] || 'classic' };
+  return { figureKey: 'bun', skinId: bunSkinId || 'classic' }; // starter (Bun)
+}
+
+/** Metrics identity for the player's OWN profile figure — mirrors
+ * `resolveProfileFigure`. `undefined` for custom-slot companions (unmeasured). */
+export function profileFigureMetricsId(args: {
+  profileCompanionId: string;
+  profileSkinId: string;
+  activeCompanionId: ActiveCompanionId | null | undefined;
+  defaultCompanionId: DefaultCompanionId;
+  companionSlots: CompanionSlot[];
+  bunSkinId?: string | null;
+  companionSkins?: Record<string, string>;
+}): FigureMetricsId | undefined {
+  const { profileCompanionId, profileSkinId, activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins } = args;
+  if (profileCompanionId) {
+    if (profileCompanionId.startsWith('shop:')) return companionMetricsId(profileCompanionId, profileSkinId);
+    return { figureKey: 'bun', skinId: profileSkinId || 'classic' }; // non-shop profile is a Bun skin
+  }
+  return activeCompanionMetricsId(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
+}
+
+/** Vertical shift (as a fraction of the crop box) that lands the head crown at
+ * `target` (0 = top of the circle, 1 = bottom) for either avatar transform model:
+ *   • 'top'    — image pinned by `top`, height = box×zoom (Connect 4).
+ *   • 'center' — image filled then scaled about centre + translateY (Tic-Tac-Toe).
+ * `undefined` when the art is unmeasured → the caller keeps its fixed fallback. */
+export function faceCropShiftFrac(
+  id: FigureMetricsId | undefined,
+  opts: { zoom: number; model: 'top' | 'center'; target: number },
+): number | undefined {
+  if (!id) return undefined;
+  const crown = figureCrownFrac(id.figureKey, id.skinId);
+  if (crown === undefined) return undefined;
+  const { zoom, model, target } = opts;
+  return model === 'top' ? target - crown * zoom : target + (zoom - 1) / 2 - crown * zoom;
 }

@@ -70,6 +70,9 @@ export async function configurePurchases(appUserId?: string): Promise<void> {
   try {
     Purchases.configure(appUserId ? { apiKey, appUserID: appUserId } : { apiKey });
     configured = true;
+    // Attach the entitlement listener now that RevenueCat is live (if a callback
+    // was already registered before configure).
+    attachPlusListener();
   } catch {
     configured = false;
   }
@@ -107,12 +110,48 @@ export async function purchaseProduct(productId: string): Promise<PurchaseOutcom
   }
 }
 
+export type PlusInfo = { until: string | null; plan: 'monthly' | 'annual' };
+
+// The active "plus" entitlement as { expiry, billing period }, or until:null when
+// not subscribed. Plan is read from the entitlement's product so it's correct even
+// for a purchase made on another device (not just the locally-remembered plan).
+function plusInfoFrom(customerInfo: any): PlusInfo {
+  const ent = customerInfo?.entitlements?.active?.[PLUS_ENTITLEMENT];
+  // expirationDate is null for lifetime entitlements; treat as far-future.
+  const until = ent ? (ent.expirationDate ?? new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString()) : null;
+  const plan: 'monthly' | 'annual' = ent?.productIdentifier === PRODUCT_IDS.plusAnnual ? 'annual' : 'monthly';
+  return { until, plan };
+}
+
 // ISO expiry of the active "plus" entitlement, or null if not subscribed.
 function plusExpiryFrom(customerInfo: any): string | null {
-  const ent = customerInfo?.entitlements?.active?.[PLUS_ENTITLEMENT];
-  if (!ent) return null;
-  // expirationDate is null for lifetime entitlements; treat as far-future.
-  return ent.expirationDate ?? new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString();
+  return plusInfoFrom(customerInfo).until;
+}
+
+// ── Entitlement-change listener ───────────────────────────────────────────────
+// RevenueCat pushes an updated CustomerInfo whenever the customer's entitlements
+// change — a purchase from ANY screen, an Apple-side renewal, a restore, a purchase
+// made on another device, or a deferred / Ask-to-Buy approval that completes later.
+// Wiring this is what makes Plus activate "wherever you buy it" instead of relying
+// on the paywall's own success callback (which never fires for those cases). No-op
+// until purchases are configured (native module + API key present).
+let plusListener: ((info: PlusInfo) => void) | null = null;
+let plusListenerAttached = false;
+
+function attachPlusListener(): void {
+  if (plusListenerAttached || !configured || !Purchases || !plusListener) return;
+  plusListenerAttached = true;
+  // Registered for the app's lifetime — no teardown needed.
+  Purchases.addCustomerInfoUpdateListener((info: any) => {
+    plusListener?.(plusInfoFrom(info));
+  });
+}
+
+/** Register the Plus entitlement-change callback. Safe to call before or after
+ * configurePurchases — it attaches to RevenueCat as soon as both are ready. */
+export function onPlusEntitlementChange(cb: (info: PlusInfo) => void): void {
+  plusListener = cb;
+  attachPlusListener();
 }
 
 export type PlusOutcome = { ok: boolean; cancelled: boolean; until: string | null };
