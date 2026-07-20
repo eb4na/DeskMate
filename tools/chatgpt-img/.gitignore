@@ -1,0 +1,4 @@
+.profile/
+node_modules/
+out-*.png
+last-debug.png

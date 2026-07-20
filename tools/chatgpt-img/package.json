@@ -1,0 +1,14 @@
+{
+  "name": "chatgpt-img",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Drive a real logged-in Chrome session to generate images in ChatGPT and save them into the repo.",
+  "type": "module",
+  "scripts": {
+    "login": "node gen.mjs --login",
+    "gen": "node gen.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.61.1"
+  }
+}
