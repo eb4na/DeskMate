@@ -23,7 +23,7 @@ export const HEIGHT_LADDER: Record<string, number> = {
 // on top of the shared baseline, for art whose visual mass sits low even with its
 // feet landed correctly (Aki's chef art hides too much behind the desk otherwise).
 export const BASELINE_LIFT: Record<string, number> = {
-  companion_cocoa: 0.03, // Aki — ~10px in the solo 350 box
+  companion_cocoa: 0.015, // Aki — nudged down from 0.03 so she sits a touch lower in the study room
 };
 
 // Bunny's classic art defines the baseline: every figure is scaled so its content
