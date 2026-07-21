@@ -4,11 +4,11 @@
 // fractions of the square render box (contentFit: "contain"). Consumed by
 // src/lib/figure-height.ts to equalize figure heights in the study room.
 export const FIGURE_METRICS: Record<string, { fill: number; pad: number }> = {
-  'bun/angel': { fill: 0.8605, pad: 0.0706 },
+  'bun/angel': { fill: 0.9092, pad: 0.0723 },
   'bun/classic': { fill: 0.9211, pad: 0.0766 },
-  'bun/dreams': { fill: 0.8644, pad: 0.0758 },
-  'bun/snowrabbit': { fill: 0.8309, pad: 0.0766 },
-  'bun/strawberry': { fill: 0.7974, pad: 0.0766 },
+  'bun/dreams': { fill: 0.9219, pad: 0.0766 },
+  'bun/snowrabbit': { fill: 0.9211, pad: 0.0774 },
+  'bun/strawberry': { fill: 0.9211, pad: 0.0774 },
   'companion_bunny/classic': { fill: 0.8939, pad: 0.0502 },
   'companion_bunny/jiraikei': { fill: 0.8190, pad: 0.0502 },
   'companion_bunny/palace': { fill: 0.9370, pad: 0.0502 },
