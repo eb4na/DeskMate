@@ -832,10 +832,11 @@ export default function HomeScreen() {
   // Some companion art reads a touch small next to the others — nudge it up a bit,
   // anchored at the feet so it stays planted on the desk. (Hanji's scale only hits
   // her flat outfit skins; her default animated figure renders down a separate path.)
+  // Tira's Carefree Days is sized down in the ARTWORK itself (a deliberate petite
+  // look), so it no longer needs a per-skin nudge here.
   const companionScale =
     activeCompanion.type === 'shop' && activeCompanion.id === 'companion_cocoa' ? 1.08
     : activeCompanion.type === 'shop' && activeCompanion.id === 'companion_hanji' ? 1.02
-    : activeCompanion.type === 'shop' && activeCompanion.id === 'companion_tira' && companionSkins?.['shop:companion_tira'] === 'afternoontrain' ? 0.92
     : 1;
   // Tablet character layer. Cocoa (every Cocoa skin keeps id `companion_cocoa`)
   // sits higher in her art than the others, so drop her by an extra `cocoaY`.
