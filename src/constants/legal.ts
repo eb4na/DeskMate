@@ -5,6 +5,12 @@
 // NOTE: This is plain-language starting content, not legal advice. Before
 // launch, have it reviewed and host an identical copy at a public URL — the
 // App Store requires a Privacy Policy URL in App Store Connect.
+//
+// Localized into all app languages. The ENGLISH version is authoritative: each
+// translation carries a short note to that effect, and getLegalDoc() falls back
+// to English for any unknown/unsupported language code.
+
+import type { SupportedLanguage } from '@/i18n';
 
 export const LEGAL_VERSION = '1.0';
 export const LEGAL_EFFECTIVE_DATE = 'June 15, 2026';
@@ -16,130 +22,934 @@ export const MINIMUM_AGE = 13;
 export const LEGAL_CONTACT_EMAIL = 'memobunsupport@gmail.com';
 
 export type LegalSection = { title: string; body: string[] };
+export type LegalDoc = { privacy: LegalSection[]; terms: LegalSection[] };
 
-export const PRIVACY_POLICY: LegalSection[] = [
-  {
-    title: 'Overview',
-    body: [
-      `Memobun ("we", "us") is a study companion app. This Privacy Policy explains what information we collect, how we use it, and your choices. It applies to the Memobun mobile app. Effective ${LEGAL_EFFECTIVE_DATE}.`,
-    ],
-  },
-  {
-    title: 'Information we collect',
-    body: [
-      'Account information: if you sign in, we receive your email address and a unique account ID from your sign-in provider (e.g. Google). If you use the app as a guest, no account is created and your progress is stored only on your device until you choose to sign in.',
-      `Date of birth: we ask for your date of birth once, when you first start the app, to confirm you meet the minimum age (${MINIMUM_AGE}). We store the date with your app data; we do not share it.`,
-      'Study and app activity: study sessions, subjects, tasks and exams you add, streaks, coins, items you own, and similar in-app progress, so your data syncs across your devices.',
-      'Companion and friend messages: messages you send to your in-app AI companion and direct messages you send to friends are stored so your conversations persist.',
-      'Usage analytics: we use PostHog, a third-party analytics provider, to understand how the app is used. This includes in-app events (for example, completing a study session, opening a chat, or making an in-app purchase), your device type and operating-system version, the app version, and an approximate location (such as country or city) derived from your IP address. We do not use this to identify you personally beyond your account ID.',
-    ],
-  },
-  {
-    title: 'How we use your information',
-    body: [
-      'To provide and sync the app and its features across your devices.',
-      'To power the AI companion chat and friend messaging.',
-      'To understand usage, fix problems, and improve the app.',
-      'To keep the app safe — for example, filtering inappropriate content and responding to reports.',
-    ],
-  },
-  {
-    title: 'Third-party services',
-    body: [
-      'Supabase — stores your account, progress, and messages (data hosting / backend).',
-      'PostHog — product analytics, as described above. Depending on configuration, analytics data is processed on US or EU servers.',
-      'OpenAI — powers AI companion replies; messages you send to your companion are processed to generate a response.',
-      'Sign-in providers (e.g. Google) — used to authenticate you.',
-      'Each provider processes data under its own privacy policy.',
-    ],
-  },
-  {
-    title: 'Data retention and deletion',
-    body: [
-      'We keep your information while your account is active. You can delete your account at any time from Settings, which removes your account and associated data from our systems. Guest data lives only on your device and is removed when you delete the app or clear its data.',
-    ],
-  },
-  {
-    title: "Children's privacy",
-    body: [
-      `Memobun is not directed to children under ${MINIMUM_AGE}. We ask for your date of birth at first launch and do not allow accounts for anyone under ${MINIMUM_AGE}. If you believe a child has provided us personal information, contact us and we will remove it.`,
-    ],
-  },
-  {
-    title: 'Your choices and rights',
-    body: [
-      'Depending on where you live, you may have rights to access, correct, or delete your personal information, or to object to certain processing. You can exercise these by contacting us. You can also delete your account in-app at any time.',
-    ],
-  },
-  {
-    title: 'Contact us',
-    body: [
-      `Questions about this Privacy Policy? Email ${LEGAL_CONTACT_EMAIL}.`,
-    ],
-  },
-];
+const AGE = MINIMUM_AGE;
+const EMAIL = LEGAL_CONTACT_EMAIL;
 
-export const TERMS_OF_SERVICE: LegalSection[] = [
-  {
-    title: 'Acceptance',
-    body: [
-      `By using Memobun, you agree to these Terms of Service. If you do not agree, please do not use the app. Effective ${LEGAL_EFFECTIVE_DATE}.`,
-    ],
-  },
-  {
-    title: 'Eligibility',
-    body: [
-      `You must be at least ${MINIMUM_AGE} years old (or the minimum age of digital consent in your country, if higher) to use Memobun. We ask for your date of birth at first launch, and by using the app you confirm you meet this requirement.`,
-    ],
-  },
-  {
-    title: 'Your account',
-    body: [
-      'You are responsible for activity under your account and for keeping your sign-in secure. You may use the app as a guest, but guest progress is stored only on your device and may be lost if the app is deleted.',
-    ],
-  },
-  {
-    title: 'Acceptable use',
-    body: [
-      'Be kind. Do not use Memobun to harass, abuse, threaten, or send inappropriate or unlawful content to other users, including in direct messages.',
-      'Do not attempt to break, overload, reverse-engineer, or misuse the app or its services.',
-    ],
-  },
-  {
-    title: 'User content and moderation',
-    body: [
-      'You are responsible for content you create, including messages to friends and to the AI companion. We use automated filtering and may review reported content. You can block other users and report abuse from within the app. We may remove content or suspend accounts that violate these Terms.',
-    ],
-  },
-  {
-    title: 'Virtual items and purchases',
-    body: [
-      'Coins, items, and other virtual goods have no real-world monetary value, cannot be exchanged for cash, and are licensed to you for use within the app only.',
-      'Memobun Plus and any other paid features are billed through your app store under its terms. Subscriptions renew unless cancelled, which you manage in your app store account.',
-    ],
-  },
-  {
-    title: 'AI companion',
-    body: [
-      'The AI companion generates responses automatically and may be inaccurate. It is for friendly study motivation, not professional, medical, legal, or mental-health advice.',
-    ],
-  },
-  {
-    title: 'Disclaimers and liability',
-    body: [
-      'Memobun is provided "as is" without warranties of any kind. To the fullest extent permitted by law, we are not liable for indirect or incidental damages arising from your use of the app.',
-    ],
-  },
-  {
-    title: 'Changes and termination',
-    body: [
-      'We may update these Terms or the app over time; continued use after changes means you accept the updated Terms. We may suspend or end access for violations of these Terms.',
-    ],
-  },
-  {
-    title: 'Contact us',
-    body: [
-      `Questions about these Terms? Email ${LEGAL_CONTACT_EMAIL}.`,
-    ],
-  },
-];
+// Effective date, phrased per language (the date itself is fixed).
+const DATE: Record<SupportedLanguage, string> = {
+  en: 'June 15, 2026',
+  zh: '2026年6月15日',
+  'zh-Hant': '2026年6月15日',
+  ja: '2026年6月15日',
+  ko: '2026년 6월 15일',
+  es: '15 de junio de 2026',
+  fr: '15 juin 2026',
+};
+
+// "Memobun Plus" — the Plus tier keeps its per-language brand term (see i18n).
+const PLUS: Record<SupportedLanguage, string> = {
+  en: 'Memobun Plus',
+  zh: 'Memobun 会员',
+  'zh-Hant': 'Memobun 會員',
+  ja: 'Memobun プラス',
+  ko: 'Memobun 프리미엄',
+  es: 'Memobun Premium',
+  fr: 'Memobun Premium',
+};
+
+const en: LegalDoc = {
+  privacy: [
+    {
+      title: 'Overview',
+      body: [
+        `Memobun ("we", "us") is a study companion app. This Privacy Policy explains what information we collect, how we use it, and your choices. It applies to the Memobun mobile app. Effective ${DATE.en}.`,
+      ],
+    },
+    {
+      title: 'Information we collect',
+      body: [
+        'Account information: if you sign in, we receive your email address and a unique account ID from your sign-in provider (e.g. Google). If you use the app as a guest, no account is created and your progress is stored only on your device until you choose to sign in.',
+        `Date of birth: we ask for your date of birth once, when you first start the app, to confirm you meet the minimum age (${AGE}). We store the date with your app data; we do not share it.`,
+        'Study and app activity: study sessions, subjects, tasks and exams you add, streaks, coins, items you own, and similar in-app progress, so your data syncs across your devices.',
+        'Companion and friend messages: messages you send to your in-app AI companion and direct messages you send to friends are stored so your conversations persist.',
+        'Usage analytics: we use PostHog, a third-party analytics provider, to understand how the app is used. This includes in-app events (for example, completing a study session, opening a chat, or making an in-app purchase), your device type and operating-system version, the app version, and an approximate location (such as country or city) derived from your IP address. We do not use this to identify you personally beyond your account ID.',
+      ],
+    },
+    {
+      title: 'How we use your information',
+      body: [
+        'To provide and sync the app and its features across your devices.',
+        'To power the AI companion chat and friend messaging.',
+        'To understand usage, fix problems, and improve the app.',
+        'To keep the app safe — for example, filtering inappropriate content and responding to reports.',
+      ],
+    },
+    {
+      title: 'Third-party services',
+      body: [
+        'Supabase — stores your account, progress, and messages (data hosting / backend).',
+        'PostHog — product analytics, as described above. Depending on configuration, analytics data is processed on US or EU servers.',
+        'OpenAI — powers AI companion replies; messages you send to your companion are processed to generate a response.',
+        'Sign-in providers (e.g. Google) — used to authenticate you.',
+        'Each provider processes data under its own privacy policy.',
+      ],
+    },
+    {
+      title: 'Data retention and deletion',
+      body: [
+        'We keep your information while your account is active. You can delete your account at any time from Settings, which removes your account and associated data from our systems. Guest data lives only on your device and is removed when you delete the app or clear its data.',
+      ],
+    },
+    {
+      title: "Children's privacy",
+      body: [
+        `Memobun is not directed to children under ${AGE}. We ask for your date of birth at first launch and do not allow accounts for anyone under ${AGE}. If you believe a child has provided us personal information, contact us and we will remove it.`,
+      ],
+    },
+    {
+      title: 'Your choices and rights',
+      body: [
+        'Depending on where you live, you may have rights to access, correct, or delete your personal information, or to object to certain processing. You can exercise these by contacting us. You can also delete your account in-app at any time.',
+      ],
+    },
+    {
+      title: 'Contact us',
+      body: [`Questions about this Privacy Policy? Email ${EMAIL}.`],
+    },
+  ],
+  terms: [
+    {
+      title: 'Acceptance',
+      body: [
+        `By using Memobun, you agree to these Terms of Service. If you do not agree, please do not use the app. Effective ${DATE.en}.`,
+      ],
+    },
+    {
+      title: 'Eligibility',
+      body: [
+        `You must be at least ${AGE} years old (or the minimum age of digital consent in your country, if higher) to use Memobun. We ask for your date of birth at first launch, and by using the app you confirm you meet this requirement.`,
+      ],
+    },
+    {
+      title: 'Your account',
+      body: [
+        'You are responsible for activity under your account and for keeping your sign-in secure. You may use the app as a guest, but guest progress is stored only on your device and may be lost if the app is deleted.',
+      ],
+    },
+    {
+      title: 'Acceptable use',
+      body: [
+        'Be kind. Do not use Memobun to harass, abuse, threaten, or send inappropriate or unlawful content to other users, including in direct messages.',
+        'Do not attempt to break, overload, reverse-engineer, or misuse the app or its services.',
+      ],
+    },
+    {
+      title: 'User content and moderation',
+      body: [
+        'You are responsible for content you create, including messages to friends and to the AI companion. We use automated filtering and may review reported content. You can block other users and report abuse from within the app. We may remove content or suspend accounts that violate these Terms.',
+      ],
+    },
+    {
+      title: 'Virtual items and purchases',
+      body: [
+        'Coins, items, and other virtual goods have no real-world monetary value, cannot be exchanged for cash, and are licensed to you for use within the app only.',
+        `${PLUS.en} and any other paid features are billed through your app store under its terms. Subscriptions renew unless cancelled, which you manage in your app store account.`,
+      ],
+    },
+    {
+      title: 'AI companion',
+      body: [
+        'The AI companion generates responses automatically and may be inaccurate. It is for friendly study motivation, not professional, medical, legal, or mental-health advice.',
+      ],
+    },
+    {
+      title: 'Disclaimers and liability',
+      body: [
+        'Memobun is provided "as is" without warranties of any kind. To the fullest extent permitted by law, we are not liable for indirect or incidental damages arising from your use of the app.',
+      ],
+    },
+    {
+      title: 'Changes and termination',
+      body: [
+        'We may update these Terms or the app over time; continued use after changes means you accept the updated Terms. We may suspend or end access for violations of these Terms.',
+      ],
+    },
+    {
+      title: 'Contact us',
+      body: [`Questions about these Terms? Email ${EMAIL}.`],
+    },
+  ],
+};
+
+const zh: LegalDoc = {
+  privacy: [
+    {
+      title: '概述',
+      body: [
+        '本翻译仅为方便阅读提供；如与英文版本存在任何差异，均以英文版本为准。',
+        `Memobun（“我们”）是一款学习陪伴应用。本隐私政策说明我们收集哪些信息、如何使用这些信息，以及您可以做出的选择。本政策适用于 Memobun 移动应用。生效日期：${DATE.zh}。`,
+      ],
+    },
+    {
+      title: '我们收集的信息',
+      body: [
+        '账号信息：如果您登录，我们会从您的登录服务商（例如 Google）处获得您的电子邮箱地址和唯一的账号 ID。如果您以游客身份使用应用，则不会创建账号，您的进度仅保存在本设备上，直到您选择登录。',
+        `出生日期：我们会在您首次启动应用时询问一次您的出生日期，以确认您已满最低年龄（${AGE} 岁）。该日期与您的应用数据一同保存，我们不会将其分享给他人。`,
+        '学习与应用活动：您添加的学习时段、科目、任务和考试，以及连续天数、金币、拥有的物品和类似的应用内进度，以便您的数据在各设备间同步。',
+        '陪伴与好友消息：您发送给应用内 AI 陪伴的消息，以及您发送给好友的私信，都会被保存，以便您的对话得以留存。',
+        '使用分析：我们使用第三方分析服务商 PostHog 来了解应用的使用情况。这包括应用内事件（例如完成一次学习、打开聊天或进行一次应用内购买）、您的设备类型和操作系统版本、应用版本，以及根据您的 IP 地址推断的大致位置（例如国家或城市）。除您的账号 ID 外，我们不会借此识别您的个人身份。',
+      ],
+    },
+    {
+      title: '我们如何使用您的信息',
+      body: [
+        '用于提供应用及其功能，并在您的各设备间同步。',
+        '用于支持 AI 陪伴聊天和好友消息功能。',
+        '用于了解使用情况、修复问题并改进应用。',
+        '用于保障应用安全，例如过滤不当内容和处理举报。',
+      ],
+    },
+    {
+      title: '第三方服务',
+      body: [
+        'Supabase——保存您的账号、进度和消息（数据托管／后端）。',
+        'PostHog——如上所述的产品分析。根据配置，分析数据可能在美国或欧盟的服务器上处理。',
+        'OpenAI——支持 AI 陪伴的回复；您发送给陪伴的消息会被处理以生成回复。',
+        '登录服务商（例如 Google）——用于验证您的身份。',
+        '每家服务商均按其自身的隐私政策处理数据。',
+      ],
+    },
+    {
+      title: '数据的保留与删除',
+      body: [
+        '在您的账号处于活跃状态期间，我们会保留您的信息。您可以随时在“设置”中删除账号，这会从我们的系统中移除您的账号及相关数据。游客数据仅存在于您的设备上，当您删除应用或清除其数据时即被移除。',
+      ],
+    },
+    {
+      title: '儿童隐私',
+      body: [
+        `Memobun 不面向未满 ${AGE} 岁的儿童。我们会在首次启动时询问您的出生日期，且不允许未满 ${AGE} 岁者创建账号。如果您认为有儿童向我们提供了个人信息，请联系我们，我们将予以删除。`,
+      ],
+    },
+    {
+      title: '您的选择与权利',
+      body: [
+        '根据您所在地区的规定，您可能有权访问、更正或删除您的个人信息，或反对某些处理行为。您可以通过联系我们来行使这些权利。您也可以随时在应用内删除账号。',
+      ],
+    },
+    {
+      title: '联系我们',
+      body: [`对本隐私政策有疑问？请发送邮件至 ${EMAIL}。`],
+    },
+  ],
+  terms: [
+    {
+      title: '接受条款',
+      body: [
+        '本翻译仅为方便阅读提供；如与英文版本存在任何差异，均以英文版本为准。',
+        `使用 Memobun 即表示您同意本服务条款。如您不同意，请勿使用本应用。生效日期：${DATE.zh}。`,
+      ],
+    },
+    {
+      title: '使用资格',
+      body: [
+        `您必须年满 ${AGE} 岁（若您所在国家规定的数字同意最低年龄更高，则以更高者为准）方可使用 Memobun。我们会在首次启动时询问您的出生日期，使用本应用即表示您确认符合该要求。`,
+      ],
+    },
+    {
+      title: '您的账号',
+      body: [
+        '您需对账号下的活动负责，并妥善保管您的登录凭据。您可以以游客身份使用应用，但游客进度仅保存在本设备上，删除应用后可能丢失。',
+      ],
+    },
+    {
+      title: '可接受的使用',
+      body: [
+        '请友善待人。请勿使用 Memobun 骚扰、辱骂、威胁他人，或向其他用户（包括在私信中）发送不当或违法内容。',
+        '请勿试图破坏、超负荷使用、逆向工程或滥用本应用或其服务。',
+      ],
+    },
+    {
+      title: '用户内容与管理',
+      body: [
+        '您需对自己创建的内容负责，包括发送给好友和 AI 陪伴的消息。我们会使用自动过滤，并可能审查被举报的内容。您可以在应用内屏蔽其他用户并举报滥用行为。对于违反本条款的内容或账号，我们可能予以移除或暂停。',
+      ],
+    },
+    {
+      title: '虚拟物品与购买',
+      body: [
+        '金币、物品及其他虚拟商品不具有任何现实货币价值，不可兑换现金，仅授权您在应用内使用。',
+        `${PLUS.zh} 及任何其他付费功能均通过您的应用商店按其条款计费。除非取消，订阅将自动续订；您可在应用商店账户中管理。`,
+      ],
+    },
+    {
+      title: 'AI 陪伴',
+      body: [
+        'AI 陪伴会自动生成回复，可能并不准确。它用于友好的学习激励，而非专业、医疗、法律或心理健康方面的建议。',
+      ],
+    },
+    {
+      title: '免责声明与责任',
+      body: [
+        'Memobun 按“现状”提供，不作任何形式的保证。在法律允许的最大范围内，对于因您使用本应用而产生的间接或附带损害，我们概不负责。',
+      ],
+    },
+    {
+      title: '变更与终止',
+      body: [
+        '我们可能会不时更新本条款或应用；在变更后继续使用即表示您接受更新后的条款。对于违反本条款的情况，我们可能暂停或终止您的访问权限。',
+      ],
+    },
+    {
+      title: '联系我们',
+      body: [`对本条款有疑问？请发送邮件至 ${EMAIL}。`],
+    },
+  ],
+};
+
+const zhHant: LegalDoc = {
+  privacy: [
+    {
+      title: '概述',
+      body: [
+        '本翻譯僅為方便閱讀而提供；如與英文版本有任何差異，概以英文版本為準。',
+        `Memobun（「我們」）是一款學習陪伴應用程式。本隱私權政策說明我們收集哪些資訊、如何使用這些資訊，以及您可以做出的選擇。本政策適用於 Memobun 行動應用程式。生效日期：${DATE['zh-Hant']}。`,
+      ],
+    },
+    {
+      title: '我們收集的資訊',
+      body: [
+        '帳號資訊：如果您登入，我們會從您的登入服務商（例如 Google）取得您的電子郵件地址和唯一的帳號 ID。如果您以訪客身分使用應用程式，則不會建立帳號，您的進度僅儲存在本裝置上，直到您選擇登入為止。',
+        `出生日期：我們會在您首次啟動應用程式時詢問一次您的出生日期，以確認您已達最低年齡（${AGE} 歲）。該日期會與您的應用程式資料一同儲存，我們不會將其分享給他人。`,
+        '學習與應用程式活動：您新增的學習時段、科目、任務和考試，以及連續天數、金幣、擁有的物品和類似的應用程式內進度，以便您的資料在各裝置間同步。',
+        '陪伴與好友訊息：您傳送給應用程式內 AI 陪伴的訊息，以及您傳送給好友的私訊，都會被儲存，以便您的對話得以留存。',
+        '使用分析：我們使用第三方分析服務商 PostHog 來了解應用程式的使用情況。這包括應用程式內事件（例如完成一次學習、開啟聊天或進行一次應用程式內購買）、您的裝置類型和作業系統版本、應用程式版本，以及根據您的 IP 位址推斷的大致位置（例如國家或城市）。除您的帳號 ID 之外，我們不會藉此辨識您的個人身分。',
+      ],
+    },
+    {
+      title: '我們如何使用您的資訊',
+      body: [
+        '用於提供應用程式及其功能，並在您的各裝置間同步。',
+        '用於支援 AI 陪伴聊天和好友訊息功能。',
+        '用於了解使用情況、修復問題並改進應用程式。',
+        '用於保障應用程式安全，例如過濾不當內容和處理檢舉。',
+      ],
+    },
+    {
+      title: '第三方服務',
+      body: [
+        'Supabase——儲存您的帳號、進度和訊息（資料代管／後端）。',
+        'PostHog——如上所述的產品分析。視設定而定，分析資料可能在美國或歐盟的伺服器上處理。',
+        'OpenAI——支援 AI 陪伴的回覆；您傳送給陪伴的訊息會被處理以產生回覆。',
+        '登入服務商（例如 Google）——用於驗證您的身分。',
+        '每家服務商均依其自身的隱私權政策處理資料。',
+      ],
+    },
+    {
+      title: '資料的保留與刪除',
+      body: [
+        '在您的帳號處於使用中狀態期間，我們會保留您的資訊。您可以隨時在「設定」中刪除帳號，這會從我們的系統中移除您的帳號及相關資料。訪客資料僅存在於您的裝置上，當您刪除應用程式或清除其資料時即被移除。',
+      ],
+    },
+    {
+      title: '兒童隱私',
+      body: [
+        `Memobun 並非以未滿 ${AGE} 歲的兒童為對象。我們會在首次啟動時詢問您的出生日期，且不允許未滿 ${AGE} 歲者建立帳號。如果您認為有兒童向我們提供了個人資訊，請聯絡我們，我們將予以刪除。`,
+      ],
+    },
+    {
+      title: '您的選擇與權利',
+      body: [
+        '視您所在地區的規定而定，您可能有權存取、更正或刪除您的個人資訊，或反對某些處理行為。您可以透過聯絡我們來行使這些權利。您也可以隨時在應用程式內刪除帳號。',
+      ],
+    },
+    {
+      title: '聯絡我們',
+      body: [`對本隱私權政策有疑問？請寄送電子郵件至 ${EMAIL}。`],
+    },
+  ],
+  terms: [
+    {
+      title: '接受條款',
+      body: [
+        '本翻譯僅為方便閱讀而提供；如與英文版本有任何差異，概以英文版本為準。',
+        `使用 Memobun 即表示您同意本服務條款。如您不同意，請勿使用本應用程式。生效日期：${DATE['zh-Hant']}。`,
+      ],
+    },
+    {
+      title: '使用資格',
+      body: [
+        `您必須年滿 ${AGE} 歲（若您所在國家規定的數位同意最低年齡更高，則以較高者為準）方可使用 Memobun。我們會在首次啟動時詢問您的出生日期，使用本應用程式即表示您確認符合此要求。`,
+      ],
+    },
+    {
+      title: '您的帳號',
+      body: [
+        '您須對帳號下的活動負責，並妥善保管您的登入憑證。您可以以訪客身分使用應用程式，但訪客進度僅儲存在本裝置上，刪除應用程式後可能遺失。',
+      ],
+    },
+    {
+      title: '可接受的使用',
+      body: [
+        '請友善待人。請勿使用 Memobun 騷擾、辱罵、威脅他人，或向其他使用者（包括在私訊中）傳送不當或違法的內容。',
+        '請勿試圖破壞、超載使用、逆向工程或濫用本應用程式或其服務。',
+      ],
+    },
+    {
+      title: '使用者內容與管理',
+      body: [
+        '您須對自己建立的內容負責，包括傳送給好友和 AI 陪伴的訊息。我們會使用自動過濾，並可能審查被檢舉的內容。您可以在應用程式內封鎖其他使用者並檢舉濫用行為。對於違反本條款的內容或帳號，我們可能予以移除或暫停。',
+      ],
+    },
+    {
+      title: '虛擬物品與購買',
+      body: [
+        '金幣、物品及其他虛擬商品不具有任何現實貨幣價值，不可兌換現金，僅授權您在應用程式內使用。',
+        `${PLUS['zh-Hant']} 及任何其他付費功能均透過您的應用程式商店依其條款收費。除非取消，訂閱將自動續訂；您可在應用程式商店帳戶中管理。`,
+      ],
+    },
+    {
+      title: 'AI 陪伴',
+      body: [
+        'AI 陪伴會自動產生回覆，可能並不準確。它用於友善的學習激勵，而非專業、醫療、法律或心理健康方面的建議。',
+      ],
+    },
+    {
+      title: '免責聲明與責任',
+      body: [
+        'Memobun 按「現狀」提供，不作任何形式的保證。在法律允許的最大範圍內，對於因您使用本應用程式而產生的間接或附帶損害，我們概不負責。',
+      ],
+    },
+    {
+      title: '變更與終止',
+      body: [
+        '我們可能會不時更新本條款或應用程式；在變更後繼續使用即表示您接受更新後的條款。對於違反本條款的情況，我們可能暫停或終止您的存取權限。',
+      ],
+    },
+    {
+      title: '聯絡我們',
+      body: [`對本條款有疑問？請寄送電子郵件至 ${EMAIL}。`],
+    },
+  ],
+};
+
+const ja: LegalDoc = {
+  privacy: [
+    {
+      title: '概要',
+      body: [
+        'この翻訳は参考のために提供されるものです。英語版との間に相違がある場合は、英語版が優先されます。',
+        `Memobun（「当社」）は学習コンパニオンアプリです。本プライバシーポリシーは、当社が収集する情報、その利用方法、およびお客様の選択肢について説明します。本ポリシーは Memobun モバイルアプリに適用されます。発効日：${DATE.ja}。`,
+      ],
+    },
+    {
+      title: '当社が収集する情報',
+      body: [
+        'アカウント情報：ログインされた場合、当社はログインプロバイダ（例：Google）からお客様のメールアドレスと一意のアカウント ID を受け取ります。ゲストとしてご利用の場合、アカウントは作成されず、進行状況はログインを選択されるまでお客様の端末内にのみ保存されます。',
+        `生年月日：最低年齢（${AGE} 歳）を満たしていることを確認するため、アプリの初回起動時に一度だけ生年月日をお尋ねします。この日付はアプリのデータとともに保存され、第三者と共有することはありません。`,
+        '学習およびアプリの利用状況：追加された学習セッション、科目、タスク、試験、連続記録、コイン、所有アイテムなどのアプリ内の進行状況。お客様のデータを端末間で同期するために利用します。',
+        'コンパニオンおよびフレンドのメッセージ：アプリ内の AI コンパニオンに送信したメッセージや、フレンドに送信したダイレクトメッセージは、会話を保持するために保存されます。',
+        '利用分析：当社は、アプリの利用状況を把握するために第三者分析プロバイダである PostHog を利用します。これには、アプリ内のイベント（例：学習セッションの完了、チャットの開始、アプリ内購入）、お客様の端末の種類とオペレーティングシステムのバージョン、アプリのバージョン、および IP アドレスから推定されるおおよその位置（国や都市など）が含まれます。当社はこれをアカウント ID を超えてお客様個人を特定するために利用することはありません。',
+      ],
+    },
+    {
+      title: '情報の利用方法',
+      body: [
+        'アプリおよびその機能を提供し、お客様の端末間で同期するため。',
+        'AI コンパニオンとのチャットおよびフレンドとのメッセージ機能を提供するため。',
+        '利用状況を把握し、問題を修正し、アプリを改善するため。',
+        'アプリの安全性を保つため（例：不適切なコンテンツのフィルタリングや通報への対応）。',
+      ],
+    },
+    {
+      title: '第三者サービス',
+      body: [
+        'Supabase——お客様のアカウント、進行状況、メッセージを保存します（データホスティング／バックエンド）。',
+        'PostHog——上記のとおりのプロダクト分析。構成により、分析データは米国または EU のサーバーで処理される場合があります。',
+        'OpenAI——AI コンパニオンの返信を生成します。コンパニオンに送信されたメッセージは返信を生成するために処理されます。',
+        'ログインプロバイダ（例：Google）——お客様の本人確認に利用します。',
+        '各プロバイダは、それぞれのプライバシーポリシーに基づいてデータを処理します。',
+      ],
+    },
+    {
+      title: 'データの保持と削除',
+      body: [
+        'アカウントが有効な間、当社はお客様の情報を保持します。「設定」からいつでもアカウントを削除でき、削除すると当社のシステムからアカウントおよび関連データが除去されます。ゲストデータはお客様の端末内にのみ存在し、アプリを削除するかそのデータを消去すると除去されます。',
+      ],
+    },
+    {
+      title: '子どものプライバシー',
+      body: [
+        `Memobun は ${AGE} 歳未満の子どもを対象としていません。初回起動時に生年月日をお尋ねし、${AGE} 歳未満の方のアカウント作成は許可していません。子どもが個人情報を提供したと思われる場合は当社までご連絡ください。速やかに削除いたします。`,
+      ],
+    },
+    {
+      title: 'お客様の選択と権利',
+      body: [
+        'お住まいの地域によっては、お客様は自身の個人情報へのアクセス、訂正、削除を求める権利、または特定の処理に異議を唱える権利を有する場合があります。これらは当社へのご連絡により行使できます。また、アプリ内でいつでもアカウントを削除できます。',
+      ],
+    },
+    {
+      title: 'お問い合わせ',
+      body: [`本プライバシーポリシーに関するご質問は ${EMAIL} までメールでお問い合わせください。`],
+    },
+  ],
+  terms: [
+    {
+      title: '同意',
+      body: [
+        'この翻訳は参考のために提供されるものです。英語版との間に相違がある場合は、英語版が優先されます。',
+        `Memobun を利用することにより、お客様は本利用規約に同意したものとみなされます。同意されない場合は、アプリをご利用にならないでください。発効日：${DATE.ja}。`,
+      ],
+    },
+    {
+      title: '利用資格',
+      body: [
+        `Memobun を利用するには、${AGE} 歳以上（お住まいの国のデジタル同意の最低年齢がこれより高い場合はその年齢以上）である必要があります。初回起動時に生年月日をお尋ねし、アプリを利用することでお客様はこの要件を満たすことを確認するものとします。`,
+      ],
+    },
+    {
+      title: 'アカウント',
+      body: [
+        'お客様は、ご自身のアカウントでの活動、およびログイン情報を安全に保つことについて責任を負います。ゲストとしてアプリを利用することもできますが、ゲストの進行状況はお客様の端末内にのみ保存され、アプリを削除すると失われる場合があります。',
+      ],
+    },
+    {
+      title: '許容される利用',
+      body: [
+        '思いやりを持ってご利用ください。Memobun を、他のユーザーに対する嫌がらせ、虐待、脅迫、または（ダイレクトメッセージを含め）不適切もしくは違法なコンテンツの送信に利用しないでください。',
+        'アプリまたはそのサービスを破壊、過負荷、リバースエンジニアリング、または悪用しようとしないでください。',
+      ],
+    },
+    {
+      title: 'ユーザーコンテンツとモデレーション',
+      body: [
+        'お客様は、フレンドや AI コンパニオンへのメッセージを含め、ご自身が作成したコンテンツについて責任を負います。当社は自動フィルタリングを利用し、通報されたコンテンツを確認する場合があります。アプリ内で他のユーザーをブロックし、不正行為を通報できます。当社は、本規約に違反するコンテンツを削除し、またはアカウントを停止する場合があります。',
+      ],
+    },
+    {
+      title: '仮想アイテムと購入',
+      body: [
+        'コイン、アイテム、その他の仮想品は、現実世界の金銭的価値を持たず、現金と交換することはできず、アプリ内での利用のみを目的としてお客様に許諾されるものです。',
+        `${PLUS.ja} およびその他の有料機能は、お客様のアプリストアを通じてその規約に基づき課金されます。サブスクリプションはキャンセルされない限り更新され、アプリストアのアカウントで管理できます。`,
+      ],
+    },
+    {
+      title: 'AI コンパニオン',
+      body: [
+        'AI コンパニオンは自動的に応答を生成するため、不正確な場合があります。これは友好的な学習の励ましを目的としたものであり、専門的、医療的、法的、または精神保健上の助言ではありません。',
+      ],
+    },
+    {
+      title: '免責事項と責任',
+      body: [
+        'Memobun は、いかなる種類の保証もなく「現状有姿」で提供されます。法律で認められる最大限の範囲において、当社は、お客様によるアプリの利用に起因する間接的または付随的な損害について責任を負いません。',
+      ],
+    },
+    {
+      title: '変更と終了',
+      body: [
+        '当社は、本規約またはアプリを随時更新する場合があります。変更後も利用を継続された場合、更新後の規約に同意したものとみなされます。当社は、本規約違反があった場合、アクセスを停止または終了する場合があります。',
+      ],
+    },
+    {
+      title: 'お問い合わせ',
+      body: [`本規約に関するご質問は ${EMAIL} までメールでお問い合わせください。`],
+    },
+  ],
+};
+
+const ko: LegalDoc = {
+  privacy: [
+    {
+      title: '개요',
+      body: [
+        '이 번역본은 편의를 위해 제공됩니다. 영문본과 차이가 있는 경우 영문본이 우선합니다.',
+        `Memobun(“당사”)은 학습 도우미 앱입니다. 본 개인정보 처리방침은 당사가 수집하는 정보, 그 이용 방법, 그리고 귀하의 선택권에 대해 설명합니다. 본 방침은 Memobun 모바일 앱에 적용됩니다. 시행일: ${DATE.ko}.`,
+      ],
+    },
+    {
+      title: '수집하는 정보',
+      body: [
+        '계정 정보: 로그인하시면 당사는 로그인 제공업체(예: Google)로부터 귀하의 이메일 주소와 고유 계정 ID를 받습니다. 게스트로 앱을 이용하시는 경우 계정은 생성되지 않으며, 진행 상황은 로그인을 선택하실 때까지 귀하의 기기에만 저장됩니다.',
+        `생년월일: 최소 연령(만 ${AGE}세)을 충족하는지 확인하기 위해 앱을 처음 실행할 때 한 번 생년월일을 여쭤봅니다. 해당 날짜는 앱 데이터와 함께 저장되며, 외부에 공유하지 않습니다.`,
+        '학습 및 앱 활동: 추가하신 학습 세션, 과목, 할 일, 시험, 연속 기록, 코인, 보유 아이템 등 앱 내 진행 상황으로, 귀하의 데이터를 여러 기기 간에 동기화하기 위한 것입니다.',
+        '도우미 및 친구 메시지: 앱 내 AI 도우미에게 보낸 메시지와 친구에게 보낸 다이렉트 메시지는 대화가 유지되도록 저장됩니다.',
+        '사용 분석: 당사는 앱 사용 방식을 파악하기 위해 제3자 분석 제공업체인 PostHog를 이용합니다. 여기에는 앱 내 이벤트(예: 학습 세션 완료, 채팅 열기, 인앱 구매), 귀하의 기기 유형 및 운영체제 버전, 앱 버전, 그리고 IP 주소로부터 추정된 대략적인 위치(국가나 도시 등)가 포함됩니다. 당사는 이를 계정 ID를 넘어 귀하 개인을 식별하는 데 이용하지 않습니다.',
+      ],
+    },
+    {
+      title: '정보의 이용 방법',
+      body: [
+        '앱과 그 기능을 제공하고 여러 기기 간에 동기화하기 위해.',
+        'AI 도우미 채팅 및 친구 메시지 기능을 제공하기 위해.',
+        '사용 현황을 파악하고 문제를 해결하며 앱을 개선하기 위해.',
+        '앱을 안전하게 유지하기 위해(예: 부적절한 콘텐츠 필터링 및 신고 처리).',
+      ],
+    },
+    {
+      title: '제3자 서비스',
+      body: [
+        'Supabase — 귀하의 계정, 진행 상황, 메시지를 저장합니다(데이터 호스팅/백엔드).',
+        'PostHog — 위에서 설명한 제품 분석. 설정에 따라 분석 데이터는 미국 또는 EU 서버에서 처리될 수 있습니다.',
+        'OpenAI — AI 도우미의 답변을 생성합니다. 도우미에게 보낸 메시지는 답변 생성을 위해 처리됩니다.',
+        '로그인 제공업체(예: Google) — 귀하의 본인 확인에 이용됩니다.',
+        '각 제공업체는 자체 개인정보 처리방침에 따라 데이터를 처리합니다.',
+      ],
+    },
+    {
+      title: '데이터 보관 및 삭제',
+      body: [
+        '계정이 활성화되어 있는 동안 당사는 귀하의 정보를 보관합니다. 언제든지 “설정”에서 계정을 삭제할 수 있으며, 삭제 시 당사 시스템에서 계정 및 관련 데이터가 제거됩니다. 게스트 데이터는 귀하의 기기에만 존재하며, 앱을 삭제하거나 그 데이터를 지우면 제거됩니다.',
+      ],
+    },
+    {
+      title: '아동의 개인정보',
+      body: [
+        `Memobun은 만 ${AGE}세 미만 아동을 대상으로 하지 않습니다. 첫 실행 시 생년월일을 여쭤보며, 만 ${AGE}세 미만인 분의 계정 생성은 허용하지 않습니다. 아동이 개인정보를 제공했다고 여겨지는 경우 당사에 연락해 주시면 해당 정보를 삭제하겠습니다.`,
+      ],
+    },
+    {
+      title: '귀하의 선택과 권리',
+      body: [
+        '거주 지역에 따라 귀하는 자신의 개인정보에 접근, 정정, 삭제를 요청하거나 특정 처리에 반대할 권리를 가질 수 있습니다. 당사에 연락하여 이러한 권리를 행사할 수 있습니다. 또한 언제든지 앱 내에서 계정을 삭제할 수 있습니다.',
+      ],
+    },
+    {
+      title: '문의하기',
+      body: [`본 개인정보 처리방침에 관한 문의는 ${EMAIL} 으로 이메일 주시기 바랍니다.`],
+    },
+  ],
+  terms: [
+    {
+      title: '동의',
+      body: [
+        '이 번역본은 편의를 위해 제공됩니다. 영문본과 차이가 있는 경우 영문본이 우선합니다.',
+        `Memobun을 이용하시면 본 서비스 약관에 동의하시는 것입니다. 동의하지 않으시는 경우 앱을 이용하지 마시기 바랍니다. 시행일: ${DATE.ko}.`,
+      ],
+    },
+    {
+      title: '이용 자격',
+      body: [
+        `Memobun을 이용하려면 만 ${AGE}세 이상(거주 국가의 디지털 동의 최소 연령이 더 높은 경우 그 연령 이상)이어야 합니다. 첫 실행 시 생년월일을 여쭤보며, 앱을 이용함으로써 귀하는 이 요건을 충족함을 확인하는 것입니다.`,
+      ],
+    },
+    {
+      title: '귀하의 계정',
+      body: [
+        '귀하는 자신의 계정에서 이루어진 활동과 로그인 정보를 안전하게 유지하는 것에 대해 책임을 집니다. 게스트로 앱을 이용할 수 있으나, 게스트 진행 상황은 귀하의 기기에만 저장되며 앱을 삭제하면 손실될 수 있습니다.',
+      ],
+    },
+    {
+      title: '허용되는 이용',
+      body: [
+        '친절하게 이용해 주세요. Memobun을 다른 사용자를 괴롭히거나 학대, 위협하거나, (다이렉트 메시지를 포함하여) 부적절하거나 불법적인 콘텐츠를 보내는 데 이용하지 마십시오.',
+        '앱 또는 그 서비스를 파손, 과부하, 역설계하거나 오용하려고 시도하지 마십시오.',
+      ],
+    },
+    {
+      title: '사용자 콘텐츠 및 관리',
+      body: [
+        '귀하는 친구 및 AI 도우미에게 보낸 메시지를 포함하여 자신이 생성한 콘텐츠에 대해 책임을 집니다. 당사는 자동 필터링을 이용하며 신고된 콘텐츠를 검토할 수 있습니다. 앱 내에서 다른 사용자를 차단하고 악용을 신고할 수 있습니다. 당사는 본 약관을 위반하는 콘텐츠를 삭제하거나 계정을 정지할 수 있습니다.',
+      ],
+    },
+    {
+      title: '가상 아이템 및 구매',
+      body: [
+        '코인, 아이템 및 기타 가상 재화는 현실의 금전적 가치가 없고 현금으로 교환할 수 없으며, 앱 내에서의 이용을 위해서만 귀하에게 허락됩니다.',
+        `${PLUS.ko} 및 기타 유료 기능은 귀하의 앱 스토어를 통해 해당 약관에 따라 청구됩니다. 구독은 취소하지 않는 한 갱신되며, 앱 스토어 계정에서 관리할 수 있습니다.`,
+      ],
+    },
+    {
+      title: 'AI 도우미',
+      body: [
+        'AI 도우미는 응답을 자동으로 생성하므로 부정확할 수 있습니다. 이는 친근한 학습 동기 부여를 위한 것이며, 전문적·의료적·법률적 또는 정신 건강에 관한 조언이 아닙니다.',
+      ],
+    },
+    {
+      title: '면책 및 책임',
+      body: [
+        'Memobun은 어떠한 종류의 보증도 없이 “있는 그대로” 제공됩니다. 법률이 허용하는 최대 범위에서, 당사는 귀하의 앱 이용으로 인해 발생하는 간접적 또는 부수적 손해에 대해 책임지지 않습니다.',
+      ],
+    },
+    {
+      title: '변경 및 종료',
+      body: [
+        '당사는 본 약관 또는 앱을 수시로 업데이트할 수 있으며, 변경 후 계속 이용하시면 업데이트된 약관에 동의하시는 것입니다. 당사는 본 약관 위반에 대해 이용을 정지하거나 종료할 수 있습니다.',
+      ],
+    },
+    {
+      title: '문의하기',
+      body: [`본 약관에 관한 문의는 ${EMAIL} 으로 이메일 주시기 바랍니다.`],
+    },
+  ],
+};
+
+const es: LegalDoc = {
+  privacy: [
+    {
+      title: 'Descripción general',
+      body: [
+        'Esta traducción se ofrece para tu comodidad; en caso de cualquier discrepancia, prevalece la versión en inglés.',
+        `Memobun («nosotros») es una aplicación de compañía de estudio. Esta Política de Privacidad explica qué información recopilamos, cómo la usamos y las opciones de que dispones. Se aplica a la aplicación móvil Memobun. En vigor desde el ${DATE.es}.`,
+      ],
+    },
+    {
+      title: 'Información que recopilamos',
+      body: [
+        'Información de la cuenta: si inicias sesión, recibimos tu dirección de correo electrónico y un identificador único de cuenta de tu proveedor de inicio de sesión (por ejemplo, Google). Si usas la aplicación como invitado, no se crea ninguna cuenta y tu progreso se almacena únicamente en tu dispositivo hasta que decidas iniciar sesión.',
+        `Fecha de nacimiento: te pedimos tu fecha de nacimiento una sola vez, al iniciar la aplicación por primera vez, para confirmar que cumples la edad mínima (${AGE} años). Guardamos la fecha junto con los datos de tu aplicación; no la compartimos.`,
+        'Actividad de estudio y de la aplicación: las sesiones de estudio, asignaturas, tareas y exámenes que añades, las rachas, las monedas, los objetos que posees y otro progreso similar dentro de la aplicación, para que tus datos se sincronicen entre tus dispositivos.',
+        'Mensajes con el compañero y con amistades: los mensajes que envías a tu compañero de IA dentro de la aplicación y los mensajes directos que envías a tus amistades se almacenan para que tus conversaciones se conserven.',
+        'Analítica de uso: usamos PostHog, un proveedor de analítica externo, para entender cómo se usa la aplicación. Esto incluye eventos dentro de la aplicación (por ejemplo, completar una sesión de estudio, abrir un chat o realizar una compra dentro de la aplicación), el tipo de dispositivo y la versión del sistema operativo, la versión de la aplicación y una ubicación aproximada (como el país o la ciudad) derivada de tu dirección IP. No usamos esto para identificarte personalmente más allá de tu identificador de cuenta.',
+      ],
+    },
+    {
+      title: 'Cómo usamos tu información',
+      body: [
+        'Para ofrecer y sincronizar la aplicación y sus funciones entre tus dispositivos.',
+        'Para hacer funcionar el chat con el compañero de IA y los mensajes con amistades.',
+        'Para entender el uso, solucionar problemas y mejorar la aplicación.',
+        'Para mantener la aplicación segura, por ejemplo, filtrando contenido inapropiado y respondiendo a las denuncias.',
+      ],
+    },
+    {
+      title: 'Servicios de terceros',
+      body: [
+        'Supabase: almacena tu cuenta, progreso y mensajes (alojamiento de datos / backend).',
+        'PostHog: analítica de producto, como se describe arriba. Según la configuración, los datos de analítica se procesan en servidores de EE. UU. o de la UE.',
+        'OpenAI: genera las respuestas del compañero de IA; los mensajes que envías a tu compañero se procesan para generar una respuesta.',
+        'Proveedores de inicio de sesión (por ejemplo, Google): se usan para autenticarte.',
+        'Cada proveedor procesa los datos conforme a su propia política de privacidad.',
+      ],
+    },
+    {
+      title: 'Conservación y eliminación de datos',
+      body: [
+        'Conservamos tu información mientras tu cuenta esté activa. Puedes eliminar tu cuenta en cualquier momento desde Ajustes, lo que elimina tu cuenta y los datos asociados de nuestros sistemas. Los datos de invitado residen únicamente en tu dispositivo y se eliminan cuando borras la aplicación o sus datos.',
+      ],
+    },
+    {
+      title: 'Privacidad de menores',
+      body: [
+        `Memobun no está dirigida a menores de ${AGE} años. Te pedimos tu fecha de nacimiento en el primer inicio y no permitimos cuentas a menores de ${AGE} años. Si crees que un menor nos ha facilitado información personal, contáctanos y la eliminaremos.`,
+      ],
+    },
+    {
+      title: 'Tus opciones y derechos',
+      body: [
+        'Según dónde residas, podrías tener derecho a acceder, corregir o eliminar tu información personal, o a oponerte a determinados tratamientos. Puedes ejercer estos derechos contactándonos. También puedes eliminar tu cuenta desde la aplicación en cualquier momento.',
+      ],
+    },
+    {
+      title: 'Contáctanos',
+      body: [`¿Tienes preguntas sobre esta Política de Privacidad? Escríbenos a ${EMAIL}.`],
+    },
+  ],
+  terms: [
+    {
+      title: 'Aceptación',
+      body: [
+        'Esta traducción se ofrece para tu comodidad; en caso de cualquier discrepancia, prevalece la versión en inglés.',
+        `Al usar Memobun, aceptas estas Condiciones del Servicio. Si no estás de acuerdo, no uses la aplicación. En vigor desde el ${DATE.es}.`,
+      ],
+    },
+    {
+      title: 'Requisitos',
+      body: [
+        `Debes tener al menos ${AGE} años (o la edad mínima de consentimiento digital de tu país, si es mayor) para usar Memobun. Te pedimos tu fecha de nacimiento en el primer inicio y, al usar la aplicación, confirmas que cumples este requisito.`,
+      ],
+    },
+    {
+      title: 'Tu cuenta',
+      body: [
+        'Eres responsable de la actividad de tu cuenta y de mantener seguras tus credenciales de inicio de sesión. Puedes usar la aplicación como invitado, pero el progreso de invitado se almacena únicamente en tu dispositivo y puede perderse si borras la aplicación.',
+      ],
+    },
+    {
+      title: 'Uso aceptable',
+      body: [
+        'Sé amable. No uses Memobun para acosar, insultar o amenazar a otras personas usuarias, ni para enviarles contenido inapropiado o ilícito, incluidos los mensajes directos.',
+        'No intentes dañar, sobrecargar, aplicar ingeniería inversa ni hacer un uso indebido de la aplicación o de sus servicios.',
+      ],
+    },
+    {
+      title: 'Contenido de la persona usuaria y moderación',
+      body: [
+        'Eres responsable del contenido que creas, incluidos los mensajes a tus amistades y al compañero de IA. Usamos filtrado automático y podemos revisar el contenido denunciado. Puedes bloquear a otras personas usuarias y denunciar abusos desde la aplicación. Podemos eliminar contenido o suspender cuentas que infrinjan estas Condiciones.',
+      ],
+    },
+    {
+      title: 'Objetos virtuales y compras',
+      body: [
+        'Las monedas, los objetos y otros bienes virtuales no tienen valor monetario en el mundo real, no pueden canjearse por dinero y se te otorgan bajo licencia únicamente para su uso dentro de la aplicación.',
+        `${PLUS.es} y cualquier otra función de pago se facturan a través de tu tienda de aplicaciones conforme a sus condiciones. Las suscripciones se renuevan salvo que las canceles, lo cual gestionas en la cuenta de tu tienda de aplicaciones.`,
+      ],
+    },
+    {
+      title: 'Compañero de IA',
+      body: [
+        'El compañero de IA genera respuestas de forma automática y puede ser impreciso. Está pensado para dar ánimo amistoso durante el estudio, no como asesoramiento profesional, médico, jurídico ni de salud mental.',
+      ],
+    },
+    {
+      title: 'Renuncias y responsabilidad',
+      body: [
+        'Memobun se ofrece «tal cual», sin garantías de ningún tipo. En la máxima medida permitida por la ley, no somos responsables de los daños indirectos o incidentales derivados de tu uso de la aplicación.',
+      ],
+    },
+    {
+      title: 'Cambios y terminación',
+      body: [
+        'Podemos actualizar estas Condiciones o la aplicación con el tiempo; el uso continuado tras los cambios implica que aceptas las Condiciones actualizadas. Podemos suspender o finalizar el acceso por infracciones de estas Condiciones.',
+      ],
+    },
+    {
+      title: 'Contáctanos',
+      body: [`¿Tienes preguntas sobre estas Condiciones? Escríbenos a ${EMAIL}.`],
+    },
+  ],
+};
+
+const fr: LegalDoc = {
+  privacy: [
+    {
+      title: 'Présentation',
+      body: [
+        'Cette traduction est fournie à titre indicatif ; en cas de divergence, la version anglaise prévaut.',
+        `Memobun (« nous ») est une application de compagnon d’étude. La présente Politique de confidentialité explique quelles informations nous recueillons, comment nous les utilisons et les choix dont vous disposez. Elle s’applique à l’application mobile Memobun. En vigueur le ${DATE.fr}.`,
+      ],
+    },
+    {
+      title: 'Informations que nous recueillons',
+      body: [
+        'Informations de compte : si vous vous connectez, nous recevons votre adresse e-mail et un identifiant de compte unique de votre fournisseur de connexion (par exemple Google). Si vous utilisez l’application en tant qu’invité, aucun compte n’est créé et votre progression est stockée uniquement sur votre appareil jusqu’à ce que vous choisissiez de vous connecter.',
+        `Date de naissance : nous vous demandons votre date de naissance une seule fois, au premier lancement de l’application, pour confirmer que vous avez l’âge minimum (${AGE} ans). Nous conservons cette date avec les données de votre application ; nous ne la partageons pas.`,
+        'Activité d’étude et d’application : les sessions d’étude, matières, tâches et examens que vous ajoutez, les séries, les pièces, les objets que vous possédez et toute progression similaire dans l’application, afin que vos données se synchronisent entre vos appareils.',
+        'Messages avec le compagnon et les amis : les messages que vous envoyez à votre compagnon IA dans l’application et les messages directs que vous envoyez à vos amis sont conservés afin que vos conversations persistent.',
+        'Analyse d’utilisation : nous utilisons PostHog, un prestataire d’analyse tiers, pour comprendre comment l’application est utilisée. Cela comprend les événements dans l’application (par exemple terminer une session d’étude, ouvrir une discussion ou effectuer un achat intégré), le type de votre appareil et la version du système d’exploitation, la version de l’application et une localisation approximative (comme le pays ou la ville) déduite de votre adresse IP. Nous n’utilisons pas ces données pour vous identifier personnellement au-delà de votre identifiant de compte.',
+      ],
+    },
+    {
+      title: 'Comment nous utilisons vos informations',
+      body: [
+        'Pour fournir et synchroniser l’application et ses fonctionnalités entre vos appareils.',
+        'Pour faire fonctionner la discussion avec le compagnon IA et la messagerie entre amis.',
+        'Pour comprendre l’utilisation, corriger les problèmes et améliorer l’application.',
+        'Pour assurer la sécurité de l’application, par exemple en filtrant les contenus inappropriés et en traitant les signalements.',
+      ],
+    },
+    {
+      title: 'Services tiers',
+      body: [
+        'Supabase — stocke votre compte, votre progression et vos messages (hébergement des données / backend).',
+        'PostHog — analyse produit, comme décrit ci-dessus. Selon la configuration, les données d’analyse sont traitées sur des serveurs situés aux États-Unis ou dans l’UE.',
+        'OpenAI — génère les réponses du compagnon IA ; les messages que vous envoyez à votre compagnon sont traités pour produire une réponse.',
+        'Fournisseurs de connexion (par exemple Google) — utilisés pour vous authentifier.',
+        'Chaque fournisseur traite les données conformément à sa propre politique de confidentialité.',
+      ],
+    },
+    {
+      title: 'Conservation et suppression des données',
+      body: [
+        'Nous conservons vos informations tant que votre compte est actif. Vous pouvez supprimer votre compte à tout moment depuis les Réglages, ce qui retire votre compte et les données associées de nos systèmes. Les données d’invité résident uniquement sur votre appareil et sont supprimées lorsque vous désinstallez l’application ou effacez ses données.',
+      ],
+    },
+    {
+      title: 'Vie privée des enfants',
+      body: [
+        `Memobun ne s’adresse pas aux enfants de moins de ${AGE} ans. Nous demandons votre date de naissance au premier lancement et n’autorisons pas de compte pour toute personne de moins de ${AGE} ans. Si vous pensez qu’un enfant nous a communiqué des informations personnelles, contactez-nous et nous les supprimerons.`,
+      ],
+    },
+    {
+      title: 'Vos choix et vos droits',
+      body: [
+        'Selon votre lieu de résidence, vous pouvez disposer de droits d’accès, de rectification ou de suppression de vos informations personnelles, ou du droit de vous opposer à certains traitements. Vous pouvez les exercer en nous contactant. Vous pouvez également supprimer votre compte dans l’application à tout moment.',
+      ],
+    },
+    {
+      title: 'Nous contacter',
+      body: [`Des questions sur cette Politique de confidentialité ? Écrivez-nous à ${EMAIL}.`],
+    },
+  ],
+  terms: [
+    {
+      title: 'Acceptation',
+      body: [
+        'Cette traduction est fournie à titre indicatif ; en cas de divergence, la version anglaise prévaut.',
+        `En utilisant Memobun, vous acceptez les présentes Conditions d’utilisation. Si vous n’êtes pas d’accord, veuillez ne pas utiliser l’application. En vigueur le ${DATE.fr}.`,
+      ],
+    },
+    {
+      title: 'Admissibilité',
+      body: [
+        `Vous devez avoir au moins ${AGE} ans (ou l’âge minimum du consentement numérique dans votre pays, s’il est supérieur) pour utiliser Memobun. Nous demandons votre date de naissance au premier lancement et, en utilisant l’application, vous confirmez remplir cette condition.`,
+      ],
+    },
+    {
+      title: 'Votre compte',
+      body: [
+        'Vous êtes responsable de l’activité de votre compte et de la sécurité de vos identifiants de connexion. Vous pouvez utiliser l’application en tant qu’invité, mais la progression d’invité est stockée uniquement sur votre appareil et peut être perdue si l’application est supprimée.',
+      ],
+    },
+    {
+      title: 'Utilisation acceptable',
+      body: [
+        'Soyez bienveillant. N’utilisez pas Memobun pour harceler, maltraiter ou menacer d’autres utilisateurs, ni pour leur envoyer des contenus inappropriés ou illégaux, y compris dans les messages directs.',
+        'N’essayez pas d’endommager, de surcharger, de faire de l’ingénierie inverse ni de détourner l’application ou ses services.',
+      ],
+    },
+    {
+      title: 'Contenu des utilisateurs et modération',
+      body: [
+        'Vous êtes responsable du contenu que vous créez, y compris les messages à vos amis et au compagnon IA. Nous utilisons un filtrage automatique et pouvons examiner les contenus signalés. Vous pouvez bloquer d’autres utilisateurs et signaler des abus depuis l’application. Nous pouvons supprimer des contenus ou suspendre des comptes qui enfreignent les présentes Conditions.',
+      ],
+    },
+    {
+      title: 'Objets virtuels et achats',
+      body: [
+        'Les pièces, objets et autres biens virtuels n’ont aucune valeur monétaire réelle, ne peuvent pas être échangés contre de l’argent et vous sont concédés sous licence pour une utilisation au sein de l’application uniquement.',
+        `${PLUS.fr} et toute autre fonctionnalité payante sont facturés via votre boutique d’applications selon ses conditions. Les abonnements se renouvellent sauf annulation, que vous gérez dans le compte de votre boutique d’applications.`,
+      ],
+    },
+    {
+      title: 'Compagnon IA',
+      body: [
+        'Le compagnon IA génère des réponses automatiquement et peut être inexact. Il vise à offrir un encouragement amical à l’étude, et non des conseils professionnels, médicaux, juridiques ou de santé mentale.',
+      ],
+    },
+    {
+      title: 'Avertissements et responsabilité',
+      body: [
+        'Memobun est fourni « en l’état », sans garantie d’aucune sorte. Dans toute la mesure permise par la loi, nous ne sommes pas responsables des dommages indirects ou accessoires découlant de votre utilisation de l’application.',
+      ],
+    },
+    {
+      title: 'Modifications et résiliation',
+      body: [
+        'Nous pouvons mettre à jour les présentes Conditions ou l’application au fil du temps ; en continuant à l’utiliser après des modifications, vous acceptez les Conditions mises à jour. Nous pouvons suspendre ou mettre fin à l’accès en cas de violation des présentes Conditions.',
+      ],
+    },
+    {
+      title: 'Nous contacter',
+      body: [`Des questions sur ces Conditions ? Écrivez-nous à ${EMAIL}.`],
+    },
+  ],
+};
+
+const LEGAL_BY_LANG: Record<SupportedLanguage, LegalDoc> = {
+  en,
+  zh,
+  'zh-Hant': zhHant,
+  ja,
+  ko,
+  es,
+  fr,
+};
+
+/** Legal documents for a language code, falling back to English for any
+ * unknown/unsupported code. The English version is authoritative. */
+export function getLegalDoc(lang: string | null | undefined): LegalDoc {
+  return LEGAL_BY_LANG[(lang ?? 'en') as SupportedLanguage] ?? LEGAL_BY_LANG.en;
+}
+
+/** Localized effective date, falling back to the English phrasing. */
+export function getEffectiveDate(lang: string | null | undefined): string {
+  return DATE[(lang ?? 'en') as SupportedLanguage] ?? DATE.en;
+}
+
+/** Backward-compatible English exports (used where no language is available). */
+export const PRIVACY_POLICY: LegalSection[] = en.privacy;
+export const TERMS_OF_SERVICE: LegalSection[] = en.terms;

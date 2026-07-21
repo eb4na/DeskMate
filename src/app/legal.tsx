@@ -3,19 +3,16 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LegalDocument } from '@/components/legal-document';
-import {
-  LEGAL_EFFECTIVE_DATE,
-  PRIVACY_POLICY,
-  TERMS_OF_SERVICE,
-} from '@/constants/legal';
+import { getEffectiveDate, getLegalDoc } from '@/constants/legal';
 import { BakeryColors, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/i18n';
 
 // Read-only viewer for the Privacy Policy + Terms of Service, opened from
 // Settings so the documents stay available after the first-launch consent.
-// The document bodies stay in English; only the surrounding chrome is localized.
+// Documents are shown in the app's language (English is authoritative).
 export default function LegalScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const doc = getLegalDoc(i18n.language);
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -27,10 +24,10 @@ export default function LegalScreen() {
           <View style={styles.close} />
         </View>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator>
-          <LegalDocument heading={t('consent.privacyPolicy')} sections={PRIVACY_POLICY} />
+          <LegalDocument heading={t('consent.privacyPolicy')} sections={doc.privacy} />
           <View style={styles.divider} />
-          <LegalDocument heading={t('consent.termsOfService')} sections={TERMS_OF_SERVICE} />
-          <Text style={styles.effective}>{t('consent.effective', { date: LEGAL_EFFECTIVE_DATE })}</Text>
+          <LegalDocument heading={t('consent.termsOfService')} sections={doc.terms} />
+          <Text style={styles.effective}>{t('consent.effective', { date: getEffectiveDate(i18n.language) })}</Text>
         </ScrollView>
       </SafeAreaView>
     </View>

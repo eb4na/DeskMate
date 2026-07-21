@@ -11,12 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DateWheelPicker, getTodayISO } from '@/components/date-wheel-picker';
 import { LegalDocument } from '@/components/legal-document';
-import {
-  LEGAL_EFFECTIVE_DATE,
-  MINIMUM_AGE,
-  PRIVACY_POLICY,
-  TERMS_OF_SERVICE,
-} from '@/constants/legal';
+import { getEffectiveDate, getLegalDoc, MINIMUM_AGE } from '@/constants/legal';
 import { Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/i18n';
 
@@ -54,9 +49,8 @@ function defaultBirthday(): string {
   return `${y}-${m}-${d}`;
 }
 
-// Note: the legal DOCUMENT bodies (PRIVACY_POLICY / TERMS_OF_SERVICE) stay
-// English-only by design. The surrounding gate chrome (titles, buttons, labels)
-// IS localized via i18n so first-launch matches the device language.
+// Note: the legal DOCUMENT bodies are localized per app language via
+// getLegalDoc() (English is authoritative), same as the surrounding gate chrome.
 
 // Shared bakery shell: cream background with a big bubbly title (no banner frame).
 function MenuShell({ title, children }: { title: string; children: React.ReactNode }) {
@@ -78,7 +72,8 @@ function MenuShell({ title, children }: { title: string; children: React.ReactNo
 // (2) confirm date of birth (must be at least MINIMUM_AGE). The caller persists
 // via markLegalAccepted + setBirthday once both are done.
 export function LegalConsentGate({ onAgree }: { onAgree: (birthday: string) => void }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const doc = getLegalDoc(i18n.language);
   const [step, setStep] = useState<'legal' | 'age'>('legal');
 
   // --- Step 1: legal documents ---
@@ -118,10 +113,10 @@ export function LegalConsentGate({ onAgree }: { onAgree: (birthday: string) => v
                 setReachedEnd(true);
               }
             }}>
-            <LegalDocument heading={t('consent.privacyPolicy')} sections={PRIVACY_POLICY} />
+            <LegalDocument heading={t('consent.privacyPolicy')} sections={doc.privacy} />
             <View style={styles.divider} />
-            <LegalDocument heading={t('consent.termsOfService')} sections={TERMS_OF_SERVICE} />
-            <Text style={styles.effective}>{t('consent.effective', { date: LEGAL_EFFECTIVE_DATE })}</Text>
+            <LegalDocument heading={t('consent.termsOfService')} sections={doc.terms} />
+            <Text style={styles.effective}>{t('consent.effective', { date: getEffectiveDate(i18n.language) })}</Text>
           </ScrollView>
 
           <Pressable
