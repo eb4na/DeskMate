@@ -5,7 +5,7 @@
 // src/lib/figure-height.ts to equalize figure heights in the study room.
 export const FIGURE_METRICS: Record<string, { fill: number; pad: number }> = {
   'bun/angel': { fill: 0.8605, pad: 0.0706 },
-  'bun/classic': { fill: 0.8317, pad: 0.0758 },
+  'bun/classic': { fill: 0.9211, pad: 0.0766 },
   'bun/dreams': { fill: 0.8644, pad: 0.0758 },
   'bun/snowrabbit': { fill: 0.8309, pad: 0.0766 },
   'bun/strawberry': { fill: 0.7974, pad: 0.0766 },
