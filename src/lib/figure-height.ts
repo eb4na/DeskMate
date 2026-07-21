@@ -23,7 +23,7 @@ export const HEIGHT_LADDER: Record<string, number> = {
 // on top of the shared baseline, for art whose visual mass sits low even with its
 // feet landed correctly (Aki's chef art hides too much behind the desk otherwise).
 export const BASELINE_LIFT: Record<string, number> = {
-  companion_cocoa: 0.015, // Aki — nudged down from 0.03 so she sits a touch lower in the study room
+  companion_cocoa: -0.04, // Aki — pushed BELOW the shared baseline so she sits just a touch higher than Bun (was too high vs the rest of the cast; tuned against scripts/render-height-chart.py + a Bun/Aki desk-line comparison)
 };
 
 // Bunny's classic art defines the baseline: every figure is scaled so its content
