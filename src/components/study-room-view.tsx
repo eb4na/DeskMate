@@ -57,7 +57,19 @@ const BUN_STUDYING = require('@/assets/images/bun/bun-studying.png');
 const PPL_ICON = require('@/assets/images/study/ppl-icon.png');
 const BREAK_PILL = require('@/assets/images/study/break-pill.png');
 const DESK = require('@/assets/images/home/desk-new.png');
-const GAME_BTN = require('@/assets/images/study/game-btn.png');
+
+// Entirely-white game controller, drawn in code (Lucide gamepad-2 outline).
+function GamepadIcon({ size }: { size: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Line x1={6} y1={11} x2={10} y2={11} />
+      <Line x1={8} y1={9} x2={8} y2={13} />
+      <Line x1={15} y1={12} x2={15.01} y2={12} />
+      <Line x1={18} y1={10} x2={18.01} y2={10} />
+      <Path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258a4 4 0 0 0-3.995-3.742Z" />
+    </Svg>
+  );
+}
 
 function format(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
@@ -1319,10 +1331,13 @@ export function StudyRoomView({
             disabled={!onBreak}
             style={({ pressed }) => [styles.gameBtnWrap, isTablet && { width: 64, height: 56 }, pressed && onBreak && styles.pressed]}
             hitSlop={6}>
-            {/* No focus tint: GAME_BTN is a full-colour illustrated icon (cream/pink
-                controller), not a glyph — tinting it flattens the whole squircle into a
-                solid white box. Its own art already reads on the dark disco background. */}
-            {onBreak && <Image source={GAME_BTN} style={[styles.gameBtn, isTablet && { width: 64, height: 56 }]} contentFit="contain" />}
+            {/* Code-drawn squircle: same accent fill as the End-break pill (acc.button)
+                with an entirely-white game controller drawn on top. */}
+            {onBreak && (
+              <View style={[styles.gameBtn, isTablet && { width: 64, height: 56 }, { backgroundColor: acc.button }]}>
+                <GamepadIcon size={isTablet ? 34 : 24} />
+              </View>
+            )}
           </Pressable>
         </View>
         {showBreakButton && (
@@ -1590,7 +1605,7 @@ const styles = StyleSheet.create({
   // Fixed size so the slot reserves the game button's space even when it's hidden
   // (studying) — keeps the radio above it from shifting when break reveals it.
   gameBtnWrap: { width: 44, height: 38, alignItems: 'center', justifyContent: 'center' },
-  gameBtn: { width: 44, height: 38 },
+  gameBtn: { width: 44, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   breakBtn: { width: 240, height: 46, position: 'relative', alignItems: 'center', justifyContent: 'center' },
   breakBtnDisabled: { opacity: 0.5 },
   breakBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900', letterSpacing: 0.3 },
