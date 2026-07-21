@@ -6,7 +6,6 @@
  */
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import * as Sharing from 'expo-sharing';
 import { useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { showPopup } from '@/lib/popup';
@@ -129,6 +128,7 @@ export default function ProfileScreen() {
   const shareCard = async () => {
     try {
       const uri = await captureRef(cardRef, { format: 'png', quality: 1 });
+      const Sharing = require('expo-sharing'); // lazy: boot even if the dev-client binary lacks the pod
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: t('profileCard.shareDialogTitle') });
       } else {
@@ -146,6 +146,7 @@ export default function ProfileScreen() {
   const saveToAlbum = async () => {
     try {
       const uri = await captureRef(cardRef, { format: 'png', quality: 1 });
+      const Sharing = require('expo-sharing'); // lazy: boot even if the dev-client binary lacks the pod
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: 'image/png', UTI: 'public.png', dialogTitle: t('profileCard.saveToAlbum') });
       } else {

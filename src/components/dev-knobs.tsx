@@ -1,4 +1,3 @@
-import * as Clipboard from 'expo-clipboard';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Animated, PanResponder, Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
@@ -95,7 +94,9 @@ function DevKnobsImpl({ screen, knobs, onChange }: Props) {
     const text = `MEMOBUN-TABLET ${screen} ${JSON.stringify(values)}`;
     setCode(text);
     // Best-effort clipboard copy; the on-screen code is still copyable/screenshottable.
-    Clipboard.setStringAsync(text).catch(() => {});
+    // Lazy require so a dev-client binary without the expo-clipboard pod still boots
+    // (top-level import crashed the whole app on launch when the module was missing).
+    try { require('expo-clipboard').setStringAsync(text).catch(() => {}); } catch {}
     console.log('[DevKnobs]', text);
   };
   // Scale the whole widget (FAB + panel) up/down via the "Panel size" stepper, so
