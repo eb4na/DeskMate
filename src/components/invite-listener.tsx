@@ -40,7 +40,7 @@ const SURFACE_INVITE_OVER = new Set([
   '/session-picker', '/add-task', '/add-exam', '/reminder-settings', '/manage-subjects',
   '/weekly-report', '/subject-chart', '/plus-upgrade', '/coin-shop', '/ambience-picker',
   '/companion-gallery', '/edit-room', '/food-gallery', '/legal', '/party-invite', '/custom-timer',
-  '/daily-quests', '/achievements', '/mailbox',
+  '/achievements', '/mailbox',
 ]);
 
 export function InviteListener() {

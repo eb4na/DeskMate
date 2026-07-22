@@ -1164,6 +1164,8 @@
     "bg_landmine": "지뢰계",
     "bg_lavender_palace": "라벤더 궁전",
     "bg_frostbloom_shrine": "서리꽃 신사",
+    "bg_moonlit_balcony": "달빛 발코니",
+    "desk_rosewood": "로즈우드 책상",
     "bg_strawberry_palace": "황금 찻집",
     "desk_marble": "대리석 책상",
     "desk_wood": "우드 책상",
@@ -1209,6 +1211,8 @@
     "bg_landmine": "핑크와 블랙의 지뢰계 침실 — 리본, 불 켜진 화장대 거울, 달빛 창문.",
     "bg_lavender_palace": "고요한 등나무 궁전 — 달 문, 라벤더 꽃, 따뜻한 원목. 라벤더 책상과 잘 어울려요.",
     "bg_frostbloom_shrine": "눈이 소복한 신사 안뜰 — 하얀 매화, 서리 낀 등롱, 맑은 겨울 하늘.",
+    "bg_moonlit_balcony": "초승달 아래 아늑한 옥상 발코니 — 등불 빛, 라벤더 꽃, 별이 총총한 마을 스카이라인. 로즈우드 책상과 잘 어울려요.",
+    "desk_rosewood": "짙은 적갈색 로즈우드 책상 상판 — 달빛 발코니 방과 잘 어울려요.",
     "bg_strawberry_palace": "로열 딸기 핑크 궁전 — 금빛 왕좌, 리본 커튼, 베리 달콤한 티 테이블. 프리미엄이라면 무료.",
     "desk_marble": "깔끔한 흰 대리석 공부 책상.",
     "desk_wood": "따뜻한 원목 공부 책상 — 해변 방과 잘 어울려요.",
@@ -1943,38 +1947,10 @@
     "title": "배지 획득!",
     "got": "{{name}}의 레시피 배지!"
   },
-    "quests": {
-    "title": "일일 목표",
-    "resetsMidnight": "자정에 초기화",
-    "cardSubtitle": "보너스 코인 목표",
-    "cardOpen": "열기",
-    "previewReady": "{{name}} — 받을 수 있어요!",
-    "previewProgress": "{{name}} · {{current}}/{{goal}}",
-    "cardClaim": "받기",
-    "allClaimed": "오늘 모두 받음",
-    "claim": "{{coins}} 받기",
-    "claimed": "받음",
-    "progress": "{{current}}/{{goal}}",
-    "items": {
-      "g_study_60": {
-        "title": "파워 아워",
-        "desc": "오늘 1시간 공부하기"
-      },
-      "g_sessions_2": {
-        "title": "두 배로",
-        "desc": "공부 세션 2회 완료하기"
-      },
-      "g_before_noon": {
-        "title": "얼리버드",
-        "desc": "정오 전에 25분 공부하기"
-      },
-      "g_task_1": {
-        "title": "체크 완료",
-        "desc": "오늘 할 일 하나 완료하기"
-      }
-    }
-  },
   "achievements": {
+    "cardClaim": "받기",
+    "cardOpen": "열기",
+    "progress": "{{current}}/{{goal}}",
     "categories": {
       "study": "공부",
       "tasks": "할 일",

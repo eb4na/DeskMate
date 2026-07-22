@@ -4,7 +4,7 @@ import i18n, { detectDeviceLanguage } from '@/i18n';
 import { capCoins, COINS_PER_MINUTE, DAILY_EARN_CAP, MAX_FRIENDS, STATIC_SUBJECTS } from '@/constants/placeholder-data';
 import { SHOP_ITEMS, type ShopCategory } from '@/constants/shop-data';
 import { dailyRewardCoins } from '@/constants/login-rewards';
-import { dailyGoalIds, getQuest, getAchievement } from '@/constants/quests';
+import { getAchievement } from '@/constants/quests';
 import { useAuth } from '@/context/auth-context';
 import { getAppStateScope, loadScopedAppState, saveScopedAppState, isGuestUpgradePending, clearGuestUpgradePending, loadGuestState } from '@/lib/app-state-repository';
 import { probeCloudState, pushCloudState, pushCloudStateDebounced } from '@/lib/cloud-sync';
@@ -294,10 +294,6 @@ type PersistedState = {
 
   // Food / baking
   selectedFoodId: string;
-  // Cosmetic-only: the recipe whose dish sits on the desk WHILE STUDYING. Chosen
-  // separately from `selectedFoodId` (what you're baking) and gated on having
-  // earned that recipe's badge (`madeFoods`). Falls back to `selectedFoodId`.
-  studyDishFoodId?: string;
   // One-time guard: an early build of the starter-chooser auto-switched the home
   // desk to the chosen character's recipe, leaving accounts stuck on the wrong
   // desk ingredients. We reset selectedFoodId to the default once, then flip this
@@ -362,26 +358,12 @@ type PersistedState = {
   // The streak "day" rolls at 12am in this zone. Never re-extracted after first set.
   timezone: string;
 
-  // Daily Quests: compact per-day counters (reset at 12am in the account timezone
-  // via rolledQuests) the day's three quests are measured against, plus which were
-  // claimed today. `day` is the todayISO the counters were last reset on.
-  quests: QuestState;
   // Achievements: lifetime tallies not otherwise tracked, + which achievements have
   // been claimed (one-time). sessionsCompleted/totalMinutes/streak.longestStreak
   // already exist and back the rest.
   lifetimeTasksCompleted: number;
   lifetimeFriendSessions: number;
   claimedAchievements: string[];
-};
-
-type QuestState = {
-  day: string;
-  sessionsToday: number;
-  minutesToday: number;
-  beforeNoonMinutesToday: number;
-  friendSessionsToday: number;
-  tasksToday: number;
-  claimedToday: string[];
 };
 
 // How many companion chat messages one AI generation ticket converts into.
@@ -474,7 +456,6 @@ const DEFAULTS: PersistedState = {
   purchasedCoins: 0,
   multipleReminders: [],
   selectedFoodId: 'strawberry-shortcake',
-  studyDishFoodId: 'strawberry-shortcake',
   deskFoodReset: true,
   madeFoods: [],
   bakedWith: [],
@@ -503,15 +484,6 @@ const DEFAULTS: PersistedState = {
   instagramFollowClaimed: false,
   birthday: null,
   timezone: '',
-  quests: {
-    day: '',
-    sessionsToday: 0,
-    minutesToday: 0,
-    beforeNoonMinutesToday: 0,
-    friendSessionsToday: 0,
-    tasksToday: 0,
-    claimedToday: [],
-  },
   lifetimeTasksCompleted: 0,
   lifetimeFriendSessions: 0,
   claimedAchievements: [],
@@ -557,43 +529,6 @@ function dateInTimeZone(date: Date, tz: string | null): string {
 
 export function todayISO(): string {
   return dateInTimeZone(new Date(), activeTimezone);
-}
-
-// Hour-of-day (0–23) of `date` as seen in the account timezone — used for the
-// "before noon" quest so it agrees with the account's day boundary (never the raw
-// device clock, which would drift for a travelling user). Mirrors dateInTimeZone.
-function hourInTimeZone(date: Date, tz: string | null): number {
-  try {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: tz || undefined,
-      hour: '2-digit',
-      hour12: false,
-    }).formatToParts(date);
-    const h = parts.find((p) => p.type === 'hour')?.value;
-    // Intl may render midnight as '24' in some environments; fold it back to 0.
-    const n = h ? parseInt(h, 10) % 24 : date.getHours();
-    return Number.isFinite(n) ? n : date.getHours();
-  } catch {
-    return date.getHours();
-  }
-}
-
-// Daily quest counters reset at 12am in the account timezone. This pure helper
-// returns the quests block as it should read for `today`: untouched if it's still
-// the same day, otherwise zeroed with a cleared claim list. Both the mutations and
-// the Quests screen call this, so the screen never shows yesterday's progress while
-// waiting for the next study/task event to roll it over.
-function rolledQuests(quests: QuestState, today: string): QuestState {
-  if (quests.day === today) return quests;
-  return {
-    day: today,
-    sessionsToday: 0,
-    minutesToday: 0,
-    beforeNoonMinutesToday: 0,
-    friendSessionsToday: 0,
-    tasksToday: 0,
-    claimedToday: [],
-  };
 }
 
 // Shift a YYYY-MM-DD string by whole days via pure UTC calendar math (DST-safe).
@@ -988,14 +923,13 @@ type AppContextType = {
   loginStreak: number;
   loginRewardDate: string;
 
-  // Daily Quests + Achievements. `quests` is always rolled to today (counters read
-  // 0 on a new day even before the next event fires).
-  quests: QuestState;
+  // Achievements — lifetime tallies + which one-time milestones have been claimed.
   lifetimeTasksCompleted: number;
   lifetimeFriendSessions: number;
   claimedAchievements: string[];
-  recordQuestSession: (opts: { minutes: number; withFriend?: boolean; countSession?: boolean }) => void;
-  claimQuestReward: (id: string) => void;
+  // Bump the friend-session tally (backs the Social achievements); called on a
+  // multiplayer finish.
+  recordFriendSession: () => void;
   claimAchievement: (id: string) => void;
 
   // Wave 2 state
@@ -1050,11 +984,9 @@ type AppContextType = {
   instagramFollowClaimed: boolean;
   birthday: string | null;
   selectedFoodId: string;
-  studyDishFoodId: string;
   madeFoods: string[];
   bakedWith: string[];
   setSelectedFood: (id: string) => void;
-  setStudyDishFood: (id: string) => void;
   markFoodMade: (id: string) => void;
   hanjiUnlockPending: boolean;
   clearHanjiUnlock: () => void;
@@ -1201,10 +1133,9 @@ type AppContextType = {
     continuedRun?: boolean;
   }) => string; // returns the new session's id
   clearActiveSession: () => void;
-  /** Credit one finished solo study block (coins/streak/bond/subject/quests) immediately
-   *  and accumulate it into `sessionRun`. `coins` is the pre-cap amount; `firstOfRun`
-   *  ticks the quest session counter once per run (false on continued blocks). */
-  finishStudyBlock: (block: { minutes: number; coins: number; subjectName: string | null; firstOfRun: boolean }) => void;
+  /** Credit one finished solo study block (coins/streak/bond/subject) immediately
+   *  and accumulate it into `sessionRun`. `coins` is the pre-cap amount. */
+  finishStudyBlock: (block: { minutes: number; coins: number; subjectName: string | null }) => void;
   /** Reset the run accumulator (on Rest/Done or an early stop). */
   clearSessionRun: () => void;
   /** Pushes the active session's start forward by `seconds` (pause-for-break). */
@@ -1735,57 +1666,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       };
     });
 
-  // Record a FULLY-COMPLETED study block toward daily quests + achievements.
-  // Called only from real-completion funnels (solo finishStudyBlock + the multiplayer
-  // finish), deliberately NOT from recordSession — early-ended sessions go through
-  // recordSession too but pay no coins, so they must not advance quests.
-  //
-  // `countSession` gates the sessions-completed tally: minutes ALWAYS count (so a solo
-  // "Continue studying" run never loses minutes toward a study-time quest), but the
-  // session counter ticks once per RUN — pass `false` on continued blocks so the whole
-  // run reads as a single completed session (matching the cumulative Rest receipt).
-  const recordQuestSession = ({
-    minutes,
-    withFriend,
-    countSession = true,
-  }: {
-    minutes: number;
-    withFriend?: boolean;
-    countSession?: boolean;
-  }) =>
-    setS((prev) => {
-      const today = todayISO();
-      const q = rolledQuests(prev.quests, today);
-      const beforeNoon = hourInTimeZone(new Date(), activeTimezone) < 12;
-      return {
-        ...prev,
-        quests: {
-          ...q,
-          sessionsToday: q.sessionsToday + (countSession ? 1 : 0),
-          minutesToday: q.minutesToday + minutes,
-          beforeNoonMinutesToday: q.beforeNoonMinutesToday + (beforeNoon ? minutes : 0),
-          friendSessionsToday: q.friendSessionsToday + (withFriend ? 1 : 0),
-        },
-        lifetimeFriendSessions: prev.lifetimeFriendSessions + (withFriend ? 1 : 0),
-      };
-    });
-
-  // Claim a completed daily quest's bonus coins. Guards: it's one of today's three,
-  // its goal is met, and it isn't already claimed today. Coins are added directly
-  // (bypassing DAILY_EARN_CAP), like the login/birthday rewards.
-  const claimQuestReward = (id: string) =>
-    setS((prev) => {
-      const today = todayISO();
-      const q = rolledQuests(prev.quests, today);
-      if (!dailyGoalIds().includes(id) || q.claimedToday.includes(id)) return { ...prev, quests: q };
-      const def = getQuest(id);
-      if (!def || (q as any)[def.statKey] < def.goal) return { ...prev, quests: q };
-      return {
-        ...prev,
-        coins: capCoins(prev.coins + def.reward),
-        quests: { ...q, claimedToday: [...q.claimedToday, id] },
-      };
-    });
+  // Count one finished multiplayer study block toward the Social achievements
+  // (lifetimeFriendSessions). Called only from the real MP-finish funnel.
+  const recordFriendSession = () =>
+    setS((prev) => ({ ...prev, lifetimeFriendSessions: prev.lifetimeFriendSessions + 1 }));
 
   // Claim a one-time achievement's bonus coins. Guards: its lifetime goal is met and
   // it hasn't been claimed before. Coins bypass DAILY_EARN_CAP.
@@ -2026,14 +1910,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!task || task.status === 'done') return prev;
 
       // Both a one-off completion AND a repeating task's roll-forward count as a
-      // completion toward quests/achievements (repeating tasks never reach 'done',
+      // completion toward the task achievements (repeating tasks never reach 'done',
       // so deriving the count from the task list would miss them).
-      const today = todayISO();
-      const q = rolledQuests(prev.quests, today);
-      const questBump = {
-        quests: { ...q, tasksToday: q.tasksToday + 1 },
-        lifetimeTasksCompleted: prev.lifetimeTasksCompleted + 1,
-      };
+      const taskBump = { lifetimeTasksCompleted: prev.lifetimeTasksCompleted + 1 };
 
       // Repeating task: instead of marking done, roll its due date forward to the
       // next selected weekday and reset it to not-started so it recurs.
@@ -2041,7 +1920,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (rollover) {
         return {
           ...prev,
-          ...questBump,
+          ...taskBump,
           tasks: prev.tasks.map((t) =>
             t.id === id
               ? {
@@ -2061,7 +1940,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       return {
         ...prev,
-        ...questBump,
+        ...taskBump,
         tasks: prev.tasks.map((t) =>
           t.id === id
             ? { ...t, status: 'done' as TaskStatus, completedAt: now, lastActivityAt: now }
@@ -2145,19 +2024,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // session-complete receipt's mount effect — moved here so the checkpoint can show
   // "Continue / Rest" without a receipt while nothing is ever double-credited (the
   // streak/cap/bond calls below are all idempotent-or-cumulative per day) and no
-  // study is lost if the app is killed at the checkpoint. Quest MINUTES count every
-  // block; the quest SESSION counter ticks only on the run's first block (firstOfRun)
-  // so a continued run reads as one completed session.
+  // study is lost if the app is killed at the checkpoint.
   const finishStudyBlock = ({
     minutes,
     coins,
     subjectName,
-    firstOfRun,
   }: {
     minutes: number;
     coins: number;
     subjectName: string | null;
-    firstOfRun: boolean;
   }) => {
     playFinishDing(); // oven-timer "ding": this block is done
     // Coins actually credited after the daily cap (snapshot BEFORE addCoins) — the
@@ -2166,7 +2041,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addCoins(coins);
     recordSession(minutes);
     addSubjectTime(subjectName, minutes);
-    recordQuestSession({ minutes, countSession: firstOfRun });
     if (s.selectedFoodId) markFoodMade(s.selectedFoodId);
     track('study_session_completed', { minutes, subject: subjectName, coins });
 
@@ -2447,7 +2321,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         activeCompanionId: activeId,
         defaultCompanionId: 'girl',
         selectedFoodId: startingFoodId,
-        studyDishFoodId: startingFoodId,
         deskFoodReset: true,
         ownedShopItems: grants.length ? [...prev.ownedShopItems, ...grants] : prev.ownedShopItems,
       };
@@ -2568,10 +2441,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const setSelectedFood = (id: string) =>
     setS((prev) => ({ ...prev, selectedFoodId: id }));
-
-  // The cosmetic desk dish shown while studying (separate from what you bake).
-  const setStudyDishFood = (id: string) =>
-    setS((prev) => ({ ...prev, studyDishFoodId: id }));
 
   const markFoodMade = (id: string) => {
     // The badge is credited to the character the *recipe* belongs to (each of the
@@ -2987,14 +2856,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         adRewardCount: s.adRewardDate === todayISO() ? s.adRewardCount : 0,
         loginStreak: s.loginStreak,
         loginRewardDate: s.loginRewardDate,
-        // Always hand the screen today's counters (reset at midnight) so progress
-        // never reads stale before the next study/task event rolls it over.
-        quests: rolledQuests(s.quests, todayISO()),
         lifetimeTasksCompleted: s.lifetimeTasksCompleted,
         lifetimeFriendSessions: s.lifetimeFriendSessions,
         claimedAchievements: s.claimedAchievements,
-        recordQuestSession,
-        claimQuestReward,
+        recordFriendSession,
         claimAchievement,
         birthdayRewardYear: s.birthdayRewardYear ?? 0,
         subjects: s.subjects,
@@ -3077,11 +2942,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         purchasedCoins: s.purchasedCoins,
         multipleReminders: s.multipleReminders,
         selectedFoodId: s.selectedFoodId ?? 'strawberry-shortcake',
-        studyDishFoodId: s.studyDishFoodId ?? s.selectedFoodId ?? 'strawberry-shortcake',
         madeFoods: s.madeFoods ?? [],
         bakedWith: s.bakedWith ?? [],
         setSelectedFood,
-        setStudyDishFood,
         markFoodMade,
         hanjiUnlockPending: s.hanjiUnlockPending ?? false,
         clearHanjiUnlock,

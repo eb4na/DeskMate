@@ -1,3 +1,8 @@
+// Feature flag: the break mini-games (Home controller button + the in-session break
+// game button). Hidden "for now" — flip to `true` to bring the feature back. Gates
+// only the ENTRY points; the break-game route/screen/code stay intact.
+export const BREAK_GAME_ENABLED = false;
+
 export const SESSION_LENGTHS = [
   { minutes: 15, label: 'Quick Warm-up' },
   { minutes: 30, label: 'Focus Boost' },

@@ -10,6 +10,12 @@ import { useApp } from '@/context/app-context';
 import { stopPreview } from '@/lib/ambience-audio';
 import i18n, { useTranslation } from '@/i18n';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { SHOP_ITEMS } from '@/constants/shop-data';
+
+// Sounds marked free for all users (sound_<id>) are unlocked without a purchase.
+const FREE_AMBIENCE_IDS = new Set(
+  SHOP_ITEMS.filter((i) => i.category === 'sound' && i.free).map((i) => i.id.replace('sound_', '')),
+);
 
 // Emojis are interim placeholders so each sound has a distinct picture; swap for
 // real per-sound art (assets/images/sounds/<id>.png) when it's drawn.
@@ -46,8 +52,9 @@ function AmbienceContent() {
         <ThemedView style={styles.grid}>
           {AMBIENCE_OPTIONS.map((opt) => {
             // Plus unlocks every sound; everyone else uses the ones they've bought
-            // in the shop (sound_<id>). Locked cards send you to the shop.
-            const unlocked = isPlus || ownedShopItems.includes(`sound_${opt.id}`);
+            // in the shop (sound_<id>) plus any marked free for all. Locked cards
+            // send you to the shop.
+            const unlocked = isPlus || FREE_AMBIENCE_IDS.has(opt.id) || ownedShopItems.includes(`sound_${opt.id}`);
             const selected = unlocked && ambienceId === opt.id;
             return (
               <Pressable

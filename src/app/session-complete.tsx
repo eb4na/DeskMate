@@ -94,7 +94,7 @@ export default function SessionCompleteScreen() {
     };
   }, []);
 
-  // Everything (coins/streak/bond/quests) was credited per block in finishStudyBlock —
+  // Everything (coins/streak/bond) was credited per block in finishStudyBlock —
   // this receipt is pure display. It just releases the run accumulator on the way out
   // (Done → Home) so the next fresh session starts a clean run.
   useEffect(() => {

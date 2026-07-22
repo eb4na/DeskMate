@@ -1164,6 +1164,8 @@
     "bg_landmine": "地雷系",
     "bg_lavender_palace": "薰衣草宫殿",
     "bg_frostbloom_shrine": "霜花神社",
+    "bg_moonlit_balcony": "月夜露台",
+    "desk_rosewood": "红木书桌",
     "bg_strawberry_palace": "黄金茶屋",
     "desk_marble": "大理石书桌",
     "desk_wood": "木质书桌",
@@ -1209,6 +1211,8 @@
     "bg_landmine": "粉黑配色的地雷系卧室 — 蝴蝶结、亮灯梳妆镜和月光下的窗。",
     "bg_lavender_palace": "静谧的紫藤宫殿 — 月亮门、薰衣草花与温暖的木质。与薰衣草书桌是绝配。",
     "bg_frostbloom_shrine": "落雪静谧的神社庭院 — 白梅、结霜的灯笼和清澈的冬日天空。",
+    "bg_moonlit_balcony": "月牙下的温馨屋顶露台 — 灯笼微光、薰衣草花丛，还有星光点点的小镇天际线。与红木书桌是绝配。",
+    "desk_rosewood": "浓郁红棕色的红木书桌台面 — 与月夜露台是绝配。",
     "bg_strawberry_palace": "皇家草莓粉宫殿 — 鎏金王座、缎带帷幔和莓果甜香的茶桌。会员免费。",
     "desk_marble": "洁净的白色大理石学习桌面。",
     "desk_wood": "温暖的原木学习桌面 — 与海滩房间是绝配。",
@@ -1943,38 +1947,10 @@
     "title": "获得徽章！",
     "got": "{{name}} 的食谱徽章！"
   },
-    "quests": {
-    "title": "每日目标",
-    "resetsMidnight": "午夜重置",
-    "cardSubtitle": "赢取额外金币的目标",
-    "cardOpen": "打开",
-    "previewReady": "{{name}} — 可领取！",
-    "previewProgress": "{{name}} · {{current}}/{{goal}}",
-    "cardClaim": "领取",
-    "allClaimed": "今日已全部领取",
-    "claim": "领取 {{coins}}",
-    "claimed": "已领取",
-    "progress": "{{current}}/{{goal}}",
-    "items": {
-      "g_study_60": {
-        "title": "黄金一小时",
-        "desc": "今天学习 1 小时"
-      },
-      "g_sessions_2": {
-        "title": "加倍",
-        "desc": "完成 2 次学习时段"
-      },
-      "g_before_noon": {
-        "title": "早起鸟",
-        "desc": "中午前学习 25 分钟"
-      },
-      "g_task_1": {
-        "title": "打勾",
-        "desc": "今天完成一个任务"
-      }
-    }
-  },
   "achievements": {
+    "cardClaim": "领取",
+    "cardOpen": "打开",
+    "progress": "{{current}}/{{goal}}",
     "categories": {
       "study": "学习",
       "tasks": "任务",

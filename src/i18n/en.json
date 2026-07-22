@@ -1164,6 +1164,8 @@
     "bg_landmine": "Landmine",
     "bg_lavender_palace": "Lavender Palace",
     "bg_frostbloom_shrine": "Frostbloom Shrine",
+    "bg_moonlit_balcony": "Moonlit Balcony",
+    "desk_rosewood": "Rosewood Desk",
     "bg_strawberry_palace": "Golden Teahouse",
     "desk_marble": "Marble Desk",
     "desk_wood": "Wood Desk",
@@ -1209,6 +1211,8 @@
     "bg_landmine": "A pink-and-black jirai kei bedroom — bows, a lit vanity mirror, and a moonlit window.",
     "bg_lavender_palace": "A serene wisteria palace — moon gate, lavender blooms, and warm wood. Pairs with the Lavender desk.",
     "bg_frostbloom_shrine": "A snow-hushed shrine courtyard — white plum blossoms, frosted lanterns, and a clear winter sky.",
+    "bg_moonlit_balcony": "A cozy rooftop balcony under a crescent moon — lantern light, lavender blooms, and a starry town skyline. Pairs with the Rosewood desk.",
+    "desk_rosewood": "A rich reddish-brown rosewood study surface — pairs with the Moonlit Balcony room.",
     "bg_strawberry_palace": "A royal strawberry-pink palace — gilded throne, ribbon drapes, and a berry-sweet tea table. Yours free with Plus.",
     "desk_marble": "A clean white marble study surface.",
     "desk_wood": "A warm natural wood study surface — pairs with the Beach room.",
@@ -1944,38 +1948,10 @@
     "title": "Badge collected!",
     "got": "{{name}}'s recipe badge!"
   },
-    "quests": {
-    "title": "Daily Goals",
-    "resetsMidnight": "Resets at midnight",
-    "cardSubtitle": "Goals for bonus coins",
-    "cardOpen": "Open",
-    "previewReady": "{{name}} — ready to claim!",
-    "previewProgress": "{{name}} · {{current}}/{{goal}}",
-    "cardClaim": "Claim",
-    "allClaimed": "All claimed for today",
-    "claim": "Claim {{coins}}",
-    "claimed": "Claimed",
-    "progress": "{{current}}/{{goal}}",
-    "items": {
-      "g_study_60": {
-        "title": "Power Hour",
-        "desc": "Study 1 hour today"
-      },
-      "g_sessions_2": {
-        "title": "Double Up",
-        "desc": "Complete 2 study sessions"
-      },
-      "g_before_noon": {
-        "title": "Early Bird",
-        "desc": "Study 25 minutes before noon"
-      },
-      "g_task_1": {
-        "title": "Check It Off",
-        "desc": "Complete a task today"
-      }
-    }
-  },
   "achievements": {
+    "cardClaim": "Claim",
+    "cardOpen": "Open",
+    "progress": "{{current}}/{{goal}}",
     "categories": {
       "study": "Study",
       "tasks": "Tasks",

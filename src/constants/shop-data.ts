@@ -27,6 +27,9 @@ export type ShopItem = {
   // Locked until the player has collected all five recipe badges (baked every
   // companion's signature recipe). Used to gate Hanji.
   requiresAllRecipes?: boolean;
+  // Free for everyone: not shown in the shop grid and treated as always-owned by
+  // the ambience/sound pickers (no purchase required). Used for Rainy Day.
+  free?: boolean;
   // For recipes: the companion whose signature bake this is (canonical English
   // name; localize via localizeCompanionName at display time).
   owner?: string;
@@ -341,6 +344,15 @@ export const SHOP_ITEMS: ShopItem[] = [
     image: require('@/assets/images/backgrounds/frostbloom-shrine.png'),
   },
   {
+    id: 'bg_moonlit_balcony',
+    name: 'Moonlit Balcony',
+    emoji: '',
+    description: 'A cozy rooftop balcony under a crescent moon — lantern light, lavender blooms, and a starry town skyline. Pairs with the Rosewood desk.',
+    price: 8000,
+    category: 'background',
+    image: require('@/assets/images/backgrounds/moonlit-balcony.png'),
+  },
+  {
     id: 'bg_strawberry_palace',
     name: 'Golden Teahouse',
     emoji: '',
@@ -451,6 +463,15 @@ export const SHOP_ITEMS: ShopItem[] = [
     category: 'desk',
     image: require('@/assets/images/desks/snow.png'),
   },
+  {
+    id: 'desk_rosewood',
+    name: 'Rosewood Desk',
+    emoji: '',
+    description: 'A rich reddish-brown rosewood study surface — pairs with the Moonlit Balcony room.',
+    price: 5000,
+    category: 'desk',
+    image: require('@/assets/images/desks/rosewood.png'),
+  },
 
   // ─── Break games are all free to play — nothing to buy here. ──────────────
 
@@ -518,9 +539,11 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Rainy Day',
     emoji: '',
     description: 'Soft rain outside the window.',
-    price: 3000,
+    price: 0,
     category: 'sound',
     image: require('@/assets/images/sounds/rain.png'),
+    // Free for all users — hidden from the shop, unlocked everywhere.
+    free: true,
   },
   {
     id: 'sound_ocean',

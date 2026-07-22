@@ -14,7 +14,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { NotebookBackground } from '@/components/notebook-background';
 import { daysBetween, todayISO, useApp } from '@/context/app-context';
-import { ACHIEVEMENTS, dailyGoalIds, getQuest } from '@/constants/quests';
+import { ACHIEVEMENTS } from '@/constants/quests';
 import { RECIPE_IDS } from '@/constants/recipes';
 import { useAuth } from '@/context/auth-context';
 import i18n, { useTranslation } from '@/i18n';
@@ -74,7 +74,6 @@ export default function ProgressScreen() {
     isPlus,
     streakFreezes,
     useStreakFreeze: applyStreakFreeze,
-    quests,
     claimedAchievements,
     lifetimeTasksCompleted,
     lifetimeFriendSessions,
@@ -118,18 +117,6 @@ export default function ProgressScreen() {
       .slice(0, PREVIEW_COUNT)
       .map(({ id, name, current, goal, ready }) => ({ id, name, current, goal, ready }));
 
-  const goalTop = rankItems(
-    dailyGoalIds().map((id) => {
-      const def = getQuest(id)!;
-      return {
-        id,
-        titleKey: `quests.items.${id}.title`,
-        current: (quests as any)[def.statKey] ?? 0,
-        goal: def.goal,
-        claimed: quests.claimedToday.includes(id),
-      };
-    }),
-  );
   const achTop = rankItems(
     ACHIEVEMENTS.map((a) => ({
       id: a.id,
@@ -140,7 +127,6 @@ export default function ProgressScreen() {
     })),
   );
 
-  const questClaimable = goalTop.some((r) => r.ready);
   const achievementClaimable = achTop.some((r) => r.ready);
 
   // One of the two side-by-side square cards: title + a ranked mini-list of items,
@@ -190,7 +176,7 @@ export default function ProgressScreen() {
                       type="small"
                       themeColor="textSecondary"
                       style={it.ready ? styles.dgItemReady : undefined}>
-                      {it.ready ? t('quests.cardClaim') : `${it.current}/${it.goal}`}
+                      {it.ready ? t('achievements.cardClaim') : `${it.current}/${it.goal}`}
                     </ThemedText>
                   </ThemedView>
                   <View style={styles.dgTrack}>
@@ -208,11 +194,11 @@ export default function ProgressScreen() {
             // (tapping the card opens the list where each ready item has its own
             // Claim button) — clearer than a plain text link that looks passive.
             <View style={styles.dgClaimPill}>
-              <ThemedText type="small" style={styles.dgClaimPillText}>{t('quests.cardClaim')}</ThemedText>
+              <ThemedText type="small" style={styles.dgClaimPillText}>{t('achievements.cardClaim')}</ThemedText>
             </View>
           ) : (
             <ThemedText type="small" style={styles.weekReportLink}>
-              {t('quests.cardOpen')}
+              {t('achievements.cardOpen')}
             </ThemedText>
           )}
         </ThemedView>
@@ -342,16 +328,8 @@ export default function ProgressScreen() {
             </ThemedView>
           </Pressable>
 
-          {/* ── Daily Goals + Achievements (two squares) ──────────────────── */}
+          {/* ── Achievements ──────────────────────────────────────────────── */}
           <View style={styles.dgRow}>
-            {renderProgressSquare({
-              title: t('quests.title'),
-              items: goalTop,
-              claimable: questClaimable,
-              allClaimedKey: 'quests.allClaimed',
-              onPress: () => router.push('/daily-quests'),
-              tint: PastelCards.honey,
-            })}
             {renderProgressSquare({
               title: t('achievements.title'),
               items: achTop,
@@ -768,17 +746,16 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   weekLeft: { gap: 2 * s, flex: 1 },
   weekRight: { flexDirection: 'row', alignItems: 'center', gap: 6 * s },
   weekReportLink: { color: BakeryColors.mocha, fontWeight: '700' },
-  // Pink "ready to claim" dot on the quests/achievements entry cards.
+  // Pink "ready to claim" dot on the Achievements entry card.
   claimDot: { width: 9 * s, height: 9 * s, borderRadius: 5 * s, backgroundColor: '#F2607E' },
-  // Daily Goals + Achievements: two square cards side by side, each with a progress bar.
+  // Achievements entry card (a ranked mini-list with progress bars).
   dgRow: { flexDirection: 'row', gap: Spacing.two * s },
   dgCard: { flex: 1 },
   dgCardInner: {
-    // Tablet is wide enough that a square fits the whole list, so keep it there.
-    // On phone the square is shorter than header + 3-item list + footer, so the
-    // centered list overflowed up over the title and down over the footer — let the
-    // phone card grow to its content instead (both cards stretch to equal height).
-    ...(s > 1 ? { aspectRatio: 1 } : { minHeight: 150 }),
+    // Lone full-width Achievements card: grow to its content (header + ranked
+    // list + footer). A `minHeight` floor keeps it from collapsing when the list
+    // is short; no `aspectRatio` (a full-width square would be absurdly tall).
+    minHeight: 150 * s,
     borderRadius: BakeryRadii.card * s,
     padding: Spacing.three * s,
     borderWidth: 1.5,

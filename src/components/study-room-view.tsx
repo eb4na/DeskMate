@@ -23,7 +23,7 @@ import { SubjectPickerModal } from '@/components/subject-picker-modal';
 import { FOOD_ITEMS } from '@/app/food-gallery';
 import { ThemedText } from '@/components/themed-text';
 import { useApp } from '@/context/app-context';
-import { autoBreakMinutes, coinsForMinutes, SESSION_LENGTHS, formatCoins } from '@/constants/placeholder-data';
+import { autoBreakMinutes, BREAK_GAME_ENABLED, coinsForMinutes, SESSION_LENGTHS, formatCoins } from '@/constants/placeholder-data';
 import { SoundPickerModal } from '@/components/sound-picker-modal';
 import { DevKnobs } from '@/components/dev-knobs';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
@@ -188,23 +188,6 @@ function HostCrown({ size }: { size: number }) {
   );
 }
 
-// A small dish of the recipe you're currently baking (`selectedFoodId`), set on
-// the desk just to the RIGHT of your study book while a session runs — then it
-// springs finished out of the timer at the end (RecipePop). Only YOUR own recipe
-// shows (nobody else's is synced); it's sized off the book and tucked tight so a
-// crowded multiplayer row still reads clean. Transparent-corner PNG → transparent
-// bg + contain (per repo art rules).
-function DeskDish({ image, size }: { image: number | { uri: string }; size: number }) {
-  return (
-    <Image
-      source={image}
-      style={{ width: size, height: size, backgroundColor: 'transparent' }}
-      contentFit="contain"
-      pointerEvents="none"
-    />
-  );
-}
-
 /**
  * The "studying together" screen shown while a session runs. Works solo (one
  * participant) or in a synced study room (up to 3). The session lifecycle
@@ -270,12 +253,11 @@ export function StudyRoomView({
     subjects,
     addCoins,
     recordSession,
-    recordQuestSession,
+    recordFriendSession,
     addSubjectTime,
     updateStreak,
     companionMinutes,
     selectedFoodId,
-    studyDishFoodId,
     equippedShopItems,
     ownedShopItems,
     setEquippedSound,
@@ -459,14 +441,6 @@ export function StudyRoomView({
   // The baked recipe's dish art — springs out of the timer when the session ends
   // (RecipePop). This is what you MADE, so it always tracks `selectedFoodId`.
   const dishImage = (FOOD_ITEMS.find((f) => f.id === selectedFoodId) ?? FOOD_ITEMS[0]).image;
-  // The dish that sits on the desk WHILE STUDYING is a separate, cosmetic choice
-  // (`studyDishFoodId`, badge-gated in the Bakery Menu) and can carry a plated
-  // "study" art variant distinct from the menu image.
-  const studyDish = FOOD_ITEMS.find((f) => f.id === studyDishFoodId) ?? FOOD_ITEMS.find((f) => f.id === selectedFoodId) ?? FOOD_ITEMS[0];
-  const deskDishImage = studyDish.studyImage ?? studyDish.image;
-  // Hide the desk dish the moment the session finishes so it doesn't sit alongside
-  // the copy RecipePop springs out of the timer (avoids a duplicate dish).
-  const showDeskDish = secondsLeft > 0 && !finishing;
   // In a room everyone studies on the host's desk; solo uses my equipped desk.
   const deskRoomId = room.active && room.hostDeskId ? room.hostDeskId : equippedDeskRoomId;
   const deskRoom = ROOM_PAIRS.find((r) => r.id === deskRoomId);
@@ -741,7 +715,11 @@ export function StudyRoomView({
   // Hide fraction: how much of the solo character tucks below the desk lip. Lowered
   // from 0.42 so ~75% of the body shows (paired with a lower deskTopT, the desk line
   // drops while the character stays put — revealing more of them).
-  const soloCharBottomT = deskTopT - 0.31 * soloCharSize;
+  // Bun's art reads a touch low behind the desk on iPad — its head sits below the
+  // rest of the cast's line. Nudge ONLY Bun up (tablet-only; this value feeds only
+  // the isTablet solo path). Dialable — raise the fraction to lift Bun further.
+  const bunSoloLiftT = soloBookKey === 'bun' ? 0.06 * soloCharSize : 0;
+  const soloCharBottomT = deskTopT - 0.31 * soloCharSize + bunSoloLiftT;
 
   // Solo character content, reused by the phone (in-scene) and tablet (absolute,
   // desk-anchored) layouts so only one ever mounts.
@@ -948,9 +926,8 @@ export function StudyRoomView({
       const earned = coinsForMinutes(activeSession.durationMinutes);
       addCoins(earned);
       recordSession(activeSession.durationMinutes);
-      // Multiplayer finish → counts toward daily quests/achievements, incl. the
-      // "study with a friend" quest + friend-session achievements.
-      recordQuestSession({ minutes: activeSession.durationMinutes, withFriend: true });
+      // Multiplayer finish → counts toward the friend-session achievements.
+      recordFriendSession();
       addSubjectTime(activeSession.subjectName, activeSession.durationMinutes);
       // Advance the daily streak too, just like a solo finish — otherwise studying
       // only with friends would never tick the streak shown in Progress. updateStreak
@@ -1254,22 +1231,6 @@ export function StudyRoomView({
               }}>
               <StudyBook active={!onBreak} size={soloBookSizeT} coverColor={soloBookColor} />
             </View>
-            {/* Recipe dish, tucked just to the RIGHT of the book (same baseline). */}
-            {showDeskDish && (
-              <View
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  right: 0,
-                  // Lifted up the desk (toward the character) so the dish sits
-                  // closer to them, not stranded at the front edge.
-                  bottom: deskTopT - 1.05 * soloBookSizeT + 42 - winH * 0.012 + Math.round(soloBookSizeT * 0.25),
-                  alignItems: 'center',
-                  transform: [{ translateX: Math.round(soloBookSizeT * 0.6) }],
-                }}>
-                <DeskDish image={deskDishImage} size={Math.round(soloBookSizeT * 0.56)} />
-              </View>
-            )}
           </View>
         ) : (
           // HARD CAP (like tablet): clip to the desk's top line (deskEdgeY) with
@@ -1290,21 +1251,6 @@ export function StudyRoomView({
               }}>
               <StudyBook active={!onBreak} size={145} coverColor={soloBookColor} />
             </View>
-            {/* Recipe dish, tucked just to the RIGHT of the book (same baseline). */}
-            {showDeskDish && (
-              <View
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  right: 0,
-                  alignItems: 'center',
-                  // Lifted up the desk (toward the character); see tablet block.
-                  bottom: deskEdgeY - 1.05 * 145 + 42 - winH * 0.012 + Math.round(145 * 0.25),
-                  transform: [{ translateX: Math.round(145 * 0.6) }],
-                }}>
-                <DeskDish image={deskDishImage} size={Math.round(145 * 0.56)} />
-              </View>
-            )}
           </View>
         )
       ) : (
@@ -1343,27 +1289,6 @@ export function StudyRoomView({
                     size={partyBookSize}
                     coverColor={cover}
                   />
-                  {/* MY recipe dish, tucked tight to the right of my own book. Only
-                      mine shows (others' recipes aren't synced); kept small + close so
-                      it can't crowd a neighbour's column in a full 3-person row. */}
-                  {p.code === friendCode && showDeskDish && (
-                    <View
-                      pointerEvents="none"
-                      style={{
-                        position: 'absolute',
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        alignItems: 'center',
-                        // translateX kept modest so the dish's right edge clears the
-                        // right-neighbour's book in a full 3-person phone row (worst
-                        // case ≈6px box clearance at winW=402; more in practice since
-                        // `contain` leaves transparent padding around the dish art).
-                        transform: [{ translateX: Math.round(partyBookSize * 0.5) }],
-                      }}>
-                      <DeskDish image={deskDishImage} size={Math.round(partyBookSize * 0.48)} />
-                    </View>
-                  )}
                 </View>
               );
             })}
@@ -1426,14 +1351,16 @@ export function StudyRoomView({
           <Pressable onPress={() => setSoundOpen(true)} style={({ pressed }) => [styles.radioBtn, pressed && styles.pressed]} hitSlop={8}>
             <StudyVinyl size={isTablet ? 92 : 56} playing={musicPlaying} discColor={vinylColor} centerImage={vinylCenter} onSpin={onVinylSpin} />
           </Pressable>
+          {/* Break mini-games hidden for now (BREAK_GAME_ENABLED). The wrapper still
+              renders to keep the slot's space so the radio above doesn't jump. */}
           <Pressable
             onPress={onBreakGame}
-            disabled={!onBreak}
+            disabled={!onBreak || !BREAK_GAME_ENABLED}
             style={({ pressed }) => [styles.gameBtnWrap, isTablet && { width: 64, height: 56 }, pressed && onBreak && styles.pressed]}
             hitSlop={6}>
             {/* Code-drawn squircle: same accent fill as the End-break pill (acc.button)
                 with an entirely-white game controller drawn on top. */}
-            {onBreak && (
+            {BREAK_GAME_ENABLED && onBreak && (
               <View style={[styles.gameBtn, isTablet && { width: 64, height: 56 }, { backgroundColor: acc.button }]}>
                 <GamepadIcon size={isTablet ? 34 : 24} />
               </View>

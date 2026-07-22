@@ -1164,6 +1164,8 @@
     "bg_landmine": "Landmine",
     "bg_lavender_palace": "Palacio de Lavanda",
     "bg_frostbloom_shrine": "Santuario de Escarcha",
+    "bg_moonlit_balcony": "Balcón a la Luz de la Luna",
+    "desk_rosewood": "Escritorio de Palisandro",
     "bg_strawberry_palace": "Casa de Té Dorada",
     "desk_marble": "Escritorio de Mármol",
     "desk_wood": "Escritorio de Madera",
@@ -1209,6 +1211,8 @@
     "bg_landmine": "Un dormitorio jirai kei en rosa y negro — lazos, un tocador iluminado y una ventana a la luz de la luna.",
     "bg_lavender_palace": "Un palacio sereno de glicinas — puerta de luna, flores de lavanda y madera cálida. Combina con el Escritorio de Lavanda.",
     "bg_frostbloom_shrine": "Un patio de santuario en silencio nevado — ciruelos blancos en flor, farolillos escarchados y un cielo invernal despejado.",
+    "bg_moonlit_balcony": "Un acogedor balcón en la azotea bajo una luna creciente — luz de farol, flores de lavanda y un horizonte de tejados estrellado. Combina con el escritorio de Palisandro.",
+    "desk_rosewood": "Una cálida superficie de estudio de palisandro pardo rojizo — combina con la sala Balcón a la Luz de la Luna.",
     "bg_strawberry_palace": "Un palacio real rosa fresa — trono dorado, cortinas de cinta y una mesa de té dulce como las bayas. Gratis con Premium.",
     "desk_marble": "Una superficie de estudio de mármol blanco impecable.",
     "desk_wood": "Una superficie de estudio de madera natural cálida — combina con la habitación Playa.",
@@ -1943,38 +1947,10 @@
     "title": "¡Insignia conseguida!",
     "got": "¡Insignia de receta de {{name}}!"
   },
-    "quests": {
-    "title": "Metas diarias",
-    "resetsMidnight": "Se reinicia a medianoche",
-    "cardSubtitle": "Metas por monedas extra",
-    "cardOpen": "Abrir",
-    "previewReady": "{{name}} — ¡lista para reclamar!",
-    "previewProgress": "{{name}} · {{current}}/{{goal}}",
-    "cardClaim": "Reclamar",
-    "allClaimed": "Todo reclamado por hoy",
-    "claim": "Reclamar {{coins}}",
-    "claimed": "Reclamado",
-    "progress": "{{current}}/{{goal}}",
-    "items": {
-      "g_study_60": {
-        "title": "Hora de poder",
-        "desc": "Estudia 1 hora hoy"
-      },
-      "g_sessions_2": {
-        "title": "Por partida doble",
-        "desc": "Completa 2 sesiones de estudio"
-      },
-      "g_before_noon": {
-        "title": "Madrugador",
-        "desc": "Estudia 25 minutos antes del mediodía"
-      },
-      "g_task_1": {
-        "title": "Tachado",
-        "desc": "Completa una tarea hoy"
-      }
-    }
-  },
   "achievements": {
+    "cardClaim": "Reclamar",
+    "cardOpen": "Abrir",
+    "progress": "{{current}}/{{goal}}",
     "categories": {
       "study": "Estudio",
       "tasks": "Tareas",

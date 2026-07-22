@@ -32,6 +32,7 @@ import {
 } from '@/lib/direct-messages';
 import { useStudyRoom } from '@/lib/use-study-room';
 import i18n, { useTranslation } from '@/i18n';
+import { BREAK_GAME_ENABLED } from '@/constants/placeholder-data';
 import { BakeryColors, BakeryRadii, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useReportModalTransition } from '@/lib/modal-traffic';
 
@@ -364,6 +365,8 @@ export default function DmChatScreen() {
               // Multiplayer study needs the friend live in the room — only offer it
               // when they're online; the games can still be invited to anytime.
               .filter((g) => g.id !== 'study' || online)
+              // Break mini-games (connect4/tictactoe) hidden for now — study only.
+              .filter((g) => BREAK_GAME_ENABLED || g.id === 'study')
               .map((g) => (
               <Pressable
                 key={g.id}

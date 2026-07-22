@@ -16,6 +16,12 @@ export type RoomPair = {
   // a colour that blends into the surface (e.g. a tiled floor's base tone).
   deskFit?: 'cover' | 'contain';
   deskTint?: string;
+  // Vertical nudge for the full-screen room background (Home + in-session scene
+  // only), as a fraction of screen height. Negative = lift the image UP, revealing
+  // more of the art's lower half. `bgShiftColor` fills the sliver the lift exposes
+  // at the bottom (use the image's own bottom-edge tone so it blends seamlessly).
+  bgShiftY?: number;
+  bgShiftColor?: string;
   // Default room only: it has no shop item to carry a description, so it stores
   // its own here (shown via the info badge). Localize with roomDescs.<id>.
   description?: string;
@@ -140,6 +146,23 @@ export const ROOM_PAIRS: RoomPair[] = [
     // Plain cover desk (centered): a solid navy surface. deskTint matches the
     // surface as a load-time safety net.
     deskTint: '#384F64',
+  },
+  {
+    // Matched set — moonlit rooftop balcony background + a rich rosewood desk
+    // surface. deskTint is the wood's average tone as a load-time safety net if
+    // the cover-crop reveals an edge sliver.
+    id: 'moonlit-balcony',
+    name: 'Moonlit Balcony',
+    backgroundId: 'bg_moonlit_balcony',
+    deskId: 'desk_rosewood',
+    backgroundImage: require('@/assets/images/backgrounds/moonlit-balcony.png'),
+    deskImage: require('@/assets/images/desks/rosewood.png'),
+    deskTint: '#66453E',
+    // Lift the balcony art up so the cozy bottom nook (cushions, book, tea) shows
+    // above the desk. The exposed bottom sliver is filled with the art's dusky
+    // floor tone so it blends where the desk doesn't cover it.
+    bgShiftY: -0.32,
+    bgShiftColor: '#3A335B',
   },
 ];
 

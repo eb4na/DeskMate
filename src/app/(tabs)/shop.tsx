@@ -389,7 +389,7 @@ export default function ShopScreen() {
   // Some companions aren't sold: Plus-exclusive (Tira) are granted with Plus, and
   // badge-reward ones (Hanji, requiresAllRecipes) are granted by collecting every
   // recipe badge. Their data stays in SHOP_ITEMS for the gallery & wardrobe.
-  const items = SHOP_ITEMS.filter((i) => i.category === activeCategory && !i.plusOnly && !i.requiresAllRecipes);
+  const items = SHOP_ITEMS.filter((i) => i.category === activeCategory && !i.plusOnly && !i.requiresAllRecipes && !i.free);
   const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
   const pages = Array.from({ length: totalPages }, (_, i) => items.slice(i * ITEMS_PER_PAGE, (i + 1) * ITEMS_PER_PAGE));
   const capRemaining = Math.max(0, DAILY_EARN_CAP - earnedToday);
@@ -695,11 +695,6 @@ export default function ShopScreen() {
               return (
                 <Pressable key={cat} onPress={() => setActiveCategory(cat)} style={({ pressed }) => pressed && styles.pressed}>
                   <View style={[styles.catSquare, isTablet && { width: 96 * SHOP_TS, height: 104 * SHOP_TS }, active && styles.catSquareActive]}>
-                    {active && (
-                      <View style={styles.catCheck}>
-                        <CheckBox checked size={isTablet ? 22 * SHOP_TS : 18} color={BakeryColors.buttonPink} />
-                      </View>
-                    )}
                     <CategoryIcon id={cat} size={isTablet ? 60 * SHOP_TS : 36} />
                     <ThemedText style={[styles.catLabel, isTablet && { fontSize: 15 * SHOP_TS, lineHeight: 19 * SHOP_TS }, active && styles.catLabelActive]}>
                       {t(`shop.cat_${cat}`)}

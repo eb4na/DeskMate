@@ -5,6 +5,7 @@ import { Animated, AppState, Easing, type LayoutChangeEvent, Pressable, StyleShe
 import { SoundPressable } from '@/components/sound-pressable';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { CoinIcon } from '@/components/coin-icon';
 import { DevKnobs, type Knob } from '@/components/dev-knobs';
@@ -31,7 +32,7 @@ import { DiscoBackdrop } from '@/components/disco-backdrop';
 import { setTutorialTarget } from '@/lib/tutorial-targets';
 import i18n, { useTranslation } from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
-import { coinsForMinutes, formatCoins } from '@/constants/placeholder-data';
+import { BREAK_GAME_ENABLED, coinsForMinutes, formatCoins } from '@/constants/placeholder-data';
 import { hanjiIsAnimated, resolveActiveCompanion } from '@/lib/companion-utils';
 import { HanjiFigure } from '@/components/hanji-figure';
 import { CompanionPet, PetCloudHost } from '@/components/companion-pet';
@@ -818,6 +819,10 @@ export default function HomeScreen() {
   const followsHostDisco = studyRoom.active && !studyRoom.isHost;
   const discoBgOn = !!activeSession && (followsHostDisco ? studyRoom.hostDiscoOn : (spotifyBgEnabled && isPlus && !studyRoom.discoSuppressed));
   const discoBgColor = followsHostDisco ? studyRoom.hostDiscoColor : spotifyBgColor;
+  // Moonlit Balcony mood: during a session (not disco) this room gets a weak
+  // blue/purple night multiply over the whole scene, plus a soft warm glow that
+  // re-lights the character/desk/book so they read cozy against the cool backdrop.
+  const moonlitScene = !!activeSession && !discoBgOn && bgRoom.id === 'moonlit-balcony';
   const deskRoom = ROOM_PAIRS.find((r) => r.id === equippedDeskRoomId) ?? ROOM_PAIRS[0];
   const activeCompanion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
   // Worn skin of the active companion — drives per-skin pet lines (Bun uses bunSkinId).
@@ -944,7 +949,6 @@ export default function HomeScreen() {
       minutes: activeSession.durationMinutes,
       coins: coinsForMinutes(activeSession.durationMinutes),
       subjectName: activeSession.subjectName ?? null,
-      firstOfRun: !activeSession.continuedRun,
     });
     finishParamsRef.current = {
       lastMinutes: String(activeSession.durationMinutes),
@@ -972,7 +976,6 @@ export default function HomeScreen() {
         minutes: activeSession.durationMinutes,
         coins: coinsForMinutes(activeSession.durationMinutes),
         subjectName: activeSession.subjectName ?? null,
-        firstOfRun: !activeSession.continuedRun,
       });
       finishParamsRef.current = {
         lastMinutes: String(activeSession.durationMinutes),
@@ -1108,10 +1111,23 @@ export default function HomeScreen() {
         <>
           <Image
             source={bgRoom.backgroundImage}
-            style={styles.roomBackground}
+            style={[
+              styles.roomBackground,
+              // Per-room vertical nudge (e.g. Moonlit Balcony lifts up to show its
+              // lower nook). The fill colour covers the sliver the lift exposes at
+              // the bottom where the desk doesn't reach.
+              bgRoom.bgShiftY
+                ? { transform: [{ translateY: bgRoom.bgShiftY * winH }], backgroundColor: bgRoom.bgShiftColor }
+                : null,
+            ]}
             contentFit="cover"
             contentPosition="center"
             pointerEvents="none"
+            // The launch/login loader holds until this — the room's actual paint,
+            // not just its prefetch — so the background never pops in after the
+            // splash lifts. onDisplay (not onLoad) fires when the view has really
+            // rendered the source on screen; onError marks it too so a failed load
+            // can't wedge the splash.
             onDisplay={markHomePainted}
             onError={markHomePainted}
           />
@@ -1396,17 +1412,43 @@ export default function HomeScreen() {
                     <ThemedText style={styles.startSessionLabel}>{t('home.startSession')}</ThemedText>
                   </SoundPressable>
                 </View>
-                <Pressable
-                  style={({ pressed }) => [styles.settingsFloating, styles.gameFloating, tGame, pressed && styles.startButtonPressed]}
-                  onPress={() => router.push({ pathname: '/break-game', params: { browse: '1' } })}
-                  accessibilityLabel={t('home.a11yPlayGame')}>
-                  <Image source={GAME_BTN} style={[styles.gameFloatingImg, tGameImg]} contentFit="contain" />
-                </Pressable>
+                {BREAK_GAME_ENABLED && (
+                  <Pressable
+                    style={({ pressed }) => [styles.settingsFloating, styles.gameFloating, tGame, pressed && styles.startButtonPressed]}
+                    onPress={() => router.push({ pathname: '/break-game', params: { browse: '1' } })}
+                    accessibilityLabel={t('home.a11yPlayGame')}>
+                    <Image source={GAME_BTN} style={[styles.gameFloatingImg, tGameImg]} contentFit="contain" />
+                  </Pressable>
+                )}
               </View>
             </>
           )}
         </View>
       </SafeAreaView>
+
+      {/* Moonlit Balcony atmosphere (session only) — drawn ON TOP of the whole
+          study scene. First a weak dark blue/purple multiply for a night mood over
+          everything, then a soft warm glow centred low on the desk/character so the
+          foreground (character + book + desk) reads lit against the cool backdrop.
+          Both are non-interactive and gated to this room. */}
+      {moonlitScene && (
+        <>
+          <View pointerEvents="none" style={[styles.roomBackground, styles.moonlitMood]} />
+          <View pointerEvents="none" style={[styles.roomBackground, styles.moonlitGlow]}>
+            <Svg width="100%" height="100%">
+              <Defs>
+                <RadialGradient id="moonlitLight" cx="50%" cy="74%" rx="62%" ry="44%">
+                  <Stop offset="0%" stopColor="#FFF3D2" stopOpacity="0.08" />
+                  <Stop offset="55%" stopColor="#FFE7BE" stopOpacity="0.03" />
+                  <Stop offset="100%" stopColor="#FFE7BE" stopOpacity="0" />
+                </RadialGradient>
+              </Defs>
+              <Rect x="0" y="0" width="100%" height="100%" fill="url(#moonlitLight)" />
+            </Svg>
+          </View>
+        </>
+      )}
+
       {/* Wait for the real Home screen: homeFocused stays true during a study
           session too (StudyRoomView renders inside this tab), so also require no
           active session — these reward popups hold until the user is back on Home. */}
@@ -1554,6 +1596,11 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  // Moonlit Balcony night mood: a weak dark blue/purple multiplied over the whole
+  // scene. Strength lives in the alpha — dial it up/down to taste.
+  moonlitMood: { mixBlendMode: 'multiply', backgroundColor: 'rgba(40,34,86,0.12)' },
+  // Warm glow that lifts the foreground; screen blend only brightens.
+  moonlitGlow: { mixBlendMode: 'screen' },
   sunlight: {
     position: 'absolute',
     top: 0,

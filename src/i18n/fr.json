@@ -1164,6 +1164,8 @@
     "bg_landmine": "Landmine",
     "bg_lavender_palace": "Palais de Lavande",
     "bg_frostbloom_shrine": "Sanctuaire Givré",
+    "bg_moonlit_balcony": "Balcon au Clair de Lune",
+    "desk_rosewood": "Bureau en Palissandre",
     "bg_strawberry_palace": "Salon de Thé Doré",
     "desk_marble": "Bureau en Marbre",
     "desk_wood": "Bureau en Bois",
@@ -1209,6 +1211,8 @@
     "bg_landmine": "Une chambre jirai kei rose et noire — nœuds, coiffeuse lumineuse et fenêtre au clair de lune.",
     "bg_lavender_palace": "Un palais de glycines serein — porte de lune, fleurs de lavande et bois chaleureux. S’accorde avec le Bureau Lavande.",
     "bg_frostbloom_shrine": "Une cour de sanctuaire feutrée de neige — pruniers blancs en fleurs, lanternes givrées et ciel d’hiver limpide.",
+    "bg_moonlit_balcony": "Un balcon de toit douillet sous un croissant de lune — lumière de lanterne, fleurs de lavande et un horizon de toits étoilé. S'accorde avec le bureau en Palissandre.",
+    "desk_rosewood": "Une chaleureuse surface d'étude en palissandre brun rougeâtre — s'accorde avec le décor Balcon au Clair de Lune.",
     "bg_strawberry_palace": "Un palais royal rose fraise — trône doré, tentures de rubans et table de thé aux fruits rouges. Offert avec Premium.",
     "desk_marble": "Un plan d’étude en marbre blanc immaculé.",
     "desk_wood": "Un plan d’étude en bois naturel chaleureux — s’accorde avec la pièce Plage.",
@@ -1943,38 +1947,10 @@
     "title": "Badge obtenu !",
     "got": "Badge de recette de {{name}} !"
   },
-    "quests": {
-    "title": "Objectifs quotidiens",
-    "resetsMidnight": "Réinitialisé à minuit",
-    "cardSubtitle": "Objectifs pour des pièces bonus",
-    "cardOpen": "Ouvrir",
-    "previewReady": "{{name}} — à réclamer !",
-    "previewProgress": "{{name}} · {{current}}/{{goal}}",
-    "cardClaim": "Réclamer",
-    "allClaimed": "Tout réclamé pour aujourd'hui",
-    "claim": "Réclamer {{coins}}",
-    "claimed": "Réclamé",
-    "progress": "{{current}}/{{goal}}",
-    "items": {
-      "g_study_60": {
-        "title": "Heure de pointe",
-        "desc": "Étudiez 1 heure aujourd'hui"
-      },
-      "g_sessions_2": {
-        "title": "En double",
-        "desc": "Terminez 2 sessions d'étude"
-      },
-      "g_before_noon": {
-        "title": "Lève-tôt",
-        "desc": "Étudiez 25 minutes avant midi"
-      },
-      "g_task_1": {
-        "title": "Coché",
-        "desc": "Terminez une tâche aujourd'hui"
-      }
-    }
-  },
   "achievements": {
+    "cardClaim": "Réclamer",
+    "cardOpen": "Ouvrir",
+    "progress": "{{current}}/{{goal}}",
     "categories": {
       "study": "Étude",
       "tasks": "Tâches",

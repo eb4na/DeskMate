@@ -142,8 +142,8 @@ export function SoundPickerModal({
   useReportModalTransition(visible);
   const isTablet = useIsTablet();
   // Plus members get every sound free while subscribed; coin-bought sounds are kept
-  // forever. So a sound is available if Plus OR it's owned.
-  const sounds = SHOP_ITEMS.filter((i) => i.category === 'sound' && (isPlus || ownedShopItems.includes(i.id)));
+  // forever. So a sound is available if Plus OR it's owned OR it's free for all.
+  const sounds = SHOP_ITEMS.filter((i) => i.category === 'sound' && (isPlus || i.free || ownedShopItems.includes(i.id)));
   const equipped = equippedShopItems.sound;
 
   const [connected, setConnected] = useState(spotifyConnected());

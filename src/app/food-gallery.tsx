@@ -101,7 +101,7 @@ export default function FoodGalleryScreen() {
   // Tablet: the scalloped banner is large, so the small phone-sized title floats
   // in too much empty space — scale the "Bakery Menu" / "My Recipes" text up.
   const isTablet = useIsTablet();
-  const { selectedFoodId, studyDishFoodId, madeFoods, setSelectedFood, setStudyDishFood, ownedShopItems } = useApp();
+  const { selectedFoodId, madeFoods, setSelectedFood, ownedShopItems } = useApp();
   // Badge image currently shown enlarged in the zoom modal (null = closed).
   const [zoomBadge, setZoomBadge] = useState<number | null>(null);
   useReportModalTransition(zoomBadge !== null);
@@ -124,9 +124,6 @@ export default function FoodGalleryScreen() {
                 const locked = !!food.requiresItem && !ownedShopItems.includes(food.requiresItem);
                 const isSelected = !locked && selectedFoodId === food.id;
                 const isMade = madeFoods.includes(food.id);
-                // "Serve while studying" = the cosmetic desk dish, gated on having
-                // earned this recipe's badge (baked it once).
-                const isStudyDish = !locked && studyDishFoodId === food.id;
                 return (
                   <View
                     key={food.id}
@@ -172,26 +169,6 @@ export default function FoodGalleryScreen() {
                         onPress={() => { setSelectedFood(food.id); if (router.canGoBack()) router.back(); else router.replace('/'); }}>
                         <Text style={[styles.selectBtnText, isTablet && styles.btnTextTablet]}>{t('foodGallery.bakeThis')}</Text>
                       </Pressable>
-                    )}
-                    {/* Second choice, separate from what you're baking: the dish
-                        that sits on your desk WHILE STUDYING. Locked until the
-                        recipe's badge is earned (baked at least once). */}
-                    {!locked && (
-                      isStudyDish ? (
-                        <View style={[styles.studyPill, isTablet && styles.btnTablet]}>
-                          <Text style={[styles.studyPillText, isTablet && styles.btnTextTablet]}>{t('foodGallery.onYourDesk')}</Text>
-                        </View>
-                      ) : isMade ? (
-                        <Pressable
-                          style={({ pressed }) => [styles.studyBtn, isTablet && styles.btnTablet, pressed && styles.pressed]}
-                          onPress={() => setStudyDishFood(food.id)}>
-                          <Text style={[styles.studyBtnText, isTablet && styles.btnTextTablet]} numberOfLines={1}>{t('foodGallery.serveWhileStudying')}</Text>
-                        </Pressable>
-                      ) : (
-                        <View style={[styles.studyBtnLocked, isTablet && styles.btnTablet]}>
-                          <Text style={[styles.studyBtnLockedText, isTablet && styles.btnTextTablet]} numberOfLines={1}>{t('foodGallery.serveLocked')}</Text>
-                        </View>
-                      )
                     )}
                   </View>
                 );
@@ -357,39 +334,6 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   selectBtnText: { fontSize: 12, color: '#fff', fontWeight: '800' },
-
-  // "Serve while studying" — a secondary, minty choice distinct from the pink
-  // "Bake This" primary, so the two selections never read as one button.
-  studyBtn: {
-    marginTop: 6,
-    backgroundColor: P.greenSoft,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderWidth: 1.5,
-    borderColor: P.green,
-  },
-  studyBtnText: { fontSize: 11.5, color: '#3E7A46', fontWeight: '800' },
-  studyPill: {
-    marginTop: 6,
-    backgroundColor: P.green,
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderWidth: 1.5,
-    borderColor: '#6FB877',
-  },
-  studyPillText: { fontSize: 12, color: '#fff', fontWeight: '800' },
-  studyBtnLocked: {
-    marginTop: 6,
-    backgroundColor: 'rgba(154,123,109,0.12)',
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderWidth: 1.5,
-    borderColor: 'rgba(154,123,109,0.28)',
-  },
-  studyBtnLockedText: { fontSize: 11.5, color: P.mutedBrown, fontWeight: '700' },
 
   doneButton: {
     backgroundColor: P.pink,

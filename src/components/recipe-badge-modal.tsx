@@ -14,23 +14,22 @@ import { MIN_POPUP_WIDTH, popupMaxWidth } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { useIsTablet } from '@/hooks/use-device-class';
 import { getCompanionImage, localizeCompanionName } from '@/lib/companion-utils';
+import { companionMetricsId, faceCropShiftFrac } from '@/lib/figure-height';
 import { useModalSafeVisible } from '@/lib/modal-traffic';
 import { RECIPE_BADGES, RECIPE_IDS } from '@/constants/recipes';
 import { useTranslation } from '@/i18n';
 
 const P = { card: '#FFFDF8', pink: '#F491A9', pinkSoft: '#FBDCE4', brown: '#5B3A2E', muted: '#9A7B6D' };
 
-// Each character's art is framed differently, so a single vertical offset clips
-// some heads. These per-companion translateY values (px, applied to the 72px
-// avatar inside the 48px circle) sit each character's head in the circle. Cocoa
-// is the reference (16); the others are raised so their heads aren't cut off.
-const SLOT_OFFSETS: Record<string, { x?: number; y: number; scale?: number }> = {
-  '': { y: 8 },
-  'shop:companion_cocoa': { x: -4, y: 13, scale: 1.06 },
-  'shop:companion_bunny': { y: 8 },
-  'shop:companion_honey': { x: 1, y: 10, scale: 0.93 },
-  'shop:companion_tira': { x: 1, y: 8, scale: 0.93 },
-};
+// Each character's head sits at a different height in its square PNG, so a single
+// fixed offset clips some heads (and contentFit:"contain" showed the whole body —
+// dark outline and all — inside the tight circle). Instead we crop to the face
+// with cover+zoom and centre on the measured head crown via faceCropShiftFrac,
+// mirroring the minigame player cards (break-game). Same characters, proven look.
+const SLOT = 48; // circle diameter the shift fraction is measured against
+const AVATAR_ZOOM = 1.6;
+const AVATAR_CROWN_TARGET = 0.1; // land the crown 10% down from the circle top
+const AVATAR_DY = 0.14; // fallback shift for unmeasured art (none here, but safe)
 
 // A little drooping wisteria sprig — a tapering cluster of lavender blossoms on a
 // green stem. Drawn (no asset) so it scales crisply as a corner decoration.
@@ -119,21 +118,23 @@ export function RecipeBadgeModal() {
             {RECIPE_BADGES.map((b) => {
               const collected = bakedWith.includes(b.companionId);
               const isNew = b.recipeId === recipeBadgePending;
+              const faceShift =
+                faceCropShiftFrac(companionMetricsId(b.companionId, 'classic'), {
+                  zoom: AVATAR_ZOOM,
+                  model: 'center',
+                  target: AVATAR_CROWN_TARGET,
+                }) ?? AVATAR_DY;
               return (
                 <View key={b.recipeId} style={[styles.slot, isNew && styles.slotNew, !collected && styles.slotMissing]}>
                   <View style={styles.slotMask}>
                     <Image
                       source={getCompanionImage(b.companionId, 'classic')}
                       style={[
-                        styles.slotImg,
-                        { transform: [
-                            { translateX: SLOT_OFFSETS[b.companionId]?.x ?? 0 },
-                            { translateY: SLOT_OFFSETS[b.companionId]?.y ?? 16 },
-                            { scale: SLOT_OFFSETS[b.companionId]?.scale ?? 1 },
-                          ] },
+                        StyleSheet.absoluteFill,
+                        { transform: [{ translateY: SLOT * faceShift }, { scale: AVATAR_ZOOM }] },
                         !collected && styles.imgMissing,
                       ]}
-                      contentFit="contain"
+                      contentFit="cover"
                     />
                   </View>
                   {collected && <JumpCheck animate={isNew} />}
@@ -172,9 +173,6 @@ const styles = StyleSheet.create({
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 24, overflow: 'hidden',
     alignItems: 'center', justifyContent: 'center',
   },
-  // Oversized so the face fills the circle; the per-character vertical offset
-  // (SLOT_TRANSLATE_Y) is applied inline so each head lands in the centre.
-  slotImg: { width: 72, height: 72 },
   imgMissing: { opacity: 0.28 },
   check: {
     position: 'absolute', zIndex: 2, bottom: -2, right: -2, fontSize: 13, fontWeight: '900',

@@ -14,7 +14,7 @@ import { TimeWheelPicker, formatTimeLabel } from '@/components/time-wheel-picker
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp, MAX_TASKS } from '@/context/app-context';
-import type { TaskStatus } from '@/context/app-context';
+import type { Task, TaskStatus } from '@/context/app-context';
 import { containsProfanity } from '@/lib/profanity';
 import { cancelTaskNotification, scheduleTaskNotification } from '@/lib/notifications';
 import { useTranslation } from '@/i18n';
@@ -29,6 +29,20 @@ const STATUS_OPTIONS: { value: TaskStatus; labelKey: string }[] = [
 
 // Reminder fires this many minutes before the task's due time.
 const REMINDER_OFFSETS = [5, 15, 30];
+
+// Default due time for a NEW task: one hour after the most recently added task
+// that had a due time, so adding tasks back-to-back auto-stacks them an hour
+// apart. Falls back to 9:00 AM when no prior timed task exists. The hour wraps at
+// midnight (23:xx → 00:xx); minutes are kept. Editing keeps the task's saved time.
+function nextDefaultDueTime(tasks: Task[]): string {
+  const lastTimed = tasks.reduce<Task | undefined>(
+    (latest, t) => (t.dueTime && (!latest || t.createdAt > latest.createdAt) ? t : latest),
+    undefined,
+  );
+  if (!lastTimed?.dueTime) return '09:00';
+  const [h, m] = lastTimed.dueTime.split(':').map(Number);
+  return `${String((h + 1) % 24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
 
 export default function AddTaskScreen() {
   const { t } = useTranslation();
@@ -47,7 +61,7 @@ export default function AddTaskScreen() {
   const [dueDate, setDueDate] = useState(existingTask?.dueDate ?? todayISO);
   // A due time is optional — dated tasks default to "All day" (no time).
   const [dueTimeEnabled, setDueTimeEnabled] = useState(editing ? existingTask?.dueTime != null : false);
-  const [dueTime, setDueTime] = useState(existingTask?.dueTime ?? '09:00');
+  const [dueTime, setDueTime] = useState(existingTask?.dueTime ?? (editing ? '09:00' : nextDefaultDueTime(tasks)));
   const [status, setStatus] = useState<TaskStatus>(existingTask?.status ?? 'not_started');
   // Weekdays (0=Sun … 6=Sat) the task repeats on. Empty = no repeat.
   const [repeatDays, setRepeatDays] = useState<number[]>(existingTask?.repeatDays ?? []);

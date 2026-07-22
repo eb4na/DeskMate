@@ -86,7 +86,7 @@ export default function AchievementsScreen() {
         sub={
           claimed
             ? t(`achievements.items.${a.id}.desc`)
-            : `${t(`achievements.items.${a.id}.desc`)}  ·  ${t('quests.progress', { current, goal: a.goal })}`
+            : `${t(`achievements.items.${a.id}.desc`)}  ·  ${t('achievements.progress', { current, goal: a.goal })}`
         }
         trailing={
           claimed ? (
@@ -95,7 +95,7 @@ export default function AchievementsScreen() {
             // Obvious pink "Claim" button so it's clear which milestones have a reward
             // waiting (the whole row is tappable — see MenuRow onPress above).
             <View style={styles.claimPill}>
-              <Text style={styles.claimPillText}>{t('quests.cardClaim')}</Text>
+              <Text style={styles.claimPillText}>{t('achievements.cardClaim')}</Text>
               <CoinIcon size={14 * scale} />
               <Text style={styles.claimPillText}>+{a.reward}</Text>
             </View>
@@ -111,8 +111,12 @@ export default function AchievementsScreen() {
   };
 
   return (
-    <Pressable style={styles.backdrop} onPress={dismiss}>
-      <Pressable style={styles.card} onPress={(e) => e.stopPropagation?.()}>
+    // Backdrop is a sibling BEHIND the card (not a Pressable wrapping it) so the
+    // ScrollView has zero Pressable ancestors — a Pressable ancestor swallows the
+    // list's scroll pan, and this list is long enough to overflow.
+    <View style={styles.root}>
+      <Pressable style={styles.backdrop} onPress={dismiss} />
+      <View style={styles.card}>
         <MenuHeader
           title={t('achievements.title')}
           subtitle={
@@ -142,19 +146,28 @@ export default function AchievementsScreen() {
           style={({ pressed }) => [styles.doneBtn, pressed && styles.pressed]}>
           <Text style={styles.doneText}>{t('common.done')}</Text>
         </SoundPressable>
-      </Pressable>
-    </Pressable>
+      </View>
+    </View>
   );
 }
 
 const makeStyles = (s: number) =>
   StyleSheet.create({
-    backdrop: {
+    root: {
       flex: 1,
-      backgroundColor: 'rgba(59, 42, 33, 0.35)',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: Spacing.four,
+      paddingHorizontal: Spacing.four,
+    },
+    // Dim escapes the root's horizontal padding (negative insets) so it covers the
+    // full screen while the padding still insets the card from the edges.
+    backdrop: {
+      position: 'absolute',
+      top: 0,
+      bottom: 0,
+      left: -Spacing.four,
+      right: -Spacing.four,
+      backgroundColor: 'rgba(59, 42, 33, 0.35)',
     },
     card: {
       width: '100%',

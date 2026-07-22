@@ -1164,6 +1164,8 @@
     "bg_landmine": "地雷系",
     "bg_lavender_palace": "ラベンダー宮殿",
     "bg_frostbloom_shrine": "フロストブルーム神社",
+    "bg_moonlit_balcony": "月夜のバルコニー",
+    "desk_rosewood": "ローズウッドデスク",
     "bg_strawberry_palace": "黄金の茶屋",
     "desk_marble": "大理石デスク",
     "desk_wood": "ウッドデスク",
@@ -1209,6 +1211,8 @@
     "bg_landmine": "ピンクと黒の地雷系ベッドルーム — リボン、ライト付きドレッサー、月明かりの窓。",
     "bg_lavender_palace": "静謐な藤の宮殿 — 月門、ラベンダーの花、あたたかな木。ラベンダーデスクと相性ぴったり。",
     "bg_frostbloom_shrine": "雪に包まれた神社の境内 — 白梅、霜のついた灯籠、澄んだ冬空。",
+    "bg_moonlit_balcony": "三日月の下の心地よい屋上バルコニー — ランタンの灯り、ラベンダーの花、星空に浮かぶ街並み。ローズウッドデスクと相性ぴったり。",
+    "desk_rosewood": "深い赤褐色のローズウッドの学習デスク — 月夜のバルコニーの部屋と相性ぴったり。",
     "bg_strawberry_palace": "ロイヤルなストロベリーピンクの宮殿 — 金の玉座、リボンのドレープ、ベリー甘いティーテーブル。プラスなら無料。",
     "desk_marble": "清潔感のある白い大理石の学習デスク。",
     "desk_wood": "あたたかな天然木の学習デスク — ビーチの部屋と相性ぴったり。",
@@ -1943,38 +1947,10 @@
     "title": "バッジ獲得！",
     "got": "{{name}}のレシピバッジ！"
   },
-    "quests": {
-    "title": "デイリーゴール",
-    "resetsMidnight": "深夜0時にリセット",
-    "cardSubtitle": "ボーナスコインのゴール",
-    "cardOpen": "開く",
-    "previewReady": "{{name}} — 受け取れます！",
-    "previewProgress": "{{name}} · {{current}}/{{goal}}",
-    "cardClaim": "受け取る",
-    "allClaimed": "今日はすべて受け取り済み",
-    "claim": "{{coins}} を受け取る",
-    "claimed": "受取済み",
-    "progress": "{{current}}/{{goal}}",
-    "items": {
-      "g_study_60": {
-        "title": "パワーアワー",
-        "desc": "今日1時間勉強する"
-      },
-      "g_sessions_2": {
-        "title": "ダブルアップ",
-        "desc": "勉強セッションを2回完了する"
-      },
-      "g_before_noon": {
-        "title": "早起き",
-        "desc": "正午までに25分勉強する"
-      },
-      "g_task_1": {
-        "title": "チェック",
-        "desc": "今日タスクを1つ完了する"
-      }
-    }
-  },
   "achievements": {
+    "cardClaim": "受け取る",
+    "cardOpen": "開く",
+    "progress": "{{current}}/{{goal}}",
     "categories": {
       "study": "勉強",
       "tasks": "タスク",

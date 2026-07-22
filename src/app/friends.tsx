@@ -30,6 +30,7 @@ import { fetchProfileByCode, type SyncedProfile } from '@/lib/profile-sync';
 import { fetchSuggestedPlayers, type SuggestedPlayer } from '@/lib/suggestions';
 import { isPlusFrame } from '@/components/avatar-frame';
 import { cardColors } from '@/constants/card-colors';
+import { BREAK_GAME_ENABLED } from '@/constants/placeholder-data';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { useTranslation } from '@/i18n';
 import { MaxContentWidth, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
@@ -588,9 +589,13 @@ export default function FriendsScreen() {
                           </View>
                         )}
                       </Pressable>
-                      <Pressable style={({ pressed }) => [styles.playBtn, pressed && styles.pressed]} onPress={() => setPlayFor(f)}>
-                        <Text style={styles.playBtnText}>{t('friends.play')}</Text>
-                      </Pressable>
+                      {/* "Play" opens a mini-game invite sheet (connect4/tictactoe) —
+                          hidden while the break games are disabled (BREAK_GAME_ENABLED). */}
+                      {BREAK_GAME_ENABLED && (
+                        <Pressable style={({ pressed }) => [styles.playBtn, pressed && styles.pressed]} onPress={() => setPlayFor(f)}>
+                          <Text style={styles.playBtnText}>{t('friends.play')}</Text>
+                        </Pressable>
+                      )}
                       <Pressable hitSlop={8} onPress={() => confirmRemove(f.code, f.displayName || t('friends.newUser'))} style={styles.friendRemove}>
                         <Text style={styles.friendRemoveText}>✕</Text>
                       </Pressable>
