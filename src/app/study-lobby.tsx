@@ -6,11 +6,11 @@ import { SoundPressable } from '@/components/sound-pressable';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DevKnobs } from '@/components/dev-knobs';
-import { BreakWheel, DurationWheel } from '@/components/duration-wheel';
+import { DurationWheel } from '@/components/duration-wheel';
 import { ThemedView } from '@/components/themed-view';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
-import { BREAK_LENGTHS, SESSION_LENGTHS } from '@/constants/placeholder-data';
+import { autoBreakMinutes, SESSION_LENGTHS } from '@/constants/placeholder-data';
 import { bunAvatarNudge, getCompanionImage } from '@/lib/companion-utils';
 import { useApp, MAX_TIMER_PRESETS } from '@/context/app-context';
 import { formatMinutesShort } from '@/lib/format-duration';
@@ -57,15 +57,6 @@ export default function StudyLobbyScreen() {
   const [minutes, setMinutes] = useState(presetMinutes ?? 30);
   // This player's chosen topic (subject name), or null = not chosen yet.
   const [topic, setTopic] = useState<string | null>(null);
-  // Host-set room break length (minutes) — a Plus HOST perk. 0 = no timed break
-  // (the room keeps its free on/off break). Applies to everyone once the host starts.
-  const [breakMins, setBreakMins] = useState(0);
-  // Break options mirror the app's convention (see session-complete): just the
-  // standard fixed break lengths. 0 = free on/off break.
-  const breakPicks = [0, ...BREAK_LENGTHS];
-  // Choosing a break is a custom-timer perk — offered on this player's own Plus, OR
-  // shared by a Plus host. Otherwise the break is fixed (free on/off in-session).
-  const canSetBreak = canCustom;
 
   // Everyone picks their own length + topic up front; broadcast the choice so every
   // member's avatar shows it, and so this player's session runs with their picks.
@@ -99,12 +90,13 @@ export default function StudyLobbyScreen() {
     setMyPrefs(minutes, topic);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // Keep my per-player break in sync (mirrors how my length rides myPreferredMinutes).
-  // Only when I'm allowed to set one; otherwise it stays unset (→ fixed free break).
+  // Break length is no longer pickable — every player just gets the SINGLE-PLAYER
+  // default break for their chosen duration (autoBreakMinutes: 5m under an hour, 15m
+  // at/over), kept in sync as they change the length.
   useEffect(() => {
-    if (canSetBreak) setMyBreak(breakMins);
+    setMyBreak(autoBreakMinutes(minutes));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [breakMins, canSetBreak]);
+  }, [minutes]);
 
   // If we somehow landed here without a room, bail home.
   if (!active) {
@@ -244,22 +236,9 @@ export default function StudyLobbyScreen() {
             </View>
           )}
 
-          {/* Break time — a custom-timer perk, per player. Each player picks their own
-              break length (from their preset times); they then get a personal timed
-              break of that length (freeze + auto-resume). 0 = free on/off break.
-              Unlocked only by this player's own Plus. */}
-          {canSetBreak && (
-            <>
-              <Text style={styles.label}>{t('lobby.breakTime')}</Text>
-              <BreakWheel
-                value={breakMins}
-                values={breakPicks}
-                onChange={setBreakMins}
-                scale={scale}
-                format={(m) => (m === 0 ? t('lobby.breakOff') : t('lobby.minShort', { n: m }))}
-              />
-            </>
-          )}
+          {/* Break time is no longer pickable in multiplayer — every player just gets
+              the same default timed break as single player (see the setMyBreak effect
+              above), so the wheel was removed. */}
         </ScrollView>
 
         <View style={styles.actions}>
@@ -272,7 +251,7 @@ export default function StudyLobbyScreen() {
               </SoundPressable>
               <SoundPressable
                 sound="confirm"
-                onPress={() => start({ durationMinutes: minutes, subjectName: topic, taskId: null, taskTitle: null, ...(breakMins > 0 ? { breakMinutes: breakMins } : {}) })}
+                onPress={() => start({ durationMinutes: minutes, subjectName: topic, taskId: null, taskTitle: null, breakMinutes: autoBreakMinutes(minutes) })}
                 style={({ pressed }) => [styles.startBtn, tw('startBtn'), pressed && styles.pressed]}>
                 <Text style={styles.startText}>{t('lobby.startStudying')}</Text>
               </SoundPressable>
@@ -282,7 +261,7 @@ export default function StudyLobbyScreen() {
             // own session (their own clock + chosen length) whenever ready.
             <SoundPressable
               sound="confirm"
-              onPress={() => startSelf({ durationMinutes: minutes, subjectName: topic, taskId: null, taskTitle: null, ...(breakMins > 0 ? { breakMinutes: breakMins } : {}) })}
+              onPress={() => startSelf({ durationMinutes: minutes, subjectName: topic, taskId: null, taskTitle: null, breakMinutes: autoBreakMinutes(minutes) })}
               style={({ pressed }) => [styles.startBtn, tw('startBtn'), pressed && styles.pressed]}>
               <Text style={styles.startText}>{t('lobby.startStudying')}</Text>
             </SoundPressable>

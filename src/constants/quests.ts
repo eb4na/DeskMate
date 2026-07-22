@@ -71,28 +71,30 @@ export type AchievementDef = {
 };
 
 // One-time milestones. Order here is the display order on the achievements screen.
+// Rewards are deliberately bigger than the daily goals (GOAL_REWARD) — these are
+// rare lifetime milestones, so they pay out generously (roughly 2× their old value).
 export const ACHIEVEMENTS: AchievementDef[] = [
   // Study — sessions
-  { id: 'a_first', category: 'study', statKey: 'sessionsCompleted', goal: 1, reward: 50 },
-  { id: 'a_sessions_25', category: 'study', statKey: 'sessionsCompleted', goal: 25, reward: 100 },
-  { id: 'a_sessions_100', category: 'study', statKey: 'sessionsCompleted', goal: 100, reward: 250 },
+  { id: 'a_first', category: 'study', statKey: 'sessionsCompleted', goal: 1, reward: 100 },
+  { id: 'a_sessions_25', category: 'study', statKey: 'sessionsCompleted', goal: 25, reward: 200 },
+  { id: 'a_sessions_100', category: 'study', statKey: 'sessionsCompleted', goal: 100, reward: 500 },
   // Study — hours (totalMinutes)
-  { id: 'a_hours_10', category: 'study', statKey: 'totalMinutes', goal: 600, reward: 100 },
-  { id: 'a_hours_50', category: 'study', statKey: 'totalMinutes', goal: 3000, reward: 250 },
-  { id: 'a_hours_100', category: 'study', statKey: 'totalMinutes', goal: 6000, reward: 500 },
+  { id: 'a_hours_10', category: 'study', statKey: 'totalMinutes', goal: 600, reward: 200 },
+  { id: 'a_hours_50', category: 'study', statKey: 'totalMinutes', goal: 3000, reward: 500 },
+  { id: 'a_hours_100', category: 'study', statKey: 'totalMinutes', goal: 6000, reward: 1000 },
   // Tasks
-  { id: 'a_tasks_10', category: 'tasks', statKey: 'lifetimeTasksCompleted', goal: 10, reward: 75 },
-  { id: 'a_tasks_50', category: 'tasks', statKey: 'lifetimeTasksCompleted', goal: 50, reward: 150 },
-  { id: 'a_tasks_200', category: 'tasks', statKey: 'lifetimeTasksCompleted', goal: 200, reward: 400 },
+  { id: 'a_tasks_10', category: 'tasks', statKey: 'lifetimeTasksCompleted', goal: 10, reward: 150 },
+  { id: 'a_tasks_50', category: 'tasks', statKey: 'lifetimeTasksCompleted', goal: 50, reward: 300 },
+  { id: 'a_tasks_200', category: 'tasks', statKey: 'lifetimeTasksCompleted', goal: 200, reward: 800 },
   // Streak (measured against the longest streak ever reached)
-  { id: 'a_streak_7', category: 'streak', statKey: 'longestStreak', goal: 7, reward: 100 },
-  { id: 'a_streak_30', category: 'streak', statKey: 'longestStreak', goal: 30, reward: 300 },
-  { id: 'a_streak_100', category: 'streak', statKey: 'longestStreak', goal: 100, reward: 750 },
+  { id: 'a_streak_7', category: 'streak', statKey: 'longestStreak', goal: 7, reward: 200 },
+  { id: 'a_streak_30', category: 'streak', statKey: 'longestStreak', goal: 30, reward: 600 },
+  { id: 'a_streak_100', category: 'streak', statKey: 'longestStreak', goal: 100, reward: 1500 },
   // Social
-  { id: 'a_friend_1', category: 'social', statKey: 'lifetimeFriendSessions', goal: 1, reward: 75 },
-  { id: 'a_friend_10', category: 'social', statKey: 'lifetimeFriendSessions', goal: 10, reward: 200 },
+  { id: 'a_friend_1', category: 'social', statKey: 'lifetimeFriendSessions', goal: 1, reward: 150 },
+  { id: 'a_friend_10', category: 'social', statKey: 'lifetimeFriendSessions', goal: 10, reward: 400 },
   // Baking — collect every recipe (goal = total number of recipes).
-  { id: 'a_all_recipes', category: 'recipes', statKey: 'recipesMade', goal: RECIPE_IDS.length, reward: 300 },
+  { id: 'a_all_recipes', category: 'recipes', statKey: 'recipesMade', goal: RECIPE_IDS.length, reward: 600 },
 ];
 
 const ACHIEVEMENT_BY_ID: Record<string, AchievementDef> = Object.fromEntries(

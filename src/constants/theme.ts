@@ -74,6 +74,28 @@ export const BakeryColors = {
   shadow: 'rgba(132, 87, 63, 0.16)',
   glass: 'rgba(255, 252, 247, 0.9)',
   darkGlass: 'rgba(78, 53, 40, 0.76)',
+  // Notebook / drawing theme (additive — see redesign plan). A soft, WARM grid on a
+  // cream `paper` sheet (kept faint + cozy, not worksheet-cold); `ink` is the warm
+  // sketch stroke for hand-drawn card borders + checkboxes.
+  gridLine: 'rgba(222, 178, 132, 0.16)',
+  gridLineMajor: 'rgba(222, 178, 132, 0.16)',
+  paper: '#FFFBF4',
+  ink: '#6E4A38',
+} as const;
+
+// Notebook-redesign card palette: one warm pink → coral → peach → honey family
+// (see the approved design mockup). Each entry is a soft `fill` + a deeper `border`.
+// Rule: cards that carry a colored element on top (a pink tick, a coin, the calendar
+// "today" dot) use `honey` as the base so the accent stays crisp instead of muddying.
+export const PastelCards = {
+  blush:   { fill: '#FCE7EF', border: '#F4C6D6' },
+  rose:    { fill: '#FBE1E8', border: '#F1BDCC' },
+  coral:   { fill: '#FCE9E0', border: '#F2C9B0' },
+  peach:   { fill: '#FDEFDE', border: '#F1D4AB' },
+  apricot: { fill: '#FDF4DC', border: '#EDD8A2' },
+  honey:   { fill: '#FEF9DF', border: '#E9DA96' },
+  // Very light pink-red — the shop item cards.
+  pinkred: { fill: '#FDEEED', border: '#F6CFCC' },
 } as const;
 
 export const BakeryRadii = {

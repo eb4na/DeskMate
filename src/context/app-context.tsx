@@ -294,6 +294,10 @@ type PersistedState = {
 
   // Food / baking
   selectedFoodId: string;
+  // Cosmetic-only: the recipe whose dish sits on the desk WHILE STUDYING. Chosen
+  // separately from `selectedFoodId` (what you're baking) and gated on having
+  // earned that recipe's badge (`madeFoods`). Falls back to `selectedFoodId`.
+  studyDishFoodId?: string;
   // One-time guard: an early build of the starter-chooser auto-switched the home
   // desk to the chosen character's recipe, leaving accounts stuck on the wrong
   // desk ingredients. We reset selectedFoodId to the default once, then flip this
@@ -470,6 +474,7 @@ const DEFAULTS: PersistedState = {
   purchasedCoins: 0,
   multipleReminders: [],
   selectedFoodId: 'strawberry-shortcake',
+  studyDishFoodId: 'strawberry-shortcake',
   deskFoodReset: true,
   madeFoods: [],
   bakedWith: [],
@@ -1045,9 +1050,11 @@ type AppContextType = {
   instagramFollowClaimed: boolean;
   birthday: string | null;
   selectedFoodId: string;
+  studyDishFoodId: string;
   madeFoods: string[];
   bakedWith: string[];
   setSelectedFood: (id: string) => void;
+  setStudyDishFood: (id: string) => void;
   markFoodMade: (id: string) => void;
   hanjiUnlockPending: boolean;
   clearHanjiUnlock: () => void;
@@ -2440,6 +2447,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         activeCompanionId: activeId,
         defaultCompanionId: 'girl',
         selectedFoodId: startingFoodId,
+        studyDishFoodId: startingFoodId,
         deskFoodReset: true,
         ownedShopItems: grants.length ? [...prev.ownedShopItems, ...grants] : prev.ownedShopItems,
       };
@@ -2560,6 +2568,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const setSelectedFood = (id: string) =>
     setS((prev) => ({ ...prev, selectedFoodId: id }));
+
+  // The cosmetic desk dish shown while studying (separate from what you bake).
+  const setStudyDishFood = (id: string) =>
+    setS((prev) => ({ ...prev, studyDishFoodId: id }));
 
   const markFoodMade = (id: string) => {
     // The badge is credited to the character the *recipe* belongs to (each of the
@@ -3065,9 +3077,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         purchasedCoins: s.purchasedCoins,
         multipleReminders: s.multipleReminders,
         selectedFoodId: s.selectedFoodId ?? 'strawberry-shortcake',
+        studyDishFoodId: s.studyDishFoodId ?? s.selectedFoodId ?? 'strawberry-shortcake',
         madeFoods: s.madeFoods ?? [],
         bakedWith: s.bakedWith ?? [],
         setSelectedFood,
+        setStudyDishFood,
         markFoodMade,
         hanjiUnlockPending: s.hanjiUnlockPending ?? false,
         clearHanjiUnlock,

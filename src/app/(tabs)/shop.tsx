@@ -18,6 +18,8 @@ import { DecoIcon, OutfitIcon, ThemeIcon, PoseIcon, GameIcon, ReminderIcon } fro
 import { BakeryStarEmoji } from '@/components/bakery-emoji';
 import { BadgeIcon, MagnifierIcon } from '@/components/settings-icons';
 import { LockOverlay } from '@/components/lock-badge';
+import { CheckBox } from '@/components/check-menu';
+import { NotebookBackground } from '@/components/notebook-background';
 import { ThemedText } from '@/components/themed-text';
 import { FitText } from '@/components/fit-text';
 import { ThemedView } from '@/components/themed-view';
@@ -39,8 +41,10 @@ import {
   BakeryRadii,
   BakeryShadow,
   BottomTabClearance,
+  Fonts,
   MaxContentWidth,
   MIN_POPUP_WIDTH,
+  PastelCards,
   Spacing,
 } from '@/constants/theme';
 
@@ -630,7 +634,8 @@ export default function ShopScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView type="transparent" style={styles.container}>
+      <NotebookBackground />
       {/* ── Fixed header: balance + daily cap ── */}
       <ThemedView style={[styles.header, { paddingTop: (styles.header.paddingTop as number) + insets.top }]}>
         <ThemedView style={styles.headerInner}>
@@ -690,6 +695,11 @@ export default function ShopScreen() {
               return (
                 <Pressable key={cat} onPress={() => setActiveCategory(cat)} style={({ pressed }) => pressed && styles.pressed}>
                   <View style={[styles.catSquare, isTablet && { width: 96 * SHOP_TS, height: 104 * SHOP_TS }, active && styles.catSquareActive]}>
+                    {active && (
+                      <View style={styles.catCheck}>
+                        <CheckBox checked size={isTablet ? 22 * SHOP_TS : 18} color={BakeryColors.buttonPink} />
+                      </View>
+                    )}
                     <CategoryIcon id={cat} size={isTablet ? 60 * SHOP_TS : 36} />
                     <ThemedText style={[styles.catLabel, isTablet && { fontSize: 15 * SHOP_TS, lineHeight: 19 * SHOP_TS }, active && styles.catLabelActive]}>
                       {t(`shop.cat_${cat}`)}
@@ -699,9 +709,6 @@ export default function ShopScreen() {
               );
             })}
           </ScrollView>
-          {catContentW > catViewW && (
-            <HScrollIndicator scrollX={catScrollX} contentW={catContentW} viewW={catViewW} />
-          )}
 
           {activeCategory === 'outfit' && (
             <View style={styles.noteCard}>
@@ -1526,9 +1533,16 @@ const styles = StyleSheet.create({
     borderColor: BakeryColors.shortbread,
   },
   catSquareActive: {
-    borderColor: BakeryColors.honey,
-    backgroundColor: `${BakeryColors.honey}18`,
+    borderColor: BakeryColors.buttonPink,
+    backgroundColor: `${BakeryColors.buttonPink}14`,
   },
+  // Tick badge on the selected category (notebook "check to choose" idiom). Inset onto
+  // the square's rim rather than a negative offset so it sits cleanly on the border.
+  catCheck: { position: 'absolute', top: 2, right: 2, zIndex: 2 },
+  // Serif "menu section" heading for the active category.
+  catHeading: { alignItems: 'center', gap: 6, marginTop: Spacing.two, marginBottom: Spacing.one },
+  catHeadingText: { fontFamily: 'Baloo2', fontSize: 22, color: BakeryColors.cocoaDark, letterSpacing: 0.3 },
+  catHeadingRule: { alignSelf: 'stretch', height: 1, backgroundColor: BakeryColors.shortbread, marginHorizontal: 40 },
 
   catLabel: { fontSize: 10, fontWeight: '600', color: BakeryColors.mocha, lineHeight: 13 },
   catLabelActive: { color: BakeryColors.cocoaDark, fontWeight: '700' },
@@ -1583,10 +1597,10 @@ const styles = StyleSheet.create({
   itemCard: {
     width: CARD,
     borderRadius: BakeryRadii.card,
-    backgroundColor: BakeryColors.glass,
+    backgroundColor: PastelCards.pinkred.fill,
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: BakeryColors.shortbread,
+    borderColor: PastelCards.pinkred.border,
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.two,
     gap: Spacing.two,

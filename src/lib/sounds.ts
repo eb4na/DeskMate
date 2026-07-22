@@ -74,6 +74,7 @@ let tickPool: Pool | null = null;
 let pieceDropPool: Pool | null = null;
 let popPool: Pool | null = null;
 let coinPool: Pool | null = null;
+let paperPool: Pool | null = null;
 
 function getTapPool() {
   if (!tapPool) tapPool = makePool(require('@/assets/sounds/tap.wav'));
@@ -113,6 +114,11 @@ function getPopPool() {
 function getCoinPool() {
   if (!coinPool) coinPool = makePool(require('@/assets/sounds/coin.mp3'), 0.5, 4);
   return coinPool;
+}
+
+function getPaperPool() {
+  if (!paperPool) paperPool = makePool(require('@/assets/sounds/paper.wav'), 0.8, 4);
+  return paperPool;
 }
 
 function play(getPool: () => Pool | null) {
@@ -166,6 +172,9 @@ export function playPop() { play(getPopPool); }
 
 /** Bright "ka-ching" chime for earning coins (rewards, payouts, purchases credit). */
 export function playCoin() { play(getCoinPool); }
+
+/** Soft paper rustle — plays when a checkmark box is ticked (duration pick, task done). */
+export function playPaper() { play(getPaperPool); }
 
 /** Pre-create the pop pool (load the wav + audio players) up front, so the first
  *  use (e.g. tapping the home character) doesn't pay that cost on the tap frame. */

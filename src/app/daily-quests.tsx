@@ -4,32 +4,26 @@
  * the daily earn cap (claimQuestReward in app-context). Counters reset at 12am in the
  * account timezone; unclaimed rewards are forfeited then (use-it-or-lose-it).
  * (Route/file kept as `daily-quests` to avoid router churn; UI reads "Daily Goals".)
+ *
+ * Shown as a CENTERED RECTANGLE POPUP (transparentModal, see _layout.tsx) over the
+ * Progress tab — a real dialog you dismiss with Done / a backdrop tap, not a sheet you
+ * swipe down. A ready-to-claim row shows an obvious pink "Claim" pill (tap the row to
+ * claim); a claimed row shows green.
  */
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { CoinIcon } from '@/components/coin-icon';
+import { MenuHeader, MenuRow } from '@/components/menu-card';
 import { SoundPressable } from '@/components/sound-pressable';
 import { useApp } from '@/context/app-context';
 import { dailyGoalIds, getQuest, type QuestStatKey } from '@/constants/quests';
+import { BakeryColors, BakeryRadii, BakeryShadow, PastelCards, Spacing, popupMaxWidth } from '@/constants/theme';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { useTranslation } from '@/i18n';
 
-const P = {
-  cream: '#FFF8EF',
-  card: '#FFFDF8',
-  pink: '#F7A7B8',
-  pinkSoft: '#FBD9E0',
-  gold: '#E8B14C',
-  goldSoft: '#FBEFD2',
-  green: '#8BCF8B',
-  greenSoft: '#E3F4E3',
-  brown: '#5B3A2E',
-  muted: '#9A7B6D',
-  track: '#F0E2D6',
-} as const;
+const CLAIMED_GREEN = '#8FD3A8';
 
 export default function DailyQuestsScreen() {
   const { t } = useTranslation();
@@ -38,131 +32,112 @@ export default function DailyQuestsScreen() {
   const { quests, claimQuestReward } = useApp();
 
   const ids = dailyGoalIds();
+  const dismiss = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: P.cream }}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <Text style={styles.title}>{t('quests.title')}</Text>
-        <Text style={styles.subtitle}>{t('quests.resetsMidnight')}</Text>
+    <Pressable style={styles.backdrop} onPress={dismiss}>
+      <Pressable style={styles.card} onPress={(e) => e.stopPropagation?.()}>
+        <MenuHeader title={t('quests.title')} subtitle={t('quests.resetsMidnight')} />
 
-        <View style={styles.list}>
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
           {ids.map((id) => {
             const def = getQuest(id);
             if (!def) return null;
             const current = Math.min((quests[def.statKey as QuestStatKey] as number) ?? 0, def.goal);
             const done = current >= def.goal;
             const claimed = quests.claimedToday.includes(id);
-            const pct = Math.max(0, Math.min(1, current / def.goal));
+            const claimable = done && !claimed;
+            const checkColor = claimed ? CLAIMED_GREEN : claimable ? BakeryColors.buttonPink : BakeryColors.latte;
 
             return (
-              <View key={id} style={styles.questCard}>
-                <View style={styles.questTop}>
-                  <View style={styles.questText}>
-                    <Text style={styles.questTitle}>{t(`quests.items.${id}.title`)}</Text>
-                    <Text style={styles.questDesc}>{t(`quests.items.${id}.desc`)}</Text>
-                  </View>
-                  <View style={styles.rewardChip}>
-                    <CoinIcon size={16 * scale} />
-                    <Text style={styles.rewardChipText}>{def.reward}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.track}>
-                  <View style={[styles.fill, { width: `${pct * 100}%` }, done && styles.fillDone]} />
-                </View>
-
-                <View style={styles.questBottom}>
-                  <Text style={styles.progressText}>
-                    {t('quests.progress', { current, goal: def.goal })}
-                  </Text>
-                  {claimed ? (
+              <MenuRow
+                key={id}
+                checkable
+                checked={done}
+                checkColor={checkColor}
+                active={claimable}
+                sound={claimable ? 'confirm' : 'none'}
+                onPress={claimable ? () => claimQuestReward(id) : undefined}
+                name={t(`quests.items.${id}.title`)}
+                sub={`${t(`quests.items.${id}.desc`)}  ·  ${t('quests.progress', { current, goal: def.goal })}`}
+                trailing={
+                  claimed ? (
                     <Text style={styles.claimedText}>{t('quests.claimed')}</Text>
+                  ) : claimable ? (
+                    // Obvious pink "Claim" button so it's clear which rows have a reward
+                    // waiting (the whole row is tappable — see MenuRow onPress above).
+                    <View style={styles.claimPill}>
+                      <Text style={styles.claimPillText}>{t('quests.cardClaim')}</Text>
+                      <CoinIcon size={14 * scale} />
+                      <Text style={styles.claimPillText}>+{def.reward}</Text>
+                    </View>
                   ) : (
-                    <SoundPressable
-                      sound="confirm"
-                      disabled={!done}
-                      onPress={() => claimQuestReward(id)}
-                      style={({ pressed }) => [
-                        styles.claimBtn,
-                        !done && styles.claimBtnDisabled,
-                        pressed && done && styles.pressed,
-                      ]}>
+                    <>
                       <CoinIcon size={16 * scale} />
-                      <Text style={[styles.claimText, !done && styles.claimTextDisabled]}>
-                        {t('quests.claim', { coins: def.reward })}
-                      </Text>
-                    </SoundPressable>
-                  )}
-                </View>
-              </View>
+                      <Text style={styles.reward}>+{def.reward}</Text>
+                    </>
+                  )
+                }
+              />
             );
           })}
-        </View>
+        </ScrollView>
 
         <SoundPressable
           sound="tap"
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+          onPress={dismiss}
           style={({ pressed }) => [styles.doneBtn, pressed && styles.pressed]}>
           <Text style={styles.doneText}>{t('common.done')}</Text>
         </SoundPressable>
-      </SafeAreaView>
-    </ScrollView>
+      </Pressable>
+    </Pressable>
   );
 }
 
 const makeStyles = (s: number) =>
   StyleSheet.create({
-    safe: { flex: 1, paddingHorizontal: 20 * s, alignItems: 'center' },
-    title: { fontSize: 26 * s, fontWeight: '900', color: P.brown, marginTop: 8 * s, textAlign: 'center' },
-    subtitle: { fontSize: 13 * s, color: P.muted, fontWeight: '700', marginTop: 4 * s, marginBottom: 18 * s },
-    list: { alignSelf: 'stretch', gap: 14 * s, width: '100%' },
-    questCard: {
-      backgroundColor: P.card,
-      borderRadius: 20 * s,
-      borderWidth: 2,
-      borderColor: P.pinkSoft,
-      padding: 16 * s,
-      gap: 10 * s,
+    backdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(59, 42, 33, 0.35)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: Spacing.four,
     },
-    questTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 * s },
-    questText: { flex: 1, gap: 3 * s },
-    questTitle: { fontSize: 15.5 * s, fontWeight: '900', color: P.brown },
-    questDesc: { fontSize: 12.5 * s, fontWeight: '600', color: P.muted, lineHeight: 17 * s },
-    rewardChip: {
+    card: {
+      width: '100%',
+      maxWidth: popupMaxWidth(360),
+      maxHeight: '82%',
+      backgroundColor: PastelCards.honey.fill,
+      borderRadius: BakeryRadii.panel,
+      borderWidth: 1.5,
+      borderColor: PastelCards.honey.border,
+      paddingHorizontal: Spacing.three,
+      paddingTop: Spacing.three,
+      paddingBottom: Spacing.three,
+      ...BakeryShadow,
+    },
+    // flexShrink lets the list shrink + scroll only when the card hits its maxHeight;
+    // short lists (daily goals) size to content and don't scroll.
+    scroll: { flexShrink: 1, alignSelf: 'stretch' },
+    scrollBody: { paddingBottom: 2 * s },
+    reward: { fontSize: 15 * s, fontWeight: '900', color: '#C98A2B' },
+    claimedText: { color: CLAIMED_GREEN, fontWeight: '900', fontSize: 13.5 * s },
+    claimPill: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4 * s,
-      backgroundColor: P.goldSoft,
-      borderRadius: 12 * s,
-      paddingHorizontal: 8 * s,
-      paddingVertical: 4 * s,
+      gap: 3 * s,
+      backgroundColor: BakeryColors.buttonPink,
+      borderRadius: 999,
+      paddingHorizontal: 11 * s,
+      paddingVertical: 5 * s,
     },
-    rewardChipText: { fontSize: 13 * s, fontWeight: '900', color: P.gold },
-    track: { height: 10 * s, borderRadius: 6 * s, backgroundColor: P.track, overflow: 'hidden' },
-    fill: { height: '100%', borderRadius: 6 * s, backgroundColor: P.pink },
-    fillDone: { backgroundColor: P.green },
-    questBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    progressText: { fontSize: 12.5 * s, fontWeight: '800', color: P.muted },
-    claimBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6 * s,
-      backgroundColor: P.pink,
-      borderRadius: 14 * s,
-      paddingHorizontal: 14 * s,
-      paddingVertical: 8 * s,
-    },
-    claimBtnDisabled: { backgroundColor: P.track },
-    claimText: { color: '#fff', fontWeight: '900', fontSize: 13.5 * s },
-    claimTextDisabled: { color: P.muted },
-    claimedText: { color: P.green, fontWeight: '900', fontSize: 13.5 * s },
+    claimPillText: { color: BakeryColors.cocoaDark, fontWeight: '900', fontSize: 13 * s },
     doneBtn: {
-      marginTop: 24 * s,
-      marginBottom: 8 * s,
+      marginTop: Spacing.three,
       alignSelf: 'stretch',
       width: '100%',
-      backgroundColor: P.brown,
-      borderRadius: 16 * s,
+      backgroundColor: BakeryColors.buttonPink,
+      borderRadius: 999,
       paddingVertical: 14 * s,
       alignItems: 'center',
     },

@@ -4,36 +4,27 @@
  * Claim button paying bonus coins that bypass the daily earn cap (claimAchievement
  * in app-context). Claimed ones show a check; locked ones show their progress.
  *
- * Laid out by category (Study / Tasks / Streaks / Friends), two cards per row.
+ * Shown as a CENTERED RECTANGLE POPUP (transparentModal, see _layout.tsx) over the
+ * Progress tab — a real dialog you dismiss with Done / a backdrop tap, not a sheet you
+ * swipe down. The list scrolls inside the card when it's taller than the cap. A
+ * ready-to-claim row shows an obvious pink "Claim" pill; claimed rows show green.
  */
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { CoinIcon } from '@/components/coin-icon';
+import { MenuHeader, MenuRow, SectionLabel, SectionRule } from '@/components/menu-card';
 import { SoundPressable } from '@/components/sound-pressable';
 import { useApp } from '@/context/app-context';
 import { ACHIEVEMENTS, type AchievementDef, type AchievementStatKey } from '@/constants/quests';
 import { RECIPE_IDS } from '@/constants/recipes';
+import { BakeryColors, BakeryRadii, BakeryShadow, PastelCards, Spacing, popupMaxWidth } from '@/constants/theme';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { useTranslation } from '@/i18n';
 
-const P = {
-  cream: '#FFF8EF',
-  card: '#FFFDF8',
-  pink: '#F7A7B8',
-  pinkSoft: '#FBD9E0',
-  gold: '#E8B14C',
-  goldSoft: '#FBEFD2',
-  green: '#8BCF8B',
-  brown: '#5B3A2E',
-  muted: '#9A7B6D',
-  track: '#F0E2D6',
-  lockBorder: '#EDE0D4',
-} as const;
+const CLAIMED_GREEN = '#8FD3A8';
 
-// Section order on the screen. Each maps to an i18n category label.
 const CATEGORY_ORDER: AchievementDef['category'][] = ['study', 'tasks', 'streak', 'social', 'recipes'];
 
 export default function AchievementsScreen() {
@@ -50,6 +41,8 @@ export default function AchievementsScreen() {
     claimAchievement,
     madeFoods,
   } = useApp();
+
+  const dismiss = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   const stat = (key: AchievementStatKey): number => {
     switch (key) {
@@ -72,150 +65,132 @@ export default function AchievementsScreen() {
     (a) => !claimedAchievements.includes(a.id) && stat(a.statKey) >= a.goal,
   ).length;
 
-  const renderCard = (a: AchievementDef) => {
+  const renderRow = (a: AchievementDef) => {
     const value = stat(a.statKey);
     const current = Math.min(value, a.goal);
     const done = value >= a.goal;
     const claimed = claimedAchievements.includes(a.id);
-    const pct = Math.max(0, Math.min(1, current / a.goal));
+    const claimable = done && !claimed;
+    const checkColor = claimed ? CLAIMED_GREEN : claimable ? BakeryColors.buttonPink : BakeryColors.latte;
 
     return (
-      <View key={a.id} style={[styles.card, !done && !claimed && styles.cardLocked]}>
-        <View style={styles.cardHead}>
-          <Text style={styles.cardTitle} numberOfLines={2}>
-            {t(`achievements.items.${a.id}.title`)}
-          </Text>
-          <View style={styles.rewardChip}>
-            <CoinIcon size={13 * scale} />
-            <Text style={styles.rewardChipText}>{a.reward}</Text>
-          </View>
-        </View>
-        <Text style={styles.cardDesc}>{t(`achievements.items.${a.id}.desc`)}</Text>
-
-        <View style={styles.cardFooter}>
-          {!claimed && (
-            <View style={styles.trackBar}>
-              <View style={[styles.fill, { width: `${pct * 100}%` }, done && styles.fillDone]} />
-            </View>
-          )}
-          {claimed ? (
+      <MenuRow
+        key={a.id}
+        checkable
+        checked={done}
+        checkColor={checkColor}
+        active={claimable}
+        sound={claimable ? 'confirm' : 'none'}
+        onPress={claimable ? () => claimAchievement(a.id) : undefined}
+        name={t(`achievements.items.${a.id}.title`)}
+        sub={
+          claimed
+            ? t(`achievements.items.${a.id}.desc`)
+            : `${t(`achievements.items.${a.id}.desc`)}  ·  ${t('quests.progress', { current, goal: a.goal })}`
+        }
+        trailing={
+          claimed ? (
             <Text style={styles.claimedText}>{t('achievements.claimed')}</Text>
+          ) : claimable ? (
+            // Obvious pink "Claim" button so it's clear which milestones have a reward
+            // waiting (the whole row is tappable — see MenuRow onPress above).
+            <View style={styles.claimPill}>
+              <Text style={styles.claimPillText}>{t('quests.cardClaim')}</Text>
+              <CoinIcon size={14 * scale} />
+              <Text style={styles.claimPillText}>+{a.reward}</Text>
+            </View>
           ) : (
             <>
-              <Text style={styles.progressText}>
-                {t('quests.progress', { current, goal: a.goal })}
-              </Text>
-              <SoundPressable
-                sound="confirm"
-                disabled={!done}
-                onPress={() => claimAchievement(a.id)}
-                style={({ pressed }) => [
-                  styles.claimBtn,
-                  !done && styles.claimBtnDisabled,
-                  pressed && done && styles.pressed,
-                ]}>
-                <CoinIcon size={14 * scale} />
-                <Text style={[styles.claimText, !done && styles.claimTextDisabled]}>
-                  {t('achievements.claim', { coins: a.reward })}
-                </Text>
-              </SoundPressable>
+              <CoinIcon size={16 * scale} />
+              <Text style={styles.reward}>+{a.reward}</Text>
             </>
-          )}
-        </View>
-      </View>
+          )
+        }
+      />
     );
   };
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: P.cream }}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <Text style={styles.title}>{t('achievements.title')}</Text>
-        <Text style={styles.subtitle}>
-          {unclaimedCount > 0
-            ? t('achievements.readyCount', { count: unclaimedCount })
-            : t('achievements.subtitle')}
-        </Text>
+    <Pressable style={styles.backdrop} onPress={dismiss}>
+      <Pressable style={styles.card} onPress={(e) => e.stopPropagation?.()}>
+        <MenuHeader
+          title={t('achievements.title')}
+          subtitle={
+            unclaimedCount > 0
+              ? t('achievements.readyCount', { count: unclaimedCount })
+              : t('achievements.subtitle')
+          }
+        />
 
-        {CATEGORY_ORDER.map((cat) => {
-          const items = ACHIEVEMENTS.filter((a) => a.category === cat);
-          if (items.length === 0) return null;
-          return (
-            <View key={cat} style={styles.section}>
-              <Text style={styles.sectionTitle}>{t(`achievements.categories.${cat}`)}</Text>
-              <View style={styles.grid}>{items.map(renderCard)}</View>
-            </View>
-          );
-        })}
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
+          {CATEGORY_ORDER.map((cat, ci) => {
+            const items = ACHIEVEMENTS.filter((a) => a.category === cat);
+            if (items.length === 0) return null;
+            return (
+              <View key={cat}>
+                {ci > 0 && <SectionRule />}
+                <SectionLabel>{t(`achievements.categories.${cat}`)}</SectionLabel>
+                {items.map(renderRow)}
+              </View>
+            );
+          })}
+        </ScrollView>
 
         <SoundPressable
           sound="tap"
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+          onPress={dismiss}
           style={({ pressed }) => [styles.doneBtn, pressed && styles.pressed]}>
           <Text style={styles.doneText}>{t('common.done')}</Text>
         </SoundPressable>
-      </SafeAreaView>
-    </ScrollView>
+      </Pressable>
+    </Pressable>
   );
 }
 
 const makeStyles = (s: number) =>
   StyleSheet.create({
-    safe: { flex: 1, paddingHorizontal: 18 * s, alignItems: 'center' },
-    title: { fontSize: 26 * s, fontWeight: '900', color: P.brown, marginTop: 8 * s, textAlign: 'center' },
-    subtitle: { fontSize: 13 * s, color: P.muted, fontWeight: '700', marginTop: 4 * s, marginBottom: 14 * s, textAlign: 'center' },
-    section: { alignSelf: 'stretch', width: '100%', marginBottom: 6 * s },
-    sectionTitle: { fontSize: 16 * s, fontWeight: '900', color: P.brown, marginBottom: 10 * s, marginTop: 6 * s },
-    grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-    card: {
-      width: '48%',
-      marginBottom: 12 * s,
-      backgroundColor: P.card,
-      borderRadius: 18 * s,
-      borderWidth: 2,
-      borderColor: P.pinkSoft,
-      padding: 12 * s,
-      gap: 5 * s,
+    backdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(59, 42, 33, 0.35)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: Spacing.four,
     },
-    cardLocked: { borderColor: P.lockBorder, opacity: 0.92 },
-    cardHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 * s },
-    cardTitle: { flex: 1, fontSize: 14 * s, fontWeight: '900', color: P.brown },
-    cardDesc: { fontSize: 11.5 * s, fontWeight: '600', color: P.muted, lineHeight: 16 * s },
-    rewardChip: {
+    card: {
+      width: '100%',
+      maxWidth: popupMaxWidth(360),
+      maxHeight: '82%',
+      backgroundColor: PastelCards.honey.fill,
+      borderRadius: BakeryRadii.panel,
+      borderWidth: 1.5,
+      borderColor: PastelCards.honey.border,
+      paddingHorizontal: Spacing.three,
+      paddingTop: Spacing.three,
+      paddingBottom: Spacing.three,
+      ...BakeryShadow,
+    },
+    // flexShrink lets the list shrink + scroll once the card hits its maxHeight
+    // (achievements is long); a short list would just size to content.
+    scroll: { flexShrink: 1, alignSelf: 'stretch' },
+    scrollBody: { paddingBottom: 2 * s },
+    reward: { fontSize: 15 * s, fontWeight: '900', color: '#C98A2B' },
+    claimedText: { color: CLAIMED_GREEN, fontWeight: '900', fontSize: 13 * s },
+    claimPill: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 3 * s,
-      backgroundColor: P.goldSoft,
-      borderRadius: 10 * s,
-      paddingHorizontal: 6 * s,
-      paddingVertical: 3 * s,
+      backgroundColor: BakeryColors.buttonPink,
+      borderRadius: 999,
+      paddingHorizontal: 11 * s,
+      paddingVertical: 5 * s,
     },
-    rewardChipText: { fontSize: 12 * s, fontWeight: '900', color: P.gold },
-    // Footer pinned to the bottom so paired cards in a row line their buttons up.
-    cardFooter: { marginTop: 'auto', gap: 7 * s, paddingTop: 4 * s },
-    trackBar: { height: 8 * s, borderRadius: 5 * s, backgroundColor: P.track, overflow: 'hidden' },
-    fill: { height: '100%', borderRadius: 5 * s, backgroundColor: P.pink },
-    fillDone: { backgroundColor: P.green },
-    progressText: { fontSize: 12 * s, fontWeight: '800', color: P.muted },
-    claimBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 5 * s,
-      backgroundColor: P.pink,
-      borderRadius: 13 * s,
-      paddingVertical: 8 * s,
-    },
-    claimBtnDisabled: { backgroundColor: P.track },
-    claimText: { color: '#fff', fontWeight: '900', fontSize: 12.5 * s },
-    claimTextDisabled: { color: P.muted },
-    claimedText: { color: P.green, fontWeight: '900', fontSize: 13 * s, textAlign: 'center' },
+    claimPillText: { color: BakeryColors.cocoaDark, fontWeight: '900', fontSize: 13 * s },
     doneBtn: {
-      marginTop: 14 * s,
-      marginBottom: 8 * s,
+      marginTop: Spacing.three,
       alignSelf: 'stretch',
       width: '100%',
-      backgroundColor: P.brown,
-      borderRadius: 16 * s,
+      backgroundColor: BakeryColors.buttonPink,
+      borderRadius: 999,
       paddingVertical: 14 * s,
       alignItems: 'center',
     },

@@ -10,7 +10,7 @@ import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DateWheelPicker, getTodayISO } from '@/components/date-wheel-picker';
-import { TimeWheelPicker } from '@/components/time-wheel-picker';
+import { TimeWheelPicker, formatTimeLabel } from '@/components/time-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp, MAX_TASKS } from '@/context/app-context';
@@ -267,6 +267,9 @@ export default function AddTaskScreen() {
             {dueDateEnabled ? (
               <>
                 <DateWheelPicker value={dueDate} onChange={setDueDate} />
+                <ThemedText type="smallBold" style={styles.label}>
+                  {t('addTask.timeLabel')}
+                </ThemedText>
                 <ThemedView style={styles.chipRow}>
                   <Pressable
                     onPress={() => setDueTimeEnabled(true)}
@@ -274,7 +277,11 @@ export default function AddTaskScreen() {
                     <ThemedView
                       type={dueTimeEnabled ? 'backgroundSelected' : 'backgroundElement'}
                       style={styles.chip}>
-                      <ThemedText type="small">{t('addTask.pickTime')}</ThemedText>
+                      {/* Show the picked time on the chip so the selected time is
+                          obvious at a glance (not hidden until you scroll a wheel). */}
+                      <ThemedText type="small">
+                        {dueTimeEnabled ? formatTimeLabel(dueTime, use24HourTime) : t('addTask.pickTime')}
+                      </ThemedText>
                     </ThemedView>
                   </Pressable>
                   <Pressable
@@ -283,7 +290,7 @@ export default function AddTaskScreen() {
                     <ThemedView
                       type={!dueTimeEnabled ? 'backgroundSelected' : 'backgroundElement'}
                       style={styles.chip}>
-                      <ThemedText type="small">{t('addTask.noTime')}</ThemedText>
+                      <ThemedText type="small">{t('calendar.anytime')}</ThemedText>
                     </ThemedView>
                   </Pressable>
                 </ThemedView>

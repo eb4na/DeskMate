@@ -4,7 +4,7 @@ import { setPendingDragSession } from '@/lib/drag-session';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
-import { playTick } from '@/lib/sounds';
+import { playPaper } from '@/lib/sounds';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/coin-icon';
@@ -22,6 +22,7 @@ import { SESSION_LENGTHS, autoBreakMinutes, coinsForMinutes, formatCoins } from 
 import { useTranslation } from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
 import { BakeryColors, BakeryRadii, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
+import { CheckBox } from '@/components/check-menu';
 
 const C = BakeryColors;
 const SCREEN_BG = require('@/assets/images/home/session-bg-cakes.png');
@@ -164,7 +165,7 @@ export default function SessionPickerScreen() {
                 <View key={opt.minutes}>
                   <Pressable
                     style={({ pressed }) => [styles.menuRow, isTablet && styles.menuRowTablet, isActive && styles.menuRowActive, pressed && styles.pressed]}
-                    onPress={() => { playTick(); setSelected(opt.minutes); }}>
+                    onPress={() => { playPaper(); setSelected(opt.minutes); }}>
                     <Image source={CARD_IMG[opt.minutes]} style={[styles.menuIcon, isTablet && styles.menuIconTablet]} contentFit="contain" />
                     <View style={styles.menuBody}>
                       <View style={styles.menuTopLine}>
@@ -184,11 +185,8 @@ export default function SessionPickerScreen() {
                         )}
                       </View>
                     </View>
-                    {isActive && (
-                      <View style={[styles.checkBadge, isTablet && styles.checkBadgeTablet]}>
-                        <Text style={[styles.checkIcon, isTablet && styles.checkIconTablet]}>✓</Text>
-                      </View>
-                    )}
+                    {/* Every option shows a box; it fills with a check when picked. */}
+                    <CheckBox checked={isActive} size={isTablet ? Math.round(28 * grow) : 24} color={C.buttonPink} />
                   </Pressable>
                   {i < SESSION_LENGTHS.length - 1 && <View style={styles.menuDivider} />}
                 </View>
@@ -214,9 +212,12 @@ export default function SessionPickerScreen() {
                       { borderColor: isActive ? s.color : C.shortbread, backgroundColor: isActive ? s.color + '2E' : 'rgba(255,255,255,0.6)' },
                     ]}
                     onPress={() => setSelectedSubjectId(isActive ? null : s.id)}>
-                    <Text style={[styles.chipText, isTablet && styles.chipTextTablet, isActive && { color: s.color }]}>
-                      {s.emoji ? `${s.emoji} ` : ''}{localizeSubjectName(s.name, t)}
-                    </Text>
+                    <View style={styles.chipInner}>
+                      {isActive && <CheckBox checked size={isTablet ? Math.round(18 * grow) : 15} color={s.color} />}
+                      <Text style={[styles.chipText, isTablet && styles.chipTextTablet, isActive && { color: s.color }]}>
+                        {s.emoji ? `${s.emoji} ` : ''}{localizeSubjectName(s.name, t)}
+                      </Text>
+                    </View>
                   </Pressable>
                 );
               })}
@@ -369,6 +370,7 @@ const makeStyles = (g: number) => StyleSheet.create({
   // Subject chips
   chipRow: { flexDirection: 'row', gap: 8 * g, alignItems: 'center', paddingRight: 8 * g, paddingVertical: 2 * g },
   chip: { borderRadius: BakeryRadii.pill, borderWidth: 1.5, paddingHorizontal: 13 * g, paddingVertical: 8 * g },
+  chipInner: { flexDirection: 'row', alignItems: 'center', gap: 5 * g },
   chipAdd: { borderColor: C.jam, borderStyle: 'dashed', backgroundColor: 'transparent' },
   chipText: { fontSize: 13.5 * g, color: C.mocha, fontWeight: '700' },
 

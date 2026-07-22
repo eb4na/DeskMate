@@ -12,6 +12,7 @@ import { ChartIcon, MusicNoteIcon, PawIcon } from '@/components/settings-icons';
 import { StreakFreezeIcon } from '@/components/streak-freeze-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { NotebookBackground } from '@/components/notebook-background';
 import { daysBetween, todayISO, useApp } from '@/context/app-context';
 import { ACHIEVEMENTS, dailyGoalIds, getQuest } from '@/constants/quests';
 import { RECIPE_IDS } from '@/constants/recipes';
@@ -27,6 +28,7 @@ import {
   BakeryShadow,
   BottomTabClearance,
   MaxContentWidth,
+  PastelCards,
   Spacing,
 } from '@/constants/theme';
 
@@ -149,18 +151,20 @@ export default function ProgressScreen() {
     claimable,
     allClaimedKey,
     onPress,
+    tint,
   }: {
     title: string;
     items: RankRow[];
     claimable: boolean;
     allClaimedKey: string;
     onPress: () => void;
+    tint: { fill: string; border: string };
   }) => (
     <Pressable
       key={title}
       style={({ pressed }) => [styles.dgCard, pressed && { opacity: 0.85 }]}
       onPress={onPress}>
-      <ThemedView type="backgroundElement" style={styles.dgCardInner}>
+      <ThemedView type="transparent" style={[styles.dgCardInner, { backgroundColor: tint.fill, borderColor: tint.border }]}>
         <ThemedView type="transparent" style={styles.dgHead}>
           <FitText type="smallBold" numberOfLines={1} style={styles.dgTitle}>
             {title}
@@ -199,9 +203,18 @@ export default function ProgressScreen() {
         </ThemedView>
 
         <ThemedView type="transparent" style={styles.dgFoot}>
-          <ThemedText type="small" style={styles.weekReportLink}>
-            {claimable ? t('quests.cardClaim') : t('quests.cardOpen')}
-          </ThemedText>
+          {claimable ? (
+            // A filled pill reads as an actionable "there's a reward waiting" button
+            // (tapping the card opens the list where each ready item has its own
+            // Claim button) — clearer than a plain text link that looks passive.
+            <View style={styles.dgClaimPill}>
+              <ThemedText type="small" style={styles.dgClaimPillText}>{t('quests.cardClaim')}</ThemedText>
+            </View>
+          ) : (
+            <ThemedText type="small" style={styles.weekReportLink}>
+              {t('quests.cardOpen')}
+            </ThemedText>
+          )}
         </ThemedView>
       </ThemedView>
     </Pressable>
@@ -286,7 +299,8 @@ export default function ProgressScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView type="transparent" style={styles.container}>
+      <NotebookBackground />
       <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollBox}>
         <SafeAreaView style={styles.safeArea}>
           <ThemedText type="subtitle" style={styles.title}>
@@ -336,6 +350,7 @@ export default function ProgressScreen() {
               claimable: questClaimable,
               allClaimedKey: 'quests.allClaimed',
               onPress: () => router.push('/daily-quests'),
+              tint: PastelCards.honey,
             })}
             {renderProgressSquare({
               title: t('achievements.title'),
@@ -343,6 +358,7 @@ export default function ProgressScreen() {
               claimable: achievementClaimable,
               allClaimedKey: 'achievements.allClaimed',
               onPress: () => router.push('/achievements'),
+              tint: PastelCards.honey,
             })}
           </View>
 
@@ -560,7 +576,7 @@ export default function ProgressScreen() {
 }
 
 const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: BakeryColors.frosting },
+  container: { flex: 1 },
   // Keep the whole scroll above the floating menu bar so it stays fully visible
   // and content never scrolls underneath it.
   scrollBox: { flex: 1, marginBottom: BottomTabClearance },
@@ -580,9 +596,9 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two * s,
-    backgroundColor: BakeryColors.glass,
+    backgroundColor: PastelCards.coral.fill,
     borderWidth: 1.5,
-    borderColor: BakeryColors.shortbread,
+    borderColor: PastelCards.coral.border,
     ...BakeryShadow,
   },
   accountInfo: { flex: 1, gap: 2 * s },
@@ -600,9 +616,9 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     padding: Spacing.four * s,
     gap: Spacing.one * s,
     alignItems: 'center',
-    backgroundColor: BakeryColors.glass,
+    backgroundColor: PastelCards.apricot.fill,
     borderWidth: 1.5,
-    borderColor: BakeryColors.shortbread,
+    borderColor: PastelCards.apricot.border,
     ...BakeryShadow,
   },
   streakFireIcon: {
@@ -619,9 +635,9 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     padding: Spacing.two * s,
     alignItems: 'center',
     gap: 2 * s,
-    backgroundColor: BakeryColors.glass,
+    backgroundColor: PastelCards.rose.fill,
     borderWidth: 1.5,
-    borderColor: BakeryColors.shortbread,
+    borderColor: PastelCards.rose.border,
   },
   statValue: { fontSize: 26 * s, fontWeight: '700', lineHeight: 32 * s },
   statLabel: { textAlign: 'center', fontSize: 11 * s },
@@ -745,9 +761,9 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: BakeryColors.glass,
+    backgroundColor: PastelCards.honey.fill,
     borderWidth: 1.5,
-    borderColor: BakeryColors.shortbread,
+    borderColor: PastelCards.honey.border,
   },
   weekLeft: { gap: 2 * s, flex: 1 },
   weekRight: { flexDirection: 'row', alignItems: 'center', gap: 6 * s },
@@ -780,4 +796,12 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   dgFill: { height: '100%', borderRadius: 5 * s, backgroundColor: '#F4A6B6' },
   dgFillDone: { backgroundColor: '#F2607E' },
   dgFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
+  // Filled "Claim" pill shown on a card's footer when a reward is ready.
+  dgClaimPill: {
+    backgroundColor: BakeryColors.buttonPink,
+    borderRadius: 999,
+    paddingHorizontal: 14 * s,
+    paddingVertical: 5 * s,
+  },
+  dgClaimPillText: { color: BakeryColors.cocoaDark, fontWeight: '900' },
 });

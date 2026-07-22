@@ -226,6 +226,16 @@ export function getCompanionSkins(companionId: string): BunSkin[] {
   return COMPANION_SKINS[companionId] ?? [];
 }
 
+/** True when a skin is obtainable from the shop with coins: the free default
+ * (no SKU), or a real shop SKU that isn't Plus-exclusive. Plus-only or unsold
+ * skins return false — used to hide them from the starter-chooser preview, which
+ * only advertises what a new player can actually buy. */
+export function isSkinShopObtainable(skin: BunSkin): boolean {
+  if (!skin.shopItemId) return true;
+  const item = SHOP_ITEMS.find((i) => i.id === skin.shopItemId);
+  return !!item && !item.plusOnly;
+}
+
 export function getCompanionSkinImage(companionId: string, skinId: string | null | undefined): number | null {
   const skins = COMPANION_SKINS[companionId];
   if (!skins) return null;

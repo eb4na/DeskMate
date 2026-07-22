@@ -16,7 +16,6 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { CountdownShape } from '@/components/countdown-shapes';
 
 import {
-  BakeryBellEmoji,
   BakeryCakeEmoji,
   BakeryCalendarEmoji,
   BakeryCheckEmoji,
@@ -26,7 +25,8 @@ import type { ExamCountdown, Task } from '@/context/app-context';
 import i18n, { useTranslation } from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
 import { formatMinutesShort } from '@/lib/format-duration';
-import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } from '@/constants/theme';
+import { formatTimeLabel } from '@/components/time-wheel-picker';
+import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, PastelCards, Spacing } from '@/constants/theme';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { useReportModalTransition } from '@/lib/modal-traffic';
 
@@ -79,12 +79,6 @@ function TaskPreviewCard({ task }: { task: Task }) {
         {done && <BakeryCheckEmoji size={13} />}
       </Pressable>
 
-      {task.notifyAt && (
-        <View style={styles.taskIcon}>
-          <BakeryBellEmoji size={20} />
-        </View>
-      )}
-
       <View style={styles.taskCardBody}>
         <Text style={[styles.taskTitle, done && styles.taskTitleDone]} numberOfLines={2}>
           {task.title}
@@ -98,12 +92,7 @@ function TaskPreviewCard({ task }: { task: Task }) {
               </Text>
             </View>
           )}
-          {time && (
-            <View style={styles.taskMetaTimeRow}>
-              <BakeryBellEmoji size={12} />
-              <Text style={styles.taskMetaText}>{time}</Text>
-            </View>
-          )}
+          {time && <Text style={styles.taskMetaText}>{time}</Text>}
           {task.estimatedMinutes ? <Text style={styles.taskMetaText}>{formatMinutesShort(task.estimatedMinutes, (k, o) => i18n.t(k, o))}</Text> : null}
         </View>
       </View>
@@ -267,7 +256,12 @@ function TaskSlider() {
     () =>
       tasks
         .filter((t) => t.status !== 'done')
-        .sort((a, b) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999'))
+        // Soonest first; within a day, timed tasks (by time) come before untimed.
+        .sort((a, b) =>
+          ((a.dueDate ?? '9999') + (a.dueTime ?? '99:99')).localeCompare(
+            (b.dueDate ?? '9999') + (b.dueTime ?? '99:99'),
+          ),
+        )
         .slice(0, 20),
     [tasks],
   );
@@ -337,10 +331,18 @@ function ExamPreviewCard({ exam }: { exam: ExamCountdown }) {
 
 // ─── tapped-day tasks modal ──────────────────────────────────────────────────
 function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => void }) {
-  const { tasks, examCountdowns } = useApp();
+  const { tasks, examCountdowns, use24HourTime } = useApp();
+  const { height: winH } = useWindowDimensions();
   useReportModalTransition(!!iso);
   const dayTasks = iso ? tasks.filter((t) => t.dueDate?.slice(0, 10) === iso) : [];
   const dayExams = iso ? examCountdowns.filter((e) => e.dateISO.slice(0, 10) === iso) : [];
+
+  // Time-blocking agenda: tasks with a time laid out in chronological order (each
+  // with its time in a left gutter), then the untimed ones grouped under "Anytime".
+  const timedTasks = dayTasks
+    .filter((t) => t.dueTime)
+    .sort((a, b) => (a.dueTime ?? '').localeCompare(b.dueTime ?? ''));
+  const untimedTasks = dayTasks.filter((t) => !t.dueTime);
 
   return (
     <Modal visible={!!iso} transparent animationType="fade" onRequestClose={onClose}>
@@ -355,14 +357,40 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
           </View>
 
           {(dayExams.length > 0 || dayTasks.length > 0) && (
-            <View style={styles.previewList}>
+            // Bound the agenda to ~half the screen so a packed day scrolls inside the
+            // card (scroll bar = "what's next" slider) instead of overflowing it and
+            // pushing the Add-task button off screen.
+            <ScrollView
+              style={{ maxHeight: winH * 0.5 }}
+              contentContainerStyle={styles.previewList}
+              showsVerticalScrollIndicator
+              bounces={false}>
               {dayExams.map((e) => (
                 <ExamPreviewCard key={e.id} exam={e} />
               ))}
-              {dayTasks.map((t) => (
-                <TaskPreviewCard key={t.id} task={t} />
+              {/* Timed tasks — chronological, with a time gutter on the left. */}
+              {timedTasks.map((t) => (
+                <View key={t.id} style={styles.agendaRow}>
+                  <Text style={styles.agendaTime}>{formatTimeLabel(t.dueTime!, use24HourTime)}</Text>
+                  <View style={styles.agendaCard}>
+                    <TaskPreviewCard task={t} />
+                  </View>
+                </View>
               ))}
-            </View>
+              {/* Untimed tasks — grouped under an "Anytime" heading. When there are
+                  also timed tasks, indent this group by the time-gutter width so its
+                  cards line up (same width) with the timed cards above. */}
+              {untimedTasks.length > 0 && (
+                <View style={[styles.agendaUntimed, timedTasks.length > 0 && styles.agendaUntimedIndent]}>
+                  {timedTasks.length > 0 && (
+                    <Text style={styles.agendaAnytimeLabel}>{i18n.t('calendar.anytime')}</Text>
+                  )}
+                  {untimedTasks.map((t) => (
+                    <TaskPreviewCard key={t.id} task={t} />
+                  ))}
+                </View>
+              )}
+            </ScrollView>
           )}
 
           <Pressable
@@ -542,10 +570,11 @@ const styles = StyleSheet.create({
 
   // Card
   card: {
-    backgroundColor: C.glass,
+    // Calendar: a very light, faintly orange warm cream.
+    backgroundColor: '#FEF8F1',
     borderRadius: BakeryRadii.panel,
     borderWidth: 1.5,
-    borderColor: C.shortbread,
+    borderColor: '#F2E1CC',
     padding: CARD_PAD,
     gap: Spacing.two,
     ...BakeryShadow,
@@ -611,6 +640,15 @@ const styles = StyleSheet.create({
   },
   previewDate: { fontSize: 14, fontWeight: '800', color: C.cocoaDark },
   previewList: { gap: Spacing.two },
+  // Time-blocking agenda: a fixed left gutter shows each task's time next to its card.
+  agendaRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  agendaTime: { width: 62, fontSize: 12.5, fontWeight: '800', color: C.jam, textAlign: 'right' },
+  agendaCard: { flex: 1 },
+  agendaUntimed: { gap: Spacing.two, marginTop: Spacing.one },
+  // Match the time-gutter (agendaTime width 62 + agendaRow gap) so untimed cards
+  // sit at the same left edge — and therefore the same width — as the timed cards.
+  agendaUntimedIndent: { marginLeft: 62 + Spacing.two },
+  agendaAnytimeLabel: { fontSize: 12, fontWeight: '800', color: C.mocha, marginLeft: 2 },
 
   taskCard: {
     flexDirection: 'row',

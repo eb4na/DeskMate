@@ -1,7 +1,7 @@
 import { Asset } from 'expo-asset';
 import { Image } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
@@ -9,7 +9,7 @@ import { FOOD_ITEMS } from '@/app/food-gallery';
 import { starterRecipe } from '@/constants/recipes';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
-import { localizeCompanionName, STARTER_CHOICES } from '@/lib/companion-utils';
+import { BUN_SKINS, getCompanionSkins, isSkinShopObtainable, localizeCompanionName, localizeOutfitName, STARTER_CHOICES } from '@/lib/companion-utils';
 import { showLoadingScreen } from '@/lib/loading-signal';
 import { playSwoosh, playTapConfirm } from '@/lib/sounds';
 
@@ -40,6 +40,22 @@ function Chevron({ dir, size = 30 }: { dir: 'left' | 'right'; size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path d={d} stroke="#FFFFFF" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </Svg>
+  );
+}
+
+// A little cat head (ears + head silhouette, deliberately faceless per the repo's
+// no-faces-on-icons rule), marking the "see all skins" button.
+function Cat({ size = 16, color = '#FFFFFF' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M6 3.5l3 2.4c.9-.4 1.9-.6 3-.6s2.1.2 3 .6l3-2.4v4.3c1.2 1.3 2 3 2 4.9 0 4.1-3.6 7.3-8 7.3s-8-3.2-8-7.3c0-1.9.8-3.6 2-4.9V3.5z"
+        fill={color}
+        stroke={color}
+        strokeWidth={0.6}
+        strokeLinejoin="round"
+      />
     </Svg>
   );
 }
@@ -96,6 +112,19 @@ export function StarterChooser() {
   ).current;
 
   const name = localizeCompanionName(choice.name, t);
+
+  // The shop-obtainable wardrobe for the focused character — Bun's skins live in
+  // BUN_SKINS (her active id is the starter id, not `shop:*`); everyone else's are
+  // keyed by their shop active id. Plus-only / unsold looks are filtered out so the
+  // preview only shows what a new player can actually buy.
+  const skins = (choice.activeId === 'starter:girl' ? BUN_SKINS : getCompanionSkins(choice.activeId)).filter(
+    isSkinShopObtainable,
+  );
+  const [outfitsOpen, setOutfitsOpen] = useState(false);
+  const openOutfits = () => {
+    playTapConfirm();
+    setOutfitsOpen(true);
+  };
 
   // The signature recipe granted alongside this character (Bun's is free for
   // everyone). Shown as a small "comes with" chip — the character is the focus,
@@ -179,9 +208,18 @@ export function StarterChooser() {
           <Text style={styles.tagline}>
             {TAGLINE_KEYS[choice.name] ? t(TAGLINE_KEYS[choice.name]) : t('gallery.defaultTagline')}
           </Text>
-          <View style={styles.recipeChip}>
-            <Image source={recipeImage} style={styles.recipeImage} contentFit="contain" />
-            <Text style={styles.recipeText}>{t('starter.comesWith', { recipe: recipeName })}</Text>
+          <View style={styles.chipRow}>
+            <View style={styles.recipeChip}>
+              <Image source={recipeImage} style={styles.recipeImage} contentFit="contain" />
+              <Text style={styles.recipeText}>{t('starter.comesWith', { recipe: recipeName })}</Text>
+            </View>
+            <Pressable
+              onPress={openOutfits}
+              hitSlop={6}
+              style={({ pressed }) => [styles.skinsChip, pressed && styles.pressed]}>
+              <Cat />
+              <Text style={styles.skinsChipText}>{t('starter.seeOutfits')}</Text>
+            </Pressable>
           </View>
           <View style={styles.dots}>
             {STARTER_CHOICES.map((c, i) => (
@@ -199,6 +237,38 @@ export function StarterChooser() {
           </Pressable>
         </View>
       </SafeAreaView>
+      )}
+
+      {/* Outfit preview — an in-screen overlay (NOT a native Modal) showing every
+          look the focused character can wear, so the player can browse a character's
+          wardrobe before choosing. Preview only; outfits are unlocked later in the shop. */}
+      {outfitsOpen && !submitting && (
+        <Pressable style={styles.confirmBackdrop} onPress={() => setOutfitsOpen(false)}>
+          <Pressable style={styles.outfitsCard} onPress={() => {}}>
+            <Text style={styles.confirmTitle}>{t('starter.outfitsTitle', { name })}</Text>
+            <Text style={styles.outfitsNote}>{t('starter.outfitsNote')}</Text>
+            <ScrollView
+              style={styles.outfitsScroll}
+              contentContainerStyle={styles.outfitsGrid}
+              showsVerticalScrollIndicator={false}>
+              {skins.map((skin) => (
+                <View key={skin.id} style={styles.outfitCell}>
+                  <View style={styles.outfitThumb}>
+                    <Image source={skin.image} style={styles.outfitImage} contentFit="contain" />
+                  </View>
+                  <Text style={styles.outfitName} numberOfLines={1}>
+                    {localizeOutfitName(skin.name, t)}
+                  </Text>
+                </View>
+              ))}
+            </ScrollView>
+            <Pressable
+              onPress={() => setOutfitsOpen(false)}
+              style={({ pressed }) => [styles.confirmBtn, styles.confirmYesBtn, pressed && styles.pressed]}>
+              <Text style={styles.confirmText}>{t('starter.outfitsClose')}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
       )}
 
       {/* Are-you-sure card — an in-screen overlay (NOT a native Modal, which could
@@ -296,6 +366,25 @@ const styles = StyleSheet.create({
   },
   recipeImage: { width: 22, height: 22, backgroundColor: 'transparent' },
   recipeText: { fontSize: 12.5, color: P.brown, fontWeight: '700' },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 8 },
+  // The "see all skins" button — a pink pill with a t-shirt icon, sitting beside
+  // the "comes with" recipe chip.
+  skinsChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingLeft: 10,
+    paddingRight: 13,
+    borderRadius: 999,
+    backgroundColor: P.pink,
+    shadowColor: '#C9A18A',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+  },
+  skinsChipText: { fontSize: 12.5, color: '#FFFFFF', fontWeight: '800' },
   dots: { flexDirection: 'row', gap: 8, marginTop: 4 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: P.pinkSoft },
   dotActive: { backgroundColor: P.pink, width: 22 },
@@ -345,6 +434,41 @@ const styles = StyleSheet.create({
   },
   confirmImage: { width: 120, height: 120, backgroundColor: 'transparent' },
   confirmTitle: { fontSize: 20, fontWeight: '900', color: P.brown, textAlign: 'center' },
+
+  // Outfit preview overlay — a taller card with a scrollable 3-up grid of looks.
+  outfitsCard: {
+    width: '100%',
+    maxWidth: 360,
+    maxHeight: '82%',
+    backgroundColor: P.card,
+    borderRadius: 24,
+    paddingVertical: 22,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    gap: 8,
+    shadowColor: '#5B3A2E',
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  outfitsNote: { fontSize: 13, color: P.mutedBrown, fontWeight: '600', textAlign: 'center' },
+  outfitsScroll: { alignSelf: 'stretch', marginVertical: 6 },
+  outfitsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, paddingVertical: 4 },
+  outfitCell: { width: '30%', alignItems: 'center', gap: 5 },
+  outfitThumb: {
+    width: '100%',
+    aspectRatio: 0.9,
+    borderRadius: 16,
+    backgroundColor: P.cream,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: P.pinkSoft,
+  },
+  outfitImage: { width: '92%', height: '92%', backgroundColor: 'transparent' },
+  outfitName: { fontSize: 11.5, fontWeight: '700', color: P.brown, textAlign: 'center' },
   confirmBody: { fontSize: 14, color: P.mutedBrown, fontWeight: '600', textAlign: 'center', lineHeight: 20 },
   confirmYesBtn: { alignSelf: 'stretch', marginTop: 6 },
   confirmBackText: { fontSize: 14.5, fontWeight: '700', color: P.mutedBrown, padding: 6 },

@@ -172,6 +172,23 @@ function HostCrown({ size }: { size: number }) {
   );
 }
 
+// A small dish of the recipe you're currently baking (`selectedFoodId`), set on
+// the desk just to the RIGHT of your study book while a session runs — then it
+// springs finished out of the timer at the end (RecipePop). Only YOUR own recipe
+// shows (nobody else's is synced); it's sized off the book and tucked tight so a
+// crowded multiplayer row still reads clean. Transparent-corner PNG → transparent
+// bg + contain (per repo art rules).
+function DeskDish({ image, size }: { image: number | { uri: string }; size: number }) {
+  return (
+    <Image
+      source={image}
+      style={{ width: size, height: size, backgroundColor: 'transparent' }}
+      contentFit="contain"
+      pointerEvents="none"
+    />
+  );
+}
+
 /**
  * The "studying together" screen shown while a session runs. Works solo (one
  * participant) or in a synced study room (up to 3). The session lifecycle
@@ -242,6 +259,7 @@ export function StudyRoomView({
     updateStreak,
     companionMinutes,
     selectedFoodId,
+    studyDishFoodId,
     equippedShopItems,
     ownedShopItems,
     setEquippedSound,
@@ -422,8 +440,17 @@ export function StudyRoomView({
     return () => { sub.remove(); if (timer) clearTimeout(timer); cancelComeBackNudge(nudgeId); cancelComeBackNudge(breakNudgeId); };
   }, []);
 
-  // The baked recipe's dish art (springs out of the timer when the session ends).
+  // The baked recipe's dish art — springs out of the timer when the session ends
+  // (RecipePop). This is what you MADE, so it always tracks `selectedFoodId`.
   const dishImage = (FOOD_ITEMS.find((f) => f.id === selectedFoodId) ?? FOOD_ITEMS[0]).image;
+  // The dish that sits on the desk WHILE STUDYING is a separate, cosmetic choice
+  // (`studyDishFoodId`, badge-gated in the Bakery Menu) and can carry a plated
+  // "study" art variant distinct from the menu image.
+  const studyDish = FOOD_ITEMS.find((f) => f.id === studyDishFoodId) ?? FOOD_ITEMS.find((f) => f.id === selectedFoodId) ?? FOOD_ITEMS[0];
+  const deskDishImage = studyDish.studyImage ?? studyDish.image;
+  // Hide the desk dish the moment the session finishes so it doesn't sit alongside
+  // the copy RecipePop springs out of the timer (avoids a duplicate dish).
+  const showDeskDish = secondsLeft > 0 && !finishing;
   // In a room everyone studies on the host's desk; solo uses my equipped desk.
   const deskRoomId = room.active && room.hostDeskId ? room.hostDeskId : equippedDeskRoomId;
   const deskRoom = ROOM_PAIRS.find((r) => r.id === deskRoomId);
@@ -1018,7 +1045,11 @@ export function StudyRoomView({
           /* Focus mode: just the countdown, in the opposite colour to the background. */
           <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.3} style={[styles.focusTimer, { color: focusFg }]}>{format(displaySecs)}</Text>
         ) : (<>
-        {/* Oven sign removed for now — just the bare countdown number. */}
+        {/* Oven sign removed for now — just the bare countdown number. NOTE: the
+            StudyOven SVG (study-oven.tsx) is built and ready to frame the timer, but it
+            was deliberately swapped out on 2026-06-28 when the timer was ENLARGED
+            (Baloo2), so re-mounting it needs the countdown resized to fit the glass
+            panel — do that with a live screenshot, not blind. */}
         <View style={styles.timerText}>
           <OutlinedTimer
             value={format(displaySecs)}
@@ -1206,6 +1237,22 @@ export function StudyRoomView({
               }}>
               <StudyBook active={!onBreak} size={soloBookSizeT} coverColor={soloBookColor} />
             </View>
+            {/* Recipe dish, tucked just to the RIGHT of the book (same baseline). */}
+            {showDeskDish && (
+              <View
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  // Lifted up the desk (toward the character) so the dish sits
+                  // closer to them, not stranded at the front edge.
+                  bottom: deskTopT - 1.05 * soloBookSizeT + 42 - winH * 0.012 + Math.round(soloBookSizeT * 0.25),
+                  alignItems: 'center',
+                  transform: [{ translateX: Math.round(soloBookSizeT * 0.6) }],
+                }}>
+                <DeskDish image={deskDishImage} size={Math.round(soloBookSizeT * 0.56)} />
+              </View>
+            )}
           </View>
         ) : (
           // HARD CAP (like tablet): clip to the desk's top line (deskEdgeY) with
@@ -1226,6 +1273,21 @@ export function StudyRoomView({
               }}>
               <StudyBook active={!onBreak} size={145} coverColor={soloBookColor} />
             </View>
+            {/* Recipe dish, tucked just to the RIGHT of the book (same baseline). */}
+            {showDeskDish && (
+              <View
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  alignItems: 'center',
+                  // Lifted up the desk (toward the character); see tablet block.
+                  bottom: deskEdgeY - 1.05 * 145 + 42 - winH * 0.012 + Math.round(145 * 0.25),
+                  transform: [{ translateX: Math.round(145 * 0.6) }],
+                }}>
+                <DeskDish image={deskDishImage} size={Math.round(145 * 0.56)} />
+              </View>
+            )}
           </View>
         )
       ) : (
@@ -1264,6 +1326,27 @@ export function StudyRoomView({
                     size={partyBookSize}
                     coverColor={cover}
                   />
+                  {/* MY recipe dish, tucked tight to the right of my own book. Only
+                      mine shows (others' recipes aren't synced); kept small + close so
+                      it can't crowd a neighbour's column in a full 3-person row. */}
+                  {p.code === friendCode && showDeskDish && (
+                    <View
+                      pointerEvents="none"
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        alignItems: 'center',
+                        // translateX kept modest so the dish's right edge clears the
+                        // right-neighbour's book in a full 3-person phone row (worst
+                        // case ≈6px box clearance at winW=402; more in practice since
+                        // `contain` leaves transparent padding around the dish art).
+                        transform: [{ translateX: Math.round(partyBookSize * 0.5) }],
+                      }}>
+                      <DeskDish image={deskDishImage} size={Math.round(partyBookSize * 0.48)} />
+                    </View>
+                  )}
                 </View>
               );
             })}

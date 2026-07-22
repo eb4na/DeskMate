@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
+import { playPaper } from '@/lib/sounds';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -10,6 +11,9 @@ import { BakeryBellEmoji } from '@/components/bakery-emoji';
 import { CountdownShape } from '@/components/countdown-shapes';
 import { LockBadge } from '@/components/lock-badge';
 import { FitText } from '@/components/fit-text';
+import { CheckBox } from '@/components/check-menu';
+import { NotebookBackground } from '@/components/notebook-background';
+import { MenuCard } from '@/components/menu-card';
 import { TaskCalendar } from '@/components/task-calendar';
 import { formatTimeLabel } from '@/components/time-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
@@ -26,6 +30,7 @@ import {
   BakeryShadow,
   BottomTabClearance,
   MaxContentWidth,
+  PastelCards,
   Spacing,
 } from '@/constants/theme';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
@@ -118,7 +123,7 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: {
   const isDone = task.status === 'done';
 
   return (
-    <ThemedView type="backgroundElement" style={[styles.taskRow, isDone && styles.taskRowDone]}>
+    <ThemedView type="transparent" style={[styles.taskRow, isDone && styles.taskRowDone]}>
       {/* Content */}
       <Pressable style={styles.taskContent} onPress={onEdit}>
         <View style={styles.taskTitleRow}>
@@ -159,11 +164,11 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: {
         {/* Finished / not-finished toggle. Plays the confirm sound only when
             completing a task (not when un-completing one). */}
         <SoundPressable
-          sound={isDone ? 'none' : 'confirm'}
+          sound="none"
           style={styles.actionBtn}
           onPress={onToggle}
           hitSlop={8}>
-          <View style={[styles.statusDot, isDone ? styles.statusDotDone : styles.statusDotTodo]} />
+          <CheckBox checked={isDone} size={22 * cardScale} color={BakeryColors.buttonPink} />
         </SoundPressable>
         <Pressable style={[styles.actionBtn, styles.trashBtn]} onPress={onDelete} hitSlop={8}>
           <TrashIcon size={18 * cardScale} />
@@ -274,6 +279,7 @@ export default function TasksScreen() {
     if (task.status !== 'done') {
       // Mark finished. A repeating task rolls its due date forward instead of
       // finishing, so reschedule its reminder to the next occurrence.
+      playPaper(); // paper rustle when a task is checked off
       const rollover = task.repeatDays?.length ? computeTaskRollover(task) : null;
       completeTask(task.id);
       if (rollover) {
@@ -307,15 +313,16 @@ export default function TasksScreen() {
   );
 
   return (
-    <ThemedView style={styles.container}>
+    <View style={styles.root}>
+      <NotebookBackground />
       <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollBox}>
         <SafeAreaView style={styles.safeArea}>
           {/* Header */}
-          <ThemedView style={styles.header}>
+          <ThemedView type="transparent" style={styles.header}>
             <ThemedText type="subtitle" style={styles.title}>
               {t('tasks.title')}
             </ThemedText>
-            <ThemedView style={styles.headerActions}>
+            <ThemedView type="transparent" style={styles.headerActions}>
               <SoundPressable
                 style={({ pressed }) => [styles.manageBtn, pressed && styles.pressed]}
                 onPress={() => router.push(canAddExam ? '/add-exam' : '/plus-upgrade')}>
@@ -334,7 +341,7 @@ export default function TasksScreen() {
 
           {/* Needs attention (avoidance tracker) */}
           {needsAttention.length > 0 && (
-            <ThemedView style={styles.section}>
+            <ThemedView type="transparent" style={styles.section}>
               <ThemedText type="smallBold" style={styles.sectionTitle}>
                 {t('tasks.needsAttention')}
               </ThemedText>
@@ -360,7 +367,7 @@ export default function TasksScreen() {
           )}
 
           {/* Tasks dropdown — paginated 5 at a time */}
-          <ThemedView style={styles.section}>
+          <ThemedView type="transparent" style={styles.section}>
             {renderDropdownHeader(showTasks, t('tasks.notStarted'), todo.length, () => setShowTasks((v) => !v))}
             {showTasks && (
               todo.length === 0 ? (
@@ -371,9 +378,9 @@ export default function TasksScreen() {
                 </ThemedView>
               ) : (
                 <>
-                  <ThemedView style={styles.taskList}>
+                  <MenuCard fill={PastelCards.honey.fill} border={PastelCards.honey.border} style={styles.taskList}>
                     {todoPager.slice(todo).map(renderTaskRow)}
-                  </ThemedView>
+                  </MenuCard>
                   {renderPager(todoPager)}
                 </>
               )
@@ -382,13 +389,13 @@ export default function TasksScreen() {
 
           {/* Done dropdown — paginated, tucked away by default */}
           {done.length > 0 && (
-            <ThemedView style={styles.section}>
+            <ThemedView type="transparent" style={styles.section}>
               {renderDropdownHeader(showDone, t('tasks.done'), done.length, () => setShowDone((v) => !v))}
               {showDone && (
                 <>
-                  <ThemedView style={styles.taskList}>
+                  <MenuCard fill={PastelCards.honey.fill} border={PastelCards.honey.border} style={styles.taskList}>
                     {donePager.slice(done).map(renderTaskRow)}
-                  </ThemedView>
+                  </MenuCard>
                   {renderPager(donePager)}
                 </>
               )}
@@ -396,7 +403,7 @@ export default function TasksScreen() {
           )}
 
           {/* ── Exam countdowns (below the task list) ─────────────────────── */}
-          <ThemedView style={styles.section}>
+          <ThemedView type="transparent" style={styles.section}>
             <Pressable onPress={() => setShowExams((v) => !v)} style={styles.examHeader}>
               <ThemedText type="smallBold" style={styles.sectionTitle}>
                 {showExams ? '▾' : '▸'} {t('tasks.examCountdowns')} ({exams.length})
@@ -476,7 +483,7 @@ export default function TasksScreen() {
           </ThemedView>
         </SafeAreaView>
       </ScrollView>
-    </ThemedView>
+    </View>
   );
 }
 
@@ -488,7 +495,7 @@ const makeStyles = (s: number, contentWidth: number) => {
   const CARD_BOOST = 1.3;
   const cardS = s > 1 ? s * CARD_BOOST : s;
   return StyleSheet.create({
-  container: { flex: 1, backgroundColor: BakeryColors.frosting },
+  root: { flex: 1 },
   // Keep the whole scroll above the floating menu bar so it stays fully visible
   // and content never scrolls underneath it.
   scrollBox: { flex: 1, marginBottom: BottomTabClearance },
@@ -542,9 +549,9 @@ const makeStyles = (s: number, contentWidth: number) => {
   welcomeText: { textAlign: 'center', lineHeight: 20 * s },
   welcomeAddBtn: { marginTop: Spacing.two * s },
   section: { gap: Spacing.two * s },
-  sectionTitle: { fontSize: 13 * s, textTransform: 'uppercase', letterSpacing: 0.5 },
-  doneToggle: {},
-  taskList: { gap: Spacing.two * s },
+  sectionTitle: { fontSize: 13 * s, textTransform: 'uppercase', letterSpacing: 1.2, color: BakeryColors.mocha, fontWeight: '800' },
+  doneToggle: { marginBottom: Spacing.one * s },
+  taskList: {},
   // ‹ 1 / N › pager footer
   pager: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.four * s, paddingVertical: Spacing.two * s },
   pagerBtn: {
@@ -561,15 +568,16 @@ const makeStyles = (s: number, contentWidth: number) => {
   pagerArrow: { fontSize: 20 * s, lineHeight: 22 * s, fontWeight: '800', color: BakeryColors.mocha },
   pagerLabel: { fontSize: 13 * s, minWidth: 46 * s, textAlign: 'center' },
   // Task cards use cardS (slightly larger on tablet) so they balance the calendar.
+  // Ledger line inside a parchment MenuCard (study-notes checklist look).
   taskRow: {
-    borderRadius: BakeryRadii.card * cardS,
-    padding: Spacing.three * cardS,
+    paddingVertical: Spacing.two * cardS,
+    paddingHorizontal: 2 * cardS,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two * cardS,
-    borderWidth: 1,
-    borderColor: BakeryColors.shortbread,
-    backgroundColor: BakeryColors.glass,
+    borderBottomWidth: 1,
+    borderBottomColor: `${BakeryColors.shortbread}99`,
+    backgroundColor: 'transparent',
   },
   taskRowDone: { opacity: 0.55 },
   taskContent: { flex: 1, gap: 5 * cardS },
@@ -631,9 +639,9 @@ const makeStyles = (s: number, contentWidth: number) => {
     borderRadius: BakeryRadii.card * s,
     padding: Spacing.four * s,
     alignItems: 'center',
-    backgroundColor: BakeryColors.glass,
+    backgroundColor: PastelCards.peach.fill,
     borderWidth: 1.5,
-    borderColor: BakeryColors.shortbread,
+    borderColor: PastelCards.peach.border,
   },
   examCard: {
     borderRadius: BakeryRadii.card * s,
@@ -641,9 +649,9 @@ const makeStyles = (s: number, contentWidth: number) => {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three * s,
-    backgroundColor: BakeryColors.glass,
+    backgroundColor: PastelCards.peach.fill,
     borderWidth: 1.5,
-    borderColor: BakeryColors.shortbread,
+    borderColor: PastelCards.peach.border,
   },
   examInfo: { flex: 1, gap: 2 * cardS },
   // Exam name + date match the task-card title/meta sizes (cardS) so all the text
