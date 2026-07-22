@@ -58,7 +58,7 @@ function formatBirthday(iso: string): string {
   if (!iso) return '';
   const d = new Date(`${iso}T00:00:00`);
   if (isNaN(d.getTime())) return '';
-  return d.toLocaleDateString(i18n.language || 'en-US', { month: 'long', day: 'numeric' });
+  return d.toLocaleDateString(i18n.language || 'en-US', { month: 'short', day: 'numeric' });
 }
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
 import { useTabletScale } from '@/hooks/use-tablet-scale';

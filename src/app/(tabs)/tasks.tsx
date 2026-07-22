@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { playPaper } from '@/lib/sounds';
@@ -38,7 +38,10 @@ import { useTabletScale } from '@/hooks/use-tablet-scale';
 // Long lists (tasks/exams) render 5 at a time so the screen stays fast no matter
 // how many a user piles up (MAX_TASKS is 1000). Each list is a collapsible
 // dropdown with a ‹ page/total › pager.
-const PAGE_SIZE = 5;
+// Big enough that a normal task list never paginates (so nothing "disappears" onto
+// a hidden page after adding a few); pagination still kicks in only for very long
+// lists, as a perf guard against rendering hundreds of rows at once.
+const PAGE_SIZE = 12;
 
 function usePager(total: number) {
   const [page, setPage] = useState(0);
@@ -49,6 +52,14 @@ function usePager(total: number) {
   useEffect(() => {
     if (page !== effPage) setPage(effPage);
   }, [page, effPage]);
+  // When the list GROWS (an item was just added), snap back to the first page so
+  // the new item — which sorts to the top — is always visible instead of stranded
+  // behind the pager on a later page. Fixes "I add a task and it disappears."
+  const prevTotal = useRef(total);
+  useEffect(() => {
+    if (total > prevTotal.current) setPage(0);
+    prevTotal.current = total;
+  }, [total]);
   const start = effPage * PAGE_SIZE;
   return {
     page: effPage,

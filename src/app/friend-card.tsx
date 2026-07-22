@@ -45,7 +45,9 @@ function formatBirthday(iso?: string): string {
   if (!iso) return '—';
   const d = new Date(`${iso}T00:00:00`);
   if (isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString(i18n.language || 'en-US', { month: 'long', day: 'numeric' });
+  // Abbreviated month ("Nov 13") — same narrow card layout as the profile card, so
+  // a full month name would wrap the "Birthday" label onto a second line.
+  return d.toLocaleDateString(i18n.language || 'en-US', { month: 'short', day: 'numeric' });
 }
 
 export default function FriendCardScreen() {

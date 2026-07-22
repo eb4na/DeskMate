@@ -55,7 +55,10 @@ function formatBirthday(iso: string): string {
   if (!iso) return '—';
   const d = new Date(`${iso}T00:00:00`);
   if (isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString(i18n.language || 'en-US', { month: 'long', day: 'numeric' });
+  // Abbreviated month ("Nov 13") so the value stays compact — a full month name
+  // ("November 13") is wide enough to squeeze the stat label's flex space and wrap
+  // "Birthday" onto a second line on the narrow profile/friend card.
+  return d.toLocaleDateString(i18n.language || 'en-US', { month: 'short', day: 'numeric' });
 }
 
 export default function ProfileScreen() {
@@ -277,7 +280,10 @@ export default function ProfileScreen() {
               onChangeText={(v) => updateProfile({ displayName: v })}
               placeholder={t('profileCard.yourName')}
               placeholderTextColor={P.muted}
-              maxLength={20}
+              // Card name panel fits ~one line at ~16 chars (20pt bold beside the
+              // fixed figure); keep it short so a long name can't wrap to 2 lines and
+              // unbalance the card against the figure.
+              maxLength={15}
             />
           </View>
 
