@@ -90,12 +90,12 @@ export const BakeryColors = {
 export const PastelCards = {
   blush:   { fill: '#FCE7EF', border: '#F4C6D6' },
   rose:    { fill: '#FBE1E8', border: '#F1BDCC' },
-  coral:   { fill: '#FCE9E0', border: '#F2C9B0' },
+  coral:   { fill: '#FEF4EF', border: '#F2C9B0' },
   peach:   { fill: '#FDEFDE', border: '#F1D4AB' },
-  apricot: { fill: '#FDF4DC', border: '#EDD8A2' },
-  honey:   { fill: '#FEF9DF', border: '#E9DA96' },
+  apricot: { fill: '#FEFAED', border: '#EDD8A2' },
+  honey:   { fill: '#FFFCEF', border: '#E9DA96' },
   // Very light pink-red — the shop item cards.
-  pinkred: { fill: '#FDEEED', border: '#F6CFCC' },
+  pinkred: { fill: '#FEF6F5', border: '#F6CFCC' },
 } as const;
 
 export const BakeryRadii = {

@@ -114,6 +114,22 @@ const SOLO_BOOK_OFFSET: Record<string, { dx: number; dy: number }> = {
 };
 const DEFAULT_SOLO_BOOK_OFFSET = { dx: -0.026, dy: 0 };
 
+// PHONE solo study scene: per-character vertical position (marginBottom, px; higher
+// = character sits higher / desk crosses lower on the body). Tuned on the sim so the
+// desk hairline lands on each companion's WAIST regardless of art proportions — the
+// waist sits at a different fraction of each character's art, so every one needs its
+// own value. Phone-only: the tablet path uses its own soloCharBottomT geometry. Keyed
+// by soloBookKey (ladder key); dial by eye against the fixed desk line.
+const SOLO_WAIST_MB: Record<string, number> = {
+  bun: 103,
+  companion_cocoa: 74, // Aki (chunky, sits high via its -0.04 baseline lift)
+  companion_bunny: 84,
+  companion_honey: 66, // Miel (bear)
+  companion_tira: 82,
+  hanji: 58,
+};
+const DEFAULT_SOLO_WAIST_MB = 78;
+
 // The desk book's cover is tinted to each character's signature color, keyed the
 // same way as SOLO_BOOK_OFFSET. Custom companions keep the default brown cover.
 const BOOK_COVER_COLOR: Record<string, string> = {
@@ -586,9 +602,10 @@ export function StudyRoomView({
   const breakMinutes = activeSession?.breakMinutes && activeSession.breakMinutes > 0
     ? activeSession.breakMinutes
     : autoBreakMinutes(activeSession?.durationMinutes ?? 25);
-  // A solo session with no break (short warm-up) hides the Break control entirely.
-  // Multiplayer breaks are a free soft-toggle, so they always stay available.
-  const showBreakButton = !isSolo || breakMinutes > 0;
+  // Solo studying no longer allows a mid-session break — the Break control is
+  // hidden for every solo session (a break is only offered at a block's end, on
+  // the session checkpoint). Multiplayer breaks stay a free social soft-toggle.
+  const showBreakButton = !isSolo;
   // Whether the Break button runs a real TIMED break (freeze + countdown + auto-
   // resume) vs the multiplayer free on/off toggle. Solo is always timed. A room is
   // timed only when a Plus host set a break length in the lobby (activeSession
@@ -1083,7 +1100,7 @@ export function StudyRoomView({
           // Transform lives on an Animated.View (like Home) — applying it to the
           // expo-image directly stutters because the study view re-renders every
           // second (the countdown), which re-attaches the native animation nodes.
-          <Pressable style={[styles.character, styles.characterSolo, focus && styles.characterSoloFocus]} onPress={() => talkAs(friendCode, myPersona, mySkin)}>
+          <Pressable style={[styles.character, styles.characterSolo, { marginBottom: SOLO_WAIST_MB[soloBookKey] ?? DEFAULT_SOLO_WAIST_MB }, focus && styles.characterSoloFocus]} onPress={() => talkAs(friendCode, myPersona, mySkin)}>
             {/* Squish layer (center-bottom origin so feet stay tucked behind the desk
                 on tap) wraps the idle-bounce layer — mirrors Home's CompanionPet. */}
             <Animated.View style={{ width: '100%', height: '100%', transform: [{ scale: tapScale }], transformOrigin: 'center bottom' }}>
@@ -1627,7 +1644,7 @@ const styles = StyleSheet.create({
   character: { width: 172, height: 200, zIndex: 1, marginBottom: 0 },
   characterFill: { width: '100%', height: '100%' },
   // Solo: match the Home-screen companion size (300×300) so it feels prominent.
-  characterSolo: { width: 350, height: 350, marginBottom: 40 },
+  characterSolo: { width: 350, height: 350, marginBottom: 78 }, // fallback; per-character override via SOLO_WAIST_MB
   // Focus mode drops the character lower (no desk to tuck behind).
   characterSoloFocus: { marginBottom: -42 },
   // Alpha-locked disco wash: a tinted copy of the character image, overlaid + faded.

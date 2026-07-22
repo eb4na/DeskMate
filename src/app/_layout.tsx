@@ -21,7 +21,7 @@ import { AppProvider } from '@/context/app-context';
 import { useApp } from '@/context/app-context';
 import { StudyRoomProvider } from '@/lib/use-study-room';
 import { prewarmCoreSounds, setTapSoundEnabled } from '@/lib/sounds';
-import { setLoadingActive, subscribeLoadingScreen, takeLoadingDone } from '@/lib/loading-signal';
+import { setLoadingActive, subscribeLoadingScreen, takeLoadingDone, isHomePainted, resetHomePainted, subscribeHomePainted } from '@/lib/loading-signal';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { posthog, identifyUser, resetUser } from '@/lib/analytics';
 import { configurePurchases, currentPlusExpiry, onPlusEntitlementChange } from '@/lib/purchases';
@@ -167,6 +167,11 @@ function RootNavigator() {
   const [loadingQuick, setLoadingQuick] = useState(false);
   // For quick loads, gates the overlay on a destination's asset preload promise.
   const [taskReady, setTaskReady] = useState(true);
+  // Whether the home screen's background has actually PAINTED (not just prefetched).
+  // The launch/login loader holds on this so the room art never pops in after the
+  // splash lifts (see loading-signal's home first-paint gate).
+  const [homePainted, setHomePainted] = useState(isHomePainted());
+  useEffect(() => subscribeHomePainted(() => setHomePainted(true)), []);
 
   // Preload the home-screen images once so the home screen is ready behind the
   // loading overlay.
@@ -214,7 +219,13 @@ function RootNavigator() {
   const authed = !!session || isGuest;
   const wasAuthed = useRef(false);
   useEffect(() => {
-    if (authed && !wasAuthed.current) setLoadingVisible(true);
+    if (authed && !wasAuthed.current) {
+      setLoadingVisible(true);
+      // Login remounts the home tab — wait for its NEW paint, not a stale flag left
+      // true by a previous session in this run.
+      resetHomePainted();
+      setHomePainted(false);
+    }
     wasAuthed.current = authed;
   }, [authed]);
 
@@ -302,7 +313,13 @@ function RootNavigator() {
   // The home screen mounts immediately (and loads its art) behind the loading
   // overlay; the overlay only lifts once everything is ready. For quick loads,
   // `taskReady` also waits on the destination's asset preload.
-  const appReady = initialized && loaded && assetsReady && homeAssetsReady && taskReady;
+  // The full launch/login loader (non-quick) also waits for the home background to
+  // actually paint — but ONLY when authed (home is the destination). A pre-login
+  // launch lands on the auth screen, which has no such art, so it must not wait on
+  // a paint that will never happen. Quick in-app loads keep their own taskReady gate.
+  const appReady =
+    initialized && loaded && assetsReady && homeAssetsReady && taskReady &&
+    (loadingQuick || !authed || homePainted);
 
   // Mirror overlay visibility so screens can hold their own popups until the
   // launch splash has actually lifted (see daily-reward-modal's delayed show).
@@ -342,7 +359,6 @@ function RootNavigator() {
         <Stack.Screen name="custom-timer" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="ambience-picker" options={{ presentation: 'modal', title: t('screens.ambience') }} />
         <Stack.Screen name="companion-gallery" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="daily-quests" options={{ headerShown: false, gestureEnabled: false, animation: 'fade', presentation: 'transparentModal', contentStyle: { backgroundColor: 'transparent' } }} />
         <Stack.Screen name="achievements" options={{ headerShown: false, gestureEnabled: false, animation: 'fade', presentation: 'transparentModal', contentStyle: { backgroundColor: 'transparent' } }} />
         <Stack.Screen name="edit-room" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="food-gallery" options={{ presentation: 'modal', headerShown: false }} />

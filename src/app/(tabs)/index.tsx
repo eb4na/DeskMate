@@ -40,7 +40,7 @@ import { listBlocked, listIncomingRequests } from '@/lib/friend-requests';
 import { fetchMail, fetchMailClaims } from '@/lib/mail';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { takePendingDragSession, setDragActive, type DragSessionData } from '@/lib/drag-session';
-import { showLoadingScreen } from '@/lib/loading-signal';
+import { showLoadingScreen, markHomePainted } from '@/lib/loading-signal';
 import { preloadStudyAssets } from '@/lib/preload-nav';
 import { getAmbienceEmoji, getAmbienceName } from '@/app/ambience-picker';
 import {
@@ -1112,6 +1112,8 @@ export default function HomeScreen() {
             contentFit="cover"
             contentPosition="center"
             pointerEvents="none"
+            onDisplay={markHomePainted}
+            onError={markHomePainted}
           />
           {/* Soft sunlight shining from the top — kept gentle so the room stays clear */}
           <Image source={SUNLIGHT} style={styles.sunlight} contentFit="cover" pointerEvents="none" />

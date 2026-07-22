@@ -61,3 +61,39 @@ export function subscribeLoadingDone(fn: () => void): () => void {
     _doneListeners.delete(fn);
   };
 }
+
+// ── Home first-paint gate ────────────────────────────────────────────────────
+// The launch/login loader waits until the home screen's main background image has
+// actually PAINTED (its expo-image `onLoad`/`onError` fired), not merely been
+// prefetched into cache. Prefetch resolving only means the bytes are cached — the
+// on-screen <Image> still decodes and paints a frame or two later, so gating on
+// prefetch alone let the room art pop in just after the splash lifted. The home
+// screen calls markHomePainted() from its background image; RootNavigator resets
+// the flag on each login (fresh home mount) and gates the loader on it. All the
+// existing fail-open timers still apply, so a missed paint can never wedge the
+// splash — it just falls back to the max-hold cap.
+let _homePainted = false;
+const _homePaintListeners = new Set<() => void>();
+
+/** Home screen calls this once its background image paints (onLoad/onError). */
+export function markHomePainted() {
+  if (_homePainted) return;
+  _homePainted = true;
+  _homePaintListeners.forEach((fn) => fn());
+}
+
+/** RootNavigator clears the flag on login so the loader waits for the new paint. */
+export function resetHomePainted() {
+  _homePainted = false;
+}
+
+export function isHomePainted(): boolean {
+  return _homePainted;
+}
+
+export function subscribeHomePainted(fn: () => void): () => void {
+  _homePaintListeners.add(fn);
+  return () => {
+    _homePaintListeners.delete(fn);
+  };
+}

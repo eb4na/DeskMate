@@ -220,10 +220,12 @@ export default function SessionCheckpointScreen() {
 const makeStyles = (s: number) => StyleSheet.create({
   // ── Full-screen break timer ──
   breakRoot: { flex: 1, backgroundColor: BakeryColors.frosting },
-  breakSafe: { flex: 1, justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.four * s, paddingVertical: Spacing.six * s },
-  breakTop: { alignItems: 'center', gap: Spacing.two * s, marginTop: '14%' },
+  // Break content is centered as one group in the middle of the screen (timer +
+  // the End break / End session buttons together), not split top-and-bottom.
+  breakSafe: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: Spacing.six * s, paddingHorizontal: Spacing.four * s, paddingVertical: Spacing.six * s },
+  breakTop: { alignItems: 'center', gap: Spacing.two * s },
   breakLabel: { fontSize: 20 * s, fontWeight: '900', color: '#5B3A2E', textAlign: 'center', textShadowColor: '#FFFFFFCC', textShadowRadius: 6 },
-  breakBtns: { alignSelf: 'stretch', alignItems: 'center', gap: Spacing.three * s, marginBottom: Spacing.four * s },
+  breakBtns: { alignSelf: 'stretch', alignItems: 'center', gap: Spacing.three * s },
   primaryBtn: {
     alignSelf: 'stretch', maxWidth: 340, paddingVertical: 16 * s, borderRadius: BakeryRadii.pill,
     alignItems: 'center', justifyContent: 'center',
