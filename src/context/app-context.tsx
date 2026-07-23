@@ -60,8 +60,16 @@ export type TaskStatus = 'not_started' | 'in_progress' | 'done';
 export type Task = {
   id: string;
   title: string;
+  /** Optional free-text description / notes for the task. */
+  description?: string;
   subjectId: string | null;
   dueDate: string | null;
+  /**
+   * True = the task is a deadline "due" on its dueDate (drives the calendar red
+   * dot). False = the task just sits on that day but isn't a hard deadline.
+   * Undefined = legacy task; treated as a deadline when it has a dueDate.
+   */
+  isDeadline?: boolean;
   /** Optional time of day the task is due, as "HH:MM" (24-hour). */
   dueTime: string | null;
   estimatedMinutes: number | null;
@@ -340,6 +348,9 @@ type PersistedState = {
 
   // Broadcast mail the player has already claimed (mail row ids).
   claimedMailIds: string[];
+  // Broadcast mail the player has opened (mail row ids). Opening = read, which
+  // clears the mail notification dot even when the reward isn't claimed yet.
+  readMailIds: string[];
 
   // i18n
   language: string;
@@ -477,6 +488,7 @@ const DEFAULTS: PersistedState = {
   cakeCharacter: 'bun',
   game2048Best: 0,
   claimedMailIds: [],
+  readMailIds: [],
   language: 'en',
   languageSelected: false,
   legalAccepted: false,
@@ -1066,6 +1078,8 @@ type AppContextType = {
   recordGame2048Best: (score: number) => void;
   claimedMailIds: string[];
   claimMail: (mail: { id: string; coins: number; itemId: string | null }) => Promise<boolean>;
+  readMailIds: string[];
+  markMailRead: (id: string) => void;
   setLanguage: (lang: string) => void;
   markLanguageSelected: () => void;
   markLegalAccepted: () => void;
@@ -1109,7 +1123,7 @@ type AppContextType = {
 
   // Wave 2 task actions
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completedAt' | 'postponeCount' | 'lastActivityAt' | 'notifId'>) => string;
-  updateTask: (id: string, patch: Partial<Pick<Task, 'title' | 'subjectId' | 'dueDate' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'notifId' | 'repeatDays' | 'repeatUntil'>>) => void;
+  updateTask: (id: string, patch: Partial<Pick<Task, 'title' | 'description' | 'subjectId' | 'dueDate' | 'isDeadline' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'notifId' | 'repeatDays' | 'repeatUntil'>>) => void;
   deleteTask: (id: string) => void;
   completeTask: (id: string) => void;
   postponeTask: (id: string) => void;
@@ -1873,8 +1887,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         tasks: [
           {
             ...task,
-            // Mask profanity in the title (parity with subjects + DMs).
+            // Mask profanity in the title + description (parity with subjects + DMs).
             title: maskProfanity(task.title),
+            description: task.description ? maskProfanity(task.description) : undefined,
             id,
             createdAt: new Date().toISOString(),
             completedAt: null,
@@ -1889,8 +1904,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return id;
   };
 
-  const updateTask = (id: string, patch: Partial<Pick<Task, 'title' | 'subjectId' | 'dueDate' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'notifId' | 'repeatDays' | 'repeatUntil'>>) => {
-    const safePatch = patch.title !== undefined ? { ...patch, title: maskProfanity(patch.title) } : patch;
+  const updateTask = (id: string, patch: Partial<Pick<Task, 'title' | 'description' | 'subjectId' | 'dueDate' | 'isDeadline' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'notifId' | 'repeatDays' | 'repeatUntil'>>) => {
+    const safePatch = {
+      ...patch,
+      ...(patch.title !== undefined ? { title: maskProfanity(patch.title) } : {}),
+      ...(patch.description !== undefined ? { description: patch.description ? maskProfanity(patch.description) : undefined } : {}),
+    };
     setS((prev) => ({
       ...prev,
       tasks: prev.tasks.map((t) =>
@@ -2736,6 +2755,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
+  // Mark a mail opened (read). Idempotent — no-op if already read. Clears the mail
+  // notification dot for that mail even if its reward is left unclaimed.
+  const markMailRead = (id: string) =>
+    setS((prev) => (prev.readMailIds.includes(id) ? prev : { ...prev, readMailIds: [...prev.readMailIds, id] }));
+
   const setMultipleReminders = (reminders: ReminderEntry[]) =>
     setS((prev) => ({ ...prev, multipleReminders: reminders }));
 
@@ -2998,6 +3022,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // new array each render would re-run those effects in a loop (froze Home).
         claimedMailIds: s.claimedMailIds ?? DEFAULTS.claimedMailIds,
         claimMail,
+        readMailIds: s.readMailIds ?? DEFAULTS.readMailIds,
+        markMailRead,
         setIsPlus,
         useStreakFreeze,
         rescueStreakByPurchase,

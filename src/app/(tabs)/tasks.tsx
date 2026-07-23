@@ -7,7 +7,6 @@ import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
-import { BakeryBellEmoji } from '@/components/bakery-emoji';
 import { CountdownShape } from '@/components/countdown-shapes';
 import { LockBadge } from '@/components/lock-badge';
 import { FitText } from '@/components/fit-text';
@@ -132,43 +131,58 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: {
   // Match the cardS boost used for the task-card styles (see makeStyles / CARD_BOOST).
   const cardScale = scale > 1 ? scale * 1.3 : scale;
   const isDone = task.status === 'done';
+  const description = task.description?.trim();
 
   return (
     <ThemedView type="transparent" style={[styles.taskRow, isDone && styles.taskRowDone]}>
-      {/* Content */}
-      <Pressable style={styles.taskContent} onPress={onEdit}>
-        <View style={styles.taskTitleRow}>
-          <ThemedText
-            style={[styles.taskTitle, isDone && styles.taskTitleDone]}
-            numberOfLines={2}>
-            {task.title}
-          </ThemedText>
-        </View>
+      {/* Content column: tappable title/meta (→ edit) with the optional
+          description preview beneath it (→ full-text popup). */}
+      <View style={styles.taskMain}>
+        <Pressable style={styles.taskContent} onPress={onEdit}>
+          <View style={styles.taskTitleRow}>
+            <ThemedText
+              style={[styles.taskTitle, isDone && styles.taskTitleDone]}
+              numberOfLines={2}>
+              {task.title}
+            </ThemedText>
+          </View>
 
-        <View style={styles.taskMeta}>
-          <SubjectBadge subjectId={task.subjectId} />
-          {task.dueDate && (
-            <ThemedText type="small" themeColor="textSecondary" style={styles.metaText}>
-              {formatDueDate(task.dueDate)}{task.dueTime ? ` · ${formatTimeLabel(task.dueTime, use24HourTime)}` : ''}
+          <View style={styles.taskMeta}>
+            <SubjectBadge subjectId={task.subjectId} />
+            {task.dueDate && (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.metaText}>
+                {formatDueDate(task.dueDate)}{task.dueTime ? ` · ${formatTimeLabel(task.dueTime, use24HourTime)}` : ''}
+              </ThemedText>
+            )}
+            {task.estimatedMinutes && (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.metaText}>
+                {task.estimatedMinutes}m
+              </ThemedText>
+            )}
+            {task.postponeCount > 0 && (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.metaText}>
+                ↷ {task.postponeCount}×
+              </ThemedText>
+            )}
+            {task.repeatDays && task.repeatDays.length > 0 && (
+              <ThemedText type="small" themeColor="textSecondary" style={styles.metaText}>
+                ↻ {[...task.repeatDays].sort((a, b) => a - b).map((d) => i18n.t(`calendar.wd_${d}`)).join('')}
+              </ThemedText>
+            )}
+          </View>
+        </Pressable>
+
+        {/* Description preview — one-line teaser; tap to read the full text in a popup. */}
+        {description ? (
+          <Pressable
+            style={({ pressed }) => [styles.descPreview, pressed && styles.pressed]}
+            onPress={() => showPopup(task.title, description)}>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.descPreviewText} numberOfLines={1}>
+              {description}
             </ThemedText>
-          )}
-          {task.estimatedMinutes && (
-            <ThemedText type="small" themeColor="textSecondary" style={styles.metaText}>
-              {task.estimatedMinutes}m
-            </ThemedText>
-          )}
-          {task.postponeCount > 0 && (
-            <ThemedText type="small" themeColor="textSecondary" style={styles.metaText}>
-              ↷ {task.postponeCount}×
-            </ThemedText>
-          )}
-          {task.repeatDays && task.repeatDays.length > 0 && (
-            <ThemedText type="small" themeColor="textSecondary" style={styles.metaText}>
-              ↻ {[...task.repeatDays].sort((a, b) => a - b).map((d) => i18n.t(`calendar.wd_${d}`)).join('')}
-            </ThemedText>
-          )}
-        </View>
-      </Pressable>
+          </Pressable>
+        ) : null}
+      </View>
 
       {/* Actions — completion toggle + delete, matched size, side by side. */}
       <View style={styles.taskActions}>
@@ -450,7 +464,6 @@ export default function TasksScreen() {
                           <ThemedText type="small" themeColor="textSecondary" style={styles.examMeta}>
                             {exam.subject ? `${localizeSubjectName(exam.subject, t)} · ` : ''}{exam.dateISO}
                           </ThemedText>
-                          {exam.reminderEnabled && <BakeryBellEmoji size={11 * cardScale} />}
                         </View>
                       </Pressable>
                       <View style={styles.examRight}>
@@ -591,7 +604,15 @@ const makeStyles = (s: number, contentWidth: number) => {
     backgroundColor: 'transparent',
   },
   taskRowDone: { opacity: 0.55 },
-  taskContent: { flex: 1, gap: 5 * cardS },
+  taskMain: { flex: 1, gap: 5 * cardS },
+  taskContent: { gap: 5 * cardS },
+  descPreview: {
+    borderLeftWidth: 2,
+    borderLeftColor: `${BakeryColors.shortbread}CC`,
+    paddingLeft: 7 * cardS,
+    paddingVertical: 1 * cardS,
+  },
+  descPreviewText: { fontSize: 12.5 * cardS, lineHeight: 17 * cardS, fontStyle: 'italic' },
   taskTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 * cardS },
   taskTitle: { flex: 1, fontSize: 15 * cardS, lineHeight: 20 * cardS, fontWeight: '600' },
   taskTitleDone: { textDecorationLine: 'line-through' },

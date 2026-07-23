@@ -45,7 +45,7 @@ function outfitName(itemId: string, t: TFn): string {
 export default function MailboxScreen() {
   const { t } = useTranslation();
   const isTablet = useIsTablet();
-  const { claimedMailIds, claimMail } = useApp();
+  const { claimedMailIds, claimMail, markMailRead, readMailIds } = useApp();
   const [mail, setMail] = useState<Mail[] | null>(null);
   // Server-recorded claims (mail_claims). Merged with the local claimedMailIds so the
   // claimed state is correct across devices and can't be undone by editing local state.
@@ -92,6 +92,12 @@ export default function MailboxScreen() {
     setPicked((p) => (p[mailId] === itemId ? p : { ...p, [mailId]: itemId }));
   }, []);
 
+  // Opening a mail marks it read → clears its notification dot even if unclaimed.
+  const openMailById = useCallback((id: string) => {
+    markMailRead(id);
+    setOpenId(id);
+  }, [markMailRead]);
+
   const openMail = openId ? mail?.find((m) => m.id === openId) ?? null : null;
   const goBack = () => {
     if (openMail) setOpenId(null);
@@ -129,14 +135,15 @@ export default function MailboxScreen() {
             </ThemedView>
           ) : (
             mail.map((m) => {
-              const claimed = isClaimed(m.id);
+              // Opened (read) OR claimed both count as "read" for the envelope look.
+              const read = isClaimed(m.id) || readMailIds.includes(m.id);
               return (
                 <Pressable
                   key={m.id}
-                  onPress={() => setOpenId(m.id)}
+                  onPress={() => openMailById(m.id)}
                   style={({ pressed }) => [styles.envRow, isTablet && styles.envRowTablet, pressed && styles.pressed]}>
-                  <EnvelopeClosed width={isTablet ? 92 : 58} sealed={!claimed} />
-                  <ThemedText type="smallBold" numberOfLines={2} style={[styles.envTitle, isTablet && styles.envTitleTablet, claimed && styles.envTitleRead]}>
+                  <EnvelopeClosed width={isTablet ? 92 : 58} sealed={!read} />
+                  <ThemedText type="smallBold" numberOfLines={2} style={[styles.envTitle, isTablet && styles.envTitleTablet, read && styles.envTitleRead]}>
                     {localizeMail(m, t).title}
                   </ThemedText>
                   <ThemedText style={[styles.chev, isTablet && styles.chevTablet]}>›</ThemedText>
@@ -162,6 +169,7 @@ type OpenLetterProps = {
 };
 
 function OpenLetter({ mail: m, isTablet, claimed, pickedId, onPick, onClaim, t }: OpenLetterProps) {
+  const { ownedShopItems } = useApp();
   const isChoice = m.itemChoices.length > 0;
   const hasReward = m.coins > 0 || !!m.itemId || isChoice;
   const needsPick = isChoice && !pickedId;
@@ -195,6 +203,7 @@ function OpenLetter({ mail: m, isTablet, claimed, pickedId, onPick, onClaim, t }
           <View style={[styles.choiceRow, isTablet && styles.choiceRowTablet]}>
             {m.itemChoices.map((cid) => {
               const sel = pickedId === cid;
+              const owned = ownedShopItems.includes(cid);
               const img = lookupItem(cid)?.image;
               return (
                 <Pressable
@@ -207,6 +216,11 @@ function OpenLetter({ mail: m, isTablet, claimed, pickedId, onPick, onClaim, t }
                   <ThemedText type="smallBold" numberOfLines={2} style={[styles.choiceName, isTablet && styles.choiceNameTablet, sel && styles.choiceNameSel]}>
                     {outfitName(cid, t)}
                   </ThemedText>
+                  {owned && (
+                    <View style={styles.ownedPill}>
+                      <ThemedText type="smallBold" style={styles.ownedPillText}>{t('mailbox.owned')}</ThemedText>
+                    </View>
+                  )}
                 </Pressable>
               );
             })}
@@ -278,6 +292,8 @@ const styles = StyleSheet.create({
   choiceName: { fontSize: 13, lineHeight: 17, textAlign: 'center', color: '#C75A78' },
   choiceNameTablet: { fontSize: 17, lineHeight: 22 },
   choiceNameSel: { color: '#B0436A' },
+  ownedPill: { backgroundColor: 'rgba(120,120,120,0.16)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
+  ownedPillText: { color: '#7C6E63', fontSize: 11 },
   wearNote: { lineHeight: 19, fontStyle: 'italic', textAlign: 'center' },
   claimedNote: { textAlign: 'center', color: '#C7728A', fontSize: 15 },
 

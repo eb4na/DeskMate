@@ -613,6 +613,7 @@ export default function HomeScreen() {
     addSubjectTime,
     dmUnread,
     claimedMailIds,
+    readMailIds,
   } = useApp();
   // Current pet speech-bubble line — lifted here so it can be drawn in a high-zIndex
   // layer (above the desk/mixer), not trapped inside the low-z character layer.
@@ -634,6 +635,10 @@ export default function HomeScreen() {
   // focus anyway, so it still picks up newly-claimed mail when you return from Settings.
   const claimedMailIdsRef = useRef(claimedMailIds);
   claimedMailIdsRef.current = claimedMailIds;
+  // Same ref trick for read (opened) mail — an opened mail counts as read and stops
+  // dotting even if its reward is still unclaimed.
+  const readMailIdsRef = useRef(readMailIds);
+  readMailIdsRef.current = readMailIds;
   // Settings red dot shows only while there's unclaimed mail (the Instagram-follow
   // reward still hops its own present box in Settings, just no Settings-button dot).
   const settingsHasAlert = hasUnclaimedMail;
@@ -752,16 +757,18 @@ export default function HomeScreen() {
     } else {
       setPendingRequests(0);
     }
-    // Any unclaimed REWARD mail → Settings red dot. Message-only mail (no coins/item)
-    // can't be claimed, so it must not dot forever; merge server claims so an account
-    // reset (which wipes local claimedMailIds) doesn't re-dot already-claimed mail.
+    // Any unclaimed, UNREAD reward mail → Settings red dot. Opening a mail marks it
+    // read and clears the dot even if the reward is left unclaimed. Message-only mail
+    // (no coins/item) can't be claimed, so it must not dot forever; merge server claims
+    // so an account reset (which wipes local claimedMailIds) doesn't re-dot claimed mail.
     Promise.all([fetchMail(), fetchMailClaims()])
       .then(([m, serverClaimed]) => {
         if (cancelled) return;
         const claimed = new Set([...serverClaimed, ...claimedMailIdsRef.current]);
+        const read = new Set(readMailIdsRef.current);
         const hasReward = (mail: { coins: number; itemId: string | null; itemChoices: string[] }) =>
           mail.coins > 0 || !!mail.itemId || mail.itemChoices.length > 0;
-        setHasUnclaimedMail(m.some((mail) => hasReward(mail) && !claimed.has(mail.id)));
+        setHasUnclaimedMail(m.some((mail) => hasReward(mail) && !claimed.has(mail.id) && !read.has(mail.id)));
       })
       .catch(() => {});
     return () => { cancelled = true; setHomeFocused(false); };
@@ -1402,10 +1409,10 @@ export default function HomeScreen() {
                 <Image key={ing.id} source={ing.src} style={[...DESK_SLOT_STYLES[idx], ing.style, tIngFor(idx, ing)]} contentFit="contain" />
               ))}
 
-              <View style={[styles.startSessionPressable, { bottom: ph.startBottom }, tStart, tStartRow]}>
+              <View style={[styles.startSessionPressable, { bottom: ph.startBottom }, tStart, tStartRow, !BREAK_GAME_ENABLED && styles.startRowCentered]}>
                 <View ref={(n) => setTutorialTarget('start', n)}>
                   <SoundPressable
-                    style={({ pressed }) => [styles.startSessionInner, tStartInner, pressed && styles.startButtonPressed]}
+                    style={({ pressed }) => [styles.startSessionInner, tStartInner, !BREAK_GAME_ENABLED && styles.startInnerNoGap, pressed && styles.startButtonPressed]}
                     onPress={handleStartSession}
                     accessibilityLabel={t('home.a11yStartSession')}>
                     <Image source={START_SESSION_BTN} style={styles.startSessionBg} contentFit="fill" />
@@ -2160,6 +2167,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  // With the break game hidden (BREAK_GAME_ENABLED), the start button is the row's
+  // only child, so center it symmetrically instead of leaving it flush-left where
+  // the game icon used to sit. Overrides the phone left/right and the tablet's
+  // LEFT_OF_CENTER offset (applied after tStartRow in the style array).
+  startRowCentered: { left: 0, right: 0, justifyContent: 'center' },
+  // Drop the phone gap that spaced the button from the (now-absent) game icon so
+  // the centered button is truly centered.
+  startInnerNoGap: { marginRight: 0 },
   startSessionInner: {
     marginRight: 10,
     // 232 / 66 ≈ 3.51 — matches the button image's native ratio so 'fill' doesn't squish it.

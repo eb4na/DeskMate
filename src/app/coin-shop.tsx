@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinAmount, CoinIcon } from '@/components/coin-icon';
 import { STREAK_FREEZE_ICON } from '@/components/streak-freeze-icon';
-import { BakeryStarEmoji, BakeryWrenchEmoji } from '@/components/bakery-emoji';
+import { BakeryWrenchEmoji } from '@/components/bakery-emoji';
 import { LockBadge } from '@/components/lock-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -310,7 +310,6 @@ export default function CoinShopScreen() {
           {/* Plus discount note */}
           {isPlus ? (
             <ThemedView type="backgroundElement" style={[styles.plusBanner, styles.plusBannerActive]}>
-              <BakeryStarEmoji size={28 * scale} />
               <ThemedView type="transparent" style={styles.plusBannerText}>
                 <ThemedText type="smallBold">{t('coinShop.discountActive')}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">{t('coinShop.appliedAllItems')}</ThemedText>
@@ -321,7 +320,6 @@ export default function CoinShopScreen() {
               style={({ pressed }) => [pressed && styles.pressed]}
               onPress={() => router.push('/plus-upgrade')}>
               <ThemedView type="backgroundElement" style={styles.plusBanner}>
-                <BakeryStarEmoji size={28 * scale} />
                 <ThemedView type="transparent" style={styles.plusBannerText}>
                   <ThemedText type="smallBold">{t('coinShop.plusSave20')}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">{t('coinShop.tapToUpgrade')}</ThemedText>

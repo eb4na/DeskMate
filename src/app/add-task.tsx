@@ -9,26 +9,28 @@ import { SoundPressable } from '@/components/sound-pressable';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { DateWheelPicker, getTodayISO } from '@/components/date-wheel-picker';
+import { DateWheelPicker, getTodayISO, formatDateLabel } from '@/components/date-wheel-picker';
 import { TimeWheelPicker, formatTimeLabel } from '@/components/time-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp, MAX_TASKS } from '@/context/app-context';
-import type { Task, TaskStatus } from '@/context/app-context';
+import type { Task } from '@/context/app-context';
 import { containsProfanity } from '@/lib/profanity';
 import { cancelTaskNotification, scheduleTaskNotification } from '@/lib/notifications';
 import { useTranslation } from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
 import { BakeryColors, BakeryRadii, MaxContentWidth, Spacing } from '@/constants/theme';
 
-const STATUS_OPTIONS: { value: TaskStatus; labelKey: string }[] = [
-  { value: 'not_started', labelKey: 'addTask.statusNotStarted' },
-  { value: 'in_progress', labelKey: 'addTask.statusInProgress' },
-  { value: 'done', labelKey: 'addTask.statusDone' },
-];
-
 // Reminder fires this many minutes before the task's due time.
-const REMINDER_OFFSETS = [5, 15, 30];
+const REMINDER_OFFSETS = [5, 15, 30, 60, 180, 1440];
+
+// Chip label for a reminder offset, picking the right unit (min / hr / day) so
+// "60 min before" reads as "1 hr before" and "1440 min before" as "1 day before".
+function reminderLabel(off: number, t: (key: string, opts?: Record<string, unknown>) => string): string {
+  if (off < 60) return t('addTask.minBefore', { n: off });
+  if (off < 1440) return t('addTask.hrBefore', { n: off / 60 });
+  return t('addTask.dayBefore', { n: off / 1440 });
+}
 
 // Default due time for a NEW task: one hour after the most recently added task
 // that had a due time, so adding tasks back-to-back auto-stacks them an hour
@@ -46,7 +48,7 @@ function nextDefaultDueTime(tasks: Task[]): string {
 
 export default function AddTaskScreen() {
   const { t } = useTranslation();
-  const { taskId } = useLocalSearchParams<{ taskId?: string }>();
+  const { taskId, date } = useLocalSearchParams<{ taskId?: string; date?: string }>();
   const { tasks, subjects, addTask, updateTask, use24HourTime } = useApp();
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
@@ -56,13 +58,18 @@ export default function AddTaskScreen() {
   const todayISO = getTodayISO();
 
   const [title, setTitle] = useState(existingTask?.title ?? '');
+  const [description, setDescription] = useState(existingTask?.description ?? '');
   const [subjectId, setSubjectId] = useState<string | null>(existingTask?.subjectId ?? null);
-  const [dueDateEnabled, setDueDateEnabled] = useState(existingTask?.dueDate != null || !editing);
-  const [dueDate, setDueDate] = useState(existingTask?.dueDate ?? todayISO);
+  // The task's day comes from the tapped calendar cell (`date` param), the task's
+  // saved date when editing, or today for a bare "＋ Add" — there's no in-form date
+  // picker anymore. You choose the day by tapping a calendar cell.
+  const targetDate = existingTask?.dueDate?.slice(0, 10) ?? date ?? todayISO;
+  // "Due that day?" — Yes = a real deadline (drives the calendar red dot); No = the
+  // task just sits on that day. Legacy dated tasks (isDeadline undefined) → Yes.
+  const [isDeadline, setIsDeadline] = useState(existingTask?.isDeadline ?? true);
   // A due time is optional — dated tasks default to "All day" (no time).
   const [dueTimeEnabled, setDueTimeEnabled] = useState(editing ? existingTask?.dueTime != null : false);
   const [dueTime, setDueTime] = useState(existingTask?.dueTime ?? (editing ? '09:00' : nextDefaultDueTime(tasks)));
-  const [status, setStatus] = useState<TaskStatus>(existingTask?.status ?? 'not_started');
   // Weekdays (0=Sun … 6=Sat) the task repeats on. Empty = no repeat.
   const [repeatDays, setRepeatDays] = useState<number[]>(existingTask?.repeatDays ?? []);
   const toggleRepeatDay = (d: number) =>
@@ -104,8 +111,8 @@ export default function AddTaskScreen() {
       showPopup(t('common.inappropriateLanguage'));
       return;
     }
-    const dueDateValue = dueDateEnabled ? dueDate.trim() || todayISO : null;
-    const dueTimeValue = dueDateEnabled && dueTimeEnabled ? dueTime : null;
+    const dueDateValue = targetDate;
+    const dueTimeValue = dueTimeEnabled ? dueTime : null;
 
     // Reminder fires `notifyOffset` minutes before the due date+time.
     let notifyAt: string | null = null;
@@ -119,19 +126,22 @@ export default function AddTaskScreen() {
     // Cancel any previously scheduled reminder for this task.
     await cancelTaskNotification(existingTask?.notifId ?? null);
 
-    // Repeats only make sense with a due date to roll forward.
-    const repeatDaysValue = dueDateEnabled && repeatDays.length ? repeatDays : undefined;
+    // Repeats roll the task's day forward each matching weekday.
+    const repeatDaysValue = repeatDays.length ? repeatDays : undefined;
     const repeatUntilValue = repeatDaysValue && repeatUntilEnabled ? repeatUntil.trim() || undefined : undefined;
 
     const titleVal = title.trim();
+    const descriptionVal = description.trim() || undefined;
     const id = editing ? taskId! : addTask({
       title: titleVal,
+      description: descriptionVal,
       subjectId,
       dueDate: dueDateValue,
+      isDeadline,
       dueTime: dueTimeValue,
       estimatedMinutes: existingTask?.estimatedMinutes ?? null,
       priority: existingTask?.priority ?? 'medium',
-      status,
+      status: 'not_started',
       notifyAt,
       repeatDays: repeatDaysValue,
       repeatUntil: repeatUntilValue,
@@ -147,7 +157,9 @@ export default function AddTaskScreen() {
     const notifId = notifyAt ? await scheduleTaskNotification({ id, title: titleVal, notifyAt }) : null;
 
     if (editing) {
-      updateTask(taskId!, { title: titleVal, subjectId, dueDate: dueDateValue, dueTime: dueTimeValue, status, notifyAt, notifId, repeatDays: repeatDaysValue, repeatUntil: repeatUntilValue });
+      // Status isn't edited here — it's driven only by the checkmark on the task
+      // list — so we leave the existing status untouched on save.
+      updateTask(taskId!, { title: titleVal, description: descriptionVal, subjectId, dueDate: dueDateValue, isDeadline, dueTime: dueTimeValue, notifyAt, notifId, repeatDays: repeatDaysValue, repeatUntil: repeatUntilValue });
     } else if (notifId) {
       updateTask(id, { notifId });
     }
@@ -190,6 +202,23 @@ export default function AddTaskScreen() {
             )}
           </ThemedView>
 
+          {/* Description */}
+          <ThemedView style={styles.fieldGroup}>
+            <ThemedText type="smallBold" style={styles.label}>
+              {t('addTask.descriptionOptional')}
+            </ThemedText>
+            <TextInput
+              style={[...inputStyle, styles.descriptionInput]}
+              placeholder={t('addTask.descriptionPlaceholder')}
+              placeholderTextColor={isDark ? '#666' : '#AAA'}
+              value={description}
+              onChangeText={setDescription}
+              maxLength={500}
+              multiline
+              textAlignVertical="top"
+            />
+          </ThemedView>
+
           {/* Subject */}
           <ThemedView style={styles.fieldGroup}>
             <ThemedText type="smallBold" style={styles.label}>
@@ -230,103 +259,77 @@ export default function AddTaskScreen() {
             </ThemedView>
           </ThemedView>
 
-          {/* Status (edit mode only) */}
-          {editing && (
-            <ThemedView style={styles.fieldGroup}>
-              <ThemedText type="smallBold" style={styles.label}>
-                {t('addTask.status')}
-              </ThemedText>
-              <ThemedView style={styles.chipRow}>
-                {STATUS_OPTIONS.map((opt) => (
-                  <Pressable
-                    key={opt.value}
-                    onPress={() => setStatus(opt.value)}
-                    style={({ pressed }) => [pressed && styles.pressed]}>
-                    <ThemedView
-                      type={status === opt.value ? 'backgroundSelected' : 'backgroundElement'}
-                      style={styles.chip}>
-                      <ThemedText type="small">{t(opt.labelKey)}</ThemedText>
-                    </ThemedView>
-                  </Pressable>
-                ))}
-              </ThemedView>
-            </ThemedView>
-          )}
-
-          {/* Due date */}
+          {/* Due? — the day itself is set by the tapped calendar cell; here you
+              only choose whether it's a real deadline (Yes, drives the red dot) or
+              just sits on that day (No). */}
           <ThemedView style={styles.fieldGroup}>
             <ThemedText type="smallBold" style={styles.label}>
-              {t('addTask.dueDateOptional')}
+              {t('addTask.dueThatDay')}
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {formatDateLabel(targetDate)}
             </ThemedText>
             <ThemedView style={styles.chipRow}>
               <Pressable
-                onPress={() => setDueDateEnabled(true)}
+                onPress={() => setIsDeadline(true)}
                 style={({ pressed }) => [pressed && styles.pressed]}>
                 <ThemedView
-                  type={dueDateEnabled ? 'backgroundSelected' : 'backgroundElement'}
+                  type={isDeadline ? 'backgroundSelected' : 'backgroundElement'}
                   style={styles.chip}>
-                  <ThemedText type="small">{t('addTask.pickDate')}</ThemedText>
+                  <ThemedText type="small">{t('common.yes')}</ThemedText>
                 </ThemedView>
               </Pressable>
               <Pressable
-                onPress={() => setDueDateEnabled(false)}
+                onPress={() => setIsDeadline(false)}
                 style={({ pressed }) => [pressed && styles.pressed]}>
                 <ThemedView
-                  type={!dueDateEnabled ? 'backgroundSelected' : 'backgroundElement'}
+                  type={!isDeadline ? 'backgroundSelected' : 'backgroundElement'}
                   style={styles.chip}>
-                  <ThemedText type="small">{t('addTask.noDueDate')}</ThemedText>
+                  <ThemedText type="small">{t('common.no')}</ThemedText>
                 </ThemedView>
               </Pressable>
             </ThemedView>
-            {dueDateEnabled ? (
-              <>
-                <DateWheelPicker value={dueDate} onChange={setDueDate} />
-                <ThemedText type="smallBold" style={styles.label}>
-                  {t('addTask.timeLabel')}
-                </ThemedText>
-                <ThemedView style={styles.chipRow}>
-                  <Pressable
-                    onPress={() => setDueTimeEnabled(true)}
-                    style={({ pressed }) => [pressed && styles.pressed]}>
-                    <ThemedView
-                      type={dueTimeEnabled ? 'backgroundSelected' : 'backgroundElement'}
-                      style={styles.chip}>
-                      {/* Show the picked time on the chip so the selected time is
-                          obvious at a glance (not hidden until you scroll a wheel). */}
-                      <ThemedText type="small">
-                        {dueTimeEnabled ? formatTimeLabel(dueTime, use24HourTime) : t('addTask.pickTime')}
-                      </ThemedText>
-                    </ThemedView>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => setDueTimeEnabled(false)}
-                    style={({ pressed }) => [pressed && styles.pressed]}>
-                    <ThemedView
-                      type={!dueTimeEnabled ? 'backgroundSelected' : 'backgroundElement'}
-                      style={styles.chip}>
-                      <ThemedText type="small">{t('calendar.anytime')}</ThemedText>
-                    </ThemedView>
-                  </Pressable>
+          </ThemedView>
+
+          {/* Time — optional time of day on that date (default "Anytime"). */}
+          <ThemedView style={styles.fieldGroup}>
+            <ThemedText type="smallBold" style={styles.label}>
+              {t('addTask.timeLabel')}
+            </ThemedText>
+            <ThemedView style={styles.chipRow}>
+              <Pressable
+                onPress={() => setDueTimeEnabled(true)}
+                style={({ pressed }) => [pressed && styles.pressed]}>
+                <ThemedView
+                  type={dueTimeEnabled ? 'backgroundSelected' : 'backgroundElement'}
+                  style={styles.chip}>
+                  {/* Show the picked time on the chip so the selected time is
+                      obvious at a glance (not hidden until you scroll a wheel). */}
+                  <ThemedText type="small">
+                    {dueTimeEnabled ? formatTimeLabel(dueTime, use24HourTime) : t('addTask.pickTime')}
+                  </ThemedText>
                 </ThemedView>
-                {dueTimeEnabled && (
-                  <TimeWheelPicker value={dueTime} onChange={setDueTime} use24Hour={use24HourTime} />
-                )}
-              </>
-            ) : (
-              <ThemedView type="backgroundElement" style={styles.dateHintCard}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {t('addTask.noDueDateSelected')}
-                </ThemedText>
-              </ThemedView>
+              </Pressable>
+              <Pressable
+                onPress={() => setDueTimeEnabled(false)}
+                style={({ pressed }) => [pressed && styles.pressed]}>
+                <ThemedView
+                  type={!dueTimeEnabled ? 'backgroundSelected' : 'backgroundElement'}
+                  style={styles.chip}>
+                  <ThemedText type="small">{t('calendar.anytime')}</ThemedText>
+                </ThemedView>
+              </Pressable>
+            </ThemedView>
+            {dueTimeEnabled && (
+              <TimeWheelPicker value={dueTime} onChange={setDueTime} use24Hour={use24HourTime} />
             )}
           </ThemedView>
 
-          {/* Repeat — choose which weekdays the task repeats on (needs a due date) */}
-          {dueDateEnabled && (
-            <ThemedView style={styles.fieldGroup}>
-              <ThemedText type="smallBold" style={styles.label}>
-                {t('addTask.repeatOn')}
-              </ThemedText>
+          {/* Repeat — choose which weekdays the task repeats on */}
+          <ThemedView style={styles.fieldGroup}>
+            <ThemedText type="smallBold" style={styles.label}>
+              {t('addTask.repeatOn')}
+            </ThemedText>
               <View style={styles.weekdayRow}>
                 {[0, 1, 2, 3, 4, 5, 6].map((d) => {
                   const on = repeatDays.includes(d);
@@ -359,15 +362,14 @@ export default function AddTaskScreen() {
                   {repeatUntilEnabled && <DateWheelPicker value={repeatUntil} onChange={setRepeatUntil} />}
                 </>
               )}
-            </ThemedView>
-          )}
+          </ThemedView>
 
           {/* Reminder notification — N minutes before the due time */}
           <ThemedView style={styles.fieldGroup}>
             <ThemedText type="smallBold" style={styles.label}>
               {t('addTask.reminderOptional')}
             </ThemedText>
-            {dueDateEnabled && dueTimeEnabled ? (
+            {dueTimeEnabled ? (
               <ThemedView style={styles.chipRow}>
                 <Pressable onPress={() => setNotifyOffset(null)} style={({ pressed }) => [pressed && styles.pressed]}>
                   <ThemedView type={notifyOffset == null ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
@@ -377,7 +379,7 @@ export default function AddTaskScreen() {
                 {REMINDER_OFFSETS.map((off) => (
                   <Pressable key={off} onPress={() => setNotifyOffset(off)} style={({ pressed }) => [pressed && styles.pressed]}>
                     <ThemedView type={notifyOffset === off ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
-                      <ThemedText type="small">{t('addTask.minBefore', { n: off })}</ThemedText>
+                      <ThemedText type="small">{reminderLabel(off, t)}</ThemedText>
                     </ThemedView>
                   </Pressable>
                 ))}
@@ -428,6 +430,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 15,
   },
+  descriptionInput: { minHeight: 88 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   weekdayRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   weekdayChip: {

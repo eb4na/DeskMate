@@ -23,7 +23,12 @@ export function WheelColumn({
   values, value, unit, onChange, loop = false, scale = 1, resnap = 0, format,
 }: { values: number[]; value: number; unit: string; onChange: (v: number) => void; loop?: boolean; scale?: number; resnap?: number; format?: (v: number) => string }) {
   const ITEM_H = Math.round(BASE_ITEM_H * scale);
-  const styles = useMemo(() => makeWheelStyles(scale, ITEM_H), [scale, ITEM_H]);
+  // The unit label ("hr"/"min") sits BELOW the numbers, so vertically centering the
+  // column in the card would shove the numbers above the divider's midline. Balance
+  // it with an equal-height spacer ABOVE the scroll so the selected row lands dead
+  // center (aligned with the divider). Columns with no unit (the break wheel) skip it.
+  const unitSpace = unit ? Math.round(18 * scale) : 0;
+  const styles = useMemo(() => makeWheelStyles(scale, ITEM_H, unitSpace), [scale, ITEM_H, unitSpace]);
   const ref = useRef<ScrollView>(null);
   const len = values.length;
   const data = loop ? Array.from({ length: len * LOOP_REPEAT }, (_, i) => values[i % len]) : values;
@@ -61,6 +66,8 @@ export function WheelColumn({
   return (
     <View style={styles.wheel}>
       <View style={styles.wheelHighlight} pointerEvents="none" />
+      {/* Balances the unit label below, keeping the selected row centered. */}
+      <View style={{ height: unitSpace }} />
       <ScrollView
         ref={ref}
         style={{ height: ITEM_H * 3 }}
@@ -146,16 +153,18 @@ export function BreakWheel({
   );
 }
 
-const makeWheelStyles = (s: number, ITEM_H: number) => StyleSheet.create({
+const makeWheelStyles = (s: number, ITEM_H: number, unitSpace: number) => StyleSheet.create({
   wheel: { alignItems: 'center', minWidth: 96 * s },
+  // Sits behind the middle (selected) row — shifted down by the top spacer.
   wheelHighlight: {
-    position: 'absolute', top: ITEM_H, height: ITEM_H, left: 6 * s, right: 6 * s,
+    position: 'absolute', top: ITEM_H + unitSpace, height: ITEM_H, left: 6 * s, right: 6 * s,
     borderRadius: 12 * s, backgroundColor: 'rgba(195,143,114,0.12)',
   },
   wheelItem: { height: ITEM_H, alignItems: 'center', justifyContent: 'center' },
   wheelNum: { fontSize: 24 * s, fontWeight: '800', color: C.latte, lineHeight: 28 * s },
   wheelNumActive: { fontSize: 32 * s, fontWeight: '900', color: C.berry, lineHeight: 34 * s },
-  wheelUnit: { fontSize: 12 * s, fontWeight: '700', color: C.mocha, marginTop: 2 * s },
+  // lineHeight + marginTop = 18*s, matching `unitSpace` so the top spacer balances it exactly.
+  wheelUnit: { fontSize: 12 * s, fontWeight: '700', color: C.mocha, marginTop: 4 * s, lineHeight: 14 * s },
 });
 
 const makeCardStyles = (s: number) => StyleSheet.create({

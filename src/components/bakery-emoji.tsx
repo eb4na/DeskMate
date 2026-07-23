@@ -173,26 +173,6 @@ export function BakeryCoinEmoji({ size = 20 }: Sz) {
   );
 }
 
-// ── 🔔 Bread Bell ─────────────────────────────────────────────────────────────
-export function BakeryBellEmoji({ size = 20 }: Sz) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 60 60">
-      <Path d="M30 12 Q45 13 47 28 L49 44 L11 44 L13 28 Q15 13 30 12 Z"
-        fill={H} stroke={S} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-      <Path d="M18 30 Q30 26 42 30" stroke={S} strokeWidth="1.5" strokeLinecap="round" fill="none" opacity={0.35} />
-      <Rect x="9" y="44" width="42" height="6" rx="3" fill="#C38F72" stroke={S} strokeWidth="2" />
-      <Line x1="30" y1="50" x2="30" y2="56" stroke={S} strokeWidth="2.5" strokeLinecap="round" />
-      <Circle cx="30" cy="57" r="3" fill={S} opacity={0.7} />
-      <Rect x="27" y="6" width="6" height="7" rx="3" fill="#A46F56" stroke={S} strokeWidth="1.5" />
-      <Ellipse cx="21" cy="9" rx="7" ry="4" fill={P} stroke={S} strokeWidth="1.5" strokeLinejoin="round" transform="rotate(-22 21 9)" />
-      <Ellipse cx="39" cy="9" rx="7" ry="4" fill={P} stroke={S} strokeWidth="1.5" strokeLinejoin="round" transform="rotate(22 39 9)" />
-      <Ellipse cx="30" cy="9" rx="5" ry="3.5" fill="#CC6B7B" stroke={S} strokeWidth="1.5" />
-      <Ellipse cx="18" cy="37" rx="5" ry="3" fill={R} opacity={0.5} />
-      <Ellipse cx="42" cy="37" rx="5" ry="3" fill={R} opacity={0.5} />
-    </Svg>
-  );
-}
-
 // ── 🔥 Bread Flame ────────────────────────────────────────────────────────────
 export function BakeryFlameEmoji({ size = 20 }: Sz) {
   return (

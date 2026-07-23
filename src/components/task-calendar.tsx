@@ -211,6 +211,10 @@ function CalendarMonthCard({
           const iso = toISO(year, month, d);
           const isToday = iso === today;
           const dayTasks = tasksByDay[iso] ?? [];
+          // Red dot when this day carries an unfinished deadline (isDeadline !==
+          // false; legacy dated tasks count). tasksByDay already excludes done /
+          // undated tasks, so a dot means "a real deadline lands here."
+          const hasDeadline = dayTasks.some((t) => t.isDeadline !== false);
           const hasNote = !!dayNotes[iso];
           const exam = examByDay[iso];
           const hasExam = !!exam;
@@ -228,6 +232,7 @@ function CalendarMonthCard({
                 {hasExam && exam.otherColor && (
                   <View style={[styles.examOtherDot, { backgroundColor: exam.otherColor }]} pointerEvents="none" />
                 )}
+                {hasDeadline && <View style={styles.deadlineDot} pointerEvents="none" />}
                 <Text style={[styles.dayNum, { fontSize: Math.round(cellW * 0.3) }, hasExam && styles.dayNumExam]}>{d}</Text>
                 {dayTasks.length > 0 && <Text style={[styles.taskCount, scale !== 1 && { fontSize: 9 * scale, lineHeight: 10 * scale }]}>{dayTasks.length}</Text>}
                 {hasNote && dayTasks.length === 0 && <View style={styles.noteDot} />}
@@ -396,8 +401,9 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
           <Pressable
             style={({ pressed }) => [styles.modalAddBtn, pressed && styles.pressed]}
             onPress={() => {
+              const day = iso;
               onClose();
-              router.push('/add-task');
+              router.push({ pathname: '/add-task', params: day ? { date: day } : {} });
             }}>
             <Text style={styles.modalAddText}>{i18n.t('calendar.addTaskForDay')}</Text>
           </Pressable>
@@ -621,6 +627,9 @@ const styles = StyleSheet.create({
   examStar: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   // Small dot (top-right) marking a second same-day countdown, in its subject colour.
   examOtherDot: { position: 'absolute', top: 2, right: 2, width: 7, height: 7, borderRadius: 3.5, borderWidth: 1, borderColor: '#fff' },
+  // Red dot (top-left) marking a day with an unfinished deadline. Top-left keeps
+  // it clear of the exam dot (top-right) and the task count / note dot (bottom-right).
+  deadlineDot: { position: 'absolute', top: 2, left: 2, width: 8, height: 8, borderRadius: 4, backgroundColor: '#E5484D', borderWidth: 1.5, borderColor: '#fff' },
   dayNum: { fontSize: 14, color: C.cocoaDark, fontWeight: '600' },
   dayNumExam: { color: '#fff', fontWeight: '800' },
   dayNumSelected: { color: '#fff', fontWeight: '800' },

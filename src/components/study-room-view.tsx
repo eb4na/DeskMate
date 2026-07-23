@@ -229,6 +229,33 @@ export function StudyRoomView({
   // tracks solo↔multiplayer and tablet size changes.
   const timerCardRef = useRef<View>(null);
   const [ropes, setRopes] = useState<{ top: number; width: number; eyeY: number } | null>(null);
+  // Tap-to-talk bubble must paint ABOVE the desk + book. In RN a child's zIndex can't
+  // escape its parent's siblings, so the bubble can't be lifted while it lives inside
+  // the character Pressable (which sits behind the desk). Instead we measure the phone
+  // solo character's box (relative to the root, minus root padding) and render the
+  // bubble in a matching high-zIndex overlay drawn after the desk/book. (Tablet uses
+  // its own absolute anchor; see the tablet overlay below.)
+  const rootRef = useRef<View>(null);
+  const charRef = useRef<View>(null);
+  const [soloCharBox, setSoloCharBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const measureSoloChar = useCallback(() => {
+    // On the new architecture measureLayout wants a ref to a native component as the
+    // relative node (a findNodeHandle number warns + no-ops), so pass rootRef directly.
+    const root = rootRef.current;
+    if (!root || !charRef.current) return;
+    charRef.current.measureLayout(
+      root,
+      (x, y, w, h) => {
+        // Absolute insets are relative to root's padding box; measureLayout returns
+        // the border-box offset — subtract root padding so the overlay lines up.
+        const box = { x: x - Spacing.three, y: y - Spacing.one, w, h };
+        setSoloCharBox((prev) =>
+          prev && prev.x === box.x && prev.y === box.y && prev.w === box.w && prev.h === box.h ? prev : box,
+        );
+      },
+      () => {},
+    );
+  }, []);
   const measureRopes = useCallback(() => {
     timerCardRef.current?.measureInWindow((x, y, w, h) => {
       if (w > 0 && y > 0) setRopes({ top: -y, width: w, eyeY: y + h * EYELET_FRAC.y });
@@ -412,7 +439,10 @@ export function StudyRoomView({
         if (isSoloRef.current && onBreakRef.current) {
           if (breakNudgeId == null) {
             const secs = breakLeftRef.current;
-            const lead = Math.min(60, Math.floor(secs / 2));
+            // Fire the "come back" nudge 30s before the break ends (not a full
+            // minute). Short breaks (<60s) still lead by half so it never fires
+            // at/after break-end.
+            const lead = Math.min(30, Math.floor(secs / 2));
             sendBreakEndingNudge(tRef.current(breakEndTitleKeyRef.current), tRef.current(breakEndBodyKeyRef.current), Math.max(1, secs - lead)).then((id) => { breakNudgeId = id; });
           }
           return;
@@ -1003,7 +1033,7 @@ export function StudyRoomView({
   };
 
   return (
-    <View style={styles.root}>
+    <View ref={rootRef} style={styles.root}>
       {/* "Spotify background" mode: a large album-cover vinyl drawn over the disco
           backdrop, behind the desk + character. Tapping it toggles play/stop (host/solo
           only — a guest can't control the host's music, so theirs stays non-interactive
@@ -1077,7 +1107,7 @@ export function StudyRoomView({
           // Transform lives on an Animated.View (like Home) — applying it to the
           // expo-image directly stutters because the study view re-renders every
           // second (the countdown), which re-attaches the native animation nodes.
-          <Pressable style={[styles.character, styles.characterSolo, { marginBottom: SOLO_WAIST_MB[soloBookKey] ?? DEFAULT_SOLO_WAIST_MB }, focus && styles.characterSoloFocus]} onPress={() => talkAs(friendCode, myPersona, mySkin)}>
+          <Pressable ref={charRef} onLayout={measureSoloChar} style={[styles.character, styles.characterSolo, { marginBottom: SOLO_WAIST_MB[soloBookKey] ?? DEFAULT_SOLO_WAIST_MB }, focus && styles.characterSoloFocus]} onPress={() => talkAs(friendCode, myPersona, mySkin)}>
             {/* Squish layer (center-bottom origin so feet stay tucked behind the desk
                 on tap) wraps the idle-bounce layer — mirrors Home's CompanionPet. */}
             <Animated.View style={{ width: '100%', height: '100%', transform: [{ scale: tapScale }], transformOrigin: 'center bottom' }}>
@@ -1095,7 +1125,8 @@ export function StudyRoomView({
             {talk?.code === friendCode && hearts.map((h) => (
               <FloatingHeart key={h.id} heart={h} size={18 * heartScale} onDone={() => setHearts((cur) => cur.filter((x) => x.id !== h.id))} />
             ))}
-            {talk && <PetBubble key={talk.id} line={talk.line} onDone={() => setTalk(null)} />}
+            {/* Bubble moved to a high-zIndex overlay (soloBubbleOverlay below) so it
+                paints over the desk/book instead of behind them. */}
           </Pressable>
         )}
         {onBreak && frozenSecs != null && (
@@ -1125,7 +1156,7 @@ export function StudyRoomView({
             {talk?.code === friendCode && hearts.map((h) => (
               <FloatingHeart key={h.id} heart={h} size={18 * heartScale} onDone={() => setHearts((cur) => cur.filter((x) => x.id !== h.id))} />
             ))}
-            {talk && <PetBubble key={talk.id} line={talk.line} scale={1.25} onDone={() => setTalk(null)} />}
+            {/* Bubble moved to a high-zIndex overlay (soloBubbleOverlay below). */}
           </Pressable>
         </Animated.View>
       )}
@@ -1295,6 +1326,31 @@ export function StudyRoomView({
           </View>
         </View>
       ))}
+
+      {/* Solo tap-dialogue overlay (phone) — drawn ON TOP of the desk + book so the
+          bubble is never hidden behind them. Positioned over the character's measured
+          box (see measureSoloChar); the PetBubble's own bottom offset then lands it in
+          the same spot it had inside the Pressable. pointerEvents:none keeps the
+          character underneath tappable. */}
+      {soloScene && !isTablet && talk && soloCharBox && (
+        <View
+          pointerEvents="none"
+          style={{ position: 'absolute', left: soloCharBox.x, top: soloCharBox.y, width: soloCharBox.w, height: soloCharBox.h, zIndex: 7 }}>
+          <PetBubble key={talk.id} line={talk.line} onDone={() => setTalk(null)} />
+        </View>
+      )}
+
+      {/* Solo tap-dialogue overlay (tablet) — same idea, anchored to the desk-relative
+          character layer (matches its bottom + transform) at a high zIndex. */}
+      {soloScene && isTablet && talk && (
+        <Animated.View
+          pointerEvents="none"
+          style={[{ position: 'absolute', left: 0, right: 0, bottom: focus ? soloCharBottomT - 230 : soloCharBottomT, alignItems: 'center', zIndex: 7 }, soloCharTransform]}>
+          <View style={{ width: soloCharSize, height: soloCharSize }}>
+            <PetBubble key={talk.id} line={talk.line} scale={1.25} onDone={() => setTalk(null)} />
+          </View>
+        </Animated.View>
+      )}
 
       {/* Host crown overlay — drawn ON TOP of all characters/desk/book (high zIndex)
           so it's never hidden behind an overlapping neighbour. Mirrors the party row's
