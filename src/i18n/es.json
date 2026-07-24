@@ -1,4 +1,10 @@
 {
+  "deleteAccount": {
+    "title": "¿Eliminar cuenta?",
+    "warning": "Esto borra permanentemente tu cuenta y TODOS tus datos: monedas, recetas, compañeros, amigos y progreso. Esta acción no se puede deshacer.",
+    "typePrompt": "Escribe «{{name}}» para confirmar.",
+    "confirm": "Eliminar para siempre"
+  },
   "pet": {
     "bun": {
       "classic": ["Qué gusto tenerte de vuelta, miguita tibia.", "El café te guardó tu asiento favorito.", "Algo dulce te estaba esperando."],

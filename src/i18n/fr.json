@@ -1,4 +1,10 @@
 {
+  "deleteAccount": {
+    "title": "Supprimer le compte ?",
+    "warning": "Cette action efface définitivement votre compte et TOUTES vos données : pièces, recettes, compagnons, amis et progression. Cette action est irréversible.",
+    "typePrompt": "Tapez « {{name}} » pour confirmer.",
+    "confirm": "Supprimer définitivement"
+  },
   "pet": {
     "bun": {
       "classic": ["Te revoilà, petite miette toute chaude.", "Le café t'a gardé ta place préférée.", "Quelque chose de sucré t'attendait."],

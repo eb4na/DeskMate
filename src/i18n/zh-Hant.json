@@ -1,4 +1,10 @@
 {
+  "deleteAccount": {
+    "title": "刪除帳戶？",
+    "warning": "這將永久刪除你的帳戶和所有資料——金幣、食譜、夥伴、好友和進度。此操作無法復原。",
+    "typePrompt": "輸入「{{name}}」以確認。",
+    "confirm": "永久刪除"
+  },
   "pet": {
     "bun": {
       "classic": [

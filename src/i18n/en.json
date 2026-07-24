@@ -1,4 +1,10 @@
 {
+  "deleteAccount": {
+    "title": "Delete account?",
+    "warning": "This permanently erases your account and ALL your data — coins, recipes, companions, friends and progress. This cannot be undone.",
+    "typePrompt": "Type “{{name}}” to confirm.",
+    "confirm": "Delete forever"
+  },
   "pet": {
     "bun": {
       "classic": ["Welcome back, warm little crumb.", "The café saved your favorite seat.", "Something sweet was waiting for you."],
