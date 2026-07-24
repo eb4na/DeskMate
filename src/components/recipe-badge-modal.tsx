@@ -28,7 +28,7 @@ const P = { card: '#FFFDF8', pink: '#F491A9', pinkSoft: '#FBDCE4', brown: '#5B3A
 // mirroring the minigame player cards (break-game). Same characters, proven look.
 const SLOT = 48; // circle diameter the shift fraction is measured against
 const AVATAR_ZOOM = 1.6;
-const AVATAR_CROWN_TARGET = 0.1; // land the crown 10% down from the circle top
+const AVATAR_CROWN_TARGET = -0.05; // lift the crown just above the circle top so faces sit centred (tall heads/ears/hats otherwise ride low)
 const AVATAR_DY = 0.14; // fallback shift for unmeasured art (none here, but safe)
 
 // A little drooping wisteria sprig — a tapering cluster of lavender blossoms on a

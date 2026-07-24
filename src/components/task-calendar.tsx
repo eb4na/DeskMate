@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -28,7 +28,7 @@ import { formatMinutesShort } from '@/lib/format-duration';
 import { formatTimeLabel } from '@/components/time-wheel-picker';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, PastelCards, Spacing } from '@/constants/theme';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
-import { useReportModalTransition } from '@/lib/modal-traffic';
+import { MODAL_SETTLE_MS, useReportModalTransition } from '@/lib/modal-traffic';
 
 
 const C = BakeryColors;
@@ -61,7 +61,10 @@ function formatTime(notifyAt: string | null, use24Hour: boolean) {
 }
 
 // ─── shared task preview card ────────────────────────────────────────────────
-function TaskPreviewCard({ task }: { task: Task }) {
+// `onNavigate` (set only when this card lives INSIDE the day modal) routes the
+// edit tap through the modal's dismiss-then-navigate path so add-task never
+// presents on top of the still-open native modal (which wedges iOS).
+function TaskPreviewCard({ task, onNavigate }: { task: Task; onNavigate?: (go: () => void) => void }) {
   const { subjects, updateTask, use24HourTime } = useApp();
   const subject = task.subjectId ? subjects.find((s) => s.id === task.subjectId) : null;
   const done = task.status === 'done';
@@ -70,7 +73,10 @@ function TaskPreviewCard({ task }: { task: Task }) {
   return (
     <Pressable
       style={({ pressed }) => [styles.taskCard, pressed && styles.pressed]}
-      onPress={() => router.push({ pathname: '/add-task', params: { taskId: task.id } })}>
+      onPress={() => {
+        const go = () => router.push({ pathname: '/add-task', params: { taskId: task.id } });
+        onNavigate ? onNavigate(go) : go();
+      }}>
       {/* completion checkbox */}
       <Pressable
         hitSlop={8}
@@ -299,7 +305,7 @@ function TaskSlider() {
 }
 
 // ─── shared exam preview card ────────────────────────────────────────────────
-function ExamPreviewCard({ exam }: { exam: ExamCountdown }) {
+function ExamPreviewCard({ exam, onNavigate }: { exam: ExamCountdown; onNavigate?: (go: () => void) => void }) {
   const { subjects, use24HourTime } = useApp();
   const subject = exam.subject ? subjects.find((s) => s.name === exam.subject) : null;
   const color = subject?.color ?? '#F4A8C0';
@@ -310,7 +316,10 @@ function ExamPreviewCard({ exam }: { exam: ExamCountdown }) {
   return (
     <Pressable
       style={({ pressed }) => [styles.taskCard, pressed && styles.pressed]}
-      onPress={() => router.push({ pathname: '/add-exam', params: { examId: exam.id } })}>
+      onPress={() => {
+        const go = () => router.push({ pathname: '/add-exam', params: { examId: exam.id } });
+        onNavigate ? onNavigate(go) : go();
+      }}>
       <View style={styles.taskIcon}>
         <CountdownShape shape={exam.shape} color={color} size={22} />
       </View>
@@ -339,6 +348,23 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
   const { tasks, examCountdowns, use24HourTime } = useApp();
   const { height: winH } = useWindowDimensions();
   useReportModalTransition(!!iso);
+  // Opening add/edit (a modal SCREEN) while this native modal is still presented —
+  // or mid-dismiss — wedges iOS (present-over-present), leaving the calendar frozen
+  // to taps. So close this modal FIRST and run the queued navigation only once it's
+  // fully gone: the Modal's onDismiss (iOS) fires it; a settle-window timeout is the
+  // fallback for Android (no onDismiss) and transparent-modal edge cases. Guarded by
+  // clearing the ref so the two triggers can't double-navigate.
+  const pendingNav = useRef<(() => void) | null>(null);
+  const runPendingNav = () => {
+    const go = pendingNav.current;
+    pendingNav.current = null;
+    go?.();
+  };
+  const navigateAfterClose = (go: () => void) => {
+    pendingNav.current = go;
+    onClose();
+    setTimeout(runPendingNav, MODAL_SETTLE_MS);
+  };
   const dayTasks = iso ? tasks.filter((t) => t.dueDate?.slice(0, 10) === iso) : [];
   const dayExams = iso ? examCountdowns.filter((e) => e.dateISO.slice(0, 10) === iso) : [];
 
@@ -350,7 +376,7 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
   const untimedTasks = dayTasks.filter((t) => !t.dueTime);
 
   return (
-    <Modal visible={!!iso} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={!!iso} transparent animationType="fade" onRequestClose={onClose} onDismiss={runPendingNav}>
       <View style={styles.modalRoot}>
         <Pressable style={styles.modalBackdrop} onPress={onClose} />
         <View style={styles.modalCard}>
@@ -371,14 +397,14 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
               showsVerticalScrollIndicator
               bounces={false}>
               {dayExams.map((e) => (
-                <ExamPreviewCard key={e.id} exam={e} />
+                <ExamPreviewCard key={e.id} exam={e} onNavigate={navigateAfterClose} />
               ))}
               {/* Timed tasks — chronological, with a time gutter on the left. */}
               {timedTasks.map((t) => (
                 <View key={t.id} style={styles.agendaRow}>
                   <Text style={styles.agendaTime}>{formatTimeLabel(t.dueTime!, use24HourTime)}</Text>
                   <View style={styles.agendaCard}>
-                    <TaskPreviewCard task={t} />
+                    <TaskPreviewCard task={t} onNavigate={navigateAfterClose} />
                   </View>
                 </View>
               ))}
@@ -391,7 +417,7 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
                     <Text style={styles.agendaAnytimeLabel}>{i18n.t('calendar.anytime')}</Text>
                   )}
                   {untimedTasks.map((t) => (
-                    <TaskPreviewCard key={t.id} task={t} />
+                    <TaskPreviewCard key={t.id} task={t} onNavigate={navigateAfterClose} />
                   ))}
                 </View>
               )}
@@ -402,8 +428,7 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
             style={({ pressed }) => [styles.modalAddBtn, pressed && styles.pressed]}
             onPress={() => {
               const day = iso;
-              onClose();
-              router.push({ pathname: '/add-task', params: day ? { date: day } : {} });
+              navigateAfterClose(() => router.push({ pathname: '/add-task', params: day ? { date: day } : {} }));
             }}>
             <Text style={styles.modalAddText}>{i18n.t('calendar.addTaskForDay')}</Text>
           </Pressable>

@@ -154,7 +154,7 @@ export function BreakWheel({
 }
 
 const makeWheelStyles = (s: number, ITEM_H: number, unitSpace: number) => StyleSheet.create({
-  wheel: { alignItems: 'center', minWidth: 96 * s },
+  wheel: { alignItems: 'center', minWidth: 80 * s },
   // Sits behind the middle (selected) row — shifted down by the top spacer.
   wheelHighlight: {
     position: 'absolute', top: ITEM_H + unitSpace, height: ITEM_H, left: 6 * s, right: 6 * s,
@@ -174,7 +174,7 @@ const makeCardStyles = (s: number) => StyleSheet.create({
     borderWidth: 1.5, borderColor: 'rgba(195,143,114,0.18)',
     paddingVertical: 16 * s, marginTop: 4 * s, ...BakeryShadow,
   },
-  durDivider: { width: 1.5, height: 96 * s, backgroundColor: C.shortbread, marginHorizontal: 24 * s },
+  durDivider: { width: 1.5, height: 96 * s, backgroundColor: C.shortbread, marginHorizontal: 12 * s },
   pickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 * s, marginTop: 8 * s, justifyContent: 'center' },
   pick: {
     borderRadius: BakeryRadii.pill, borderWidth: 1.5, borderColor: C.shortbread,

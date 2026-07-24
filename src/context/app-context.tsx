@@ -1,13 +1,13 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import i18n, { detectDeviceLanguage } from '@/i18n';
-import { capCoins, COINS_PER_MINUTE, DAILY_EARN_CAP, MAX_FRIENDS, STATIC_SUBJECTS } from '@/constants/placeholder-data';
+import { capCoins, COINS_PER_MINUTE, DAILY_EARN_CAP, MAX_FRIENDS, PLUS_STUDY_COIN_MULTIPLIER, STATIC_SUBJECTS } from '@/constants/placeholder-data';
 import { SHOP_ITEMS, type ShopCategory } from '@/constants/shop-data';
 import { dailyRewardCoins } from '@/constants/login-rewards';
 import { getAchievement } from '@/constants/quests';
 import { useAuth } from '@/context/auth-context';
 import { getAppStateScope, loadScopedAppState, saveScopedAppState, isGuestUpgradePending, clearGuestUpgradePending, loadGuestState } from '@/lib/app-state-repository';
-import { probeCloudState, pushCloudState, pushCloudStateDebounced } from '@/lib/cloud-sync';
+import { probeCloudState, pushCloudState, pushCloudStateDebounced, flushCloudState } from '@/lib/cloud-sync';
 import { showPopup } from '@/lib/popup';
 import { getEffectiveBunSkinId, getEffectiveCompanionSkins } from '@/lib/companion-utils';
 import { maskProfanity } from '@/lib/profanity';
@@ -1081,6 +1081,7 @@ type AppContextType = {
   readMailIds: string[];
   markMailRead: (id: string) => void;
   setLanguage: (lang: string) => void;
+  chooseLoginLanguage: (lang: string) => void;
   markLanguageSelected: () => void;
   markLegalAccepted: () => void;
   markTutorialSeen: () => void;
@@ -1218,6 +1219,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // a setS to flush.
   const sRef = useRef(s);
   sRef.current = s;
+  // A language explicitly picked on the LOGIN screen, held until the next account
+  // load consumes it. It lets that pick win even over an account that already has a
+  // saved language (and become that account's preference). Cleared by any other
+  // language change (Settings/first-launch prompt) so a stale pick can't leak.
+  const pendingLoginLangRef = useRef<string | null>(null);
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [sessionRun, setSessionRun] = useState<SessionRun | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -1331,6 +1337,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
 
       const normalized = normalizePersistedState(saved);
+      // A language picked on the LOGIN screen wins for whichever account is being
+      // entered — even one that already has a saved language — and becomes that
+      // account's preference. Without this, signing in would snap the whole app back
+      // to the account's stored (or the device's) language and lose the pick.
+      if (pendingLoginLangRef.current) {
+        normalized.language = pendingLoginLangRef.current;
+        normalized.languageSelected = true;
+        pendingLoginLangRef.current = null;
+      } else if (sRef.current.languageSelected && !normalized.languageSelected) {
+        // No fresh login pick, but the current session chose a language (e.g. the
+        // first-launch prompt) and this is a brand-new account with none of its own
+        // — carry it in rather than resetting to the device default. Established
+        // accounts and first-launch device detection are untouched.
+        normalized.language = sRef.current.language;
+        normalized.languageSelected = true;
+      }
       setS(normalized);
       // Anchor all day math to this account's stored timezone before any streak action.
       setActiveTimezone(normalized.timezone);
@@ -1361,6 +1383,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       pushCloudStateDebounced(appStateScope.userId, stamped as Record<string, unknown>);
     }
   }, [appStateScope, loaded, loadedScopeKey, s]);
+
+  // Push any pending debounced cloud save the instant the app leaves the
+  // foreground. The save above mirrors to the cloud on a 1.5s debounce, but a
+  // "last action before closing" — most often saving a custom-timer preset —
+  // writes to local storage immediately while its cloud push is still pending,
+  // and iOS can suspend/kill the process before the timer fires. Local keeps
+  // the change (and wins on the same device), but a login on another device or
+  // after a reinstall would restore the stale cloud copy and drop it. Flushing
+  // on background closes that gap so presets follow the account everywhere.
+  useEffect(() => {
+    if (appStateScope.kind !== 'user') return;
+    const userId = appStateScope.userId;
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') void flushCloudState(userId);
+    });
+    return () => sub.remove();
+  }, [appStateScope]);
 
   // Streak-protection nudges: if the player doesn't OPEN the app on a given day, send
   // up to 2 spaced-out reminders that day to come back before their streak resets at
@@ -2046,7 +2085,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // study is lost if the app is killed at the checkpoint.
   const finishStudyBlock = ({
     minutes,
-    coins,
+    coins: baseCoins,
     subjectName,
   }: {
     minutes: number;
@@ -2054,6 +2093,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     subjectName: string | null;
   }) => {
     playFinishDing(); // oven-timer "ding": this block is done
+    // Plus perk: double the study payout (the daily earn cap below still applies).
+    const coins = s.isPlus ? baseCoins * PLUS_STUDY_COIN_MULTIPLIER : baseCoins;
     // Coins actually credited after the daily cap (snapshot BEFORE addCoins) — the
     // receipt shows the run's real total, matching the old receipt's cap note.
     const actualEarned = Math.min(coins, Math.max(0, DAILY_EARN_CAP - s.earnedToday));
@@ -2764,8 +2805,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setS((prev) => ({ ...prev, multipleReminders: reminders }));
 
   const setLanguage = (lang: string) => {
+    // An explicit Settings/first-launch change is authoritative for the current
+    // account — cancel any not-yet-consumed login-screen pick.
+    pendingLoginLangRef.current = null;
     i18n.changeLanguage(lang);
     setS((prev) => ({ ...prev, language: lang }));
+  };
+
+  // The login screen's language pick: apply it live AND remember it so the account
+  // the user then signs into adopts it (see the load effect), overriding any saved
+  // language. markLanguageSelected is folded in so the first-launch prompt won't fire.
+  const chooseLoginLanguage = (lang: string) => {
+    pendingLoginLangRef.current = lang;
+    i18n.changeLanguage(lang);
+    setS((prev) => ({ ...prev, language: lang, languageSelected: true }));
   };
 
   const markLanguageSelected = () =>
@@ -3058,6 +3111,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         instagramFollowClaimed: s.instagramFollowClaimed ?? false,
         birthday: s.birthday ?? null,
         setLanguage,
+        chooseLoginLanguage,
         markLanguageSelected,
         markLegalAccepted,
         markTutorialSeen,

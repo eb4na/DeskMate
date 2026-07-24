@@ -1403,6 +1403,8 @@
     "nowStudyingSolo": "Tu étudies en solo maintenant"
   },
   "plus": {
+    "f_studyCoins": "Pièces d'étude doublées",
+    "f_studyCoinsDesc": "Gagnez 2× de pièces à chaque session d'étude",
     "f_customTimers": "Minuteurs personnalisés",
     "f_customTimersDesc": "Toute durée, préréglages enregistrés",
     "f_multiReminders": "Plusieurs rappels",

@@ -18,7 +18,7 @@ import { newRoomId } from '@/lib/game-net';
 import { useStudyRoom } from '@/lib/use-study-room';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { navigateWithLoading, companionPrefetchUri, STUDY_ASSETS } from '@/lib/preload-nav';
-import { SESSION_LENGTHS, autoBreakMinutes, coinsForMinutes, formatCoins } from '@/constants/placeholder-data';
+import { SESSION_LENGTHS, autoBreakMinutes, coinsForMinutes, formatCoins, PLUS_STUDY_COIN_MULTIPLIER } from '@/constants/placeholder-data';
 import { useTranslation } from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
 import { BakeryColors, BakeryRadii, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -174,7 +174,7 @@ export default function SessionPickerScreen() {
                         </Text>
                         <View style={styles.menuLeader} />
                         <CoinIcon size={isTablet ? Math.round(18 * grow) : 14} />
-                        <Text style={[styles.menuPrice, isTablet && styles.menuPriceTablet]}>+{coinsForMinutes(opt.minutes)}</Text>
+                        <Text style={[styles.menuPrice, isTablet && styles.menuPriceTablet]}>+{coinsForMinutes(opt.minutes) * (isPlus ? PLUS_STUDY_COIN_MULTIPLIER : 1)}</Text>
                       </View>
                       <View style={styles.menuSubLine}>
                         <Text style={[styles.menuCoinText, isTablet && styles.menuCoinTextTablet]}>{opt.minutes} {t('customTimer.min')}</Text>

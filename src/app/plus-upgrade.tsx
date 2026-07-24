@@ -31,6 +31,7 @@ const FEATURES: {
   noteKey?: string;
   noteKind?: 'keep' | 'expire';
 }[] = [
+  { titleKey: 'plus.f_studyCoins', descKey: 'plus.f_studyCoinsDesc', art: require('@/assets/images/home/coin-icon.png') },
   { titleKey: 'plus.f_customTimers', descKey: 'plus.f_customTimersDesc', art: require('@/assets/images/settings/timer.png') },
   { titleKey: 'plus.f_unlimitedExams', descKey: 'plus.f_unlimitedExamsDesc', art: require('@/assets/images/home/exam-calendar-icon.png') },
   { titleKey: 'plus.f_moreSubjects', descKey: 'plus.f_moreSubjectsDesc', art: require('@/assets/images/settings/books.png') },

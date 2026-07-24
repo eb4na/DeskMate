@@ -9,12 +9,11 @@
  */
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DurationWheel } from '@/components/duration-wheel';
 import { SoundPressable } from '@/components/sound-pressable';
-import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { SESSION_LENGTHS, autoBreakMinutes } from '@/constants/placeholder-data';
@@ -132,10 +131,6 @@ export default function NextSessionScreen() {
               )}
             </>
           )}
-
-          <Pressable onPress={leaveHome} style={({ pressed }) => [styles.doneBtn, pressed && styles.pressed]} hitSlop={8}>
-            <ThemedText type="small" style={styles.doneText}>{t('sessionComplete.nextDone')}</ThemedText>
-          </Pressable>
         </View>
       </SafeAreaView>
     </ThemedView>
@@ -157,7 +152,5 @@ const makeStyles = (s: number) => StyleSheet.create({
     backgroundColor: BakeryColors.jam, alignItems: 'center', justifyContent: 'center',
   },
   optBtnText: { color: BakeryColors.cocoaDark, fontWeight: '900', fontSize: 15 * s },
-  doneBtn: { paddingVertical: 10 * s, alignItems: 'center', marginTop: Spacing.one * s },
-  doneText: { color: BakeryColors.cocoa, fontWeight: '700' },
   pressed: { opacity: 0.85 },
 });

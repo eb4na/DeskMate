@@ -1403,6 +1403,8 @@
     "nowStudyingSolo": "Ahora estudias en solitario"
   },
   "plus": {
+    "f_studyCoins": "Monedas de estudio dobles",
+    "f_studyCoinsDesc": "Gana el doble de monedas en cada sesión de estudio",
     "f_customTimers": "Temporizadores personalizados",
     "f_customTimersDesc": "Cualquier duración, ajustes guardados",
     "f_multiReminders": "Varios recordatorios",

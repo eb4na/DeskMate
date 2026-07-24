@@ -1403,6 +1403,8 @@
     "nowStudyingSolo": "今はひとりで勉強中"
   },
   "plus": {
+    "f_studyCoins": "学習コイン2倍",
+    "f_studyCoinsDesc": "勉強するたびにコインが2倍もらえる",
     "f_customTimers": "カスタムタイマー",
     "f_customTimersDesc": "任意の長さ、プリセット保存",
     "f_multiReminders": "複数のリマインダー",

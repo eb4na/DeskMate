@@ -71,7 +71,7 @@ export default function LoginScreen() {
   const { email: emailParam, notice } = useLocalSearchParams<{ email?: string; notice?: string }>();
   const { kickedReason, clearKickedReason, continueAsGuest } = useAuth();
   const { t } = useTranslation();
-  const { language, setLanguage, markLanguageSelected } = useApp();
+  const { language, chooseLoginLanguage } = useApp();
   // iPad's taller screen leaves the hanging sign sitting low, so lift it up there.
   const isTablet = useIsTablet();
   // Proportional tablet scaling off the 11-inch reference (834×1194), same system
@@ -142,8 +142,7 @@ export default function LoginScreen() {
   // Choosing a language here applies it live and counts as the user's choice, so
   // the first-launch language prompt won't appear again after sign-in.
   const handlePickLanguage = (code: SupportedLanguage) => {
-    setLanguage(code);
-    markLanguageSelected();
+    chooseLoginLanguage(code);
     setLangMenuOpen(false);
   };
 

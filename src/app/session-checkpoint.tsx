@@ -26,7 +26,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DurationWheel } from '@/components/duration-wheel';
 import { SoundPressable } from '@/components/sound-pressable';
-import { ThemedText } from '@/components/themed-text';
 import { useApp } from '@/context/app-context';
 import { SESSION_LENGTHS, autoBreakMinutes } from '@/constants/placeholder-data';
 import { DEFAULT_ROOM_BG, roomById } from '@/constants/room-data';
@@ -42,19 +41,29 @@ function fmt(secs: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+// Crisp text outline: every copy (outline + fill) is absolutely anchored to the SAME
+// top-left over a transparent in-flow copy that sizes the box, so the outline sits
+// perfectly centred around the fill (no vertical drift from flow/justify centring).
+const OUTLINE_DIRS: [number, number][] = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
+const OUTLINE_ABS = { position: 'absolute' as const, top: 0, left: 0 };
+
+function OutlinedText({ value, textStyle, outline = '#FFFFFF', stroke }: { value: string; textStyle: any; outline?: string; stroke: number }) {
+  return (
+    <View style={{ position: 'relative' }}>
+      <Text style={[textStyle, { color: 'transparent' }]}>{value}</Text>
+      {OUTLINE_DIRS.map(([dx, dy], i) => (
+        <Text key={i} style={[textStyle, OUTLINE_ABS, { color: outline, transform: [{ translateX: dx * stroke }, { translateY: dy * stroke }] }]}>{value}</Text>
+      ))}
+      <Text style={[textStyle, OUTLINE_ABS]}>{value}</Text>
+    </View>
+  );
+}
+
 // Outlined countdown matching the study room's timer look (a coloured number with a
 // white outline so it reads over any room background).
 function OutlinedTimer({ value, color, size }: { value: string; color: string; size: number }) {
-  const base = { position: 'absolute' as const, fontSize: size, fontWeight: '900' as const, letterSpacing: 1 };
-  const off = Math.max(2, Math.round(size * 0.02));
-  return (
-    <View style={{ height: size * 1.15, justifyContent: 'center' }}>
-      {[[-off, 0], [off, 0], [0, -off], [0, off]].map(([dx, dy], i) => (
-        <Text key={i} style={[base, { color: '#FFFFFF', transform: [{ translateX: dx }, { translateY: dy }] }]}>{value}</Text>
-      ))}
-      <Text style={[base, { color, position: 'relative' }]}>{value}</Text>
-    </View>
-  );
+  const stroke = Math.max(2, Math.round(size * 0.02));
+  return <OutlinedText value={value} textStyle={{ fontSize: size, fontWeight: '900' as const, letterSpacing: 1, color }} stroke={stroke} />;
 }
 
 export default function SessionCheckpointScreen() {
@@ -146,7 +155,7 @@ export default function SessionCheckpointScreen() {
         <Image source={bgImage} style={StyleSheet.absoluteFill} contentFit="cover" />
         <SafeAreaView style={styles.breakSafe}>
           <View style={styles.breakTop}>
-            <Text style={styles.breakLabel}>{t('sessionComplete.breakTitle')}</Text>
+            <OutlinedText value={t('sessionComplete.breakTitle')} textStyle={styles.breakLabel} stroke={Math.max(1.5, 2 * scale)} />
             <OutlinedTimer value={fmt(secondsLeft)} color={acc.button} size={Math.round(76 * scale)} />
           </View>
           <View style={styles.breakBtns}>
@@ -166,12 +175,8 @@ export default function SessionCheckpointScreen() {
   }
 
   // ── Stage 2: the length picker (a dimmed card popup) ─────────────────────────
-  const doneBtn = (
-    <Pressable onPress={endSession} style={({ pressed }) => [styles.restBtn, pressed && styles.pressed]} hitSlop={8}>
-      <ThemedText type="small" style={styles.restText}>{t('sessionComplete.nextDone')}</ThemedText>
-    </Pressable>
-  );
-
+  // No "I'm done for now" here — reaching this stage means the player already chose
+  // to keep going (ended the break). The break screen keeps the "End session" exit.
   return (
     <View style={styles.backdrop}>
       <SafeAreaView style={styles.safeArea}>
@@ -191,7 +196,6 @@ export default function SessionCheckpointScreen() {
                 style={({ pressed }) => [styles.optBtn, pressed && styles.pressed]}>
                 <Text style={styles.optBtnText}>{t('lobby.startStudying')}</Text>
               </SoundPressable>
-              {doneBtn}
             </>
           ) : (
             <>
@@ -208,7 +212,6 @@ export default function SessionCheckpointScreen() {
                   </SoundPressable>
                 );
               })}
-              {doneBtn}
             </>
           )}
         </View>
@@ -224,7 +227,7 @@ const makeStyles = (s: number) => StyleSheet.create({
   // the End break / End session buttons together), not split top-and-bottom.
   breakSafe: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: Spacing.six * s, paddingHorizontal: Spacing.four * s, paddingVertical: Spacing.six * s },
   breakTop: { alignItems: 'center', gap: Spacing.two * s },
-  breakLabel: { fontSize: 20 * s, fontWeight: '900', color: '#5B3A2E', textAlign: 'center', textShadowColor: '#FFFFFFCC', textShadowRadius: 6 },
+  breakLabel: { fontSize: 20 * s, fontWeight: '900', color: '#5B3A2E', textAlign: 'center' },
   breakBtns: { alignSelf: 'stretch', alignItems: 'center', gap: Spacing.three * s },
   primaryBtn: {
     alignSelf: 'stretch', maxWidth: 340, paddingVertical: 16 * s, borderRadius: BakeryRadii.pill,
@@ -254,7 +257,5 @@ const makeStyles = (s: number) => StyleSheet.create({
   // The last-used length is pre-highlighted so it's the obvious default tap.
   optBtnActive: { borderColor: BakeryColors.cocoaDark },
   optBtnText: { color: BakeryColors.cocoaDark, fontWeight: '900', fontSize: 15 * s },
-  restBtn: { paddingVertical: 10 * s, alignItems: 'center', marginTop: Spacing.one * s },
-  restText: { color: BakeryColors.cocoa, fontWeight: '700' },
   pressed: { opacity: 0.85 },
 });

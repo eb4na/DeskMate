@@ -131,16 +131,44 @@ export async function pushCloudState(userId: string, data: Record<string, unknow
 
 // ── Debounced push, so rapid in-game changes coalesce into one upload ──────────
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
+// The most recent payload waiting to be pushed, kept so a flush (e.g. on
+// backgrounding) can send it immediately instead of losing it when the timer
+// is dropped by an OS suspend/kill.
+const pending = new Map<string, Record<string, unknown>>();
 
 export function pushCloudStateDebounced(userId: string, data: Record<string, unknown>, delayMs = 1500) {
   if (kicked) return; // kicked device must not clobber the surviving one
+  pending.set(userId, data);
   const existing = timers.get(userId);
   if (existing) clearTimeout(existing);
   timers.set(
     userId,
     setTimeout(() => {
       timers.delete(userId);
-      void pushCloudState(userId, data);
+      const d = pending.get(userId);
+      pending.delete(userId);
+      if (d) void pushCloudState(userId, d);
     }, delayMs),
   );
+}
+
+/**
+ * Push any pending debounced state for this user right now, cancelling the
+ * timer. Call this the moment the app leaves the foreground: saving a timer
+ * preset (or any last action before closing the app) writes to local storage
+ * immediately but only schedules the cloud push, so without a flush the 1.5s
+ * timer can be dropped when iOS suspends the process — the change reaches the
+ * device but never the cloud, and a later login elsewhere restores the stale
+ * copy. No-op when there's nothing pending or the device has been kicked.
+ */
+export function flushCloudState(userId: string): Promise<string | null> {
+  const existing = timers.get(userId);
+  if (existing) {
+    clearTimeout(existing);
+    timers.delete(userId);
+  }
+  const d = pending.get(userId);
+  pending.delete(userId);
+  if (!d || kicked) return Promise.resolve(null);
+  return pushCloudState(userId, d);
 }

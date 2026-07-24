@@ -22,6 +22,10 @@ export function autoBreakMinutes(focusMinutes: number): number {
 export const COINS_PER_MINUTE = 2;
 export const coinsForMinutes = (minutes: number) => Math.floor(minutes * COINS_PER_MINUTE);
 
+// Plus members earn double coins from studying (applied at credit time on top of the
+// per-minute payout; the daily earn cap still applies). Solo + multiplayer both use it.
+export const PLUS_STUDY_COIN_MULTIPLIER = 2;
+
 // Display a coin/number value with thousands separators: 1142490 → "1,142,490".
 // Always commas (en-US) regardless of device locale.
 export const formatCoins = (n: number | string): string =>

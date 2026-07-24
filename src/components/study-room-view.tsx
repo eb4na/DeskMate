@@ -23,7 +23,7 @@ import { SubjectPickerModal } from '@/components/subject-picker-modal';
 import { FOOD_ITEMS } from '@/app/food-gallery';
 import { ThemedText } from '@/components/themed-text';
 import { useApp } from '@/context/app-context';
-import { autoBreakMinutes, BREAK_GAME_ENABLED, coinsForMinutes, SESSION_LENGTHS, formatCoins } from '@/constants/placeholder-data';
+import { autoBreakMinutes, BREAK_GAME_ENABLED, coinsForMinutes, PLUS_STUDY_COIN_MULTIPLIER, SESSION_LENGTHS, formatCoins } from '@/constants/placeholder-data';
 import { SoundPickerModal } from '@/components/sound-picker-modal';
 import { DevKnobs } from '@/components/dev-knobs';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
@@ -953,7 +953,8 @@ export function StudyRoomView({
   useEffect(() => {
     if (mpFinished && activeSession && creditedRef.current !== activeSession.id) {
       creditedRef.current = activeSession.id;
-      const earned = coinsForMinutes(activeSession.durationMinutes);
+      // Plus perk: double the study payout (matches the solo finishStudyBlock path).
+      const earned = coinsForMinutes(activeSession.durationMinutes) * (isPlus ? PLUS_STUDY_COIN_MULTIPLIER : 1);
       addCoins(earned);
       recordSession(activeSession.durationMinutes);
       // Multiplayer finish → counts toward the friend-session achievements.

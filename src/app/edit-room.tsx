@@ -108,6 +108,15 @@ export default function EditRoomScreen() {
     setBuyTarget(null);
   };
 
+  // Localized display name for a room's half. Shop-backed halves are named by their
+  // shop item (shopNames.<id>, translated in all langs); the default Cozy Bakery has
+  // no item, so it falls back to its room-level name (roomNames.<id>). Pass the
+  // background id when a whole pair needs one label.
+  const roomLabel = (room: RoomPair, itemId: string | null) => {
+    const item = itemId ? getShopItem(itemId) : undefined;
+    return item ? localizeShopItemName(item, t) : t(`roomNames.${room.id}`, { defaultValue: room.name });
+  };
+
   const PairButton = ({ room }: { room: RoomPair }) =>
     roomHasPair(room) ? (
       <Pressable
@@ -127,7 +136,7 @@ export default function EditRoomScreen() {
     const item = itemId ? getShopItem(itemId) : undefined;
     // Shop-backed rooms describe themselves through their item; the default Cozy
     // Bakery has no item, so it falls back to its own room-level description.
-    const title = item ? localizeShopItemName(item, t) : t(`roomNames.${room.id}`, { defaultValue: room.name });
+    const title = roomLabel(room, itemId);
     const desc = item
       ? localizeShopItemDescription(item, t)
       : room.description ? t(`roomDescs.${room.id}`, { defaultValue: room.description }) : '';
@@ -169,7 +178,7 @@ export default function EditRoomScreen() {
         <Image source={image} style={styles.thumbImg} contentFit="cover" />
         {!owned && <LockOverlay size={Math.round(30 * scale)} radius={Math.round(12 * scale)} />}
       </View>
-      <Text style={styles.thumbName} numberOfLines={1}>{room.name}</Text>
+      <Text style={styles.thumbName} numberOfLines={1}>{roomLabel(room, itemId)}</Text>
       {active ? (
         <View style={styles.activePill}><Text style={styles.activePillText}>{t('editRoom.inUse')}</Text></View>
       ) : owned ? (
@@ -276,7 +285,7 @@ export default function EditRoomScreen() {
               <>
                 <Text style={styles.modalTitle}>
                   {buyTarget.kind === 'pair'
-                    ? t('editRoom.unlockPair', { name: buyTarget.room.name })
+                    ? t('editRoom.unlockPair', { name: roomLabel(buyTarget.room, buyTarget.room.backgroundId) })
                     : buyTarget.kind === 'desk' ? t('editRoom.unlockDesk') : t('editRoom.unlockBackground')}
                 </Text>
 

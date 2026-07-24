@@ -488,13 +488,17 @@ export default function ShopScreen() {
   const openPairBuy = (item: ShopItemT, outfitId?: string) => {
     const pair = pairForItem(item.id);
     if (!pair) return;
+    // Localized room name — named by its background shop item (shopNames.<id>,
+    // translated in all langs), falling back to the room's own name key.
+    const bgItem = pair.backgroundId ? SHOP_ITEMS.find((s) => s.id === pair.backgroundId) : undefined;
+    const pairName = bgItem ? localizeShopItemName(bgItem, t) : t(`roomNames.${pair.id}`, { defaultValue: pair.name });
     const outfitNeeded = !!outfitId && !ownedShopItems.includes(outfitId);
     // Fully owned (room + outfit) → just equip the whole look.
     if (isPairOwned(pair, ownedShopItems) && !outfitNeeded) {
       setEquippedBackground(pair.id);
       setEquippedDesk(pair.id);
       if (outfitId) equipShopItem(outfitId);
-      showPopup(t('shop.equippedTitle'), t('shop.nowActive', { name: pair.name }));
+      showPopup(t('shop.equippedTitle'), t('shop.nowActive', { name: pairName }));
       return;
     }
     const need = [pair.backgroundId, pair.deskId, outfitId]
@@ -502,11 +506,11 @@ export default function ShopScreen() {
       .map((id) => SHOP_ITEMS.find((s) => s.id === id))
       .filter((it): it is ShopItemT => !!it);
     setBuyReq({
-      title: t('editRoom.unlockPair', { name: pair.name }),
+      title: t('editRoom.unlockPair', { name: pairName }),
       items: need,
       total: need.reduce((sum, it) => sum + Math.floor(it.price * discount), 0),
       equip: () => { setEquippedBackground(pair.id); setEquippedDesk(pair.id); if (outfitId) equipShopItem(outfitId); },
-      equipName: pair.name,
+      equipName: pairName,
     });
   };
 
