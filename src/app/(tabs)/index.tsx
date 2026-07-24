@@ -1027,9 +1027,8 @@ export default function HomeScreen() {
     router.push('/add-exam');
   };
 
-  // Start Session. Plus members who haven't linked Spotify get a one-tap offer to
-  // connect it first (so they can play their own music while studying); everyone
-  // else — and anyone already connected — goes straight to the picker.
+  // Start Session — straight to the picker. Spotify (open to all users) is only
+  // offered from the study-room radio while a session is in progress.
   const handleStartSession = () => {
     // No Spotify prompt here — Spotify is only offered from the study-room radio
     // while a session is in progress.

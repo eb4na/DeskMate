@@ -158,11 +158,7 @@ export function SoundPickerModal({
 
   const handleConnect = async () => {
     setNotice(null);
-    if (!isPlus) {
-      // Spotify control is a Memobun Plus benefit (see plus-upgrade FEATURES).
-      setNotice(t('soundPicker.spotifyPlus'));
-      return;
-    }
+    // Spotify is available to all users regardless of Plus (no gate here).
     if (!spotifyConfigured()) {
       setNotice(t('soundPicker.spotifySetup'));
       return;
@@ -231,7 +227,6 @@ export function SoundPickerModal({
   // or stops the audio, and both vinyls spin off the equipped state).
   const handleSpin = async () => {
     if (mode === 'spotify') {
-      if (!isPlus) return; // Spotify is Plus-only — the locked panel handles the upsell
       if (playback?.isPlaying) { control(spotifyPause); return; }
       // Play: explicitly wake/target a device (a bare resume can't start an idle
       // Spotify), and explain WHY if it can't instead of failing silently.
@@ -297,17 +292,8 @@ export function SoundPickerModal({
             /* Record centred, transport controls below */
             <View style={styles.spotifyBody}>
               <StudyVinyl size={isTablet ? 220 : 150} playing={spinning} discColor={vinylColor} centerImage={centerImage} onSpin={handleSpin} />
-              {!isPlus ? (
-                /* Spotify control is a Memobun Plus perk — non-Plus gets the upsell. */
-                <View style={styles.spotifyControls}>
-                  <Text style={styles.notice}>{t('soundPicker.spotifyPlus')}</Text>
-                  <Pressable
-                    onPress={() => { onClose(); router.push('/plus-upgrade'); }}
-                    style={({ pressed }) => [styles.spotifyBtn, pressed && styles.pressed]}>
-                    <Text style={styles.spotifyBtnText}>{t('plusUpgrade.upgrade')}</Text>
-                  </Pressable>
-                </View>
-              ) : !connected ? (
+              {/* Spotify is open to all users regardless of Plus. */}
+              {!connected ? (
                 <View style={styles.spotifyControls}>
                   <Pressable onPress={handleConnect} disabled={connecting} style={({ pressed }) => [styles.spotifyBtn, pressed && styles.pressed]}>
                     <Text style={styles.spotifyBtnText}>{connecting ? t('soundPicker.connecting') : t('soundPicker.connectSpotify')}</Text>
