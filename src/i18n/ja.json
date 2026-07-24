@@ -1,5 +1,6 @@
 {
   "deleteAccount": {
+    "failed": "アカウントを削除できませんでした",
     "title": "アカウントを削除しますか？",
     "warning": "アカウントとすべてのデータ（コイン・レシピ・コンパニオン・フレンド・進行状況）が完全に削除されます。この操作は元に戻せません。",
     "typePrompt": "確認するには「{{name}}」と入力してください。",
@@ -120,6 +121,7 @@
     "ok": "やった！"
   },
   "common": {
+    "next": "次へ",
     "plusLabel": "プラス",
     "durHM": "{{h}}時間{{m}}分",
     "durH": "{{h}}時間",
@@ -529,6 +531,10 @@
     "ambienceSoundsDesc": "ローファイビート、雨音、集中用の音楽を学習セッション中に再生。"
   },
   "shop": {
+    "purchaseComplete": "ご購入ありがとうございます！",
+    "purchaseFailedMsg": "問題が発生し、料金は請求されていません。もう一度お試しください。",
+    "storeUnavailable": "ストアを利用できません",
+    "storeUnavailableMsg": "購入は一時的にご利用いただけません。しばらくしてからお試しください。",
     "title": "ショップ",
     "coins": "{{amount}}コイン",
     "buy": "購入",
@@ -1047,6 +1053,8 @@
     "shop": "ショップ"
   },
   "profileCard": {
+    "cardColor": "カードの色",
+    "changeColor": "色を変更",
     "studyBuddy": "勉強仲間",
     "shareDialogTitle": "カードを共有",
     "shareFailTitle": "共有",
@@ -1109,6 +1117,7 @@
     "outfitsClose": "とじる"
   },
   "gallery": {
+    "notEnoughCoinsMsg": "{{price}}コインが必要ですが、{{coins}}コインしかありません。",
     "noArtTitle": "まだ表示する画像がありません",
     "noArtMsg": "このカスタムスロットにはまだキャラクター画像がありません。コンパニオンを生成して、ホームや学習画面で使えるようにしましょう。",
     "removeCompanionQ": "コンパニオンを削除しますか？",
@@ -1248,6 +1257,10 @@
     "sound_night": "虫の声と涼しい夜の空気。"
   },
   "friends": {
+    "block": "ブロック",
+    "blocked": "ブロック済み",
+    "unblock": "ブロック解除",
+    "profileSyncWarn": "⚠︎ プロフィールがまだ同期されていないため、フレンドがあなたのコードを見つけられません。接続を確認してください。再試行を続けます。",
     "guestGateTitle": "友だち機能にはアカウントが必要です",
     "guestGateBody": "無料アカウントを作成すると、友だちを追加して一緒に勉強できます。進捗もそのまま引き継がれます。",
     "guestGateLater": "あとで",
@@ -1409,6 +1422,15 @@
     "nowStudyingSolo": "今はひとりで勉強中"
   },
   "plus": {
+    "nothingToRestore": "復元するものがありません",
+    "nothingToRestoreMsg": "お使いのApple IDで有効なサブスクリプションが見つかりませんでした。",
+    "purchaseFailed": "購入に失敗しました",
+    "purchaseFailedMsg": "問題が発生し、料金は請求されていません。もう一度お試しください。",
+    "restored": "プラスを復元しました",
+    "restoredMsg": "Memobunプラスのサブスクリプションを復元しました。",
+    "storeUnavailable": "ストアを利用できません",
+    "storeUnavailableMsg": "購入は一時的にご利用いただけません。しばらくしてからお試しください。",
+    "welcomeCta": "やった！",
     "f_studyCoins": "学習コイン2倍",
     "f_studyCoinsDesc": "勉強するたびにコインが2倍もらえる",
     "f_customTimers": "カスタムタイマー",
@@ -1902,6 +1924,7 @@
     "discoHostOnly": "ディスコモードはホストのみがオンにできます",
     "spotifySetup": "Spotifyはまだ設定されていません（Client IDを追加してください）。",
     "spotifyFailed": "Spotifyに接続できませんでした。もう一度お試しください。",
+    "spotifyPremium": "Spotifyの操作にはSpotify Premiumが必要です。",
     "noDevice": "Spotifyを開いて曲を再生すると、ここから操作できます。",
     "connected": "接続済み",
     "disconnect": "切断",

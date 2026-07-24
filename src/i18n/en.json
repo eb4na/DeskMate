@@ -1,5 +1,6 @@
 {
   "deleteAccount": {
+    "failed": "Could not delete account",
     "title": "Delete account?",
     "warning": "This permanently erases your account and ALL your data — coins, recipes, companions, friends and progress. This cannot be undone.",
     "typePrompt": "Type “{{name}}” to confirm.",
@@ -120,6 +121,7 @@
     "ok": "Sweet!"
   },
   "common": {
+    "next": "Next",
     "plusLabel": "Plus",
     "durHM": "{{h}}h {{m}}m",
     "durH": "{{h}}h",
@@ -529,6 +531,10 @@
     "ambienceSoundsDesc": "Lo-fi beats, rain sounds, and focus music to play during study sessions."
   },
   "shop": {
+    "purchaseComplete": "Thanks for your purchase!",
+    "purchaseFailedMsg": "Something went wrong and you were not charged. Please try again.",
+    "storeUnavailable": "Store unavailable",
+    "storeUnavailableMsg": "Purchases are temporarily unavailable. Please try again later.",
     "title": "Shop",
     "coins": "{{amount}} coins",
     "buy": "Buy",
@@ -1047,6 +1053,8 @@
     "shop": "Shop"
   },
   "profileCard": {
+    "cardColor": "Card color",
+    "changeColor": "Change color",
     "studyBuddy": "Study Buddy",
     "shareDialogTitle": "Share your card",
     "shareFailTitle": "Share",
@@ -1109,6 +1117,7 @@
     "outfitsClose": "Close"
   },
   "gallery": {
+    "notEnoughCoinsMsg": "You need {{price}} coins but only have {{coins}}.",
     "noArtTitle": "No art to show yet",
     "noArtMsg": "This custom slot does not have character art yet. Generate a companion to use it across Home and study screens.",
     "removeCompanionQ": "Remove companion?",
@@ -1248,6 +1257,10 @@
     "sound_night": "Crickets and cool evening air."
   },
   "friends": {
+    "block": "Block",
+    "blocked": "Blocked",
+    "unblock": "Unblock",
+    "profileSyncWarn": "⚠︎ Your profile isn't synced yet, so friends can't find your code. Check your connection — we'll keep retrying.",
     "guestGateTitle": "Friends need an account",
     "guestGateBody": "Create a free account to add friends and study together. Your progress comes with you.",
     "guestGateLater": "Maybe later",
@@ -1409,6 +1422,15 @@
     "nowStudyingSolo": "You're studying solo now"
   },
   "plus": {
+    "nothingToRestore": "Nothing to restore",
+    "nothingToRestoreMsg": "We couldn't find an active subscription on your Apple ID.",
+    "purchaseFailed": "Purchase failed",
+    "purchaseFailedMsg": "Something went wrong and you were not charged. Please try again.",
+    "restored": "Plus restored",
+    "restoredMsg": "Your Memobun Plus subscription has been restored.",
+    "storeUnavailable": "Store unavailable",
+    "storeUnavailableMsg": "Purchases are temporarily unavailable. Please try again later.",
+    "welcomeCta": "Sweet!",
     "f_studyCoins": "Double study coins",
     "f_studyCoinsDesc": "Earn 2× coins from every study session",
     "f_customTimers": "Custom timers",

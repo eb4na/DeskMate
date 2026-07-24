@@ -1,5 +1,6 @@
 {
   "deleteAccount": {
+    "failed": "No se pudo eliminar la cuenta",
     "title": "¿Eliminar cuenta?",
     "warning": "Esto borra permanentemente tu cuenta y TODOS tus datos: monedas, recetas, compañeros, amigos y progreso. Esta acción no se puede deshacer.",
     "typePrompt": "Escribe «{{name}}» para confirmar.",
@@ -120,6 +121,7 @@
     "ok": "¡Genial!"
   },
   "common": {
+    "next": "Siguiente",
     "plusLabel": "Premium",
     "durHM": "{{h}} h {{m}} min",
     "durH": "{{h}} h",
@@ -529,6 +531,10 @@
     "ambienceSoundsDesc": "Ritmos lo-fi, sonidos de lluvia y música de concentración para reproducir durante las sesiones de estudio."
   },
   "shop": {
+    "purchaseComplete": "¡Gracias por tu compra!",
+    "purchaseFailedMsg": "Algo salió mal y no se te cobró. Inténtalo de nuevo.",
+    "storeUnavailable": "Tienda no disponible",
+    "storeUnavailableMsg": "Las compras no están disponibles temporalmente. Inténtalo más tarde.",
     "title": "Tienda",
     "coins": "{{amount}} monedas",
     "buy": "Comprar",
@@ -1047,6 +1053,8 @@
     "shop": "Tienda"
   },
   "profileCard": {
+    "cardColor": "Color de la tarjeta",
+    "changeColor": "Cambiar color",
     "studyBuddy": "Compañero de estudio",
     "shareDialogTitle": "Comparte tu tarjeta",
     "shareFailTitle": "Compartir",
@@ -1109,6 +1117,7 @@
     "outfitsClose": "Cerrar"
   },
   "gallery": {
+    "notEnoughCoinsMsg": "Necesitas {{price}} monedas pero solo tienes {{coins}}.",
     "noArtTitle": "Aún no hay imagen para mostrar",
     "noArtMsg": "Esta ranura personalizada aún no tiene imagen de personaje. Genera un compañero para usarlo en el Inicio y las pantallas de estudio.",
     "removeCompanionQ": "¿Eliminar compañero?",
@@ -1248,6 +1257,10 @@
     "sound_night": "Grillos y aire fresco de la noche."
   },
   "friends": {
+    "block": "Bloquear",
+    "blocked": "Bloqueado",
+    "unblock": "Desbloquear",
+    "profileSyncWarn": "⚠︎ Tu perfil aún no está sincronizado, así que tus amigos no pueden encontrar tu código. Revisa tu conexión: seguiremos intentándolo.",
     "guestGateTitle": "Los amigos necesitan una cuenta",
     "guestGateBody": "Crea una cuenta gratis para añadir amigos y estudiar juntos. Tu progreso te acompaña.",
     "guestGateLater": "Quizás más tarde",
@@ -1409,6 +1422,15 @@
     "nowStudyingSolo": "Ahora estudias en solitario"
   },
   "plus": {
+    "nothingToRestore": "Nada que restaurar",
+    "nothingToRestoreMsg": "No encontramos una suscripción activa en tu Apple ID.",
+    "purchaseFailed": "Compra fallida",
+    "purchaseFailedMsg": "Algo salió mal y no se te cobró. Inténtalo de nuevo.",
+    "restored": "Premium restaurado",
+    "restoredMsg": "Tu suscripción Memobun Premium se ha restaurado.",
+    "storeUnavailable": "Tienda no disponible",
+    "storeUnavailableMsg": "Las compras no están disponibles temporalmente. Inténtalo más tarde.",
+    "welcomeCta": "¡Genial!",
     "f_studyCoins": "Monedas de estudio dobles",
     "f_studyCoinsDesc": "Gana el doble de monedas en cada sesión de estudio",
     "f_customTimers": "Temporizadores personalizados",
@@ -1902,6 +1924,7 @@
     "discoHostOnly": "Solo el anfitrión puede activar el modo disco",
     "spotifySetup": "Spotify aún no está configurado (añade tu Client ID).",
     "spotifyFailed": "No se pudo conectar con Spotify. Inténtalo de nuevo.",
+    "spotifyPremium": "El control de Spotify requiere Spotify Premium.",
     "noDevice": "Abre Spotify y reproduce una canción para controlarla desde aquí.",
     "connected": "Conectado",
     "disconnect": "Desconectar",

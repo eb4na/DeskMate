@@ -1,5 +1,6 @@
 {
   "deleteAccount": {
+    "failed": "无法删除账户",
     "title": "删除账户？",
     "warning": "这将永久删除你的账户和所有数据——金币、食谱、伙伴、好友和进度。此操作无法撤销。",
     "typePrompt": "输入“{{name}}”以确认。",
@@ -120,6 +121,7 @@
     "ok": "太好了！"
   },
   "common": {
+    "next": "下一步",
     "plusLabel": "会员",
     "durHM": "{{h}}小时{{m}}分",
     "durH": "{{h}}小时",
@@ -529,6 +531,10 @@
     "ambienceSoundsDesc": "Lo-fi 节拍、雨声和专注音乐，在学习时播放。"
   },
   "shop": {
+    "purchaseComplete": "感谢你的购买！",
+    "purchaseFailedMsg": "出了点问题，未向你收费。请重试。",
+    "storeUnavailable": "商店不可用",
+    "storeUnavailableMsg": "购买暂时不可用，请稍后再试。",
     "title": "商店",
     "coins": "{{amount}} 金币",
     "buy": "购买",
@@ -1047,6 +1053,8 @@
     "shop": "商店"
   },
   "profileCard": {
+    "cardColor": "卡片颜色",
+    "changeColor": "更改颜色",
     "studyBuddy": "学习伙伴",
     "shareDialogTitle": "分享你的卡片",
     "shareFailTitle": "分享",
@@ -1109,6 +1117,7 @@
     "outfitsClose": "关闭"
   },
   "gallery": {
+    "notEnoughCoinsMsg": "需要 {{price}} 枚金币，但你只有 {{coins}} 枚。",
     "noArtTitle": "还没有可展示的图像",
     "noArtMsg": "这个自定义槽位还没有角色图像。生成一个伙伴即可在主页和学习页面使用它。",
     "removeCompanionQ": "移除伙伴？",
@@ -1248,6 +1257,10 @@
     "sound_night": "虫鸣与清凉的夜风。"
   },
   "friends": {
+    "block": "屏蔽",
+    "blocked": "已屏蔽",
+    "unblock": "取消屏蔽",
+    "profileSyncWarn": "⚠︎ 你的资料尚未同步，好友无法找到你的代码。请检查网络连接，我们会持续重试。",
     "guestGateTitle": "好友功能需要账号",
     "guestGateBody": "创建免费账号即可添加好友并一起学习，你的进度会一并保留。",
     "guestGateLater": "以后再说",
@@ -1409,6 +1422,15 @@
     "nowStudyingSolo": "现在你在独自学习"
   },
   "plus": {
+    "nothingToRestore": "没有可恢复的内容",
+    "nothingToRestoreMsg": "未在你的 Apple ID 上找到有效的订阅。",
+    "purchaseFailed": "购买失败",
+    "purchaseFailedMsg": "出了点问题，未向你收费。请重试。",
+    "restored": "会员已恢复",
+    "restoredMsg": "你的 Memobun 会员订阅已恢复。",
+    "storeUnavailable": "商店不可用",
+    "storeUnavailableMsg": "购买暂时不可用，请稍后再试。",
+    "welcomeCta": "太好了！",
     "f_studyCoins": "双倍学习金币",
     "f_studyCoinsDesc": "每次学习获得 2 倍金币",
     "f_customTimers": "自定义计时器",
@@ -1902,6 +1924,7 @@
     "discoHostOnly": "只有房主可以开启迪斯科模式",
     "spotifySetup": "Spotify 尚未设置（请添加 Client ID）。",
     "spotifyFailed": "无法连接 Spotify，请重试。",
+    "spotifyPremium": "Spotify 控制需要 Spotify Premium。",
     "noDevice": "打开 Spotify 并播放歌曲即可在此控制。",
     "connected": "已连接",
     "disconnect": "断开连接",

@@ -1,5 +1,6 @@
 {
   "deleteAccount": {
+    "failed": "無法刪除帳戶",
     "title": "刪除帳戶？",
     "warning": "這將永久刪除你的帳戶和所有資料——金幣、食譜、夥伴、好友和進度。此操作無法復原。",
     "typePrompt": "輸入「{{name}}」以確認。",
@@ -204,6 +205,7 @@
     "ok": "太好了！"
   },
   "common": {
+    "next": "下一步",
     "plusLabel": "會員",
     "durHM": "{{h}}小時{{m}}分",
     "durH": "{{h}}小時",
@@ -613,6 +615,10 @@
     "ambienceSoundsDesc": "Lo-fi 節拍、雨聲和專注音樂，在學習時播放。"
   },
   "shop": {
+    "purchaseComplete": "感謝你的購買！",
+    "purchaseFailedMsg": "出了點問題，未向你收費。請重試。",
+    "storeUnavailable": "商店無法使用",
+    "storeUnavailableMsg": "購買暫時無法使用，請稍後再試。",
     "title": "商店",
     "coins": "{{amount}} 金幣",
     "buy": "購買",
@@ -1131,6 +1137,8 @@
     "shop": "商店"
   },
   "profileCard": {
+    "cardColor": "卡片顏色",
+    "changeColor": "更改顏色",
     "studyBuddy": "學習夥伴",
     "shareDialogTitle": "分享你的卡片",
     "shareFailTitle": "分享",
@@ -1193,6 +1201,7 @@
     "outfitsClose": "關閉"
   },
   "gallery": {
+    "notEnoughCoinsMsg": "需要 {{price}} 枚金幣，但你只有 {{coins}} 枚。",
     "noArtTitle": "還沒有可展示的影象",
     "noArtMsg": "這個自定義槽位還沒有角色影象。生成一個夥伴即可在主頁和學習頁面使用它。",
     "removeCompanionQ": "移除夥伴？",
@@ -1332,6 +1341,10 @@
     "sound_night": "蟲鳴與清涼的夜風。"
   },
   "friends": {
+    "block": "封鎖",
+    "blocked": "已封鎖",
+    "unblock": "取消封鎖",
+    "profileSyncWarn": "⚠︎ 你的資料尚未同步，好友無法找到你的代碼。請檢查網路連線，我們會持續重試。",
     "guestGateTitle": "好友功能需要帳號",
     "guestGateBody": "建立免費帳號即可新增好友並一起學習，你的進度會一併保留。",
     "guestGateLater": "以後再說",
@@ -1493,6 +1506,15 @@
     "nowStudyingSolo": "現在你在獨自學習"
   },
   "plus": {
+    "nothingToRestore": "沒有可還原的內容",
+    "nothingToRestoreMsg": "未在你的 Apple ID 上找到有效的訂閱。",
+    "purchaseFailed": "購買失敗",
+    "purchaseFailedMsg": "出了點問題，未向你收費。請重試。",
+    "restored": "會員已還原",
+    "restoredMsg": "你的 Memobun 會員訂閱已還原。",
+    "storeUnavailable": "商店無法使用",
+    "storeUnavailableMsg": "購買暫時無法使用，請稍後再試。",
+    "welcomeCta": "太好了！",
     "f_studyCoins": "雙倍學習金幣",
     "f_studyCoinsDesc": "每次學習獲得 2 倍金幣",
     "f_customTimers": "自定義計時器",
@@ -1986,6 +2008,7 @@
     "discoHostOnly": "只有房主可以開啟迪斯科模式",
     "spotifySetup": "Spotify 尚未設定（請新增 Client ID）。",
     "spotifyFailed": "無法連線 Spotify，請重試。",
+    "spotifyPremium": "Spotify 控制需要 Spotify Premium。",
     "noDevice": "開啟 Spotify 並播放歌曲即可在此控制。",
     "connected": "已連線",
     "disconnect": "斷開連線",
