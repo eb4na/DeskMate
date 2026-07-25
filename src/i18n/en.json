@@ -822,7 +822,6 @@
     "limitReached": "Task limit reached",
     "limitMsg": "You can keep up to {{count}} tasks. Complete or delete some to add more.",
     "enterTaskTitle": "Please enter a task title.",
-    "reminderNeedsDue": "Turn on a due date & time to add a reminder.",
     "reminderAnytimeHint": "Reminds around {{time}} on the due date.",
     "reminderPastTitle": "Reminder time has passed",
     "reminderPastMsg": "That reminder would fire in the past, so it won't work. Turn the reminder off or pick a later date."

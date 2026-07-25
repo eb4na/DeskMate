@@ -906,7 +906,6 @@
     "limitReached": "已達任務上限",
     "limitMsg": "最多可保留 {{count}} 個任務。請先完成或刪除一些再新增。",
     "enterTaskTitle": "請輸入任務名稱。",
-    "reminderNeedsDue": "開啟截止日期和時間即可新增提醒。",
     "reminderAnytimeHint": "將在到期日 {{time}} 左右提醒。",
     "reminderPastTitle": "提醒時間已過",
     "reminderPastMsg": "該提醒會在過去的時間觸發，無法生效。請關閉提醒或選擇更晚的日期。"

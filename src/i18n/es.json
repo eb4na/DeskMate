@@ -822,7 +822,6 @@
     "limitReached": "Límite de tareas alcanzado",
     "limitMsg": "Puedes tener hasta {{count}} tareas. Completa o elimina algunas para añadir más.",
     "enterTaskTitle": "Introduce un nombre de tarea.",
-    "reminderNeedsDue": "Activa una fecha y hora de entrega para añadir un recordatorio.",
     "reminderAnytimeHint": "Te avisa alrededor de las {{time}} en la fecha de entrega.",
     "reminderPastTitle": "La hora del recordatorio ya pasó",
     "reminderPastMsg": "Ese recordatorio sonaría en el pasado, así que no funcionará. Desactiva el recordatorio o elige una fecha posterior."
