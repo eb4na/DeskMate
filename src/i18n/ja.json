@@ -822,7 +822,10 @@
     "limitReached": "タスク上限に達しました",
     "limitMsg": "保持できるタスクは最大{{count}}件です。いくつか完了または削除してください。",
     "enterTaskTitle": "タスク名を入力してください。",
-    "reminderNeedsDue": "締め切りの日付と時刻をオンにするとリマインダーを追加できます。"
+    "reminderNeedsDue": "締め切りの日付と時刻をオンにするとリマインダーを追加できます。",
+    "reminderAnytimeHint": "締め切り日の {{time}} 頃に通知します。",
+    "reminderPastTitle": "リマインダーの時刻が過ぎています",
+    "reminderPastMsg": "このリマインダーは過去の時刻になるため通知されません。リマインダーをオフにするか、より後の日付を選んでください。"
   },
   "reminder": {
     "title": "毎日のリマインダー",

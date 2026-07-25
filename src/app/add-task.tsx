@@ -24,6 +24,11 @@ import { BakeryColors, BakeryRadii, MaxContentWidth, Spacing } from '@/constants
 // Reminder fires this many minutes before the task's due time.
 const REMINDER_OFFSETS = [5, 15, 30, 60, 180, 1440];
 
+// Anchor time for reminders on "Anytime" tasks (no specific due time). The offset
+// chips ("1 day before" etc.) count back from this time on the due date, so an
+// all-day task can still carry a reminder.
+const DEFAULT_REMINDER_TIME = '09:00';
+
 // Chip label for a reminder offset, picking the right unit (min / hr / day) so
 // "60 min before" reads as "1 hr before" and "1440 min before" as "1 day before".
 function reminderLabel(off: number, t: (key: string, opts?: Record<string, unknown>) => string): string {
@@ -81,8 +86,10 @@ export default function AddTaskScreen() {
   // Notification reminder — fires N minutes before the task's due time (or off).
   const deriveOffset = (): number | null => {
     if (!existingTask?.notifyAt) return null;
-    if (existingTask.dueDate && existingTask.dueTime) {
-      const [h, m] = existingTask.dueTime.split(':').map(Number);
+    if (existingTask.dueDate) {
+      // Anytime tasks anchor the reminder to DEFAULT_REMINDER_TIME on the due date.
+      const anchor = existingTask.dueTime ?? DEFAULT_REMINDER_TIME;
+      const [h, m] = anchor.split(':').map(Number);
       const due = new Date(`${existingTask.dueDate}T00:00:00`);
       due.setHours(h, m, 0, 0);
       const off = Math.round((due.getTime() - new Date(existingTask.notifyAt).getTime()) / 60000);
@@ -114,13 +121,21 @@ export default function AddTaskScreen() {
     const dueDateValue = targetDate;
     const dueTimeValue = dueTimeEnabled ? dueTime : null;
 
-    // Reminder fires `notifyOffset` minutes before the due date+time.
+    // Reminder fires `notifyOffset` minutes before the due date+time. Anytime tasks
+    // (no due time) anchor the reminder to DEFAULT_REMINDER_TIME on the due date.
     let notifyAt: string | null = null;
-    if (notifyOffset != null && dueDateValue && dueTimeValue) {
-      const [h, m] = dueTimeValue.split(':').map(Number);
+    if (notifyOffset != null && dueDateValue) {
+      const [h, m] = (dueTimeValue ?? DEFAULT_REMINDER_TIME).split(':').map(Number);
       const due = new Date(`${dueDateValue}T00:00:00`);
       due.setHours(h, m, 0, 0);
       notifyAt = new Date(due.getTime() - notifyOffset * 60000).toISOString();
+      // A reminder in the past can't be scheduled (the OS silently drops it). This is
+      // easy to hit with an Anytime task added later than the 9 AM anchor — so warn
+      // instead of saving a reminder that never fires.
+      if (new Date(notifyAt).getTime() <= Date.now()) {
+        showPopup(t('addTask.reminderPastTitle'), t('addTask.reminderPastMsg'));
+        return;
+      }
     }
 
     // Cancel any previously scheduled reminder for this task.
@@ -369,24 +384,25 @@ export default function AddTaskScreen() {
             <ThemedText type="smallBold" style={styles.label}>
               {t('addTask.reminderOptional')}
             </ThemedText>
-            {dueTimeEnabled ? (
-              <ThemedView style={styles.chipRow}>
-                <Pressable onPress={() => setNotifyOffset(null)} style={({ pressed }) => [pressed && styles.pressed]}>
-                  <ThemedView type={notifyOffset == null ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
-                    <ThemedText type="small">{t('addTask.noReminder')}</ThemedText>
+            <ThemedView style={styles.chipRow}>
+              <Pressable onPress={() => setNotifyOffset(null)} style={({ pressed }) => [pressed && styles.pressed]}>
+                <ThemedView type={notifyOffset == null ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
+                  <ThemedText type="small">{t('addTask.noReminder')}</ThemedText>
+                </ThemedView>
+              </Pressable>
+              {REMINDER_OFFSETS.map((off) => (
+                <Pressable key={off} onPress={() => setNotifyOffset(off)} style={({ pressed }) => [pressed && styles.pressed]}>
+                  <ThemedView type={notifyOffset === off ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
+                    <ThemedText type="small">{reminderLabel(off, t)}</ThemedText>
                   </ThemedView>
                 </Pressable>
-                {REMINDER_OFFSETS.map((off) => (
-                  <Pressable key={off} onPress={() => setNotifyOffset(off)} style={({ pressed }) => [pressed && styles.pressed]}>
-                    <ThemedView type={notifyOffset === off ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
-                      <ThemedText type="small">{reminderLabel(off, t)}</ThemedText>
-                    </ThemedView>
-                  </Pressable>
-                ))}
-              </ThemedView>
-            ) : (
+              ))}
+            </ThemedView>
+            {/* Anytime tasks have no due time, so the reminder counts back from a
+                fixed time of day — tell the user when it fires. */}
+            {!dueTimeEnabled && notifyOffset != null && (
               <ThemedText type="small" themeColor="textSecondary">
-                {t('addTask.reminderNeedsDue')}
+                {t('addTask.reminderAnytimeHint', { time: formatTimeLabel(DEFAULT_REMINDER_TIME, use24HourTime) })}
               </ThemedText>
             )}
           </ThemedView>

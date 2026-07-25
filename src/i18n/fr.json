@@ -822,7 +822,10 @@
     "limitReached": "Limite de tâches atteinte",
     "limitMsg": "Tu peux conserver jusqu'à {{count}} tâches. Termine ou supprime-en pour en ajouter.",
     "enterTaskTitle": "Saisis un nom de tâche.",
-    "reminderNeedsDue": "Active une date et une heure d'échéance pour ajouter un rappel."
+    "reminderNeedsDue": "Active une date et une heure d'échéance pour ajouter un rappel.",
+    "reminderAnytimeHint": "Rappel vers {{time}} le jour de l'échéance.",
+    "reminderPastTitle": "L'heure du rappel est passée",
+    "reminderPastMsg": "Ce rappel se déclencherait dans le passé, il ne fonctionnera donc pas. Désactive le rappel ou choisis une date ultérieure."
   },
   "reminder": {
     "title": "Rappel quotidien",

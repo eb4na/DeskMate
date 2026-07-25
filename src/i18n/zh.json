@@ -822,7 +822,10 @@
     "limitReached": "已达任务上限",
     "limitMsg": "最多可保留 {{count}} 个任务。请先完成或删除一些再添加。",
     "enterTaskTitle": "请输入任务名称。",
-    "reminderNeedsDue": "开启截止日期和时间即可添加提醒。"
+    "reminderNeedsDue": "开启截止日期和时间即可添加提醒。",
+    "reminderAnytimeHint": "将在到期日 {{time}} 左右提醒。",
+    "reminderPastTitle": "提醒时间已过",
+    "reminderPastMsg": "该提醒会在过去的时间触发，无法生效。请关闭提醒或选择更晚的日期。"
   },
   "reminder": {
     "title": "每日提醒",
