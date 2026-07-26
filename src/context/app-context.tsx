@@ -585,12 +585,12 @@ export function exchangeTicketsDue(
 }
 
 const MAX_COMPANION_SLOTS = 3;
-// Free tier: up to 3 future exam countdowns; past-due ones auto-erase (below) so
-// the cap always means "3 upcoming". Plus gets a high cap (effectively unlimited)
-// and keeps past-due countdowns. Exported so the UI gates read from one source.
-export const FREE_EXAM_LIMIT = 3;
-// Plus users get a high exam cap rather than truly unlimited (mirrors subjects).
-const MAX_EXAMS_PLUS = 50;
+// Exam countdowns are NOT a Plus perk — every account gets the same cap, and
+// past-due countdowns are kept (never auto-erased) for everyone. The cap is a
+// sanity bound, not a paywall: far more than anyone tracks at once, and small
+// enough that the list/calendar stay cheap to render. Exported so the UI gates
+// read from one source.
+export const MAX_EXAMS = 50;
 // Total tasks a user can keep at once.
 export const MAX_TASKS = 1000;
 const STREAK_MAX = 200; // study-day streak caps here
@@ -1449,18 +1449,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => sub.remove();
   }, [loaded, s.examCountdowns]);
 
-  // Free users: past-due exam countdowns auto-erase once the day is over, freeing
-  // their slots. Plus users keep every countdown (even when "Past due"). Runs on
-  // load and whenever the exam list or Plus status changes.
-  useEffect(() => {
-    if (!loaded) return;
-    setS((prev) => {
-      if (prev.isPlus) return prev;
-      const today = todayISO();
-      const kept = prev.examCountdowns.filter((e) => e.dateISO >= today);
-      return kept.length === prev.examCountdowns.length ? prev : { ...prev, examCountdowns: kept };
-    });
-  }, [loaded, s.isPlus, s.examCountdowns]);
+  // Past-due countdowns are KEPT for everyone (they used to auto-erase for free
+  // users, which was the old Plus/free split). Nothing deletes an exam but the
+  // player — the list shows it as "Past" until they remove it.
 
   // Publish my public profile (name + current character + stats) to the cloud so
   // friends always see the character I'm actually using — even if I never open the
@@ -1745,8 +1736,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newId = uid();
     let added = false;
     setS((prev) => {
-      const examCap = prev.isPlus ? MAX_EXAMS_PLUS : FREE_EXAM_LIMIT;
-      if (prev.examCountdowns.length >= examCap) return prev;
+      if (prev.examCountdowns.length >= MAX_EXAMS) return prev;
       added = true;
       // Mask profanity in the user-entered name/subject (parity with subjects + DMs).
       const safeExam = { ...exam, name: maskProfanity(exam.name), subject: maskProfanity(exam.subject) };

@@ -766,7 +766,7 @@
     "addCountdown": "Ajouter un compte à rebours",
     "saveChanges": "Enregistrer",
     "examsTrackedPlus": "{{count}} examens suivis Premium — illimité",
-    "countdownsUsed": "{{count}}/3 comptes à rebours d'examens utilisés",
+    "countdownsUsed": "{{count}}/{{max}} comptes à rebours d'examens utilisés",
     "missingName": "Nom manquant",
     "enterExamName": "Saisis un nom d'examen.",
     "invalidDate": "Date invalide",

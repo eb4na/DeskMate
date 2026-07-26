@@ -766,7 +766,7 @@
     "addCountdown": "카운트다운 추가",
     "saveChanges": "변경 사항 저장",
     "examsTrackedPlus": "{{count}}개 시험 추적 중 프리미엄 — 무제한",
-    "countdownsUsed": "시험 카운트다운 {{count}}/3 사용 중",
+    "countdownsUsed": "시험 카운트다운 {{count}}/{{max}} 사용 중",
     "missingName": "이름 누락",
     "enterExamName": "시험 이름을 입력하세요.",
     "invalidDate": "잘못된 날짜",

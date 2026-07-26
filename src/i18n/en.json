@@ -766,7 +766,7 @@
     "addCountdown": "Add countdown",
     "saveChanges": "Save changes",
     "examsTrackedPlus": "{{count}} exams tracked Plus — unlimited",
-    "countdownsUsed": "{{count}}/3 exam countdowns used",
+    "countdownsUsed": "{{count}}/{{max}} exam countdowns used",
     "missingName": "Missing name",
     "enterExamName": "Please enter an exam name.",
     "invalidDate": "Invalid date",

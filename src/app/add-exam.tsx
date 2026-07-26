@@ -4,13 +4,12 @@ import { Pressable, ScrollView, StyleSheet, Switch, TextInput } from 'react-nati
 import { SoundPressable } from '@/components/sound-pressable';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { LockBadge } from '@/components/lock-badge';
 import { CountdownShape, COUNTDOWN_SHAPES, DEFAULT_COUNTDOWN_SHAPE, type CountdownShapeKey } from '@/components/countdown-shapes';
 import { DateWheelPicker, getTodayISO } from '@/components/date-wheel-picker';
 import { TimeWheelPicker } from '@/components/time-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useApp, FREE_EXAM_LIMIT } from '@/context/app-context';
+import { useApp, MAX_EXAMS } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 import { requestNotificationPermission } from '@/lib/notifications';
 import { localizeSubjectName } from '@/lib/subject-utils';
@@ -27,7 +26,7 @@ function isValidDateISO(dateStr: string): boolean {
 
 export default function AddExamScreen() {
   const { t } = useTranslation();
-  const { examCountdowns, addExam, updateExam, isPlus, use24HourTime, subjects } = useApp();
+  const { examCountdowns, addExam, updateExam, use24HourTime, subjects } = useApp();
   const activeSubjects = subjects.filter((s) => !s.archived);
 
   // When opened with ?examId=… we're editing an existing countdown; pre-fill from it.
@@ -46,8 +45,9 @@ export default function AddExamScreen() {
   const [error, setError] = useState<string | null>(null);
   const colors = useTheme();
 
-  // Editing never adds a row, so the cap can't block a save.
-  const canAdd = editing || isPlus || examCountdowns.length < FREE_EXAM_LIMIT;
+  // Editing never adds a row, so the cap can't block a save. The cap is the same
+  // for everyone — exam countdowns aren't a Plus perk.
+  const canAdd = editing || examCountdowns.length < MAX_EXAMS;
 
   const handleSave = () => {
     const trimmedName = name.trim();
@@ -63,8 +63,8 @@ export default function AddExamScreen() {
       return;
     }
     if (!canAdd) {
-      // At the free cap — send them to the paywall (the limit copy explains it there).
-      router.push('/plus-upgrade');
+      // At the cap — say so inline (no paywall; the cap isn't a Plus gate).
+      setError(t('addExam.limitReached'));
       return;
     }
 
@@ -80,7 +80,8 @@ export default function AddExamScreen() {
     const examId = editing ? existing!.id : addExam(fields);
 
     if (!examId) {
-      router.push('/plus-upgrade');
+      // Only happens if the cap was hit between the check above and the write.
+      setError(t('addExam.limitReached'));
       return;
     }
 
@@ -109,7 +110,6 @@ export default function AddExamScreen() {
         <SafeAreaView style={styles.safeArea}>
           <ThemedText type="default" themeColor="textSecondary" style={styles.hint}>
             {t('addExam.hint')}
-            {isPlus && ` ${t('addExam.hintPlus')}`}
           </ThemedText>
 
         <ThemedView style={styles.field}>
@@ -177,9 +177,9 @@ export default function AddExamScreen() {
 
         <ThemedView style={styles.field}>
           <ThemedText type="smallBold">{t('addExam.examDateReq')}</ThemedText>
-          {/* Plus can set past dates (count-up / keeping a past exam); free users are
-              floored at today since their past-due countdowns auto-erase anyway. */}
-          <DateWheelPicker value={date} onChange={setDate} minimumDateISO={isPlus ? undefined : getTodayISO()} />
+          {/* Past dates are allowed for everyone (count-up / keeping a past exam);
+              past-due countdowns are no longer erased. */}
+          <DateWheelPicker value={date} onChange={setDate} />
         </ThemedView>
 
         <ThemedView style={styles.field}>
@@ -202,16 +202,13 @@ export default function AddExamScreen() {
           />
         </ThemedView>
 
-        {/* Free users at the cap get an upgrade nudge (unlimited exams is the Plus perk). */}
-        {!isPlus && examCountdowns.length >= FREE_EXAM_LIMIT ? (
-          <Pressable onPress={() => router.push('/plus-upgrade')}>
-            <ThemedView type="backgroundElement" style={[styles.upgradeCard, styles.noticeRow]}>
-              <LockBadge size={16} />
-              <ThemedText type="small" style={styles.upgradeText}>
-                {t('addExam.upgradeUnlimited')}
-              </ThemedText>
-            </ThemedView>
-          </Pressable>
+        {/* At the cap (same for everyone) — a plain notice, not an upsell. */}
+        {!editing && examCountdowns.length >= MAX_EXAMS ? (
+          <ThemedView type="backgroundElement" style={[styles.upgradeCard, styles.noticeRow]}>
+            <ThemedText type="small" style={styles.upgradeText}>
+              {t('addExam.limitReached')}
+            </ThemedText>
+          </ThemedView>
         ) : null}
 
         <ThemedView style={styles.actions}>
@@ -230,9 +227,7 @@ export default function AddExamScreen() {
         </ThemedView>
 
           <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
-            {isPlus
-              ? t('addExam.examsTrackedPlus', { count: examCountdowns.length })
-              : t('addExam.countdownsUsed', { count: examCountdowns.length })}
+            {t('addExam.countdownsUsed', { count: examCountdowns.length, max: MAX_EXAMS })}
           </ThemedText>
         </SafeAreaView>
       </ScrollView>

@@ -34,13 +34,13 @@ const FEATURES: {
 }[] = [
   { titleKey: 'plus.f_studyCoins', descKey: 'plus.f_studyCoinsDesc', art: require('@/assets/images/home/coin-icon.png') },
   { titleKey: 'plus.f_customTimers', descKey: 'plus.f_customTimersDesc', art: require('@/assets/images/settings/timer.png') },
-  { titleKey: 'plus.f_unlimitedExams', descKey: 'plus.f_unlimitedExamsDesc', art: require('@/assets/images/home/exam-calendar-icon.png') },
   { titleKey: 'plus.f_moreSubjects', descKey: 'plus.f_moreSubjectsDesc', art: require('@/assets/images/settings/books.png') },
   { titleKey: 'plus.f_streakFreezes', descKey: 'plus.f_streakFreezesDesc', art: require('@/assets/images/home/streak-freeze-icon.png') },
   { titleKey: 'plus.f_ambience', descKey: 'plus.f_ambienceDesc', art: require('@/assets/images/shop/icon-sound.png') },
   // Spotify is available to ALL users regardless of Plus, so it's no longer
   // advertised as a Plus benefit here. Disco ("Spotify background") is likewise
-  // dormant — its code stays but it's removed from the app entirely.
+  // dormant — its code stays but it's removed from the app entirely. Exam
+  // countdowns and tasks are also NOT Plus perks (same caps for everyone).
   { titleKey: 'plus.f_exclusiveSkin', descKey: 'plus.f_exclusiveSkinDesc', art: require('@/assets/images/bun/bun-strawberry.png'), noteKey: 'plus.noteKeep', noteKind: 'keep' },
   { titleKey: 'plus.f_goldenTeahouse', descKey: 'plus.f_goldenTeahouseDesc', art: require('@/assets/images/backgrounds/strawberry-palace.png'), noteKey: 'plus.noteKeep', noteKind: 'keep' },
   { titleKey: 'plus.f_cardColor', descKey: 'plus.f_cardColorDesc', cardColor: true, noteKey: 'plus.noteExpire', noteKind: 'expire' },

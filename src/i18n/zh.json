@@ -766,7 +766,7 @@
     "addCountdown": "添加倒计时",
     "saveChanges": "保存更改",
     "examsTrackedPlus": "已追踪 {{count}} 个考试会员 — 无限",
-    "countdownsUsed": "已使用 {{count}}/3 个考试倒计时",
+    "countdownsUsed": "已使用 {{count}}/{{max}} 个考试倒计时",
     "missingName": "缺少名称",
     "enterExamName": "请输入考试名称。",
     "invalidDate": "无效日期",

@@ -8,7 +8,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { CountdownShape } from '@/components/countdown-shapes';
-import { LockBadge } from '@/components/lock-badge';
 import { FitText } from '@/components/fit-text';
 import { CheckBox } from '@/components/check-menu';
 import { NotebookBackground } from '@/components/notebook-background';
@@ -17,7 +16,7 @@ import { TaskCalendar } from '@/components/task-calendar';
 import { formatTimeLabel } from '@/components/time-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useApp, FREE_EXAM_LIMIT } from '@/context/app-context';
+import { useApp, MAX_EXAMS } from '@/context/app-context';
 import type { Task } from '@/context/app-context';
 import { computeTaskRollover } from '@/lib/task-recurrence';
 import { cancelTaskNotification, scheduleTaskNotification } from '@/lib/notifications';
@@ -218,15 +217,15 @@ export default function TasksScreen() {
     completeTask,
     examCountdowns,
     removeExam,
-    isPlus,
   } = useApp();
   // Collapsible dropdown state — tasks & exams open by default, done stays tucked.
   const [showTasks, setShowTasks] = useState(true);
   const [showDone, setShowDone] = useState(false);
   const [showExams, setShowExams] = useState(true);
 
-  const canAddExam = isPlus || examCountdowns.length < FREE_EXAM_LIMIT;
-  const examLimitText = isPlus ? t('tasks.examsCount', { count: examCountdowns.length }) : `${examCountdowns.length}/${FREE_EXAM_LIMIT}`;
+  // Exam countdowns aren't a Plus perk — one cap for everyone.
+  const canAddExam = examCountdowns.length < MAX_EXAMS;
+  const examLimitText = `${examCountdowns.length}/${MAX_EXAMS}`;
 
   // Sort so page 1 is always the page that matters: open tasks by soonest due
   // (undated last, matching the Home card's comparator), done by most recently
@@ -441,7 +440,7 @@ export default function TasksScreen() {
             {showExams && (exams.length === 0 ? (
               <ThemedView type="backgroundElement" style={styles.examEmptyCard}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                  {t('tasks.noExamsYet')}{isPlus ? t('tasks.unlimitedWithPlus') : t('tasks.trackUpTo3')}
+                  {t('tasks.noExamsYet')}
                 </ThemedText>
               </ThemedView>
             ) : (
@@ -495,14 +494,12 @@ export default function TasksScreen() {
                 </ThemedText>
               </Pressable>
             ) : (
-              <Pressable onPress={() => router.push('/plus-upgrade')}>
-                <ThemedView type="backgroundElement" style={styles.upgradeExamCard}>
-                  <LockBadge size={16 * scale} />
-                  <ThemedText type="small" style={styles.upgradeExamText}>
-                    {t('tasks.unlimitedUpgrade')}
-                  </ThemedText>
-                </ThemedView>
-              </Pressable>
+              /* At the cap (same for everyone) — a plain notice, not an upsell. */
+              <ThemedView type="backgroundElement" style={styles.upgradeExamCard}>
+                <ThemedText type="small" style={styles.upgradeExamText}>
+                  {t('addExam.limitReached')}
+                </ThemedText>
+              </ThemedView>
             )}
           </ThemedView>
         </SafeAreaView>

@@ -766,7 +766,7 @@
     "addCountdown": "Añadir cuenta atrás",
     "saveChanges": "Guardar cambios",
     "examsTrackedPlus": "{{count}} exámenes seguidos Premium — ilimitado",
-    "countdownsUsed": "{{count}}/3 cuentas atrás de exámenes usadas",
+    "countdownsUsed": "{{count}}/{{max}} cuentas atrás de exámenes usadas",
     "missingName": "Falta el nombre",
     "enterExamName": "Introduce un nombre de examen.",
     "invalidDate": "Fecha no válida",

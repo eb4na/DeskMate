@@ -766,7 +766,7 @@
     "addCountdown": "カウントダウンを追加",
     "saveChanges": "変更を保存",
     "examsTrackedPlus": "{{count}}件の試験を管理 プラス — 無制限",
-    "countdownsUsed": "試験カウントダウン {{count}}/3 使用中",
+    "countdownsUsed": "試験カウントダウン {{count}}/{{max}} 使用中",
     "missingName": "名前がありません",
     "enterExamName": "試験名を入力してください。",
     "invalidDate": "無効な日付",

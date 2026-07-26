@@ -850,7 +850,7 @@
     "addCountdown": "新增倒計時",
     "saveChanges": "儲存更改",
     "examsTrackedPlus": "已追蹤 {{count}} 個考試會員 — 無限",
-    "countdownsUsed": "已使用 {{count}}/3 個考試倒計時",
+    "countdownsUsed": "已使用 {{count}}/{{max}} 個考試倒計時",
     "missingName": "缺少名稱",
     "enterExamName": "請輸入考試名稱。",
     "invalidDate": "無效日期",
