@@ -45,7 +45,7 @@ import { BIRTHDAY_CHANGE_LIMIT, useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
 import { supabase } from '@/lib/supabase';
 import { linkProvider } from '@/lib/oauth';
-import { AppleLogoIcon, GoogleGIcon, LockIcon } from '@/components/auth-icons';
+import { AppleLogoIcon, GoogleGIcon, LockIcon, MailIcon } from '@/components/auth-icons';
 import { ReplayGlyph, TrashGlyph } from '@/components/settings-glyphs';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
 import i18n, { LANGUAGES, useTranslation } from '@/i18n';
@@ -112,7 +112,7 @@ export default function SettingsScreen() {
   const { t } = useTranslation();
   const { scale, contentWidth } = useTabletScale();
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
-  const { user, isGuest, signOut, deleteAccount, upgradeGuest } = useAuth();
+  const { user, isGuest, signOut, deleteAccount, upgradeGuest, upgradeGuestEmail } = useAuth();
   const [upgrading, setUpgrading] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   // Local confirm for the test "reset to new account" — a root showPopup can't
@@ -419,6 +419,27 @@ export default function SettingsScreen() {
                   </View>
                   <View style={styles.rowBody}>
                     <ThemedText type="smallBold">{t('auth.continueWithApple')}</ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {t('auth.createAccountNote')}
+                    </ThemedText>
+                  </View>
+                </Pressable>
+                <View style={styles.divider} />
+                {/* Email sign-up: flag the upgrade first (so the guest's progress —
+                    incl. their birthday and unused birthday changes — migrates into
+                    the new account), then hand off to the signup screen. */}
+                <Pressable
+                  disabled={upgrading}
+                  onPress={async () => {
+                    await upgradeGuestEmail();
+                    router.push('/signup');
+                  }}
+                  style={({ pressed }) => [styles.row, !upgrading && pressed && styles.rowPressed]}>
+                  <View style={styles.rowIconImage}>
+                    <MailIcon size={26} />
+                  </View>
+                  <View style={styles.rowBody}>
+                    <ThemedText type="smallBold">{t('auth.continueWithEmail')}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
                       {t('auth.createAccountNote')}
                     </ThemedText>
