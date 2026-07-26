@@ -23,12 +23,12 @@ values (
   array['outfit_bun_dreams', 'outfit_tira_sleepover', 'outfit_honey_zzz']
 );
 
--- 2) Thanks-for-downloading gift: 500 coins (separate mail).
+-- 2) Thanks-for-downloading gift: 5,000 coins (separate mail).
 insert into public.mail (title, body, coins)
 values (
   'Thanks for downloading!',
-  'Here are 500 coins to get you started. Happy studying!',
-  500
+  'Here are 5,000 coins to get you started. Happy studying!',
+  5000
 );
 
 -- To retract either later:  update public.mail set active = false where id = '<uuid>';
