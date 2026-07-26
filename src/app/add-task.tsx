@@ -70,8 +70,11 @@ export default function AddTaskScreen() {
   // picker anymore. You choose the day by tapping a calendar cell.
   const targetDate = existingTask?.dueDate?.slice(0, 10) ?? date ?? todayISO;
   // "Due that day?" — Yes = a real deadline (drives the calendar red dot); No = the
-  // task just sits on that day. Legacy dated tasks (isDeadline undefined) → Yes.
-  const [isDeadline, setIsDeadline] = useState(existingTask?.isDeadline ?? true);
+  // task just sits on that day. NEW tasks default to No, so a day only turns into a
+  // deadline when the player says so. Editing keeps the task's own answer; legacy
+  // dated tasks (isDeadline undefined) still read as Yes, matching how the calendar
+  // counts them (isDeadline !== false).
+  const [isDeadline, setIsDeadline] = useState(existingTask ? existingTask.isDeadline ?? true : false);
   // A due time is optional — dated tasks default to "All day" (no time).
   const [dueTimeEnabled, setDueTimeEnabled] = useState(editing ? existingTask?.dueTime != null : false);
   const [dueTime, setDueTime] = useState(existingTask?.dueTime ?? (editing ? '09:00' : nextDefaultDueTime(tasks)));
