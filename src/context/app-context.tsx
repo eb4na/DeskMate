@@ -2225,11 +2225,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
           updates.streakRescueDismissedDate = '';
         }
       }
-      // First room ticket the moment they go Plus, and anchor the monthly cadence to
-      // today's day-of-month. Idempotent per day so a restore/double-call can't
-      // double-grant. Subsequent monthly tickets come from the load-merge anniversary
-      // check. Tickets are kept on lapse, so nothing is cleared when value is false.
-      if (value && prev.exchangeTicketLastGrantISO !== today) {
+      // First room ticket the moment they FIRST go Plus, anchoring the monthly cadence
+      // to today's day-of-month. Gate on "no anchor yet" (not "!== today"): setIsPlus(true)
+      // is re-affirmed on every cold launch / entitlement-sync for already-Plus members
+      // (see _layout.tsx), so a per-day guard minted a fresh ticket every single day. All
+      // subsequent monthly tickets come solely from the load-merge anniversary check
+      // (exchangeTicketsDue), which is day-of-month based and covers monthly renewals and
+      // yearly plans alike. Tickets are kept on lapse, so nothing is cleared when value is false.
+      if (value && !prev.exchangeTicketAnchorDay) {
         updates.exchangeTicketAnchorDay = Number(today.slice(8, 10));
         updates.exchangeTickets = prev.exchangeTickets + 1;
         updates.exchangeTicketLastGrantISO = today;
