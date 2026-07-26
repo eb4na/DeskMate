@@ -12,6 +12,7 @@ import { DiscoBallIcon } from '@/components/disco-ball-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
+import { useAuth } from '@/context/auth-context';
 import { useIsTablet } from '@/hooks/use-device-class';
 import { useTranslation } from '@/i18n';
 import { PRODUCT_IDS, fetchPrices, purchasePlus, purchasesReady, restorePlus, type PriceMap } from '@/lib/purchases';
@@ -62,6 +63,10 @@ export default function PlusUpgradeScreen() {
   const screen = Dimensions.get('screen');
   const isTablet = useIsTablet() || Math.min(screen.width, screen.height) >= 600;
   const { isPlus, setIsPlus, ownedShopItems } = useApp();
+  // Plus is tied to a real account (subscription + kept-forever perks sync to it),
+  // so guests must create an account before they can buy or restore it. Without
+  // this a guest could reach the purchase (and the DEV mock-grant) path.
+  const { isGuest } = useAuth();
   // Chosen billing period — monthly Plus lapses after a month, annual after a year.
   const [plan, setPlan] = useState<'monthly' | 'annual'>('monthly');
   // Confirm dialog rendered as an INLINE absolute overlay (not the root showPopup
@@ -79,7 +84,7 @@ export default function PlusUpgradeScreen() {
   // info panels (store unavailable / failed / restore result) rendered as a local
   // modal because a root showPopup can fail to present over this native-modal screen.
   const [confirm, setConfirm] = useState<
-    null | 'activate' | 'deactivate' | 'rewardSkin' | 'rewardRoom' | 'msgUnavailable' | 'msgFailed' | 'msgRestored' | 'msgNoRestore'
+    null | 'activate' | 'deactivate' | 'rewardSkin' | 'rewardRoom' | 'msgUnavailable' | 'msgFailed' | 'msgRestored' | 'msgNoRestore' | 'guest'
   >(null);
 
   // True while a StoreKit purchase/restore is in flight. Tap → getProducts →
@@ -116,6 +121,12 @@ export default function PlusUpgradeScreen() {
   // production with no store fails closed (never grants Plus for free).
   const startPlus = () => {
     if (busy) return;
+    // Guests have no account to attach the subscription/perks to — block before the
+    // store (and the DEV mock-grant) path and prompt them to create an account.
+    if (isGuest) {
+      setConfirm('guest');
+      return;
+    }
     if (!purchasesReady()) {
       setConfirm(__DEV__ ? 'activate' : 'msgUnavailable');
       return;
@@ -134,6 +145,10 @@ export default function PlusUpgradeScreen() {
 
   const handleRestore = () => {
     if (busy) return;
+    if (isGuest) {
+      setConfirm('guest');
+      return;
+    }
     if (!purchasesReady()) {
       setConfirm('msgUnavailable');
       return;
@@ -373,6 +388,28 @@ export default function PlusUpgradeScreen() {
                   <ThemedText style={styles.confirmPrimaryText}>
                     {t('plus.welcomeCta', { defaultValue: 'Sweet!' })}
                   </ThemedText>
+                </Pressable>
+              </>
+            ) : confirm === 'guest' ? (
+              <>
+                <ThemedText style={styles.confirmTitle}>
+                  {t('plus.guestTitle', { defaultValue: 'Create an account first' })}
+                </ThemedText>
+                <ThemedText style={styles.confirmMsg}>
+                  {t('plus.guestMsg', {
+                    defaultValue:
+                      'Memobun Plus is tied to your account so your subscription and perks stay safe and sync across devices. Create a free account to get Plus.',
+                  })}
+                </ThemedText>
+                <Pressable
+                  style={({ pressed }) => [styles.confirmPrimary, pressed && styles.pressed]}
+                  onPress={() => { setConfirm(null); router.push('/settings'); }}>
+                  <ThemedText style={styles.confirmPrimaryText}>
+                    {t('plus.guestCta', { defaultValue: 'Create an account' })}
+                  </ThemedText>
+                </Pressable>
+                <Pressable style={styles.confirmCancel} onPress={() => setConfirm(null)}>
+                  <ThemedText style={styles.confirmCancelText}>{t('common.cancel')}</ThemedText>
                 </Pressable>
               </>
             ) : confirm?.startsWith('msg') ? (

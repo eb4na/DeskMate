@@ -1424,6 +1424,9 @@
     "nowStudyingSolo": "이제 혼자 공부해요"
   },
   "plus": {
+    "guestTitle": "먼저 계정을 만들어 주세요",
+    "guestMsg": "Memobun 프리미엄은 계정에 연결되어 구독과 혜택이 안전하게 유지되고 기기 간에 동기화됩니다. 무료 계정을 만들어 프리미엄을 이용하세요.",
+    "guestCta": "계정 만들기",
     "nothingToRestore": "복원할 항목이 없습니다",
     "nothingToRestoreMsg": "Apple ID에서 활성 구독을 찾을 수 없습니다.",
     "purchaseFailed": "구매에 실패했습니다",

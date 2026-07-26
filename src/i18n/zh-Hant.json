@@ -1508,6 +1508,9 @@
     "nowStudyingSolo": "現在你在獨自學習"
   },
   "plus": {
+    "guestTitle": "請先建立帳戶",
+    "guestMsg": "Memobun 會員與你的帳戶綁定，可讓訂閱與權益安全保存並在裝置間同步。建立免費帳戶即可獲得會員。",
+    "guestCta": "建立帳戶",
     "nothingToRestore": "沒有可還原的內容",
     "nothingToRestoreMsg": "未在你的 Apple ID 上找到有效的訂閱。",
     "purchaseFailed": "購買失敗",

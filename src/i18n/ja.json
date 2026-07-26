@@ -1424,6 +1424,9 @@
     "nowStudyingSolo": "今はひとりで勉強中"
   },
   "plus": {
+    "guestTitle": "先にアカウントを作成してください",
+    "guestMsg": "Memobunプラスはアカウントに紐づいており、サブスクリプションと特典が安全に保たれ、デバイス間で同期されます。無料アカウントを作成してプラスを利用しましょう。",
+    "guestCta": "アカウントを作成",
     "nothingToRestore": "復元するものがありません",
     "nothingToRestoreMsg": "お使いのApple IDで有効なサブスクリプションが見つかりませんでした。",
     "purchaseFailed": "購入に失敗しました",

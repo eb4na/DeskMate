@@ -1424,6 +1424,9 @@
     "nowStudyingSolo": "Ahora estudias en solitario"
   },
   "plus": {
+    "guestTitle": "Crea una cuenta primero",
+    "guestMsg": "Memobun Premium está vinculado a tu cuenta para que tu suscripción y tus ventajas se mantengan seguras y se sincronicen entre dispositivos. Crea una cuenta gratis para obtener Premium.",
+    "guestCta": "Crear una cuenta",
     "nothingToRestore": "Nada que restaurar",
     "nothingToRestoreMsg": "No encontramos una suscripción activa en tu Apple ID.",
     "purchaseFailed": "Compra fallida",
