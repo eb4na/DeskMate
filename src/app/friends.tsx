@@ -33,7 +33,7 @@ import { cardColors } from '@/constants/card-colors';
 import { BREAK_GAME_ENABLED } from '@/constants/placeholder-data';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { useTranslation } from '@/i18n';
-import { MaxContentWidth, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { useReportModalTransition } from '@/lib/modal-traffic';
 
@@ -296,37 +296,45 @@ export default function FriendsScreen() {
   if (isGuest) {
     return (
       <ThemedView style={[styles.container, { backgroundColor: P.cream }]}>
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.gateSafeArea}>
           <View style={styles.gateWrap}>
-            <Text style={styles.gateTitle}>{t('friends.guestGateTitle')}</Text>
-            <Text style={styles.gateBody}>{t('friends.guestGateBody')}</Text>
-            <Pressable
-              disabled={upgrading}
-              onPress={() => handleUpgrade('google')}
-              style={({ pressed }) => [styles.gateGoogleBtn, pressed && styles.pressed, upgrading && styles.gateBtnDisabled]}>
-              <GoogleGIcon size={20 * scale} />
-              <Text style={styles.gateGoogleText}>{t('auth.continueWithGoogle')}</Text>
-            </Pressable>
-            <Pressable
-              disabled={upgrading}
-              onPress={() => handleUpgrade('apple')}
-              style={({ pressed }) => [styles.gateGoogleBtn, pressed && styles.pressed, upgrading && styles.gateBtnDisabled]}>
-              <AppleLogoIcon size={20 * scale} />
-              <Text style={styles.gateGoogleText}>{t('auth.continueWithApple')}</Text>
-            </Pressable>
-            <Pressable
-              disabled={upgrading}
-              onPress={async () => {
-                await upgradeGuestEmail();
-                router.push('/signup');
-              }}
-              style={({ pressed }) => [styles.gateGoogleBtn, pressed && styles.pressed, upgrading && styles.gateBtnDisabled]}>
-              <MailIcon size={20 * scale} />
-              <Text style={styles.gateGoogleText}>{t('auth.continueWithEmail')}</Text>
-            </Pressable>
-            <Pressable style={({ pressed }) => [styles.gateLater, pressed && styles.pressed]} onPress={() => router.back()}>
-              <Text style={styles.gateLaterText}>{t('friends.guestGateLater')}</Text>
-            </Pressable>
+            <View style={styles.gateInner}>
+              <Text style={styles.gateTitle}>{t('friends.guestGateTitle')}</Text>
+              <Text style={styles.gateBody}>{t('friends.guestGateBody')}</Text>
+
+              {/* Primary path: create a free account with email (jam pill, matches
+                  the login screen's primary button). */}
+              <Pressable
+                disabled={upgrading}
+                onPress={async () => {
+                  await upgradeGuestEmail();
+                  router.push('/signup');
+                }}
+                style={({ pressed }) => [styles.gatePrimaryBtn, pressed && styles.pressed, upgrading && styles.gateBtnDisabled]}>
+                <MailIcon size={20 * scale} color="#FFFFFF" />
+                <Text style={styles.gatePrimaryText}>{t('auth.continueWithEmail')}</Text>
+              </Pressable>
+
+              {/* Google / Apple — white oauth pills, same as the login screen. */}
+              <Pressable
+                disabled={upgrading}
+                onPress={() => handleUpgrade('google')}
+                style={({ pressed }) => [styles.gateOauthBtn, pressed && styles.pressed, upgrading && styles.gateBtnDisabled]}>
+                <GoogleGIcon size={20 * scale} />
+                <Text style={styles.gateOauthText}>{t('auth.continueWithGoogle')}</Text>
+              </Pressable>
+              <Pressable
+                disabled={upgrading}
+                onPress={() => handleUpgrade('apple')}
+                style={({ pressed }) => [styles.gateOauthBtn, pressed && styles.pressed, upgrading && styles.gateBtnDisabled]}>
+                <AppleLogoIcon size={20 * scale} />
+                <Text style={styles.gateOauthText}>{t('auth.continueWithApple')}</Text>
+              </Pressable>
+
+              <Pressable style={({ pressed }) => [styles.gateLater, pressed && styles.pressed]} onPress={() => router.back()}>
+                <Text style={styles.gateLaterText}>{t('friends.guestGateLater')}</Text>
+              </Pressable>
+            </View>
           </View>
         </SafeAreaView>
       </ThemedView>
@@ -944,27 +952,48 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   },
   doneButtonText: { color: '#fff', fontSize: 17 * s, fontWeight: '800' },
 
-  // Guest gate
-  gateWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.three * s, paddingHorizontal: Spacing.four * s },
-  gateTitle: { fontSize: 22 * s, fontWeight: '900', color: P.brown, textAlign: 'center' },
-  gateBody: { fontSize: 15 * s, color: P.mutedBrown, textAlign: 'center', lineHeight: 21 * s },
-  gateGoogleBtn: {
+  // Guest gate — mirrors the login screen's button styling, colors and spacing.
+  // Own full-height SafeAreaView (flex:1): the shared `safeArea` style is a
+  // content-sized column, which left this subtree with an indefinite height and
+  // collapsed the auto-sizing Text nodes to zero on Fabric.
+  gateSafeArea: { flex: 1, backgroundColor: P.cream },
+  gateWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.four * s },
+  gateInner: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.four * s,
+    gap: Spacing.two * s,
+  },
+  gateTitle: { fontSize: 20 * s, fontWeight: '800', color: BakeryColors.cocoaDark, textAlign: 'center' },
+  gateBody: { fontSize: 14 * s, color: BakeryColors.cocoa, textAlign: 'center', lineHeight: 20 * s, marginBottom: Spacing.two * s },
+  gatePrimaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.two * s,
-    alignSelf: 'stretch',
-    backgroundColor: '#fff',
-    borderRadius: 18 * s,
-    paddingVertical: Spacing.three * s,
-    borderWidth: 1.5,
-    borderColor: P.pinkSoft,
-    marginTop: Spacing.two * s,
+    height: 54 * s,
+    borderRadius: BakeryRadii.pill,
+    backgroundColor: BakeryColors.jam,
+    ...BakeryShadow,
   },
-  gateGoogleText: { fontSize: 16 * s, fontWeight: '800', color: P.brown },
+  gatePrimaryText: { fontSize: 16 * s, fontWeight: '800', color: '#FFFFFF' },
+  gateOauthBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two * s,
+    height: 54 * s,
+    borderRadius: BakeryRadii.pill,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: BakeryColors.border,
+    ...BakeryShadow,
+  },
+  gateOauthText: { fontSize: 15 * s, fontWeight: '700', color: BakeryColors.cocoaDark },
   gateBtnDisabled: { opacity: 0.6 },
-  gateLater: { paddingVertical: Spacing.two * s },
-  gateLaterText: { fontSize: 14 * s, fontWeight: '700', color: P.mutedBrown },
+  gateLater: { paddingVertical: Spacing.three * s, marginTop: Spacing.one * s, alignItems: 'center' },
+  gateLaterText: { fontSize: 14 * s, fontWeight: '700', color: BakeryColors.mocha },
 
   pressed: { opacity: 0.85 },
 });
