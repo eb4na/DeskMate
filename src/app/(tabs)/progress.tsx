@@ -13,7 +13,7 @@ import { StreakFreezeIcon } from '@/components/streak-freeze-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { NotebookBackground } from '@/components/notebook-background';
-import { daysBetween, todayISO, useApp } from '@/context/app-context';
+import { daysBetween, todayISO, useApp, weekMondayISO, weekStartISO } from '@/context/app-context';
 import { ACHIEVEMENTS } from '@/constants/quests';
 import { RECIPE_IDS } from '@/constants/recipes';
 import { useAuth } from '@/context/auth-context';
@@ -34,13 +34,11 @@ import {
 
 const STREAK_FIRE_ICON = require('@/assets/images/home/streak-fire-icon.png');
 
+// Monday of the current week on the account's calendar. The old version took local
+// midnight and read its UTC date, which lands on the PREVIOUS day for every zone
+// ahead of UTC (ja/zh/ko users) — weekMondayISO does pure string math instead.
 function getMondayISO(): string {
-  const d = new Date();
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString().split('T')[0];
+  return weekMondayISO();
 }
 
 function formatDate(iso: string): string {
@@ -223,10 +221,11 @@ export default function ProgressScreen() {
   const displayStreak = streakLost ? 0 : streak.currentStreak;
 
   // ── Weekly summary for the "This week" card ───────────────────────────────
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const weekStartISO = sevenDaysAgo.toISOString().split('T')[0];
-  const weekSessions = visibleSessions.filter((r) => r.dateISO >= weekStartISO);
+  // Same 7-day, account-timezone window the Weekly Report uses (see weekStartISO),
+  // so the card and the report can never disagree. The old math read the UTC date
+  // off a local Date and spanned 8 days.
+  const weekStart = weekStartISO();
+  const weekSessions = visibleSessions.filter((r) => r.dateISO >= weekStart);
   const weekMinutes = weekSessions.reduce((s, r) => s + r.minutes, 0);
   const weekDays = new Set(weekSessions.map((r) => r.dateISO)).size;
 

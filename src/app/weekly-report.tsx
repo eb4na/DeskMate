@@ -7,20 +7,22 @@ import Svg, { G, Path } from 'react-native-svg';
 import { CoinIcon } from '@/components/coin-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useApp } from '@/context/app-context';
+import { accountDateOf, daysBetween, todayISO, useApp, weekStartISO } from '@/context/app-context';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import i18n, { useTranslation } from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
 import { formatDuration } from '@/lib/format-duration';
-import { coinsForMinutes } from '@/constants/placeholder-data';
+import { coinsForMinutes, DAILY_EARN_CAP, PLUS_STUDY_COIN_MULTIPLIER } from '@/constants/placeholder-data';
 import { Spacing } from '@/constants/theme';
 
-function formatDateRange(): string {
-  const end = new Date();
-  const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const fmt = (d: Date) =>
-    d.toLocaleDateString(i18n.language || 'en-US', { month: 'short', day: 'numeric' });
-  return `${fmt(start)} – ${fmt(end)}`;
+// The header range must describe the SAME window the stats are computed over —
+// both come from weekStartISO()/todayISO() (account timezone), so the dates shown
+// are exactly the days counted. Parsed as local midnight so the label doesn't
+// shift a day in zones behind UTC.
+function formatDateRange(startISO: string, endISO: string): string {
+  const fmt = (iso: string) =>
+    new Date(`${iso}T00:00:00`).toLocaleDateString(i18n.language || 'en-US', { month: 'short', day: 'numeric' });
+  return `${fmt(startISO)} – ${fmt(endISO)}`;
 }
 
 // Pie chart geometry — mirrors subject-chart.tsx so the two read the same.
@@ -44,23 +46,32 @@ function slicePath(startAngle: number, endAngle: number): string {
 
 export default function WeeklyReportScreen() {
   const { t } = useTranslation();
-  const { sessionHistory, tasks, streak, subjects } = useApp();
+  const { sessionHistory, tasks, streak, subjects, isPlus } = useApp();
   // Tablet: scale every size by ONE shared factor so all text (preset-based AND
   // explicitly-sized) grows together and stays uniform — no more "some huge, some tiny."
   const { scale, contentWidth } = useTabletScale();
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
 
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const weekStartISO = sevenDaysAgo.toISOString().split('T')[0];
+  // Window: today + the 6 days before it, on the ACCOUNT's timezone calendar —
+  // the same basis session records are stamped with (addSubjectTime → todayISO).
+  // The old math built the boundary from `new Date().toISOString()`, i.e. the UTC
+  // date, which drops or adds a whole day of history for most of the day in any
+  // zone behind UTC, and spanned 8 days rather than 7.
+  const weekStart = weekStartISO();
+  const today = todayISO();
 
-  const weekSessions = sessionHistory.filter((r) => r.dateISO >= weekStartISO);
+  const weekSessions = sessionHistory.filter((r) => r.dateISO >= weekStart);
   const weekMinutes = weekSessions.reduce((s, r) => s + r.minutes, 0);
   const weekSessionCount = weekSessions.length;
   const weekDays = new Set(weekSessions.map((r) => r.dateISO)).size;
 
+  // completedAt is a UTC timestamp, so it must be converted to the account's
+  // calendar date before it can be compared with the window (an 8pm New York
+  // finish is already "tomorrow" in UTC).
+  // Known gap: a repeating task's rollover clears completedAt, so completed
+  // recurrences don't count here.
   const weekTasks = tasks.filter(
-    (task) => task.completedAt && task.completedAt.split('T')[0] >= weekStartISO,
+    (task) => task.completedAt && accountDateOf(task.completedAt) >= weekStart,
   );
 
   // Subject breakdown
@@ -88,8 +99,18 @@ export default function WeeklyReportScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekSubjectMap, weekMinutes, subjects]);
 
-  // Estimated coins — 1 coin per minute studied (matches the earn rule).
-  const estimatedCoins = weekSessions.reduce((sum, r) => sum + coinsForMinutes(r.minutes), 0);
+  // Estimated coins from studying. Applied PER DAY, because the two rules that
+  // actually move this number are per-day: Plus doubles the study payout, and the
+  // daily earn cap clamps it. Still an estimate — a session ended early records
+  // its minutes but pays 0 coins, and the cap is shared with other coin sources.
+  const estimatedCoins = useMemo(() => {
+    const byDay: Record<string, number> = {};
+    for (const r of weekSessions) byDay[r.dateISO] = (byDay[r.dateISO] ?? 0) + r.minutes;
+    return Object.values(byDay).reduce(
+      (sum, mins) => sum + Math.min(coinsForMinutes(mins) * (isPlus ? PLUS_STUDY_COIN_MULTIPLIER : 1), DAILY_EARN_CAP),
+      0,
+    );
+  }, [weekSessions, isPlus]);
 
   // Summary sentence
   const hasSummary = weekMinutes > 0 || weekSessionCount > 0 || weekTasks.length > 0 || weekDays > 0;
@@ -103,6 +124,13 @@ export default function WeeklyReportScreen() {
       (topSubject ? t('weeklyReport.topSubjectClause', { subject: localizeSubjectName(topSubject[0], t) }) : '') +
       (estimatedCoins > 0 ? t('weeklyReport.coinsClause', { coins: estimatedCoins }) : '')
     : null;
+
+  // Streak shown here must match the Progress tab: a streak with 5+ missed days is
+  // gone, and Progress already displays 0 for it. Reading currentStreak raw made
+  // the two screens disagree (Progress "0", report "6d") until the next study day
+  // reset it.
+  const missedDays = streak.lastStudyDate ? daysBetween(streak.lastStudyDate, today) : 0;
+  const displayStreak = missedDays >= 5 ? 0 : streak.currentStreak;
 
   // Suggested goal
   let suggestedGoal = '';
@@ -120,7 +148,7 @@ export default function WeeklyReportScreen() {
     { label: t('weeklyReport.statStudyTime'), value: weekMinutes > 0 ? formatDuration(weekMinutes, t) : '—', emoji: '' },
     { label: t('weeklyReport.statDaysShowedUp'), value: String(weekDays), emoji: '' },
     { label: t('weeklyReport.statTasksDone'), value: String(weekTasks.length), emoji: '' },
-    { label: t('weeklyReport.statStreakNow'), value: `${streak.currentStreak}d`, emoji: '' },
+    { label: t('weeklyReport.statStreakNow'), value: `${displayStreak}d`, emoji: '' },
     { label: t('weeklyReport.statEstCoins'), value: estimatedCoins > 0 ? String(estimatedCoins) : '—', coinIcon: true },
   ];
 
@@ -136,7 +164,7 @@ export default function WeeklyReportScreen() {
               {t('screens.weeklyReport')}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              {formatDateRange()}
+              {formatDateRange(weekStart, today)}
             </ThemedText>
           </ThemedView>
 

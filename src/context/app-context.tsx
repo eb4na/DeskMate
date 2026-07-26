@@ -553,6 +553,36 @@ function yesterdayISO(): string {
   return addDaysISO(todayISO(), -1);
 }
 
+/** The account-timezone calendar date `n` days before today (n=0 → today). */
+export function daysAgoISO(n: number): string {
+  return addDaysISO(todayISO(), -n);
+}
+
+/** First day of the rolling 7-day report window (today + the 6 days before it).
+ *  Stats screens share this so "this week" means the same thing everywhere. */
+export function weekStartISO(): string {
+  return daysAgoISO(6);
+}
+
+/** Calendar date (YYYY-MM-DD) an ISO *timestamp* falls on in the account's
+ *  timezone. Timestamps like Task.completedAt are stored in UTC, so slicing the
+ *  string would bucket an 8pm New York finish into the NEXT day. */
+export function accountDateOf(timestamp: string): string {
+  const d = new Date(timestamp);
+  if (isNaN(d.getTime())) return timestamp.slice(0, 10);
+  return dateInTimeZone(d, activeTimezone);
+}
+
+/** Monday of the current week, in the account's timezone (pure string math, so
+ *  it can't slip a day the way local-Date → toISOString() does). */
+export function weekMondayISO(): string {
+  const today = todayISO();
+  // Weekday of `today` via UTC (the ISO string is timezone-free by construction).
+  const [y, m, d] = today.split('-').map(Number);
+  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay(); // 0=Sun … 6=Sat
+  return addDaysISO(today, -(dow === 0 ? 6 : dow - 1));
+}
+
 // Days in a given month (m is 1–12). Day 0 of next month = last day of this one.
 function daysInMonth(y: number, m1to12: number): number {
   return new Date(y, m1to12, 0).getDate();
