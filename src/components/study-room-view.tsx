@@ -6,7 +6,7 @@ import Svg, { Circle, Line, Path } from 'react-native-svg';
 import { Animated, AppState, Easing, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { DurationWheel } from '@/components/duration-wheel';
-import { cancelComeBackNudge, sendBreakEndingNudge, sendComeBackNudge } from '@/lib/notifications';
+import { breakNudgeDelay, cancelComeBackNudge, sendBreakEndingNudge, sendComeBackNudge } from '@/lib/notifications';
 
 import { CoinIcon } from '@/components/coin-icon';
 import { CompanionLevel } from '@/components/companion-level';
@@ -429,24 +429,14 @@ export function StudyRoomView({
     let awayAt: number | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
     let nudgeId: string | null = null;
-    let breakNudgeId: string | null = null;
     let stopped = false;
     const stop = () => { if (!stopped) { stopped = true; onAwayRef.current(); } };
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'background') {
-        // Backgrounding during a solo break: the study timer is paused, so don't
-        // auto-stop the session — just nudge them as the break is about to end.
-        if (isSoloRef.current && onBreakRef.current) {
-          if (breakNudgeId == null) {
-            const secs = breakLeftRef.current;
-            // Fire the "come back" nudge 30s before the break ends (not a full
-            // minute). Short breaks (<60s) still lead by half so it never fires
-            // at/after break-end.
-            const lead = Math.min(30, Math.floor(secs / 2));
-            sendBreakEndingNudge(tRef.current(breakEndTitleKeyRef.current), tRef.current(breakEndBodyKeyRef.current), Math.max(1, secs - lead)).then((id) => { breakNudgeId = id; });
-          }
-          return;
-        }
+        // Backgrounding during a break: the study timer is paused, so don't
+        // auto-stop the session. The break-ending nudge is already scheduled (see
+        // the timed-break effect below) — it fires with the app open or closed.
+        if (onBreakRef.current) return;
         if (awayAt != null) return; // already away
         awayAt = Date.now();
         // If they just tapped "open in Spotify", hold the nudge ~10s so it doesn't
@@ -460,12 +450,12 @@ export function StudyRoomView({
         if (timer) { clearTimeout(timer); timer = null; }
         cancelComeBackNudge(nudgeId);
         nudgeId = null;
-        cancelComeBackNudge(breakNudgeId);
-        breakNudgeId = null;
+        // NOTE: the break nudge is deliberately NOT cancelled here — coming back to
+        // the app mid-break shouldn't silence the "break's almost over" alert.
         if (since != null && Date.now() - since >= AWAY_MS) stop();
       }
     });
-    return () => { sub.remove(); if (timer) clearTimeout(timer); cancelComeBackNudge(nudgeId); cancelComeBackNudge(breakNudgeId); };
+    return () => { sub.remove(); if (timer) clearTimeout(timer); cancelComeBackNudge(nudgeId); };
   }, []);
 
   // The baked recipe's dish art — springs out of the timer when the session ends
@@ -633,6 +623,32 @@ export function StudyRoomView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onBreak, frozenSecs, breakLeft, isSolo]);
+
+  // Break-ending notification, scheduled the instant the timed break STARTS rather
+  // than when the app is backgrounded — a break is exactly when the phone gets put
+  // down, and iOS suspends JS in the background, so an in-app timer can't be relied
+  // on to announce the end. Fires whether or not the app is open, and is cancelled
+  // if the break is ended early (or the session leaves the break).
+  // Deps are the break's on/off edge only — `breakLeft` ticks every second and must
+  // not reschedule, so the remaining seconds are read from the ref.
+  const breakNudgeIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!(onBreak && frozenSecs != null)) return;
+    let cancelled = false;
+    const secs = breakLeftRef.current;
+    if (secs > 0) {
+      sendBreakEndingNudge(tRef.current(breakEndTitleKeyRef.current), tRef.current(breakEndBodyKeyRef.current), breakNudgeDelay(secs))
+        .then((id) => {
+          if (cancelled) void cancelComeBackNudge(id);
+          else breakNudgeIdRef.current = id;
+        });
+    }
+    return () => {
+      cancelled = true;
+      void cancelComeBackNudge(breakNudgeIdRef.current);
+      breakNudgeIdRef.current = null;
+    };
+  }, [onBreak, frozenSecs]);
 
   // Participants: the synced roster, or just me when solo. The local user
   // (active companion) is always shown first.

@@ -30,6 +30,8 @@ import { useApp } from '@/context/app-context';
 import { SESSION_LENGTHS, autoBreakMinutes } from '@/constants/placeholder-data';
 import { DEFAULT_ROOM_BG, roomById } from '@/constants/room-data';
 import { roomAccent } from '@/lib/room-accent';
+import { isHanjiActiveId, resolveActiveCompanion } from '@/lib/companion-utils';
+import { breakNudgeDelay, cancelComeBackNudge, sendBreakEndingNudge } from '@/lib/notifications';
 import { showLoadingScreen } from '@/lib/loading-signal';
 import { useTranslation } from '@/i18n';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
@@ -70,7 +72,23 @@ export default function SessionCheckpointScreen() {
   const { t } = useTranslation();
   const { scale } = useTabletScale();
   const styles = useMemo(() => makeStyles(scale), [scale]);
-  const { startActiveSession, clearActiveSession, isPlus, equippedBackgroundRoomId } = useApp();
+  const {
+    startActiveSession, clearActiveSession, isPlus, equippedBackgroundRoomId,
+    activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins,
+  } = useApp();
+
+  // Break-nudge copy in the active companion's voice (custom characters keep the
+  // generic line), keyed exactly like the study room's away/break nudges.
+  const companion = resolveActiveCompanion(activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
+  const voiceKey = isHanjiActiveId(activeCompanionId)
+    ? 'hanji'
+    : companion.type === 'shop'
+      ? companion.id
+      : companion.type === 'starter'
+        ? 'bun'
+        : 'custom';
+  const breakNudgeTitleKey = voiceKey === 'custom' ? 'session.breakEndTitle' : `session.breakEndTitle_${voiceKey}`;
+  const breakNudgeBodyKey = voiceKey === 'custom' ? 'session.breakEndBody' : `session.breakEndBody_${voiceKey}`;
 
   const { lastMinutes, subject, taskId, taskTitle } = useLocalSearchParams<{
     lastMinutes?: string;
@@ -102,6 +120,36 @@ export default function SessionCheckpointScreen() {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
     return () => sub.remove();
   }, []);
+
+  // Break-ending notification, scheduled the moment the break starts — NOT when the
+  // app is backgrounded. A break is exactly when people put the phone down, and iOS
+  // suspends JS in the background, so only a scheduled local notification reliably
+  // tells them the break is nearly over. It fires whether the app is open or not
+  // (the notification handler shows banners in the foreground too), and is cancelled
+  // if they end the break early or leave this screen.
+  const breakNudgeId = useRef<string | null>(null);
+  useEffect(() => {
+    if (stage !== 'break') return;
+    let cancelled = false;
+    const secs = Math.max(0, Math.round((breakEndsAt.current - Date.now()) / 1000));
+    if (secs > 0) {
+      // defaultValue keeps a companion without its own line from putting the raw
+      // i18n key in the notification.
+      const title = t(breakNudgeTitleKey, { defaultValue: t('session.breakEndTitle') });
+      const body = t(breakNudgeBodyKey, { defaultValue: t('session.breakEndBody') });
+      sendBreakEndingNudge(title, body, breakNudgeDelay(secs)).then((id) => {
+        // Raced with an early "End break" → drop the notification we just made.
+        if (cancelled) void cancelComeBackNudge(id);
+        else breakNudgeId.current = id;
+      });
+    }
+    return () => {
+      cancelled = true;
+      void cancelComeBackNudge(breakNudgeId.current);
+      breakNudgeId.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- copy keys are stable for this screen's life
+  }, [stage]);
 
   // Break countdown: ticks toward the wall-clock end, then auto-advances to the
   // picker (never auto-starts). Stops as soon as we leave the break stage.

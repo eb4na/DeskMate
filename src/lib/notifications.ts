@@ -229,10 +229,20 @@ export async function sendComeBackNudge(
   }
 }
 
-// Fired while the app is backgrounded during a study break: nudges the player to
-// come back as the break is about to end. Same scheduled-notification mechanism as
-// the come-back nudge; `delaySeconds` is timed to land shortly before the break
-// resumes. Returns the id so it can be cancelled on a quick return.
+// How far BEFORE a break ends its nudge fires. Short breaks lead by half instead,
+// so the notification can never land at/after the break has already resumed.
+export const BREAK_NUDGE_LEAD_SECONDS = 30;
+
+/** Seconds from now to fire a break-ending nudge for a break with `breakSeconds` left. */
+export function breakNudgeDelay(breakSeconds: number): number {
+  const lead = Math.min(BREAK_NUDGE_LEAD_SECONDS, Math.floor(breakSeconds / 2));
+  return Math.max(1, breakSeconds - lead);
+}
+
+// Nudges the player to come back as the break is about to end. SCHEDULED WHEN THE
+// BREAK STARTS, so it fires whether or not the app is open — iOS suspends JS in the
+// background, so an in-app timer can't be relied on to tell them the break is over.
+// Returns the id so it can be cancelled if the break is ended early.
 export async function sendBreakEndingNudge(
   title: string,
   body: string,
