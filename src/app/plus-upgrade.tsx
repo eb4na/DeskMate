@@ -32,21 +32,29 @@ const FEATURES: {
   noteKey?: string;
   noteKind?: 'keep' | 'expire';
 }[] = [
+  // Grouped by kind, biggest-impact perk first inside each group: everything that
+  // earns/saves coins, then the study features, then the cosmetics you keep.
+  // ── Coins & value ──
+  { titleKey: 'plus.f_streakCoins', descKey: 'plus.f_streakCoinsDesc', art: require('@/assets/images/home/coin-icon.png') },
   { titleKey: 'plus.f_studyCoins', descKey: 'plus.f_studyCoinsDesc', art: require('@/assets/images/home/coin-icon.png') },
-  { titleKey: 'plus.f_customTimers', descKey: 'plus.f_customTimersDesc', art: require('@/assets/images/settings/timer.png') },
-  { titleKey: 'plus.f_moreSubjects', descKey: 'plus.f_moreSubjectsDesc', art: require('@/assets/images/settings/books.png') },
+  // Pairs with the 2× payout above: PLUS_DAILY_EARN_CAP lets a long study day keep
+  // paying past the free tier's ceiling.
+  { titleKey: 'plus.f_dailyCap', descKey: 'plus.f_dailyCapDesc', art: require('@/assets/images/home/coin-icon.png') },
+  { titleKey: 'plus.f_shopDiscount', descKey: 'plus.f_shopDiscountDesc', art: require('@/assets/images/tabIcons/gen-shop.png') },
+  { titleKey: 'plus.f_roomTicket', descKey: 'plus.f_roomTicketDesc', art: require('@/assets/images/shop/ticket.png') },
+  // ── Study features ──
   { titleKey: 'plus.f_streakFreezes', descKey: 'plus.f_streakFreezesDesc', art: require('@/assets/images/home/streak-freeze-icon.png') },
   { titleKey: 'plus.f_ambience', descKey: 'plus.f_ambienceDesc', art: require('@/assets/images/shop/icon-sound.png') },
-  // Spotify is available to ALL users regardless of Plus, so it's no longer
-  // advertised as a Plus benefit here. Disco ("Spotify background") is likewise
-  // dormant — its code stays but it's removed from the app entirely. Exam
-  // countdowns and tasks are also NOT Plus perks (same caps for everyone).
+  { titleKey: 'plus.f_customTimers', descKey: 'plus.f_customTimersDesc', art: require('@/assets/images/settings/timer.png') },
+  // Spotify itself is available to ALL users regardless of Plus, so connecting an
+  // account isn't advertised here — but disco ("Spotify background"), the scene it
+  // drives, IS Plus-only and is listed below. Exam countdowns, tasks and SUBJECTS
+  // are NOT Plus perks (same caps for everyone).
+  // ── Looks (kept forever / while subscribed) ──
   { titleKey: 'plus.f_exclusiveSkin', descKey: 'plus.f_exclusiveSkinDesc', art: require('@/assets/images/bun/bun-strawberry.png'), noteKey: 'plus.noteKeep', noteKind: 'keep' },
   { titleKey: 'plus.f_goldenTeahouse', descKey: 'plus.f_goldenTeahouseDesc', art: require('@/assets/images/backgrounds/strawberry-palace.png'), noteKey: 'plus.noteKeep', noteKind: 'keep' },
+  { titleKey: 'plus.f_disco', descKey: 'plus.f_discoDesc', disco: true },
   { titleKey: 'plus.f_cardColor', descKey: 'plus.f_cardColorDesc', cardColor: true, noteKey: 'plus.noteExpire', noteKind: 'expire' },
-  { titleKey: 'plus.f_roomTicket', descKey: 'plus.f_roomTicketDesc', art: require('@/assets/images/shop/ticket.png') },
-  { titleKey: 'plus.f_shopDiscount', descKey: 'plus.f_shopDiscountDesc', art: require('@/assets/images/tabIcons/gen-shop.png') },
-  { titleKey: 'plus.f_streakCoins', descKey: 'plus.f_streakCoinsDesc', art: require('@/assets/images/home/coin-icon.png') },
 ];
 
 // Art shown in the first-time Plus reward popups (matches the in-game items).
@@ -113,7 +121,10 @@ export default function PlusUpgradeScreen() {
     // Perks are kept forever, so they're only newly granted the first time → only
     // then show the reward popups.
     const firstTime = !ownedShopItems.includes('outfit_bun_strawberry');
-    setIsPlus(true, plan, until);
+    // announce=true → this is a genuine paywall purchase, so the "monthly freezes
+    // granted" popup is appropriate. Restore / cold-launch re-sync paths pass no
+    // announce, so they never spuriously fire it (e.g. logging in on another device).
+    setIsPlus(true, plan, until, true);
     setConfirm(firstTime ? 'rewardSkin' : null);
   };
 

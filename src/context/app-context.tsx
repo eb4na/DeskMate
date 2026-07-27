@@ -386,9 +386,10 @@ export const PLUS_DAILY_CHAT = 40;
 // Most recent companion chat messages kept in local history.
 export const CHAT_HISTORY_CAP = 50;
 
-// Maximum active subjects — free tier vs Plus.
-export const MAX_SUBJECTS_FREE = 10;
-export const MAX_SUBJECTS_PLUS = 50;
+// Maximum active subjects. NOT a Plus perk — every account gets the same cap
+// (mirrors MAX_EXAMS / MAX_TASKS). It's a sanity bound, not a paywall: far more
+// than anyone tracks at once, and small enough that the pickers/charts stay cheap.
+export const MAX_SUBJECTS = 50;
 
 const DEFAULTS: PersistedState = {
   // New accounts start with a coin gift.
@@ -1203,7 +1204,7 @@ type AppContextType = {
   equipShopItem: (itemId: string) => boolean;
 
   // Wave 4 actions
-  setIsPlus: (value: boolean, plan?: 'monthly' | 'annual', untilOverride?: string) => void;
+  setIsPlus: (value: boolean, plan?: 'monthly' | 'annual', untilOverride?: string, announce?: boolean) => void;
   useStreakFreeze: () => boolean;
   // Bridge the streak after buying a freeze on the spot (net-zero inventory).
   rescueStreakByPurchase: () => boolean;
@@ -1890,11 +1891,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addSubject = (rawName: string, color: string, emoji = ''): boolean => {
     const name = maskProfanity(rawName);
-    const limit = s.isPlus ? MAX_SUBJECTS_PLUS : MAX_SUBJECTS_FREE;
-    if (s.subjects.filter((sub) => !sub.archived).length >= limit) return false;
+    if (s.subjects.filter((sub) => !sub.archived).length >= MAX_SUBJECTS) return false;
     setS((prev) => {
       const activeCount = prev.subjects.filter((sub) => !sub.archived).length;
-      if (activeCount >= (prev.isPlus ? MAX_SUBJECTS_PLUS : MAX_SUBJECTS_FREE)) return prev;
+      if (activeCount >= MAX_SUBJECTS) return prev;
       return {
         ...prev,
         subjects: [
@@ -2199,12 +2199,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ─── Wave 4 actions ───────────────────────────────────────────────────────
 
-  const setIsPlus = (value: boolean, plan: 'monthly' | 'annual' = 'monthly', untilOverride?: string) => {
+  const setIsPlus = (value: boolean, plan: 'monthly' | 'annual' = 'monthly', untilOverride?: string, announce = false) => {
     const month = new Date().toISOString().slice(0, 7);
     const today = todayISO();
-    // Popup decided OUTSIDE the state updater (updaters can run twice in dev and
-    // must stay side-effect-free). Same condition the updater applies below.
-    if (value && (!s.streakFreezeResetMonth || s.streakFreezeResetMonth < month)) {
+    // Freezes-granted popup ONLY on a genuine paywall purchase (`announce`). setIsPlus
+    // is re-affirmed on every cold launch / entitlement-sync and on a fresh device's
+    // login (see _layout.tsx); those read a not-yet-synced streakFreezeResetMonth and
+    // used to fire the popup spuriously (e.g. "3 freezes added" every time you logged
+    // in from another device). The freezes themselves still refresh monthly & silently
+    // via the load-merge grant, so no freeze is lost — only the popup is gated.
+    // Decided OUTSIDE the state updater (updaters can run twice in dev, must be pure).
+    if (value && announce && (!s.streakFreezeResetMonth || s.streakFreezeResetMonth < month)) {
       showPopup(i18n.t('plus.freezesGrantedTitle'), i18n.t('plus.freezesGrantedMsg'));
     }
     setS((prev) => {

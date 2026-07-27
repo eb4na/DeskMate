@@ -68,7 +68,9 @@ export default function SessionPickerScreen() {
   const { subjects, coins, isPlus, activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins } = useApp();
   const studyRoom = useStudyRoom();
   const { t } = useTranslation();
-  const [selected, setSelected] = useState(30);
+  // Nothing is pre-picked: the menu opens with every box empty so the first
+  // checkmark you see is one you put there. Start stays disabled until then.
+  const [selected, setSelected] = useState<number | null>(null);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>('single');
 
@@ -76,11 +78,12 @@ export default function SessionPickerScreen() {
   // Single-player break: the automatic one (5 min under an hour, 15 min for an
   // hour or more). Saved presets live on the Custom Timer screen now, and they
   // carry no break of their own.
-  const breakForSelected = autoBreakMinutes(selected);
+  const breakForSelected = selected == null ? 0 : autoBreakMinutes(selected);
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   function startSolo() {
+    if (selected == null) return;
     const subjectName = selectedSubjectId
       ? subjects.find((s) => s.id === selectedSubjectId && !s.archived)?.name ?? null
       : null;
@@ -103,7 +106,9 @@ export default function SessionPickerScreen() {
       () =>
         router.push({
           pathname: '/study-lobby',
-          params: { minutes: String(selected) },
+          // Nothing ticked is fine here — in multiplayer every player sets their own
+          // length in the lobby, so this is only the lobby's starting value.
+          params: { minutes: String(selected ?? 30) },
         }),
       { assets: STUDY_ASSETS, prefetch: [companionPrefetchUri(meImg)] },
     );
@@ -260,16 +265,24 @@ export default function SessionPickerScreen() {
 
           {/* Start — break info reads as a quiet caption above the one CTA */}
           <View style={styles.startBlock}>
-            {mode === 'single' ? (
-              <Text style={styles.breakInfoText}>
-                {breakForSelected > 0
-                  ? t('sessionPicker.breakInfoSingle', { min: breakForSelected })
-                  : t('sessionPicker.breakInfoNone')}
-              </Text>
-            ) : (
-              <Text style={styles.breakInfoText}>{t('sessionPicker.breakInfoMulti')}</Text>
-            )}
-            <SoundPressable sound="confirm" style={({ pressed }) => [styles.startBtn, tw('startBtn'), pressed && styles.pressed]} onPress={onStart}>
+            {/* Caption stays mounted even with nothing picked (blank rather than
+                claiming "no break") so the Start button doesn't hop on first tap. */}
+            <Text style={styles.breakInfoText}>
+              {mode !== 'single'
+                ? t('sessionPicker.breakInfoMulti')
+                : selected == null
+                  ? ' '
+                  : breakForSelected > 0
+                    ? t('sessionPicker.breakInfoSingle', { min: breakForSelected })
+                    : t('sessionPicker.breakInfoNone')}
+            </Text>
+            {/* Solo: the ticked duration IS the session, so Start waits for a pick.
+                Multiplayer sets length in the lobby, so it never blocks here. */}
+            <SoundPressable
+              sound="confirm"
+              disabled={mode === 'single' && selected == null}
+              style={({ pressed }) => [styles.startBtn, tw('startBtn'), mode === 'single' && selected == null && styles.startBtnDisabled, pressed && styles.pressed]}
+              onPress={onStart}>
               <Text style={styles.startBtnText}>{t('customTimer.startSession')}  →</Text>
             </SoundPressable>
           </View>
@@ -417,6 +430,8 @@ const makeStyles = (g: number) => StyleSheet.create({
     alignItems: 'center',
     ...SOFT_SHADOW,
   },
+  // Greyed until a duration is picked (nothing is selected by default).
+  startBtnDisabled: { opacity: 0.45 },
   startBtnText: { fontSize: 17 * g, fontWeight: '900', color: '#fff', letterSpacing: 0.3 },
 
   pressed: { opacity: 0.85 },

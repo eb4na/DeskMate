@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ArrowUpIcon, ArrowDownIcon, RemoveIcon } from '@/components/subject-icons';
-import { useApp, MAX_SUBJECTS_FREE, MAX_SUBJECTS_PLUS } from '@/context/app-context';
+import { useApp, MAX_SUBJECTS } from '@/context/app-context';
 import { containsProfanity } from '@/lib/profanity';
 import { localizeSubjectName } from '@/lib/subject-utils';
 import { SUBJECT_COLORS } from '@/constants/placeholder-data';
@@ -17,9 +17,9 @@ import { useReportModalTransition } from '@/lib/modal-traffic';
 
 export default function ManageSubjectsScreen() {
   const { t } = useTranslation();
-  const { subjects, addSubject, renameSubject, deleteSubject, reorderSubjects, isPlus } =
-    useApp();
-  const subjectLimit = isPlus ? MAX_SUBJECTS_PLUS : MAX_SUBJECTS_FREE;
+  const { subjects, addSubject, renameSubject, deleteSubject, reorderSubjects } = useApp();
+  // Same cap for everyone — subjects aren't a Plus perk.
+  const subjectLimit = MAX_SUBJECTS;
 
   const [newName, setNewName] = useState('');
   const [selectedColor, setSelectedColor] = useState<string>(SUBJECT_COLORS[0]);
@@ -53,9 +53,7 @@ export default function ManageSubjectsScreen() {
     if (!added) {
       showPopup(
         t('manageSubjects.subjectLimitReached'),
-        isPlus
-          ? t('manageSubjects.limitMsgPlus', { max: MAX_SUBJECTS_PLUS })
-          : t('manageSubjects.limitMsgFree', { free: MAX_SUBJECTS_FREE, plus: MAX_SUBJECTS_PLUS }),
+        t('manageSubjects.limitMsgPlus', { max: MAX_SUBJECTS }),
       );
       return;
     }
