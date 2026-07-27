@@ -10,7 +10,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CompanionLevel } from '@/components/companion-level';
 import { BakeryColors, MIN_POPUP_WIDTH, popupMaxWidth } from '@/constants/theme';
-import { useApp } from '@/context/app-context';
+import { birthdayRewardAvailable, nextLoginReward, todayISO, useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 import { localizeCompanionName, resolveActiveCompanion } from '@/lib/companion-utils';
 import { useModalSafeVisible } from '@/lib/modal-traffic';
@@ -22,10 +22,29 @@ export function BondLevelUpModal() {
   const {
     bondLevelUp, clearBondLevelUp,
     defaultCompanionId, companionSlots, bunSkinId, companionSkins, companionMinutes,
+    hanjiUnlockPending, recipeBadgePending, characterObtainedPending,
+    exchangeTicketPending, streakRescuePending,
+    loginRewardDate, streak, isPlus, streakFreezes, streakRescueDismissedDate,
+    profileBirthday, birthdayRewardYear,
   } = useApp();
-  // Defer past the settle window so this never presents on top of a still-
-  // transitioning modal (recordSession can fire from session-complete / MP finish).
-  const visible = useModalSafeVisible(!!bondLevelUp);
+  // The settle window alone is NOT enough: it delays a present, it doesn't make two
+  // popups take turns. Two modals armed in the same instant both wait it out and then
+  // present together — which wedges iOS and leaves Home frozen to taps.
+  //
+  // That is exactly what a finished study block does: finishStudyBlock calls
+  // markFoodMade (arms the recipe badge) AND recordSession (arms this level-up), so
+  // both cards became visible the moment Home cleared its activeSession.
+  //
+  // So join the same priority chain every other reward popup follows
+  // (character → Hanji → recipe → birthday → streak rescue → daily → ticket), at the
+  // tail: a bond level-up is the least time-sensitive of them, and it stays armed
+  // until it's shown.
+  const dailyPending = nextLoginReward({ loginRewardDate, streak, isPlus, streakFreezes, streakRescueDismissedDate }, todayISO()).available;
+  const birthdayPending = birthdayRewardAvailable({ profileBirthday, birthdayRewardYear }, todayISO());
+  const want =
+    !!bondLevelUp && !characterObtainedPending && !hanjiUnlockPending && !recipeBadgePending &&
+    !birthdayPending && !streakRescuePending && !dailyPending && exchangeTicketPending <= 0;
+  const visible = useModalSafeVisible(want);
 
   if (!bondLevelUp) {
     return <Modal visible={false} transparent />;

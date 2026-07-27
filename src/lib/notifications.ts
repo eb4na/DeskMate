@@ -243,6 +243,12 @@ export function breakNudgeDelay(breakSeconds: number): number {
 // BREAK STARTS, so it fires whether or not the app is open — iOS suspends JS in the
 // background, so an in-app timer can't be relied on to tell them the break is over.
 // Returns the id so it can be cancelled if the break is ended early.
+//
+// Permission is CHECKED, never requested: this fires automatically at a break start,
+// and a system permission alert popping up over the break screen would land in the
+// middle of the session-end navigation (checkpoint → receipt → Home), which is
+// exactly how iOS gets wedged. It piggybacks on permission granted elsewhere (task /
+// exam reminders), same as the streak nudges.
 export async function sendBreakEndingNudge(
   title: string,
   body: string,
@@ -250,8 +256,7 @@ export async function sendBreakEndingNudge(
 ): Promise<string | null> {
   try {
     await ensureReminderChannel();
-    const granted = await ensureNotificationPermission();
-    if (!granted) return null;
+    if (!(await hasNotificationPermission())) return null;
     return await Notifications.scheduleNotificationAsync({
       content: { title, body, sound: 'default', data: { kind: 'break-ending' } },
       trigger: {
