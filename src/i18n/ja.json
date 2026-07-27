@@ -1488,7 +1488,7 @@
     "monthly": "月額",
     "cancelAnytime": "柔軟、いつでも解約可能",
     "yearly": "年額",
-    "yearlyDetail": "¥9,000/年 · 最もお得",
+    "yearlyDetail": "¥6,000/年 · 最もお得",
     "freeForever": "無料プランはずっと無料",
     "freeText": "スターターコンパニオン2体 · セッション · コイン · コインショップ · 気分トラッカー · ストリーク · 基本タスク · 科目管理 · 試験カウントダウン3件 · 休憩タイマー · 無料プリセット",
     "startPlus": "プラスを開始",
@@ -1506,9 +1506,9 @@
     "deactivate": "無効化",
     "f_tira": "コンパニオン「ティラ」",
     "f_tiraDesc": "限定のティラミスバニーを解放 — プラスで無料",
-    "monthlyPrice": "¥1,000",
-    "yearlyPrice": "¥750/月",
-    "saveYearly": "25%お得"
+    "monthlyPrice": "¥600",
+    "yearlyPrice": "¥500/月",
+    "saveYearly": "17%お得"
   },
   "coinShop": {
     "pack_pouch": "ストロベリーカップケーキ",

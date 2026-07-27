@@ -1488,7 +1488,7 @@
     "monthly": "Monthly",
     "cancelAnytime": "Flexible, cancel anytime",
     "yearly": "Yearly",
-    "yearlyDetail": "$60/year · Best value",
+    "yearlyDetail": "$39.99/year · Best value",
     "freeForever": "Free plan stays free forever",
     "freeText": "Two starter companions · Sessions · Coins · Coin Shop · Mood tracker · Streaks · Basic tasks · Subject manager · 3 exam countdowns · Break timer · Free presets",
     "startPlus": "Start Plus",
@@ -1506,9 +1506,9 @@
     "deactivate": "Deactivate",
     "f_tira": "Tira, the companion",
     "f_tiraDesc": "Unlock the exclusive tiramisu bunny — yours free with Plus",
-    "monthlyPrice": "$6.69",
-    "yearlyPrice": "$5/mo",
-    "saveYearly": "Save 25%"
+    "monthlyPrice": "$3.99",
+    "yearlyPrice": "$3.33/mo",
+    "saveYearly": "Save 17%"
   },
   "coinShop": {
     "pack_pouch": "Strawberry Cupcake",

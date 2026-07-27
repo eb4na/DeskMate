@@ -1488,7 +1488,7 @@
     "monthly": "월간",
     "cancelAnytime": "유연하게, 언제든 취소 가능",
     "yearly": "연간",
-    "yearlyDetail": "₩80,000/년 · 가장 좋은 가치",
+    "yearlyDetail": "₩54,000/년 · 가장 좋은 가치",
     "freeForever": "무료 요금제는 영원히 무료",
     "freeText": "초기 친구 2명 · 세션 · 코인 · 코인 상점 · 기분 트래커 · 연속 기록 · 기본 작업 · 과목 관리 · 시험 카운트다운 3개 · 휴식 타이머 · 무료 프리셋",
     "startPlus": "프리미엄 시작",
@@ -1506,9 +1506,9 @@
     "deactivate": "비활성화",
     "f_tira": "동료 티라",
     "f_tiraDesc": "한정 티라미수 버니 잠금 해제 — 프리미엄으로 무료 제공",
-    "monthlyPrice": "₩9,000",
-    "yearlyPrice": "₩6,700/월",
-    "saveYearly": "25% 절약"
+    "monthlyPrice": "₩5,400",
+    "yearlyPrice": "₩4,500/월",
+    "saveYearly": "17% 절약"
   },
   "coinShop": {
     "pack_pouch": "딸기 컵케이크",
