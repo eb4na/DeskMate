@@ -15,7 +15,7 @@ import { StudyBook } from '@/components/study-book';
 import { StudyOven, EYELET_FRAC } from '@/components/study-oven';
 import { StudyVinyl } from '@/components/study-vinyl';
 import { hasSoundPreview, playStudyMusic, stopStudyMusic } from '@/lib/ambience-audio';
-import { playPop } from '@/lib/sounds';
+import { playFinishDing, playPop } from '@/lib/sounds';
 import { getPlayback, spotifyAppRecentlyOpened, spotifyConnected, spotifyPause, spotifyPlay, subscribeSpotify, type Playback } from '@/lib/spotify';
 import { SHOP_ITEMS } from '@/constants/shop-data';
 import { useIsTablet } from '@/hooks/use-device-class';
@@ -615,8 +615,16 @@ export function StudyRoomView({
     const id = setInterval(() => setBreakLeft((s) => Math.max(0, s - 1)), 1000);
     return () => clearInterval(id);
   }, [onBreak, frozenSecs]);
+  // One-shot guard for the break-over ding: `setOnBreak(false)` doesn't clear
+  // `breakLeft`, so this effect can re-run with the zero condition still true
+  // before the state flushes. Re-armed whenever a new break starts, below.
+  const breakDingedRef = useRef(false);
   useEffect(() => {
     if (onBreak && frozenSecs != null && breakLeft === 0) {
+      // Oven-timer ding at the moment the break ends — same chime as a finished
+      // block. Foreground only (iOS suspends JS in the background); the scheduled
+      // break-ending notification covers the phone-down case.
+      if (!breakDingedRef.current) { breakDingedRef.current = true; playFinishDing(); }
       setOnBreak(false);
       setFrozenSecs(null);
       if (!isSolo) room.setStatus('studying'); // resume: clear the on-break status
@@ -634,6 +642,8 @@ export function StudyRoomView({
   const breakNudgeIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!(onBreak && frozenSecs != null)) return;
+    // A fresh break starts → re-arm the break-over ding for it.
+    breakDingedRef.current = false;
     let cancelled = false;
     const secs = breakLeftRef.current;
     if (secs > 0) {

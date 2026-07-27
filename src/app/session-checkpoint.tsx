@@ -33,6 +33,7 @@ import { roomAccent } from '@/lib/room-accent';
 import { isHanjiActiveId, resolveActiveCompanion } from '@/lib/companion-utils';
 import { breakNudgeDelay, cancelComeBackNudge, sendBreakEndingNudge } from '@/lib/notifications';
 import { showLoadingScreen } from '@/lib/loading-signal';
+import { playFinishDing } from '@/lib/sounds';
 import { useTranslation } from '@/i18n';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { BakeryColors, BakeryRadii, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
@@ -151,6 +152,11 @@ export default function SessionCheckpointScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- copy keys are stable for this screen's life
   }, [stage]);
 
+  // One-shot: the break-over ding must fire exactly once. `tick` runs immediately
+  // AND on an interval, so the `remaining <= 0` branch can be entered again before
+  // the stage change flushes — don't rely on React batching for this.
+  const dinged = useRef(false);
+
   // Break countdown: ticks toward the wall-clock end, then auto-advances to the
   // picker (never auto-starts). Stops as soon as we leave the break stage.
   useEffect(() => {
@@ -158,7 +164,13 @@ export default function SessionCheckpointScreen() {
     const tick = () => {
       const remaining = Math.max(0, Math.round((breakEndsAt.current - Date.now()) / 1000));
       setSecondsLeft(remaining);
-      if (remaining <= 0 && !acted.current) setStage('picking');
+      if (remaining <= 0 && !acted.current) {
+        // Oven-timer ding the moment the break is actually over — the same chime a
+        // finished study block plays. Foreground only (iOS suspends JS in the
+        // background); the scheduled notification above covers the phone-down case.
+        if (!dinged.current) { dinged.current = true; playFinishDing(); }
+        setStage('picking');
+      }
     };
     tick();
     const id = setInterval(tick, 1000);

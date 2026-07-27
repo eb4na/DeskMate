@@ -808,15 +808,18 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
     merged.aiTicketsResetMonth = month;
   }
 
-  // Plus room tickets. A fresh purchase sets the first ticket + anchor in setIsPlus.
-  // But Plus members from BEFORE this feature have no anchor day yet — initialize
-  // them here (anchor to today + grant their first ticket) so every current Plus
-  // member gets one. Already-earned tickets are kept on lapse.
+  // Plus room tickets. A fresh purchase sets the first ticket + anchor in setIsPlus;
+  // every later ticket comes from the monthly-anniversary catch-up below.
+  //
+  // A Plus member with no anchor yet (subscribed before this feature, or a state copy
+  // written by an older build) only gets the anchor INITIALISED here — deliberately
+  // no ticket and no popup. This runs on every state load, so granting here handed out
+  // a room ticket on login whenever the anchor was missing, which is not a renewal.
+  // Anchoring silently means their next ticket arrives on the monthly anniversary,
+  // which is the only cadence tickets are supposed to follow.
   if (merged.isPlus && !merged.exchangeTicketAnchorDay) {
     const t0 = todayISO();
     merged.exchangeTicketAnchorDay = Number(t0.slice(8, 10));
-    merged.exchangeTickets = (merged.exchangeTickets ?? 0) + 1;
-    merged.exchangeTicketPending = (merged.exchangeTicketPending ?? 0) + 1;
     merged.exchangeTicketLastGrantISO = t0;
   } else if (merged.isPlus && merged.exchangeTicketAnchorDay) {
     // Grant any monthly-anniversary tickets owed since the last grant.
