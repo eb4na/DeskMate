@@ -1,7 +1,7 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import i18n, { detectDeviceLanguage } from '@/i18n';
-import { capCoins, COINS_PER_MINUTE, DAILY_EARN_CAP, MAX_FRIENDS, PLUS_STUDY_COIN_MULTIPLIER, STATIC_SUBJECTS } from '@/constants/placeholder-data';
+import { capCoins, COINS_PER_MINUTE, DAILY_EARN_CAP, dailyEarnCap, MAX_FRIENDS, PLUS_STUDY_COIN_MULTIPLIER, STATIC_SUBJECTS } from '@/constants/placeholder-data';
 import { SHOP_ITEMS, type ShopCategory } from '@/constants/shop-data';
 import { dailyRewardCoins } from '@/constants/login-rewards';
 import { getAchievement } from '@/constants/quests';
@@ -1588,7 +1588,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const today = todayISO();
       const isNewDay = prev.earnedDate !== today;
       const basedToday = isNewDay ? 0 : prev.earnedToday;
-      const remaining = Math.max(0, DAILY_EARN_CAP - basedToday);
+      // Plus members have a higher daily study-earn ceiling (see dailyEarnCap).
+      const remaining = Math.max(0, dailyEarnCap(prev.isPlus) - basedToday);
       const actualAdd = Math.min(amount, remaining);
       return {
         ...prev,
@@ -1695,8 +1696,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setS((prev) => {
       const today = todayISO();
       const bondToday = prev.companionBondDate === today ? prev.companionBondToday : 0;
-      // Daily bond ceiling mirrors the coin earn cap (max coins/day ÷ coins/min), so
-      // levels can't be ground out in a single day. DAILY_EARN_CAP=500, /2 → 250 min.
+      // Daily bond ceiling: 250 minutes (the FREE coin cap ÷ coins-per-minute), so
+      // levels can't be ground out in a single day. Deliberately NOT raised for Plus
+      // along with dailyEarnCap — faster companion levelling isn't a Plus perk, and
+      // pacing bond the same for everyone keeps the gallery honest.
       const dailyBondCap = Math.floor(DAILY_EARN_CAP / COINS_PER_MINUTE);
       const credited = Math.max(0, Math.min(minutes, dailyBondCap - bondToday));
       const id = prev.activeCompanionId;
@@ -2117,7 +2120,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const coins = s.isPlus ? baseCoins * PLUS_STUDY_COIN_MULTIPLIER : baseCoins;
     // Coins actually credited after the daily cap (snapshot BEFORE addCoins) — the
     // receipt shows the run's real total, matching the old receipt's cap note.
-    const actualEarned = Math.min(coins, Math.max(0, DAILY_EARN_CAP - s.earnedToday));
+    const actualEarned = Math.min(coins, Math.max(0, dailyEarnCap(s.isPlus) - s.earnedToday));
     addCoins(coins);
     recordSession(minutes);
     addSubjectTime(subjectName, minutes);

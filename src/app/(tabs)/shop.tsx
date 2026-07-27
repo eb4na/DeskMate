@@ -35,7 +35,7 @@ import { outfitsForCharacter } from '@/constants/outfit-data';
 import { pairForItem, isPairOwned, partnerItemId, ROOM_PAIRS } from '@/constants/room-data';
 import { SHOP_COMPANIONS, STARTER_COMPANION_IMAGES, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, localizeShopItemName, localizeShopItemDescription, BUN_SKINS, getCompanionSkins, pickSkinLore, skinLores } from '@/lib/companion-utils';
 import { FOOD_ITEMS, RECIPE_IDS, hasAllRecipeBadges } from '@/app/food-gallery';
-import { DAILY_EARN_CAP, formatCoins } from '@/constants/placeholder-data';
+import { dailyEarnCap, formatCoins } from '@/constants/placeholder-data';
 import {
   BakeryColors,
   BakeryRadii,
@@ -392,7 +392,9 @@ export default function ShopScreen() {
   const items = SHOP_ITEMS.filter((i) => i.category === activeCategory && !i.plusOnly && !i.requiresAllRecipes && !i.free);
   const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
   const pages = Array.from({ length: totalPages }, (_, i) => items.slice(i * ITEMS_PER_PAGE, (i + 1) * ITEMS_PER_PAGE));
-  const capRemaining = Math.max(0, DAILY_EARN_CAP - earnedToday);
+  // Plus members have a higher daily study-earn ceiling.
+  const earnCap = dailyEarnCap(isPlus);
+  const capRemaining = Math.max(0, earnCap - earnedToday);
 
   const handleBuyFreeze = () => {
     const productId = PRODUCT_IDS.streakFreeze;
@@ -672,9 +674,9 @@ export default function ShopScreen() {
 
         {/* Earn progress bar */}
         <ThemedView style={styles.capRow}>
-          <ThemedText style={[styles.capLabel, tCapLabel]}>{t('shop.dailyEarn', { earned: earnedToday, cap: DAILY_EARN_CAP })}</ThemedText>
+          <ThemedText style={[styles.capLabel, tCapLabel]}>{t('shop.dailyEarn', { earned: earnedToday, cap: earnCap })}</ThemedText>
           <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${Math.min(100, (earnedToday / DAILY_EARN_CAP) * 100)}%` }]} />
+            <View style={[styles.progressFill, { width: `${Math.min(100, (earnedToday / earnCap) * 100)}%` }]} />
           </View>
           <ThemedText style={[styles.capLabel, tCapLabel]}>
             {capRemaining > 0 ? t('shop.leftAmount', { count: capRemaining }) : t('shop.full')}

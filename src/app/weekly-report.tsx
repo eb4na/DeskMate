@@ -12,7 +12,7 @@ import { useTabletScale } from '@/hooks/use-tablet-scale';
 import i18n, { useTranslation } from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
 import { formatDuration } from '@/lib/format-duration';
-import { coinsForMinutes, DAILY_EARN_CAP, PLUS_STUDY_COIN_MULTIPLIER } from '@/constants/placeholder-data';
+import { coinsForMinutes, dailyEarnCap, PLUS_STUDY_COIN_MULTIPLIER } from '@/constants/placeholder-data';
 import { Spacing } from '@/constants/theme';
 
 // The header range must describe the SAME window the stats are computed over —
@@ -107,7 +107,7 @@ export default function WeeklyReportScreen() {
     const byDay: Record<string, number> = {};
     for (const r of weekSessions) byDay[r.dateISO] = (byDay[r.dateISO] ?? 0) + r.minutes;
     return Object.values(byDay).reduce(
-      (sum, mins) => sum + Math.min(coinsForMinutes(mins) * (isPlus ? PLUS_STUDY_COIN_MULTIPLIER : 1), DAILY_EARN_CAP),
+      (sum, mins) => sum + Math.min(coinsForMinutes(mins) * (isPlus ? PLUS_STUDY_COIN_MULTIPLIER : 1), dailyEarnCap(isPlus)),
       0,
     );
   }, [weekSessions, isPlus]);

@@ -1438,6 +1438,8 @@
     "welcomeCta": "太好了！",
     "f_studyCoins": "双倍学习金币",
     "f_studyCoinsDesc": "每次学习获得 2 倍金币",
+    "f_dailyCap": "更高的每日金币上限",
+    "f_dailyCapDesc": "学习每天最多可赚 700 金币，而非 500",
     "f_customTimers": "自定义计时器",
     "f_customTimersDesc": "任意时长，可保存预设",
     "f_multiReminders": "多个提醒",

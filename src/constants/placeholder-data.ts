@@ -31,8 +31,15 @@ export const PLUS_STUDY_COIN_MULTIPLIER = 2;
 export const formatCoins = (n: number | string): string =>
   Math.round(Number(n) || 0).toLocaleString('en-US');
 
-// Max coins a user can earn from studying in a single day.
+// Max coins a user can earn from studying in a single day. Plus members get a
+// higher ceiling — on top of the 2× payout, they can keep earning further into a
+// long study day. Always read the cap through dailyEarnCap(isPlus); DAILY_EARN_CAP
+// on its own is the FREE tier's value.
 export const DAILY_EARN_CAP = 500;
+export const PLUS_DAILY_EARN_CAP = 700;
+/** The daily study-earn ceiling for this account. */
+export const dailyEarnCap = (isPlus: boolean): number =>
+  isPlus ? PLUS_DAILY_EARN_CAP : DAILY_EARN_CAP;
 
 // Hard ceiling on the coin BALANCE — the wallet can never grow past this, from any
 // source (study, rewards, mail, even purchased packs). Spending is unaffected.

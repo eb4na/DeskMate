@@ -1438,6 +1438,8 @@
     "welcomeCta": "Sweet!",
     "f_studyCoins": "Double study coins",
     "f_studyCoinsDesc": "Earn 2× coins from every study session",
+    "f_dailyCap": "Higher daily coin cap",
+    "f_dailyCapDesc": "Earn up to 700 coins a day from studying, instead of 500",
     "f_customTimers": "Custom timers",
     "f_customTimersDesc": "Any duration, saved presets",
     "f_multiReminders": "Multiple reminders",

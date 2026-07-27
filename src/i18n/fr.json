@@ -1438,6 +1438,8 @@
     "welcomeCta": "Super !",
     "f_studyCoins": "Pièces d'étude doublées",
     "f_studyCoinsDesc": "Gagnez 2× de pièces à chaque session d'étude",
+    "f_dailyCap": "Plafond de pièces quotidien plus élevé",
+    "f_dailyCapDesc": "Gagnez jusqu'à 700 pièces par jour en étudiant, au lieu de 500",
     "f_customTimers": "Minuteurs personnalisés",
     "f_customTimersDesc": "Toute durée, préréglages enregistrés",
     "f_multiReminders": "Plusieurs rappels",

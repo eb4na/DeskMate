@@ -1438,6 +1438,8 @@
     "welcomeCta": "¡Genial!",
     "f_studyCoins": "Monedas de estudio dobles",
     "f_studyCoinsDesc": "Gana el doble de monedas en cada sesión de estudio",
+    "f_dailyCap": "Límite diario de monedas más alto",
+    "f_dailyCapDesc": "Gana hasta 700 monedas al día estudiando, en vez de 500",
     "f_customTimers": "Temporizadores personalizados",
     "f_customTimersDesc": "Cualquier duración, ajustes guardados",
     "f_multiReminders": "Varios recordatorios",

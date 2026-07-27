@@ -1438,6 +1438,8 @@
     "welcomeCta": "좋아요!",
     "f_studyCoins": "학습 코인 2배",
     "f_studyCoinsDesc": "학습할 때마다 코인 2배 획득",
+    "f_dailyCap": "일일 코인 한도 상향",
+    "f_dailyCapDesc": "학습으로 하루 최대 700코인 획득 (무료는 500)",
     "f_customTimers": "사용자 지정 타이머",
     "f_customTimersDesc": "원하는 길이, 저장된 프리셋",
     "f_multiReminders": "여러 알림",

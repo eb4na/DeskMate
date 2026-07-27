@@ -1438,6 +1438,8 @@
     "welcomeCta": "やった！",
     "f_studyCoins": "学習コイン2倍",
     "f_studyCoinsDesc": "勉強するたびにコインが2倍もらえる",
+    "f_dailyCap": "1日のコイン上限アップ",
+    "f_dailyCapDesc": "勉強で1日最大700コイン獲得（無料は500）",
     "f_customTimers": "カスタムタイマー",
     "f_customTimersDesc": "任意の長さ、プリセット保存",
     "f_multiReminders": "複数のリマインダー",

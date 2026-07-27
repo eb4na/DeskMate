@@ -16,7 +16,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
-import { DAILY_EARN_CAP, formatCoins } from '@/constants/placeholder-data';
+import { dailyEarnCap, formatCoins } from '@/constants/placeholder-data';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 
@@ -76,7 +76,9 @@ export default function CoinShopScreen() {
   const { scale, contentWidth } = useTabletScale();
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const { coins, earnedToday, addPurchasedCoins, isPlus, addStreakFreeze, streakFreezes, adRewardCount, claimAdReward } = useApp();
-  const capRemaining = Math.max(0, DAILY_EARN_CAP - earnedToday);
+  // Plus members have a higher daily study-earn ceiling.
+  const earnCap = dailyEarnCap(isPlus);
+  const capRemaining = Math.max(0, earnCap - earnedToday);
   const adsLeft = Math.max(0, DAILY_AD_LIMIT - adRewardCount);
 
   // Live App Store prices (localized currency). Falls back to the hardcoded pack
@@ -212,13 +214,13 @@ export default function CoinShopScreen() {
             <ThemedView type="transparent" style={styles.capRow}>
               <ThemedText type="small" themeColor="textSecondary">{t('coinShop.dailyFreeEarn')}</ThemedText>
               <View style={styles.capCoins}>
-                <ThemedText type="smallBold">{earnedToday}/{DAILY_EARN_CAP}</ThemedText>
+                <ThemedText type="smallBold">{earnedToday}/{earnCap}</ThemedText>
                 <CoinIcon size={28 * scale} />
               </View>
             </ThemedView>
             <ThemedView style={styles.progressBar}>
               <ThemedView
-                style={[styles.progressFill, { width: `${Math.min(100, (earnedToday / DAILY_EARN_CAP) * 100)}%` }]}
+                style={[styles.progressFill, { width: `${Math.min(100, (earnedToday / earnCap) * 100)}%` }]}
               />
             </ThemedView>
             <ThemedText type="small" themeColor="textSecondary" style={styles.capNote}>
