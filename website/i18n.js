@@ -92,7 +92,7 @@
       'cta.h2': `Come bake some progress with us`,
       'cta.p': `Follow along for updates, sneak peeks and launch news.`,
       'cta.follow': `Follow @memobun.app`,
-      'foot.features': `Features`, 'foot.characters': `Characters`, 'foot.privacy': `Privacy`, 'foot.instagram': `Instagram`, 'foot.contact': `Contact`,
+      'foot.features': `Features`, 'foot.characters': `Characters`, 'foot.privacy': `Privacy`, 'foot.support': `Support`, 'foot.instagram': `Instagram`, 'foot.contact': `Contact`,
       'foot.copy': `© 2026 Memobun. Made with care for cozy studiers everywhere.`
     },
 
@@ -182,7 +182,7 @@
       'cta.h2': `一緒に少しずつ焼き上げよう`,
       'cta.p': `最新情報や先行プレビュー、リリースのお知らせはフォローでチェック。`,
       'cta.follow': `@memobun.app をフォロー`,
-      'foot.features': `機能`, 'foot.characters': `キャラクター`, 'foot.privacy': `プライバシー`, 'foot.instagram': `Instagram`, 'foot.contact': `お問い合わせ`,
+      'foot.features': `機能`, 'foot.characters': `キャラクター`, 'foot.privacy': `プライバシー`, 'foot.support': `サポート`, 'foot.instagram': `Instagram`, 'foot.contact': `お問い合わせ`,
       'foot.copy': `© 2026 Memobun. すべての心地よい学習者のために、心を込めて。`
     },
 
@@ -272,7 +272,7 @@
       'cta.h2': `一起慢慢烘出进步吧`,
       'cta.p': `关注我们，获取最新动态、抢先预览和发布消息。`,
       'cta.follow': `关注 @memobun.app`,
-      'foot.features': `功能`, 'foot.characters': `角色`, 'foot.privacy': `隐私`, 'foot.instagram': `Instagram`, 'foot.contact': `联系我们`,
+      'foot.features': `功能`, 'foot.characters': `角色`, 'foot.privacy': `隐私`, 'foot.support': `支持`, 'foot.instagram': `Instagram`, 'foot.contact': `联系我们`,
       'foot.copy': `© 2026 Memobun. 用心为每一位温馨学习者而作。`
     },
 
@@ -362,7 +362,7 @@
       'cta.h2': `함께 조금씩 구워봐요`,
       'cta.p': `팔로우하고 최신 소식과 미리보기, 출시 소식을 받아보세요.`,
       'cta.follow': `@memobun.app 팔로우`,
-      'foot.features': `기능`, 'foot.characters': `캐릭터`, 'foot.privacy': `개인정보`, 'foot.instagram': `Instagram`, 'foot.contact': `문의`,
+      'foot.features': `기능`, 'foot.characters': `캐릭터`, 'foot.privacy': `개인정보`, 'foot.support': `지원`, 'foot.instagram': `Instagram`, 'foot.contact': `문의`,
       'foot.copy': `© 2026 Memobun. 아늑한 모든 공부하는 사람들을 위해 정성껏.`
     },
 
@@ -452,7 +452,7 @@
       'cta.h2': `Ven a hornear tu progreso con nosotros`,
       'cta.p': `Síguenos para novedades, adelantos y noticias del lanzamiento.`,
       'cta.follow': `Sigue a @memobun.app`,
-      'foot.features': `Funciones`, 'foot.characters': `Personajes`, 'foot.privacy': `Privacidad`, 'foot.instagram': `Instagram`, 'foot.contact': `Contacto`,
+      'foot.features': `Funciones`, 'foot.characters': `Personajes`, 'foot.privacy': `Privacidad`, 'foot.support': `Soporte`, 'foot.instagram': `Instagram`, 'foot.contact': `Contacto`,
       'foot.copy': `© 2026 Memobun. Hecho con cariño para quienes estudian a gusto en todas partes.`
     },
 
@@ -542,7 +542,7 @@
       'cta.h2': `Venez faire lever vos progrès avec nous`,
       'cta.p': `Suivez-nous pour les nouveautés, les aperçus et les annonces de lancement.`,
       'cta.follow': `Suivez @memobun.app`,
-      'foot.features': `Fonctions`, 'foot.characters': `Personnages`, 'foot.privacy': `Confidentialité`, 'foot.instagram': `Instagram`, 'foot.contact': `Contact`,
+      'foot.features': `Fonctions`, 'foot.characters': `Personnages`, 'foot.privacy': `Confidentialité`, 'foot.support': `Assistance`, 'foot.instagram': `Instagram`, 'foot.contact': `Contact`,
       'foot.copy': `© 2026 Memobun. Fait avec soin pour tous les studieux douillets.`
     }
   };
