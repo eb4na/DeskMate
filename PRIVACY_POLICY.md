@@ -1,6 +1,6 @@
 # Memobun — Privacy Policy
 
-**Effective date:** June 14, 2026
+**Effective date:** July 27, 2026
 **Last updated:** June 14, 2026
 
 > **Note:** This document is a tailored template based on how the Memobun app
@@ -24,9 +24,9 @@ children under 13. See **Children's Privacy** below.
 
 ## 2. Information we collect
 
-We only collect what the App needs to work. We do **not** use third‑party
-analytics or advertising SDKs, and we do **not** track you across other apps or
-websites.
+We collect what the App needs to work, plus the limited analytics and advertising
+data described in **(g)** and **(h)** below. We do **not** sell your personal
+information.
 
 **a. Account information**
 - Your **email address** when you create an account or sign in with email and
@@ -58,12 +58,32 @@ websites.
 **e. Device information**
 - A **randomly generated device identifier** we create to enforce a single active
   session per account (so your account is only used on one device at a time). We
-  do **not** collect advertising identifiers, precise location, your contacts,
-  photos, or microphone/camera data.
+  do **not** collect precise location, your contacts, photos, or
+  microphone/camera data. For the advertising identifier, see **(h)** below.
 
 **f. Notifications**
 - If you enable study reminders, they are scheduled **locally on your device.**
   We do not operate a push‑notification server and do not collect push tokens.
+
+**g. Usage analytics**
+- We use **PostHog**, a third‑party analytics provider, to understand how the App
+  is used. This covers in‑app events (for example completing a study session,
+  opening a chat, or making a purchase), your device type and OS version, the App
+  version, and an approximate location (country or city) derived from your IP
+  address. Events are linked to your account ID when you are signed in; guests
+  stay anonymous.
+
+**h. Advertising**
+- The App offers **optional** rewarded video ads (for example "Watch a video" in
+  the coin shop), supplied by **Google AdMob**. If you choose to watch one, AdMob
+  may receive your **device advertising identifier**, IP address, and
+  ad‑interaction data such as whether the ad was viewed or completed.
+- Ads are **non‑personalized by default.** Personalized advertising, which uses
+  your advertising identifier, happens only where you have allowed it: on iOS we
+  ask through the **App Tracking Transparency** prompt, and on Android it follows
+  your Google advertising settings, which you can change or reset at any time in
+  your device settings.
+- The App is fully usable without watching any ads.
 
 ## 3. How we use information
 We use the information above to:
@@ -75,10 +95,12 @@ We use the information above to:
 - Provide the optional AI companion chat and companion‑image generation when you
   choose to use them;
 - Send the local study reminders you set up;
-- Maintain, troubleshoot, and improve the App.
+- Show the optional rewarded video ads that let you earn extra coins;
+- Understand how the App is used, and maintain, troubleshoot, and improve it.
 
-We do **not** sell your personal information, and we do **not** use it for
-third‑party advertising.
+We do **not** sell your personal information. We do not use your content —
+messages, tasks, notes, or study data — for advertising; the only data used for
+advertising is that described in **2(h)**.
 
 ## 4. How information is shared
 
@@ -93,6 +115,9 @@ the App:
 | Provider | Purpose | More info |
 |---|---|---|
 | **Supabase** | Account authentication, database, file storage, and realtime sync (profiles, progress, friends, messages) | https://supabase.com/privacy |
+| **PostHog** | Product analytics as described in 2(g); processed on US servers | https://posthog.com/privacy |
+| **Google AdMob** | Serves the optional rewarded video ads described in 2(h); processes advertising identifiers and ad‑interaction data | https://policies.google.com/technologies/ads |
+| **RevenueCat** | Processes and validates in‑app purchases and subscription status | https://www.revenuecat.com/privacy |
 | **OpenAI** | Powers the optional AI companion chat and companion‑image generation (processes the text/prompts/images you submit) | https://openai.com/policies/privacy-policy |
 | **remove.bg (Kaleido)** | Removes the background from AI‑generated companion images | https://www.remove.bg/privacy |
 | **Apple / Google** | Sign‑in (Google) and app distribution / in‑app purchases | https://www.apple.com/legal/privacy / https://policies.google.com/privacy |

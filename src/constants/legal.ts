@@ -12,8 +12,8 @@
 
 import type { SupportedLanguage } from '@/i18n';
 
-export const LEGAL_VERSION = '1.0';
-export const LEGAL_EFFECTIVE_DATE = 'June 15, 2026';
+export const LEGAL_VERSION = '1.1';
+export const LEGAL_EFFECTIVE_DATE = 'July 27, 2026';
 // Minimum age to use the app. Enforced at the first-launch consent gate, where
 // the user enters their date of birth. 13 is the common threshold for consenting
 // to data processing (e.g. US COPPA); raise if your audience requires it.
@@ -29,13 +29,13 @@ const EMAIL = LEGAL_CONTACT_EMAIL;
 
 // Effective date, phrased per language (the date itself is fixed).
 const DATE: Record<SupportedLanguage, string> = {
-  en: 'June 15, 2026',
-  zh: '2026年6月15日',
-  'zh-Hant': '2026年6月15日',
-  ja: '2026年6月15日',
-  ko: '2026년 6월 15일',
-  es: '15 de junio de 2026',
-  fr: '15 juin 2026',
+  en: 'July 27, 2026',
+  zh: '2026年7月27日',
+  'zh-Hant': '2026年7月27日',
+  ja: '2026年7月27日',
+  ko: '2026년 7월 27일',
+  es: '27 de julio de 2026',
+  fr: '27 juillet 2026',
 };
 
 // "Memobun Plus" — the Plus tier keeps its per-language brand term (see i18n).
@@ -65,6 +65,7 @@ const en: LegalDoc = {
         'Study and app activity: study sessions, subjects, tasks and exams you add, streaks, coins, items you own, and similar in-app progress, so your data syncs across your devices.',
         'Companion and friend messages: messages you send to your in-app AI companion and direct messages you send to friends are stored so your conversations persist.',
         'Usage analytics: we use PostHog, a third-party analytics provider, to understand how the app is used. This includes in-app events (for example, completing a study session, opening a chat, or making an in-app purchase), your device type and operating-system version, the app version, and an approximate location (such as country or city) derived from your IP address. We do not use this to identify you personally beyond your account ID.',
+        'Advertising: the app offers optional rewarded video ads (for example, "Watch a video" in the coin shop), supplied by Google AdMob. If you choose to watch one, AdMob may receive your device advertising identifier, IP address, and ad-interaction data such as whether the ad was viewed or completed. Ads are non-personalized by default. Personalized advertising, which uses your advertising identifier, happens only where you have allowed it: on iOS we ask through the App Tracking Transparency prompt, and on Android it follows your Google advertising settings, which you can change or reset at any time in your device settings. Memobun is fully usable without watching any ads.',
       ],
     },
     {
@@ -72,6 +73,7 @@ const en: LegalDoc = {
       body: [
         'To provide and sync the app and its features across your devices.',
         'To power the AI companion chat and friend messaging.',
+        'To show optional rewarded video ads, which let you earn extra coins.',
         'To understand usage, fix problems, and improve the app.',
         'To keep the app safe — for example, filtering inappropriate content and responding to reports.',
       ],
@@ -81,6 +83,7 @@ const en: LegalDoc = {
       body: [
         'Supabase — stores your account, progress, and messages (data hosting / backend).',
         'PostHog — product analytics, as described above. Depending on configuration, analytics data is processed on US or EU servers.',
+        'Google AdMob — serves the optional rewarded video ads described above, and processes advertising identifiers and ad-interaction data.',
         'OpenAI — powers AI companion replies; messages you send to your companion are processed to generate a response.',
         'Sign-in providers (e.g. Google) — used to authenticate you.',
         'Each provider processes data under its own privacy policy.',
@@ -190,6 +193,7 @@ const zh: LegalDoc = {
         '学习与应用活动：您添加的学习时段、科目、任务和考试，以及连续天数、金币、拥有的物品和类似的应用内进度，以便您的数据在各设备间同步。',
         '陪伴与好友消息：您发送给应用内 AI 陪伴的消息，以及您发送给好友的私信，都会被保存，以便您的对话得以留存。',
         '使用分析：我们使用第三方分析服务商 PostHog 来了解应用的使用情况。这包括应用内事件（例如完成一次学习、打开聊天或进行一次应用内购买）、您的设备类型和操作系统版本、应用版本，以及根据您的 IP 地址推断的大致位置（例如国家或城市）。除您的账号 ID 外，我们不会借此识别您的个人身份。',
+        '广告：应用提供可选的激励视频广告（例如金币商店中的“观看视频”），由 Google AdMob 提供。如果您选择观看，AdMob 可能会获得您的设备广告标识符、IP 地址，以及广告互动数据（例如广告是否被观看或看完）。广告默认为非个性化广告。只有在您允许的情况下，才会展示使用您广告标识符的个性化广告：在 iOS 上，我们会通过“App 跟踪透明度”提示征求您的同意；在 Android 上，则遵循您的 Google 广告设置，您可以随时在设备设置中更改或重置。即使不观看任何广告，您也可以完整使用 Memobun。',
       ],
     },
     {
@@ -197,6 +201,7 @@ const zh: LegalDoc = {
       body: [
         '用于提供应用及其功能，并在您的各设备间同步。',
         '用于支持 AI 陪伴聊天和好友消息功能。',
+        '用于展示可选的激励视频广告，让您获得额外金币。',
         '用于了解使用情况、修复问题并改进应用。',
         '用于保障应用安全，例如过滤不当内容和处理举报。',
       ],
@@ -206,6 +211,7 @@ const zh: LegalDoc = {
       body: [
         'Supabase——保存您的账号、进度和消息（数据托管／后端）。',
         'PostHog——如上所述的产品分析。根据配置，分析数据可能在美国或欧盟的服务器上处理。',
+        'Google AdMob——提供上述可选的激励视频广告，并处理广告标识符和广告互动数据。',
         'OpenAI——支持 AI 陪伴的回复；您发送给陪伴的消息会被处理以生成回复。',
         '登录服务商（例如 Google）——用于验证您的身份。',
         '每家服务商均按其自身的隐私政策处理数据。',
@@ -316,6 +322,7 @@ const zhHant: LegalDoc = {
         '學習與應用程式活動：您新增的學習時段、科目、任務和考試，以及連續天數、金幣、擁有的物品和類似的應用程式內進度，以便您的資料在各裝置間同步。',
         '陪伴與好友訊息：您傳送給應用程式內 AI 陪伴的訊息，以及您傳送給好友的私訊，都會被儲存，以便您的對話得以留存。',
         '使用分析：我們使用第三方分析服務商 PostHog 來了解應用程式的使用情況。這包括應用程式內事件（例如完成一次學習、開啟聊天或進行一次應用程式內購買）、您的裝置類型和作業系統版本、應用程式版本，以及根據您的 IP 位址推斷的大致位置（例如國家或城市）。除您的帳號 ID 之外，我們不會藉此辨識您的個人身分。',
+        '廣告：應用程式提供可選的獎勵影片廣告（例如金幣商店中的「觀看影片」），由 Google AdMob 提供。如果您選擇觀看，AdMob 可能會取得您的裝置廣告識別碼、IP 位址，以及廣告互動資料（例如廣告是否被觀看或看完）。廣告預設為非個人化廣告。只有在您允許的情況下，才會顯示使用您廣告識別碼的個人化廣告：在 iOS 上，我們會透過「App 追蹤透明度」提示徵求您的同意；在 Android 上，則依循您的 Google 廣告設定，您可以隨時在裝置設定中變更或重設。即使不觀看任何廣告，您也可以完整使用 Memobun。',
       ],
     },
     {
@@ -323,6 +330,7 @@ const zhHant: LegalDoc = {
       body: [
         '用於提供應用程式及其功能，並在您的各裝置間同步。',
         '用於支援 AI 陪伴聊天和好友訊息功能。',
+        '用於顯示可選的獎勵影片廣告，讓您獲得額外金幣。',
         '用於了解使用情況、修復問題並改進應用程式。',
         '用於保障應用程式安全，例如過濾不當內容和處理檢舉。',
       ],
@@ -332,6 +340,7 @@ const zhHant: LegalDoc = {
       body: [
         'Supabase——儲存您的帳號、進度和訊息（資料代管／後端）。',
         'PostHog——如上所述的產品分析。視設定而定，分析資料可能在美國或歐盟的伺服器上處理。',
+        'Google AdMob——提供上述可選的獎勵影片廣告，並處理廣告識別碼和廣告互動資料。',
         'OpenAI——支援 AI 陪伴的回覆；您傳送給陪伴的訊息會被處理以產生回覆。',
         '登入服務商（例如 Google）——用於驗證您的身分。',
         '每家服務商均依其自身的隱私權政策處理資料。',
@@ -442,6 +451,7 @@ const ja: LegalDoc = {
         '学習およびアプリの利用状況：追加された学習セッション、科目、タスク、試験、連続記録、コイン、所有アイテムなどのアプリ内の進行状況。お客様のデータを端末間で同期するために利用します。',
         'コンパニオンおよびフレンドのメッセージ：アプリ内の AI コンパニオンに送信したメッセージや、フレンドに送信したダイレクトメッセージは、会話を保持するために保存されます。',
         '利用分析：当社は、アプリの利用状況を把握するために第三者分析プロバイダである PostHog を利用します。これには、アプリ内のイベント（例：学習セッションの完了、チャットの開始、アプリ内購入）、お客様の端末の種類とオペレーティングシステムのバージョン、アプリのバージョン、および IP アドレスから推定されるおおよその位置（国や都市など）が含まれます。当社はこれをアカウント ID を超えてお客様個人を特定するために利用することはありません。',
+        '広告：本アプリでは、任意で視聴できるリワード動画広告（例：コインショップの「動画を見る」）を Google AdMob より配信しています。視聴を選択された場合、AdMob はお客様の端末の広告識別子、IP アドレス、および広告が視聴されたか最後まで再生されたかといった広告インタラクションデータを受け取ることがあります。広告は既定では非パーソナライズ広告です。広告識別子を利用するパーソナライズ広告は、お客様が許可された場合にのみ表示されます。iOS では「アプリのトラッキングの透明性」の許可を求め、Android ではお客様の Google 広告設定に従います（端末の設定でいつでも変更・リセットできます）。広告を一切視聴しなくても、Memobun のすべての機能をご利用いただけます。',
       ],
     },
     {
@@ -449,6 +459,7 @@ const ja: LegalDoc = {
       body: [
         'アプリおよびその機能を提供し、お客様の端末間で同期するため。',
         'AI コンパニオンとのチャットおよびフレンドとのメッセージ機能を提供するため。',
+        '任意のリワード動画広告を表示し、お客様が追加のコインを獲得できるようにするため。',
         '利用状況を把握し、問題を修正し、アプリを改善するため。',
         'アプリの安全性を保つため（例：不適切なコンテンツのフィルタリングや通報への対応）。',
       ],
@@ -458,6 +469,7 @@ const ja: LegalDoc = {
       body: [
         'Supabase——お客様のアカウント、進行状況、メッセージを保存します（データホスティング／バックエンド）。',
         'PostHog——上記のとおりのプロダクト分析。構成により、分析データは米国または EU のサーバーで処理される場合があります。',
+        'Google AdMob——上記の任意のリワード動画広告を配信し、広告識別子および広告インタラクションデータを処理します。',
         'OpenAI——AI コンパニオンの返信を生成します。コンパニオンに送信されたメッセージは返信を生成するために処理されます。',
         'ログインプロバイダ（例：Google）——お客様の本人確認に利用します。',
         '各プロバイダは、それぞれのプライバシーポリシーに基づいてデータを処理します。',
@@ -568,6 +580,7 @@ const ko: LegalDoc = {
         '학습 및 앱 활동: 추가하신 학습 세션, 과목, 할 일, 시험, 연속 기록, 코인, 보유 아이템 등 앱 내 진행 상황으로, 귀하의 데이터를 여러 기기 간에 동기화하기 위한 것입니다.',
         '도우미 및 친구 메시지: 앱 내 AI 도우미에게 보낸 메시지와 친구에게 보낸 다이렉트 메시지는 대화가 유지되도록 저장됩니다.',
         '사용 분석: 당사는 앱 사용 방식을 파악하기 위해 제3자 분석 제공업체인 PostHog를 이용합니다. 여기에는 앱 내 이벤트(예: 학습 세션 완료, 채팅 열기, 인앱 구매), 귀하의 기기 유형 및 운영체제 버전, 앱 버전, 그리고 IP 주소로부터 추정된 대략적인 위치(국가나 도시 등)가 포함됩니다. 당사는 이를 계정 ID를 넘어 귀하 개인을 식별하는 데 이용하지 않습니다.',
+        '광고: 앱은 선택적으로 시청할 수 있는 보상형 동영상 광고(예: 코인 상점의 "동영상 보기")를 제공하며, 이는 Google AdMob이 제공합니다. 시청을 선택하시면 AdMob이 귀하의 기기 광고 식별자, IP 주소, 그리고 광고 시청 또는 완료 여부와 같은 광고 상호작용 데이터를 수신할 수 있습니다. 광고는 기본적으로 비맞춤형입니다. 광고 식별자를 이용하는 맞춤형 광고는 귀하가 허용한 경우에만 표시되며, iOS에서는 앱 추적 투명성 요청을 통해 동의를 구하고 Android에서는 귀하의 Google 광고 설정을 따릅니다(기기 설정에서 언제든지 변경하거나 재설정할 수 있습니다). 광고를 전혀 시청하지 않아도 Memobun을 온전히 이용하실 수 있습니다.',
       ],
     },
     {
@@ -575,6 +588,7 @@ const ko: LegalDoc = {
       body: [
         '앱과 그 기능을 제공하고 여러 기기 간에 동기화하기 위해.',
         'AI 도우미 채팅 및 친구 메시지 기능을 제공하기 위해.',
+        '선택적인 보상형 동영상 광고를 표시하여 추가 코인을 획득할 수 있도록 하기 위해.',
         '사용 현황을 파악하고 문제를 해결하며 앱을 개선하기 위해.',
         '앱을 안전하게 유지하기 위해(예: 부적절한 콘텐츠 필터링 및 신고 처리).',
       ],
@@ -584,6 +598,7 @@ const ko: LegalDoc = {
       body: [
         'Supabase — 귀하의 계정, 진행 상황, 메시지를 저장합니다(데이터 호스팅/백엔드).',
         'PostHog — 위에서 설명한 제품 분석. 설정에 따라 분석 데이터는 미국 또는 EU 서버에서 처리될 수 있습니다.',
+        'Google AdMob — 위에서 설명한 선택적 보상형 동영상 광고를 제공하며, 광고 식별자와 광고 상호작용 데이터를 처리합니다.',
         'OpenAI — AI 도우미의 답변을 생성합니다. 도우미에게 보낸 메시지는 답변 생성을 위해 처리됩니다.',
         '로그인 제공업체(예: Google) — 귀하의 본인 확인에 이용됩니다.',
         '각 제공업체는 자체 개인정보 처리방침에 따라 데이터를 처리합니다.',
@@ -694,6 +709,7 @@ const es: LegalDoc = {
         'Actividad de estudio y de la aplicación: las sesiones de estudio, asignaturas, tareas y exámenes que añades, las rachas, las monedas, los objetos que posees y otro progreso similar dentro de la aplicación, para que tus datos se sincronicen entre tus dispositivos.',
         'Mensajes con el compañero y con amistades: los mensajes que envías a tu compañero de IA dentro de la aplicación y los mensajes directos que envías a tus amistades se almacenan para que tus conversaciones se conserven.',
         'Analítica de uso: usamos PostHog, un proveedor de analítica externo, para entender cómo se usa la aplicación. Esto incluye eventos dentro de la aplicación (por ejemplo, completar una sesión de estudio, abrir un chat o realizar una compra dentro de la aplicación), el tipo de dispositivo y la versión del sistema operativo, la versión de la aplicación y una ubicación aproximada (como el país o la ciudad) derivada de tu dirección IP. No usamos esto para identificarte personalmente más allá de tu identificador de cuenta.',
+        'Publicidad: la aplicación ofrece anuncios de vídeo recompensados opcionales (por ejemplo, "Ver un vídeo" en la tienda de monedas), suministrados por Google AdMob. Si eliges ver uno, AdMob puede recibir el identificador de publicidad de tu dispositivo, tu dirección IP y datos de interacción con el anuncio, como si el anuncio se vio o se completó. Los anuncios no están personalizados de forma predeterminada. La publicidad personalizada, que utiliza tu identificador de publicidad, solo se muestra cuando lo has permitido: en iOS lo solicitamos mediante el aviso de Transparencia de Seguimiento de Apps, y en Android se rige por tu configuración de anuncios de Google, que puedes cambiar o restablecer en cualquier momento en los ajustes de tu dispositivo. Puedes usar Memobun por completo sin ver ningún anuncio.',
       ],
     },
     {
@@ -701,6 +717,7 @@ const es: LegalDoc = {
       body: [
         'Para ofrecer y sincronizar la aplicación y sus funciones entre tus dispositivos.',
         'Para hacer funcionar el chat con el compañero de IA y los mensajes con amistades.',
+        'Para mostrar anuncios de vídeo recompensados opcionales, que te permiten ganar monedas adicionales.',
         'Para entender el uso, solucionar problemas y mejorar la aplicación.',
         'Para mantener la aplicación segura, por ejemplo, filtrando contenido inapropiado y respondiendo a las denuncias.',
       ],
@@ -710,6 +727,7 @@ const es: LegalDoc = {
       body: [
         'Supabase: almacena tu cuenta, progreso y mensajes (alojamiento de datos / backend).',
         'PostHog: analítica de producto, como se describe arriba. Según la configuración, los datos de analítica se procesan en servidores de EE. UU. o de la UE.',
+        'Google AdMob: publica los anuncios de vídeo recompensados opcionales descritos arriba y procesa identificadores de publicidad y datos de interacción con los anuncios.',
         'OpenAI: genera las respuestas del compañero de IA; los mensajes que envías a tu compañero se procesan para generar una respuesta.',
         'Proveedores de inicio de sesión (por ejemplo, Google): se usan para autenticarte.',
         'Cada proveedor procesa los datos conforme a su propia política de privacidad.',
@@ -820,6 +838,7 @@ const fr: LegalDoc = {
         'Activité d’étude et d’application : les sessions d’étude, matières, tâches et examens que vous ajoutez, les séries, les pièces, les objets que vous possédez et toute progression similaire dans l’application, afin que vos données se synchronisent entre vos appareils.',
         'Messages avec le compagnon et les amis : les messages que vous envoyez à votre compagnon IA dans l’application et les messages directs que vous envoyez à vos amis sont conservés afin que vos conversations persistent.',
         'Analyse d’utilisation : nous utilisons PostHog, un prestataire d’analyse tiers, pour comprendre comment l’application est utilisée. Cela comprend les événements dans l’application (par exemple terminer une session d’étude, ouvrir une discussion ou effectuer un achat intégré), le type de votre appareil et la version du système d’exploitation, la version de l’application et une localisation approximative (comme le pays ou la ville) déduite de votre adresse IP. Nous n’utilisons pas ces données pour vous identifier personnellement au-delà de votre identifiant de compte.',
+        'Publicité : l’application propose des vidéos publicitaires récompensées facultatives (par exemple « Regarder une vidéo » dans la boutique de pièces), fournies par Google AdMob. Si vous choisissez d’en regarder une, AdMob peut recevoir l’identifiant publicitaire de votre appareil, votre adresse IP et des données d’interaction avec la publicité, par exemple si la publicité a été vue ou regardée jusqu’au bout. Les publicités ne sont pas personnalisées par défaut. La publicité personnalisée, qui utilise votre identifiant publicitaire, n’est diffusée que lorsque vous l’avez autorisée : sur iOS, nous le demandons via l’invite de transparence du suivi des applications, et sur Android, cela suit vos paramètres de publicité Google, que vous pouvez modifier ou réinitialiser à tout moment dans les réglages de votre appareil. Vous pouvez utiliser Memobun intégralement sans regarder la moindre publicité.',
       ],
     },
     {
@@ -827,6 +846,7 @@ const fr: LegalDoc = {
       body: [
         'Pour fournir et synchroniser l’application et ses fonctionnalités entre vos appareils.',
         'Pour faire fonctionner la discussion avec le compagnon IA et la messagerie entre amis.',
+        'Pour afficher des vidéos publicitaires récompensées facultatives, qui vous permettent de gagner des pièces supplémentaires.',
         'Pour comprendre l’utilisation, corriger les problèmes et améliorer l’application.',
         'Pour assurer la sécurité de l’application, par exemple en filtrant les contenus inappropriés et en traitant les signalements.',
       ],
@@ -836,6 +856,7 @@ const fr: LegalDoc = {
       body: [
         'Supabase — stocke votre compte, votre progression et vos messages (hébergement des données / backend).',
         'PostHog — analyse produit, comme décrit ci-dessus. Selon la configuration, les données d’analyse sont traitées sur des serveurs situés aux États-Unis ou dans l’UE.',
+        'Google AdMob — diffuse les vidéos publicitaires récompensées facultatives décrites ci-dessus et traite les identifiants publicitaires et les données d’interaction publicitaire.',
         'OpenAI — génère les réponses du compagnon IA ; les messages que vous envoyez à votre compagnon sont traités pour produire une réponse.',
         'Fournisseurs de connexion (par exemple Google) — utilisés pour vous authentifier.',
         'Chaque fournisseur traite les données conformément à sa propre politique de confidentialité.',
