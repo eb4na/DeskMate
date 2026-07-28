@@ -14,6 +14,7 @@ import { type ReminderEntry } from '@/context/app-context';
 import i18n, { useTranslation } from '@/i18n';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { syncStudyReminders } from '@/lib/notifications';
+import { upcomingUntilMs } from '@/lib/task-recurrence';
 import {
   getCompanionReminderEmoji,
   getCompanionReminderLine,
@@ -46,8 +47,11 @@ function daysUntil(dateISO: string): number {
 // The soonest unfinished task due within UPCOMING_TASK_DAYS, as a reminder line.
 // Returns null when nothing is coming up (caller falls back to the companion line).
 function buildUpcomingTaskLine(tasks: Task[]): string | null {
+  const now = Date.now();
   const upcoming = tasks
-    .filter((t) => t.status !== 'done' && t.dueDate)
+    // A task whose due moment has already passed isn't "coming up" — without this
+    // a 9am task still says "due today" in a line written that evening.
+    .filter((t) => t.status !== 'done' && t.dueDate && upcomingUntilMs(t.dueDate, t.dueTime) > now)
     .map((t) => ({ t, days: daysUntil(t.dueDate as string) }))
     .filter(({ days }) => days >= 0 && days <= UPCOMING_TASK_DAYS)
     .sort((a, b) => a.days - b.days)[0];

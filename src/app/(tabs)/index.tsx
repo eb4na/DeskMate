@@ -32,6 +32,7 @@ import { DiscoBackdrop } from '@/components/disco-backdrop';
 import { setTutorialTarget } from '@/lib/tutorial-targets';
 import i18n, { useTranslation } from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
+import { upcomingUntilMs } from '@/lib/task-recurrence';
 import { BREAK_GAME_ENABLED, coinsForMinutes, formatCoins } from '@/constants/placeholder-data';
 import { hanjiIsAnimated, resolveActiveCompanion } from '@/lib/companion-utils';
 import { HanjiFigure } from '@/components/hanji-figure';
@@ -872,16 +873,24 @@ export default function HomeScreen() {
   const phCharLayer = isTablet ? null : { bottom: ph.charBottom, height: ph.charLayerH };
   const phCharImg = isTablet ? null : { width: ph.charSize, height: ph.charSize };
   const reminderStyle = getReminderStyleEffect(equippedShopItems);
-  // Home shows only the soonest still-upcoming exam (today or later). Passed
-  // exams are never featured here — if none are upcoming, the card shows its
-  // empty "add exam" state rather than a past-due one.
+  // Home shows only the soonest still-upcoming exam. Passed exams are never
+  // featured here — including one earlier TODAY, since a 9am exam is over by the
+  // afternoon — so the card rolls on to the next one (or its empty "add exam"
+  // state) instead of sitting on a spent countdown.
   const featuredExam = [...examCountdowns]
-    .filter((exam) => daysUntil(exam.dateISO) >= 0)
+    .filter((exam) => upcomingUntilMs(exam.dateISO, exam.time) > nowMs)
     .sort((a, b) => a.dateISO.localeCompare(b.dateISO))[0] ?? null;
   // Soonest still-pending task (by due date + time), shown on the home card.
+  // Same rule as exams: once its due moment has passed it's no longer "upcoming"
+  // (overdue deadlines still surface via the red dot on the Tasks tab).
   const nextTask =
     [...tasks]
-      .filter((tk) => tk.status !== 'done' && tk.dueDate)
+      .filter(
+        (tk) =>
+          tk.status !== 'done' &&
+          tk.dueDate &&
+          upcomingUntilMs(tk.dueDate, tk.dueTime) > nowMs,
+      )
       .sort((a, b) =>
         (a.dueDate! + (a.dueTime ?? '99:99')).localeCompare(b.dueDate! + (b.dueTime ?? '99:99')),
       )[0] ?? null;
@@ -889,6 +898,9 @@ export default function HomeScreen() {
     (nextTask?.subjectId ? subjects.find((s) => s.id === nextTask.subjectId)?.color : null) ?? '#C9A18A';
   const examDays = featuredExam ? daysUntil(featuredExam.dateISO) : null;
   const examIsUrgent = examDays !== null && examDays >= 0 && examDays <= 7;
+  // Kept as a boundary guard only: the filter above never features a past exam, so
+  // this can at most flash for the single tick between the countdown hitting zero
+  // and the card rolling on to the next exam.
   const examIsPast = examDays !== null && examDays < 0;
   const examTargetMs = featuredExam ? getExamTargetMs(featuredExam.dateISO, featuredExam.time) : null;
   const examCountdownText =

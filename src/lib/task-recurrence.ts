@@ -21,6 +21,23 @@ export function nextWeekdayAfter(fromISO: string, days: number[]): string | null
   return null;
 }
 
+/** The moment a dated item stops counting as "upcoming": its own due/start time
+ *  when one is set, otherwise the END of that day — a date-only task or exam
+ *  stays upcoming all day and only drops off at midnight. Unparseable dates are
+ *  treated as always-upcoming so bad data can't silently hide an item.
+ *  Shared by the Home cards and the reminder line (exams use it too), so every
+ *  "upcoming" surface expires an item at the same instant. */
+export function upcomingUntilMs(dateISO: string, time?: string | null): number {
+  const d = new Date(`${dateISO.slice(0, 10)}T00:00:00`);
+  if (isNaN(d.getTime())) return Number.POSITIVE_INFINITY;
+  const parsed = /^([01]\d|2[0-3]):([0-5]\d)$/.exec((time ?? '').trim());
+  const [h, m] = parsed ? [Number(parsed[1]), Number(parsed[2])] : [0, 0];
+  // Missing — or legacy midnight, which means "no time set" — runs to day's end.
+  if (h === 0 && m === 0) d.setHours(23, 59, 59, 999);
+  else d.setHours(h, m, 0, 0);
+  return d.getTime();
+}
+
 // For a repeating task being completed, compute its next occurrence's due date
 // and (if it had a reminder) the shifted reminder time. Returns null when the
 // task doesn't repeat or has no due date to roll forward.
