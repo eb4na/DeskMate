@@ -9,7 +9,7 @@
     en: {
       'meta.title': `Memobun — Your cozy study companion`,
       'meta.desc': `Memobun is a cozy, anime-bakery study companion. Study alongside an adorable companion, earn coins, build streaks, and study together with friends.`,
-      'nav.rooms': `Rooms`, 'nav.features': `Features`, 'nav.characters': `Characters`, 'nav.plus': `Plus`,
+      'nav.rooms': `Rooms`, 'nav.features': `Features`, 'nav.characters': `Characters`, 'nav.plus': `Plus`, 'nav.support': `Support`,
       'hero.h1': `Make studying feel less lonely.`,
       'hero.lead': `Focus with cozy companions, earn coins, decorate your room, and build a study habit that actually feels nice.`,
       'hero.cta1': `See the vibes`, 'hero.cta2': `Meet the companions`,
@@ -99,7 +99,7 @@
     ja: {
       'meta.title': `Memobun — あなたの心地よい勉強の相棒`,
       'meta.desc': `かわいい相棒と一緒に集中し、コインを貯め、お部屋を飾って、心地よく続く勉強習慣を。`,
-      'nav.rooms': `ルーム`, 'nav.features': `機能`, 'nav.characters': `キャラクター`, 'nav.plus': `Plus`,
+      'nav.rooms': `ルーム`, 'nav.features': `機能`, 'nav.characters': `キャラクター`, 'nav.plus': `Plus`, 'nav.support': `サポート`,
       'hero.h1': `勉強を、ひとりじゃなく。`,
       'hero.lead': `かわいい相棒と一緒に集中して、コインを貯めて、お部屋を飾って、心地よく続く勉強習慣を育てよう。`,
       'hero.cta1': `雰囲気を見る`, 'hero.cta2': `仲間に会う`,
@@ -189,7 +189,7 @@
     zh: {
       'meta.title': `Memobun — 你温馨的学习伙伴`,
       'meta.desc': `和可爱的伙伴一起专注、赚金币、装饰房间，养成舒心的学习习惯。`,
-      'nav.rooms': `房间`, 'nav.features': `功能`, 'nav.characters': `角色`, 'nav.plus': `Plus`,
+      'nav.rooms': `房间`, 'nav.features': `功能`, 'nav.characters': `角色`, 'nav.plus': `Plus`, 'nav.support': `支持`,
       'hero.h1': `让学习不再孤单。`,
       'hero.lead': `和可爱的伙伴一起专注、赚取金币、装饰房间，养成真正让你舒心的学习习惯。`,
       'hero.cta1': `看看风格`, 'hero.cta2': `认识伙伴`,
@@ -279,7 +279,7 @@
     ko: {
       'meta.title': `Memobun — 당신의 아늑한 공부 친구`,
       'meta.desc': `아늑한 친구와 함께 집중하고 코인을 모으고 방을 꾸미며 기분 좋은 공부 습관을 만들어요.`,
-      'nav.rooms': `방`, 'nav.features': `기능`, 'nav.characters': `캐릭터`, 'nav.plus': `Plus`,
+      'nav.rooms': `방`, 'nav.features': `기능`, 'nav.characters': `캐릭터`, 'nav.plus': `Plus`, 'nav.support': `지원`,
       'hero.h1': `공부가 외롭지 않게.`,
       'hero.lead': `아늑한 친구와 함께 집중하고, 코인을 모으고, 방을 꾸미며, 정말 기분 좋은 공부 습관을 만들어요.`,
       'hero.cta1': `분위기 보기`, 'hero.cta2': `친구들 만나기`,
@@ -369,7 +369,7 @@
     es: {
       'meta.title': `Memobun — Tu compañero de estudio acogedor`,
       'meta.desc': `Concéntrate con compañeros acogedores, gana monedas y decora tu habitación con Memobun.`,
-      'nav.rooms': `Salas`, 'nav.features': `Funciones`, 'nav.characters': `Personajes`, 'nav.plus': `Plus`,
+      'nav.rooms': `Salas`, 'nav.features': `Funciones`, 'nav.characters': `Personajes`, 'nav.plus': `Plus`, 'nav.support': `Soporte`,
       'hero.h1': `Haz que estudiar se sienta menos solitario.`,
       'hero.lead': `Concéntrate con compañeros acogedores, gana monedas, decora tu habitación y crea un hábito de estudio que de verdad se sienta bien.`,
       'hero.cta1': `Ver los ambientes`, 'hero.cta2': `Conoce a los compañeros`,
@@ -459,7 +459,7 @@
     fr: {
       'meta.title': `Memobun — Votre compagnon d'étude douillet`,
       'meta.desc': `Concentrez-vous avec de tendres compagnons, gagnez des pièces et décorez votre chambre avec Memobun.`,
-      'nav.rooms': `Salles`, 'nav.features': `Fonctions`, 'nav.characters': `Personnages`, 'nav.plus': `Plus`,
+      'nav.rooms': `Salles`, 'nav.features': `Fonctions`, 'nav.characters': `Personnages`, 'nav.plus': `Plus`, 'nav.support': `Assistance`,
       'hero.h1': `Rendez les révisions moins solitaires.`,
       'hero.lead': `Concentrez-vous avec de tendres compagnons, gagnez des pièces, décorez votre chambre et prenez une habitude d'étude qui fait vraiment du bien.`,
       'hero.cta1': `Voir les ambiances`, 'hero.cta2': `Rencontrer les compagnons`,
