@@ -341,7 +341,7 @@ section { position: relative; padding: 72px 0; }
 .char-art img { width: 84%; height: auto; filter: drop-shadow(0 8px 12px rgba(120,53,80,.18)); }
 /* each companion's card uses its exact app palette colour (bottom), fading up */
 .char-card.c-bun   .char-art { background: radial-gradient(circle at 50% 80%, #ffc9d0, #ffe9ec); }
-.char-card.c-cocoa .char-art { background: radial-gradient(circle at 50% 80%, #c99a73, #ecdccb); }
+.char-card.c-cocoa .char-art { background: radial-gradient(circle at 50% 80%, #CC4B35, #f7d8d1); }
 .char-card.c-bunny .char-art { background: radial-gradient(circle at 50% 80%, #ffc2df, #ffe6f2); }
 .char-card.c-miel  .char-art { background: radial-gradient(circle at 50% 80%, #ffcd8c, #ffe8c6); }
 .char-card.c-tira  .char-art { background: radial-gradient(circle at 50% 80%, #a3d6ff, #d6ebff); }
