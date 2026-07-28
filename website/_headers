@@ -9,3 +9,18 @@
 
 /*.js
   Cache-Control: public, max-age=0, must-revalidate
+
+# Pages aren't fingerprinted either. Without this the edge served a STALE page
+# for minutes after a deploy — which matters most for /privacy, the URL app-store
+# reviewers read. Clean URLs need their own rules; /*.html doesn't match them.
+/
+  Cache-Control: public, max-age=0, must-revalidate
+
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/privacy
+  Cache-Control: public, max-age=0, must-revalidate
+
+/delete-account
+  Cache-Control: public, max-age=0, must-revalidate
