@@ -64,8 +64,6 @@ Notes:
 | **PostHog** | Product analytics (US servers) |
 | **Google AdMob** | Rewarded video ads; advertising identifiers |
 | **RevenueCat** | In‑app purchase / subscription validation |
-| **OpenAI** | AI companion chat + image generation — currently unreachable from the UI; confirm status before relying on this row |
-| **remove.bg (Kaleido)** | Background removal, in the same (dormant) AI companion‑generation path |
 | **Apple / Google** | Sign‑in, distribution, payments |
 | **Expo** | Build/runtime infrastructure |
 
