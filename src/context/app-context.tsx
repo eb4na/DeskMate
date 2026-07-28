@@ -1442,22 +1442,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // only ever fires on a day with no app open. Gated on having a streak to protect +
   // finished onboarding; read through a ref so foregrounds use the latest state/lang
   // without re-subscribing. Permission is never *requested* here (see notifications.ts).
+  //
+  // Foregrounding alone isn't enough to cover a day that rolls over WHILE the app is
+  // open: a late-night session (which holds a wake-lock) crosses midnight with no
+  // 'active' transition, so yesterday's "tomorrow 1pm" nudge would fire at the user
+  // while they're sitting in the app. So we also re-arm a timer for the next local
+  // midnight and resync there. The timer only has to cover the app-stayed-awake case —
+  // if iOS suspended the process across midnight the timer won't fire, but then the
+  // user must foreground the app to see anything, and that foreground resyncs anyway.
   const streakNudgeEnabledRef = useRef(false);
   streakNudgeEnabledRef.current =
     loaded && (s.legalAccepted ?? false) && (s.starterChosen ?? false) && s.streak.currentStreak > 0;
   useEffect(() => {
-    const sync = () =>
+    let midnightTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const sync = () => {
       void syncStreakReminders({
         enabled: streakNudgeEnabledRef.current,
         title: i18n.t('notifications.streakTitle'),
         afternoonBody: i18n.t('notifications.streakAfternoonBody'),
         eveningBody: i18n.t('notifications.streakEveningBody'),
       });
+      armMidnightResync();
+    };
+
+    // Measured from a fresh `now` each time, so an 11pm open resyncs in an hour.
+    const armMidnightResync = () => {
+      if (midnightTimer) clearTimeout(midnightTimer);
+      const nextMidnight = new Date();
+      nextMidnight.setHours(24, 0, 5, 0); // 5s past midnight, so the new day has begun
+      midnightTimer = setTimeout(sync, Math.max(1000, nextMidnight.getTime() - Date.now()));
+    };
+
     if (loaded) sync();
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') sync();
     });
-    return () => sub.remove();
+    return () => {
+      sub.remove();
+      if (midnightTimer) clearTimeout(midnightTimer);
+    };
   }, [loaded]);
 
   // Exam reminders: a day-before + (when the exam has a start time) 6-hours-before
