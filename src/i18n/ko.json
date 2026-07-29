@@ -228,6 +228,12 @@
     "connectedAccounts": "계정 연결",
     "connectGoogle": "Google 연결",
     "connectApple": "Apple 연결",
+    "connectEmail": "이메일 연결",
+    "connectEmailTitle": "비밀번호 설정",
+    "connectEmailSubtitle": "비밀번호를 설정하면 이메일로도 로그인할 수 있습니다.",
+    "connectEmailNote": "이메일은 Google 또는 Apple을 통해 이미 확인되었으므로 확인 메일을 기다릴 필요가 없습니다.",
+    "emailConnectedTitle": "이메일 로그인 준비 완료",
+    "emailConnectedMsg": "이제 이메일 주소와 이 비밀번호로 로그인할 수 있습니다.",
     "connected": "연결됨",
     "connectFailed": "연결하지 못했습니다. 다시 시도해 주세요."
   },

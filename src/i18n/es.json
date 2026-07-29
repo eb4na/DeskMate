@@ -228,6 +228,12 @@
     "connectedAccounts": "Conectar cuentas",
     "connectGoogle": "Conectar Google",
     "connectApple": "Conectar Apple",
+    "connectEmail": "Conectar correo",
+    "connectEmailTitle": "Establecer una contraseña",
+    "connectEmailSubtitle": "Añade una contraseña para poder iniciar sesión también con tu correo electrónico.",
+    "connectEmailNote": "Tu correo ya está verificado mediante Google o Apple, así que no hay ningún correo de confirmación que esperar.",
+    "emailConnectedTitle": "Inicio de sesión con correo listo",
+    "emailConnectedMsg": "Ya puedes iniciar sesión con tu correo electrónico y esta contraseña.",
     "connected": "Conectado",
     "connectFailed": "No se pudo conectar. Inténtalo de nuevo."
   },

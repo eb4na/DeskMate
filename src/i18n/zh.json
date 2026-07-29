@@ -228,6 +228,12 @@
     "connectedAccounts": "连接账户",
     "connectGoogle": "连接 Google",
     "connectApple": "连接 Apple",
+    "connectEmail": "连接邮箱",
+    "connectEmailTitle": "设置密码",
+    "connectEmailSubtitle": "设置密码后，你也可以用电子邮箱登录。",
+    "connectEmailNote": "你的邮箱已通过 Google 或 Apple 验证，无需等待确认邮件。",
+    "emailConnectedTitle": "邮箱登录已就绪",
+    "emailConnectedMsg": "现在你可以使用电子邮箱和该密码登录。",
     "connected": "已连接",
     "connectFailed": "连接失败，请重试。"
   },

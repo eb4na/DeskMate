@@ -456,24 +456,38 @@ export default function SettingsScreen() {
                 {t('auth.connectedAccounts')}
               </ThemedText>
               <ThemedView type="backgroundElement" style={styles.group}>
-                {(['google', 'apple'] as const).map((provider, idx) => {
+                {(['google', 'apple', 'email'] as const).map((provider, idx) => {
                   const connected = connectedProviders.includes(provider);
+                  // Google/Apple open an OAuth link flow in place; email instead
+                  // pushes a screen to set a password, since the address itself
+                  // is already on the account and needs no verification.
+                  const onPress =
+                    provider === 'email'
+                      ? () => router.push('/connect-email')
+                      : () => handleConnect(provider);
+                  const label = connected
+                    ? provider === 'google' ? 'Google' : provider === 'apple' ? 'Apple' : t('auth.email')
+                    : provider === 'google'
+                      ? t('auth.connectGoogle')
+                      : provider === 'apple' ? t('auth.connectApple') : t('auth.connectEmail');
                   return (
                     <View key={provider}>
                       {idx > 0 && <View style={styles.divider} />}
                       <Pressable
                         disabled={connected}
-                        onPress={() => handleConnect(provider)}
+                        onPress={onPress}
                         style={({ pressed }) => [styles.row, !connected && pressed && styles.rowPressed]}>
                         <View style={styles.rowIconImage}>
-                          {provider === 'apple' ? <AppleLogoIcon size={30} /> : <GoogleGIcon size={28} />}
+                          {provider === 'apple' ? (
+                            <AppleLogoIcon size={30} />
+                          ) : provider === 'google' ? (
+                            <GoogleGIcon size={28} />
+                          ) : (
+                            <EnvelopeIcon size={30} />
+                          )}
                         </View>
                         <View style={styles.rowBody}>
-                          <ThemedText type="smallBold">
-                            {connected
-                              ? provider === 'google' ? 'Google' : 'Apple'
-                              : provider === 'google' ? t('auth.connectGoogle') : t('auth.connectApple')}
-                          </ThemedText>
+                          <ThemedText type="smallBold">{label}</ThemedText>
                         </View>
                         <ThemedText type="small" themeColor="textSecondary" style={connected ? styles.connectedTag : undefined}>
                           {connected ? `✓ ${t('auth.connected')}` : '＋'}

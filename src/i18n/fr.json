@@ -228,6 +228,12 @@
     "connectedAccounts": "Connecter des comptes",
     "connectGoogle": "Connecter Google",
     "connectApple": "Connecter Apple",
+    "connectEmail": "Connecter l’e-mail",
+    "connectEmailTitle": "Définir un mot de passe",
+    "connectEmailSubtitle": "Ajoutez un mot de passe pour pouvoir aussi vous connecter avec votre adresse e-mail.",
+    "connectEmailNote": "Votre adresse e-mail est déjà vérifiée via Google ou Apple : aucun e-mail de confirmation à attendre.",
+    "emailConnectedTitle": "Connexion par e-mail prête",
+    "emailConnectedMsg": "Vous pouvez désormais vous connecter avec votre adresse e-mail et ce mot de passe.",
     "connected": "Connecté",
     "connectFailed": "Connexion impossible. Réessayez."
   },

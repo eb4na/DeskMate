@@ -228,6 +228,12 @@
     "connectedAccounts": "アカウントを連携",
     "connectGoogle": "Googleを連携",
     "connectApple": "Appleを連携",
+    "connectEmail": "メールを連携",
+    "connectEmailTitle": "パスワードを設定",
+    "connectEmailSubtitle": "パスワードを設定すると、メールアドレスでもログインできます。",
+    "connectEmailNote": "メールアドレスは Google または Apple で確認済みのため、確認メールを待つ必要はありません。",
+    "emailConnectedTitle": "メールログインの準備ができました",
+    "emailConnectedMsg": "これからはメールアドレスとこのパスワードでログインできます。",
     "connected": "連携済み",
     "connectFailed": "連携できませんでした。もう一度お試しください。"
   },

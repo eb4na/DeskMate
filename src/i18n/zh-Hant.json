@@ -312,6 +312,12 @@
     "connectedAccounts": "連線帳戶",
     "connectGoogle": "連線 Google",
     "connectApple": "連線 Apple",
+    "connectEmail": "連接信箱",
+    "connectEmailTitle": "設定密碼",
+    "connectEmailSubtitle": "設定密碼後，你也可以用電子信箱登入。",
+    "connectEmailNote": "你的信箱已透過 Google 或 Apple 驗證，無需等待確認信。",
+    "emailConnectedTitle": "信箱登入已就緒",
+    "emailConnectedMsg": "現在你可以使用電子信箱和該密碼登入。",
     "connected": "已連線",
     "connectFailed": "連線失敗，請重試。"
   },

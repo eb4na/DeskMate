@@ -369,6 +369,11 @@ function RootNavigator() {
         <Stack.Screen name="companion-chat" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="companion-pfp" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="settings" options={{ presentation: 'modal', title: t('screens.settings') }} />
+        {/* Pushed FROM settings, which is itself modal-presented. Deliberately a
+            plain card push, not a second `presentation: 'modal'` — iOS silently
+            refuses to present a native modal on top of a stacked one, and the
+            tap would just look dead. */}
+        <Stack.Screen name="connect-email" options={{ headerShown: false }} />
         <Stack.Screen name="mailbox" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="legal" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="coin-shop" options={{ presentation: 'modal', title: t('screens.getCoins') }} />
