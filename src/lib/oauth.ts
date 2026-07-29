@@ -189,11 +189,26 @@ export function signInWithProvider(provider: Provider): Promise<OAuthResult> {
   return webSignInWithProvider(provider);
 }
 
+// Google reuses whatever account already has a session in the auth browser and
+// signs straight in with it — the account chooser never appears, so anyone with
+// two Google accounts is stuck on whichever they used first, with no way to
+// switch from inside the app. `prompt=select_account` makes Google show the
+// picker every time; an already-signed-in account is still one tap, so this
+// costs nothing for the common case. Google-only: Apple's web flow takes no
+// `prompt` parameter, and sending one risks an invalid_request.
+function providerQueryParams(provider: Provider): Record<string, string> | undefined {
+  return provider === 'google' ? { prompt: 'select_account' } : undefined;
+}
+
 function webSignInWithProvider(provider: Provider): Promise<OAuthResult> {
   return runOAuth(async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: authCallbackUrl, skipBrowserRedirect: true },
+      options: {
+        redirectTo: authCallbackUrl,
+        skipBrowserRedirect: true,
+        queryParams: providerQueryParams(provider),
+      },
     });
     return { url: data?.url ?? null, error };
   });
@@ -204,7 +219,13 @@ export function linkProvider(provider: Provider): Promise<OAuthResult> {
   return runOAuth(async () => {
     const { data, error } = await supabase.auth.linkIdentity({
       provider,
-      options: { redirectTo: authCallbackUrl, skipBrowserRedirect: true },
+      options: {
+        redirectTo: authCallbackUrl,
+        skipBrowserRedirect: true,
+        // Same reason as sign-in: without this, "connect Google" silently links
+        // whichever account the browser already holds, with no chance to pick.
+        queryParams: providerQueryParams(provider),
+      },
     });
     return { url: (data as { url?: string } | null)?.url ?? null, error };
   });
