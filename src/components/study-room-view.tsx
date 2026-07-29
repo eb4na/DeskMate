@@ -761,6 +761,17 @@ export function StudyRoomView({
   // once the character shrank (e.g. a small phone in a 3-person room). Phone's desk
   // edge is the fixed 240 (styles.deskEdge / studyDesk top); tablet's is deskTopT.
   const deskEdgeY = isTablet ? deskTopT : 240;
+  // The Break button is a flex child of `scene` sitting BELOW the character, and
+  // `scene` is justifyContent:'flex-end' — so whenever it shows (any room) it takes
+  // its own height out of the bottom of the scene and lifts the flow-positioned solo
+  // character by exactly that much. The desk doesn't move with it: it's pinned to
+  // deskEdgeY from the ROOT bottom. The party row never had this problem because it's
+  // absolutely positioned (partyCharBottom), which is why the character only floats
+  // off the desk in the one case that falls back to the solo scene inside a room —
+  // everyone else left. Give the height back so the waist offsets stay true.
+  // Tablet is unaffected (its solo character is an absolute layer anchored to the
+  // desk), and focus/disco overrides marginBottom entirely, so both are excluded.
+  const soloCharBreakLift = !isTablet && showBreakButton ? styles.breakBtn.height : 0;
   // Baseline the BOOK row reads (book sits on the desk in front of each studier).
   const partyCharBottom = deskEdgeY - 0.44 * partyCharSize;
   // Characters are lifted higher than that baseline so more of the body shows above
@@ -1134,7 +1145,7 @@ export function StudyRoomView({
           // Transform lives on an Animated.View (like Home) — applying it to the
           // expo-image directly stutters because the study view re-renders every
           // second (the countdown), which re-attaches the native animation nodes.
-          <Pressable ref={charRef} onLayout={measureSoloChar} style={[styles.character, styles.characterSolo, { marginBottom: SOLO_WAIST_MB[soloBookKey] ?? DEFAULT_SOLO_WAIST_MB }, focus && styles.characterSoloFocus]} onPress={() => talkAs(friendCode, myPersona, mySkin)}>
+          <Pressable ref={charRef} onLayout={measureSoloChar} style={[styles.character, styles.characterSolo, { marginBottom: (SOLO_WAIST_MB[soloBookKey] ?? DEFAULT_SOLO_WAIST_MB) - soloCharBreakLift }, focus && styles.characterSoloFocus]} onPress={() => talkAs(friendCode, myPersona, mySkin)}>
             {/* Squish layer (center-bottom origin so feet stay tucked behind the desk
                 on tap) wraps the idle-bounce layer — mirrors Home's CompanionPet. */}
             <Animated.View style={{ width: '100%', height: '100%', transform: [{ scale: tapScale }], transformOrigin: 'center bottom' }}>
