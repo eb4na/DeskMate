@@ -19,6 +19,12 @@ import { Platform } from 'react-native';
 //      yet — create them too, or coin-pack purchases will fail.
 //   4. Rebuild the native client (EAS build / `expo run:ios`) — the JS-only current
 //      build does NOT contain the StoreKit native module.
+//   5. ANDROID is a separate store with its own everything: add a Google Play app in
+//      RevenueCat and set its public SDK key as EXPO_PUBLIC_REVENUECAT_ANDROID_KEY
+//      (in .env AND `eas env:create`, or cloud builds ship without it), and create
+//      the products in Play Console — Monetize → Products — before wiring them up in
+//      RevenueCat. Until that key exists, Android purchases are disabled, not broken:
+//      apiKey stays undefined, purchasesReady() is false, and the UI grants nothing.
 
 // App Store / RevenueCat product identifiers. These MUST match what you create in
 // App Store Connect and RevenueCat exactly. Coin packs are consumables; the two
@@ -42,7 +48,18 @@ export const PRODUCT_IDS = {
 // Must match the RevenueCat Entitlement identifier EXACTLY (case + spaces).
 export const PLUS_ENTITLEMENT = 'Memobun Plus';
 
-const apiKey = Platform.OS === 'ios' ? process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY : undefined;
+// RevenueCat issues a SEPARATE public SDK key per store, so Android needs its own —
+// the iOS key does not work there. Until EXPO_PUBLIC_REVENUECAT_ANDROID_KEY is set
+// (RevenueCat → add a Google Play app → Public SDK key), this stays undefined on
+// Android and everything below fails closed: purchasesReady() is false and the UI
+// refuses to grant anything, which is the correct behaviour for a store that can't
+// actually charge. Set it in BOTH .env and the EAS env, or cloud builds ship blind.
+const apiKey =
+  Platform.OS === 'ios'
+    ? process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY
+    : Platform.OS === 'android'
+      ? process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY
+      : undefined;
 
 // Lazily required so a missing native module (pre-rebuild) can't crash app start.
 // Resolves to the react-native-purchases default export, or null if unavailable.
