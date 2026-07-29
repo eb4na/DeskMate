@@ -817,21 +817,37 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
   // a room ticket on login whenever the anchor was missing, which is not a renewal.
   // Anchoring silently means their next ticket arrives on the monthly anniversary,
   // which is the only cadence tickets are supposed to follow.
-  if (merged.isPlus && !merged.exchangeTicketAnchorDay) {
-    const t0 = todayISO();
-    merged.exchangeTicketAnchorDay = Number(t0.slice(8, 10));
-    merged.exchangeTicketLastGrantISO = t0;
-  } else if (merged.isPlus && merged.exchangeTicketAnchorDay) {
-    // Grant any monthly-anniversary tickets owed since the last grant.
-    const due = exchangeTicketsDue(
-      merged.exchangeTicketAnchorDay,
-      merged.exchangeTicketLastGrantISO ?? '',
-      todayISO(),
-    );
-    if (due.granted > 0) {
-      merged.exchangeTickets = (merged.exchangeTickets ?? 0) + due.granted;
-      merged.exchangeTicketPending = (merged.exchangeTicketPending ?? 0) + due.granted;
-      merged.exchangeTicketLastGrantISO = due.lastISO;
+  if (merged.isPlus) {
+    // exchangeTicketLastGrantISO is the SOURCE OF TRUTH for "has a ticket ever been
+    // paid, and when"; exchangeTicketAnchorDay is only a cache of its day-of-month.
+    // Rebuild the anchor from the grant record when it's missing, so a state copy
+    // that lost the anchor — an older schema, or a cloud blob written before the
+    // field existed — can't read as "never granted" and pay out a second time.
+    // Crucially this does NOT overwrite lastGrantISO: stamping it with today (as
+    // this used to) destroyed a real grant date and pushed the next ticket out by
+    // up to a full month.
+    if (!merged.exchangeTicketAnchorDay) {
+      const recorded = Number((merged.exchangeTicketLastGrantISO ?? '').slice(8, 10));
+      if (recorded >= 1 && recorded <= 31) merged.exchangeTicketAnchorDay = recorded;
+    }
+    if (!merged.exchangeTicketAnchorDay) {
+      // No anchor and no grant on record → subscribed before this feature existed.
+      // Anchor silently: no ticket and no popup, because this isn't a renewal.
+      const t0 = todayISO();
+      merged.exchangeTicketAnchorDay = Number(t0.slice(8, 10));
+      merged.exchangeTicketLastGrantISO = t0;
+    } else {
+      // Grant any monthly-anniversary tickets owed since the last grant.
+      const due = exchangeTicketsDue(
+        merged.exchangeTicketAnchorDay,
+        merged.exchangeTicketLastGrantISO ?? '',
+        todayISO(),
+      );
+      if (due.granted > 0) {
+        merged.exchangeTickets = (merged.exchangeTickets ?? 0) + due.granted;
+        merged.exchangeTicketPending = (merged.exchangeTicketPending ?? 0) + due.granted;
+        merged.exchangeTicketLastGrantISO = due.lastISO;
+      }
     }
   }
 
@@ -1426,13 +1442,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // the change (and wins on the same device), but a login on another device or
   // after a reinstall would restore the stale cloud copy and drop it. Flushing
   // on background closes that gap so presets follow the account everywhere.
+  //
+  // The cleanup flushes for the SAME reason on the other exit route: signing out
+  // (or switching accounts) changes the scope without ever backgrounding the app,
+  // and auth-context's signOut doesn't flush. Anything written in the last 1.5s —
+  // a monthly room ticket being the expensive case — would otherwise stay only on
+  // this device, and the next login would restore the older cloud copy over it.
   useEffect(() => {
     if (appStateScope.kind !== 'user') return;
     const userId = appStateScope.userId;
     const sub = AppState.addEventListener('change', (state) => {
       if (state !== 'active') void flushCloudState(userId);
     });
-    return () => sub.remove();
+    return () => {
+      sub.remove();
+      void flushCloudState(userId);
+    };
   }, [appStateScope]);
 
   // Streak-protection nudges: if the player doesn't OPEN the app on a given day, send
@@ -2297,7 +2322,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // subsequent monthly tickets come solely from the load-merge anniversary check
       // (exchangeTicketsDue), which is day-of-month based and covers monthly renewals and
       // yearly plans alike. Tickets are kept on lapse, so nothing is cleared when value is false.
-      if (value && !prev.exchangeTicketAnchorDay) {
+      // The anchor alone is NOT a safe gate: it can come back missing (a cloud blob
+      // written before the grant landed — the push is debounced, so a kill inside
+      // that window rolls it back — or an older schema), and every time it did, this
+      // minted another "first" ticket. So a recorded grant blocks the payout too, and
+      // a lost anchor is simply rebuilt from that record.
+      const recordedGrantDay = Number((prev.exchangeTicketLastGrantISO ?? '').slice(8, 10));
+      const hasGrantOnRecord = recordedGrantDay >= 1 && recordedGrantDay <= 31;
+      if (value && !prev.exchangeTicketAnchorDay && hasGrantOnRecord) {
+        updates.exchangeTicketAnchorDay = recordedGrantDay;
+      } else if (value && !prev.exchangeTicketAnchorDay) {
         updates.exchangeTicketAnchorDay = Number(today.slice(8, 10));
         updates.exchangeTickets = prev.exchangeTickets + 1;
         updates.exchangeTicketLastGrantISO = today;
