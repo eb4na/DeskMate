@@ -170,7 +170,6 @@ export default function WeeklyReportScreen() {
 
           {/* Summary card */}
           <ThemedView type="backgroundElement" style={styles.summaryCard}>
-            <ThemedText style={styles.summaryEmoji}></ThemedText>
             {summaryText ? (
               <ThemedText style={styles.summaryText}>{summaryText}</ThemedText>
             ) : (
@@ -292,7 +291,6 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     gap: Spacing.two * s,
     alignItems: 'center',
   },
-  summaryEmoji: { fontSize: 40 * s, lineHeight: 48 * s },
   // Explicit size (was the ThemedText default 16, which read oversized vs the rest);
   // matches the body text so the screen's text stays uniform.
   summaryText: { textAlign: 'center', fontSize: 14 * s, lineHeight: 21 * s },

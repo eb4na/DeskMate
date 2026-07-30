@@ -495,6 +495,12 @@ export default function HomeScreen() {
   const tExam = isTablet && { transform: [{ translateY: htScaled.examY ?? 0 }] };
   const tTask = isTablet && { transform: [{ translateY: htScaled.taskY ?? 0 }] };
   const tCardBox = isTablet && { aspectRatio: htScaled.cardRatio ?? 2.6 };
+  // The card keeps its dialed flatness (cardRatio) while the text inside is scaled up
+  // by cardTextScale, so a 3-line exam card (name / date / countdown) runs a few pt
+  // taller than the card's inner box — which used to clip the ascenders off the exam
+  // name. Hand the card's generous phone padding to the text instead of growing the
+  // card, so the block genuinely fits and nothing has to overflow.
+  const tCardPad = isTablet && { paddingTop: 3, paddingBottom: 3 };
   const cardFont = (sz: number, lh: number) =>
     isTablet ? { fontSize: sz * (htScaled.cardTextScale ?? 1.3), lineHeight: lh * (htScaled.cardTextScale ?? 1.3) } : null;
   // Card text auto-shrinks (FitText) ONLY on tablet, where the scaled-up fonts
@@ -1224,6 +1230,7 @@ export default function HomeScreen() {
                     <View
                       style={[
                         styles.metaCard,
+                        tCardPad,
                         examIsUrgent && styles.metaCardUrgent,
                         examIsPast && styles.metaCardPast,
                       ]}>
@@ -1279,7 +1286,7 @@ export default function HomeScreen() {
                   <Pressable
                     style={({ pressed }) => [styles.metaCardPressable, tCardBox, tTask, pressed && styles.cardPressed]}
                     onPress={() => router.push(nextTask ? '/tasks' : '/add-task')}>
-                    <View style={styles.metaCard}>
+                    <View style={[styles.metaCard, tCardPad]}>
                       <View style={styles.metaCardHeader}>
                         <View style={styles.reminderTitleRow}>
                           <Image source={REMINDER_BELL_ICON} style={styles.reminderBellIcon} contentFit="contain" accessibilityLabel="" />
@@ -2151,8 +2158,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#B87A5A',
   },
-  examCountdownRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  examSubjectChip: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  // nowrap on purpose: the card's height is fixed (aspectRatio), so letting a long
+  // subject wrap this row to a second line pushed the block past the card and clipped
+  // the exam name. The chip shrinks + its label auto-shrinks instead.
+  examCountdownRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'nowrap' },
+  examSubjectChip: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1, minWidth: 0 },
   examSubjectDot: { width: 8, height: 8, borderRadius: 4 },
   examSubjectText: { fontSize: 10.5, lineHeight: 13, fontWeight: '700', color: BakeryColors.mocha, flexShrink: 1 },
   metaAccentTextUrgent: {
