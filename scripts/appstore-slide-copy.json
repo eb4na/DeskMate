@@ -1,0 +1,66 @@
+{
+  "_comment": "App Store slide marketing copy per language. l1 = big headline line, l2 = lighter accent line, sub = subhead. Consumed by scripts/make-appstore-slides.py --lang <code>. Latin languages use caps for l1 to match the English look; CJK has no case so l1 is written normally.",
+  "en": [
+    { "l1": "YOUR DESK,", "l2": "your companion", "sub": "Start a session and focus together" },
+    { "l1": "SET A TIMER,", "l2": "then study", "sub": "Pick a length, a subject and a mood" },
+    { "l1": "OUTFITS AND ROOMS", "l2": "to unlock", "sub": "Dress your companion, then decorate" },
+    { "l1": "ROOMS AND DESKS", "l2": "to mix and match", "sub": "Any background with any desk" },
+    { "l1": "COLLECT EVERY", "l2": "companion", "sub": "Each with their own wardrobe and story" },
+    { "l1": "TRACK YOUR", "l2": "progress", "sub": "Weekly reports, achievements and streak freezes" },
+    { "l1": "TASKS, EXAMS", "l2": "and moods", "sub": "Plan everything in one place" }
+  ],
+  "zh": [
+    { "l1": "你的书桌，", "l2": "你的伙伴", "sub": "开始一次专注，一起学习" },
+    { "l1": "设定计时，", "l2": "专心学习", "sub": "选择时长、科目和心情" },
+    { "l1": "服装与房间", "l2": "等你解锁", "sub": "打扮伙伴，再装饰房间" },
+    { "l1": "房间与书桌", "l2": "自由搭配", "sub": "任意背景配任意书桌" },
+    { "l1": "收集每一位", "l2": "伙伴", "sub": "每位都有自己的衣橱和故事" },
+    { "l1": "记录你的", "l2": "学习进度", "sub": "每周报告、成就与连续记录保护" },
+    { "l1": "任务、考试", "l2": "与心情", "sub": "一处规划全部安排" }
+  ],
+  "zh-Hant": [
+    { "l1": "你的書桌，", "l2": "你的夥伴", "sub": "開始一次專注，一起學習" },
+    { "l1": "設定計時，", "l2": "專心學習", "sub": "選擇時長、科目和心情" },
+    { "l1": "服裝與房間", "l2": "等你解鎖", "sub": "打扮夥伴，再裝飾房間" },
+    { "l1": "房間與書桌", "l2": "自由搭配", "sub": "任意背景配任意書桌" },
+    { "l1": "收集每一位", "l2": "夥伴", "sub": "每位都有自己的衣櫥和故事" },
+    { "l1": "記錄你的", "l2": "學習進度", "sub": "每週報告、成就與連續紀錄保護" },
+    { "l1": "任務、考試", "l2": "與心情", "sub": "一處規劃全部安排" }
+  ],
+  "ja": [
+    { "l1": "あなたのデスク、", "l2": "あなたの相棒", "sub": "セッションを始めて一緒に集中" },
+    { "l1": "タイマーをセット、", "l2": "さあ勉強", "sub": "時間・科目・気分を選ぶだけ" },
+    { "l1": "衣装とルームを", "l2": "解放しよう", "sub": "相棒を着せ替えて、部屋も模様替え" },
+    { "l1": "ルームとデスクを", "l2": "自由に組み合わせ", "sub": "どの背景にもどのデスクでも" },
+    { "l1": "仲間を全員", "l2": "集めよう", "sub": "それぞれの衣装と物語がある" },
+    { "l1": "学習の記録を", "l2": "見える化", "sub": "週間レポート・実績・ストリーク保護" },
+    { "l1": "課題も試験も", "l2": "気分も", "sub": "すべてひとつで管理" }
+  ],
+  "ko": [
+    { "l1": "나만의 책상,", "l2": "나만의 친구", "sub": "세션을 시작하고 함께 집중해요" },
+    { "l1": "타이머를 맞추고", "l2": "공부 시작", "sub": "시간과 과목, 기분을 골라요" },
+    { "l1": "의상과 룸을", "l2": "잠금 해제", "sub": "친구를 꾸미고 방도 꾸며요" },
+    { "l1": "룸과 책상을", "l2": "마음대로 조합", "sub": "어떤 배경에도 어떤 책상이든" },
+    { "l1": "모든 친구를", "l2": "모아보세요", "sub": "각자의 옷장과 이야기가 있어요" },
+    { "l1": "나의 성장을", "l2": "기록해요", "sub": "주간 리포트, 업적, 스트릭 프리즈" },
+    { "l1": "할 일과 시험", "l2": "그리고 기분", "sub": "한곳에서 모두 계획해요" }
+  ],
+  "es": [
+    { "l1": "TU ESCRITORIO,", "l2": "tu compañero", "sub": "Empieza una sesión y concéntrate" },
+    { "l1": "PON UN TEMPORIZADOR,", "l2": "y a estudiar", "sub": "Elige duración, materia y ánimo" },
+    { "l1": "ROPA Y SALAS", "l2": "por desbloquear", "sub": "Viste a tu compañero y decora" },
+    { "l1": "SALAS Y ESCRITORIOS", "l2": "para combinar", "sub": "Cualquier fondo con cualquier escritorio" },
+    { "l1": "COLECCIONA A TODOS", "l2": "los compañeros", "sub": "Cada uno con su ropa y su historia" },
+    { "l1": "SIGUE TU", "l2": "progreso", "sub": "Informes semanales, logros y congelaciones de racha" },
+    { "l1": "TAREAS, EXÁMENES", "l2": "y estados de ánimo", "sub": "Planifícalo todo en un solo lugar" }
+  ],
+  "fr": [
+    { "l1": "TON BUREAU,", "l2": "ton compagnon", "sub": "Lance une session et concentre-toi" },
+    { "l1": "LANCE LE MINUTEUR,", "l2": "puis étudie", "sub": "Choisis durée, matière et humeur" },
+    { "l1": "TENUES ET SALLES", "l2": "à débloquer", "sub": "Habille ton compagnon, puis décore" },
+    { "l1": "SALLES ET BUREAUX", "l2": "à combiner", "sub": "N'importe quel fond avec n'importe quel bureau" },
+    { "l1": "COLLECTIONNE TOUS", "l2": "les compagnons", "sub": "Chacun a sa garde-robe et son histoire" },
+    { "l1": "SUIS TA", "l2": "progression", "sub": "Rapports hebdo, succès et gels de série" },
+    { "l1": "TÂCHES, EXAMENS", "l2": "et humeurs", "sub": "Planifie tout au même endroit" }
+  ]
+}
