@@ -563,6 +563,12 @@
     "startSessionArrow": "開始一次專注 →",
     "notStarted": "未開始",
     "doneCount": "已完成（{{count}}）",
+    "quadUrgentImportant": "優先處理",
+    "quadImportant": "計畫安排",
+    "quadUrgent": "順手完成",
+    "quadNeither": "以後再說",
+    "matrixMore": "還有 {{count}} 項",
+    "matrixEmptyDay": "這一天還沒有任務。",
     "deleteTaskMsg": "將會刪除「{{title}}」。"
   },
   "progress": {
