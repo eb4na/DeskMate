@@ -13,7 +13,7 @@ import { Platform } from 'react-native';
 //   - AdMob app "Memobun" (iOS). App ID is in app.json's react-native-google-mobile-
 //     ads plugin (`iosAppId`); the Rewarded ad unit id is EXPO_PUBLIC_ADMOB_REWARDED_IOS
 //     in .env.
-//   - app.json also configures expo-tracking-transparency (ATT prompt copy).
+//   - Ads are NON-PERSONALIZED only; there is no ATT prompt (see ensureInit).
 //   - Requires a native rebuild (EAS build / `expo run:ios`) to ship — the JS bundle
 //     alone does not contain the AdMob native module.
 //   - Android app "Memobun Android". App ID in app.json plugin (`androidAppId`); the
@@ -28,7 +28,7 @@ export const DAILY_AD_LIMIT = 3;
 // How long to wait for an ad to load before giving up (so a hung load() can't leave
 // the await hanging forever with no popup).
 const LOAD_TIMEOUT_MS = 12000;
-// SDK init (ATT prompt + initialize()) can hang on the simulator or when the native
+// SDK init (initialize()) can hang on the simulator or when the native
 // module isn't actually in the running binary — and it's awaited BEFORE the load
 // timeout below, so an unbounded hang here freezes the whole flow with zero feedback
 // ("nothing happens" on tap). Cap it so we always fall through to the load path,
@@ -54,18 +54,7 @@ try {
   GoogleMobileAds = null;
 }
 
-let ATT: any = null;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  ATT = require('expo-tracking-transparency');
-} catch {
-  ATT = null;
-}
-
 let initPromise: Promise<void> | null = null;
-// Whether the user allowed tracking (personalized ads pay more). Defaults to false →
-// non-personalized, which is the privacy-safe and policy-compliant fallback.
-let trackingAllowed = false;
 
 // True only when the native module is present AND an ad unit id is configured. The UI
 // must check this before attempting a real ad and must NOT grant coins when it is
@@ -82,19 +71,14 @@ function activeUnitId(): string | undefined {
   return adUnitId;
 }
 
-// Ask for App Tracking Transparency once (iOS), then initialize the SDK once. Both
-// are memoized so repeat ad requests don't re-prompt or re-init.
+// Initialize the SDK once (memoized so repeat ad requests don't re-init). There is no
+// App Tracking Transparency prompt: Memobun declares NSPrivacyTracking=false and only
+// ever requests NON-personalized ads (see requestNonPersonalizedAdsOnly below), so it
+// never needs the IDFA. Re-adding an ATT prompt would contradict the privacy manifest
+// and the App Store Connect privacy answers — don't, without changing all three.
 function ensureInit(): Promise<void> {
   if (initPromise) return initPromise;
   initPromise = (async () => {
-    try {
-      if (ATT?.requestTrackingPermissionsAsync) {
-        const { status } = await ATT.requestTrackingPermissionsAsync();
-        trackingAllowed = status === 'granted';
-      }
-    } catch {
-      trackingAllowed = false;
-    }
     try {
       await GoogleMobileAds.default().initialize();
     } catch {
@@ -123,7 +107,8 @@ export async function showRewardedAd(): Promise<AdResult> {
     ]);
     const { RewardedAd, RewardedAdEventType, AdEventType } = GoogleMobileAds;
     const ad = RewardedAd.createForAdRequest(unitId, {
-      requestNonPersonalizedAdsOnly: !trackingAllowed,
+      // Always non-personalized — no ATT prompt, no IDFA, no tracking declared.
+      requestNonPersonalizedAdsOnly: true,
     });
 
     return await new Promise<AdResult>((resolve) => {

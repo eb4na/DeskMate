@@ -10,7 +10,7 @@
     "ios": {
       "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.sophialin.memobun",
-      "buildNumber": "19",
+      "buildNumber": "31",
       "supportsTablet": true,
       "requireFullScreen": true,
       "usesAppleSignIn": true,
@@ -18,7 +18,7 @@
         "ITSAppUsesNonExemptEncryption": false
       },
       "privacyManifests": {
-        "NSPrivacyTracking": true,
+        "NSPrivacyTracking": false,
         "NSPrivacyAccessedAPITypes": [
           {
             "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
@@ -77,7 +77,7 @@
           {
             "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeDeviceID",
             "NSPrivacyCollectedDataTypeLinked": true,
-            "NSPrivacyCollectedDataTypeTracking": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
             "NSPrivacyCollectedDataTypePurposes": [
               "NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising",
               "NSPrivacyCollectedDataTypePurposeAppFunctionality"
@@ -86,7 +86,7 @@
           {
             "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeAdvertisingData",
             "NSPrivacyCollectedDataTypeLinked": false,
-            "NSPrivacyCollectedDataTypeTracking": true,
+            "NSPrivacyCollectedDataTypeTracking": false,
             "NSPrivacyCollectedDataTypePurposes": ["NSPrivacyCollectedDataTypePurposeThirdPartyAdvertising"]
           }
         ]
@@ -138,12 +138,6 @@
         {
           "iosAppId": "ca-app-pub-3799563844531019~8704817643",
           "androidAppId": "ca-app-pub-3799563844531019~5068824967"
-        }
-      ],
-      [
-        "expo-tracking-transparency",
-        {
-          "userTrackingPermission": "Memobun uses this to show you more relevant ads. Your choice won't change how many coins you can earn."
         }
       ],
       [
