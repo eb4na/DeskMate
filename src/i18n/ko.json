@@ -479,12 +479,6 @@
     "startSessionArrow": "세션 시작하기 →",
     "notStarted": "시작 안 함",
     "doneCount": "완료 ({{count}})",
-    "quadUrgentImportant": "먼저 하기",
-    "quadImportant": "계획하기",
-    "quadUrgent": "빨리 끝내기",
-    "quadNeither": "나중에",
-    "matrixMore": "외 {{count}}개",
-    "matrixEmptyDay": "이 날에는 아직 할 일이 없어요.",
     "deleteTaskMsg": "「{{title}}」이(가) 삭제됩니다."
   },
   "progress": {

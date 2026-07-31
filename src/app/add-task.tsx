@@ -13,7 +13,7 @@ import { DateWheelPicker, getTodayISO, formatDateLabel } from '@/components/date
 import { TimeWheelPicker, formatTimeLabel } from '@/components/time-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useApp, MAX_TASKS, type TaskQuadrant } from '@/context/app-context';
+import { useApp, MAX_TASKS } from '@/context/app-context';
 import type { Task } from '@/context/app-context';
 import { containsProfanity } from '@/lib/profanity';
 import { cancelTaskNotification, scheduleTaskNotification } from '@/lib/notifications';
@@ -51,14 +51,6 @@ function nextDefaultDueTime(tasks: Task[]): string {
   return `${String((h + 1) % 24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-// The four Eisenhower quadrants, in reading order for the 2x2 they map onto.
-const QUADRANTS: { value: TaskQuadrant; labelKey: string }[] = [
-  { value: 'urgentImportant', labelKey: 'tasks.quadUrgentImportant' },
-  { value: 'important', labelKey: 'tasks.quadImportant' },
-  { value: 'urgent', labelKey: 'tasks.quadUrgent' },
-  { value: 'neither', labelKey: 'tasks.quadNeither' },
-];
-
 export default function AddTaskScreen() {
   const { t } = useTranslation();
   const { taskId, date } = useLocalSearchParams<{ taskId?: string; date?: string }>();
@@ -82,7 +74,6 @@ export default function AddTaskScreen() {
   // deadline when the player says so. Editing keeps the task's own answer; legacy
   // dated tasks (isDeadline undefined) still read as Yes, matching how the calendar
   // counts them (isDeadline !== false).
-  const [quadrant, setQuadrant] = useState<TaskQuadrant>(existingTask?.quadrant ?? 'neither');
   const [isDeadline, setIsDeadline] = useState(existingTask ? existingTask.isDeadline ?? true : false);
   // A due time is optional — dated tasks default to "All day" (no time).
   const [dueTimeEnabled, setDueTimeEnabled] = useState(editing ? existingTask?.dueTime != null : false);
@@ -168,7 +159,6 @@ export default function AddTaskScreen() {
       dueTime: dueTimeValue,
       estimatedMinutes: existingTask?.estimatedMinutes ?? null,
       priority: existingTask?.priority ?? 'medium',
-      quadrant,
       status: 'not_started',
       notifyAt,
       repeatDays: repeatDaysValue,
@@ -187,7 +177,7 @@ export default function AddTaskScreen() {
     if (editing) {
       // Status isn't edited here — it's driven only by the checkmark on the task
       // list — so we leave the existing status untouched on save.
-      updateTask(taskId!, { title: titleVal, description: descriptionVal, subjectId, dueDate: dueDateValue, isDeadline, dueTime: dueTimeValue, quadrant, notifyAt, notifId, repeatDays: repeatDaysValue, repeatUntil: repeatUntilValue });
+      updateTask(taskId!, { title: titleVal, description: descriptionVal, subjectId, dueDate: dueDateValue, isDeadline, dueTime: dueTimeValue, notifyAt, notifId, repeatDays: repeatDaysValue, repeatUntil: repeatUntilValue });
     } else if (notifId) {
       updateTask(id, { notifId });
     }
@@ -316,28 +306,6 @@ export default function AddTaskScreen() {
                   <ThemedText type="small">{t('common.no')}</ThemedText>
                 </ThemedView>
               </Pressable>
-            </ThemedView>
-          </ThemedView>
-
-          {/* Eisenhower quadrant — drives which card the task lands in on the
-              matrix under the calendar. */}
-          <ThemedView style={styles.fieldGroup}>
-            <ThemedText type="smallBold" style={styles.label}>
-              {t('addTask.priority')}
-            </ThemedText>
-            <ThemedView style={styles.chipRow}>
-              {QUADRANTS.map((opt) => (
-                <Pressable
-                  key={opt.value}
-                  onPress={() => setQuadrant(opt.value)}
-                  style={({ pressed }) => [pressed && styles.pressed]}>
-                  <ThemedView
-                    type={quadrant === opt.value ? 'backgroundSelected' : 'backgroundElement'}
-                    style={styles.chip}>
-                    <ThemedText type="small">{t(opt.labelKey)}</ThemedText>
-                  </ThemedView>
-                </Pressable>
-              ))}
             </ThemedView>
           </ThemedView>
 
