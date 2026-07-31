@@ -8,7 +8,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FitText } from '@/components/fit-text';
 import { NotebookBackground } from '@/components/notebook-background';
 import { TaskCalendar } from '@/components/task-calendar';
-import { TaskMatrix } from '@/components/task-matrix';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp, MAX_EXAMS } from '@/context/app-context';
@@ -71,9 +70,6 @@ export default function TasksScreen() {
 
           {/* Calendar with day notes + task peek */}
           <TaskCalendar searchMode={searchMode} onCloseSearch={() => setSearchMode(false)} />
-
-          {/* Eisenhower matrix for one day — owns its own date + arrows. */}
-          {!searchMode && <TaskMatrix />}
 
           {/* Needs attention (avoidance tracker) */}
           {needsAttention.length > 0 && (

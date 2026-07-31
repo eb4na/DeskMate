@@ -479,12 +479,6 @@
     "startSessionArrow": "Start a session →",
     "notStarted": "Not started",
     "doneCount": "Done ({{count}})",
-    "quadUrgentImportant": "Do first",
-    "quadImportant": "Plan",
-    "quadUrgent": "Quick wins",
-    "quadNeither": "Later",
-    "matrixMore": "+{{count}} more",
-    "matrixEmptyDay": "Nothing on this day yet.",
     "deleteTaskMsg": "\"{{title}}\" will be removed."
   },
   "progress": {
@@ -1678,7 +1672,8 @@
     "searchPreview": "Search & preview",
     "searchTasks": "Search tasks…",
     "noMatch": "No tasks match “{{query}}”.",
-    "noUpcoming": "No upcoming tasks. Add one to see it here.",
+    "noUpcoming": "No tasks due today. Add one to see it here.",
+    "nothingDueDay": "Nothing due this day.",
     "addTaskForDay": "+ Add task for this day",
     "wd_0": "S",
     "wd_1": "M",

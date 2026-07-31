@@ -563,12 +563,6 @@
     "startSessionArrow": "開始一次專注 →",
     "notStarted": "未開始",
     "doneCount": "已完成（{{count}}）",
-    "quadUrgentImportant": "優先處理",
-    "quadImportant": "計畫安排",
-    "quadUrgent": "順手完成",
-    "quadNeither": "以後再說",
-    "matrixMore": "還有 {{count}} 項",
-    "matrixEmptyDay": "這一天還沒有任務。",
     "deleteTaskMsg": "將會刪除「{{title}}」。"
   },
   "progress": {
@@ -1762,7 +1756,8 @@
     "searchPreview": "搜尋與預覽",
     "searchTasks": "搜尋任務…",
     "noMatch": "沒有與「{{query}}」匹配的任務。",
-    "noUpcoming": "沒有即將到來的任務。新增一個就能在這裡看到。",
+    "noUpcoming": "今天沒有到期的任務。新增一個就能在這裡看到。",
+    "nothingDueDay": "這一天沒有任務。",
     "addTaskForDay": "＋ 為這一天新增任務",
     "wd_0": "日",
     "wd_1": "一",

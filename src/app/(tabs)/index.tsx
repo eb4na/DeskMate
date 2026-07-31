@@ -93,11 +93,11 @@ const HOME_TABLET = {
   // Streak & coin chips (top row)
   hudScale: 1.1,   // size of the streak + coin chips on tablet (small + ratio-based; scaled by tsW per device)
   // Top cards (Upcoming Exam / Task)
-  cardsWidth: 780, // max width of the card row (centered) — bigger cards
+  cardsWidth: 860, // max width of the card row (centered) — bigger cards
   cardsTop: 24,    // vertical shift of the whole top HUD (streak/coins/cards)
   cardsGapTop: 16, // extra space below the chips so the bigger chips don't overlap the cards
   cardsGap: 28,    // horizontal gap between the exam & task cards
-  cardRatio: 2.9,  // card width:height — higher = flatter/shorter (base 1.8); kept flat so the cards don't cover the character
+  cardRatio: 2.3,  // card width:height — higher = flatter/shorter (base 1.8); still clear of the character's head
   cardTextScale: 1.4, // multiplies the card text sizes
   examY: 0,        // exam card vertical nudge (kept level with task)
   taskY: 0,        // task card vertical nudge
@@ -444,7 +444,7 @@ export default function HomeScreen() {
     { key: 'deskY', label: 'Desk Y (down+)', value: ht.deskY ?? 0, min: -120, max: 120, step: 1 },
     { key: 'deskEdgeY', label: 'Edge line Y', value: ht.deskEdgeY ?? 0, min: -120, max: 120, step: 1 },
     { key: 'hudScale', label: 'Streak/coin size', value: ht.hudScale ?? 1.3, min: 0.8, max: 2, step: 0.05 },
-    { key: 'cardsWidth', label: 'Cards width', value: ht.cardsWidth, min: 280, max: 820, step: 4 },
+    { key: 'cardsWidth', label: 'Cards width', value: ht.cardsWidth, min: 280, max: 900, step: 4 },
     { key: 'cardsTop', label: 'Cards Y', value: ht.cardsTop, min: -80, max: 300, step: 2 },
     { key: 'cardsGapTop', label: 'Cards gap-top', value: ht.cardsGapTop ?? 0, min: 0, max: 120, step: 2 },
     { key: 'cardsGap', label: 'Cards gap', value: ht.cardsGap ?? 28, min: 0, max: 120, step: 2 },
@@ -1493,8 +1493,8 @@ export default function HomeScreen() {
   );
 }
 
-const META_CARD_RATIO = 1.8;
-const META_ROW_INSET = 18;
+const META_CARD_RATIO = 1.55;
+const META_ROW_INSET = 12;
 const META_ROW_GAP = 6;
 
 const metaCardShadow = {

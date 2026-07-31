@@ -19,7 +19,7 @@ export const FIGURE_METRICS: Record<string, { fill: number; pad: number }> = {
   'companion_honey/classic': { fill: 0.9537, pad: 0.0255 },
   'companion_honey/zzz': { fill: 0.9107, pad: 0.0263 },
   'companion_tira/afternoontrain': { fill: 0.7536, pad: 0.0510 },
-  'companion_tira/chocomint': { fill: 0.8828, pad: 0.0502 },
+  'companion_tira/chocomint': { fill: 0.8796, pad: 0.0494 },
   'companion_tira/classic': { fill: 0.8788, pad: 0.0502 },
   'companion_tira/sleepover': { fill: 0.8796, pad: 0.0494 },
   'hanji/classic': { fill: 0.8692, pad: 0.0582 },

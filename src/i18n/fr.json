@@ -479,12 +479,6 @@
     "startSessionArrow": "Démarrer une session →",
     "notStarted": "Pas commencée",
     "doneCount": "Terminé ({{count}})",
-    "quadUrgentImportant": "À faire d’abord",
-    "quadImportant": "Planifier",
-    "quadUrgent": "Vite fait",
-    "quadNeither": "Plus tard",
-    "matrixMore": "+{{count}} de plus",
-    "matrixEmptyDay": "Rien pour ce jour pour l’instant.",
     "deleteTaskMsg": "« {{title}} » sera supprimée."
   },
   "progress": {
@@ -1678,7 +1672,8 @@
     "searchPreview": "Rechercher et aperçu",
     "searchTasks": "Rechercher des tâches…",
     "noMatch": "Aucune tâche ne correspond à « {{query}} ».",
-    "noUpcoming": "Pas de tâches à venir. Ajoutes-en une pour la voir ici.",
+    "noUpcoming": "Aucune tâche pour aujourd'hui. Ajoutes-en une pour la voir ici.",
+    "nothingDueDay": "Rien pour ce jour.",
     "addTaskForDay": "＋ Ajouter une tâche pour ce jour",
     "wd_0": "D",
     "wd_1": "L",

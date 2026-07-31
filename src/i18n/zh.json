@@ -479,12 +479,6 @@
     "startSessionArrow": "开始一次专注 →",
     "notStarted": "未开始",
     "doneCount": "已完成（{{count}}）",
-    "quadUrgentImportant": "优先处理",
-    "quadImportant": "计划安排",
-    "quadUrgent": "顺手完成",
-    "quadNeither": "以后再说",
-    "matrixMore": "还有 {{count}} 项",
-    "matrixEmptyDay": "这一天还没有任务。",
     "deleteTaskMsg": "将会删除「{{title}}」。"
   },
   "progress": {
@@ -1678,7 +1672,8 @@
     "searchPreview": "搜索与预览",
     "searchTasks": "搜索任务…",
     "noMatch": "没有与「{{query}}」匹配的任务。",
-    "noUpcoming": "没有即将到来的任务。添加一个就能在这里看到。",
+    "noUpcoming": "今天没有到期的任务。添加一个就能在这里看到。",
+    "nothingDueDay": "这一天没有任务。",
     "addTaskForDay": "＋ 为这一天添加任务",
     "wd_0": "日",
     "wd_1": "一",

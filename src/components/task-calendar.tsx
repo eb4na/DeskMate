@@ -403,16 +403,16 @@ function HorizontalPreview({ onClose }: { onClose: () => void }) {
   const { tasks, subjects } = useApp();
   const [query, setQuery] = useState('');
 
-  // Upcoming days (today onward) that have open tasks, grouped.
+  // Today's open tasks only — deliberately not "today onward". The card is a
+  // glance at what's due right now, so a run of future days scrolling off the
+  // edge buries the one day that matters. Kept as a grouped [iso, tasks] pair so
+  // the renderer below stays the same shape; it just never holds more than today.
   const upcoming = useMemo(() => {
-    const map: Record<string, Task[]> = {};
     const today = todayISO();
-    for (const t of tasks) {
-      if (t.dueDate && t.status !== 'done' && t.dueDate.slice(0, 10) >= today) {
-        (map[t.dueDate.slice(0, 10)] ??= []).push(t);
-      }
-    }
-    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
+    const todays = tasks.filter(
+      (t) => t.dueDate && t.status !== 'done' && t.dueDate.slice(0, 10) === today,
+    );
+    return todays.length ? ([[today, todays]] as [string, Task[]][]) : [];
   }, [tasks]);
 
   // Keyword search across everything a task carries as text — title, its notes,
@@ -492,10 +492,46 @@ function HorizontalPreview({ onClose }: { onClose: () => void }) {
 }
 
 // ─── root ────────────────────────────────────────────────────────────────────
+/** Cards under the calendar listing what is due on the selected day. */
+function DueDayStrip({ iso }: { iso: string }) {
+  const { tasks, examCountdowns } = useApp();
+  const dayTasks = useMemo(
+    () => tasks.filter((t) => t.dueDate?.slice(0, 10) === iso),
+    [tasks, iso],
+  );
+  const dayExams = useMemo(
+    () => examCountdowns.filter((e) => e.dateISO.slice(0, 10) === iso),
+    [examCountdowns, iso],
+  );
+
+  return (
+    <View style={styles.card}>
+      <Text style={styles.monthLabel}>{longLabel(iso)}</Text>
+      {dayTasks.length || dayExams.length ? (
+        <View style={styles.previewList}>
+          {dayExams.map((e) => (
+            <View key={e.id} style={styles.searchResult}>
+              <Text style={styles.searchResultDate}>{e.name}</Text>
+            </View>
+          ))}
+          {dayTasks.map((t) => (
+            <TaskPreviewCard key={t.id} task={t} />
+          ))}
+        </View>
+      ) : (
+        <Text style={styles.searchEmpty}>{i18n.t('calendar.nothingDueDay')}</Text>
+      )}
+    </View>
+  );
+}
+
 export function TaskCalendar({ searchMode = false, onCloseSearch }: { searchMode?: boolean; onCloseSearch?: () => void }) {
   const { width } = useWindowDimensions();
   const [monthOffset, setMonthOffset] = useState(0);
   const [modalDate, setModalDate] = useState<string | null>(null);
+  // The strip under the calendar follows the last day you tapped, starting today.
+  // Kept separate from modalDate so closing the popup doesn't blank the strip.
+  const [selectedDay, setSelectedDay] = useState(() => todayISO());
 
   // The calendar spans the full centered content column on tablet. CALENDAR_FILL is
   // the fraction of the column the calendar card spans — dial it to taste. Cell size
@@ -519,10 +555,14 @@ export function TaskCalendar({ searchMode = false, onCloseSearch }: { searchMode
           <CalendarMonthCard
             monthOffset={monthOffset}
             setMonthOffset={setMonthOffset}
-            onPickDate={setModalDate}
+            onPickDate={(iso) => {
+              setSelectedDay(iso);
+              setModalDate(iso);
+            }}
             cellW={cellW}
             scale={isTablet ? scale : 1}
           />
+          <DueDayStrip iso={selectedDay} />
         </>
       )}
 
