@@ -66,13 +66,16 @@ function formatTime(notifyAt: string | null, use24Hour: boolean) {
 // presents on top of the still-open native modal (which wedges iOS).
 function TaskPreviewCard({ task, onNavigate }: { task: Task; onNavigate?: (go: () => void) => void }) {
   const { subjects, updateTask, use24HourTime } = useApp();
+  // The day popup grows on tablet, so its content rows must grow with it.
+  const { isTablet, scale } = useTabletScale();
+  const c = isTablet ? scale : 1;
   const subject = task.subjectId ? subjects.find((s) => s.id === task.subjectId) : null;
   const done = task.status === 'done';
   const time = formatTime(task.notifyAt, use24HourTime);
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.taskCard, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.taskCard, c !== 1 && { padding: Spacing.two * c, gap: Spacing.two * c, borderRadius: BakeryRadii.card * c }, pressed && styles.pressed]}
       onPress={() => {
         const go = () => router.push({ pathname: '/add-task', params: { taskId: task.id } });
         onNavigate ? onNavigate(go) : go();
@@ -81,24 +84,24 @@ function TaskPreviewCard({ task, onNavigate }: { task: Task; onNavigate?: (go: (
       <Pressable
         hitSlop={8}
         onPress={() => updateTask(task.id, { status: done ? 'not_started' : 'done' })}
-        style={[styles.checkbox, done && styles.checkboxDone]}>
-        {done && <BakeryCheckEmoji size={13} />}
+        style={[styles.checkbox, c !== 1 && { width: 24 * c, height: 24 * c, borderRadius: 12 * c }, done && styles.checkboxDone]}>
+        {done && <BakeryCheckEmoji size={13 * c} />}
       </Pressable>
 
       <View style={styles.taskCardBody}>
-        <Text style={[styles.taskTitle, done && styles.taskTitleDone]} numberOfLines={2}>
+        <Text style={[styles.taskTitle, c !== 1 && { fontSize: 15 * c, lineHeight: 19 * c }, done && styles.taskTitleDone]} numberOfLines={2}>
           {task.title}
         </Text>
         <View style={styles.taskMetaRow}>
           {subject && (
-            <View style={[styles.subjectBadge, { backgroundColor: subject.color + '2E' }]}>
-              <View style={[styles.subjectDot, { backgroundColor: subject.color }]} />
-              <Text style={[styles.subjectText, { color: subject.color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+            <View style={[styles.subjectBadge, c !== 1 && { paddingHorizontal: 8 * c, paddingVertical: 2 * c, borderRadius: 8 * c, gap: 4 * c }, { backgroundColor: subject.color + '2E' }]}>
+              <View style={[styles.subjectDot, c !== 1 && { width: 6 * c, height: 6 * c, borderRadius: 3 * c }, { backgroundColor: subject.color }]} />
+              <Text style={[styles.subjectText, c !== 1 && { fontSize: 11 * c }, { color: subject.color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
                 {localizeSubjectName(subject.name, (k) => i18n.t(k))}
               </Text>
             </View>
           )}
-          {time && <Text style={styles.taskMetaText}>{time}</Text>}
+          {time && <Text style={[styles.taskMetaText, c !== 1 && { fontSize: 12 * c }]}>{time}</Text>}
           {task.estimatedMinutes ? <Text style={styles.taskMetaText}>{formatMinutesShort(task.estimatedMinutes, (k, o) => i18n.t(k, o))}</Text> : null}
         </View>
       </View>
@@ -238,9 +241,14 @@ function CalendarMonthCard({
                 {hasExam && exam.otherColor && (
                   <View style={[styles.examOtherDot, { backgroundColor: exam.otherColor }]} pointerEvents="none" />
                 )}
-                {hasDeadline && <View style={styles.deadlineDot} pointerEvents="none" />}
+                {hasDeadline && (
+                  <View
+                    style={[styles.deadlineDot, scale !== 1 && { width: 11 * scale, height: 11 * scale, borderRadius: 5.5 * scale, borderWidth: 2 }]}
+                    pointerEvents="none"
+                  />
+                )}
                 <Text style={[styles.dayNum, { fontSize: Math.round(cellW * 0.3) }, hasExam && styles.dayNumExam]}>{d}</Text>
-                {dayTasks.length > 0 && <Text style={[styles.taskCount, scale !== 1 && { fontSize: 9 * scale, lineHeight: 10 * scale }]}>{dayTasks.length}</Text>}
+                {dayTasks.length > 0 && <Text style={[styles.taskCount, scale !== 1 && { fontSize: 13 * scale, lineHeight: 14 * scale }]}>{dayTasks.length}</Text>}
                 {hasNote && dayTasks.length === 0 && <View style={styles.noteDot} />}
               </View>
             </Pressable>
@@ -263,18 +271,24 @@ function TaskSlider() {
   // This is a non-virtualized peek slider, so cap it: with a huge task list,
   // mapping every open task into a chip would render hundreds of views at once
   // and jank the whole Tasks tab. Showing the soonest ~20 is plenty for a preview.
+  // Lead with what's still ahead: today and later first (soonest first), then
+  // anything already overdue. Overdue tasks aren't dropped — this strip is now the
+  // only place tasks appear on the Tasks screen, so hiding them would strand them.
+  const from = todayISO();
   const open = useMemo(
-    () =>
-      tasks
+    () => {
+      const key = (t: Task) => (t.dueDate ?? '9999') + (t.dueTime ?? '99:99');
+      const past = (t: Task) => !!t.dueDate && t.dueDate.slice(0, 10) < from;
+      return tasks
         .filter((t) => t.status !== 'done')
-        // Soonest first; within a day, timed tasks (by time) come before untimed.
-        .sort((a, b) =>
-          ((a.dueDate ?? '9999') + (a.dueTime ?? '99:99')).localeCompare(
-            (b.dueDate ?? '9999') + (b.dueTime ?? '99:99'),
-          ),
-        )
-        .slice(0, 20),
-    [tasks],
+        .sort((a, b) => {
+          // Upcoming (and undated) ahead of overdue; ties broken by date+time.
+          if (past(a) !== past(b)) return past(a) ? 1 : -1;
+          return key(a).localeCompare(key(b));
+        })
+        .slice(0, 20);
+    },
+    [tasks, from],
   );
 
   if (open.length === 0) return null;
@@ -347,6 +361,10 @@ function ExamPreviewCard({ exam, onNavigate }: { exam: ExamCountdown; onNavigate
 function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => void }) {
   const { tasks, examCountdowns, use24HourTime } = useApp();
   const { height: winH } = useWindowDimensions();
+  // The popup is a fixed phone-sized card, which reads tiny on a big tablet —
+  // scale its padding, type and controls with the rest of the screen.
+  const { isTablet, scale: tScale } = useTabletScale();
+  const ms = isTablet ? tScale : 1;
   useReportModalTransition(!!iso);
   // Opening add/edit (a modal SCREEN) while this native modal is still presented —
   // or mid-dismiss — wedges iOS (present-over-present), leaving the calendar frozen
@@ -379,10 +397,10 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
     <Modal visible={!!iso} transparent animationType="fade" onRequestClose={onClose} onDismiss={runPendingNav}>
       <View style={styles.modalRoot}>
         <Pressable style={styles.modalBackdrop} onPress={onClose} />
-        <View style={styles.modalCard}>
+        <View style={[styles.modalCard, ms !== 1 && { padding: Spacing.four * ms, gap: Spacing.three * ms, maxWidth: 720, width: '100%', alignSelf: 'center' }]}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalDate}>{iso ? longLabel(iso) : ''}</Text>
-            <Pressable onPress={onClose} hitSlop={10} style={styles.modalClose}>
+            <Text style={[styles.modalDate, ms !== 1 && { fontSize: 16 * ms }]}>{iso ? longLabel(iso) : ''}</Text>
+            <Pressable onPress={onClose} hitSlop={10} style={[styles.modalClose, ms !== 1 && { width: 30 * ms, height: 30 * ms, borderRadius: 15 * ms }]}>
               <Text style={styles.modalCloseText}>✕</Text>
             </Pressable>
           </View>
@@ -425,12 +443,12 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
           )}
 
           <Pressable
-            style={({ pressed }) => [styles.modalAddBtn, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.modalAddBtn, ms !== 1 && { paddingVertical: Spacing.three * ms }, pressed && styles.pressed]}
             onPress={() => {
               const day = iso;
               navigateAfterClose(() => router.push({ pathname: '/add-task', params: day ? { date: day } : {} }));
             }}>
-            <Text style={styles.modalAddText}>{i18n.t('calendar.addTaskForDay')}</Text>
+            <Text style={[styles.modalAddText, ms !== 1 && { fontSize: 14 * ms }]}>{i18n.t('calendar.addTaskForDay')}</Text>
           </Pressable>
         </View>
       </View>
@@ -530,14 +548,13 @@ export function TaskCalendar() {
   const [modalDate, setModalDate] = useState<string | null>(null);
   const [searchMode, setSearchMode] = useState(false);
 
-  // Size the calendar to fill most of the centered content column on tablet (so it
-  // isn't a tiny narrow grid on a big screen), while staying smaller than the old
-  // edge-to-edge version that dwarfed the cards. CALENDAR_FILL is the fraction of
-  // the column the calendar card spans — dial it to taste. Cell size drives the
+  // The calendar spans the full centered content column on tablet. CALENDAR_FILL is
+  // the fraction of the column the calendar card spans — dial it to taste. Cell size
+  // drives the
   // day-number/weekday fonts below (cellW * ratio), so they follow automatically.
   // Phones keep the responsive fill behaviour (scale === 1).
   const { isTablet, scale, contentWidth } = useTabletScale();
-  const CALENDAR_FILL = 0.82; // share of the content column the calendar card spans
+  const CALENDAR_FILL = 1; // calendar spans the full content column
   const colInner = Math.min(width, contentWidth) - 2 * (SCREEN_PAD * scale); // matches the screen's scaled side padding
   const gridW = isTablet
     ? colInner * CALENDAR_FILL - 2 * CARD_PAD * scale
@@ -547,9 +564,7 @@ export function TaskCalendar() {
   return (
     <View style={styles.root}>
       <View style={styles.titleRow}>
-        <View style={styles.titleLeft}>
-          <Text style={[styles.title, isTablet && { fontSize: 18 * scale }]}>{t('calendar.calendar')}</Text>
-        </View>
+        <View style={styles.titleLeft} />
         <Pressable
           style={({ pressed }) => [styles.searchBtn, isTablet && { width: 36 * scale, height: 36 * scale, borderRadius: 18 * scale }, searchMode && styles.searchBtnActive, pressed && styles.pressed]}
           onPress={() => setSearchMode((v) => !v)}
