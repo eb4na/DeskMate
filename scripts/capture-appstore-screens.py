@@ -36,18 +36,51 @@ SCALE = 400.0 / 402.0
 
 LANG = "en"
 
-LANG_ROW = {"en": 252, "zh": 313, "zh-Hant": 374, "ja": 435,
-            "ko": 496, "es": 557, "fr": 618}
-
-# Total pt to scroll the Progress tab so the account e-mail is off screen and
-# the streak card sits at the top. Card heights differ per language, so this is
-# tuned per deck rather than shared.
-PROGRESS_SCROLL = {"en": 445, "zh": 215, "zh-Hant": 215, "ja": 175,
-                   "ko": 215, "es": 250, "fr": 250}
+# Every coordinate is in device points and was read off a screenshot. The two
+# devices share all the logic and none of the numbers.
+PROFILES = {
+    "phone": {                       # iPhone 17, 402x874pt, shots 1206x2622
+        "origin": (1264.0, 131.0), "scale": 400.0 / 402.0, "px_per_pt": 3,
+        "out": "~/Desktop/memobun-captures-phone-{lang}",
+        "cx": 200,
+        "lang_row": {"en": 252, "zh": 313, "zh-Hant": 374, "ja": 435,
+                     "ko": 496, "es": 557, "fr": 618},
+        "lang_continue": 687,
+        "tab_y": 785, "tab_home": 50, "tab_tasks": 150,
+        "tab_progress": 251, "tab_shop": 351,
+        "home_start": 646, "duration_row": 366, "start_fallback": 770,
+        "just_focus": 483, "end_session": 813, "stop": 477,
+        "cat_y": 209, "cat_chef": 46, "cat_desk": 317,
+        "timer_box": (560, 900, 160, 1050), "timer_min": 3000,
+        "scroll_from": 700, "scroll_top_to": 760, "scroll_top_from": 300,
+        "progress_scroll": {"en": 445, "zh": 215, "zh-Hant": 215, "ja": 175,
+                            "ko": 215, "es": 250, "fr": 250},
+    },
+    "ipad": {                        # iPad Pro 13" M5, 1032x1376pt, shots 2064x2752
+        "origin": (1039.0, 140.0), "scale": 636.0 / 1032.0, "px_per_pt": 2,
+        "out": "~/Desktop/memobun-captures-ipad-{lang}",
+        "cx": 516,
+        "lang_row": {"en": 398, "zh": 492, "zh-Hant": 586, "ja": 682,
+                     "ko": 778, "es": 874, "fr": 970},
+        "lang_continue": 1080,
+        "tab_y": 1220, "tab_home": 128, "tab_tasks": 386,
+        "tab_progress": 644, "tab_shop": 902,
+        "home_start": 1038, "duration_row": 556, "start_fallback": 1266,
+        "just_focus": 734, "end_session": 1282, "stop": 718,
+        "cat_y": 244, "cat_chef": 84, "cat_desk": 662,
+        "timer_box": (460, 720, 700, 1400), "timer_min": 3000,
+        "scroll_from": 1100, "scroll_top_to": 1180, "scroll_top_from": 400,
+        "progress_scroll": {"en": 900, "zh": 510, "zh-Hant": 510, "ja": 470,
+                            "ko": 510, "es": 450, "fr": 450},
+    },
+}
+P = PROFILES["phone"]
+ORIGIN = P["origin"]
+SCALE = P["scale"]
 
 
 def g(x, y):
-    return (ORIGIN[0] + x * SCALE, ORIGIN[1] + y * SCALE)
+    return (P["origin"][0] + x * P["scale"], P["origin"][1] + y * P["scale"])
 
 
 def _post(kind, pos):
@@ -94,8 +127,8 @@ def shot(path):
 def set_language(code):
     deeplink("deskmate:///language-picker", 3.0)
     focus()
-    tap(200, LANG_ROW[code], 1.2)   # pick the row
-    tap(200, 687, 4.0)              # Continue
+    tap(P["cx"], P["lang_row"][code], 1.2)   # pick the row
+    tap(P["cx"], P["lang_continue"], 4.0)    # Continue
 
 
 TMP = "/tmp/_cap_probe.png"
@@ -108,13 +141,14 @@ def in_session():
     shot(TMP)
     from PIL import Image
     im = Image.open(TMP).convert("RGB"); px = im.load()
+    y0, y1, x0, x1 = P["timer_box"]
     c = 0
-    for y in range(560, 900, 2):
-        for x in range(160, 1050, 3):
+    for y in range(y0, y1, 2):
+        for x in range(x0, x1, 3):
             r, g, b = px[x, y]
             if abs(r - 208) <= 8 and abs(g - 175) <= 8 and abs(b - 149) <= 8:
                 c += 1
-    return c > 3000
+    return c > P["timer_min"]
 
 
 def ensure_out_of_session(tries=3):
@@ -122,8 +156,8 @@ def ensure_out_of_session(tries=3):
         if not in_session():
             return True
         focus()
-        tap(200, 813, 2.5)      # End session
-        tap(200, 477, 4.0)      # Stop (confirm)
+        tap(P["cx"], P["end_session"], 2.5)   # End session
+        tap(P["cx"], P["stop"], 4.0)          # Stop (confirm)
     return not in_session()
 
 
@@ -150,7 +184,7 @@ def _find_start_button():
             band.append(y)
         else:
             break
-    return ((min(band) + max(band)) // 2) / 3
+    return ((min(band) + max(band)) // 2) / P["px_per_pt"]
 
 
 def _start_is_armed():
@@ -171,17 +205,17 @@ def start_session():
     ensure_out_of_session()
     deeplink("deskmate:///", 3.0)
     focus()
-    tap(200, 646, 3.0)                       # Start Session
+    tap(P["cx"], P["home_start"], 3.0)       # Start Session
     # The four duration checkboxes sit at ~293/366/435/506 pt in every language
     # (measured off the checkbox column), so the row is fixed. The Start BUTTON
     # is not — it drops ~50pt in es/fr where the card subtitle wraps.
     # Locate the button BEFORE ticking a row: selecting one repaints the button
     # from pale to saturated pink and the detector loses it.
-    sy = _find_start_button() or 770
-    tap(200, 366, 1.5)                       # Focus Boost (30 min)
+    sy = _find_start_button() or P["start_fallback"]
+    tap(P["cx"], P["duration_row"], 1.5)     # Focus Boost (30 min)
     for dy in (0, 12, -12, 24):
-        tap(200, round(sy + dy), 7.0)        # Start
-        tap(200, 483, 3.5)                   # "Just focus" on the subject popup
+        tap(P["cx"], round(sy + dy), 7.0)    # Start
+        tap(P["cx"], P["just_focus"], 3.5)   # "Just focus" on the subject popup
         if in_session():
             return
         focus()
@@ -192,17 +226,19 @@ def end_session():
 
 
 def capture_progress(out):
-    focus(); tap(251, 785, 3.0)
+    focus(); tap(P["tab_progress"], P["tab_y"], 3.0)
     # The Progress tab KEEPS its scroll offset between visits, so a relative
     # drag compounds from an unknown start. Pin it to the top first.
     for _ in range(4):
-        drag(200, 300, 200, 760, after=0.5)
+        drag(P["cx"], P["scroll_top_from"], P["cx"], P["scroll_top_to"], after=0.5)
     time.sleep(1.0)
-    total = PROGRESS_SCROLL.get(LANG, 350)
-    first = min(225, total)
-    drag(200, 700, 200, 700 - first)
-    if total - first > 0:
-        drag(200, 700, 200, 700 - (total - first))
+    total = P["progress_scroll"].get(LANG, 350)
+    step = max(1, P["scroll_from"] - 475)
+    y0 = P["scroll_from"]
+    while total > 0:
+        d = min(step, total)
+        drag(P["cx"], y0, P["cx"], y0 - d)
+        total -= d
     shot(f"{out}/M2_progress.png")
 
 
@@ -211,32 +247,32 @@ def pass1(out):
     deeplink("deskmate:///", 3.5)
     shot(f"{out}/B_home.png")
 
-    focus(); tap(150, 785, 3.0)
+    focus(); tap(P["tab_tasks"], P["tab_y"], 3.0)
     shot(f"{out}/M_tasks.png")
 
     capture_progress(out)
 
     # The Shop remembers the last category, so land it on Chef explicitly —
     # otherwise F_shop and wood_check are the same (desk) screen.
-    focus(); tap(351, 785, 3.0)
-    tap(46, 209, 2.5)                 # Chef category
+    focus(); tap(P["tab_shop"], P["tab_y"], 3.0)
+    tap(P["cat_chef"], P["cat_y"], 2.5)       # Chef category
     shot(f"{out}/F_shop.png")
 
-    focus(); tap(317, 209, 2.5)       # Desk category
+    focus(); tap(P["cat_desk"], P["cat_y"], 2.5)   # Desk category
     shot(f"{out}/wood_check.png")
 
     deeplink("deskmate:///edit-room", 3.5)
     shot(f"{out}/F_edit-room.png")
 
     deeplink("deskmate:///", 3.0)
-    focus(); tap(200, 646, 3.0)
+    focus(); tap(P["cx"], P["home_start"], 3.0)
     shot(f"{out}/B_study.png")        # session picker, nothing selected
 
-    sy = _find_start_button() or 770
-    tap(200, 366, 1.5)
+    sy = _find_start_button() or P["start_fallback"]
+    tap(P["cx"], P["duration_row"], 1.5)
     for dy in (0, 12, -12, 24):
-        tap(200, round(sy + dy), 7.0)
-        tap(200, 483, 3.5)
+        tap(P["cx"], round(sy + dy), 7.0)
+        tap(P["cx"], P["just_focus"], 3.5)
         if in_session():
             break
         focus()
@@ -255,9 +291,11 @@ if __name__ == "__main__":
     ap.add_argument("lang")
     ap.add_argument("--phase", type=int, default=1)
     ap.add_argument("--only", default="")
+    ap.add_argument("--device", default="phone", choices=["phone", "ipad"])
     a = ap.parse_args()
     globals()["LANG"] = a.lang
-    out = os.path.expanduser(f"~/Desktop/memobun-captures-phone-{a.lang}")
+    globals()["P"] = PROFILES[a.device]
+    out = os.path.expanduser(P["out"].format(lang=a.lang))
     os.makedirs(out, exist_ok=True)
     set_language(a.lang)
     if a.only == "progress":
