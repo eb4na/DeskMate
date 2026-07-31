@@ -479,6 +479,12 @@
     "startSessionArrow": "セッションを開始 →",
     "notStarted": "未着手",
     "doneCount": "完了 ({{count}})",
+    "quadUrgentImportant": "最優先",
+    "quadImportant": "計画する",
+    "quadUrgent": "さっと片付ける",
+    "quadNeither": "あとで",
+    "matrixMore": "他 {{count}} 件",
+    "matrixEmptyDay": "この日のタスクはまだありません。",
     "deleteTaskMsg": "「{{title}}」を削除します。"
   },
   "progress": {

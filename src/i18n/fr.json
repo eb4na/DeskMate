@@ -479,6 +479,12 @@
     "startSessionArrow": "Démarrer une session →",
     "notStarted": "Pas commencée",
     "doneCount": "Terminé ({{count}})",
+    "quadUrgentImportant": "À faire d’abord",
+    "quadImportant": "Planifier",
+    "quadUrgent": "Vite fait",
+    "quadNeither": "Plus tard",
+    "matrixMore": "+{{count}} de plus",
+    "matrixEmptyDay": "Rien pour ce jour pour l’instant.",
     "deleteTaskMsg": "« {{title}} » sera supprimée."
   },
   "progress": {

@@ -11,7 +11,6 @@ import {
   View,
 } from 'react-native';
 
-import Svg, { Circle, Path } from 'react-native-svg';
 
 import { CountdownShape } from '@/components/countdown-shapes';
 
@@ -22,7 +21,7 @@ import {
 } from '@/components/bakery-emoji';
 import { useApp } from '@/context/app-context';
 import type { ExamCountdown, Task } from '@/context/app-context';
-import i18n, { useTranslation } from '@/i18n';
+import i18n from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
 import { formatMinutesShort } from '@/lib/format-duration';
 import { formatTimeLabel } from '@/components/time-wheel-picker';
@@ -261,63 +260,6 @@ function CalendarMonthCard({
 
 // ─── selected-day preview + note ─────────────────────────────────────────────
 // ─── compact horizontal slider of upcoming tasks ─────────────────────────────
-function TaskSlider() {
-  const { tasks, subjects } = useApp();
-  // Scale the upcoming-task chips by the same proportional factor as the rest of
-  // the screen so this row matches the calendar/cards on every device.
-  const { isTablet, scale } = useTabletScale();
-  const s = isTablet ? scale : 1;
-
-  // This is a non-virtualized peek slider, so cap it: with a huge task list,
-  // mapping every open task into a chip would render hundreds of views at once
-  // and jank the whole Tasks tab. Showing the soonest ~20 is plenty for a preview.
-  // Lead with what's still ahead: today and later first (soonest first), then
-  // anything already overdue. Overdue tasks aren't dropped — this strip is now the
-  // only place tasks appear on the Tasks screen, so hiding them would strand them.
-  const from = todayISO();
-  const open = useMemo(
-    () => {
-      const key = (t: Task) => (t.dueDate ?? '9999') + (t.dueTime ?? '99:99');
-      const past = (t: Task) => !!t.dueDate && t.dueDate.slice(0, 10) < from;
-      return tasks
-        .filter((t) => t.status !== 'done')
-        .sort((a, b) => {
-          // Upcoming (and undated) ahead of overdue; ties broken by date+time.
-          if (past(a) !== past(b)) return past(a) ? 1 : -1;
-          return key(a).localeCompare(key(b));
-        })
-        .slice(0, 20);
-    },
-    [tasks, from],
-  );
-
-  if (open.length === 0) return null;
-
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.sliderRow, s !== 1 && { gap: Spacing.two * s }]}>
-      {open.map((t) => {
-        const subject = t.subjectId ? subjects.find((sub) => sub.id === t.subjectId) : null;
-        return (
-          <Pressable
-            key={t.id}
-            style={({ pressed }) => [styles.sliderCard, s !== 1 && { width: 170 * s, borderRadius: BakeryRadii.card * s, paddingHorizontal: Spacing.three * s, paddingVertical: Spacing.two * s, gap: 5 * s }, pressed && styles.pressed]}
-            onPress={() => router.push({ pathname: '/add-task', params: { taskId: t.id } })}>
-            <Text style={[styles.sliderTitle, s !== 1 && { fontSize: 15 * s }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-              {t.title}
-            </Text>
-            <View style={[styles.sliderMeta, s !== 1 && { gap: 5 * s }]}>
-              {subject && <View style={[styles.subjectDot, s !== 1 && { width: 7 * s, height: 7 * s, borderRadius: 3.5 * s }, { backgroundColor: subject.color }]} />}
-              <Text style={[styles.sliderMetaText, s !== 1 && { fontSize: 12.5 * s }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-                {t.dueDate ? shortWeekday(t.dueDate.slice(0, 10)) : i18n.t('calendar.noDate')}
-              </Text>
-            </View>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
-  );
-}
-
 // ─── shared exam preview card ────────────────────────────────────────────────
 function ExamPreviewCard({ exam, onNavigate }: { exam: ExamCountdown; onNavigate?: (go: () => void) => void }) {
   const { subjects, use24HourTime } = useApp();
@@ -458,7 +400,7 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
 
 // ─── horizontal / search preview (replaces the rotated modal) ────────────────
 function HorizontalPreview({ onClose }: { onClose: () => void }) {
-  const { tasks } = useApp();
+  const { tasks, subjects } = useApp();
   const [query, setQuery] = useState('');
 
   // Upcoming days (today onward) that have open tasks, grouped.
@@ -473,11 +415,21 @@ function HorizontalPreview({ onClose }: { onClose: () => void }) {
     return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
   }, [tasks]);
 
+  // Keyword search across everything a task carries as text — title, its notes,
+  // and the subject's name — so "phy" finds a task filed under phy132 even when the
+  // word isn't in the title. Done tasks are searchable too: you often want to find
+  // something you already finished.
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return tasks.filter((t) => t.title.toLowerCase().includes(q));
-  }, [query, tasks]);
+    const nameOf = (id: string | null) =>
+      (id ? subjects.find((sub) => sub.id === id)?.name ?? '' : '').toLowerCase();
+    return tasks.filter((t) =>
+      t.title.toLowerCase().includes(q) ||
+      (t.description ?? '').toLowerCase().includes(q) ||
+      nameOf(t.subjectId).includes(q),
+    );
+  }, [query, tasks, subjects]);
 
   return (
     <View style={styles.card}>
@@ -540,13 +492,10 @@ function HorizontalPreview({ onClose }: { onClose: () => void }) {
 }
 
 // ─── root ────────────────────────────────────────────────────────────────────
-export function TaskCalendar() {
-  // Subscribe via the hook (not raw i18n.t) so the title re-renders on language change.
-  const { t } = useTranslation();
+export function TaskCalendar({ searchMode = false, onCloseSearch }: { searchMode?: boolean; onCloseSearch?: () => void }) {
   const { width } = useWindowDimensions();
   const [monthOffset, setMonthOffset] = useState(0);
   const [modalDate, setModalDate] = useState<string | null>(null);
-  const [searchMode, setSearchMode] = useState(false);
 
   // The calendar spans the full centered content column on tablet. CALENDAR_FILL is
   // the fraction of the column the calendar card spans — dial it to taste. Cell size
@@ -563,21 +512,8 @@ export function TaskCalendar() {
 
   return (
     <View style={styles.root}>
-      <View style={styles.titleRow}>
-        <View style={styles.titleLeft} />
-        <Pressable
-          style={({ pressed }) => [styles.searchBtn, isTablet && { width: 36 * scale, height: 36 * scale, borderRadius: 18 * scale }, searchMode && styles.searchBtnActive, pressed && styles.pressed]}
-          onPress={() => setSearchMode((v) => !v)}
-          hitSlop={8}>
-          <Svg width={18 * scale} height={18 * scale} viewBox="0 0 24 24" fill="none">
-            <Circle cx="10.5" cy="10.5" r="6.5" stroke={searchMode ? '#FFFFFF' : C.cocoaDark} strokeWidth={2.4} />
-            <Path d="M15.6 15.6 L20.5 20.5" stroke={searchMode ? '#FFFFFF' : C.cocoaDark} strokeWidth={2.4} strokeLinecap="round" />
-          </Svg>
-        </Pressable>
-      </View>
-
       {searchMode ? (
-        <HorizontalPreview onClose={() => setSearchMode(false)} />
+        <HorizontalPreview onClose={() => onCloseSearch?.()} />
       ) : (
         <>
           <CalendarMonthCard
@@ -587,7 +523,6 @@ export function TaskCalendar() {
             cellW={cellW}
             scale={isTablet ? scale : 1}
           />
-          <TaskSlider />
         </>
       )}
 
@@ -808,20 +743,6 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.85 },
 
   // Compact task slider
-  sliderRow: { gap: Spacing.two, paddingVertical: 2, paddingHorizontal: 2 },
-  sliderCard: {
-    width: 170,
-    backgroundColor: C.glass,
-    borderRadius: BakeryRadii.card,
-    borderWidth: 1.5,
-    borderColor: C.shortbread,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    gap: 4,
-  },
-  sliderTitle: { fontSize: 15, fontWeight: '700', color: C.cocoaDark },
-  sliderMeta: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  sliderMetaText: { fontSize: 12.5, color: C.mocha, fontWeight: '600', flexShrink: 1 },
 
   // Tapped-day modal
   modalRoot: { flex: 1, justifyContent: 'center', padding: Spacing.four },

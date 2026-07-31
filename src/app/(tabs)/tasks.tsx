@@ -1,12 +1,14 @@
 import { router } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { SoundPressable } from '@/components/sound-pressable';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FitText } from '@/components/fit-text';
 import { NotebookBackground } from '@/components/notebook-background';
 import { TaskCalendar } from '@/components/task-calendar';
+import { TaskMatrix } from '@/components/task-matrix';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useApp, MAX_EXAMS } from '@/context/app-context';
@@ -21,6 +23,9 @@ export default function TasksScreen() {
   const { scale, contentWidth } = useTabletScale();
   const styles = useMemo(() => makeStyles(scale, contentWidth), [scale, contentWidth]);
   const { tasks, subjects, examCountdowns } = useApp();
+  // Search lives in the header next to + Exam / + Task, but drives the calendar
+  // area below, so the Tasks screen owns the flag and TaskCalendar renders it.
+  const [searchMode, setSearchMode] = useState(false);
 
   // Exam countdowns aren't a Plus perk — one cap for everyone.
   const canAddExam = examCountdowns.length < MAX_EXAMS;
@@ -43,6 +48,15 @@ export default function TasksScreen() {
             </ThemedText>
             <ThemedView type="transparent" style={styles.headerActions}>
               <SoundPressable
+                style={({ pressed }) => [styles.searchBtn, searchMode && styles.searchBtnActive, pressed && styles.pressed]}
+                onPress={() => setSearchMode((v) => !v)}
+                accessibilityLabel={t('calendar.searchTasks')}>
+                <Svg width={18 * scale} height={18 * scale} viewBox="0 0 24 24" fill="none">
+                  <Circle cx="10.5" cy="10.5" r="6.5" stroke={searchMode ? '#FFFFFF' : BakeryColors.cocoaDark} strokeWidth={2.4} />
+                  <Path d="M15.6 15.6 L20.5 20.5" stroke={searchMode ? '#FFFFFF' : BakeryColors.cocoaDark} strokeWidth={2.4} strokeLinecap="round" />
+                </Svg>
+              </SoundPressable>
+              <SoundPressable
                 style={({ pressed }) => [styles.manageBtn, pressed && styles.pressed]}
                 onPress={() => router.push(canAddExam ? '/add-exam' : '/plus-upgrade')}>
                 <ThemedText themeColor="textSecondary" style={styles.manageBtnText}>{t('tasks.addExamShort')}</ThemedText>
@@ -56,7 +70,10 @@ export default function TasksScreen() {
           </ThemedView>
 
           {/* Calendar with day notes + task peek */}
-          <TaskCalendar />
+          <TaskCalendar searchMode={searchMode} onCloseSearch={() => setSearchMode(false)} />
+
+          {/* Eisenhower matrix for one day — owns its own date + arrows. */}
+          {!searchMode && <TaskMatrix />}
 
           {/* Needs attention (avoidance tracker) */}
           {needsAttention.length > 0 && (
@@ -153,6 +170,17 @@ const makeStyles = (s: number, contentWidth: number) => {
   welcomeText: { textAlign: 'center', lineHeight: 20 * s },
   welcomeAddBtn: { marginTop: Spacing.two * s },
   section: { gap: Spacing.two * s },
+  searchBtn: {
+    width: 40 * s,
+    height: 40 * s,
+    borderRadius: 20 * s,
+    backgroundColor: BakeryColors.rose,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+  },
+  searchBtnActive: { backgroundColor: BakeryColors.buttonPink },
   sectionTitle: { fontSize: 13 * s, textTransform: 'uppercase', letterSpacing: 1.2, color: BakeryColors.mocha, fontWeight: '800' },
   doneToggle: { marginBottom: Spacing.one * s },
   taskList: {},

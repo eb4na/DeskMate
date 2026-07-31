@@ -55,6 +55,8 @@ export type Subject = {
 };
 
 export type TaskPriority = 'low' | 'medium' | 'high';
+/** Eisenhower quadrant a task sits in, picked by the player in the add/edit form. */
+export type TaskQuadrant = 'urgentImportant' | 'important' | 'urgent' | 'neither';
 export type TaskStatus = 'not_started' | 'in_progress' | 'done';
 
 export type Task = {
@@ -81,6 +83,12 @@ export type Task = {
   lastActivityAt: string | null;
   notifyAt: string | null;
   notifId: string | null;
+  /**
+   * Eisenhower quadrant, chosen by the player in the add/edit form and shown in the
+   * matrix under the calendar. Undefined = legacy task saved before the matrix
+   * existed; read as 'neither' everywhere (see taskQuadrant()).
+   */
+  quadrant?: TaskQuadrant;
   /** Weekdays (0=Sun … 6=Sat) the task repeats on. Empty/undefined = no repeat. */
   repeatDays?: number[];
   /** Last date (ISO "YYYY-MM-DD") the repeat rolls to. Undefined = no end. */
@@ -538,6 +546,11 @@ function dateInTimeZone(date: Date, tz: string | null): string {
   } catch {
     return date.toISOString().split('T')[0];
   }
+}
+
+/** A task's quadrant, defaulting legacy (pre-matrix) tasks to 'neither'. */
+export function taskQuadrant(t: Pick<Task, 'quadrant'>): TaskQuadrant {
+  return t.quadrant ?? 'neither';
 }
 
 export function todayISO(): string {
@@ -1174,7 +1187,7 @@ type AppContextType = {
 
   // Wave 2 task actions
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completedAt' | 'postponeCount' | 'lastActivityAt' | 'notifId'>) => string;
-  updateTask: (id: string, patch: Partial<Pick<Task, 'title' | 'description' | 'subjectId' | 'dueDate' | 'isDeadline' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'notifId' | 'repeatDays' | 'repeatUntil'>>) => void;
+  updateTask: (id: string, patch: Partial<Pick<Task, 'title' | 'description' | 'subjectId' | 'dueDate' | 'isDeadline' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'quadrant' | 'status' | 'notifyAt' | 'notifId' | 'repeatDays' | 'repeatUntil'>>) => void;
   deleteTask: (id: string) => void;
   completeTask: (id: string) => void;
   postponeTask: (id: string) => void;
@@ -2018,7 +2031,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return id;
   };
 
-  const updateTask = (id: string, patch: Partial<Pick<Task, 'title' | 'description' | 'subjectId' | 'dueDate' | 'isDeadline' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'notifId' | 'repeatDays' | 'repeatUntil'>>) => {
+  const updateTask = (id: string, patch: Partial<Pick<Task, 'title' | 'description' | 'subjectId' | 'dueDate' | 'isDeadline' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'quadrant' | 'status' | 'notifyAt' | 'notifId' | 'repeatDays' | 'repeatUntil'>>) => {
     const safePatch = {
       ...patch,
       ...(patch.title !== undefined ? { title: maskProfanity(patch.title) } : {}),
