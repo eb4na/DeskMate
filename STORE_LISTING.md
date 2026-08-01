@@ -35,7 +35,12 @@ study,focus,timer,pomodoro,habit,streak,cute,cozy,student,exam,planner,tasks,pro
 
 **Short description** (80 max)
 ```
-Study with a cozy companion. Focus timer, coins, streaks, and a bakery to decorate.
+Study with a cozy companion. Focus timer, coins, streaks, a bakery to decorate.
+```
+
+**App name** (30 max)
+```
+Memobun: Cozy Study Companion
 ```
 
 ---
