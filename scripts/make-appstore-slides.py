@@ -136,15 +136,20 @@ CAST = [ART + "cocoa/cocoa.png", ART + "bunny/bunny.png", ART + "honey/honey.png
         ART + "tira/tira.png"]                                    # no Hanji: secret character
 
 
-def peek_cast(img, W, H, paths=None):
+def peek_cast(img, W, H, paths=None, top=None):
     """Casual art leaning in from the sides — left tilts like \\, right like /.
 
     Sized by HEIGHT so every character reads the same size regardless of how
     wide its artwork is, and clamped inside the canvas so none is ever cut.
     They sit in the side margins, clear of the phone's screen content.
+
+    `top` is the caller's text-safe baseline. The upper pair is pinned below it,
+    because a fixed fraction that cleared the headline on the tall iPhone canvas
+    lands on top of the subtitle on Play's shorter 9:16 one.
     """
     paths = paths or CAST
-    spots = [(0.0, .180, -34), (1.0, .180, 34), (0.0, .790, -30), (1.0, .790, 30)]
+    ftop = max(.180, (top / H) if top else 0)
+    spots = [(0.0, ftop, -34), (1.0, ftop, 34), (0.0, .790, -30), (1.0, .790, 30)]
     for path, (fx, fy, ang) in zip(paths, spots):
         if not os.path.exists(path):
             continue
@@ -277,7 +282,7 @@ def render(spec, W, H, kind):
             pw = int(W * (.50 if kind == "phone" else .48))
             body = device(spec["src"][0], pw, tilt=spec.get("tilt", 0))
             drop(img, body, ((W - body.width) // 2, top0))
-            peek_cast(img, W, H)          # in front of the device
+            peek_cast(img, W, H, top=top0)   # in front of the device
         else:
             pw, top = fill_size(spec["src"][0], top0, H, W, .92 if kind == "phone" else .94)
             body = device(spec["src"][0], pw, tilt=spec.get("tilt", 0))
@@ -396,7 +401,18 @@ TABLET_FILES = {"home": "P_home.png", "study": "P_companion-gallery.png",
 
 # Raw capture size each set requires, so a phone folder can never be rendered
 # into an iPad canvas (the defect this script shipped in July 2026).
-EXPECT = {"phone": (1206, 2622), "tablet": (2064, 2752)}
+EXPECT = {"phone": (1206, 2622), "tablet": (2064, 2752),
+          # Google Play decks, shot on the AVDs in scripts/capture-android-screens.py.
+          "android-phone": (1344, 2992),      # Pixel 8 Pro
+          "android-tab7": (1200, 1920),       # Nexus 7, portrait
+          "android-tab10": (1600, 2560)}      # Nexus 10, forced portrait
+
+# Play states a 16:9 / 9:16 requirement for every screenshot slot, so these
+# canvases are exactly 9:16 (width divisible by 9) rather than the taller iPhone
+# ratio — rendering native beats rendering tall and cropping the art afterwards.
+PLAY_CANVAS = {"android-phone": (1440, 2560),
+               "android-tab7": (1620, 2880),
+               "android-tab10": (1800, 3200)}
 
 
 def resolve(files, src, kind):
@@ -426,10 +442,13 @@ if __name__ == "__main__":
     ap.add_argument("--src", default=SRC, help="folder of raw captures")
     ap.add_argument("--out", default=OUT, help="output folder")
     ap.add_argument("--sets", nargs="*", default=["ipad"],
-                    choices=["phone", "ipad", "ipad-alt"],
+                    choices=["phone", "ipad", "ipad-alt",
+                             "android-phone", "android-tab7", "android-tab10"],
                     help="phone = the 7-slide iPhone deck; ipad = that same "
                          "7-slide deck off iPad captures (matches the listing); "
-                         "ipad-alt = the older 5-slide tablet-only variant")
+                         "ipad-alt = the older 5-slide tablet-only variant; "
+                         "android-* = the same 7-slide deck for Google Play, off "
+                         "emulator captures, on a 9:16 canvas")
     ap.add_argument("--lang", default="en",
                     choices=["en", "zh", "zh-Hant", "ja", "ko", "es", "fr"],
                     help="marketing-copy language (also picks the CJK font)")
@@ -451,3 +470,12 @@ if __name__ == "__main__":
         tablet = resolve(TABLET_FILES, src, "tablet")
         build(2064, 2752, "tablet", tablet, os.path.join(out, "ipad-13-alt"),
               deck="tablet")
+    for kind in ("android-phone", "android-tab7", "android-tab10"):
+        if kind not in args.sets:
+            continue
+        # `kind` picks the capture size to validate; the layout still uses the
+        # phone/tablet device-width fractions, which is a separate axis.
+        shots = resolve(PHONE_FILES, src, kind)
+        W, H = PLAY_CANVAS[kind]
+        build(W, H, "phone" if kind == "android-phone" else "tablet",
+              shots, os.path.join(out, kind), deck="phone")
