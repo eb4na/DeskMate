@@ -206,9 +206,31 @@ export default function VerifyCodeScreen() {
                   {resending ? t('auth.sending') : t('auth.resendVerificationCode')}
                 </ThemedText>
               </Pressable>
+
+              {/* Supabase's email-enumeration protection makes signUp/resend return 200
+                  for an address that ALREADY has a confirmed account, while sending no
+                  mail at all — the client cannot tell that apart from a real new signup.
+                  Say so, and offer the way out, instead of leaving the user to wait for
+                  a code that is never coming. */}
+              {verifyMode === 'signup' ? (
+                <ThemedText type="small" themeColor="textSecondary" style={styles.hintText}>
+                  {t('auth.verifyExistingHint')}
+                </ThemedText>
+              ) : null}
             </ThemedView>
 
             <ThemedView style={styles.linkActions}>
+              {verifyMode === 'signup' ? (
+                <Pressable
+                  onPress={() =>
+                    router.replace({ pathname: '/login', params: { email: normalizedEmail } })
+                  }
+                  style={styles.linkRow}>
+                  <ThemedText type="smallBold" style={styles.linkText}>
+                    {t('auth.signInInstead')}
+                  </ThemedText>
+                </Pressable>
+              ) : null}
               <Pressable onPress={() => router.back()} style={styles.linkRow}>
                 <ThemedText type="smallBold" style={styles.linkText}>
                   {t('common.back')}
@@ -270,6 +292,7 @@ const styles = StyleSheet.create({
     backgroundColor: BakeryColors.cream,
   },
   secondaryButtonText: { color: BakeryColors.cocoa },
+  hintText: { lineHeight: 18 },
   linkActions: { gap: Spacing.one },
   linkRow: {
     flexDirection: 'row',

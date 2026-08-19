@@ -198,6 +198,8 @@
     "goToSignIn": "ログインへ",
     "signupHelper": "アカウントを作成し、初回ログイン前にメール認証をお送りします。",
     "verifySubtitle": "{{email}} に送信された認証コードを入力してください。",
+    "verifyExistingHint": "コードが届きませんか？このメールアドレスはすでに登録済みかもしれません。コードは新規のアドレスにのみ送信されます。",
+    "signInInstead": "すでにアカウントをお持ちですか？ログイン",
     "yourEmail": "あなたのメール",
     "verificationCode": "認証コード",
     "codePlaceholder": "123456",

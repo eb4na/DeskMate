@@ -70,7 +70,10 @@ export default function SessionPickerScreen() {
   const { t } = useTranslation();
   // Nothing is pre-picked: the menu opens with every box empty so the first
   // checkmark you see is one you put there. Start stays disabled until then.
-  const [selected, setSelected] = useState<number | null>(null);
+  // Preselect the 30-minute preset: opening with nothing chosen left the big
+  // "Start Session" button disabled but still looking tappable, so the first tap
+  // did nothing at all.
+  const [selected, setSelected] = useState<number | null>(30);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>('single');
 

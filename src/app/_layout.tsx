@@ -66,10 +66,13 @@ function LoadingScreen({ ready, quick, onDone }: { ready: boolean; quick?: boole
   // app forever. Generous so it doesn't cut a legitimately-slow load short.
   const [forceDone, setForceDone] = useState(false);
 
-  // Launch/login use the full 3s loader; quick in-app navigation uses a short
-  // minimum so it dismisses the moment the destination's assets are ready.
-  const minMs = quick ? 400 : 3000;
-  const barMs = quick ? 500 : 3000;
+  // Launch/login hold a little longer than quick in-app navigation, but neither
+  // sits on a fixed timer: the overlay lifts as soon as `ready` flips (home art
+  // painted / assets preloaded) past a short floor, so a warm launch feels instant
+  // instead of always eating 3s. The bar creeps to 92% over barMs and parks there
+  // if the load genuinely takes longer.
+  const minMs = quick ? 400 : 800;
+  const barMs = quick ? 500 : 1200;
   const maxMs = quick ? 6000 : 10000;
 
   // Creep the bar toward ~92% over the minimum hold; never completes on its own.
@@ -368,7 +371,9 @@ function RootNavigator() {
         <Stack.Screen name="dm-chat" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="companion-chat" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="companion-pfp" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="settings" options={{ presentation: 'modal', title: t('screens.settings') }} />
+        {/* headerShown:false — the screen draws its own "Settings" heading + Done pill,
+            so the native modal header was rendering the title a second time. */}
+        <Stack.Screen name="settings" options={{ presentation: 'modal', headerShown: false }} />
         {/* Pushed FROM settings, which is itself modal-presented. Deliberately a
             plain card push, not a second `presentation: 'modal'` — iOS silently
             refuses to present a native modal on top of a stacked one, and the

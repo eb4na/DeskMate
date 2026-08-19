@@ -809,7 +809,7 @@ export default function HomeScreen() {
     const FROZEN_START = new Date(Date.now() + 3_600_000).toISOString();
     showLoadingScreen(() => {
       shiftSessionStart((Date.now() - new Date(FROZEN_START).getTime()) / 1000);
-    }, { until: preloadStudyAssets(studyCharacterSource) });
+    }, { quick: true, until: preloadStudyAssets(studyCharacterSource) });
     startActiveSession({ durationMinutes: ds.durationMinutes, subjectName: ds.subjectName, taskId: ds.taskId, taskTitle: ds.taskTitle, breakMinutes: ds.breakMinutes, startedAt: FROZEN_START });
   };
 

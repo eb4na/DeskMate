@@ -756,7 +756,7 @@ export default function ShopScreen() {
                           <>
                             <FitText style={[styles.itemName, tName]}>{localizeCompanionName(c.name, t)}</FitText>
                             <View style={[styles.charBadge, c.owned ? styles.badgeOwned : styles.charLockedBadge]}>
-                              <ThemedText style={c.owned ? styles.badgeText : styles.charLockedText}>
+                              <ThemedText style={styles.charBadgeText}>
                                 {c.owned ? t('shop.ownedBadge') : t('shop.lockedBadge')}
                               </ThemedText>
                             </View>
@@ -1679,6 +1679,10 @@ const styles = StyleSheet.create({
   charBadge: { marginTop: 4, borderRadius: BakeryRadii.chip, paddingHorizontal: 8, paddingVertical: 2 },
   charLockedBadge: { backgroundColor: 'rgba(124,111,90,0.14)' },
   charLockedText: { fontSize: 11, fontWeight: '700', color: BakeryColors.mocha },
+  // Owned + locked share one text style so both badges are exactly the same height —
+  // an uneven badge height changes how much room the FitText name above it gets, which
+  // made the owned character's name shrink on its own.
+  charBadgeText: { fontSize: 11, fontWeight: '700', color: BakeryColors.mocha },
   lockedImg: { opacity: 0.4 },
   badgePlus: { backgroundColor: '#C75A7820' },
   badgePlusText: { fontSize: 12, fontWeight: '700', color: '#C75A78', lineHeight: 16 },

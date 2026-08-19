@@ -198,6 +198,8 @@
     "goToSignIn": "去登录",
     "signupHelper": "我们会先创建你的账户，然后在首次登录前进行邮箱验证。",
     "verifySubtitle": "请输入发送到 {{email}} 的验证码。",
+    "verifyExistingHint": "没有收到验证码？这个邮箱可能已经注册过了——验证码只会发送到新的邮箱地址。",
+    "signInInstead": "已有账号？去登录",
     "yourEmail": "你的邮箱",
     "verificationCode": "验证码",
     "codePlaceholder": "123456",

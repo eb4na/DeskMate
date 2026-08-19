@@ -1,5 +1,5 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { Image } from 'expo-image';
+import { Image, type ImageSource } from 'expo-image';
 import { router, Tabs } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View, type ImageStyle, type StyleProp } from 'react-native';
@@ -26,12 +26,11 @@ const COMPANION_BTN = require('@/assets/images/home/companion-button.png');
 const BOW = require('@/assets/images/home/bottom-nav-bow.png');
 
 const HOME_ICON = require('@/assets/images/tabIcons/gen-home.png');
-const HOME_ICON_ACTIVE = require('@/assets/images/tabIcons/gen-home-active.png');
-const TASKS_ICON_ACTIVE = require('@/assets/images/tabIcons/gen-tasks-active.png');
-const PROGRESS_ICON_ACTIVE = require('@/assets/images/tabIcons/gen-progress-active.png');
-const SHOP_ICON_ACTIVE = require('@/assets/images/tabIcons/gen-shop-active.png');
+// The gen-*-active.png variants are flat, featureless silhouettes, so selecting a tab
+// used to erase its illustration. The active tab is already legible from its label
+// (styles.labelActive turns it pink + bold), so every tab keeps its detailed art.
 
-const ICONS: Record<string, ReturnType<typeof require>> = {
+const ICONS: Record<string, ImageSource> = {
   index: HOME_ICON,
   tasks: require('@/assets/images/tabIcons/gen-tasks.png'),
   progress: require('@/assets/images/tabIcons/gen-progress.png'),
@@ -66,15 +65,9 @@ function TabItem({ name, isFocused, onPress, iconStyle, targetId }: { name: stri
     >
       <View
         ref={targetId ? (n) => setTutorialTarget(targetId, n) : undefined}
-        style={[styles.iconWrap, isFocused && name !== 'index' && name !== 'tasks' && name !== 'progress' && name !== 'shop' && styles.iconWrapActive]}>
+        style={styles.iconWrap}>
         <Image
-          source={
-            name === 'index' && isFocused ? HOME_ICON_ACTIVE :
-            name === 'tasks' && isFocused ? TASKS_ICON_ACTIVE :
-            name === 'progress' && isFocused ? PROGRESS_ICON_ACTIVE :
-            name === 'shop' && isFocused ? SHOP_ICON_ACTIVE :
-            ICONS[name]
-          }
+          source={ICONS[name]}
           style={[styles.icon, name === 'index' && styles.iconHome, iconStyle]}
           contentFit="contain"
         />

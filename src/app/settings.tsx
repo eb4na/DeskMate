@@ -88,7 +88,7 @@ function SettingRow({ icon, label, value, onPress, badge, lock }: RowProps) {
       <View style={styles.rowBody}>
         <ThemedText type="smallBold">{label}</ThemedText>
         {value ? (
-          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+          <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
             {value}
           </ThemedText>
         ) : null}

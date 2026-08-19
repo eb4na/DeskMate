@@ -41,7 +41,7 @@ export default function LanguagePickerScreen() {
     if (fromSettings) {
       // Cover the language re-render with the app's loading screen and dismiss
       // both this picker and the Settings modal — land on home behind the loader.
-      showLoadingScreen();
+      showLoadingScreen(undefined, { quick: true });
       if (router.canDismiss()) router.dismissAll();
       else router.replace('/');
     } else if (router.canGoBack()) {

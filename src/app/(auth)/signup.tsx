@@ -103,9 +103,12 @@ export default function SignupScreen() {
     // The client uses PKCE + email confirmation, so a SUCCESSFUL signUp returns
     // `{ user: null, session: null }` for a brand-new email — the user is withheld
     // until the emailed code is verified — and returns the EXACT SAME shape for an
-    // existing/unconfirmed email (enumeration protection makes them indistinguishable
-    // client-side). A confirmation code is sent either way, so just continue to the
-    // verify screen. The old code treated `user == null` / empty `identities` as
+    // existing email (enumeration protection makes them indistinguishable
+    // client-side). A code is actually sent only when the address is new, or exists but
+    // is still UNCONFIRMED; for an ALREADY-CONFIRMED account Supabase sends nothing at
+    // all (auth log: `user_repeated_signup`). We can't tell here, so continue to the
+    // verify screen — which states that caveat and offers "sign in instead" rather than
+    // leaving the user waiting on a code that will never arrive. The old code treated `user == null` / empty `identities` as
     // "account already exists", which falsely blocked EVERY new signup ("email already
     // exists" on a genuinely new address). If email confirmation is ever turned off,
     // signUp returns a live session instead → go straight into the app.

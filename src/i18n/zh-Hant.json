@@ -282,6 +282,8 @@
     "goToSignIn": "去登入",
     "signupHelper": "我們會先建立你的帳戶，然後在首次登入前進行信箱驗證。",
     "verifySubtitle": "請輸入傳送到 {{email}} 的驗證碼。",
+    "verifyExistingHint": "沒有收到驗證碼？這個信箱可能已經註冊過了——驗證碼只會傳送到新的信箱地址。",
+    "signInInstead": "已有帳號？去登入",
     "yourEmail": "你的信箱",
     "verificationCode": "驗證碼",
     "codePlaceholder": "123456",

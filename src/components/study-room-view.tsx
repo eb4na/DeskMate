@@ -1116,7 +1116,9 @@ export function StudyRoomView({
           <OutlinedTimer
             value={format(displaySecs)}
             fontStyle={[styles.timer, soloScene && styles.timerSolo, isTablet && { fontSize: Math.round(winW * 0.135) }]}
-            fill={acc.button}
+            // Dark fill (not the room accent, which is pale on pale rooms) so the
+            // countdown stays readable against every background.
+            fill={BakeryColors.cocoaDark}
             outline="#FFFFFF"
             stroke={isTablet ? 5 : 3.5}
           />
