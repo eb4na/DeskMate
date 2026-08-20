@@ -289,13 +289,16 @@ const makeStyles = (s: number) => StyleSheet.create({
   breakTop: { alignItems: 'center', gap: Spacing.two * s },
   breakLabel: { fontSize: 20 * s, fontWeight: '900', color: '#5B3A2E', textAlign: 'center' },
   breakBtns: { alignSelf: 'stretch', alignItems: 'center', gap: Spacing.three * s },
+  // width + maxWidth (NOT alignSelf:'stretch') so the parent's alignItems:'center'
+  // still applies — a stretched child clamped by maxWidth stays pinned left, which
+  // reads as broken on the wide iPad break screen.
   primaryBtn: {
-    alignSelf: 'stretch', maxWidth: 340, paddingVertical: 16 * s, borderRadius: BakeryRadii.pill,
+    width: '100%', maxWidth: 340 * s, paddingVertical: 16 * s, borderRadius: BakeryRadii.pill,
     alignItems: 'center', justifyContent: 'center',
   },
   primaryBtnText: { fontSize: 17 * s, fontWeight: '900', letterSpacing: 0.3 },
   endSessionBtn: {
-    alignSelf: 'stretch', maxWidth: 340, paddingVertical: 13 * s, borderRadius: BakeryRadii.pill,
+    width: '100%', maxWidth: 340 * s, paddingVertical: 13 * s, borderRadius: BakeryRadii.pill,
     alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFFDD',
   },
   endSessionText: { fontSize: 15 * s, fontWeight: '800', color: '#8A5A3B' },

@@ -1,0 +1,28 @@
+1. RECORDING
+Attached. One take from app launch: Privacy/Terms consent, 13+ age gate, starter pick, sign-in, a full study session and coin payout, a shop purchase, the coin-pack purchase sheet, the rewarded video, the Memobun Plus page (price, renewal terms, Terms/Privacy links, Restore Purchases), Friends with DMs plus Report and Block, the notification prompt, then account registration and deletion.
+
+2. DEVICES TESTED
+- iPhone 13, iOS 26.5 (physical device, TestFlight build 33)
+- iPhone 17, iOS 26.5 (Xcode Simulator)
+- iPad Pro 13-inch (M4), iPadOS 26.5 (Xcode Simulator)
+
+3. WHAT IT DOES AND FOR WHOM
+Memobun is a study-focus timer for students. You pick a companion character, set a duration and subject, and study; the character studies alongside you. Finishing pays 1 coin per minute (ending early pays nothing). Coins buy cosmetic-only items: companions, outfits, rooms, desks, sounds. It also has tasks, exam countdowns, subject stats, weekly reports, streaks, multiplayer study rooms and a weekly anonymous study partner. Audience: students aged 13+ (date-of-birth gate at launch). It lowers the cost of starting a solo study session and gives visible credit for effort.
+
+4. ACCESS AND SETUP
+No login is required, so no demo account is needed. The sign-in screen has "Continue as guest" and the whole app - sessions, shop, tasks, exams, reports, streaks, purchases and Memobun Plus - works without an account. An account is only needed for Friends, DMs and Study Buddy. To review those, tap "Create account" on the sign-in screen and register with any email (a few seconds, just an emailed code). Report and Block are then on every friend's card, and are also shown in the recording.
+Steps: launch > accept Privacy Policy and Terms > enter date of birth > pick a starter companion > continue as guest or sign in > Home > Start Session > choose a duration > let it finish for the payout. Shop sells cosmetics; "Get more coins" opens coin packs (IAP) and an optional rewarded video (+100 coins, 3/day). Memobun Plus is in Shop or Settings: Monthly USD 4.99, Yearly USD 39.99, auto-renewing, with title, length, price, renewal disclosure, Terms and Privacy links and Restore Purchases on that screen. Settings > Delete account erases the account and its data.
+Permissions: Notifications is the only prompt (optional study reminders). No camera, photos, microphone, location or contacts. No tracking and no ATT prompt.
+
+5. EXTERNAL SERVICES
+Supabase (accounts, database, realtime multiplayer), Sign in with Apple, Google Sign-In, RevenueCat (in-app purchases), Google AdMob (rewarded video only, non-personalized), PostHog (aggregate analytics), Spotify Web API (optional; the user connects their own Spotify Premium account to control their own music). No AI services are used and no AI content is generated.
+
+6. REGIONAL DIFFERENCES
+Consistent across all regions. Localized in 7 languages (English, Simplified Chinese, Traditional Chinese, Japanese, Korean, Spanish, French), following device language. IAP prices are localized by the App Store. The only difference is the optional Spotify integration, which needs the user's own Spotify Premium account and is unavailable where Spotify does not operate.
+
+7. REGULATED / THIRD-PARTY MATERIAL
+Not a regulated industry. All artwork, characters, text and audio are original and owned by the developer. The only third-party material is Spotify: used via the public Spotify Web API under Spotify's Developer Terms, authorized by the user's own OAuth login, with playback in Spotify's own app. Only the current track name and album art are displayed. Nothing is stored or redistributed.
+
+UGC SAFEGUARDS
+DMs are only possible between mutual friends; blocked users are filtered server-side. Report and Block are on every friend card, and Study Buddy has its own Report. A profanity filter masks chat and blocks bad subject/task names. Abuse contact: memobunsupport@gmail.com
+Privacy Policy: https://memobun.app/privacy.html
