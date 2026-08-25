@@ -164,41 +164,143 @@ async function cancelStudyReminders() {
   );
 }
 
-// Schedule a one-time local notification for a task at its notifyAt datetime.
-export async function scheduleTaskNotification(task: {
+// ─── Task reminders ───────────────────────────────────────────────────────────
+// Task notifications are scheduled the same cancel-everything-and-reschedule way
+// as exam/streak reminders (rather than one imperative schedule per save), so the
+// pending set is always derived from the current task list — edits, deletions,
+// completions and repeat-rollovers all self-heal on the next sync.
+const TASK_REMINDER_KIND = 'task';
+// Ceiling on pending task notifications. An "auto" task costs 3 slots, so this is
+// ~6 tasks' worth. Kept deliberately small: iOS silently caps an app at 64 pending
+// notifications and drops the overflow, and exams (30) + streak (6) + study
+// reminders (7+) already claim most of that.
+const TASK_REMINDER_MAX_SLOTS = 18;
+// Hour of day the "due tomorrow" heads-up fires on the day BEFORE the task's date.
+// Deliberately NOT "24h before the due time": a task due at 23:00 would otherwise
+// be announced at 23:00 the night before, which is nobody's idea of a reasonable
+// time. 9 AM leaves the whole day to act, and matches the anytime-task anchor.
+export const TASK_DAY_BEFORE_HOUR = 9;
+
+/** How a task's reminders are decided.
+ *  - `auto`   → the ladder: 09:00 the day before, plus 1 hour and 10 minutes
+ *               before the due time when the task has one.
+ *  - `custom` → exactly one reminder, at the task's `notifyAt`.
+ *  - `off`    → none. */
+export type TaskReminderMode = 'auto' | 'off' | 'custom';
+export type TaskReminderTier = 'dayBefore' | 'hourBefore' | 'tenMinBefore' | 'custom';
+
+export type TaskReminderInput = {
   id: string;
   title: string;
+  dueDate: string | null;
+  dueTime: string | null;
   notifyAt: string | null;
-}): Promise<string | null> {
-  if (!task.notifyAt) return null;
-  const when = new Date(task.notifyAt);
-  if (isNaN(when.getTime()) || when.getTime() <= Date.now()) return null;
+  reminderMode: TaskReminderMode;
+};
 
-  await ensureReminderChannel();
-  const granted = await ensureNotificationPermission();
-  if (!granted) return null;
-
-  return Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'Task reminder',
-      body: task.title,
-      sound: 'default',
-      data: { kind: 'task', taskId: task.id },
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DATE,
-      date: when,
-      channelId: STUDY_REMINDER_CHANNEL_ID,
-    },
-  });
+/** A task's effective reminder mode. Tasks saved before `reminderMode` existed
+ *  carry only the old single-reminder fields, so they read as `custom` when one
+ *  was set and `off` otherwise — never `auto`, which would hand an existing task
+ *  three new notifications it never asked for. */
+export function taskReminderMode(task: {
+  reminderMode?: TaskReminderMode;
+  notifyAt: string | null;
+}): TaskReminderMode {
+  return task.reminderMode ?? (task.notifyAt ? 'custom' : 'off');
 }
 
-export async function cancelTaskNotification(notifId: string | null) {
-  if (!notifId) return;
-  try {
-    await Notifications.cancelScheduledNotificationAsync(notifId);
-  } catch {
-    // already fired or removed
+/** Every moment this task should notify at, soonest first. Past moments are
+ *  dropped, so a task added an hour before it's due still keeps its 10-minute
+ *  reminder while the earlier tiers silently fall away. */
+export function taskReminderTimes(
+  task: Pick<TaskReminderInput, 'dueDate' | 'dueTime' | 'notifyAt' | 'reminderMode'>,
+  now: number,
+): { tier: TaskReminderTier; when: Date }[] {
+  if (task.reminderMode === 'off') return [];
+
+  if (task.reminderMode === 'custom') {
+    if (!task.notifyAt) return [];
+    const when = new Date(task.notifyAt);
+    if (isNaN(when.getTime()) || when.getTime() <= now) return [];
+    return [{ tier: 'custom', when }];
+  }
+
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec((task.dueDate ?? '').trim().slice(0, 10));
+  if (!dateMatch) return [];
+  const [y, mo, d] = [Number(dateMatch[1]), Number(dateMatch[2]), Number(dateMatch[3])];
+
+  const out: { tier: TaskReminderTier; when: Date }[] = [
+    { tier: 'dayBefore', when: new Date(y, mo - 1, d - 1, TASK_DAY_BEFORE_HOUR, 0, 0, 0) },
+  ];
+
+  const parsed = task.dueTime ? parseTime(task.dueTime) : null;
+  // A legacy midnight time means "no time set" — 1 hour before midnight is not a
+  // due-time reminder, it's a random 11 PM ping.
+  if (parsed && !(parsed.hour === 0 && parsed.minute === 0)) {
+    const due = new Date(y, mo - 1, d, parsed.hour, parsed.minute, 0, 0);
+    out.push({ tier: 'hourBefore', when: new Date(due.getTime() - 60 * 60 * 1000) });
+    out.push({ tier: 'tenMinBefore', when: new Date(due.getTime() - 10 * 60 * 1000) });
+  }
+
+  return out.filter((r) => r.when.getTime() > now).sort((a, b) => a.when.getTime() - b.when.getTime());
+}
+
+async function cancelTaskReminders() {
+  const all = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.all(
+    all
+      .filter((n) => (n.content.data as { kind?: string } | undefined)?.kind === TASK_REMINDER_KIND)
+      .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
+  );
+}
+
+// Reschedule the pending task reminders from scratch. Call on launch, foreground,
+// and whenever the task list changes. `enabled` false (the Settings kill switch)
+// still cancels, so flipping it off clears the pending set immediately.
+// Never *requests* permission — add-task prompts when a task is saved with a
+// reminder, same as the exam toggle does.
+export async function syncTaskReminders(opts: {
+  enabled: boolean;
+  tasks: TaskReminderInput[];
+  makeContent: (task: TaskReminderInput, tier: TaskReminderTier) => { title: string; body: string };
+}): Promise<void> {
+  await ensureReminderChannel();
+  await cancelTaskReminders();
+
+  if (!opts.enabled) return;
+  if (!(await hasNotificationPermission())) return;
+
+  const now = Date.now();
+  const pending = opts.tasks
+    .flatMap((task) => taskReminderTimes(task, now).map((r) => ({ task, ...r })))
+    // A reminder the user picked by hand outranks an auto ladder, then soonest
+    // first — so anything cut by the slot cap is the furthest-off tier.
+    .sort((a, b) => {
+      const byMode = Number(b.task.reminderMode === 'custom') - Number(a.task.reminderMode === 'custom');
+      return byMode !== 0 ? byMode : a.when.getTime() - b.when.getTime();
+    });
+
+  const scheduled = pending.slice(0, TASK_REMINDER_MAX_SLOTS);
+  if (__DEV__ && pending.length > scheduled.length) {
+    console.log(`[task-reminders] slot cap hit — ${pending.length - scheduled.length} dropped`);
+  }
+
+  for (const { task, tier, when } of scheduled) {
+    const { title, body } = opts.makeContent(task, tier);
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        sound: 'default',
+        data: { kind: TASK_REMINDER_KIND, taskId: task.id },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: when,
+        channelId: STUDY_REMINDER_CHANNEL_ID,
+      },
+    });
+    if (__DEV__) console.log(`[task-reminders] ${task.title} ${tier} → ${when.toString()}`);
   }
 }
 
@@ -352,11 +454,16 @@ async function cancelExamReminders() {
 // (edits move the reminders, deletions clear them). Never *requests* permission —
 // add-exam prompts when the toggle is switched on.
 export async function syncExamReminders(opts: {
+  // Settings kill switch. False still cancels, so switching exam notifications
+  // off clears the pending set immediately.
+  enabled: boolean;
   exams: ExamReminderInput[];
   makeContent: (exam: ExamReminderInput, kind: ExamReminderKind) => { title: string; body: string };
 }): Promise<void> {
   await ensureReminderChannel();
   await cancelExamReminders();
+
+  if (!opts.enabled) return;
 
   const enabled = opts.exams
     .filter((e) => e.reminderEnabled)

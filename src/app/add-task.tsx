@@ -16,13 +16,18 @@ import { ThemedView } from '@/components/themed-view';
 import { useApp, MAX_TASKS } from '@/context/app-context';
 import type { Task } from '@/context/app-context';
 import { containsProfanity } from '@/lib/profanity';
-import { cancelTaskNotification, scheduleTaskNotification } from '@/lib/notifications';
+import { TASK_DAY_BEFORE_HOUR, requestNotificationPermission, taskReminderMode, taskReminderTimes } from '@/lib/notifications';
+import type { TaskReminderMode } from '@/lib/notifications';
 import { useTranslation } from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
 import { BakeryColors, BakeryRadii, MaxContentWidth, Spacing } from '@/constants/theme';
 
-// Reminder fires this many minutes before the task's due time.
+// Hand-picked reminder offsets: the reminder fires this many minutes before the
+// task's due time. Only used when the player overrides the automatic reminders.
 const REMINDER_OFFSETS = [5, 15, 30, 60, 180, 1440];
+
+// The automatic reminders' day-before hour, as "HH:MM" for display.
+const AUTO_DAY_BEFORE_TIME = `${String(TASK_DAY_BEFORE_HOUR).padStart(2, '0')}:00`;
 
 // Anchor time for reminders on "Anytime" tasks (no specific due time). The offset
 // chips ("1 day before" etc.) count back from this time on the due date, so an
@@ -87,9 +92,12 @@ export default function AddTaskScreen() {
   const [repeatUntilEnabled, setRepeatUntilEnabled] = useState(existingTask?.repeatUntil != null);
   const [repeatUntil, setRepeatUntil] = useState(existingTask?.repeatUntil ?? existingTask?.dueDate ?? todayISO);
 
-  // Notification reminder — fires N minutes before the task's due time (or off).
-  const deriveOffset = (): number | null => {
-    if (!existingTask?.notifyAt) return null;
+  // Notification reminders. "Auto" (the default) is the ladder computed in
+  // notifications.ts — a day-before heads-up plus 1-hour and 10-minute warnings
+  // when the task has a due time. Picking one of the offset chips overrides all of
+  // that with a single reminder that many minutes before the due time.
+  const deriveOffset = (): number => {
+    if (!existingTask?.notifyAt) return 15;
     if (existingTask.dueDate) {
       // Anytime tasks anchor the reminder to DEFAULT_REMINDER_TIME on the due date.
       const anchor = existingTask.dueTime ?? DEFAULT_REMINDER_TIME;
@@ -101,7 +109,12 @@ export default function AddTaskScreen() {
     }
     return 15;
   };
-  const [notifyOffset, setNotifyOffset] = useState<number | null>(deriveOffset());
+  // New tasks default to Auto; an existing task keeps whatever it was saved with
+  // (tasks predating this read as their old single reminder, or off).
+  const [reminderMode, setReminderMode] = useState<TaskReminderMode>(
+    existingTask ? taskReminderMode(existingTask) : 'auto',
+  );
+  const [notifyOffset, setNotifyOffset] = useState<number>(deriveOffset());
 
   useEffect(() => {
     if (editing && !existingTask) {
@@ -110,6 +123,18 @@ export default function AddTaskScreen() {
   }, [editing, existingTask]);
 
   const activeSubjects = subjects.filter((s) => !s.archived);
+  // Auto on a task that's already too close to its due moment schedules nothing —
+  // every tier is in the past. Say so, rather than promising a day-before reminder
+  // the task will never get. Asked of the same function that does the scheduling.
+  // The clock is read once, when the form opens — this screen is short-lived, and
+  // re-reading it every render would be both pointless and impure.
+  const [openedAt] = useState(() => Date.now());
+  const autoFiresNothing =
+    reminderMode === 'auto' &&
+    taskReminderTimes(
+      { dueDate: targetDate, dueTime: dueTimeEnabled ? dueTime : null, notifyAt: null, reminderMode: 'auto' },
+      openedAt,
+    ).length === 0;
   const titleHasProfanity = containsProfanity(title);
 
   const handleSave = async () => {
@@ -125,25 +150,30 @@ export default function AddTaskScreen() {
     const dueDateValue = targetDate;
     const dueTimeValue = dueTimeEnabled ? dueTime : null;
 
-    // Reminder fires `notifyOffset` minutes before the due date+time. Anytime tasks
-    // (no due time) anchor the reminder to DEFAULT_REMINDER_TIME on the due date.
+    // A hand-picked reminder fires `notifyOffset` minutes before the due date+time;
+    // Anytime tasks (no due time) anchor it to DEFAULT_REMINDER_TIME on the due date.
+    // Auto reminders carry no notifyAt — they're derived from the due date+time each
+    // time the pending set is rebuilt, so they follow the task when it's edited or a
+    // repeat rolls it forward.
     let notifyAt: string | null = null;
-    if (notifyOffset != null && dueDateValue) {
+    if (reminderMode === 'custom' && dueDateValue) {
       const [h, m] = (dueTimeValue ?? DEFAULT_REMINDER_TIME).split(':').map(Number);
       const due = new Date(`${dueDateValue}T00:00:00`);
       due.setHours(h, m, 0, 0);
       notifyAt = new Date(due.getTime() - notifyOffset * 60000).toISOString();
       // A reminder in the past can't be scheduled (the OS silently drops it). This is
       // easy to hit with an Anytime task added later than the 9 AM anchor — so warn
-      // instead of saving a reminder that never fires.
+      // instead of saving a reminder that never fires. Only Auto's tiers fall away
+      // quietly: it always has a later one left when an earlier one has passed.
       if (new Date(notifyAt).getTime() <= Date.now()) {
         showPopup(t('addTask.reminderPastTitle'), t('addTask.reminderPastMsg'));
         return;
       }
     }
 
-    // Cancel any previously scheduled reminder for this task.
-    await cancelTaskNotification(existingTask?.notifId ?? null);
+    // Saving a task WITH a reminder is the opt-in gesture that may prompt for
+    // notification permission — the background resyncs only ever check it.
+    if (reminderMode !== 'off') await requestNotificationPermission();
 
     // Repeats roll the task's day forward each matching weekday.
     const repeatDaysValue = repeatDays.length ? repeatDays : undefined;
@@ -162,6 +192,7 @@ export default function AddTaskScreen() {
       priority: existingTask?.priority ?? 'medium',
       status: 'not_started',
       notifyAt,
+      reminderMode,
       repeatDays: repeatDaysValue,
       repeatUntil: repeatUntilValue,
     });
@@ -172,15 +203,12 @@ export default function AddTaskScreen() {
       return;
     }
 
-    // Schedule the new reminder (if any) and persist its id.
-    const notifId = notifyAt ? await scheduleTaskNotification({ id, title: titleVal, notifyAt }) : null;
-
+    // Nothing is scheduled here: the pending notifications are rebuilt from the task
+    // list itself (see syncTaskReminders in app-context), so the save just has to land.
     if (editing) {
       // Status isn't edited here — it's driven only by the checkmark on the task
       // list — so we leave the existing status untouched on save.
-      updateTask(taskId!, { title: titleVal, description: descriptionVal, subjectId, dueDate: dueDateValue, isDeadline, dueTime: dueTimeValue, notifyAt, notifId, repeatDays: repeatDaysValue, repeatUntil: repeatUntilValue });
-    } else if (notifId) {
-      updateTask(id, { notifId });
+      updateTask(taskId!, { title: titleVal, description: descriptionVal, subjectId, dueDate: dueDateValue, isDeadline, dueTime: dueTimeValue, notifyAt, reminderMode, repeatDays: repeatDaysValue, repeatUntil: repeatUntilValue });
     }
 
     router.back();
@@ -389,22 +417,46 @@ export default function AddTaskScreen() {
               {t('addTask.reminderOptional')}
             </ThemedText>
             <ThemedView style={styles.chipRow}>
-              <Pressable onPress={() => setNotifyOffset(null)} style={({ pressed }) => [pressed && styles.pressed]}>
-                <ThemedView type={notifyOffset == null ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
+              <Pressable onPress={() => setReminderMode('off')} style={({ pressed }) => [pressed && styles.pressed]}>
+                <ThemedView type={reminderMode === 'off' ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
                   <ThemedText type="small">{t('addTask.noReminder')}</ThemedText>
                 </ThemedView>
               </Pressable>
+              <Pressable onPress={() => setReminderMode('auto')} style={({ pressed }) => [pressed && styles.pressed]}>
+                <ThemedView type={reminderMode === 'auto' ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
+                  <ThemedText type="small">{t('addTask.reminderAuto')}</ThemedText>
+                </ThemedView>
+              </Pressable>
               {REMINDER_OFFSETS.map((off) => (
-                <Pressable key={off} onPress={() => setNotifyOffset(off)} style={({ pressed }) => [pressed && styles.pressed]}>
-                  <ThemedView type={notifyOffset === off ? 'backgroundSelected' : 'backgroundElement'} style={styles.chip}>
+                <Pressable
+                  key={off}
+                  onPress={() => {
+                    setReminderMode('custom');
+                    setNotifyOffset(off);
+                  }}
+                  style={({ pressed }) => [pressed && styles.pressed]}>
+                  <ThemedView
+                    type={reminderMode === 'custom' && notifyOffset === off ? 'backgroundSelected' : 'backgroundElement'}
+                    style={styles.chip}>
                     <ThemedText type="small">{reminderLabel(off, t)}</ThemedText>
                   </ThemedView>
                 </Pressable>
               ))}
             </ThemedView>
-            {/* Anytime tasks have no due time, so the reminder counts back from a
-                fixed time of day — tell the user when it fires. */}
-            {!dueTimeEnabled && notifyOffset != null && (
+            {/* Spell out what each mode actually does: Auto's ladder depends on
+                whether the task has a due time, and a hand-picked offset on an
+                Anytime task counts back from a fixed hour rather than a real due
+                time — neither is guessable from the chip alone. */}
+            {reminderMode === 'auto' && (
+              <ThemedText type="small" themeColor="textSecondary">
+                {autoFiresNothing
+                  ? t('addTask.reminderAutoTooLateHint')
+                  : t(dueTimeEnabled ? 'addTask.reminderAutoTimedHint' : 'addTask.reminderAutoHint', {
+                      time: formatTimeLabel(AUTO_DAY_BEFORE_TIME, use24HourTime),
+                    })}
+              </ThemedText>
+            )}
+            {reminderMode === 'custom' && !dueTimeEnabled && (
               <ThemedText type="small" themeColor="textSecondary">
                 {t('addTask.reminderAnytimeHint', { time: formatTimeLabel(DEFAULT_REMINDER_TIME, use24HourTime) })}
               </ThemedText>
@@ -434,9 +486,9 @@ export default function AddTaskScreen() {
                   {
                     text: t('common.delete'),
                     style: 'destructive',
-                    onPress: async () => {
-                      // Drop the pending reminder first — deleteTask forgets the id.
-                      await cancelTaskNotification(existingTask?.notifId ?? null);
+                    onPress: () => {
+                      // The pending reminders clear themselves — they're derived from
+                      // the task list, which this removes it from.
                       deleteTask(taskId!);
                       router.back();
                     },

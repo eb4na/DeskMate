@@ -52,10 +52,21 @@ function longLabel(iso: string) {
 function shortWeekday(iso: string) {
   return fromISO(iso).toLocaleDateString(i18n.language || 'en-US', { weekday: 'short' });
 }
-function formatTime(notifyAt: string | null, use24Hour: boolean) {
-  if (!notifyAt) return null;
-  const d = new Date(notifyAt);
-  if (isNaN(d.getTime())) return null;
+// The time shown on a task card: its own due time when it has one, otherwise the
+// moment a hand-picked reminder fires. (It used to read notifyAt only, which shows
+// nothing for a task on automatic reminders — those carry no notifyAt.)
+function formatTime(task: Pick<Task, 'dueTime' | 'notifyAt'>, use24Hour: boolean) {
+  const d = new Date();
+  if (task.dueTime) {
+    const parsed = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(task.dueTime.trim());
+    if (!parsed) return null;
+    d.setHours(Number(parsed[1]), Number(parsed[2]), 0, 0);
+  } else {
+    if (!task.notifyAt) return null;
+    const at = new Date(task.notifyAt);
+    if (isNaN(at.getTime())) return null;
+    d.setTime(at.getTime());
+  }
   return d.toLocaleTimeString(i18n.language || 'en-US', { hour: 'numeric', minute: '2-digit', hour12: !use24Hour });
 }
 
@@ -70,7 +81,7 @@ function TaskPreviewCard({ task, onNavigate }: { task: Task; onNavigate?: (go: (
   const c = isTablet ? scale : 1;
   const subject = task.subjectId ? subjects.find((s) => s.id === task.subjectId) : null;
   const done = task.status === 'done';
-  const time = formatTime(task.notifyAt, use24HourTime);
+  const time = formatTime(task, use24HourTime);
 
   return (
     <Pressable
@@ -265,9 +276,7 @@ function ExamPreviewCard({ exam, onNavigate }: { exam: ExamCountdown; onNavigate
   const { subjects, use24HourTime } = useApp();
   const subject = exam.subject ? subjects.find((s) => s.name === exam.subject) : null;
   const color = subject?.color ?? '#F4A8C0';
-  const time = exam.time
-    ? formatTime(`${exam.dateISO.slice(0, 10)}T${exam.time}:00`, use24HourTime)
-    : null;
+  const time = exam.time ? formatTime({ dueTime: exam.time, notifyAt: null }, use24HourTime) : null;
 
   return (
     <Pressable

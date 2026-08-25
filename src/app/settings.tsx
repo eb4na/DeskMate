@@ -145,6 +145,12 @@ export default function SettingsScreen() {
     use24HourTime,
     setUse24HourTime,
     soundEffectsEnabled,
+    notifTasks,
+    notifStreak,
+    notifExams,
+    setNotifTasks,
+    setNotifStreak,
+    setNotifExams,
     setSoundEffectsEnabled,
     activeCompanionId,
     defaultCompanionId,
@@ -638,6 +644,65 @@ export default function SettingsScreen() {
               <Switch
                 value={reminderEnabled}
                 onValueChange={(next) => setReminder(next, reminderTime)}
+                trackColor={{ true: BakeryColors.jam, false: BakeryColors.shortbread }}
+                thumbColor="#FFF"
+              />
+            </View>
+            {/* Per-category notification kill switches. Each one only turns its
+                category OFF — with it on, a notification still needs its own reason
+                to fire (a task with a reminder, an exam with its toggle on, a live
+                streak). Applied on the spot: a switch that needed a Save tap to take
+                effect would read as broken. */}
+            <View style={styles.divider} />
+            <View style={styles.row}>
+              <View style={styles.rowIconImage}>
+                <SettingsIcon name="books" />
+              </View>
+              <View style={styles.rowBody}>
+                <ThemedText type="smallBold">{t('settings.notifTasks')}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {notifTasks ? t('settings.notifTasksOn') : t('settings.off')}
+                </ThemedText>
+              </View>
+              <Switch
+                value={notifTasks}
+                onValueChange={setNotifTasks}
+                trackColor={{ true: BakeryColors.jam, false: BakeryColors.shortbread }}
+                thumbColor="#FFF"
+              />
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.row}>
+              <View style={styles.rowIconImage}>
+                <SettingsIcon name="timer" />
+              </View>
+              <View style={styles.rowBody}>
+                <ThemedText type="smallBold">{t('settings.notifExams')}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {notifExams ? t('settings.notifExamsOn') : t('settings.off')}
+                </ThemedText>
+              </View>
+              <Switch
+                value={notifExams}
+                onValueChange={setNotifExams}
+                trackColor={{ true: BakeryColors.jam, false: BakeryColors.shortbread }}
+                thumbColor="#FFF"
+              />
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.row}>
+              <View style={styles.rowIconImage}>
+                <SettingsIcon name="progress" />
+              </View>
+              <View style={styles.rowBody}>
+                <ThemedText type="smallBold">{t('settings.notifStreak')}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {notifStreak ? t('settings.notifStreakOn') : t('settings.off')}
+                </ThemedText>
+              </View>
+              <Switch
+                value={notifStreak}
+                onValueChange={setNotifStreak}
                 trackColor={{ true: BakeryColors.jam, false: BakeryColors.shortbread }}
                 thumbColor="#FFF"
               />

@@ -15,7 +15,8 @@ import { playCoin, playFinishDing } from '@/lib/sounds';
 import { track } from '@/lib/analytics';
 import { AD_REWARD_COINS, DAILY_AD_LIMIT } from '@/lib/ads';
 import { loadBlockedCodes, blockUserRemote, unblockUserRemote } from '@/lib/moderation';
-import { syncExamReminders, syncStreakReminders } from '@/lib/notifications';
+import { syncExamReminders, syncStreakReminders, syncTaskReminders, taskReminderMode } from '@/lib/notifications';
+import type { TaskReminderInput, TaskReminderMode, TaskReminderTier } from '@/lib/notifications';
 import { computeTaskRollover } from '@/lib/task-recurrence';
 import { uploadProfile } from '@/lib/profile-sync';
 import { claimMailRemote } from '@/lib/mail';
@@ -79,8 +80,23 @@ export type Task = {
   completedAt: string | null;
   postponeCount: number;
   lastActivityAt: string | null;
+  /** The moment a `custom` reminder fires. Unused by `auto`/`off` tasks. */
   notifyAt: string | null;
+  /**
+   * Legacy: id of the one notification a task used to schedule for itself. Task
+   * reminders are now derived from the task list by syncTaskReminders(), so this
+   * is no longer written — it stays on the type so old persisted tasks parse.
+   */
   notifId: string | null;
+  /**
+   * How this task notifies. `auto` (the default for new tasks) = 09:00 the day
+   * before, plus 1 hour and 10 minutes before the due time when one is set.
+   * `custom` = a single reminder at `notifyAt`. `off` = none.
+   * Undefined = a task saved before this existed: it means whatever the old
+   * single-reminder model meant, i.e. `custom` when it has a notifyAt else `off`
+   * (see taskReminderMode) — so upgrading never silently adds notifications.
+   */
+  reminderMode?: TaskReminderMode;
   /** Weekdays (0=Sun … 6=Sat) the task repeats on. Empty/undefined = no repeat. */
   repeatDays?: number[];
   /** Last date (ISO "YYYY-MM-DD") the repeat rolls to. Undefined = no end. */
@@ -210,6 +226,15 @@ const INITIAL_SUBJECTS: Subject[] = STATIC_SUBJECTS.map((s, i) => ({
   order: i,
 }));
 
+// Notification copy per task-reminder tier. Written out in full (not built from a
+// template) so grepping an i18n key finds its use.
+const TASK_REMINDER_COPY: Record<TaskReminderTier, { title: string; body: string }> = {
+  dayBefore: { title: 'notifications.taskTomorrowTitle', body: 'notifications.taskTomorrowBody' },
+  hourBefore: { title: 'notifications.taskHourTitle', body: 'notifications.taskHourBody' },
+  tenMinBefore: { title: 'notifications.taskTenMinTitle', body: 'notifications.taskTenMinBody' },
+  custom: { title: 'notifications.taskCustomTitle', body: 'notifications.taskCustomBody' },
+};
+
 // ─── Persisted state shape ────────────────────────────────────────────────────
 
 type PersistedState = {
@@ -220,6 +245,12 @@ type PersistedState = {
   examCountdowns: ExamCountdown[];
   reminderEnabled: boolean;
   reminderTime: string;
+  // Per-category notification kill switches (Settings › Reminders). Each one only
+  // turns notifications OFF — a category still needs its own reason to fire (a task
+  // with a reminder, an exam with its toggle on, an unbroken streak).
+  notifTasks: boolean;
+  notifStreak: boolean;
+  notifExams: boolean;
   use24HourTime: boolean;
   soundEffectsEnabled: boolean;
   vinylColor: string;
@@ -399,6 +430,9 @@ const DEFAULTS: PersistedState = {
   examCountdowns: [],
   reminderEnabled: false,
   reminderTime: '20:00',
+  notifTasks: true,
+  notifStreak: true,
+  notifExams: true,
   use24HourTime: false,
   soundEffectsEnabled: true,
   vinylColor: '#3B3340',
@@ -970,6 +1004,12 @@ type AppContextType = {
   examCountdowns: ExamCountdown[];
   reminderEnabled: boolean;
   reminderTime: string;
+  notifTasks: boolean;
+  notifStreak: boolean;
+  notifExams: boolean;
+  setNotifTasks: (value: boolean) => void;
+  setNotifStreak: (value: boolean) => void;
+  setNotifExams: (value: boolean) => void;
   use24HourTime: boolean;
   soundEffectsEnabled: boolean;
   vinylColor: string;
@@ -1174,7 +1214,7 @@ type AppContextType = {
 
   // Wave 2 task actions
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completedAt' | 'postponeCount' | 'lastActivityAt' | 'notifId'>) => string;
-  updateTask: (id: string, patch: Partial<Pick<Task, 'title' | 'description' | 'subjectId' | 'dueDate' | 'isDeadline' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'notifId' | 'repeatDays' | 'repeatUntil'>>) => void;
+  updateTask: (id: string, patch: Partial<Pick<Task, 'title' | 'description' | 'subjectId' | 'dueDate' | 'isDeadline' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'reminderMode' | 'repeatDays' | 'repeatUntil'>>) => void;
   deleteTask: (id: string) => void;
   completeTask: (id: string) => void;
   postponeTask: (id: string) => void;
@@ -1477,7 +1517,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // user must foreground the app to see anything, and that foreground resyncs anyway.
   const streakNudgeEnabledRef = useRef(false);
   streakNudgeEnabledRef.current =
-    loaded && (s.legalAccepted ?? false) && (s.starterChosen ?? false) && s.streak.currentStreak > 0;
+    loaded &&
+    (s.notifStreak ?? true) &&
+    (s.legalAccepted ?? false) &&
+    (s.starterChosen ?? false) &&
+    s.streak.currentStreak > 0;
   useEffect(() => {
     let midnightTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -1507,7 +1551,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       sub.remove();
       if (midnightTimer) clearTimeout(midnightTimer);
     };
-  }, [loaded]);
+    // s.notifStreak is a dep, not just a ref read: the Settings switch has to cancel
+    // the pending nudges the moment it's flipped, and the ref alone never re-runs this.
+  }, [loaded, s.notifStreak]);
 
   // Exam reminders: a day-before + (when the exam has a start time) 6-hours-before
   // local notification for every countdown whose reminder toggle is on. Resynced on
@@ -1517,6 +1563,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const sync = () =>
       void syncExamReminders({
+        enabled: s.notifExams ?? true,
         exams: s.examCountdowns,
         makeContent: (exam, kind) => ({
           title: i18n.t(kind === 'dayBefore' ? 'notifications.examTomorrowTitle' : 'notifications.examSoonTitle'),
@@ -1530,7 +1577,66 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (state === 'active') sync();
     });
     return () => sub.remove();
-  }, [loaded, s.examCountdowns]);
+  }, [loaded, s.examCountdowns, s.notifExams]);
+
+  // Task reminders: 09:00 the day before each unfinished task, plus 1-hour and
+  // 10-minute warnings when it has a due time ("auto"), or the single hand-picked
+  // moment when the player chose one ("custom"). Same cancel-everything-and-reschedule
+  // model as the exam reminders, so completing / editing / deleting a task (and a
+  // repeat rolling forward) all correct the pending set on the spot.
+  //
+  // Keyed on a compact signature instead of `s.tasks`, because tasks change far more
+  // often than exams do — a postpone, a checkmark on an undated task or a title mask
+  // shouldn't reschedule everything. The syncs are chained rather than fired in
+  // parallel: each one cancels every pending task notification first, so two
+  // overlapping runs would let the later cancel wipe the earlier one's fresh set.
+  const taskReminderInputs = useMemo<TaskReminderInput[]>(
+    () =>
+      s.tasks
+        .filter((t) => t.status !== 'done')
+        .map((t) => ({
+          id: t.id,
+          title: t.title,
+          dueDate: t.dueDate,
+          dueTime: t.dueTime,
+          notifyAt: t.notifyAt,
+          reminderMode: taskReminderMode(t),
+        }))
+        .filter((t) => t.reminderMode !== 'off'),
+    [s.tasks],
+  );
+  const taskReminderSig = taskReminderInputs
+    .map((t) => `${t.id}|${t.title}|${t.dueDate}|${t.dueTime}|${t.notifyAt}|${t.reminderMode}`)
+    .join('~');
+  const taskSyncChain = useRef<Promise<void>>(Promise.resolve());
+  useEffect(() => {
+    const enabled = s.notifTasks ?? true;
+    const sync = () => {
+      taskSyncChain.current = taskSyncChain.current
+        .then(() =>
+          syncTaskReminders({
+            enabled,
+            tasks: taskReminderInputs,
+            makeContent: (task, tier) => ({
+              title: i18n.t(TASK_REMINDER_COPY[tier].title),
+              body: i18n.t(TASK_REMINDER_COPY[tier].body, { title: task.title }),
+            }),
+          }),
+        )
+        .catch(() => {});
+    };
+    if (loaded) sync();
+    // Foreground resync catches the day rolling over while the app was suspended,
+    // and re-arms anything iOS dropped.
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') sync();
+    });
+    return () => sub.remove();
+    // taskReminderInputs is captured, not a dep: the effect re-runs on every
+    // signature change, and a task edit that leaves the signature identical (a
+    // postpone count, a completed undated task) can't change what gets scheduled.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, taskReminderSig, s.notifTasks]);
 
   // Past-due countdowns are KEPT for everyone (they used to auto-erase for free
   // users, which was the old Plus/free split). Nothing deletes an exam but the
@@ -1856,6 +1962,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setReminder = (enabled: boolean, time: string) =>
     setS((prev) => ({ ...prev, reminderEnabled: enabled, reminderTime: time }));
 
+  const setNotifTasks = (value: boolean) => setS((prev) => ({ ...prev, notifTasks: value }));
+  const setNotifStreak = (value: boolean) => setS((prev) => ({ ...prev, notifStreak: value }));
+  const setNotifExams = (value: boolean) => setS((prev) => ({ ...prev, notifExams: value }));
+
   const setUse24HourTime = (value: boolean) =>
     setS((prev) => ({ ...prev, use24HourTime: value }));
 
@@ -2018,7 +2128,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return id;
   };
 
-  const updateTask = (id: string, patch: Partial<Pick<Task, 'title' | 'description' | 'subjectId' | 'dueDate' | 'isDeadline' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'notifId' | 'repeatDays' | 'repeatUntil'>>) => {
+  const updateTask = (id: string, patch: Partial<Pick<Task, 'title' | 'description' | 'subjectId' | 'dueDate' | 'isDeadline' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'reminderMode' | 'repeatDays' | 'repeatUntil'>>) => {
     const safePatch = {
       ...patch,
       ...(patch.title !== undefined ? { title: maskProfanity(patch.title) } : {}),
@@ -3010,6 +3120,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         examCountdowns: s.examCountdowns,
         reminderEnabled: s.reminderEnabled,
         reminderTime: s.reminderTime,
+        notifTasks: s.notifTasks ?? true,
+        notifStreak: s.notifStreak ?? true,
+        notifExams: s.notifExams ?? true,
+        setNotifTasks,
+        setNotifStreak,
+        setNotifExams,
         use24HourTime: s.use24HourTime,
         soundEffectsEnabled: s.soundEffectsEnabled,
         vinylColor: s.vinylColor,
