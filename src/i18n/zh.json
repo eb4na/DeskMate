@@ -1518,14 +1518,13 @@
     "mockUpgrade": "模拟升级",
     "mockUpgradeMsg": "这将以演示模式激活 Memobun 会员。不会进行真实支付。",
     "activatePlus": "激活会员（模拟）",
-    "restoreMsg": "真实购买恢复将在未来更新中接入。",
     "deactivateQ": "停用会员？",
     "deactivateMsg": "这将使你返回免费版。",
     "deactivate": "停用",
     "f_tira": "伙伴蒂拉",
     "f_tiraDesc": "解锁专属提拉米苏兔——会员免费获得",
     "monthlyPrice": "¥38",
-    "yearlyPrice": "¥24/月",
+    "yearlyPrice": "¥288",
     "saveYearly": "省 37%"
   },
   "coinShop": {

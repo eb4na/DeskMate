@@ -132,7 +132,12 @@
       ],
       "expo-secure-store",
       "expo-sharing",
+      [
       "expo-audio",
+      {
+        "enableBackgroundPlayback": false
+      }
+    ],
       [
         "react-native-google-mobile-ads",
         {

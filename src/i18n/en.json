@@ -1519,14 +1519,13 @@
     "mockUpgrade": "Mock Upgrade",
     "mockUpgradeMsg": "This activates Memobun Plus in demo mode. No real payment is processed.",
     "activatePlus": "Activate Plus (Mock)",
-    "restoreMsg": "Real payment restoration will be connected in a future update.",
     "deactivateQ": "Deactivate Plus?",
     "deactivateMsg": "This will return you to the free tier.",
     "deactivate": "Deactivate",
     "f_tira": "Tira, the companion",
     "f_tiraDesc": "Unlock the exclusive tiramisu bunny — yours free with Plus",
     "monthlyPrice": "$4.99",
-    "yearlyPrice": "$3.33/mo",
+    "yearlyPrice": "$39.99",
     "saveYearly": "Save 33%"
   },
   "coinShop": {

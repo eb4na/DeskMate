@@ -1518,14 +1518,13 @@
     "mockUpgrade": "모의 업그레이드",
     "mockUpgradeMsg": "데모 모드에서 Memobun 프리미엄을 활성화합니다. 실제 결제는 처리되지 않습니다.",
     "activatePlus": "프리미엄 활성화 (모의)",
-    "restoreMsg": "실제 구매 복원은 향후 업데이트에서 연결됩니다.",
     "deactivateQ": "프리미엄을 비활성화할까요?",
     "deactivateMsg": "무료 등급으로 돌아갑니다.",
     "deactivate": "비활성화",
     "f_tira": "동료 티라",
     "f_tiraDesc": "한정 티라미수 버니 잠금 해제 — 프리미엄으로 무료 제공",
     "monthlyPrice": "₩6,900",
-    "yearlyPrice": "₩4,500/월",
+    "yearlyPrice": "₩54,000",
     "saveYearly": "35% 절약"
   },
   "coinShop": {

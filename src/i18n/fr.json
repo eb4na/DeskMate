@@ -1519,14 +1519,13 @@
     "mockUpgrade": "Mise à niveau simulée",
     "mockUpgradeMsg": "Cela active Memobun Premium en mode démo. Aucun paiement réel n'est traité.",
     "activatePlus": "Activer Premium (simulé)",
-    "restoreMsg": "La restauration des achats réels sera reliée dans une future mise à jour.",
     "deactivateQ": "Désactiver Premium ?",
     "deactivateMsg": "Cela te ramènera à la formule gratuite.",
     "deactivate": "Désactiver",
     "f_tira": "Tira, la compagne",
     "f_tiraDesc": "Débloquez la lapine tiramisu exclusive — gratuite avec Premium",
     "monthlyPrice": "4,99 €",
-    "yearlyPrice": "3,33 €/mois",
+    "yearlyPrice": "39,99 €",
     "saveYearly": "Économise 33%"
   },
   "coinShop": {

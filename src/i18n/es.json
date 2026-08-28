@@ -1519,14 +1519,13 @@
     "mockUpgrade": "Mejora simulada",
     "mockUpgradeMsg": "Esto activa Memobun Premium en modo demo. No se procesa ningún pago real.",
     "activatePlus": "Activar Premium (simulado)",
-    "restoreMsg": "La restauración de compras reales se conectará en una futura actualización.",
     "deactivateQ": "¿Desactivar Premium?",
     "deactivateMsg": "Esto te devolverá al nivel gratuito.",
     "deactivate": "Desactivar",
     "f_tira": "Tira, la compañera",
     "f_tiraDesc": "Desbloquea la coneja de tiramisú exclusiva: gratis con Premium",
     "monthlyPrice": "4,99 €",
-    "yearlyPrice": "3,33 €/mes",
+    "yearlyPrice": "39,99 €",
     "saveYearly": "Ahorra 33%"
   },
   "coinShop": {

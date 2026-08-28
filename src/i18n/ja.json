@@ -1518,14 +1518,13 @@
     "mockUpgrade": "モックアップグレード",
     "mockUpgradeMsg": "デモモードでMemobun プラスを有効化します。実際の決済は行われません。",
     "activatePlus": "プラスを有効化（モック）",
-    "restoreMsg": "実際の購入の復元は今後のアップデートで対応します。",
     "deactivateQ": "プラスを無効化しますか？",
     "deactivateMsg": "無料プランに戻ります。",
     "deactivate": "無効化",
     "f_tira": "コンパニオン「ティラ」",
     "f_tiraDesc": "限定のティラミスバニーを解放 — プラスで無料",
     "monthlyPrice": "¥800",
-    "yearlyPrice": "¥500/月",
+    "yearlyPrice": "¥6,000",
     "saveYearly": "38%お得"
   },
   "coinShop": {
