@@ -14,7 +14,7 @@ import {
 import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 import { useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
@@ -30,10 +30,11 @@ import {
   subscribeConversation,
   type DmMessage,
 } from '@/lib/direct-messages';
+import { reportUser, REPORT_REASONS, type ReportReason } from '@/lib/moderation';
 import { useStudyRoom } from '@/lib/use-study-room';
 import i18n, { useTranslation } from '@/i18n';
 import { BREAK_GAME_ENABLED } from '@/constants/placeholder-data';
-import { BakeryColors, BakeryRadii, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, MaxContentWidth, MIN_POPUP_WIDTH, popupMaxWidth, Spacing } from '@/constants/theme';
 import { useReportModalTransition } from '@/lib/modal-traffic';
 
 const C = BakeryColors;
@@ -56,6 +57,19 @@ function BackIcon() {
   return (
     <Svg width={22} height={22} viewBox="0 0 24 24">
       <Path d="M15 5 L8 12 L15 19" stroke={C.cocoaDark} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </Svg>
+  );
+}
+
+// Moderation entry point. Guideline 1.2 wants report/block reachable from the
+// content itself, so this sits in the chat header rather than only on the
+// friend card two screens away.
+function MoreIcon() {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24">
+      {[6, 12, 18].map((cy) => (
+        <Circle key={cy} cx={12} cy={cy} r={1.9} fill={C.cocoaDark} />
+      ))}
     </Svg>
   );
 }
@@ -101,7 +115,7 @@ function dayKey(at?: string) {
 export default function DmChatScreen() {
   const { t } = useTranslation();
   const { code } = useLocalSearchParams<{ code: string }>();
-  const { friends, friendCode, profileDisplayName, clearDmUnread } = useApp();
+  const { friends, friendCode, profileDisplayName, clearDmUnread, blockUser } = useApp();
   const { user } = useAuth();
   const studyRoom = useStudyRoom();
 
@@ -114,7 +128,9 @@ export default function DmChatScreen() {
   const [otherUserId, setOtherUserId] = useState<string | null>(null);
   const [online, setOnline] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
-  useReportModalTransition(sheetOpen);
+  // Moderation popup: menu -> report (reason list) / block (confirm) -> result.
+  const [mod, setMod] = useState<null | 'menu' | 'report' | 'block' | 'sent' | 'error'>(null);
+  useReportModalTransition(sheetOpen || mod !== null);
   const scrollRef = useRef<ScrollView>(null);
 
   // Lift the composer above the keyboard. KeyboardAvoidingView under-pads inside an iOS card
@@ -242,6 +258,20 @@ export default function DmChatScreen() {
     hostGameInvite(game, room, studyRoom);
   };
 
+  // Same moderation actions as the friend card, reachable without leaving the chat.
+  // Report awaits the insert so a failure surfaces instead of a false "sent".
+  const doReport = async (reason: ReportReason) => {
+    if (!code) return;
+    const ok = await reportUser(code, reason, friendCode);
+    setMod(ok ? 'sent' : 'error');
+  };
+  // Blocking drops the friendship and hides them, so the thread is gone — leave it.
+  const confirmBlock = () => {
+    if (code) blockUser(code);
+    setMod(null);
+    router.back();
+  };
+
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
@@ -264,7 +294,13 @@ export default function DmChatScreen() {
               </View>
             </View>
           </View>
-          <View style={styles.headerBtn} />
+          <Pressable
+            onPress={() => setMod('menu')}
+            hitSlop={8}
+            accessibilityLabel={t('report.report')}
+            style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}>
+            <MoreIcon />
+          </Pressable>
         </View>
 
         <View style={styles.flex}>
@@ -382,11 +418,114 @@ export default function DmChatScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Moderation popup (Guideline 1.2: report + block reachable from the
+          conversation). Never open at the same time as the invite sheet, so this
+          stays a single presented modal over a pushed screen. */}
+      {mod !== null && (
+        <Modal transparent animationType="fade" visible onRequestClose={() => setMod(null)}>
+          <Pressable style={styles.popBackdrop} onPress={() => setMod(null)}>
+            <Pressable style={styles.popCard} onPress={() => {}}>
+              {mod === 'menu' && (
+                <>
+                  <Text style={styles.popTitle}>{friendName}</Text>
+                  <Pressable
+                    style={({ pressed }) => [styles.popReason, pressed && styles.pressed]}
+                    onPress={() => setMod('report')}>
+                    <Text style={styles.popReasonText}>{t('report.report')}</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [styles.popReason, pressed && styles.pressed]}
+                    onPress={() => setMod('block')}>
+                    <Text style={[styles.popReasonText, styles.popBlockText]}>{t('report.block')}</Text>
+                  </Pressable>
+                  <Pressable style={styles.popCancel} onPress={() => setMod(null)}>
+                    <Text style={styles.popCancelText}>{t('common.cancel')}</Text>
+                  </Pressable>
+                </>
+              )}
+              {mod === 'report' && (
+                <>
+                  <Text style={styles.popTitle}>{t('report.title', { name: friendName })}</Text>
+                  <Text style={styles.popSub}>{t('report.subtitle')}</Text>
+                  {REPORT_REASONS.map((r) => (
+                    <Pressable
+                      key={r}
+                      style={({ pressed }) => [styles.popReason, pressed && styles.pressed]}
+                      onPress={() => doReport(r)}>
+                      <Text style={styles.popReasonText}>{t(`report.reason_${r}`)}</Text>
+                    </Pressable>
+                  ))}
+                  <Pressable style={styles.popCancel} onPress={() => setMod(null)}>
+                    <Text style={styles.popCancelText}>{t('common.cancel')}</Text>
+                  </Pressable>
+                </>
+              )}
+              {mod === 'block' && (
+                <>
+                  <Text style={styles.popTitle}>{t('report.blockTitle', { name: friendName })}</Text>
+                  <Text style={styles.popSub}>{t('report.blockMsg')}</Text>
+                  <Pressable
+                    style={({ pressed }) => [styles.popDanger, pressed && styles.pressed]}
+                    onPress={confirmBlock}>
+                    <Text style={styles.popDangerText}>{t('report.blockConfirm')}</Text>
+                  </Pressable>
+                  <Pressable style={styles.popCancel} onPress={() => setMod(null)}>
+                    <Text style={styles.popCancelText}>{t('common.cancel')}</Text>
+                  </Pressable>
+                </>
+              )}
+              {(mod === 'sent' || mod === 'error') && (
+                <>
+                  <Text style={styles.popTitle}>{t(mod === 'sent' ? 'report.sentTitle' : 'report.failedTitle')}</Text>
+                  <Text style={styles.popSub}>{t(mod === 'sent' ? 'report.sentMsg' : 'report.failedMsg')}</Text>
+                  <Pressable
+                    style={({ pressed }) => [styles.popPrimary, pressed && styles.pressed]}
+                    onPress={() => setMod(null)}>
+                    <Text style={styles.popPrimaryText}>{t('common.close')}</Text>
+                  </Pressable>
+                </>
+              )}
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Moderation popup — same shape as the friend card's so report/block look
+  // identical wherever you reach them from.
+  popBackdrop: { flex: 1, backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center', padding: 28 },
+  popCard: {
+    width: '100%',
+    minWidth: MIN_POPUP_WIDTH,
+    maxWidth: popupMaxWidth(340),
+    backgroundColor: C.frosting,
+    borderRadius: 24,
+    padding: 22,
+    gap: 10,
+    borderWidth: 1.5,
+    borderColor: C.shortbread,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  popTitle: { fontSize: 18, fontWeight: '900', color: C.cocoaDark, textAlign: 'center' },
+  popSub: { fontSize: 13, color: C.mocha, textAlign: 'center', marginBottom: 4, lineHeight: 18 },
+  popReason: { paddingVertical: 12, borderRadius: 14, backgroundColor: C.cream, borderWidth: 1.5, borderColor: C.shortbread, alignItems: 'center' },
+  popReasonText: { fontSize: 14, fontWeight: '700', color: C.cocoaDark },
+  popBlockText: { color: '#C0463E' },
+  popDanger: { paddingVertical: 13, borderRadius: 14, backgroundColor: '#E0574E', alignItems: 'center' },
+  popDangerText: { fontSize: 15, fontWeight: '800', color: '#fff' },
+  popPrimary: { paddingVertical: 13, borderRadius: 14, backgroundColor: C.buttonPink, alignItems: 'center' },
+  popPrimaryText: { fontSize: 15, fontWeight: '800', color: '#fff' },
+  popCancel: { paddingVertical: 10, alignItems: 'center' },
+  popCancelText: { fontSize: 14, fontWeight: '700', color: C.mocha },
+
   container: { flex: 1, backgroundColor: '#F7E7D3' },
   flex: { flex: 1 },
 
