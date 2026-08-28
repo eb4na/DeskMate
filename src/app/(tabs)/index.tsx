@@ -99,6 +99,8 @@ const HOME_TABLET = {
   cardsGap: 28,    // horizontal gap between the exam & task cards
   cardRatio: 2.3,  // card width:height — higher = flatter/shorter (base 1.8); still clear of the character's head
   cardTextScale: 1.4, // multiplies the card text sizes
+  cardPadX: 24,    // inner LEFT/RIGHT padding of a card (phone base is 10; the tablet card is ~2.3× wider, so the raw 10 read as a hairline gap)
+  cardPadY: 12,    // inner TOP/BOTTOM padding of a card
   examY: 0,        // exam card vertical nudge (kept level with task)
   taskY: 0,        // task card vertical nudge
   // Desk ingredients (berries / eggs / butter) — shared transform + per-item spread
@@ -450,6 +452,8 @@ export default function HomeScreen() {
     { key: 'cardsGap', label: 'Cards gap', value: ht.cardsGap ?? 28, min: 0, max: 120, step: 2 },
     { key: 'cardRatio', label: 'Card flatness', value: ht.cardRatio ?? 2.6, min: 1.2, max: 4, step: 0.1 },
     { key: 'cardTextScale', label: 'Card text size', value: ht.cardTextScale ?? 1.3, min: 0.8, max: 2, step: 0.05 },
+    { key: 'cardPadX', label: 'Card pad L/R', value: ht.cardPadX ?? 24, min: 4, max: 60, step: 1 },
+    { key: 'cardPadY', label: 'Card pad T/B', value: ht.cardPadY ?? 12, min: 0, max: 40, step: 1 },
     { key: 'examY', label: 'Exam card Y', value: ht.examY ?? 0, min: -200, max: 200, step: 2 },
     { key: 'taskY', label: 'Task card Y', value: ht.taskY ?? 0, min: -200, max: 200, step: 2 },
     { key: 'ingX', label: 'Ingredients X', value: ht.ingX, min: -200, max: 300, step: 2 },
@@ -496,11 +500,17 @@ export default function HomeScreen() {
   const tTask = isTablet && { transform: [{ translateY: htScaled.taskY ?? 0 }] };
   const tCardBox = isTablet && { aspectRatio: htScaled.cardRatio ?? 2.6 };
   // The card keeps its dialed flatness (cardRatio) while the text inside is scaled up
-  // by cardTextScale, so a 3-line exam card (name / date / countdown) runs a few pt
-  // taller than the card's inner box — which used to clip the ascenders off the exam
-  // name. Hand the card's generous phone padding to the text instead of growing the
-  // card, so the block genuinely fits and nothing has to overflow.
-  const tCardPad = isTablet && { paddingTop: 3, paddingBottom: 3 };
+  // by cardTextScale — so the INNER padding has to be dialed too. The StyleSheet's
+  // phone values (10 / 10 / 8) are absolute px: on a card that's ~2.3× wider they read
+  // as a hairline gap and the title/body look glued to the card's edge. cardPadX/cardPadY
+  // are authored at 11-inch scale and ride tsW like the card's own width, so the inset
+  // stays proportional on every tablet. There's room to spare: at the reference size the
+  // 3-line exam card (name / date / countdown) is ~93pt of text in a ~181pt-tall card.
+  const tCardPad = isTablet && {
+    paddingHorizontal: htScaled.cardPadX ?? 24,
+    paddingTop: htScaled.cardPadY ?? 12,
+    paddingBottom: htScaled.cardPadY ?? 12,
+  };
   const cardFont = (sz: number, lh: number) =>
     isTablet ? { fontSize: sz * (htScaled.cardTextScale ?? 1.3), lineHeight: lh * (htScaled.cardTextScale ?? 1.3) } : null;
   // Card text auto-shrinks (FitText) ONLY on tablet, where the scaled-up fonts
