@@ -306,7 +306,7 @@ export function DateWheelPicker({
             </View>
 
             <ThemedText type="small" themeColor="textSecondary">
-              Selected: {displayLabel}
+              {t('pickers.selected', { value: displayLabel })}
             </ThemedText>
           </View>
         </View>
