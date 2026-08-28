@@ -70,6 +70,28 @@ function formatTime(task: Pick<Task, 'dueTime' | 'notifyAt'>, use24Hour: boolean
   return d.toLocaleTimeString(i18n.language || 'en-US', { hour: 'numeric', minute: '2-digit', hour12: !use24Hour });
 }
 
+// ─── one place decides what lands on a day ───────────────────────────────────
+// The month grid used to expand `repeatDays` while the day popup and the strip
+// below matched on the raw dueDate, so a repeating task could show in the grid and
+// then open an empty day. Every caller goes through this predicate now.
+function taskFallsOn(t: Task, iso: string) {
+  if (!t.dueDate) return false;
+  const start = t.dueDate.slice(0, 10);
+  if (t.repeatDays?.length) {
+    if (iso < start) return false;
+    if (t.repeatUntil && iso > t.repeatUntil) return false;
+    return t.repeatDays.includes(fromISO(iso).getDay());
+  }
+  return start === iso;
+}
+function tasksOnDay(tasks: Task[], iso: string, includeDone: boolean) {
+  return tasks.filter((t) => (includeDone || t.status !== 'done') && taskFallsOn(t, iso));
+}
+
+function clampN(v: number, lo: number, hi: number) {
+  return Math.max(lo, Math.min(hi, v));
+}
+
 // ─── shared task preview card ────────────────────────────────────────────────
 // `onNavigate` (set only when this card lives INSIDE the day modal) routes the
 // edit tap through the modal's dismiss-then-navigate path so add-task never
@@ -125,12 +147,16 @@ function CalendarMonthCard({
   setMonthOffset,
   onPickDate,
   cellW,
+  cardPad,
+  isTablet,
   scale = 1,
 }: {
   monthOffset: number;
   setMonthOffset: (next: number) => void;
   onPickDate: (iso: string) => void;
   cellW: number;
+  cardPad: number;
+  isTablet: boolean;
   // Proportional tablet scale (1 on phone). Scales the card chrome (arrows, month
   // label, padding) so the whole calendar grows at the same ratio as the grid.
   scale?: number;
@@ -138,25 +164,22 @@ function CalendarMonthCard({
   const { tasks, subjects, dayNotes, examCountdowns } = useApp();
   const today = todayISO();
 
-  // Map each exam day to its subject colour (falls back to pink) + chosen shape.
-  // When a day has MORE than one countdown, the cell shows the one closest to the
-  // current time; the next-closest one's colour becomes a small dot (`otherColor`)
-  // in the cell's top-right corner so the extra countdown isn't hidden.
-  const examByDay = useMemo(() => {
+  // Every countdown on a day, closest-to-now first. Each renders as its own chip,
+  // so a day with two exams shows both — the old cell could only draw one shape and
+  // demoted the second to a corner dot.
+  const examsByDay = useMemo(() => {
     const now = Date.now();
-    const colorOf = (e: (typeof examCountdowns)[number]) =>
-      (e.subject ? subjects.find((s) => s.name === e.subject)?.color : null) ?? '#F4A8C0';
-    const at = (e: (typeof examCountdowns)[number]) =>
+    const at = (e: ExamCountdown) =>
       new Date(`${e.dateISO.slice(0, 10)}T${e.time ?? '00:00'}:00`).getTime();
-    const groups: Record<string, (typeof examCountdowns)[number][]> = {};
-    for (const e of examCountdowns) (groups[e.dateISO.slice(0, 10)] ??= []).push(e);
-    const map: Record<string, { color: string; shape?: string; otherColor?: string }> = {};
-    for (const day of Object.keys(groups)) {
-      const sorted = groups[day].sort((a, b) => Math.abs(at(a) - now) - Math.abs(at(b) - now));
-      map[day] = { color: colorOf(sorted[0]), shape: sorted[0].shape, otherColor: sorted[1] ? colorOf(sorted[1]) : undefined };
+    const map: Record<string, ExamCountdown[]> = {};
+    for (const e of examCountdowns) (map[e.dateISO.slice(0, 10)] ??= []).push(e);
+    for (const day of Object.keys(map)) {
+      map[day].sort((a, b) => Math.abs(at(a) - now) - Math.abs(at(b) - now));
     }
     return map;
-  }, [examCountdowns, subjects]);
+  }, [examCountdowns]);
+  const examColor = (e: ExamCountdown) =>
+    (e.subject ? subjects.find((s) => s.name === e.subject)?.color : null) ?? '#F4A8C0';
 
   const base = new Date();
   const view = new Date(base.getFullYear(), base.getMonth() + monthOffset, 1);
@@ -172,26 +195,49 @@ function CalendarMonthCard({
     const map: Record<string, Task[]> = {};
     for (const t of tasks) {
       if (t.status === 'done' || !t.dueDate) continue;
-      const start = t.dueDate.slice(0, 10);
       if (t.repeatDays?.length) {
         // A repeating task shows on every matching weekday from its start date
         // through its end date (repeatUntil), expanded across the visible month.
+        // Only repeating tasks pay for the day loop — this stays one pass over
+        // `tasks`, not a filter per cell.
         for (let d = 1; d <= daysInMonth; d++) {
           const iso = toISO(year, month, d);
-          if (iso < start) continue;
-          if (t.repeatUntil && iso > t.repeatUntil) continue;
-          if (t.repeatDays.includes(new Date(`${iso}T00:00:00`).getDay())) {
-            (map[iso] ??= []).push(t);
-          }
+          if (taskFallsOn(t, iso)) (map[iso] ??= []).push(t);
         }
       } else {
-        (map[start] ??= []).push(t);
+        (map[t.dueDate.slice(0, 10)] ??= []).push(t);
       }
     }
     return map;
   }, [tasks, year, month, daysInMonth]);
 
   const goMonth = (delta: number) => setMonthOffset(monthOffset + delta);
+
+  // ── cell metrics: ratios of cellW, never fixed pixels ─────────────────────
+  // cellW is already derived from the device's screen width (and, on tablet, from
+  // the scaled content column), so it IS the screen-size ratio — a small phone, a
+  // big phone and an iPad each get type proportional to their own display. Nothing
+  // here multiplies by `scale` as well; that would double-count on tablet. The
+  // upper clamps exist because tablet cells grow faster than tablet type should.
+  const CHIP_FONT = clampN(Math.round(cellW * 0.2), 8, 15);
+  const CHIP_H = Math.round(CHIP_FONT * 1.3);
+  const CHIP_GAP = Math.max(1, Math.round(cellW * 0.03));
+  const CHIP_PAD_H = Math.max(2, Math.round(cellW * 0.05));
+  const OVERFLOW_FT = Math.max(8, Math.round(CHIP_FONT * 0.85));
+  const DAYNUM_FT = clampN(Math.round(cellW * 0.26), 11, 20);
+  const DAYNUM_H = Math.round(DAYNUM_FT * 1.25);
+  const PAD_V = Math.max(2, Math.round(cellW * 0.035));
+  const EXAM_ICON = Math.round(CHIP_FONT * 0.95);
+  const DOT = Math.max(5, Math.round(cellW * 0.13));
+
+  // Cells stay SQUARE — the calendar keeps the footprint it always had; the chips
+  // fill the room the centred day number used to waste. So the chip count is
+  // whatever a square cell holds, and the "+N" rides on the day-number row rather
+  // than costing a whole chip's worth of height.
+  const cellH = cellW;
+  const rowH = CHIP_H + CHIP_GAP; // each chip carries its own marginTop
+  const inner = cellH - DAYNUM_H - PAD_V * 2;
+  const slots = clampN(Math.floor(inner / rowH), 1, isTablet ? 6 : 3);
 
   const cells: (number | null)[] = [];
   for (let i = 0; i < firstWeekday; i++) cells.push(null);
@@ -201,7 +247,15 @@ function CalendarMonthCard({
   while (cells.length % 7 !== 0) cells.push(null);
 
   return (
-    <View style={[styles.card, scale !== 1 && { width: cellW * 7 + 2 * CARD_PAD * scale, alignSelf: 'center', padding: CARD_PAD * scale, gap: Spacing.two * scale }]}>
+    <View
+      style={[
+        styles.card,
+        // Phone: break out of the screen's 24pt side padding and shrink the card's
+        // own padding, so the seven cells get the width their chips need
+        // (44pt → 52pt on a 390pt phone). Tablet keeps the tuned padding.
+        !isTablet && { marginHorizontal: -PHONE_BREAKOUT, padding: cardPad },
+        scale !== 1 && { width: cellW * 7 + 2 * CARD_PAD * scale, alignSelf: 'center', padding: CARD_PAD * scale, gap: Spacing.two * scale },
+      ]}>
       <View style={[styles.cardHeader, scale !== 1 && { width: cellW * 7, alignSelf: 'center' }]}>
         <Pressable onPress={() => goMonth(-1)} hitSlop={10} style={styles.arrowBtn}>
           <Text style={[styles.arrow, scale !== 1 && { fontSize: 26 * scale }]}>‹</Text>
@@ -226,41 +280,82 @@ function CalendarMonthCard({
             borderTopWidth: i >= 7 ? 1 : 0,
             borderLeftWidth: i % 7 !== 0 ? 1 : 0,
           };
-          if (d === null) return <View key={i} style={[styles.dayCell, cellBorder, { width: cellW, height: cellW }]} />;
+          if (d === null) return <View key={i} style={[styles.dayCell, cellBorder, { width: cellW, height: cellH }]} />;
           const iso = toISO(year, month, d);
           const isToday = iso === today;
           const dayTasks = tasksByDay[iso] ?? [];
+          const dayExams = examsByDay[iso] ?? [];
           // Red dot when this day carries an unfinished deadline (isDeadline !==
           // false; legacy dated tasks count). tasksByDay already excludes done /
           // undated tasks, so a dot means "a real deadline lands here."
           const hasDeadline = dayTasks.some((t) => t.isDeadline !== false);
           const hasNote = !!dayNotes[iso];
-          const exam = examByDay[iso];
-          const hasExam = !!exam;
+          // Exams lead the stack (they're the day's fixed points), then open tasks.
+          const chips = [
+            ...dayExams.map((e) => ({ key: `e${e.id}`, label: e.name, color: examColor(e), shape: e.shape, isExam: true })),
+            ...dayTasks.map((t) => ({ key: `t${t.id}`, label: t.title, color: subjectColor(t.subjectId), shape: undefined, isExam: false })),
+          ];
+          const shown = Math.min(chips.length, slots);
+          const overflow = chips.length - shown;
           return (
             <Pressable
               key={i}
               onPress={() => onPickDate(iso)}
-              style={[styles.dayCell, cellBorder, { width: cellW, height: cellW }]}>
-              <View style={[styles.dayInner, isToday && styles.dayToday]}>
-                {hasExam && (
-                  <View style={styles.examStar} pointerEvents="none">
-                    <CountdownShape shape={exam.shape} color={exam.color} size={cellW * 1.12} />
-                  </View>
-                )}
-                {hasExam && exam.otherColor && (
-                  <View style={[styles.examOtherDot, { backgroundColor: exam.otherColor }]} pointerEvents="none" />
-                )}
+              style={[styles.dayCell, cellBorder, { width: cellW, height: cellH, padding: PAD_V }]}>
+              {/* The date leads the row and the "+N" closes it, so the overflow
+                  count costs no vertical room in a square cell. */}
+              <View style={[styles.dayNumRow, { height: DAYNUM_H }]}>
+                <View
+                  style={[
+                    styles.dayNumBadge,
+                    { minWidth: DAYNUM_H, height: DAYNUM_H, borderRadius: DAYNUM_H / 2 },
+                    isToday && styles.dayTodayBadge,
+                  ]}>
+                  <Text style={[styles.dayNum, { fontSize: DAYNUM_FT }, isToday && styles.dayNumToday]}>{d}</Text>
+                </View>
                 {hasDeadline && (
+                  <View style={[styles.deadlineDot, { width: DOT, height: DOT, borderRadius: DOT / 2 }]} pointerEvents="none" />
+                )}
+                {hasNote && (
                   <View
-                    style={[styles.deadlineDot, scale !== 1 && { width: 11 * scale, height: 11 * scale, borderRadius: 5.5 * scale, borderWidth: 2 }]}
+                    style={[styles.noteDot, { width: DOT * 0.66, height: DOT * 0.66, borderRadius: DOT * 0.33 }]}
                     pointerEvents="none"
                   />
                 )}
-                <Text style={[styles.dayNum, { fontSize: Math.round(cellW * 0.3) }, hasExam && styles.dayNumExam]}>{d}</Text>
-                {dayTasks.length > 0 && <Text style={[styles.taskCount, scale !== 1 && { fontSize: 13 * scale, lineHeight: 14 * scale }]}>{dayTasks.length}</Text>}
-                {hasNote && dayTasks.length === 0 && <View style={styles.noteDot} />}
+                <View style={styles.dayNumSpacer} />
+                {/* Bare numeral on purpose — a translated "5 more" ("他5件", "+5 más")
+                    does not fit ~40pt, and this needs no key in all seven locales. */}
+                {overflow > 0 && (
+                  <Text style={[styles.overflowText, { fontSize: OVERFLOW_FT }]}>{`+${overflow}`}</Text>
+                )}
               </View>
+
+              {chips.slice(0, shown).map((c) => (
+                <View
+                  key={c.key}
+                  style={[
+                    styles.chip,
+                    c.isExam && [styles.chipExam, { borderColor: c.color }],
+                    {
+                      height: CHIP_H,
+                      borderRadius: Math.max(2, Math.round(CHIP_H * 0.25)),
+                      paddingHorizontal: CHIP_PAD_H,
+                      marginTop: CHIP_GAP,
+                      gap: Math.max(1, Math.round(CHIP_PAD_H * 0.6)),
+                      backgroundColor: c.color + '2E',
+                    },
+                  ]}>
+                  {c.isExam && <CountdownShape shape={c.shape} color={c.color} size={EXAM_ICON} />}
+                  {/* Deliberately truncated, not shrunk-to-fit: a month cell is a
+                      glance, and the day popup carries the full title. */}
+                  <Text
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    style={[styles.chipText, { fontSize: CHIP_FONT, lineHeight: Math.round(CHIP_FONT * 1.2), color: c.color }]}>
+                    {c.label}
+                  </Text>
+                </View>
+              ))}
             </Pressable>
           );
         })}
@@ -334,7 +429,9 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
     onClose();
     setTimeout(runPendingNav, MODAL_SETTLE_MS);
   };
-  const dayTasks = iso ? tasks.filter((t) => t.dueDate?.slice(0, 10) === iso) : [];
+  // Same derivation the grid uses, so a repeating task's cell chip always opens a
+  // day that actually lists it. `true` keeps completed tasks visible here.
+  const dayTasks = iso ? tasksOnDay(tasks, iso, true) : [];
   const dayExams = iso ? examCountdowns.filter((e) => e.dateISO.slice(0, 10) === iso) : [];
 
   // Time-blocking agenda: tasks with a time laid out in chronological order (each
@@ -504,10 +601,7 @@ function HorizontalPreview({ onClose }: { onClose: () => void }) {
 /** Cards under the calendar listing what is due on the selected day. */
 function DueDayStrip({ iso }: { iso: string }) {
   const { tasks, examCountdowns } = useApp();
-  const dayTasks = useMemo(
-    () => tasks.filter((t) => t.dueDate?.slice(0, 10) === iso),
-    [tasks, iso],
-  );
+  const dayTasks = useMemo(() => tasksOnDay(tasks, iso, true), [tasks, iso]);
   const dayExams = useMemo(
     () => examCountdowns.filter((e) => e.dateISO.slice(0, 10) === iso),
     [examCountdowns, iso],
@@ -534,6 +628,12 @@ function DueDayStrip({ iso }: { iso: string }) {
   );
 }
 
+// Phone-only: how far the calendar card escapes the screen's side padding, and the
+// padding it keeps once out there. Every pt reclaimed here becomes cell width, which
+// is what makes a task chip legible at all.
+const PHONE_BREAKOUT = 20;
+const PHONE_CARD_PAD = 6;
+
 export function TaskCalendar({ searchMode = false, onCloseSearch }: { searchMode?: boolean; onCloseSearch?: () => void }) {
   const { width } = useWindowDimensions();
   const [monthOffset, setMonthOffset] = useState(0);
@@ -550,9 +650,10 @@ export function TaskCalendar({ searchMode = false, onCloseSearch }: { searchMode
   const { isTablet, scale, contentWidth } = useTabletScale();
   const CALENDAR_FILL = 1; // calendar spans the full content column
   const colInner = Math.min(width, contentWidth) - 2 * (SCREEN_PAD * scale); // matches the screen's scaled side padding
+  const cardPad = isTablet ? CARD_PAD * scale : PHONE_CARD_PAD;
   const gridW = isTablet
     ? colInner * CALENDAR_FILL - 2 * CARD_PAD * scale
-    : Math.min(width, MaxContentWidth) - SCREEN_PAD * 2 - CARD_PAD * 2;
+    : Math.min(width, MaxContentWidth) - (SCREEN_PAD - PHONE_BREAKOUT) * 2 - PHONE_CARD_PAD * 2;
   const cellW = Math.floor(gridW / 7);
 
   return (
@@ -569,6 +670,8 @@ export function TaskCalendar({ searchMode = false, onCloseSearch }: { searchMode
               setModalDate(iso);
             }}
             cellW={cellW}
+            cardPad={cardPad}
+            isTablet={isTablet}
             scale={isTablet ? scale : 1}
           />
           <DueDayStrip iso={selectedDay} />
@@ -633,32 +736,31 @@ const styles = StyleSheet.create({
     borderRadius: BakeryRadii.button,
     overflow: 'hidden',
   },
+  // A day cell is now a top-aligned column: day number, then a stack of task
+  // chips, then the "+N" overflow line. Sizes all arrive inline as ratios of cellW.
   dayCell: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 2,
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
     borderColor: C.latte,
+    overflow: 'hidden',
   },
-  dayInner: {
-    flex: 1,
-    alignSelf: 'stretch',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 14,
-  },
-  dayToday: { backgroundColor: '#FAD4E0' },
-  daySelected: { backgroundColor: C.jam },
-  examStar: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
-  // Small dot (top-right) marking a second same-day countdown, in its subject colour.
-  examOtherDot: { position: 'absolute', top: 2, right: 2, width: 7, height: 7, borderRadius: 3.5, borderWidth: 1, borderColor: '#fff' },
-  // Red dot (top-left) marking a day with an unfinished deadline. Top-left keeps
-  // it clear of the exam dot (top-right) and the task count / note dot (bottom-right).
-  deadlineDot: { position: 'absolute', top: 2, left: 2, width: 8, height: 8, borderRadius: 4, backgroundColor: '#E5484D', borderWidth: 1.5, borderColor: '#fff' },
-  dayNum: { fontSize: 14, color: C.cocoaDark, fontWeight: '600' },
-  dayNumExam: { color: '#fff', fontWeight: '800' },
-  dayNumSelected: { color: '#fff', fontWeight: '800' },
-  taskCount: { position: 'absolute', bottom: 1, right: 3, fontSize: 9, lineHeight: 10, color: C.mocha, fontWeight: '800' },
-  noteDot: { position: 'absolute', bottom: 3, right: 3, width: 4, height: 4, borderRadius: 2, backgroundColor: C.latte },
+  dayNumRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  dayNumSpacer: { flex: 1, minWidth: 1 },
+  dayNumBadge: { alignItems: 'center', justifyContent: 'center' },
+  dayTodayBadge: { backgroundColor: '#FAD4E0' },
+  dayNum: { color: C.cocoaDark, fontWeight: '600' },
+  dayNumToday: { fontWeight: '800' },
+  // Deadline / note markers sit INLINE beside the day number now — the cell's
+  // corners belong to the chips.
+  deadlineDot: { backgroundColor: '#E5484D' },
+  noteDot: { backgroundColor: C.mocha },
+  // Task preview chip: subject-tinted, title only. No time — at ~52pt of cell width
+  // a time string consumes the whole chip and leaves nothing of the title.
+  chip: { flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
+  // Exams are outlined so they read as the day's fixed points, not another task.
+  chipExam: { borderWidth: 1 },
+  chipText: { fontWeight: '700', flexShrink: 1 },
+  overflowText: { color: C.mocha, fontWeight: '800' },
 
   // Selected day preview
   previewWrap: { gap: Spacing.two },
