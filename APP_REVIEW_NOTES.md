@@ -35,12 +35,12 @@ set a duration and subject, and study; the character studies alongside you at a
 desk. Finishing a session pays out one Focus Coin per minute studied (ending early
 pays nothing), and coins buy cosmetic companions, outfits, rooms and treats. It
 also has tasks, exam countdowns, subject stats, weekly mood/subject reports and
-daily streaks. Audience: students aged 13+ (the app has a 13+ date-of-birth gate
-at first launch). Problem solved: starting and sustaining focused study alone is
+daily streaks. Audience: students aged 13+ (the app asks the user to confirm they
+are 13+ at first launch; no date of birth is collected). Problem solved: starting and sustaining focused study alone is
 hard; a companion, a visible streak and a small reward loop make it easier.
 
 HOW TO REACH THE MAIN FEATURES
-1. Launch -> accept Privacy Policy + Terms -> enter a date of birth (13+).
+1. Launch -> accept Privacy Policy + Terms -> confirm you are at least 13.
 2. Pick one of five starter companions (free).
 3. Sign in with the demo account above (or tap "Continue as guest").
 4. Home -> tap the timer/desk -> choose duration, subject, mood -> the session
@@ -194,7 +194,7 @@ not generate content with AI.
 purchases, ads or sounds silently no-op, so filming it risks filming a bug.
 
 1. Launch from the Home screen (show the app icon being tapped).
-2. Privacy Policy + Terms consent, then the date-of-birth gate.
+2. Privacy Policy + Terms consent, then the 13+ age confirmation.
 3. Starter companion picker.
 4. Sign in with the demo account (show the login screen and the guest option).
 5. Home → start a session → duration, subject, mood → let it run briefly →

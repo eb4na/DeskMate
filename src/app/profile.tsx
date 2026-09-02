@@ -300,8 +300,8 @@ export default function ProfileScreen() {
             />
           </View>
 
-          {/* Birthday is NOT editable here — it's taken from the date of birth chosen at
-              signup; the single allowed change lives in Settings (one source of truth). */}
+          {/* Birthday is NOT editable here — it is optional, and both the first set and
+              the single allowed change live in Settings (one source of truth). */}
 
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>{t('profileCard.character')}</Text>

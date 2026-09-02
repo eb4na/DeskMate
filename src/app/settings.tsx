@@ -41,7 +41,7 @@ function SettingsIcon({ name, size = 34 }: { name: keyof typeof SETTINGS_ICONS; 
 }
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BIRTHDAY_CHANGE_LIMIT, useApp } from '@/context/app-context';
+import { BIRTHDAY_CHANGE_LIMIT, STREAK_RESCUE_DAYS, STREAK_RESCUE_MAX_GAP, useApp } from '@/context/app-context';
 import { useAuth } from '@/context/auth-context';
 import { supabase } from '@/lib/supabase';
 import { linkProvider } from '@/lib/oauth';
@@ -587,6 +587,19 @@ export default function SettingsScreen() {
               <View style={styles.rowBody}>
                 <ThemedText type="smallBold">Test streak freeze</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">Test button — fakes a 1-day streak lapse and gives you a freeze, so the “Use streak freeze” prompt appears on Home</ThemedText>
+              </View>
+            </Pressable>
+            {/* TEST — lapse to the LAST day of the rescue window, to check the far edge of the
+                30-day grace period (and that one more day expires it). */}
+            <Pressable
+              onPress={() => { devLapseStreak(STREAK_RESCUE_MAX_GAP); noteModalTransition(); router.back(); }}
+              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
+              <View style={styles.rowIconImage}>
+                <SettingsIcon name="reset" />
+              </View>
+              <View style={styles.rowBody}>
+                <ThemedText type="smallBold">Test streak freeze (last day)</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">Test button — fakes a {STREAK_RESCUE_DAYS}-day lapse, the final day a freeze can still save the streak</ThemedText>
               </View>
             </Pressable>
             </>

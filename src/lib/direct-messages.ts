@@ -15,7 +15,15 @@ import type { OnlineGameId } from '@/lib/game-net';
 // Max characters allowed in a single DM message.
 export const DM_MAX_LENGTH = 500;
 
-export type DmKind = 'text' | 'invite';
+// `kind` is free-form text server-side, so 'emote' needed no migration. The
+// `invite` jsonb column is the table's only free-form payload slot, so emotes
+// reuse it as { emote: '<id>' } rather than adding a column (migrations here are
+// run by hand). rowToMsg splits that column by `kind` so callers get typed fields.
+//
+// An emote's `body` is NOT the id — it's a human-readable fallback, because a
+// client older than this feature has no 'emote' branch and renders `body` in a
+// plain text bubble. Putting the id there made those clients print "sleepy".
+export type DmKind = 'text' | 'invite' | 'emote';
 export type DmInvite = { game: OnlineGameId; room: string };
 
 export type DmMessage = {
@@ -27,6 +35,7 @@ export type DmMessage = {
   kind: DmKind;
   body: string | null;
   invite: DmInvite | null;
+  emote: string | null;
   createdAt: string;
   readAt: string | null;
 };
@@ -39,7 +48,7 @@ type Row = {
   to_code: string;
   kind: DmKind;
   body: string | null;
-  invite: DmInvite | null;
+  invite: (DmInvite & { emote?: string }) | null;
   created_at: string;
   read_at: string | null;
 };
@@ -53,7 +62,8 @@ function rowToMsg(r: Row): DmMessage {
     toCode: r.to_code,
     kind: r.kind,
     body: r.body,
-    invite: r.invite,
+    invite: r.kind === 'invite' ? ((r.invite as DmInvite) ?? null) : null,
+    emote: r.kind === 'emote' ? (r.invite?.emote ?? null) : null,
     createdAt: r.created_at,
     readAt: r.read_at,
   };
@@ -110,6 +120,7 @@ export async function sendDm(args: {
   kind?: DmKind;
   body?: string | null;
   invite?: DmInvite | null;
+  emote?: string | null;
 }): Promise<SendResult> {
   // Cap length (safety net — the composer also enforces this) before masking.
   const body = args.body != null ? maskProfanity(args.body.slice(0, DM_MAX_LENGTH)) : null;
@@ -122,7 +133,7 @@ export async function sendDm(args: {
       to_code: args.toCode.trim().toUpperCase(),
       kind: args.kind ?? 'text',
       body,
-      invite: args.invite ?? null,
+      invite: args.invite ?? (args.emote ? { emote: args.emote } : null),
     })
     .select()
     .single();

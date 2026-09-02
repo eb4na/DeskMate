@@ -13,7 +13,7 @@ import { StreakFreezeIcon } from '@/components/streak-freeze-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { NotebookBackground } from '@/components/notebook-background';
-import { daysBetween, todayISO, useApp, weekMondayISO, weekStartISO } from '@/context/app-context';
+import { STREAK_RESCUE_MAX_GAP, STREAK_RESCUE_MIN_GAP, daysBetween, todayISO, useApp, weekMondayISO, weekStartISO } from '@/context/app-context';
 import { ACHIEVEMENTS } from '@/constants/quests';
 import { RECIPE_IDS } from '@/constants/recipes';
 import { useAuth } from '@/context/auth-context';
@@ -212,12 +212,17 @@ export default function ProgressScreen() {
     !!cutoff && sessionHistory.some((r) => r.dateISO < cutoff);
 
   // ── Streak status ─────────────────────────────────────────────────────────
-  // Days since last study: <=1 active, 2–4 broken-but-rescuable (1–3 missed days,
-  // a freeze can still save it), >=5 the streak is permanently gone.
+  // Days since last study: <= 1 active; MIN_GAP…MAX_GAP broken-but-rescuable (a freeze
+  // can still save it, for STREAK_RESCUE_DAYS days after the first missed day); beyond
+  // MAX_GAP the streak is permanently gone. These read the same constants the engine
+  // does, so this banner can no longer disagree with the Home rescue prompt.
   const missed = streak.lastStudyDate ? daysSince(streak.lastStudyDate) : 0;
-  const streakRescuable = missed >= 2 && missed <= 4;
-  const streakLost = missed >= 5;
-  const freezeDaysLeft = 5 - missed; // days remaining to act while rescuable
+  const streakRescuable =
+    streak.currentStreak > 0 && missed >= STREAK_RESCUE_MIN_GAP && missed <= STREAK_RESCUE_MAX_GAP;
+  const streakLost = missed > STREAK_RESCUE_MAX_GAP || (missed >= STREAK_RESCUE_MIN_GAP && streak.currentStreak <= 0);
+  // Days left to act, counting today — so it reads STREAK_RESCUE_DAYS on the first
+  // offered day and 1 on the last.
+  const freezeDaysLeft = STREAK_RESCUE_MAX_GAP - missed + 1;
   const displayStreak = streakLost ? 0 : streak.currentStreak;
 
   // ── Weekly summary for the "This week" card ───────────────────────────────

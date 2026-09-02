@@ -9,7 +9,10 @@
  *      out it auto-advances to the picker — it never auto-STARTS a session, so
  *      nothing is farmed by walking away (coins/streak only move on genuine study,
  *      see [[memobun-next-session-loop]]).
- *   2. Pick the next length → the SAME run resumes (a continued block, no receipt).
+ *   2. Pick the next SUBJECT and length → the SAME run resumes (a continued block,
+ *      no receipt). The subject carries over from the block that just ended, so the
+ *      default path is still one tap; the pill at the top of the card opens an
+ *      inline subject list for anyone who wants to switch.
  *      Plus members dial any length on the wheel (pre-set to the last block);
  *      free members pick from the presets with the last one highlighted.
  *
@@ -21,7 +24,7 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DurationWheel } from '@/components/duration-wheel';
@@ -30,6 +33,7 @@ import { useApp } from '@/context/app-context';
 import { SESSION_LENGTHS, autoBreakMinutes } from '@/constants/placeholder-data';
 import { DEFAULT_ROOM_BG, roomById } from '@/constants/room-data';
 import { roomAccent } from '@/lib/room-accent';
+import { localizeSubjectName } from '@/lib/subject-utils';
 import { isHanjiActiveId, resolveActiveCompanion } from '@/lib/companion-utils';
 import { breakNudgeDelay, cancelComeBackNudge, sendBreakEndingNudge } from '@/lib/notifications';
 import { showLoadingScreen } from '@/lib/loading-signal';
@@ -74,7 +78,7 @@ export default function SessionCheckpointScreen() {
   const { scale } = useTabletScale();
   const styles = useMemo(() => makeStyles(scale), [scale]);
   const {
-    startActiveSession, clearActiveSession, isPlus, equippedBackgroundRoomId,
+    startActiveSession, clearActiveSession, isPlus, equippedBackgroundRoomId, subjects,
     activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins,
   } = useApp();
 
@@ -109,6 +113,14 @@ export default function SessionCheckpointScreen() {
   const [secondsLeft, setSecondsLeft] = useState(breakLenMin * 60);
   // Plus: the wheel value (pre-set to the last block's length).
   const [customMin, setCustomMin] = useState(last);
+  // The subject the NEXT block will be logged under. Defaults to the one that just
+  // ended so continuing is unchanged for anyone who doesn't touch it.
+  const [chosenSubject, setChosenSubject] = useState<string | null>(subjectName);
+  // While true the card shows the subject list in place of the length options —
+  // an inline swap, NOT a native <Modal>: this route is already presented as a
+  // transparentModal, and stacking natives over it is what wedges iOS.
+  const [subjectOpen, setSubjectOpen] = useState(false);
+  const pickableSubjects = subjects.filter((sub) => !sub.archived).sort((a, b) => a.order - b.order);
   // One-shot guard: a pick (or "End session") must navigate exactly once.
   const acted = useRef(false);
   // Wall-clock break end so a backgrounded app can't over-run the break.
@@ -183,11 +195,15 @@ export default function SessionCheckpointScreen() {
   const continueSession = (minutes: number) => {
     if (acted.current) return;
     acted.current = true;
+    // A carried-over task belongs to the subject that just ended. If the player
+    // switched subjects, that task no longer matches what they're about to study,
+    // so drop it rather than logging the next block against the wrong task.
+    const keepTask = chosenSubject === subjectName;
     startActiveSession({
       durationMinutes: minutes,
-      subjectName,
-      taskId: taskId && taskId.length > 0 ? taskId : null,
-      taskTitle: taskTitle && taskTitle.length > 0 ? taskTitle : null,
+      subjectName: chosenSubject,
+      taskId: keepTask && taskId && taskId.length > 0 ? taskId : null,
+      taskTitle: keepTask && taskTitle && taskTitle.length > 0 ? taskTitle : null,
       breakMinutes: autoBreakMinutes(minutes),
       startedAt: new Date().toISOString(),
       continuedRun: true,
@@ -237,10 +253,76 @@ export default function SessionCheckpointScreen() {
   // ── Stage 2: the length picker (a dimmed card popup) ─────────────────────────
   // No "I'm done for now" here — reaching this stage means the player already chose
   // to keep going (ended the break). The break screen keeps the "End session" exit.
+  // Inline subject list — swaps the card's contents so no native <Modal> is stacked
+  // over this transparentModal route. Mirrors SubjectPickerModal's options (active
+  // subjects in order, plus "Just focus"), reusing the same copy.
+  if (subjectOpen) {
+    const choose = (name: string | null) => { setChosenSubject(name); setSubjectOpen(false); };
+    return (
+      <View style={styles.backdrop}>
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.card}>
+            <Text style={styles.title}>{t('studyRoom.whatStudying')}</Text>
+            <ScrollView style={styles.subjectScroll} contentContainerStyle={styles.subjectWrap} showsVerticalScrollIndicator={false}>
+              {pickableSubjects.map((sub) => (
+                <SoundPressable
+                  key={sub.id}
+                  sound="confirm"
+                  onPress={() => choose(sub.name)}
+                  style={({ pressed }) => [
+                    styles.subjectChip,
+                    { borderColor: sub.color, backgroundColor: sub.color + '22' },
+                    sub.name === chosenSubject && styles.subjectChipActive,
+                    pressed && styles.pressed,
+                  ]}>
+                  <Text style={styles.subjectChipText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                    {sub.emoji ? `${sub.emoji} ` : ''}{localizeSubjectName(sub.name, t)}
+                  </Text>
+                </SoundPressable>
+              ))}
+            </ScrollView>
+            <SoundPressable
+              sound="confirm"
+              onPress={() => choose(null)}
+              style={({ pressed }) => [styles.focusBtn, pressed && styles.pressed]}>
+              <Text style={styles.focusBtnText}>{t('studyRoom.justFocus')}</Text>
+            </SoundPressable>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  // `chosen` is only for the pill's colour/emoji — it can be undefined when the
+  // carried-over subject has since been archived or deleted. The LABEL still comes
+  // from chosenSubject in that case, so the pill can never read "Just focus" while
+  // continueSession is quietly logging the old subject.
+  const chosen = chosenSubject ? pickableSubjects.find((sub) => sub.name === chosenSubject) : undefined;
+
   return (
     <View style={styles.backdrop}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.card}>
+          {/* What the next block gets logged under. Sits ABOVE "How long?" so it's
+              seen before a length tap continues the session. Hidden when there are
+              no subjects to choose from — then there's nothing to switch to. */}
+          {pickableSubjects.length > 0 && (
+            <Pressable
+              onPress={() => setSubjectOpen(true)}
+              accessibilityLabel={t('studyRoom.whatStudying')}
+              style={({ pressed }) => [
+                styles.subjectPill,
+                chosen ? { borderColor: chosen.color, backgroundColor: chosen.color + '22' } : null,
+                pressed && styles.pressed,
+              ]}>
+              <Text style={styles.subjectPillText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                {chosenSubject
+                  ? `${chosen?.emoji ? `${chosen.emoji} ` : ''}${localizeSubjectName(chosenSubject, t)}`
+                  : t('studyRoom.justFocus')}
+              </Text>
+              <Text style={styles.subjectPillChevron}>{'\u25BE'}</Text>
+            </Pressable>
+          )}
           {isPlus ? (
             <>
               <Text style={styles.title}>{t('studyRoom.howLong')}</Text>
@@ -320,5 +402,30 @@ const makeStyles = (s: number) => StyleSheet.create({
   // The last-used length is pre-highlighted so it's the obvious default tap.
   optBtnActive: { borderColor: BakeryColors.cocoaDark },
   optBtnText: { color: BakeryColors.cocoaDark, fontWeight: '900', fontSize: 15 * s },
+
+  // ── Subject pill + inline subject list (stage 2) ──
+  // The pill shows what the next block will be logged under and opens the list.
+  subjectPill: {
+    alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: Spacing.one * s, paddingVertical: 10 * s, paddingHorizontal: Spacing.three * s,
+    borderRadius: BakeryRadii.pill, borderWidth: 2, borderColor: BakeryColors.shortbread,
+    backgroundColor: '#FFFFFF',
+  },
+  subjectPillText: { flexShrink: 1, color: BakeryColors.cocoaDark, fontWeight: '800', fontSize: 14 * s },
+  subjectPillChevron: { color: BakeryColors.cocoa, fontWeight: '900', fontSize: 12 * s },
+  // Cap the list so a long subject list can't push the card off a small screen.
+  subjectScroll: { alignSelf: 'stretch', maxHeight: 260 * s },
+  subjectWrap: { gap: Spacing.two * s, paddingVertical: Spacing.one * s },
+  subjectChip: {
+    alignSelf: 'stretch', paddingVertical: 12 * s, paddingHorizontal: Spacing.three * s,
+    borderRadius: BakeryRadii.pill, borderWidth: 2, alignItems: 'center', justifyContent: 'center',
+  },
+  subjectChipActive: { borderWidth: 3, borderColor: BakeryColors.cocoaDark },
+  subjectChipText: { color: BakeryColors.cocoaDark, fontWeight: '800', fontSize: 15 * s },
+  focusBtn: {
+    alignSelf: 'stretch', paddingVertical: 12 * s, borderRadius: BakeryRadii.pill,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  focusBtnText: { color: BakeryColors.cocoa, fontWeight: '800', fontSize: 14 * s },
   pressed: { opacity: 0.85 },
 });

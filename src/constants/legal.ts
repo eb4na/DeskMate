@@ -15,7 +15,8 @@ import type { SupportedLanguage } from '@/i18n';
 export const LEGAL_VERSION = '1.1';
 export const LEGAL_EFFECTIVE_DATE = 'July 27, 2026';
 // Minimum age to use the app. Enforced at the first-launch consent gate, where
-// the user enters their date of birth. 13 is the common threshold for consenting
+// the user affirms they meet it (no date of birth is collected — App Review
+// 5.1.1(v)). 13 is the common threshold for consenting
 // to data processing (e.g. US COPPA); raise if your audience requires it.
 export const MINIMUM_AGE = 13;
 // Contact address shown in both documents (Privacy Policy + Terms).
@@ -61,7 +62,7 @@ const en: LegalDoc = {
       title: 'Information we collect',
       body: [
         'Account information: if you sign in, we receive your email address and a unique account ID from your sign-in provider (e.g. Google). If you use the app as a guest, no account is created and your progress is stored only on your device until you choose to sign in.',
-        `Date of birth: we ask for your date of birth once, when you first start the app, to confirm you meet the minimum age (${AGE}). We store the date with your app data; we do not share it.`,
+        `Birthday (optional): you can add a birthday in Settings to receive a small in-app reward each year. We store only the month and day — never a year — and we never ask for it when you sign up. You can leave it blank, and we do not collect your date of birth.`,
         'Study and app activity: study sessions, subjects, tasks and exams you add, streaks, coins, items you own, and similar in-app progress, so your data syncs across your devices.',
         'Friend messages: direct messages you send to friends are stored so your conversations persist.',
         'Usage analytics: we use PostHog, a third-party analytics provider, to understand how the app is used. This includes in-app events (for example, completing a study session, opening a chat, or making an in-app purchase), your device type and operating-system version, the app version, and an approximate location (such as country or city) derived from your IP address. We do not use this to identify you personally beyond your account ID.',
@@ -102,7 +103,7 @@ const en: LegalDoc = {
     {
       title: "Children's privacy",
       body: [
-        `Memobun is not directed to children under ${AGE}. We ask for your date of birth at first launch and do not allow accounts for anyone under ${AGE}. If you believe a child has provided us personal information, contact us and we will remove it.`,
+        `Memobun is not directed to children under ${AGE}. When you first start the app you confirm that you are at least ${AGE}; we do not allow accounts for anyone under ${AGE}. If you believe a child has provided us personal information, contact us and we will remove it.`,
       ],
     },
     {
@@ -126,7 +127,7 @@ const en: LegalDoc = {
     {
       title: 'Eligibility',
       body: [
-        `You must be at least ${AGE} years old (or the minimum age of digital consent in your country, if higher) to use Memobun. We ask for your date of birth at first launch, and by using the app you confirm you meet this requirement.`,
+        `You must be at least ${AGE} years old (or the minimum age of digital consent in your country, if higher) to use Memobun. You confirm this when you first start the app, and by using the app you confirm you meet this requirement.`,
       ],
     },
     {
@@ -187,7 +188,7 @@ const zh: LegalDoc = {
       title: '我们收集的信息',
       body: [
         '账号信息：如果您登录，我们会从您的登录服务商（例如 Google）处获得您的电子邮箱地址和唯一的账号 ID。如果您以游客身份使用应用，则不会创建账号，您的进度仅保存在本设备上，直到您选择登录。',
-        `出生日期：我们会在您首次启动应用时询问一次您的出生日期，以确认您已满最低年龄（${AGE} 岁）。该日期与您的应用数据一同保存，我们不会将其分享给他人。`,
+        `生日（可选）：您可以在设置中添加生日，以便每年获得一份小小的应用内奖励。我们仅保存月份和日期，绝不保存年份；注册时我们不会询问，您也可以不填写。我们不会收集您的出生日期。`,
         '学习与应用活动：您添加的学习时段、科目、任务和考试，以及连续天数、金币、拥有的物品和类似的应用内进度，以便您的数据在各设备间同步。',
         '好友消息：您发送给好友的私信会被保存，以便您的对话得以留存。',
         '使用分析：我们使用第三方分析服务商 PostHog 来了解应用的使用情况。这包括应用内事件（例如完成一次学习、打开聊天或进行一次应用内购买）、您的设备类型和操作系统版本、应用版本，以及根据您的 IP 地址推断的大致位置（例如国家或城市）。除您的账号 ID 外，我们不会借此识别您的个人身份。',
@@ -228,7 +229,7 @@ const zh: LegalDoc = {
     {
       title: '儿童隐私',
       body: [
-        `Memobun 不面向未满 ${AGE} 岁的儿童。我们会在首次启动时询问您的出生日期，且不允许未满 ${AGE} 岁者创建账号。如果您认为有儿童向我们提供了个人信息，请联系我们，我们将予以删除。`,
+        `Memobun 不面向未满 ${AGE} 岁的儿童。您在首次启动应用时需确认自己已满 ${AGE} 岁；我们不允许未满 ${AGE} 岁者创建账号。如果您认为有儿童向我们提供了个人信息，请联系我们，我们将予以删除。`,
       ],
     },
     {
@@ -253,7 +254,7 @@ const zh: LegalDoc = {
     {
       title: '使用资格',
       body: [
-        `您必须年满 ${AGE} 岁（若您所在国家规定的数字同意最低年龄更高，则以更高者为准）方可使用 Memobun。我们会在首次启动时询问您的出生日期，使用本应用即表示您确认符合该要求。`,
+        `您必须年满 ${AGE} 岁（若您所在国家规定的数字同意最低年龄更高，则以更高者为准）方可使用 Memobun。您在首次启动应用时确认这一点，使用本应用即表示您确认符合该要求。`,
       ],
     },
     {
@@ -314,7 +315,7 @@ const zhHant: LegalDoc = {
       title: '我們收集的資訊',
       body: [
         '帳號資訊：如果您登入，我們會從您的登入服務商（例如 Google）取得您的電子郵件地址和唯一的帳號 ID。如果您以訪客身分使用應用程式，則不會建立帳號，您的進度僅儲存在本裝置上，直到您選擇登入為止。',
-        `出生日期：我們會在您首次啟動應用程式時詢問一次您的出生日期，以確認您已達最低年齡（${AGE} 歲）。該日期會與您的應用程式資料一同儲存，我們不會將其分享給他人。`,
+        `生日（選填）：您可以在設定中新增生日，以便每年獲得一份小小的應用程式內獎勵。我們僅儲存月份與日期，絕不儲存年份；註冊時我們不會詢問，您也可以不填寫。我們不會收集您的出生日期。`,
         '學習與應用程式活動：您新增的學習時段、科目、任務和考試，以及連續天數、金幣、擁有的物品和類似的應用程式內進度，以便您的資料在各裝置間同步。',
         '好友訊息：您傳送給好友的私訊會被儲存，以便您的對話得以留存。',
         '使用分析：我們使用第三方分析服務商 PostHog 來了解應用程式的使用情況。這包括應用程式內事件（例如完成一次學習、開啟聊天或進行一次應用程式內購買）、您的裝置類型和作業系統版本、應用程式版本，以及根據您的 IP 位址推斷的大致位置（例如國家或城市）。除您的帳號 ID 之外，我們不會藉此辨識您的個人身分。',
@@ -355,7 +356,7 @@ const zhHant: LegalDoc = {
     {
       title: '兒童隱私',
       body: [
-        `Memobun 並非以未滿 ${AGE} 歲的兒童為對象。我們會在首次啟動時詢問您的出生日期，且不允許未滿 ${AGE} 歲者建立帳號。如果您認為有兒童向我們提供了個人資訊，請聯絡我們，我們將予以刪除。`,
+        `Memobun 並非以未滿 ${AGE} 歲的兒童為對象。您在首次啟動應用程式時需確認自己已滿 ${AGE} 歲；我們不允許未滿 ${AGE} 歲者建立帳號。如果您認為有兒童向我們提供了個人資訊，請聯絡我們，我們將予以刪除。`,
       ],
     },
     {
@@ -380,7 +381,7 @@ const zhHant: LegalDoc = {
     {
       title: '使用資格',
       body: [
-        `您必須年滿 ${AGE} 歲（若您所在國家規定的數位同意最低年齡更高，則以較高者為準）方可使用 Memobun。我們會在首次啟動時詢問您的出生日期，使用本應用程式即表示您確認符合此要求。`,
+        `您必須年滿 ${AGE} 歲（若您所在國家規定的數位同意最低年齡更高，則以較高者為準）方可使用 Memobun。您在首次啟動應用程式時確認這一點，使用本應用程式即表示您確認符合此要求。`,
       ],
     },
     {
@@ -441,7 +442,7 @@ const ja: LegalDoc = {
       title: '当社が収集する情報',
       body: [
         'アカウント情報：ログインされた場合、当社はログインプロバイダ（例：Google）からお客様のメールアドレスと一意のアカウント ID を受け取ります。ゲストとしてご利用の場合、アカウントは作成されず、進行状況はログインを選択されるまでお客様の端末内にのみ保存されます。',
-        `生年月日：最低年齢（${AGE} 歳）を満たしていることを確認するため、アプリの初回起動時に一度だけ生年月日をお尋ねします。この日付はアプリのデータとともに保存され、第三者と共有することはありません。`,
+        `誕生日（任意）：設定から誕生日を追加すると、毎年ささやかなアプリ内リワードを受け取れます。保存するのは月と日のみで、年は保存しません。登録時にお尋ねすることはなく、未入力のままでも構いません。生年月日を収集することはありません。`,
         '学習およびアプリの利用状況：追加された学習セッション、科目、タスク、試験、連続記録、コイン、所有アイテムなどのアプリ内の進行状況。お客様のデータを端末間で同期するために利用します。',
         'フレンドのメッセージ：フレンドに送信したダイレクトメッセージは、会話を保持するために保存されます。',
         '利用分析：当社は、アプリの利用状況を把握するために第三者分析プロバイダである PostHog を利用します。これには、アプリ内のイベント（例：学習セッションの完了、チャットの開始、アプリ内購入）、お客様の端末の種類とオペレーティングシステムのバージョン、アプリのバージョン、および IP アドレスから推定されるおおよその位置（国や都市など）が含まれます。当社はこれをアカウント ID を超えてお客様個人を特定するために利用することはありません。',
@@ -482,7 +483,7 @@ const ja: LegalDoc = {
     {
       title: '子どものプライバシー',
       body: [
-        `Memobun は ${AGE} 歳未満の子どもを対象としていません。初回起動時に生年月日をお尋ねし、${AGE} 歳未満の方のアカウント作成は許可していません。子どもが個人情報を提供したと思われる場合は当社までご連絡ください。速やかに削除いたします。`,
+        `Memobun は ${AGE} 歳未満の子どもを対象としていません。初回起動時に ${AGE} 歳以上であることをご確認いただき、${AGE} 歳未満の方のアカウント作成は許可していません。子どもが個人情報を提供したと思われる場合は当社までご連絡ください。速やかに削除いたします。`,
       ],
     },
     {
@@ -507,7 +508,7 @@ const ja: LegalDoc = {
     {
       title: '利用資格',
       body: [
-        `Memobun を利用するには、${AGE} 歳以上（お住まいの国のデジタル同意の最低年齢がこれより高い場合はその年齢以上）である必要があります。初回起動時に生年月日をお尋ねし、アプリを利用することでお客様はこの要件を満たすことを確認するものとします。`,
+        `Memobun を利用するには、${AGE} 歳以上（お住まいの国のデジタル同意の最低年齢がこれより高い場合はその年齢以上）である必要があります。初回起動時にこれをご確認いただき、アプリを利用することでお客様はこの要件を満たすことを確認するものとします。`,
       ],
     },
     {
@@ -568,7 +569,7 @@ const ko: LegalDoc = {
       title: '수집하는 정보',
       body: [
         '계정 정보: 로그인하시면 당사는 로그인 제공업체(예: Google)로부터 귀하의 이메일 주소와 고유 계정 ID를 받습니다. 게스트로 앱을 이용하시는 경우 계정은 생성되지 않으며, 진행 상황은 로그인을 선택하실 때까지 귀하의 기기에만 저장됩니다.',
-        `생년월일: 최소 연령(만 ${AGE}세)을 충족하는지 확인하기 위해 앱을 처음 실행할 때 한 번 생년월일을 여쭤봅니다. 해당 날짜는 앱 데이터와 함께 저장되며, 외부에 공유하지 않습니다.`,
+        `생일(선택): 설정에서 생일을 추가하면 매년 소소한 인앱 보상을 받을 수 있습니다. 월과 일만 저장하며 연도는 저장하지 않습니다. 가입 시에는 여쭤보지 않고 비워 두셔도 되며, 생년월일은 수집하지 않습니다.`,
         '학습 및 앱 활동: 추가하신 학습 세션, 과목, 할 일, 시험, 연속 기록, 코인, 보유 아이템 등 앱 내 진행 상황으로, 귀하의 데이터를 여러 기기 간에 동기화하기 위한 것입니다.',
         '친구 메시지: 친구에게 보낸 다이렉트 메시지는 대화가 유지되도록 저장됩니다.',
         '사용 분석: 당사는 앱 사용 방식을 파악하기 위해 제3자 분석 제공업체인 PostHog를 이용합니다. 여기에는 앱 내 이벤트(예: 학습 세션 완료, 채팅 열기, 인앱 구매), 귀하의 기기 유형 및 운영체제 버전, 앱 버전, 그리고 IP 주소로부터 추정된 대략적인 위치(국가나 도시 등)가 포함됩니다. 당사는 이를 계정 ID를 넘어 귀하 개인을 식별하는 데 이용하지 않습니다.',
@@ -609,7 +610,7 @@ const ko: LegalDoc = {
     {
       title: '아동의 개인정보',
       body: [
-        `Memobun은 만 ${AGE}세 미만 아동을 대상으로 하지 않습니다. 첫 실행 시 생년월일을 여쭤보며, 만 ${AGE}세 미만인 분의 계정 생성은 허용하지 않습니다. 아동이 개인정보를 제공했다고 여겨지는 경우 당사에 연락해 주시면 해당 정보를 삭제하겠습니다.`,
+        `Memobun은 만 ${AGE}세 미만 아동을 대상으로 하지 않습니다. 첫 실행 시 만 ${AGE}세 이상임을 확인하며, 만 ${AGE}세 미만인 분의 계정 생성은 허용하지 않습니다. 아동이 개인정보를 제공했다고 여겨지는 경우 당사에 연락해 주시면 해당 정보를 삭제하겠습니다.`,
       ],
     },
     {
@@ -634,7 +635,7 @@ const ko: LegalDoc = {
     {
       title: '이용 자격',
       body: [
-        `Memobun을 이용하려면 만 ${AGE}세 이상(거주 국가의 디지털 동의 최소 연령이 더 높은 경우 그 연령 이상)이어야 합니다. 첫 실행 시 생년월일을 여쭤보며, 앱을 이용함으로써 귀하는 이 요건을 충족함을 확인하는 것입니다.`,
+        `Memobun을 이용하려면 만 ${AGE}세 이상(거주 국가의 디지털 동의 최소 연령이 더 높은 경우 그 연령 이상)이어야 합니다. 첫 실행 시 이를 확인하며, 앱을 이용함으로써 귀하는 이 요건을 충족함을 확인하는 것입니다.`,
       ],
     },
     {
@@ -695,7 +696,7 @@ const es: LegalDoc = {
       title: 'Información que recopilamos',
       body: [
         'Información de la cuenta: si inicias sesión, recibimos tu dirección de correo electrónico y un identificador único de cuenta de tu proveedor de inicio de sesión (por ejemplo, Google). Si usas la aplicación como invitado, no se crea ninguna cuenta y tu progreso se almacena únicamente en tu dispositivo hasta que decidas iniciar sesión.',
-        `Fecha de nacimiento: te pedimos tu fecha de nacimiento una sola vez, al iniciar la aplicación por primera vez, para confirmar que cumples la edad mínima (${AGE} años). Guardamos la fecha junto con los datos de tu aplicación; no la compartimos.`,
+        `Cumpleaños (opcional): puedes añadir un cumpleaños en los Ajustes para recibir cada año una pequeña recompensa dentro de la aplicación. Guardamos solo el mes y el día, nunca el año, y no te lo pedimos al registrarte. Puedes dejarlo en blanco; no recopilamos tu fecha de nacimiento.`,
         'Actividad de estudio y de la aplicación: las sesiones de estudio, asignaturas, tareas y exámenes que añades, las rachas, las monedas, los objetos que posees y otro progreso similar dentro de la aplicación, para que tus datos se sincronicen entre tus dispositivos.',
         'Mensajes con amistades: los mensajes directos que envías a tus amistades se almacenan para que tus conversaciones se conserven.',
         'Analítica de uso: usamos PostHog, un proveedor de analítica externo, para entender cómo se usa la aplicación. Esto incluye eventos dentro de la aplicación (por ejemplo, completar una sesión de estudio, abrir un chat o realizar una compra dentro de la aplicación), el tipo de dispositivo y la versión del sistema operativo, la versión de la aplicación y una ubicación aproximada (como el país o la ciudad) derivada de tu dirección IP. No usamos esto para identificarte personalmente más allá de tu identificador de cuenta.',
@@ -736,7 +737,7 @@ const es: LegalDoc = {
     {
       title: 'Privacidad de menores',
       body: [
-        `Memobun no está dirigida a menores de ${AGE} años. Te pedimos tu fecha de nacimiento en el primer inicio y no permitimos cuentas a menores de ${AGE} años. Si crees que un menor nos ha facilitado información personal, contáctanos y la eliminaremos.`,
+        `Memobun no está dirigida a menores de ${AGE} años. Al iniciar la aplicación por primera vez confirmas que tienes al menos ${AGE} años; no permitimos cuentas a menores de ${AGE} años. Si crees que un menor nos ha facilitado información personal, contáctanos y la eliminaremos.`,
       ],
     },
     {
@@ -761,7 +762,7 @@ const es: LegalDoc = {
     {
       title: 'Requisitos',
       body: [
-        `Debes tener al menos ${AGE} años (o la edad mínima de consentimiento digital de tu país, si es mayor) para usar Memobun. Te pedimos tu fecha de nacimiento en el primer inicio y, al usar la aplicación, confirmas que cumples este requisito.`,
+        `Debes tener al menos ${AGE} años (o la edad mínima de consentimiento digital de tu país, si es mayor) para usar Memobun. Lo confirmas al iniciar la aplicación por primera vez y, al usarla, confirmas que cumples este requisito.`,
       ],
     },
     {
@@ -822,7 +823,7 @@ const fr: LegalDoc = {
       title: 'Informations que nous recueillons',
       body: [
         'Informations de compte : si vous vous connectez, nous recevons votre adresse e-mail et un identifiant de compte unique de votre fournisseur de connexion (par exemple Google). Si vous utilisez l’application en tant qu’invité, aucun compte n’est créé et votre progression est stockée uniquement sur votre appareil jusqu’à ce que vous choisissiez de vous connecter.',
-        `Date de naissance : nous vous demandons votre date de naissance une seule fois, au premier lancement de l’application, pour confirmer que vous avez l’âge minimum (${AGE} ans). Nous conservons cette date avec les données de votre application ; nous ne la partageons pas.`,
+        `Anniversaire (facultatif) : vous pouvez ajouter un anniversaire dans les Réglages pour recevoir chaque année une petite récompense dans l’application. Nous conservons uniquement le mois et le jour, jamais l’année, et nous ne le demandons pas à l’inscription. Vous pouvez le laisser vide ; nous ne collectons pas votre date de naissance.`,
         'Activité d’étude et d’application : les sessions d’étude, matières, tâches et examens que vous ajoutez, les séries, les pièces, les objets que vous possédez et toute progression similaire dans l’application, afin que vos données se synchronisent entre vos appareils.',
         'Messages avec les amis : les messages directs que vous envoyez à vos amis sont conservés afin que vos conversations persistent.',
         'Analyse d’utilisation : nous utilisons PostHog, un prestataire d’analyse tiers, pour comprendre comment l’application est utilisée. Cela comprend les événements dans l’application (par exemple terminer une session d’étude, ouvrir une discussion ou effectuer un achat intégré), le type de votre appareil et la version du système d’exploitation, la version de l’application et une localisation approximative (comme le pays ou la ville) déduite de votre adresse IP. Nous n’utilisons pas ces données pour vous identifier personnellement au-delà de votre identifiant de compte.',
@@ -863,7 +864,7 @@ const fr: LegalDoc = {
     {
       title: 'Vie privée des enfants',
       body: [
-        `Memobun ne s’adresse pas aux enfants de moins de ${AGE} ans. Nous demandons votre date de naissance au premier lancement et n’autorisons pas de compte pour toute personne de moins de ${AGE} ans. Si vous pensez qu’un enfant nous a communiqué des informations personnelles, contactez-nous et nous les supprimerons.`,
+        `Memobun ne s’adresse pas aux enfants de moins de ${AGE} ans. Au premier lancement, vous confirmez avoir au moins ${AGE} ans ; nous n’autorisons pas de compte pour toute personne de moins de ${AGE} ans. Si vous pensez qu’un enfant nous a communiqué des informations personnelles, contactez-nous et nous les supprimerons.`,
       ],
     },
     {
@@ -888,7 +889,7 @@ const fr: LegalDoc = {
     {
       title: 'Admissibilité',
       body: [
-        `Vous devez avoir au moins ${AGE} ans (ou l’âge minimum du consentement numérique dans votre pays, s’il est supérieur) pour utiliser Memobun. Nous demandons votre date de naissance au premier lancement et, en utilisant l’application, vous confirmez remplir cette condition.`,
+        `Vous devez avoir au moins ${AGE} ans (ou l’âge minimum du consentement numérique dans votre pays, s’il est supérieur) pour utiliser Memobun. Vous le confirmez au premier lancement et, en utilisant l’application, vous confirmez remplir cette condition.`,
       ],
     },
     {

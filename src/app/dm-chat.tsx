@@ -34,17 +34,23 @@ import { reportUser, REPORT_REASONS, type ReportReason } from '@/lib/moderation'
 import { useStudyRoom } from '@/lib/use-study-room';
 import i18n, { useTranslation } from '@/i18n';
 import { BREAK_GAME_ENABLED } from '@/constants/placeholder-data';
+import { EMOTES, EMOTE_FALLBACK_BODY, emoteLabelKey, findEmote, type EmoteId } from '@/constants/emotes';
 import { BakeryColors, BakeryRadii, MaxContentWidth, MIN_POPUP_WIDTH, popupMaxWidth, Spacing } from '@/constants/theme';
 import { useReportModalTransition } from '@/lib/modal-traffic';
 
 const C = BakeryColors;
 
-// Games (plus Study) that can be invited to from a chat.
-const INVITE_OPTIONS: { id: OnlineGameId; nameKey: string; emoji: string }[] = [
-  { id: 'study', nameKey: 'friends.game_study', emoji: '' },
-  { id: 'connect4', nameKey: 'friends.game_connect4', emoji: '' },
-  { id: 'tictactoe', nameKey: 'friends.game_tictactoe', emoji: '' },
+// Games (plus Study) that can be invited to from the "+" panel. The break
+// mini-games sit behind BREAK_GAME_ENABLED, so today this is the study room only.
+const INVITE_OPTIONS: { id: OnlineGameId; nameKey: string }[] = [
+  { id: 'study', nameKey: 'friends.game_study' },
+  { id: 'connect4', nameKey: 'friends.game_connect4' },
+  { id: 'tictactoe', nameKey: 'friends.game_tictactoe' },
 ];
+
+const INVITE_ICON: Partial<Record<OnlineGameId, number>> = {
+  study: require('@/assets/images/study/ppl-icon.png'),
+};
 
 const GAME_LABEL_KEY: Record<OnlineGameId, string> = {
   connect4: 'friends.game_connect4',
@@ -227,6 +233,35 @@ export default function DmChatScreen() {
     append(res.msg);
   };
 
+  // Emotes are ordinary messages with kind 'emote'. The id goes in the payload
+  // column; `body` is the sentence a pre-emote client falls back to rendering.
+  const sendEmote = async (id: EmoteId) => {
+    setSheetOpen(false);
+    if (!user?.id) {
+      showPopup(t('dm.sendFailed'), t('dm.signInNeeded'));
+      return;
+    }
+    const otherId = await ensureOtherId();
+    if (!otherId || !code) {
+      showPopup(t('dm.sendFailed'), t('dm.friendNotReachable', { name: friendName }));
+      return;
+    }
+    const res = await sendDm({
+      fromUser: user.id,
+      fromCode: friendCode,
+      toUser: otherId,
+      toCode: code,
+      kind: 'emote',
+      body: EMOTE_FALLBACK_BODY,
+      emote: id,
+    });
+    if (!res.ok) {
+      showPopup(t('dm.sendFailed'), res.error);
+      return;
+    }
+    append(res.msg);
+  };
+
   const sendGameInvite = async (game: OnlineGameId) => {
     setSheetOpen(false);
     if (!user?.id) {
@@ -347,6 +382,31 @@ export default function DmChatScreen() {
                   </View>
                 );
               }
+              // An emote rides in as kind 'emote' with the id in the payload
+              // column (`body` is only the fallback sentence for old clients; the
+              // `m.body` read keeps emotes sent by the first build rendering). An
+              // id we don't know renders nothing rather than a broken image.
+              if (m.kind === 'emote') {
+                const emote = findEmote(m.emote) ?? findEmote(m.body);
+                if (!emote) return null;
+                return (
+                  <View key={m.id}>
+                    {divider}
+                    <View style={[styles.bubbleRow, mine ? styles.rowMine : styles.rowTheirs]}>
+                      <View style={[styles.msgCol, mine && styles.msgColMine]}>
+                        <Image
+                          source={emote.image}
+                          style={styles.emoteSticker}
+                          contentFit="contain"
+                          accessibilityLabel={t(emoteLabelKey(emote.id))}
+                        />
+                        {!!m.createdAt && <Text style={styles.timestamp}>{formatTime(m.createdAt)}</Text>}
+                      </View>
+                    </View>
+                  </View>
+                );
+              }
+
               return (
                 <View key={m.id}>
                   {divider}
@@ -391,16 +451,18 @@ export default function DmChatScreen() {
         </View>
       </SafeAreaView>
 
-      {/* Invite picker sheet */}
+      {/* "+" panel: invite to the study room, or send one of Bun's emotes. Both
+          live in the SAME modal — iOS silently refuses to present a third stacked
+          native Modal, and the moderation popup already owns the second slot. */}
       <Modal visible={sheetOpen} transparent animationType="fade" onRequestClose={() => setSheetOpen(false)}>
         <View style={styles.sheetRoot}>
           <Pressable style={styles.sheetBackdrop} onPress={() => setSheetOpen(false)} />
           <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>{t('dm.invitePrompt', { name: friendName })}</Text>
+            {/* Only worth a heading once there's more than one thing to invite to. */}
+            {BREAK_GAME_ENABLED && (
+              <Text style={styles.sheetTitle}>{t('dm.invitePrompt', { name: friendName })}</Text>
+            )}
             {INVITE_OPTIONS
-              // Multiplayer study needs the friend live in the room — only offer it
-              // when they're online; the games can still be invited to anytime.
-              .filter((g) => g.id !== 'study' || online)
               // Break mini-games (connect4/tictactoe) hidden for now — study only.
               .filter((g) => BREAK_GAME_ENABLED || g.id === 'study')
               .map((g) => (
@@ -408,10 +470,33 @@ export default function DmChatScreen() {
                 key={g.id}
                 style={({ pressed }) => [styles.sheetRow, pressed && styles.pressed]}
                 onPress={() => sendGameInvite(g.id)}>
-                <Text style={styles.sheetEmoji}>{g.emoji}</Text>
+                {INVITE_ICON[g.id] != null && (
+                  <Image source={INVITE_ICON[g.id]} style={styles.sheetIcon} contentFit="contain" />
+                )}
                 <Text style={styles.sheetRowText}>{t(g.nameKey)}</Text>
+                {/* Hosting an invite drops you straight into the lobby, so say up
+                    front whether they're around to join you there. */}
+                {g.id === 'study' && (
+                  <Text style={[styles.sheetRowStatus, online && styles.statusOnline]}>
+                    {online ? t('dm.online') : t('dm.offline')}
+                  </Text>
+                )}
               </Pressable>
             ))}
+
+            <Text style={styles.sheetSection}>{t('dm.emotes')}</Text>
+            <View style={styles.emoteGrid}>
+              {EMOTES.map((e) => (
+                <Pressable
+                  key={e.id}
+                  onPress={() => sendEmote(e.id)}
+                  accessibilityLabel={t(emoteLabelKey(e.id))}
+                  style={({ pressed }) => [styles.emoteTile, pressed && styles.emoteTilePressed]}>
+                  <Image source={e.image} style={styles.emoteTileImg} contentFit="contain" />
+                </Pressable>
+              ))}
+            </View>
+
             <Pressable style={({ pressed }) => [styles.sheetCancel, pressed && styles.pressed]} onPress={() => setSheetOpen(false)}>
               <Text style={styles.sheetCancelText}>{t('common.cancel')}</Text>
             </Pressable>
@@ -587,8 +672,23 @@ const styles = StyleSheet.create({
   sheet: { backgroundColor: C.frosting, borderTopLeftRadius: BakeryRadii.panel, borderTopRightRadius: BakeryRadii.panel, padding: Spacing.four, gap: Spacing.two },
   sheetTitle: { fontSize: 16, fontWeight: '900', color: C.cocoaDark, marginBottom: Spacing.one },
   sheetRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: 12, paddingHorizontal: Spacing.three, borderRadius: BakeryRadii.card, backgroundColor: '#fff', borderWidth: 1.5, borderColor: C.shortbread },
-  sheetEmoji: { fontSize: 22 },
+  sheetIcon: { width: 24, height: 24 },
   sheetRowText: { fontSize: 15, fontWeight: '800', color: C.cocoaDark },
+  sheetRowStatus: { marginLeft: 'auto', fontSize: 12, fontWeight: '700', color: C.mocha },
+  sheetSection: { fontSize: 13, fontWeight: '800', color: C.mocha, marginTop: Spacing.two, marginLeft: 2 },
+
+  // 4 across, square tiles — the art is a head-and-shoulders face, so `contain`
+  // inside a fixed square keeps every emote the same visual size.
+  emoteGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: Spacing.two },
+  emoteTile: {
+    width: '23.5%', aspectRatio: 1, borderRadius: BakeryRadii.card,
+    backgroundColor: '#fff', borderWidth: 1.5, borderColor: C.shortbread,
+    alignItems: 'center', justifyContent: 'center', padding: 4,
+  },
+  emoteTilePressed: { opacity: 0.85, backgroundColor: C.shortbread },
+  emoteTileImg: { width: '100%', height: '100%', backgroundColor: 'transparent' },
+  // Sticker in the thread: bigger than a bubble, no bubble behind it.
+  emoteSticker: { width: 116, height: 116, backgroundColor: 'transparent' },
   sheetCancel: { paddingVertical: 12, alignItems: 'center', marginTop: Spacing.one },
   sheetCancelText: { fontSize: 15, fontWeight: '800', color: C.mocha },
 

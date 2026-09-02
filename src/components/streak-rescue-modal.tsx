@@ -1,10 +1,11 @@
 /**
- * On-open streak-rescue prompt, shown on Home the day the streak has lapsed 2–5 days
- * ago (the freeze window — up to 4 missed days) and hasn't been handled yet today. It's
- * the primary place a lapsed streak is saved: if the player owns a freeze they can spend
- * one; if they own none they can buy one on the spot ($1.99) which bridges the streak
- * directly. Picking "Let it reset" just marks it handled — the streak resets naturally
- * on the next study session (or once the gap passes 5 days).
+ * On-open streak-rescue prompt, shown on Home while the streak sits inside the freeze
+ * window (STREAK_RESCUE_DAYS days to act, counting from the first missed day) and hasn't
+ * been handled yet today. It's the primary place a lapsed streak is saved: if the player
+ * owns a freeze they can spend one; if they own none they can buy one on the spot ($1.99)
+ * which bridges the streak directly. Picking "Let it reset" gives the streak up for good
+ * (declineStreakRescue) — over a 30-day window a merely-dismissed prompt would come back
+ * tomorrow, so the decline has to commit rather than wait for the next login-reward claim.
  *
  * Gated behind the celebratory popups (character/hanji/recipe/birthday) and shown just
  * BEFORE the daily reward so the rescue is resolved before the login reward can advance
@@ -40,7 +41,7 @@ export function StreakRescueModal() {
   const styles = useMemo(() => makeStyles(scale), [scale]);
   const {
     streakRescuePending, streak, streakFreezes,
-    useStreakFreeze, rescueStreakByPurchase, dismissStreakRescue,
+    useStreakFreeze, rescueStreakByPurchase, dismissStreakRescue, declineStreakRescue,
     hanjiUnlockPending, recipeBadgePending, characterObtainedPending,
     legalAccepted, starterChosen,
     profileBirthday, birthdayRewardYear,
@@ -87,7 +88,7 @@ export function StreakRescueModal() {
     dismissStreakRescue();   // mark handled today so we don't reshow
   };
 
-  const onLetReset = () => dismissStreakRescue();
+  const onLetReset = () => declineStreakRescue();
 
   const onBuy = () => {
     // Hide this native modal first, then run the purchase so the StoreKit sheet (or the

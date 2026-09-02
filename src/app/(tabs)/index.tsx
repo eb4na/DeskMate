@@ -597,6 +597,7 @@ export default function HomeScreen() {
     reminderTime,
     streak,
     todayStreakDay,
+    streakRescuePending,
     isPlus,
     streakFreezes,
     loginRewardDate,
@@ -1202,9 +1203,25 @@ export default function HomeScreen() {
                         { scale: streakPop.interpolate({ inputRange: [0, 1], outputRange: [1, 1.4] }) },
                         { rotate: streakPop.interpolate({ inputRange: [0, 0.5, 1], outputRange: ['0deg', '-14deg', '8deg'] }) },
                       ] }}>
-                        <Image source={STREAK_FIRE_ICON} style={styles.statusStreakIcon} contentFit="contain" accessibilityLabel="" />
+                        <Image
+                          source={STREAK_FIRE_ICON}
+                          style={[styles.statusStreakIcon, streakRescuePending && styles.statusStreakIconPaused]}
+                          contentFit="contain"
+                          accessibilityLabel=""
+                        />
                       </Animated.View>
-                      <ThemedText type="smallBold" style={styles.statusChipText}>
+                      {/* While the streak is lapsed but still rescuable, `todayStreakDay`
+                          holds the PRESERVED number — over a 30-day window that would read
+                          as a fully alive streak for a month. Mute the chip so it reads as
+                          paused; Progress carries the full "use a freeze to keep it"
+                          sentence, and the rescue prompt is on screen explaining it. No
+                          extra word here: the HUD chip is min-width locked and would clip. */}
+                      <ThemedText
+                        type="smallBold"
+                        style={[styles.statusChipText, streakRescuePending && styles.statusChipTextPaused]}
+                        accessibilityLabel={streakRescuePending
+                          ? `${todayStreakDay} ${t('home.dayStreak')} — ${t('progress.streakAtRisk')}`
+                          : undefined}>
                         {todayStreakDay} {t('home.dayStreak')}
                       </ThemedText>
                     </Animated.View>
@@ -1255,7 +1272,7 @@ export default function HomeScreen() {
                           {featuredExam ? (
                             <>
                               <View style={styles.examHeadlineRow}>
-                                <CountdownShape shape={featuredExam.shape} size={15} />
+                                <CountdownShape shape={featuredExam.shape} color={examSubjectColor} size={15} />
                                 <CardText style={[styles.metaHeadline, styles.examHeadlineText, cardFont(12.5, 14)]} numberOfLines={1}>
                                   {featuredExam.name}
                                 </CardText>
@@ -1920,6 +1937,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 16,
     color: BakeryColors.cocoaDark,
+  },
+  // Paused/at-risk look for a lapsed-but-rescuable streak (see the chip above).
+  statusChipTextPaused: {
+    color: BakeryColors.cocoa,
+    opacity: 0.55,
+  },
+  statusStreakIconPaused: {
+    opacity: 0.45,
   },
   heroImageClip: {
     flex: 1,

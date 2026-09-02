@@ -103,6 +103,7 @@
     "birthdayReward": "Earn a special reward each year on your birthday!",
     "minAge": "You must be at least {{age}} years old to use Memobun.",
     "confirmDob": "I confirm the date above is my date of birth.",
+    "confirmAge": "I confirm I am at least {{age}} years old.",
     "agreeAndContinue": "Agree & Continue",
     "privacyTermsTitle": "Privacy & Terms"
   },
@@ -1959,6 +1960,7 @@
     "off": "Off"
   },
   "dm": {
+    "emotes": "Emotes",
     "online": "Online",
     "offline": "Offline",
     "empty": "Say hi to {{name}}!",
@@ -2122,5 +2124,19 @@
     "bunny_palace": "Bunny's blue robe moved like water as she walked through the palace gardens, embroidered peonies catching the light between cypress shadows and carved stone lanterns. The pathways curved through ponds, moon gates, and flowering trees, and attendants followed a few steps behind, careful not to disturb the hush around her. She did not need to say much. The rhythm of her steps alone seemed enough to quiet a space.\n\nShe often came to the garden in the late afternoon, when the sky was beginning to soften and the tiled roofs glowed under the fading sun. There, among blue blossoms and drifting silk sleeves, she seemed less like someone borrowing elegance and more like someone born from it. She paused to watch koi move beneath the water, to touch the petals of a peony, to let the breeze move through her hair ornaments. Everything around her felt deliberate, graceful, and old. Bunny walked through that world with the same poised authority she carried everywhere — beautiful, unmistakable, and impossible to ignore.",
     "hanji_classic": "Hanji lived in a quiet residence tucked behind a wisteria garden where the air always smelled faintly of lavender and rain. She spoke softly, moved gently, and had the kind of presence that made a room settle the moment she entered it. Bells and chatter belonged to other places. Hanji's world was made of silk sleeves, pale blossoms, and the hush of pages turning in the late afternoon.\n\nShe liked the hours when the garden shadows stretched long and the light became tender. Then she would walk beneath the hanging wisteria and let the charms at her sleeves sway softly in the breeze. People often mistook her silence for distance, but it was not that. Hanji simply carried herself like someone who had no need to compete with noise. She was quiet, yes — but the kind of quiet that lingers, fragrant and unforgettable.",
     "hanji_ivoryrose": "Hanji walked along the busy Japanese street with the posture of someone taught carefully, lovingly, never to rush. Around her, the city moved in waves — shopkeepers calling, bicycles passing, signs glowing softly above the crowds — yet she remained composed in her ivory bonnet and cream dress, like a proper lady stepping through a world that had forgotten how to slow down. She carried herself so neatly that even the busiest corner seemed to grow a little more orderly when she passed.\n\nShe stopped at the flower stand, at the confectionery window, at the little tea shop tucked between brighter storefronts. The city was alive and full, but Hanji never seemed overwhelmed by it. She moved through it with quiet grace, as if elegance were not something put on for special occasions, but simply the shape of her nature. Against the restless street, she looked almost old-fashioned — and all the more beautiful for it, like a rose held steady in the middle of motion."
+  },
+  "emotes": {
+    "happy": "Happy",
+    "excited": "Excited",
+    "proud": "Proud",
+    "ready": "Ready",
+    "relieved": "Relieved",
+    "okay": "Okay",
+    "sleepy": "Sleepy",
+    "tired": "Tired",
+    "stressed": "Stressed",
+    "lost": "Lost",
+    "frustrated": "Frustrated",
+    "down": "Down"
   }
 }

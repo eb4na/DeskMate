@@ -103,6 +103,7 @@
     "birthdayReward": "¡Gana una recompensa especial cada año en tu cumpleaños!",
     "minAge": "Debes tener al menos {{age}} años para usar Memobun.",
     "confirmDob": "Confirmo que la fecha anterior es mi fecha de nacimiento.",
+    "confirmAge": "Confirmo que tengo al menos {{age}} años.",
     "agreeAndContinue": "Aceptar y continuar",
     "privacyTermsTitle": "Privacidad y Términos"
   },
@@ -1959,6 +1960,7 @@
     "off": "Apagado"
   },
   "dm": {
+    "emotes": "Emotes",
     "online": "En línea",
     "offline": "Desconectado",
     "empty": "¡Saluda a {{name}}!",
@@ -2122,5 +2124,19 @@
     "bunny_palace": "La túnica azul de Conejo se movía como agua mientras cruzaba los jardines del palacio, con las peonías bordadas atrapando la luz entre las sombras de los cipreses y los farolillos de piedra tallada. Los senderos se curvaban entre estanques, puertas de luna y árboles en flor, y los asistentes la seguían unos pasos por detrás, cuidando de no perturbar la quietud que la rodeaba. No necesitaba decir mucho. El ritmo de sus pasos bastaba para silenciar un lugar.\n\nSolía venir al jardín a media tarde, cuando el cielo empezaba a suavizarse y los tejados brillaban bajo el sol que se apagaba. Allí, entre flores azules y mangas de seda flotantes, parecía menos alguien que tomaba prestada la elegancia y más alguien nacido de ella. Se detenía a mirar las carpas moverse bajo el agua, a tocar los pétalos de una peonía, a dejar que la brisa pasara entre sus adornos del pelo. Todo a su alrededor se sentía deliberado, grácil y antiguo. Conejo atravesaba ese mundo con la misma autoridad serena que llevaba a todas partes: hermosa, inconfundible e imposible de ignorar.",
     "hanji_classic": "Hanji vivía en una residencia tranquila escondida tras un jardín de glicinas, donde el aire siempre olía levemente a lavanda y a lluvia. Hablaba bajito, se movía con suavidad y tenía esa clase de presencia que hacía que una habitación se serenara en cuanto entraba. Las campanas y el bullicio pertenecían a otros lugares. El mundo de Hanji estaba hecho de mangas de seda, flores pálidas y el silencio de las páginas que se pasan a media tarde.\n\nLe gustaban las horas en que las sombras del jardín se alargaban y la luz se volvía tierna. Entonces caminaba bajo las glicinas colgantes y dejaba que los dijes de sus mangas se mecieran despacio en la brisa. La gente solía confundir su silencio con distancia, pero no era eso. Hanji simplemente se comportaba como alguien que no necesita competir con el ruido. Era callada, sí — pero de ese silencio que perdura, fragante e inolvidable.",
     "hanji_ivoryrose": "Hanji caminaba por la concurrida calle japonesa con la postura de alguien educada con esmero y con cariño para no apresurarse jamás. A su alrededor, la ciudad se movía en oleadas —tenderos llamando, bicicletas pasando, letreros brillando suavemente sobre la multitud—, y sin embargo ella permanecía serena con su capota de marfil y su vestido crema, como una dama de verdad cruzando un mundo que había olvidado cómo ir despacio. Se conducía con tanta pulcritud que hasta la esquina más ajetreada parecía ordenarse un poco a su paso.\n\nSe detenía en el puesto de flores, en el escaparate de la confitería, en el pequeño salón de té encajado entre fachadas más llamativas. La ciudad estaba viva y llena, pero Hanji nunca parecía abrumada por ella. La atravesaba con una gracia silenciosa, como si la elegancia no fuera algo que se pone en ocasiones especiales, sino simplemente la forma de su naturaleza. Contra la calle inquieta parecía casi de otra época — y por eso mismo más hermosa, como una rosa sostenida en calma en medio del movimiento."
+  },
+  "emotes": {
+    "happy": "Feliz",
+    "excited": "Emocionado",
+    "proud": "Orgulloso",
+    "ready": "Listo",
+    "relieved": "Aliviado",
+    "okay": "Bien",
+    "sleepy": "Con sueño",
+    "tired": "Cansado",
+    "stressed": "Estresado",
+    "lost": "Perdido",
+    "frustrated": "Frustrado",
+    "down": "Decaído"
   }
 }

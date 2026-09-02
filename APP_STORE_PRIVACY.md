@@ -27,8 +27,13 @@ two, and the Play Data safety form.
 | **Purchases → Purchase History** | Coin packs and Memobun Plus subscription, via Apple IAP + RevenueCat | **Yes** | No | App Functionality |
 
 Notes:
-- **Birthday** is collected at onboarding for age gating. Declare under
-  *User Content → Other* (App Functionality, Linked), or *Sensitive Info: No*.
+- **Date of birth is NOT collected.** App Review rejected the old onboarding DOB
+  wheel under guideline 5.1.1(v); the gate now only asks the user to affirm they
+  meet the 13+ minimum, and stores nothing. Any DOB from older installs is purged
+  on launch. Do **not** declare a date of birth.
+- **Optional birthday** (month + day only, added in Settings for the yearly
+  reward) stays covered by the existing *User Content → Other User Content* row —
+  no separate data type, and no checkbox change is needed for it.
 - The email purpose is **App Functionality** (account/auth), not marketing.
 - The two advertising rows are the ones that changed. If you ever ship a build
   with ads removed, revisit them — don't leave them declared out of caution, an

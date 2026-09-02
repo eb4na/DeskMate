@@ -501,7 +501,10 @@ const STREAK_REMINDER_KIND = 'streak-reminder';
 // How many upcoming days to pre-schedule streak nudges for. Kept small on purpose:
 // iOS silently caps at 64 pending notifications and drops the overflow, so we must
 // not crowd out task/study reminders. 3 days (×2 = 6 nudges) covers the realistic
-// window — if someone ignores 3 days of nudges, the streak is already gone.
+// window. The streak stays rescuable far longer than that (STREAK_RESCUE_DAYS), but we
+// deliberately don't nudge across the whole grace period: this only reschedules on
+// foreground, so someone who stops opening the app gets these 6 and then silence
+// rather than a month of reminders.
 const STREAK_REMINDER_DAYS_AHEAD = 3;
 // Two nudges per un-opened day, spaced far apart but both before midnight (when the
 // streak day rolls over). Device-local hours: early afternoon + late evening.

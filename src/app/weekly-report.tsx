@@ -7,7 +7,7 @@ import Svg, { G, Path } from 'react-native-svg';
 import { CoinIcon } from '@/components/coin-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { accountDateOf, daysBetween, todayISO, useApp, weekStartISO } from '@/context/app-context';
+import { STREAK_RESCUE_MAX_GAP, accountDateOf, daysBetween, todayISO, useApp, weekStartISO } from '@/context/app-context';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import i18n, { useTranslation } from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
@@ -125,12 +125,12 @@ export default function WeeklyReportScreen() {
       (estimatedCoins > 0 ? t('weeklyReport.coinsClause', { coins: estimatedCoins }) : '')
     : null;
 
-  // Streak shown here must match the Progress tab: a streak with 5+ missed days is
-  // gone, and Progress already displays 0 for it. Reading currentStreak raw made
-  // the two screens disagree (Progress "0", report "6d") until the next study day
-  // reset it.
+  // Streak shown here must match the Progress tab: once the gap passes the rescue
+  // window the streak is gone and Progress already displays 0 for it. Reading
+  // currentStreak raw made the two screens disagree (Progress "0", report "6d") until
+  // the next study day reset it. Shares the engine's constant so they stay in step.
   const missedDays = streak.lastStudyDate ? daysBetween(streak.lastStudyDate, today) : 0;
-  const displayStreak = missedDays >= 5 ? 0 : streak.currentStreak;
+  const displayStreak = missedDays > STREAK_RESCUE_MAX_GAP ? 0 : streak.currentStreak;
 
   // Suggested goal
   let suggestedGoal = '';

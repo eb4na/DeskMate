@@ -103,6 +103,7 @@
     "birthdayReward": "Gagnez une récompense spéciale chaque année pour votre anniversaire !",
     "minAge": "Tu dois avoir au moins {{age}} ans pour utiliser Memobun.",
     "confirmDob": "Je confirme que la date ci-dessus est ma date de naissance.",
+    "confirmAge": "Je confirme avoir au moins {{age}} ans.",
     "agreeAndContinue": "Accepter et continuer",
     "privacyTermsTitle": "Confidentialité et conditions"
   },
@@ -1959,6 +1960,7 @@
     "off": "Désactivé"
   },
   "dm": {
+    "emotes": "Émotes",
     "online": "En ligne",
     "offline": "Hors ligne",
     "empty": "Dis bonjour à {{name}} !",
@@ -2122,5 +2124,19 @@
     "bunny_palace": "La robe bleue de Lapin ondulait comme de l'eau tandis qu'elle traversait les jardins du palais, ses pivoines brodées attrapant la lumière entre l'ombre des cyprès et les lanternes de pierre sculptée. Les allées serpentaient entre les bassins, les portes de lune et les arbres en fleurs, et les suivantes marchaient quelques pas derrière, attentives à ne pas troubler le calme qui l'entourait. Elle n'avait pas besoin de dire grand-chose. Le rythme de ses pas suffisait, semblait-il, à apaiser un lieu.\n\nElle venait souvent au jardin en fin d'après-midi, quand le ciel commençait à s'adoucir et que les toits de tuiles luisaient sous le soleil déclinant. Là, parmi les fleurs bleues et les manches de soie flottantes, elle semblait moins emprunter l'élégance qu'en être née. Elle s'arrêtait pour regarder les carpes glisser sous l'eau, toucher les pétales d'une pivoine, laisser la brise passer dans ses ornements de cheveux. Tout autour d'elle semblait voulu, gracieux et ancien. Lapin traversait ce monde avec la même autorité posée qu'elle portait partout — belle, reconnaissable entre toutes, impossible à ignorer.",
     "hanji_classic": "Hanji vivait dans une demeure tranquille cachée derrière un jardin de glycines, où l'air sentait toujours légèrement la lavande et la pluie. Elle parlait doucement, se déplaçait avec délicatesse et possédait cette présence qui apaise une pièce dès l'instant où elle y entre. Les clochettes et les bavardages appartenaient à d'autres lieux. Le monde de Hanji était fait de manches de soie, de fleurs pâles et du murmure des pages qu'on tourne en fin d'après-midi.\n\nElle aimait les heures où les ombres du jardin s'allongeaient et où la lumière devenait tendre. Alors elle marchait sous les glycines suspendues et laissait les breloques de ses manches se balancer doucement dans la brise. On prenait souvent son silence pour de la distance, mais ce n'était pas cela. Hanji se comportait simplement comme quelqu'un qui n'a pas besoin de rivaliser avec le bruit. Elle était silencieuse, oui — mais de ce silence qui s'attarde, parfumé et inoubliable.",
     "hanji_ivoryrose": "Hanji marchait le long de la rue japonaise animée avec le port de quelqu'un à qui l'on a appris, avec soin et avec amour, à ne jamais se presser. Autour d'elle, la ville avançait par vagues — commerçants qui interpellent, vélos qui filent, enseignes qui luisent doucement au-dessus de la foule — et pourtant elle restait sereine dans sa capote ivoire et sa robe crème, comme une vraie dame traversant un monde qui avait oublié comment ralentir. Elle se tenait si joliment que même le carrefour le plus agité semblait s'ordonner un peu sur son passage.\n\nElle s'arrêtait à l'étal de fleurs, devant la vitrine de la confiserie, au petit salon de thé niché entre des devantures plus criardes. La ville était vivante et pleine, mais Hanji ne semblait jamais s'y noyer. Elle la traversait avec une grâce silencieuse, comme si l'élégance n'était pas quelque chose qu'on enfile pour les grandes occasions, mais simplement la forme de sa nature. Sur fond de rue agitée, elle paraissait presque d'un autre temps — et n'en était que plus belle, comme une rose tenue immobile au milieu du mouvement."
+  },
+  "emotes": {
+    "happy": "Heureux",
+    "excited": "Excité",
+    "proud": "Fier",
+    "ready": "Prêt",
+    "relieved": "Soulagé",
+    "okay": "Ça va",
+    "sleepy": "Endormi",
+    "tired": "Fatigué",
+    "stressed": "Stressé",
+    "lost": "Perdu",
+    "frustrated": "Frustré",
+    "down": "Abattu"
   }
 }

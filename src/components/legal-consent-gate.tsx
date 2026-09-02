@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { DateWheelPicker, getTodayISO } from '@/components/date-wheel-picker';
 import { LegalDocument } from '@/components/legal-document';
 import { getEffectiveDate, getLegalDoc, MINIMUM_AGE } from '@/constants/legal';
 import { Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -27,27 +26,6 @@ const P = {
   mutedBrown: '#9A7B6D',
   shortbread: '#E7CBB3',
 } as const;
-
-// Whole years between an ISO date of birth and today.
-function ageFromISO(iso: string): number {
-  const [y, m, d] = iso.split('-').map(Number);
-  const now = new Date();
-  let age = now.getFullYear() - y;
-  const beforeBirthday =
-    now.getMonth() + 1 < m || (now.getMonth() + 1 === m && now.getDate() < d);
-  if (beforeBirthday) age -= 1;
-  return age;
-}
-
-// Default the birthday wheel to a plausible adult date so the picker opens on a
-// sensible spot; the user must still confirm it's theirs via the checkbox.
-function defaultBirthday(): string {
-  const now = new Date();
-  const y = now.getFullYear() - 18;
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
 
 // Note: the legal DOCUMENT bodies are localized per app language via
 // getLegalDoc() (English is authoritative), same as the surrounding gate chrome.
@@ -69,9 +47,15 @@ function MenuShell({ title, children }: { title: string; children: React.ReactNo
 // First-launch consent, shown over the app for any new account or new guest
 // (anyone whose saved state has not yet recorded legalAccepted). Two steps on
 // separate screens: (1) read & accept the Privacy Policy + Terms, then
-// (2) confirm date of birth (must be at least MINIMUM_AGE). The caller persists
-// via markLegalAccepted + setBirthday once both are done.
-export function LegalConsentGate({ onAgree }: { onAgree: (birthday: string) => void }) {
+// (2) affirm they meet MINIMUM_AGE.
+//
+// Step 2 collects NO date of birth — it is a neutral yes/no affirmation and
+// nothing is stored beyond `legalAccepted`. App Review rejected the old
+// date-of-birth wheel under guideline 5.1.1(v) (personal information that isn't
+// necessary for the app to function); the age minimum is still enforced, just
+// without asking for a birth date. The birthday that drives the yearly reward is
+// a separate, OPTIONAL month/day the player can add later in Settings.
+export function LegalConsentGate({ onAgree }: { onAgree: () => void }) {
   const { t, i18n } = useTranslation();
   const doc = getLegalDoc(i18n.language);
   const [step, setStep] = useState<'legal' | 'age'>('legal');
@@ -86,11 +70,9 @@ export function LegalConsentGate({ onAgree }: { onAgree: (birthday: string) => v
   const fitsOnScreen = viewH > 0 && contentH > 0 && contentH <= viewH;
   const scrolledEnough = reachedEnd || fitsOnScreen;
 
-  // --- Step 2: date of birth ---
-  const [birthday, setBirthdayValue] = useState(defaultBirthday());
+  // --- Step 2: age affirmation (no data collected) ---
   const [confirmed, setConfirmed] = useState(false);
-  const oldEnough = ageFromISO(birthday) >= MINIMUM_AGE;
-  const ready = confirmed && oldEnough;
+  const ready = confirmed;
 
   if (step === 'legal') {
     return (
@@ -136,33 +118,20 @@ export function LegalConsentGate({ onAgree }: { onAgree: (birthday: string) => v
     );
   }
 
-  // Step 2: date of birth
+  // Step 2: age affirmation — a yes/no confirmation, NOT a date of birth.
   return (
     <View style={styles.overlay}>
       <MenuShell title={t('consent.oneLastThing')}>
-        {/* Scrollable so the Agree button below stays reachable even on small
-            screens where the banner + wheel would otherwise overflow. */}
+        {/* Scrollable so the Agree button below stays reachable on small screens. */}
         <ScrollView style={styles.ageScroll} contentContainerStyle={styles.ageScrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.ageCard}>
-            <Text style={styles.fieldLabel}>{t('consent.dateOfBirth')}</Text>
-            <DateWheelPicker
-              value={birthday}
-              onChange={setBirthdayValue}
-              maximumDateISO={getTodayISO()}
-              minYear={1920}
-            />
-            <Text style={styles.birthdayReward}>{t('consent.birthdayReward')}</Text>
-            {!oldEnough && (
-              <Text style={styles.ageError}>
-                {t('consent.minAge', { age: MINIMUM_AGE })}
-              </Text>
-            )}
+            <Text style={styles.fieldLabel}>{t('consent.minAge', { age: MINIMUM_AGE })}</Text>
 
             <Pressable style={styles.checkRow} onPress={() => setConfirmed((v) => !v)} hitSlop={6}>
               <View style={[styles.checkbox, confirmed && styles.checkboxOn]}>
                 {confirmed && <Text style={styles.checkboxMark}>✓</Text>}
               </View>
-              <Text style={styles.checkLabel}>{t('consent.confirmDob')}</Text>
+              <Text style={styles.checkLabel}>{t('consent.confirmAge', { age: MINIMUM_AGE })}</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -173,7 +142,7 @@ export function LegalConsentGate({ onAgree }: { onAgree: (birthday: string) => v
           </Pressable>
           <Pressable
             disabled={!ready}
-            onPress={() => onAgree(birthday)}
+            onPress={() => onAgree()}
             style={({ pressed }) => [
               styles.agreeBtn,
               styles.agreeBtnGrow,
@@ -231,9 +200,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-  fieldLabel: { fontSize: 15, fontWeight: '700', color: P.brown },
-  birthdayReward: { fontSize: 12.5, fontWeight: '700', color: P.pink, textAlign: 'center', lineHeight: 17 },
-  ageError: { fontSize: 12, fontWeight: '700', color: '#C0392B' },
+  fieldLabel: { fontSize: 15, fontWeight: '700', color: P.brown, textAlign: 'center', lineHeight: 21 },
 
   checkRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   checkbox: {

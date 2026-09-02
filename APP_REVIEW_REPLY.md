@@ -17,7 +17,7 @@ Thank you for the review. Answers to each point below.
 1. SCREEN RECORDING
 A screen recording captured on a physical iPhone running the latest iOS is
 attached. It starts from tapping the app icon and covers, in one take: the
-Privacy Policy and Terms consent, the 13+ date-of-birth gate, choosing a starter
+Privacy Policy and Terms consent, the 13+ age confirmation, choosing a starter
 companion, signing in, a full study session with its coin payout, the shop and a
 cosmetic purchase, the coin-pack in-app purchase sheet, the rewarded-video option,
 the Memobun Plus subscription page (price, renewal terms, Terms/Privacy links and
@@ -43,8 +43,9 @@ streak with optional reminders. Friends can run timers together in real time, an
 Study Buddy pairs a user with an anonymous accountability partner in their own age
 band for one week.
 
-Target audience: students aged 13 and older (the app has a 13+ date-of-birth gate
-at first launch), particularly high-school and university students who study alone.
+Target audience: students aged 13 and older (the app asks the user to confirm they
+are 13+ at first launch; no date of birth is collected), particularly high-school
+and university students who study alone.
 
 Problem solved: starting a study session and staying consistent is hard when
 studying alone. Value: the app lowers the cost of starting, and gives visible,
@@ -62,7 +63,7 @@ direct messages, Study Buddy and Memobun Plus; each of those shows a "create an
 account" prompt in guest mode.
 
 To reach the main features:
-a. Launch -> accept Privacy Policy and Terms -> enter a date of birth (13+).
+a. Launch -> accept Privacy Policy and Terms -> confirm you are at least 13.
 b. Choose one of five starter companions (free).
 c. Sign in with the demo account above, or tap "Continue as guest".
 d. Home -> "Start Session" -> pick a duration and optional subject -> the session
