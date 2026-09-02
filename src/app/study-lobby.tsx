@@ -220,21 +220,26 @@ export default function StudyLobbyScreen() {
 
           {/* Topic — pick a subject to study; shows on your avatar. */}
           <Text style={styles.label}>{t('lobby.topic')}</Text>
-          {activeSubjects.length === 0 ? (
-            <Text style={styles.hint}>{t('lobby.noSubjectsHint')}</Text>
-          ) : (
-            <View style={styles.topicRow}>
-              {activeSubjects.map((s) => (
-                <Pressable
-                  key={s.id}
-                  onPress={() => pickTopic(s.name)}
-                  style={[styles.topicChip, topic === s.name && styles.topicChipActive]}>
-                  {s.emoji ? <Text style={styles.topicEmoji}>{s.emoji}</Text> : null}
-                  <Text style={[styles.topicText, topic === s.name && styles.topicTextActive]} numberOfLines={1}>{localizeSubjectName(s.name, t)}</Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
+          <View style={styles.topicRow}>
+            {activeSubjects.map((s) => (
+              <Pressable
+                key={s.id}
+                onPress={() => pickTopic(s.name)}
+                style={[styles.topicChip, topic === s.name && styles.topicChipActive]}>
+                {s.emoji ? <Text style={styles.topicEmoji}>{s.emoji}</Text> : null}
+                <Text style={[styles.topicText, topic === s.name && styles.topicTextActive]} numberOfLines={1}>{localizeSubjectName(s.name, t)}</Text>
+              </Pressable>
+            ))}
+            {/* ＋ adds a subject without leaving the room: Manage Subjects opens as a
+                sheet over this screen (the same push the solo picker uses), and the
+                realtime room lives in StudyRoomProvider, so nobody drops out. */}
+            <SoundPressable
+              sound="confirm"
+              onPress={() => router.push('/manage-subjects')}
+              style={({ pressed }) => [styles.topicChip, styles.presetAdd, pressed && styles.pressed]}>
+              <Text style={[styles.topicText, styles.presetAddText]}>{t('common.addChip')}</Text>
+            </SoundPressable>
+          </View>
 
           {/* Break time is no longer pickable in multiplayer — every player just gets
               the same default timed break as single player (see the setMyBreak effect

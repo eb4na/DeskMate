@@ -17,9 +17,9 @@ import {
 
 export const STUDY_ROOM_MAX = 3;
 
-// How long a player can drop out of presence (a transient Supabase reconnect /
-// network blip) before the host actually evicts them from the roster. Without
-// this grace window a momentary flicker silently kicks a guest mid-session.
+// How long the host may be missing from presence (a transient Supabase reconnect,
+// a network blip, or the app simply backgrounded) before the remaining guests elect
+// a replacement. Nothing else keys off presence — absence never removes a member.
 const PRESENCE_GRACE_MS = 6000;
 
 export type StudyStatus = 'studying' | 'break' | 'idle';
@@ -192,17 +192,13 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
   // Synchronous roster mirror so the host can enforce the 3-person cap without
   // racing React state.
   const rosterRef = useRef<StudyRosterEntry[]>([]);
-  // Latest present codes (host reads this live inside grace-period removal timers
-  // so a member who reappeared before the timer fires isn't evicted), plus the
-  // per-code pending-removal timers themselves.
+  // Latest present codes — read live when electing a new host, and by the guest
+  // self-heal below. Presence is a liveness signal only; it never evicts anyone.
   const presentCodesRef = useRef<string[]>([]);
-  const removalTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  // Host migration: if the host disappears, a guest waits out this same grace window
+  // Host migration: if the host disappears, a guest waits out the grace window
   // (to ignore flickers) before electing a replacement.
   const hostMigrateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const clearRemovalTimers = () => {
-    Object.values(removalTimers.current).forEach(clearTimeout);
-    removalTimers.current = {};
+  const clearPresenceTimers = () => {
     if (hostMigrateTimer.current) { clearTimeout(hostMigrateTimer.current); hostMigrateTimer.current = null; }
   };
   // Latest identity, so the realtime closure (created on join) reads current values.
@@ -247,7 +243,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     // Tear down any previous connection first.
     room.current?.leave();
     if (beginTimer.current) clearTimeout(beginTimer.current);
-    clearRemovalTimers();
+    clearPresenceTimers();
     presentCodesRef.current = [];
     setRoomId(id);
     setIsHost(host);
@@ -335,8 +331,11 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
                 setHostCoverUrl(null);
                 setHostPlaying(true);
                 room.current?.send('discobg', { on: false, color: 'black' });
+                // Drop the departed host ONLY. Everyone else stays, present or not —
+                // a member who happens to be backgrounded during the handover must not
+                // be swept out with the host who actually left.
                 const next = rosterRef.current
-                  .filter((e) => e.code === myCodeNow || live.includes(e.code))
+                  .filter((e) => e.code !== hostE.code)
                   .map((e) => ({ ...e, isHost: e.code === myCodeNow }));
                 rosterRef.current = next;
                 setRoster(next);
@@ -359,31 +358,12 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
             }
             return;
           }
-          // Host: anyone who's (re)appeared cancels their pending eviction.
-          for (const code of codes) {
-            if (removalTimers.current[code]) {
-              clearTimeout(removalTimers.current[code]);
-              delete removalTimers.current[code];
-            }
-          }
-          // Anyone now absent gets a grace timer rather than an immediate kick. The
-          // timer re-checks LIVE presence (presentCodesRef) before removing, so a
-          // transient flicker that resolves within PRESENCE_GRACE_MS leaves the
-          // roster untouched (no churned broadcast, no avatar blink for anyone).
-          rosterRef.current.forEach((e) => {
-            if (e.code === myCodeNow || codes.includes(e.code) || removalTimers.current[e.code]) return;
-            removalTimers.current[e.code] = setTimeout(() => {
-              delete removalTimers.current[e.code];
-              if (presentCodesRef.current.includes(e.code)) return; // came back in time
-              const prev = rosterRef.current;
-              const next = prev.filter((r) => r.code !== e.code);
-              if (next.length !== prev.length) {
-                rosterRef.current = next;
-                setRoster(next);
-                broadcastRoster(next);
-              }
-            }, PRESENCE_GRACE_MS);
-          });
+          // Dropping out of presence NEVER removes anyone from the roster. Backgrounding
+          // the app suspends the websocket, so "absent" and "left" are indistinguishable
+          // from here — and evicting on that kicked people out of the room for glancing
+          // at a notification. Members leave one way only: the explicit Leave button,
+          // which broadcasts `leave` (see the 'leave' handler below). A player who quits
+          // the app without leaving stays on the roster until the room itself ends.
         },
         onMessage: (type, data) => {
           if (type === 'hello') {
@@ -523,13 +503,14 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     r?.send('leave', { code: m.myCode });
     // Let the `leave` broadcast actually flush before tearing the channel down.
     // `send` is an async websocket push but `leave()` (removeChannel) is synchronous,
-    // so calling them back-to-back kills the push — the host never hears it and only
-    // evicts us ~6s later via the PRESENCE_GRACE_MS presence-drop fallback. Deferring
-    // the teardown (same trick as sendInvite) makes a leave register near-instantly.
+    // so calling them back-to-back kills the push. This broadcast is now the ONLY way
+    // a member comes off the roster — presence no longer evicts anyone — so losing it
+    // would strand us in the room. Deferring the teardown (same trick as sendInvite)
+    // makes a leave register near-instantly.
     setTimeout(() => r?.leave(), 350);
     room.current = null;
     if (beginTimer.current) clearTimeout(beginTimer.current);
-    clearRemovalTimers();
+    clearPresenceTimers();
     presentCodesRef.current = [];
     setRoomId(null);
     setIsHost(false);
@@ -688,7 +669,7 @@ export function StudyRoomProvider({ children }: { children: ReactNode }) {
     return () => {
       room.current?.leave();
       if (beginTimer.current) clearTimeout(beginTimer.current);
-      clearRemovalTimers();
+      clearPresenceTimers();
     };
   }, []);
 

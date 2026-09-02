@@ -437,6 +437,13 @@ export function StudyRoomView({
         // auto-stop the session. The break-ending nudge is already scheduled (see
         // the timed-break effect below) — it fires with the app open or closed.
         if (onBreakRef.current) return;
+        // Multiplayer: stepping out of the app does NOT end your session. You're
+        // studying with other people, and silently force-ending (no prompt, no
+        // coins) because someone checked a text was the wrong call. Solo keeps the
+        // 60s auto-stop, where it just means you stopped studying. The nudge is
+        // skipped too — its copy promises the session will stop, which would be a
+        // lie here. Leaving on purpose still ends it, via the Leave button.
+        if (!isSoloRef.current) return;
         if (awayAt != null) return; // already away
         awayAt = Date.now();
         // If they just tapped "open in Spotify", hold the nudge ~10s so it doesn't
