@@ -3,10 +3,16 @@ import type { ColorValue } from 'react-native';
 
 import { BakeryColors } from '@/constants/theme';
 
-// Pickable decorative shapes for an exam countdown. Icon-only (no strings) so the
-// picker needs no translations. Keys persist on ExamCountdown.shape.
-export const COUNTDOWN_SHAPES = ['star', 'heart', 'tear'] as const;
+// Decorative shapes drawn on a calendar day. Icon-only (no strings) so the picker
+// needs no translations. Keys persist on ExamCountdown.shape / dayShapes.
+export const COUNTDOWN_SHAPES = ['star', 'heart', 'tear', 'circle'] as const;
 export type CountdownShapeKey = (typeof COUNTDOWN_SHAPES)[number];
+
+// The STAR is reserved for exam days — an exam day is marked with one automatically
+// and can't be changed, so a plain day must not be able to borrow it. Anything that
+// lets a player pick a day's shape offers this list instead.
+export const DAY_SHAPES = COUNTDOWN_SHAPES.filter((s) => s !== 'star');
+export const EXAM_SHAPE: CountdownShapeKey = 'star';
 
 export const DEFAULT_COUNTDOWN_SHAPE: CountdownShapeKey = 'star';
 
@@ -43,11 +49,18 @@ export function CountdownShape({ shape, size = 18, color = BakeryColors.jam }: P
           strokeLinejoin="round"
         />
       )}
+      {key === 'circle' && (
+        // Plain round dot. r7 rather than r8.4: a full circle reads heavier than the
+        // other shapes at the same radius, since they all taper, so it needs to be
+        // smaller to carry the same visual weight.
+        <Path d="M12 5 a7 7 0 1 0 0.01 0 Z" fill={fill} />
+      )}
       {key === 'tear' && (
         // Symmetric classic water-drop: a sharp top point tapering into a round bulb
-        // (circle r5.4 centred at 12,12.8) — sitting high, a touch larger than before.
+        // (circle r5.4 centred at 12,14). Nudged down 1.2 from where it sat, so its
+        // tip no longer crowds the top of the box.
         <Path
-          d="M12 2.6 C9.2 7.6 6.6 10.3 6.6 12.8 a5.4 5.4 0 1 0 10.8 0 C17.4 10.3 14.8 7.6 12 2.6 Z"
+          d="M12 3.8 C9.2 8.8 6.6 11.5 6.6 14 a5.4 5.4 0 1 0 10.8 0 C17.4 11.5 14.8 8.8 12 3.8 Z"
           fill={fill}
         />
       )}

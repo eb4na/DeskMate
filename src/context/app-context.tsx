@@ -36,7 +36,11 @@ export type ExamCountdown = {
   /** Time of day the exam starts, as "HH:MM" (24-hour). Optional for legacy data. */
   time?: string;
   reminderEnabled: boolean;
-  /** Decorative shape shown on the countdown (e.g. 'heart', 'tear'). Optional. */
+  /**
+   * Decorative shape marking the exam's day in the calendar grid ('star' | 'heart'
+   * | 'tear'), drawn under that day's task previews in the subject's colour. Picked
+   * from the day popup, not the exam form. Undefined = the default star.
+   */
   shape?: string;
 };
 
@@ -349,6 +353,16 @@ type PersistedState = {
   // Calendar day notes (dateISO → note text)
   dayNotes: Record<string, string>;
 
+  // Calendar day shapes (dateISO → 'star' | 'heart' | 'tear'). The decorative mark
+  // drawn as a watermark behind that day's cell. Set per DAY, so an ordinary day
+  // with no exam can carry one too — an exam's own `shape` is only the fallback.
+  dayShapes: Record<string, string>;
+
+  // Calendar day shape COLOURS (dateISO → subject id). The subject whose colour
+  // tints that day's shape. Stored as a subject id, not a colour, so recolouring
+  // the subject recolours every day marked with it.
+  daySubjects: Record<string, string>;
+
   // Friends
   friendCode: string;
   friends: Friend[];
@@ -393,7 +407,10 @@ type PersistedState = {
   tutorialSeen: boolean;
   // Whether the user tapped the "Follow on Instagram" reward (one-time +100 coins).
   instagramFollowClaimed: boolean;
-  // Date of birth (ISO YYYY-MM-DD) captured at the consent gate for age check.
+  // LEGACY. The consent gate used to capture a date of birth here for the age
+  // check; it no longer collects one (App Review 5.1.1(v)) and normalizePersisted-
+  // State clears any value left on older installs. Nothing reads it — kept only so
+  // the field keeps a known shape while old blobs are being purged.
   birthday: string | null;
 
   // IANA timezone captured once on first load and kept for the account's lifetime.
@@ -507,6 +524,8 @@ const DEFAULTS: PersistedState = {
   bakedWith: [],
   hanjiUnlockPending: false,
   dayNotes: {},
+  dayShapes: {},
+  daySubjects: {},
   friendCode: '',
   friends: [],
   profileDisplayName: '',
@@ -660,6 +679,16 @@ export const MAX_EXAMS = 50;
 export const MAX_TASKS = 1000;
 const STREAK_MAX = 200; // study-day streak caps here
 
+// How long a lapsed streak stays rescuable, measured as the gap since lastStudyDate
+// (daysBetween, account timezone). gap 1 = studied yesterday, still alive and needing no
+// rescue; gap 2 = one missed day, the FIRST day the rescue is offered; gap 31 = 30 missed
+// days, the LAST day it's offered. So the player gets exactly 30 days to come back and
+// spend a freeze. Every gate — the engine, the on-open prompt, the session-complete
+// prompt, the Progress banner — reads these, so they can never drift apart again.
+export const STREAK_RESCUE_MIN_GAP = 2;
+export const STREAK_RESCUE_MAX_GAP = 31;
+export const STREAK_RESCUE_DAYS = STREAK_RESCUE_MAX_GAP - STREAK_RESCUE_MIN_GAP + 1; // 30
+
 // Whole-day difference between two YYYY-MM-DD strings via pure UTC calendar math
 // (timezone/DST independent). Single source of truth for streak day-counting — the
 // engine AND its UI (progress banner, rescue prompt, freeze button) all measure
@@ -673,8 +702,8 @@ export function daysBetween(a: string, b: string): number {
 // Pure streak transition for a study completion on `today`. `changed` is false when
 // the day already counts (so callers can leave state untouched and award no bonus).
 // `next` is both the new streak number and the coin bonus for the day. When `rescue`
-// is set and the gap is within the freeze window (2–5 days, i.e. up to 4 missed days —
-// 3 days after the first missed day), the streak is bridged and continued (consuming a
+// is set and the gap is within the freeze window (STREAK_RESCUE_DAYS days to act,
+// counting from the first missed day), the streak is bridged and continued (consuming a
 // freeze) instead of resetting.
 function nextStreakState(
   st: StreakData,
@@ -687,7 +716,7 @@ function nextStreakState(
   if (diff === 1) {
     return { changed: true, next: Math.min(STREAK_MAX, st.currentStreak + 1), isComeback: false, useFreeze: false };
   }
-  if (rescue && diff <= 5) {
+  if (rescue && diff <= STREAK_RESCUE_MAX_GAP) {
     // Bridge the missed days with a freeze and continue the streak.
     return { changed: true, next: Math.min(STREAK_MAX, st.currentStreak + 1), isComeback: false, useFreeze: true };
   }
@@ -695,9 +724,12 @@ function nextStreakState(
   return { changed: true, next: 1, isComeback: true, useFreeze: false };
 }
 
-// True when a lapsed streak can STILL be rescued: the gap since last activity is
-// within the 2–5 day freeze window (up to 4 missed days — 3 days after the first
-// missed day). Rescue is possible for ANY user here — they can
+// True when a lapsed streak can STILL be rescued: the gap since last activity is inside
+// the freeze window (STREAK_RESCUE_DAYS days to act, counting from the first missed day).
+// A streak already given up via declineStreakRescue has currentStreak 0 and is NOT
+// rescuable — that guard is what stops a declined prompt reappearing tomorrow, since the
+// dismissed-date stamp alone only suppresses it for the day.
+// Rescue is possible for ANY user here — they can
 // use an owned freeze OR buy one on the spot (freezes are no longer Plus-only to use),
 // so this depends only on the gap, not on Plus or current inventory. The login reward
 // + home streak display consult it so neither shows nor commits a reset for a streak
@@ -709,8 +741,9 @@ export function streakRescueAvailable(
 ): boolean {
   const last = s.streak.lastStudyDate;
   if (!last) return false;
+  if (s.streak.currentStreak <= 0) return false;
   const gap = daysBetween(last, today);
-  return gap >= 2 && gap <= 5;
+  return gap >= STREAK_RESCUE_MIN_GAP && gap <= STREAK_RESCUE_MAX_GAP;
 }
 
 // The streak is rescuable AND today's on-open rescue prompt hasn't been resolved yet.
@@ -826,6 +859,11 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
   // Birthday edits used to be a change-once boolean; it's now a counter capped at
   // BIRTHDAY_CHANGE_LIMIT. Players who burned their old single change get credited
   // 1 used change, so they gain one more under the raised limit.
+  // The consent gate used to capture a real date of birth here. It is no longer
+  // collected (App Review 5.1.1(v)) and was never read by anything, so drop any
+  // value left on existing installs — clearing it here also clears the
+  // user_state.data mirror on the next save.
+  if (merged.birthday) merged.birthday = null;
   if (merged.profileBirthdayChangeCount === undefined) {
     merged.profileBirthdayChangeCount = merged.profileBirthdayChanged ? 1 : 0;
   }
@@ -1052,7 +1090,7 @@ type AppContextType = {
   plusPlan: 'monthly' | 'annual' | null;
   plusUntil: string;
   streakFreezes: number;
-  // True when the streak lapsed 2–5 days ago and today's on-open rescue prompt hasn't
+  // True when the streak lapsed inside the rescue window and today's on-open prompt hasn't
   // been resolved yet — drives the Home StreakRescueModal and gates the daily reward.
   streakRescuePending: boolean;
   streakRescueDismissedDate: string;
@@ -1106,7 +1144,7 @@ type AppContextType = {
   /** DEV-only: fire the bond level-up celebration for the active companion at its next level. */
   previewBondLevelUp: () => void;
   /** DEV-only: fake a 1-day streak lapse (+1 freeze) so the "Use streak freeze" rescue prompt shows on Home. */
-  devLapseStreak: () => void;
+  devLapseStreak: (daysAgo?: number) => void;
   /** DEV-only: max out the account — own the whole shop catalog, all recipes/badges
    *  (incl. Hanji), 9,999,999 coins, high bond with every companion, Plus active. */
   devMaxOutAccount: () => void;
@@ -1120,6 +1158,12 @@ type AppContextType = {
   resetGameData: () => void;
   dayNotes: Record<string, string>;
   setDayNote: (date: string, note: string) => void;
+  dayShapes: Record<string, string>;
+  /** Set (or clear, with null) the decorative shape drawn on a calendar day. */
+  setDayShape: (date: string, shape: string | null) => void;
+  daySubjects: Record<string, string>;
+  /** Set (or clear, with null) the subject whose colour tints a day's shape. */
+  setDaySubject: (date: string, subjectId: string | null) => void;
   friendCode: string;
   // Last error from syncing my public profile card to the cloud (null = synced OK).
   // Surfaced on the Friends screen so "my code can't be found" stops being silent:
@@ -1177,7 +1221,6 @@ type AppContextType = {
   markTutorialSeen: () => void;
   replayTutorial: () => void;
   claimInstagramFollow: () => void;
-  setBirthday: (iso: string) => void;
 
   // Wave 1 actions
   addCoins: (amount: number) => void;
@@ -1269,6 +1312,7 @@ type AppContextType = {
   rescueStreakByPurchase: () => boolean;
   // Mark today's on-open rescue prompt handled so it doesn't reshow.
   dismissStreakRescue: () => void;
+  declineStreakRescue: () => void;
   saveTimerPreset: (preset: Omit<TimerPreset, 'id'>) => void;
   deleteTimerPreset: (id: string) => void;
   setAmbience: (id: string | null) => void;
@@ -2008,7 +2052,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // rewards coins equal to the new streak number (1, 2, 3, … up to 200). Missing a
   // day resets the streak — today becomes day 1 again.
   // Pass `rescueWithFreeze` when the user opted to spend a freeze to keep a streak
-  // that lapsed 1–3 days ago (the session-complete "keep your streak?" prompt).
+  // that lapsed inside the rescue window (the session-complete "keep your streak?" prompt).
   const updateStreak = (
     opts?: { rescueWithFreeze?: boolean },
   ): { bonus: number; isComeback: boolean; rescued: boolean } => {
@@ -2316,11 +2360,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // Streak lapsed 2–5 days ago and the user owns a freeze → ask whether to spend one
-    // (same guard the receipt used). Otherwise commit straight through.
+    // Streak lapsed inside the rescue window and the user owns a freeze → ask whether to
+    // spend one (same guard the receipt used). Otherwise commit straight through.
     const last = s.streak.lastStudyDate;
     const gap = last ? daysBetween(last, todayISO()) : 0;
-    const canRescue = gap >= 2 && gap <= 5 && s.streakFreezes > 0 && streakRescuePending(s, todayISO());
+    const canRescue = gap >= STREAK_RESCUE_MIN_GAP && gap <= STREAK_RESCUE_MAX_GAP && s.streakFreezes > 0 && streakRescuePending(s, todayISO());
     if (canRescue) {
       showPopup(
         i18n.t('sessionComplete.rescueStreakQ'),
@@ -2461,9 +2505,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // A freeze rescues a streak missed for up to 4 days (daysBetween 2–5). One freeze
-  // bridges the whole gap to yesterday, so studying today continues the streak.
-  const canFreezeGap = (gap: number) => gap >= 2 && gap <= 5;
+  // A freeze rescues a streak for STREAK_RESCUE_DAYS days after the first missed day
+  // (daysBetween STREAK_RESCUE_MIN_GAP…MAX_GAP). One freeze bridges the whole gap to
+  // yesterday — flat cost, however long the gap — so studying today continues the streak.
+  const canFreezeGap = (gap: number) =>
+    gap >= STREAK_RESCUE_MIN_GAP && gap <= STREAK_RESCUE_MAX_GAP;
 
   const useStreakFreeze = (): boolean => {
     if (s.streakFreezes <= 0) return false;
@@ -2508,6 +2554,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // when the player picks "Let it reset", or after a successful use/purchase rescue).
   const dismissStreakRescue = () =>
     setS((prev) => ({ ...prev, streakRescueDismissedDate: todayISO() }));
+
+  // "Let it reset" — the player deliberately gave the streak up. Commit that NOW rather
+  // than leaving it to the next login-reward claim, because the dismissed-date stamp only
+  // suppresses the prompt for today: over the 30-day rescue window, declining and then
+  // quitting before claiming would pop the prompt again tomorrow with the Home chip
+  // bouncing N → 1 → N. Zeroing currentStreak is what makes streakRescueAvailable go
+  // false for good. lastStudyDate is deliberately left alone (study-buddy sync mirrors
+  // it), and longestStreak is untouched so streak achievements keep their record.
+  // The value is transient: the daily-reward claim that follows sees the old lastStudyDate
+  // at a gap >= 2, so it commits currentStreak 1 and pays day 1 — today still counts as
+  // day 1 of a fresh streak, exactly as before this window change.
+  const declineStreakRescue = () =>
+    setS((prev) => ({
+      ...prev,
+      streak: { ...prev.streak, currentStreak: 0 },
+      streakRescueDismissedDate: todayISO(),
+    }));
 
   // Newest preset goes to the front; the list is a fixed-size queue, so the
   // oldest (last) preset is dropped once the cap is reached.
@@ -2774,13 +2837,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // DEV-only: simulate a streak that lapsed one full day (gap = 2, the freeze window)
   // and hand the player a freeze, so the on-open "Use streak freeze" rescue prompt fires
   // next time Home renders. Lets us verify the rescue flow without waiting 2 real days.
-  const devLapseStreak = () => {
+  // `daysAgo` is the gap to fake (daysBetween lastStudyDate → today), so the caller can
+  // land on any point of the rescue window: MIN_GAP = the first offered day, MAX_GAP = the
+  // last, MAX_GAP + 1 = just expired. Defaults to the first offered day.
+  const devLapseStreak = (daysAgo: number = STREAK_RESCUE_MIN_GAP) => {
     setS((prev) => ({
       ...prev,
       streak: {
         ...prev.streak,
         currentStreak: Math.max(1, prev.streak.currentStreak),
-        lastStudyDate: addDaysISO(todayISO(), -2),
+        lastStudyDate: addDaysISO(todayISO(), -Math.max(1, Math.round(daysAgo))),
       },
       streakFreezes: Math.max(1, prev.streakFreezes),
       streakRescueDismissedDate: '', // un-dismiss so the prompt is pending again today
@@ -2840,10 +2906,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       language: prev.language,
       languageSelected: prev.languageSelected,
       timezone: prev.timezone,
-      // Re-verify age on reset: consent + the stored birthday are NOT kept, so the
-      // Privacy Policy + Terms + date-of-birth gate runs again (and a fresh profile
-      // birthday is set from it). These fall back to DEFAULTS — legalAccepted:false,
-      // birthday/profileBirthday cleared, profileBirthdayChangeCount:0.
+      // Re-verify age on reset: consent is NOT kept, so the Privacy Policy + Terms
+      // + 13+ age confirmation runs again. These fall back to DEFAULTS —
+      // legalAccepted:false, birthday/profileBirthday cleared,
+      // profileBirthdayChangeCount:0. The profile birthday is no longer seeded from
+      // onboarding: it is optional and the player adds it in Settings.
       // Profile text identity (display name/bio) is part of the account.
       profileDisplayName: prev.profileDisplayName,
       profileDescription: prev.profileDescription,
@@ -2897,6 +2964,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (note.trim()) next[date] = note;
       else delete next[date];
       return { ...prev, dayNotes: next };
+    });
+
+  const setDayShape = (date: string, shape: string | null) =>
+    setS((prev) => {
+      const next = { ...prev.dayShapes };
+      if (shape) next[date] = shape;
+      else delete next[date];
+      return { ...prev, dayShapes: next };
+    });
+
+  const setDaySubject = (date: string, subjectId: string | null) =>
+    setS((prev) => {
+      const next = { ...prev.daySubjects };
+      if (subjectId) next[date] = subjectId;
+      else delete next[date];
+      return { ...prev, daySubjects: next };
     });
 
   const addFriend = (rawCode: string): { ok: boolean; error?: string } => {
@@ -3045,9 +3128,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ? prev
         : { ...prev, instagramFollowClaimed: true, coins: capCoins(prev.coins + 100) },
     );
-
-  const setBirthday = (iso: string) =>
-    setS((prev) => ({ ...prev, birthday: iso }));
 
   // ─── Wave 2 shop ─────────────────────────────────────────────────────────
 
@@ -3248,6 +3328,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         resetGameData,
         dayNotes: s.dayNotes ?? {},
         setDayNote,
+        dayShapes: s.dayShapes ?? {},
+        setDayShape,
+        daySubjects: s.daySubjects ?? {},
+        setDaySubject,
         friendCode: s.friendCode,
         lastProfileSyncError,
         friends: (s.friends ?? []).filter((f) => !blockedCodes.includes(f.code)),
@@ -3289,6 +3373,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         useStreakFreeze,
         rescueStreakByPurchase,
         dismissStreakRescue,
+        declineStreakRescue,
         saveTimerPreset,
         deleteTimerPreset,
         setAmbience,
@@ -3325,7 +3410,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         markTutorialSeen,
         replayTutorial,
         claimInstagramFollow,
-        setBirthday,
       }}>
       {children}
     </AppContext.Provider>

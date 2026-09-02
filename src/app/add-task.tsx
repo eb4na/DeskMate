@@ -5,9 +5,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View, useColorScheme } from 'react-native';
+import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { SoundPressable } from '@/components/sound-pressable';
 import { showPopup } from '@/lib/popup';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DateWheelPicker, getTodayISO, formatDateLabel } from '@/components/date-wheel-picker';
 import { TimeWheelPicker, formatTimeLabel } from '@/components/time-wheel-picker';
@@ -123,6 +124,7 @@ export default function AddTaskScreen() {
   }, [editing, existingTask]);
 
   const activeSubjects = subjects.filter((s) => !s.archived);
+
   // Auto on a task that's already too close to its due moment schedules nothing —
   // every tier is in the past. Say so, rather than promising a day-before reminder
   // the task will never get. Asked of the same function that does the scheduling.
@@ -219,9 +221,22 @@ export default function AddTaskScreen() {
     { color: BakeryColors.cocoaDark, borderColor: BakeryColors.border, backgroundColor: BakeryColors.cream },
   ];
 
+  // Keyboard spacer — see the Animated.View at the end of the form.
+  const keyboard = useAnimatedKeyboard();
+  const insets = useSafeAreaInsets();
+  const kbSpacer = useAnimatedStyle(() => ({
+    height: Math.max(keyboard.height.value - insets.bottom, 0),
+  }));
+
   return (
     <ThemedView style={styles.container}>
-      <ScrollView keyboardShouldPersistTaps="handled">
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        // iOS scrolls the focused field above the keyboard on its own once the
+        // scroll view knows the keyboard's inset; the animated spacer at the end
+        // of the content gives it somewhere to scroll TO on the last few fields.
+        automaticallyAdjustKeyboardInsets
+        contentInsetAdjustmentBehavior="always">
         <SafeAreaView style={styles.safeArea}>
           <ThemedText type="subtitle" style={styles.title}>
             {editing ? t('addTask.editTask') : t('addTask.addTaskTitle')}
@@ -305,6 +320,7 @@ export default function AddTaskScreen() {
               </Pressable>
             </ThemedView>
           </ThemedView>
+
 
           {/* Due? — the day itself is set by the tapped calendar cell; here you
               only choose whether it's a real deadline (Yes, drives the red dot) or
@@ -504,6 +520,11 @@ export default function AddTaskScreen() {
           <Pressable onPress={() => router.back()} style={styles.cancelBtn}>
             <ThemedText type="linkPrimary">{t('common.cancel')}</ThemedText>
           </Pressable>
+          {/* Grows to exactly the keyboard's height so the last fields can always be
+              scrolled clear of it. KeyboardAvoidingView is deliberately NOT used —
+              it under-pads inside an iOS card modal, which is what this screen is.
+              Same spacer as dm-chat / companion-chat. */}
+          <Animated.View style={kbSpacer} />
         </SafeAreaView>
       </ScrollView>
     </ThemedView>

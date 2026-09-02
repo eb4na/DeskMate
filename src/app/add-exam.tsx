@@ -1,10 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, TextInput } from 'react-native';
+import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { SoundPressable } from '@/components/sound-pressable';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CountdownShape, COUNTDOWN_SHAPES, DEFAULT_COUNTDOWN_SHAPE, type CountdownShapeKey } from '@/components/countdown-shapes';
 import { DateWheelPicker, getTodayISO } from '@/components/date-wheel-picker';
 import { TimeWheelPicker } from '@/components/time-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
@@ -39,7 +39,6 @@ export default function AddExamScreen() {
   const [date, setDate] = useState(existing?.dateISO ?? getTodayISO());
   const [time, setTime] = useState(existing?.time ?? '09:00');
   const [reminderEnabled, setReminderEnabled] = useState(existing?.reminderEnabled ?? false);
-  const [shape, setShape] = useState<CountdownShapeKey>((existing?.shape as CountdownShapeKey) ?? DEFAULT_COUNTDOWN_SHAPE);
   // Inline validation error. This screen is a native modal, so a root showPopup
   // can't present over it (the tap looked dead — "can't add"). Show the reason here.
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +73,6 @@ export default function AddExamScreen() {
       dateISO: trimmedDate,
       time,
       reminderEnabled,
-      shape,
     };
 
     const examId = editing ? existing!.id : addExam(fields);
@@ -104,9 +102,25 @@ export default function AddExamScreen() {
     fontSize: 16,
   };
 
+  // Keyboard spacer — see the Animated.View at the end of the form.
+  const keyboard = useAnimatedKeyboard();
+  const insets = useSafeAreaInsets();
+  const kbSpacer = useAnimatedStyle(() => ({
+    height: Math.max(keyboard.height.value - insets.bottom, 0),
+  }));
+
   return (
     <ThemedView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        // Tapping a chip/date row while the keyboard is up should work on the FIRST
+        // tap, not just dismiss the keyboard.
+        keyboardShouldPersistTaps="handled"
+        // iOS scrolls the focused field above the keyboard on its own once the
+        // scroll view knows the keyboard's inset; the animated spacer at the end
+        // of the content gives it somewhere to scroll TO on the last few fields.
+        automaticallyAdjustKeyboardInsets
+        contentInsetAdjustmentBehavior="always">
         <SafeAreaView style={styles.safeArea}>
           <ThemedText type="default" themeColor="textSecondary" style={styles.hint}>
             {t('addExam.hint')}
@@ -154,24 +168,6 @@ export default function AddExamScreen() {
                 <ThemedText type="smallBold" style={styles.addSubjectChipText}>{t('addExam.newSubject')}</ThemedText>
               </ThemedView>
             </Pressable>
-          </ThemedView>
-        </ThemedView>
-
-        <ThemedView style={styles.field}>
-          <ThemedText type="smallBold">{t('addExam.shape')}</ThemedText>
-          <ThemedView style={styles.chipRow}>
-            {COUNTDOWN_SHAPES.map((sh) => (
-              <Pressable
-                key={sh}
-                onPress={() => setShape(sh)}
-                style={({ pressed }) => [pressed && styles.pressed]}>
-                <ThemedView
-                  type={shape === sh ? 'backgroundSelected' : 'backgroundElement'}
-                  style={styles.shapeBtn}>
-                  <CountdownShape shape={sh} size={26} />
-                </ThemedView>
-              </Pressable>
-            ))}
           </ThemedView>
         </ThemedView>
 
@@ -229,6 +225,11 @@ export default function AddExamScreen() {
           <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
             {t('addExam.countdownsUsed', { count: examCountdowns.length, max: MAX_EXAMS })}
           </ThemedText>
+          {/* Grows to exactly the keyboard's height so the last fields can always be
+              scrolled clear of it. KeyboardAvoidingView is deliberately NOT used —
+              it under-pads inside an iOS card modal, which is what this screen is.
+              Same spacer as dm-chat / companion-chat. */}
+          <Animated.View style={kbSpacer} />
         </SafeAreaView>
       </ScrollView>
     </ThemedView>
@@ -257,13 +258,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   subjectDot: { width: 10, height: 10, borderRadius: 5 },
-  shapeBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   addSubjectChip: { borderWidth: 1, borderColor: '#D9C5B2', borderStyle: 'dashed' },
   addSubjectChipText: { color: '#7A5240' },
   pressed: { opacity: 0.8 },
