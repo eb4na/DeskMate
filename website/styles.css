@@ -1,7 +1,7 @@
 /* Memobun marketing site — pink "carrd"-style kawaii PLANNER theme.
    The page is a ring-bound cream planner: a warm dotted page framed by a soft
    pink binder cover, with a row of shiny silver binder rings along the top.
-   Candy-pink headings, blue tag chips, rounded pill nav, pink-framed cards, and
+   Hand-written type throughout, candy-pink headings, blue tag chips, pill nav, and
    code-drawn strawberry/star/heart stickers + washi-tape accents.
    No emojis anywhere — inline SVG only. */
 
@@ -34,12 +34,35 @@
   --mint: #8FD0A0;         /* status dot */
   --shadow: 0 16px 38px rgba(226, 120, 150, 0.20);
   --shadow-soft: 0 8px 20px rgba(226, 120, 150, 0.14);
+  /* pink card surface — a lightened dark pink, kept semi-transparent so the
+     dotted paper reads right through it and it lands as a light pink. The edge
+     is the same dark pink at full strength. Text is white with a thin dark-pink
+     outline, which is what carries it against a pale fill. */
+  --card-pink: rgba(214, 92, 126, 0.26);     /* the dark pink, thinned right down
+                                                so it lands as a light pink */
+  --card-pink-edge: #D65C7E;                 /* the same dark pink, solid, on the edge */
+  --ink-edge: #C04468;                       /* the outline drawn around white text */
+  --on-pink: #FFFFFF;                        /* card headings */
+  --on-pink-soft: #FFFFFF;                   /* card body copy */
+  --on-pink-chip: rgba(214, 92, 126, 0.55);  /* icon chip sitting on the card */
+  --on-pink-rule: rgba(214, 92, 126, 0.40);  /* hairlines & dashed rules */
+  --on-edge: #FFFFFF;                        /* text that sits ON the dark edge */
+  --shadow-pink: 0 8px 20px rgba(226, 120, 150, 0.20);
+  /* 8-way 1px outline — crisp on every browser, unlike -webkit-text-stroke,
+     which thins the glyph from the inside instead of drawing around it. */
+  --text-outline:
+    -1px -1px 0 var(--ink-edge),  0 -1px 0 var(--ink-edge),  1px -1px 0 var(--ink-edge),
+     1px  0   0 var(--ink-edge),  1px  1px 0 var(--ink-edge),  0  1px 0 var(--ink-edge),
+    -1px  1px 0 var(--ink-edge), -1px  0   0 var(--ink-edge);
   --radius-card: 24px;
   --radius-pill: 999px;
   --maxw: 1080px;
   --sheetw: 1180px;
-  --font-display: 'Baloo 2', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
-  --font-body: ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* One handwriting family for the whole page — Shantell Sans is a marker hand
+     with real weights (400–800), so nothing is ever synthetically bolded.
+     It covers Latin only; JA/ZH/KO fall through to the system UI face. */
+  --font-display: 'Shantell Sans', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
+  --font-body: 'Shantell Sans', ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -229,8 +252,9 @@ main#top {
 .room-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .room-card figcaption {
   position: absolute; left: 8px; bottom: 8px;
-  background: rgba(255,253,251,.94); color: var(--pink-deep); font-weight: 700; font-size: .72rem;
+  background: var(--card-pink-edge); color: var(--on-edge); font-weight: 700; font-size: .72rem;
   padding: 3px 10px; border-radius: var(--radius-pill);
+  border: 1.5px solid var(--on-pink-rule);
 }
 .room-card.rc-a { top: 10px; left: 2%; transform: rotate(-7deg); z-index: 2; }
 .room-card.rc-b { bottom: 8px; right: 2%; transform: rotate(6deg); z-index: 4; }
@@ -253,91 +277,109 @@ section { position: relative; padding: 72px 0; }
   padding: 6px 16px; border-radius: var(--radius-pill); margin: 0 0 18px;
   box-shadow: 0 4px 10px rgba(90,169,212,.28);
 }
-/* on the pink Plus card, the chip reads better in dark pink than blue */
-.plus-band .eyebrow { background: var(--pink-deep); box-shadow: 0 4px 10px rgba(214,92,126,.30); }
+/* on the pink band the blue chip clashes — a white outline chip instead */
+.plus-band .eyebrow { background: var(--ink-edge); border: 1.5px solid var(--on-pink-rule); box-shadow: none; }
 .alt-bg { background: linear-gradient(180deg, var(--band), rgba(255,240,245,.35)); }
 
-/* ── Rooms / "your vibe" showcase ────────────────────────────────────── */
-.rooms { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
-.room-tile {
-  position: relative; aspect-ratio: 3 / 4.2; border-radius: 18px; overflow: hidden;
-  border: 2px solid var(--border); box-shadow: var(--shadow-soft);
+/* ── Rooms / "your vibe" gallery ─────────────────────────────────────── */
+/* Every study room in the app, each introduced by name + one line. */
+.room-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 26px 20px; }
+.room-item {
+  min-width: 0; background: var(--card-pink); border: 2px solid var(--card-pink-edge);
+  border-radius: 22px; padding: 10px 12px 16px; box-shadow: var(--shadow-pink);
   transition: transform .18s ease, box-shadow .18s ease;
 }
-.room-tile:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
-.room-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.room-tile span {
-  position: absolute; left: 8px; bottom: 8px; right: 8px;
-  background: rgba(255,253,251,.94); color: var(--pink-deep); font-weight: 700; font-size: .8rem;
-  padding: 5px 10px; border-radius: 12px; text-align: center;
+.room-item:hover { transform: translateY(-4px); box-shadow: 0 16px 34px rgba(142,44,74,.34); }
+.room-shot {
+  position: relative; aspect-ratio: 3 / 4.2; border-radius: 14px; overflow: hidden;
+  border: 1.5px solid var(--on-pink-rule);
+}
+.room-shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* "Plus" ribbon on the subscriber-only room */
+.room-tag {
+  position: absolute; top: 8px; right: 8px;
+  background: var(--card-pink-edge); color: var(--on-edge); font-family: var(--font-display);
+  font-weight: 800; font-size: .72rem; letter-spacing: .02em;
+  padding: 3px 10px; border-radius: var(--radius-pill);
+  border: 1.5px solid var(--on-pink-rule);
+}
+.room-item h3 { font-size: 1.04rem; margin: 12px 2px 3px; color: var(--on-pink); }
+.room-item p { margin: 0 2px; color: var(--on-pink-soft); font-size: .87rem; line-height: 1.45; }
+
+/* "there's more in the app" footnote under a gallery */
+.more-note {
+  margin: 26px 0 0; text-align: center; color: var(--cocoa-soft);
+  font-size: .92rem; font-style: italic;
 }
 
 /* ── Features ────────────────────────────────────────────────────────── */
 .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
 .feature {
-  background: var(--card); border: 2px solid var(--border);
-  border-radius: var(--radius-card); padding: 26px 24px; box-shadow: var(--shadow-soft);
+  background: var(--card-pink); border: 2px solid var(--card-pink-edge);
+  border-radius: var(--radius-card); padding: 26px 24px; box-shadow: var(--shadow-pink);
   transition: transform .18s ease, box-shadow .18s ease;
 }
-.feature:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
-.feature .ic { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: var(--pink-soft); color: var(--pink-deep); margin-bottom: 14px; }
+.feature:hover { transform: translateY(-4px); box-shadow: 0 16px 34px rgba(142,44,74,.34); }
+.feature .ic {
+  width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center;
+  background: var(--on-pink-chip); color: var(--on-pink);
+  border: 1.5px solid var(--on-pink-rule); margin-bottom: 14px;
+  filter: drop-shadow(0 0 1px var(--ink-edge));
+}
 .feature .ic svg { width: 26px; height: 26px; }
-/* rotate the accent across cards so the grid feels playful */
-.feature:nth-child(4n+1) .ic { background: var(--pink-soft); color: var(--pink-deep); }
-.feature:nth-child(4n+2) .ic { background: var(--sky-soft); color: var(--sky-deep); }
-.feature:nth-child(4n+3) .ic { background: #FDE3E0; color: var(--berry); }
-.feature:nth-child(4n+4) .ic { background: #FBE8F0; color: var(--pink-deep); }
-.feature h3 { font-size: 1.18rem; margin-bottom: 6px; color: var(--cocoa-dark); }
-.feature p { margin: 0; color: var(--cocoa-soft); font-size: .98rem; }
+.feature h3 { font-size: 1.18rem; margin-bottom: 6px; color: var(--on-pink); }
+.feature p { margin: 0; color: var(--on-pink-soft); font-size: .98rem; }
 
 /* ── How it works (numbered steps) ───────────────────────────────────── */
 .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
 .step {
   position: relative; text-align: center;
-  background: var(--card); border: 2px solid var(--border);
-  border-radius: var(--radius-card); padding: 30px 24px 26px; box-shadow: var(--shadow-soft);
+  background: var(--card-pink); border: 2px solid var(--card-pink-edge);
+  border-radius: var(--radius-card); padding: 30px 24px 26px; box-shadow: var(--shadow-pink);
   transition: transform .18s ease, box-shadow .18s ease;
 }
-.step:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+.step:hover { transform: translateY(-4px); box-shadow: 0 16px 34px rgba(142,44,74,.34); }
 .step-num {
   display: grid; place-items: center; width: 46px; height: 46px; margin: 0 auto 14px;
-  font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; color: #fff;
-  background: var(--pink); border-radius: 50%; border: 3px solid #fff; box-shadow: var(--shadow-soft);
+  font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; color: var(--on-edge);
+  background: var(--card-pink-edge); border-radius: 50%; border: 3px solid #fff; box-shadow: var(--shadow-pink);
 }
-.step:nth-child(2) .step-num { background: var(--sky); }
-.step:nth-child(3) .step-num { background: var(--berry); }
-.step h3 { font-size: 1.18rem; margin-bottom: 6px; color: var(--cocoa-dark); }
-.step p { margin: 0; color: var(--cocoa-soft); font-size: .98rem; }
+.step h3 { font-size: 1.18rem; margin-bottom: 6px; color: var(--on-pink); }
+.step p { margin: 0; color: var(--on-pink-soft); font-size: .98rem; }
 
 /* ── FAQ (native accordion, no JS) ───────────────────────────────────── */
 .faq-list { max-width: 760px; margin: 0 auto; display: grid; gap: 14px; }
 .faq-item {
-  background: var(--card); border: 2px solid var(--border);
-  border-radius: 18px; padding: 0 20px; box-shadow: var(--shadow-soft);
+  background: var(--card-pink); border: 2px solid var(--card-pink-edge);
+  border-radius: 18px; padding: 0 20px; box-shadow: var(--shadow-pink);
 }
 .faq-item summary {
   list-style: none; cursor: pointer; padding: 16px 0;
-  font-family: var(--font-display); font-weight: 700; font-size: 1.06rem; color: var(--cocoa-dark);
+  font-family: var(--font-display); font-weight: 700; font-size: 1.06rem; color: var(--on-pink);
   display: flex; align-items: center; justify-content: space-between; gap: 14px;
 }
 .faq-item summary::-webkit-details-marker { display: none; }
 .faq-item summary::after {
   content: ""; flex: none; width: 11px; height: 11px; margin-right: 3px;
-  border-right: 2.6px solid var(--pink-deep); border-bottom: 2.6px solid var(--pink-deep);
+  border-right: 2.6px solid var(--on-pink); border-bottom: 2.6px solid var(--on-pink);
   transform: rotate(45deg); transition: transform .2s ease;
 }
 .faq-item[open] summary::after { transform: rotate(-135deg); }
-.faq-item p { margin: 0 0 18px; color: var(--cocoa-soft); font-size: .98rem; }
+.faq-item p { margin: 0 0 18px; color: var(--on-pink-soft); font-size: .98rem; }
 
 /* ── Characters ──────────────────────────────────────────────────────── */
 .char-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
 .char-card {
   position: relative; border-radius: var(--radius-card); overflow: hidden;
-  background: var(--card); border: 2px solid var(--border); box-shadow: var(--shadow-soft);
+  background: var(--card-pink); border: 2px solid var(--card-pink-edge); box-shadow: var(--shadow-pink);
   transition: transform .18s ease, box-shadow .18s ease;
 }
-.char-card:hover { transform: translateY(-5px); box-shadow: var(--shadow); }
-.char-art { aspect-ratio: 1 / 1; display: grid; place-items: end center; padding-top: 16px; }
+.char-card:hover { transform: translateY(-5px); box-shadow: 0 18px 38px rgba(142,44,74,.34); }
+/* column layout so every card's wardrobe strip lines up along the bottom,
+   however long the blurb above it runs */
+.char-card { display: flex; flex-direction: column; }
+.char-info { flex: 1 1 auto; }
+.char-art { flex: 0 0 auto; aspect-ratio: 1 / 1; display: grid; place-items: end center; padding-top: 16px; }
 .char-art img { width: 84%; height: auto; filter: drop-shadow(0 8px 12px rgba(120,53,80,.18)); }
 /* each companion's card uses its exact app palette colour (bottom), fading up */
 .char-card.c-bun   .char-art { background: radial-gradient(circle at 50% 80%, #ffc9d0, #ffe9ec); }
@@ -346,20 +388,43 @@ section { position: relative; padding: 72px 0; }
 .char-card.c-miel  .char-art { background: radial-gradient(circle at 50% 80%, #ffcd8c, #ffe8c6); }
 .char-card.c-tira  .char-art { background: radial-gradient(circle at 50% 80%, #a3d6ff, #d6ebff); }
 .char-info { padding: 18px 20px 22px; }
-.char-info h3 { font-size: 1.35rem; margin-bottom: 4px; color: var(--cocoa-dark); }
-.char-info .role { color: var(--pink-deep); font-weight: 700; font-size: .9rem; }
-.char-info p { margin: 8px 0 0; color: var(--cocoa-soft); font-size: .96rem; }
+.char-info h3 { font-size: 1.35rem; margin-bottom: 4px; color: var(--on-pink); }
+.char-info .role { color: var(--on-pink); font-weight: 700; font-size: .9rem; }
+.char-info p { margin: 8px 0 0; color: var(--on-pink-soft); font-size: .96rem; }
 .char-card.secret .char-art { background: radial-gradient(circle at 50% 80%, #B7A0E0, #e2d7f3); position: relative; }
 .char-card.secret .qmark { font-family: var(--font-display); font-size: 5rem; color: #C79AD1; align-self: center; padding-bottom: 8px; }
 .char-card.secret .lockbadge { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; background: rgba(255,253,251,.92); border-radius: 50%; display: grid; place-items: center; color: #B074C0; }
-.char-card.secret .char-info .role { color: #B074C0; }
+.char-card.secret .char-info .role { color: var(--on-pink); }
+
+/* wardrobe strip — the outfits each companion can unlock */
+.char-fits { margin: 0 20px 20px; border-top: 2px dashed var(--on-pink-rule); padding-top: 13px; }
+.fits-label {
+  margin: 0 0 9px; font-family: var(--font-display); font-weight: 800;
+  font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--on-pink);
+}
+.fits { display: flex; gap: 10px; }
+/* two per card everywhere, so every thumbnail is the same size */
+.fit { flex: 1 1 0; min-width: 0; text-align: center; }
+.fit .shot {
+  aspect-ratio: 1 / 1; border-radius: 14px; overflow: hidden;
+  border: 1.5px solid var(--on-pink-rule); background: var(--fit-bg, var(--pink-soft));
+  display: grid; place-items: center;
+}
+.fit .shot img { width: 94%; height: auto; display: block; }
+.fit span { display: block; margin-top: 6px; font-size: .74rem; font-weight: 700; line-height: 1.25; color: var(--on-pink-soft); }
+/* each strip picks up the pale end of its companion's card gradient */
+.char-card.c-bun   { --fit-bg: #ffe9ec; }
+.char-card.c-cocoa { --fit-bg: #f7d8d1; }
+.char-card.c-bunny { --fit-bg: #ffe6f2; }
+.char-card.c-miel  { --fit-bg: #ffe8c6; }
+.char-card.c-tira  { --fit-bg: #d6ebff; }
 
 /* ── Plus band ───────────────────────────────────────────────────────── */
-.plus-band { background: linear-gradient(120deg, #FFE3EE, #FCD3E3); border-radius: var(--radius-card); padding: 40px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 30px; align-items: center; box-shadow: var(--shadow-soft); border: 2px solid var(--border); }
-.plus-band h2 { font-size: 1.9rem; color: var(--pink-ink); }
+.plus-band { background: var(--card-pink); border-radius: var(--radius-card); padding: 40px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 30px; align-items: center; box-shadow: var(--shadow-pink); border: 2px solid var(--card-pink-edge); }
+.plus-band h2 { font-size: 1.9rem; color: var(--on-pink); }
 .plus-list { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 10px; }
-.plus-list li { display: flex; gap: 10px; align-items: flex-start; color: var(--cocoa); font-weight: 600; }
-.plus-list svg { flex: none; width: 20px; height: 20px; color: var(--pink-deep); margin-top: 3px; }
+.plus-list li { display: flex; gap: 10px; align-items: flex-start; color: var(--on-pink); font-weight: 600; }
+.plus-list svg { flex: none; width: 20px; height: 20px; color: var(--on-pink); margin-top: 3px; filter: drop-shadow(0 0 1px var(--ink-edge)); }
 .plus-icon { text-align: center; }
 .plus-icon img { width: 130px; height: 130px; border-radius: 28px; box-shadow: var(--shadow); }
 
@@ -391,7 +456,7 @@ section { position: relative; padding: 72px 0; }
   main#top { max-width: calc(100% - 40px); }
 }
 @media (max-width: 980px) {
-  .rooms { grid-template-columns: repeat(3, 1fr); }
+  .room-grid { grid-template-columns: repeat(3, 1fr); }
 }
 /* iPad portrait & below */
 @media (max-width: 900px) {
@@ -438,17 +503,23 @@ section { position: relative; padding: 72px 0; }
   .hero-actions .btn { width: 100%; justify-content: center; }
   .hero-note { margin-top: 14px; }
 
-  /* Rooms & Characters → side-swipe carousels (full-bleed, snap) */
-  .rooms, .char-grid {
-    display: flex; gap: 12px; overflow-x: auto;
+  /* Characters → side-swipe carousel (full-bleed, snap) */
+  .char-grid {
+    display: flex; gap: 14px; overflow-x: auto;
     scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
     margin: 0 -24px; padding: 2px 24px 14px; scroll-padding-left: 24px;
     scrollbar-width: none;
   }
-  .rooms::-webkit-scrollbar, .char-grid::-webkit-scrollbar { display: none; }
-  .room-tile { flex: 0 0 150px; scroll-snap-align: start; }
-  .char-grid { gap: 14px; }
+  .char-grid::-webkit-scrollbar { display: none; }
   .char-card { flex: 0 0 236px; scroll-snap-align: start; }
+  .char-fits { margin: 0 16px 16px; padding-top: 11px; }
+  .fits { gap: 7px; }
+  .fit span { font-size: .68rem; }
+
+  /* Rooms stay a grid — each one is read, not swiped past */
+  .room-grid { grid-template-columns: repeat(2, 1fr); gap: 18px 12px; }
+  .room-item h3 { font-size: .96rem; margin: 10px 0 2px; }
+  .room-item p { font-size: .82rem; }
 
   /* How-it-works: slim step cards, single column */
   .steps { grid-template-columns: 1fr; gap: 14px; }
@@ -471,4 +542,18 @@ section { position: relative; padding: 72px 0; }
   .cta h2 { font-size: 1.7rem; }
   .foot-grid { justify-content: center; text-align: center; }
   .foot-links { justify-content: center; }
+}
+
+/* ── White card text, outlined in dark pink ──────────────────────────────
+   Everything that sits on a pink card surface. Grouped in one place so the
+   outline colour is changed once, not in a dozen rules. */
+.feature h3, .feature p,
+.step h3, .step p, .step-num,
+.room-item h3, .room-item p, .room-tag,
+.char-info h3, .char-info .role, .char-info p,
+.fits-label, .fit span,
+.faq-item summary, .faq-item p,
+.plus-band h2, .plus-list li,
+.room-card figcaption {
+  text-shadow: var(--text-outline);
 }

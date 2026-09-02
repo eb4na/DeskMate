@@ -16,12 +16,12 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="canonical" href="https://memobun.app/" />
 
-  <!-- Rounded display font to match the app -->
+  <!-- Handwriting display + body face (the site is a hand-written planner) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Shantell+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="styles.css?v=3" />
+  <link rel="stylesheet" href="styles.css?v=4" />
 </head>
 <body>
 
@@ -32,9 +32,9 @@
         <img src="assets/logo/notebook-mark.png" alt="Memobun" />
       </a>
       <nav class="nav-links">
+        <a href="#characters" data-i18n="nav.characters">Characters</a>
         <a href="#rooms" data-i18n="nav.rooms">Rooms</a>
         <a href="#features" data-i18n="nav.features">Features</a>
-        <a href="#characters" data-i18n="nav.characters">Characters</a>
         <a href="#plus" data-i18n="nav.plus">Plus</a>
         <a href="support.html" data-i18n="nav.support">Support</a>
       </nav>
@@ -130,28 +130,171 @@
       </div>
     </section>
 
+    <!-- ── Companions ───────────────────────────────────────────────── -->
+    <section id="characters" class="alt-bg">
+      <div class="washi w-char" aria-hidden="true"></div>
+      <div class="wrap">
+        <div class="section-head reveal">
+          <svg class="sticker st-star left" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3c1 0 2 .7 2.4 1.8l3.3 8.2 8.8.6c2.4.2 3.4 3.2 1.5 4.8l-6.8 5.6 2.2 8.6c.6 2.3-2 4.2-4 2.9L20 31.4l-7.4 4.7c-2 1.3-4.6-.6-4-2.9l2.2-8.6-6.8-5.6c-1.9-1.6-.9-4.6 1.5-4.8l8.8-.6 3.3-8.2C18 3.7 19 3 20 3Z" fill="#FFD36B" stroke="#F0B23E" stroke-width="2"/></svg>
+          <p class="eyebrow" data-i18n="char.eyebrow">Meet the companions</p>
+          <h2 data-i18n="char.h2">Pick the study buddy who fits your vibe</h2>
+          <p data-i18n="char.p">Start with one for free, then collect the rest. Each has their own personality, voice, and wardrobe of outfits.</p>
+        </div>
+        <div class="char-grid">
+          <article class="char-card c-bun reveal">
+            <div class="char-art"><img src="assets/characters/bun.png" alt="Bun" /></div>
+            <div class="char-info">
+              <h3 data-i18n="char.bun.name">Bun</h3>
+              <span class="role" data-i18n="char.bun.role">The sweet one</span>
+              <p data-i18n="char.bun.desc">A devoted little strawberry bun-bunny. Gentle, earnest, and always cheering you on with soft bun puns.</p>
+            </div>
+            <div class="char-fits">
+              <p class="fits-label" data-i18n="char.wardrobe">Wardrobe</p>
+              <div class="fits">
+                <div class="fit"><div class="shot"><img src="assets/outfits/bun-angel.png" alt="Angel outfit" loading="lazy" /></div><span data-i18n="fit.bun.angel">Angel</span></div>
+                <div class="fit"><div class="shot"><img src="assets/outfits/bun-snowrabbit.png" alt="Snow Rabbit outfit" loading="lazy" /></div><span data-i18n="fit.bun.snow">Snow Rabbit</span></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="char-card c-cocoa reveal">
+            <div class="char-art"><img src="assets/characters/aki.png" alt="Aki" /></div>
+            <div class="char-info">
+              <h3 data-i18n="char.cocoa.name">Aki</h3>
+              <span class="role" data-i18n="char.cocoa.role">The barista</span>
+              <p data-i18n="char.cocoa.desc">Warm café energy with a knowing edge. “Work hard now, treat yourself later” — and let your focus steep.</p>
+            </div>
+            <div class="char-fits">
+              <p class="fits-label" data-i18n="char.wardrobe">Wardrobe</p>
+              <div class="fits">
+                <div class="fit"><div class="shot"><img src="assets/outfits/aki-relax.png" alt="Relax outfit" loading="lazy" /></div><span data-i18n="fit.aki.relax">Relax</span></div>
+                <div class="fit"><div class="shot"><img src="assets/outfits/aki-demon.png" alt="Demon outfit" loading="lazy" /></div><span data-i18n="fit.aki.demon">Demon</span></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="char-card c-bunny reveal">
+            <div class="char-art"><img src="assets/characters/bunny.png" alt="Bunny" /></div>
+            <div class="char-info">
+              <h3 data-i18n="char.bunny.name">Bunny</h3>
+              <span class="role" data-i18n="char.bunny.role">The little princess</span>
+              <p data-i18n="char.bunny.desc">Adorable, a touch bratty, and knows it. Bunny speaks in the third person — because Bunny is always right.</p>
+            </div>
+            <div class="char-fits">
+              <p class="fits-label" data-i18n="char.wardrobe">Wardrobe</p>
+              <div class="fits">
+                <div class="fit"><div class="shot"><img src="assets/outfits/bunny-jiraikei.png" alt="Jirai Kei outfit" loading="lazy" /></div><span data-i18n="fit.bunny.jirai">Jirai Kei</span></div>
+                <div class="fit"><div class="shot"><img src="assets/outfits/bunny-palace.png" alt="Blue Peony outfit" loading="lazy" /></div><span data-i18n="fit.bunny.peony">Blue Peony</span></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="char-card c-miel reveal">
+            <div class="char-art"><img src="assets/characters/miel.png" alt="Miel" /></div>
+            <div class="char-info">
+              <h3 data-i18n="char.miel.name">Miel</h3>
+              <span class="role" data-i18n="char.miel.role">The sleepy honey bear</span>
+              <p data-i18n="char.miel.desc">Drowsy and soft, but always shows up. “Nap now, study after” — warm, mumbly, and quietly reliable.</p>
+            </div>
+            <div class="char-fits">
+              <p class="fits-label" data-i18n="char.wardrobe">Wardrobe</p>
+              <div class="fits">
+                <div class="fit"><div class="shot"><img src="assets/outfits/miel-champion.png" alt="Champion outfit" loading="lazy" /></div><span data-i18n="fit.miel.champion">Champion</span></div>
+                <div class="fit"><div class="shot"><img src="assets/outfits/miel-zzz.png" alt="ZZZ outfit" loading="lazy" /></div><span data-i18n="fit.miel.zzz">ZZZ</span></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="char-card c-tira reveal">
+            <div class="char-art"><img src="assets/characters/tira.png" alt="Tira" /></div>
+            <div class="char-info">
+              <h3 data-i18n="char.tira.name">Tira</h3>
+              <span class="role" data-i18n="char.tira.role">The cool mentor</span>
+              <p data-i18n="char.tira.desc">Dry, deadpan, lazy-cool. The “I dropped out, but you should study” type — unbothered, and secretly rooting for you.</p>
+            </div>
+            <div class="char-fits">
+              <p class="fits-label" data-i18n="char.wardrobe">Wardrobe</p>
+              <div class="fits">
+                <div class="fit"><div class="shot"><img src="assets/outfits/tira-chocomint.png" alt="Choco Mint outfit" loading="lazy" /></div><span data-i18n="fit.tira.chocomint">Choco Mint</span></div>
+                <div class="fit"><div class="shot"><img src="assets/outfits/tira-carefree.png" alt="Carefree Days outfit" loading="lazy" /></div><span data-i18n="fit.tira.carefree">Carefree Days</span></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="char-card secret reveal">
+            <div class="char-art">
+              <span class="lockbadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
+              <span class="qmark">?</span>
+            </div>
+            <div class="char-info">
+              <h3 data-i18n="char.secret.name">A secret companion</h3>
+              <span class="role" data-i18n="char.secret.role">??? · hidden</span>
+              <p data-i18n="char.secret.desc">One more friend is waiting quietly in the bakery — discovered only by the most devoted bakers. Keep studying to find them.</p>
+            </div>
+          </article>
+        </div>
+        <p class="more-note reveal" data-i18n="char.more">Each companion has more outfits to unlock than the two shown here.</p>
+      </div>
+    </section>
+
     <!-- ── Rooms / your vibe ────────────────────────────────────────── -->
-    <section id="rooms" class="alt-bg">
+    <section id="rooms">
       <div class="washi w-rooms" aria-hidden="true"></div>
       <div class="wrap">
         <div class="section-head reveal">
           <svg class="sticker st-heart right" viewBox="0 0 32 30" aria-hidden="true"><path d="M16 28C6 21 2 15 2 9.5 2 5.4 5.4 2 9.5 2 12 2 14.4 3.3 16 5.4 17.6 3.3 20 2 22.5 2 26.6 2 30 5.4 30 9.5 30 15 26 21 16 28Z" fill="#F5808F" stroke="#D65C7E" stroke-width="2"/></svg>
           <p class="eyebrow" data-i18n="rooms.eyebrow">Your space, your style</p>
           <h2 data-i18n="rooms.h2">Cute, cozy, cool, or aesthetic — your room, your vibe</h2>
-          <p data-i18n="rooms.p">Study somewhere that feels like you. Unlock and decorate a whole shelf of rooms and desks as you go.</p>
+          <p data-i18n="rooms.p">Every room comes with a matching desk. Unlock them with the coins you earn studying, then switch whenever the mood changes.</p>
         </div>
-        <div class="rooms">
-          <div class="room-tile reveal"><img src="assets/backgrounds/coffee.jpg" alt="Modern kitchen room" /><span data-i18n="room.coffee">Modern Kitchen</span></div>
-          <div class="room-tile reveal"><img src="assets/backgrounds/cozy-room.jpg" alt="Bun's Room" /><span data-i18n="room.bakery">Bun's Room</span></div>
-          <div class="room-tile reveal"><img src="assets/backgrounds/shrine.jpg" alt="Frostbloom Shrine room" /><span data-i18n="room.shrine">Frostbloom Shrine</span></div>
-          <div class="room-tile reveal"><img src="assets/backgrounds/train.jpg" alt="Afternoon Train room" /><span data-i18n="room.train">Afternoon Train</span></div>
-          <div class="room-tile reveal"><img src="assets/backgrounds/lavender.jpg" alt="Lavender Palace room" /><span data-i18n="room.treehouse">Lavender Palace</span></div>
+        <div class="room-grid">
+          <article class="room-item reveal">
+            <div class="room-shot"><img src="assets/backgrounds/cozy-bakery.jpg" alt="Cozy Bakery study room" loading="lazy" /></div>
+            <h3 data-i18n="room.cozy">Cozy Bakery</h3>
+            <p data-i18n="room.cozy.d">The snug pastel room you start in — a sunlit window, flower-dotted shelves, and a warm wooden baking desk.</p>
+          </article>
+          <article class="room-item reveal">
+            <div class="room-shot"><img src="assets/backgrounds/cozy-room.jpg" alt="Bun's Room study room" loading="lazy" /></div>
+            <h3 data-i18n="room.bakery">Bun's Room</h3>
+            <p data-i18n="room.bakery.d">Bun's pink strawberry bedroom — frills, bows, and cozy pastel sweetness. Pairs with the Pink desk.</p>
+          </article>
+          <article class="room-item reveal">
+            <div class="room-shot"><img src="assets/backgrounds/tiras-room.jpg" alt="Tira's Room study room" loading="lazy" /></div>
+            <h3 data-i18n="room.tiras">Tira's Room</h3>
+            <p data-i18n="room.tiras.d">Tira's cozy blue bedroom — soft quilts, lace curtains, and morning light.</p>
+          </article>
+          <article class="room-item reveal">
+            <div class="room-shot"><img src="assets/backgrounds/train.jpg" alt="Afternoon Train study room" loading="lazy" /></div>
+            <h3 data-i18n="room.train">Afternoon Train</h3>
+            <p data-i18n="room.train.d">A vintage train cabin — big windows over rolling countryside, blue floral seats. Pairs with the Afternoon Train desk and Tira's hakama.</p>
+          </article>
+          <article class="room-item reveal">
+            <div class="room-shot"><img src="assets/backgrounds/landmine.jpg" alt="Landmine study room" loading="lazy" /></div>
+            <h3 data-i18n="room.landmine">Landmine</h3>
+            <p data-i18n="room.landmine.d">A pink-and-black jirai kei bedroom — bows, a lit vanity mirror, and a moonlit window.</p>
+          </article>
+          <article class="room-item reveal">
+            <div class="room-shot"><img src="assets/backgrounds/shrine.jpg" alt="Frostbloom Shrine study room" loading="lazy" /></div>
+            <h3 data-i18n="room.shrine">Frostbloom Shrine</h3>
+            <p data-i18n="room.shrine.d">A snow-hushed shrine courtyard — white plum blossoms, frosted lanterns, and a clear winter sky.</p>
+          </article>
+          <article class="room-item reveal">
+            <div class="room-shot"><img src="assets/backgrounds/moonlit-balcony.jpg" alt="Moonlit Balcony study room" loading="lazy" /></div>
+            <h3 data-i18n="room.moonlit">Moonlit Balcony</h3>
+            <p data-i18n="room.moonlit.d">A cozy rooftop balcony under a crescent moon — lantern light, lavender blooms, and a starry town skyline. Pairs with the Rosewood desk.</p>
+          </article>
+          <article class="room-item reveal">
+            <div class="room-shot"><img src="assets/backgrounds/golden-teahouse.jpg" alt="Golden Teahouse study room" loading="lazy" /><span class="room-tag" data-i18n="room.plusTag">Plus</span></div>
+            <h3 data-i18n="room.teahouse">Golden Teahouse</h3>
+            <p data-i18n="room.teahouse.d">A royal strawberry-pink palace — gilded throne, ribbon drapes, and a berry-sweet tea table. Yours free with Plus.</p>
+          </article>
         </div>
+        <p class="more-note reveal" data-i18n="rooms.more">Just a taste — there are more rooms and desks waiting in the shop.</p>
       </div>
     </section>
 
     <!-- ── Features ─────────────────────────────────────────────────── -->
-    <section id="features">
+    <section id="features" class="alt-bg">
       <div class="wrap">
         <div class="section-head reveal">
           <p class="eyebrow" data-i18n="feat.eyebrow">What's inside</p>
@@ -174,118 +317,27 @@
 
           <div class="feature reveal">
             <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c1.5 3-1.5 4 0 7 3-1 4-4 2-7M8 10c-3 2-4 6-1 9 4 3 9 1 10-3 .6-2-.2-4-1-5-.5 2-2 3-3 3 1-2 0-5-5-4z"/></svg></div>
-            <h3 data-i18n="feat.streaks.t">Streaks &amp; freezes</h3>
-            <p data-i18n="feat.streaks.d">Build a daily study streak with a little grace for missed days, and protect it with streak freezes.</p>
+            <h3 data-i18n="feat.streaks.t">Streaks, freezes & milestones</h3>
+            <p data-i18n="feat.streaks.d">Build a daily study streak with a little grace for missed days, protect it with freezes, and collect achievements that pay bonus coins.</p>
           </div>
 
           <div class="feature reveal">
             <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><circle cx="17" cy="9.5" r="2.6"/><path d="M3.5 19c.5-3 3-4.5 5.5-4.5S14 16 14.5 19M15 14.5c2 .2 3.7 1.6 4 4.5"/></svg></div>
             <h3 data-i18n="feat.live.t">Study together, live</h3>
-            <p data-i18n="feat.live.d">Open a multiplayer room and study in real time with friends — each desk shows their timer and topic.</p>
-          </div>
-
-          <div class="feature reveal">
-            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18M3 12h18"/></svg></div>
-            <h3 data-i18n="feat.buddy.t">Study Buddy matching</h3>
-            <p data-i18n="feat.buddy.d">Get paired with a one-week accountability buddy — a friendly, safety-first nudge to keep showing up.</p>
-          </div>
-
-          <div class="feature reveal">
-            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21l1.5-5L17 5.5a2.1 2.1 0 0 1 3 3L9.5 19.5 5 21z"/><path d="M14.5 7.5l2 2"/></svg></div>
-            <h3 data-i18n="feat.quests.t">Achievements</h3>
-            <p data-i18n="feat.quests.d">Milestones to chase as your habits grow — every one you reach pays bonus coins.</p>
-          </div>
-
-          <div class="feature reveal">
-            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1.3 9.2a2 2 0 0 1-2 1.8H7.3a2 2 0 0 1-2-1.8z"/><path d="M8 9V7a4 4 0 0 1 8 0v2"/></svg></div>
-            <h3 data-i18n="feat.shop.t">Shop &amp; customize</h3>
-            <p data-i18n="feat.shop.d">Decorate your bakery with new rooms and desks, and dress your companion in collectible outfits.</p>
+            <p data-i18n="feat.live.d">Open a multiplayer room and focus in real time with friends — each desk shows their timer and topic — or get matched with a one-week study buddy.</p>
           </div>
 
           <div class="feature reveal">
             <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6l11-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg></div>
-            <h3 data-i18n="feat.sounds.t">Study sounds &amp; Spotify</h3>
+            <h3 data-i18n="feat.sounds.t">Study sounds & Spotify</h3>
             <p data-i18n="feat.sounds.d">Loop gentle ambient tracks, or hook up your own Spotify for the perfect focus soundtrack.</p>
           </div>
 
           <div class="feature reveal">
             <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M3 9h18M8 2v4M16 2v4M8 14l2.5 2.5L16 12"/></svg></div>
-            <h3 data-i18n="feat.tasks.t">Tasks, exams &amp; moods</h3>
+            <h3 data-i18n="feat.tasks.t">Tasks, exams & moods</h3>
             <p data-i18n="feat.tasks.d">Track to-dos and exam countdowns, log how you feel, and watch it all in weekly mood &amp; subject reports.</p>
           </div>
-
-        </div>
-      </div>
-    </section>
-
-    <!-- ── Characters ───────────────────────────────────────────────── -->
-    <section id="characters" class="alt-bg">
-      <div class="washi w-char" aria-hidden="true"></div>
-      <div class="wrap">
-        <div class="section-head reveal">
-          <svg class="sticker st-star left" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3c1 0 2 .7 2.4 1.8l3.3 8.2 8.8.6c2.4.2 3.4 3.2 1.5 4.8l-6.8 5.6 2.2 8.6c.6 2.3-2 4.2-4 2.9L20 31.4l-7.4 4.7c-2 1.3-4.6-.6-4-2.9l2.2-8.6-6.8-5.6c-1.9-1.6-.9-4.6 1.5-4.8l8.8-.6 3.3-8.2C18 3.7 19 3 20 3Z" fill="#FFD36B" stroke="#F0B23E" stroke-width="2"/></svg>
-          <p class="eyebrow" data-i18n="char.eyebrow">Meet the companions</p>
-          <h2 data-i18n="char.h2">Pick the study buddy who fits your vibe</h2>
-          <p data-i18n="char.p">Start with one for free, then collect the rest. Each has their own personality, voice, and wardrobe of outfits.</p>
-        </div>
-        <div class="char-grid">
-
-          <article class="char-card c-bun reveal">
-            <div class="char-art"><img src="assets/characters/bun.png" alt="Bun" /></div>
-            <div class="char-info">
-              <h3 data-i18n="char.bun.name">Bun</h3>
-              <span class="role" data-i18n="char.bun.role">The sweet one</span>
-              <p data-i18n="char.bun.desc">A devoted little strawberry bun-bunny. Gentle, earnest, and always cheering you on with soft bun puns.</p>
-            </div>
-          </article>
-
-          <article class="char-card c-cocoa reveal">
-            <div class="char-art"><img src="assets/characters/aki.png" alt="Aki" /></div>
-            <div class="char-info">
-              <h3 data-i18n="char.cocoa.name">Aki</h3>
-              <span class="role" data-i18n="char.cocoa.role">The barista</span>
-              <p data-i18n="char.cocoa.desc">Warm café energy with a knowing edge. "Work hard now, treat yourself later" — and let your focus steep.</p>
-            </div>
-          </article>
-
-          <article class="char-card c-bunny reveal">
-            <div class="char-art"><img src="assets/characters/bunny.png" alt="Bunny" /></div>
-            <div class="char-info">
-              <h3 data-i18n="char.bunny.name">Bunny</h3>
-              <span class="role" data-i18n="char.bunny.role">The little princess</span>
-              <p data-i18n="char.bunny.desc">Adorable, a touch bratty, and knows it. Bunny speaks in the third person — because Bunny is always right.</p>
-            </div>
-          </article>
-
-          <article class="char-card c-miel reveal">
-            <div class="char-art"><img src="assets/characters/miel.png" alt="Miel" /></div>
-            <div class="char-info">
-              <h3 data-i18n="char.miel.name">Miel</h3>
-              <span class="role" data-i18n="char.miel.role">The sleepy honey bear</span>
-              <p data-i18n="char.miel.desc">Drowsy and soft, but always shows up. "Nap now, study after" — warm, mumbly, and quietly reliable.</p>
-            </div>
-          </article>
-
-          <article class="char-card c-tira reveal">
-            <div class="char-art"><img src="assets/characters/tira.png" alt="Tira" /></div>
-            <div class="char-info">
-              <h3 data-i18n="char.tira.name">Tira</h3>
-              <span class="role" data-i18n="char.tira.role">The cool mentor</span>
-              <p data-i18n="char.tira.desc">Dry, deadpan, lazy-cool. The "I dropped out, but you should study" type — unbothered, and secretly rooting for you.</p>
-            </div>
-          </article>
-
-          <article class="char-card secret reveal">
-            <div class="char-art">
-              <span class="lockbadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
-              <span class="qmark">?</span>
-            </div>
-            <div class="char-info">
-              <h3 data-i18n="char.secret.name">A secret companion</h3>
-              <span class="role" data-i18n="char.secret.role">??? · hidden</span>
-              <p data-i18n="char.secret.desc">One more friend is waiting quietly in the bakery — discovered only by the most devoted bakers. Keep studying to find them.</p>
-            </div>
-          </article>
 
         </div>
       </div>
@@ -377,7 +429,7 @@
     </div>
   </footer>
 
-  <script src="i18n.js?v=2"></script>
+  <script src="i18n.js?v=3"></script>
   <script src="script.js?v=2"></script>
 </body>
 </html>
