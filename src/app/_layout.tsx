@@ -36,28 +36,25 @@ import i18n, { useTranslation } from '@/i18n';
 // still reaches react-native's useColorScheme, so force it app-wide here.
 Appearance.setColorScheme('light');
 
-const LOADING_IMGS = [
-  require('@/assets/images/home/loading4.png'),
-  require('@/assets/images/home/loading11.png'),
-  require('@/assets/images/home/loading8.png'),
-  require('@/assets/images/home/loading9.png'),
-  require('@/assets/images/home/loading14.png'),
-];
-
-// Index-aligned with LOADING_IMGS: true where the art's bottom (under the label)
-// is too dark or too pink for the default pink label to read — use white there.
-const LOADING_TEXT_WHITE = [true, true, true, true, true];
+// The one loading artwork, everywhere. This used to be a random pick from five
+// full-bleed illustrations; a single screen makes loading feel like one consistent
+// moment instead of a slideshow, and drops ~11MB of art from the bundle.
+const LOADING_IMG = require('@/assets/images/home/loading-bun-pink.png');
+// The art's flat ground. loadingRoot uses it so there's no colour seam in the frame
+// before the image decodes, and the label/bar colours below are chosen against it.
+const LOADING_BG = '#FBD8E0';
+// Bouncing-dots timing. Cycle = 2*HOP + 2*STAGGER = 800ms per dot.
+const DOT_HOP_MS = 260;
+const DOT_STAGGER_MS = 140;
+const DOT_RISE = 10;
 
 // Full-screen loading splash shown OVER the app — the home screen mounts behind
 // it (loading its art) and stays hidden until everything is ready. Only when
 // `ready` flips true does the overlay fill its bar and fade away (then onDone).
 function LoadingScreen({ ready, quick, onDone }: { ready: boolean; quick?: boolean; onDone: () => void }) {
-  const progress = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(1)).current;
-  // Pick one of the loading artworks at random each time it shows.
-  const idx = useRef(Math.floor(Math.random() * LOADING_IMGS.length)).current;
-  const img = LOADING_IMGS[idx];
-  const whiteText = LOADING_TEXT_WHITE[idx];
+  // Three dots that hop in sequence, forever. One Animated.Value per dot.
+  const dots = useRef([0, 1, 2].map(() => new Animated.Value(0))).current;
   const { t } = useTranslation();
   const [slow, setSlow] = useState(false);
   const [minDone, setMinDone] = useState(false);
@@ -69,20 +66,29 @@ function LoadingScreen({ ready, quick, onDone }: { ready: boolean; quick?: boole
   // Launch/login hold a little longer than quick in-app navigation, but neither
   // sits on a fixed timer: the overlay lifts as soon as `ready` flips (home art
   // painted / assets preloaded) past a short floor, so a warm launch feels instant
-  // instead of always eating 3s. The bar creeps to 92% over barMs and parks there
-  // if the load genuinely takes longer.
+  // instead of always eating 3s.
   const minMs = quick ? 400 : 800;
-  const barMs = quick ? 500 : 1200;
   const maxMs = quick ? 6000 : 10000;
 
-  // Creep the bar toward ~92% over the minimum hold; never completes on its own.
+  // Bounce the dots one after another, on repeat. Each dot's cycle is the SAME
+  // total length (lead delay + up + down + trailing delay = 800ms); only where the
+  // delay sits differs, so they stagger without ever drifting out of phase.
   useEffect(() => {
-    Animated.timing(progress, {
-      toValue: 0.92,
-      duration: barMs,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
+    const anims = dots.map((v, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * DOT_STAGGER_MS),
+          Animated.timing(v, { toValue: 1, duration: DOT_HOP_MS, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+          Animated.timing(v, { toValue: 0, duration: DOT_HOP_MS, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+          Animated.delay((dots.length - 1 - i) * DOT_STAGGER_MS),
+        ]),
+      ),
+    );
+    anims.forEach((a) => a.start());
+    return () => anims.forEach((a) => a.stop());
+  }, [dots]);
+
+  useEffect(() => {
     const minTimer = setTimeout(() => setMinDone(true), minMs);
     const slowTimer = setTimeout(() => setSlow(true), 3000);
     const maxTimer = setTimeout(() => setForceDone(true), maxMs);
@@ -91,28 +97,31 @@ function LoadingScreen({ ready, quick, onDone }: { ready: boolean; quick?: boole
       clearTimeout(slowTimer);
       clearTimeout(maxTimer);
     };
-  }, [progress, minMs, barMs, maxMs]);
+  }, [minMs, maxMs]);
 
   // Finish once the app is ready AND the minimum hold has passed — OR once the hard
   // max-hold failsafe trips (so a stuck `ready` can't freeze the screen).
   const finished = (ready && minDone) || forceDone;
   useEffect(() => {
     if (!finished) return;
-    Animated.sequence([
-      Animated.timing(progress, { toValue: 1, duration: 260, useNativeDriver: false }),
-      Animated.timing(fade, { toValue: 0, duration: 400, useNativeDriver: true }),
-    ]).start(() => onDone());
-  }, [finished, progress, fade, onDone]);
-
-  const width = progress.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
+    Animated.timing(fade, { toValue: 0, duration: 400, useNativeDriver: true }).start(() => onDone());
+  }, [finished, fade, onDone]);
 
   return (
     <Animated.View style={[styles.loadingRoot, { opacity: fade }]} pointerEvents={finished ? 'none' : 'auto'}>
-      <ExpoImage source={img} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="center" />
+      <ExpoImage source={LOADING_IMG} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="center" />
       <View style={styles.loadingBarWrap}>
-        <Text style={[styles.loadingLabel, whiteText && styles.loadingLabelWhite]}>{t('common.loading')}</Text>
-        <View style={styles.loadingTrack}>
-          <Animated.View style={[styles.loadingFill, { width }]} />
+        <Text style={styles.loadingLabel}>{t('common.loading')}</Text>
+        <View style={styles.loadingDots}>
+          {dots.map((v, i) => (
+            <Animated.View
+              key={i}
+              style={[
+                styles.loadingDot,
+                { transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, -DOT_RISE] }) }] },
+              ]}
+            />
+          ))}
         </View>
         {slow && !ready && <Text style={styles.loadingSlow}>{t('common.loadingSlow')}</Text>}
       </View>
@@ -138,7 +147,7 @@ const PRELOAD_ASSETS = [
 
 function RootNavigator() {
   const { initialized, isGuest, session, signOut, sessionRestoredAtLaunch } = useAuth();
-  const { loaded, legalAccepted, markLegalAccepted, setBirthday, updateProfile, soundEffectsEnabled, starterChosen, isPlus, plusPlan, plusUntil, setIsPlus, persistedStateReady, resetAccountForAbandonedOnboarding,
+  const { loaded, legalAccepted, markLegalAccepted, soundEffectsEnabled, starterChosen, isPlus, plusPlan, plusUntil, setIsPlus, persistedStateReady, resetAccountForAbandonedOnboarding,
     equippedBackgroundRoomId, equippedDeskRoomId, activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins } = useApp();
   const { t } = useTranslation();
 
@@ -407,14 +416,12 @@ function RootNavigator() {
         splash has lifted and the saved state is loaded. */}
     {authed && loaded && !legalAccepted && (
       <LegalConsentGate
-        onAgree={(birthday) => {
-          setBirthday(birthday);
-          // Seed the profile birthday (shown on the card + drives the yearly reward)
-          // from the same pick, but YEAR-STRIPPED to a fixed leap year (2008) — the
-          // profile birthday syncs to friends, so the real birth year must not leak.
-          // Only month/day is ever used (card formatter + isBirthdayToday). This is
-          // the initial set, so it does NOT consume the one allowed change in Settings.
-          updateProfile({ birthday: `2008-${birthday.slice(5)}` });
+        onAgree={() => {
+          // Nothing but the acceptance itself is stored. The gate no longer asks
+          // for a date of birth (App Review 5.1.1(v)) — it only affirms the age
+          // minimum. The birthday that drives the yearly reward is optional and
+          // month/day only; the player adds it in Settings if they want it, and
+          // that first set does NOT consume their one allowed change.
           markLegalAccepted();
         }}
       />
@@ -528,7 +535,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#F7DDE4',
+    backgroundColor: LOADING_BG,
     // Above the consent gate / starter chooser (zIndex 1000) so those can mount
     // underneath the splash and be revealed when it lifts — no home-screen flash.
     zIndex: 1001,
@@ -541,17 +548,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
-  loadingTrack: {
-    width: '64%',
-    height: 12,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.85)',
-    overflow: 'hidden',
+  // Three hopping dots in place of the old progress bar. Extra top/bottom room so
+  // the hop isn't clipped by the row's own height.
+  loadingDots: { flexDirection: 'row', alignItems: 'center', gap: 12, height: DOT_RISE + 14 },
+  // White on the artwork's pale pink is only ~1.4:1, so the dots carry a soft
+  // shadow — enough to read as three distinct dots without looking outlined.
+  loadingDot: {
+    width: 11, height: 11, borderRadius: 6, backgroundColor: '#fff',
+    shadowColor: '#C2708A', shadowOpacity: 0.5, shadowRadius: 3, shadowOffset: { width: 0, height: 1 },
   },
-  loadingFill: { height: '100%', borderRadius: 8, backgroundColor: '#F2A0B5' },
-  loadingLabel: { fontSize: 18, fontWeight: '800', color: '#F2A0B5', letterSpacing: 0.5, textShadowColor: 'rgba(255,255,255,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
-  loadingLabelWhite: { color: '#fff', textShadowColor: 'rgba(0,0,0,0.4)' },
-  loadingSlow: { fontSize: 12, fontWeight: '700', color: '#fff', textShadowColor: 'rgba(0,0,0,0.25)', textShadowRadius: 3 },
+  // White on the pale-pink ground is only ~1.4:1 on its own, so both labels carry a
+  // rose drop-shadow (same family as the dots') to hold their edges. Text is still
+  // t('common.loading') / t('common.loadingSlow') — translated in all 7 locales.
+  loadingLabel: { fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: 0.5, textShadowColor: 'rgba(194,112,138,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  loadingSlow: { fontSize: 12, fontWeight: '700', color: '#fff', textShadowColor: 'rgba(194,112,138,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
 });
