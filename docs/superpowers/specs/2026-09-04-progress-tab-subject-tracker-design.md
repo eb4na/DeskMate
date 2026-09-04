@@ -1,7 +1,7 @@
 # Progress tab → studied-subject time tracker
 
 **Date:** 2026-09-04
-**Status:** approved design, not yet implemented
+**Status:** implemented in feebb2c + 0c528fe, verified on the iOS simulator
 **Chosen layout:** Option C ("One glance") — a ring with the total in the middle, subjects ranked beneath.
 
 ## Why
@@ -146,6 +146,14 @@ Removed keys: `progress.historyCapTitle`, `progress.historyCapDesc`, and the
 Subject names keep going through `localizeSubjectName`; durations through `formatDuration`.
 
 ## Testing
+
+**As built:** the repo has no test runner, so rather than bolt one on uninvited the
+aggregation was checked with 16 standalone assertions compiled straight from
+`progress-ranges.ts` (all four ranges, the week/month calendar straddle, the previous
+year's exclusion, the top-5 + "Other" threshold, and the empty/zero cases). Screen
+behaviour was driven on the simulator. Two additions to the plan below: the account /
+sign-out card was on this tab and has been kept at the bottom, and `formatDate` carried
+a pre-existing UTC off-by-one that is now fixed.
 
 - Aggregation is pure and gets unit tests: given a fixed `sessionHistory` /
   `subjectTimeMap` / `subjectMonthly`, each of the four ranges returns the expected
