@@ -53,8 +53,16 @@ const RANGE_CAPTION_KEY: Record<ProgressRange, string> = {
   all: 'progress.capAllTime',
 };
 
+// new Date("2026-09-04") parses as UTC midnight, which then renders as the PREVIOUS
+// day everywhere west of UTC — the best day was consistently reported one day early.
+// Splitting the parts builds a LOCAL midnight instead, so the label matches the
+// date the record actually carries.
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(i18n.language || 'en-US', { month: 'short', day: 'numeric' });
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(i18n.language || 'en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 /** "2026-09" → a localized month name. Day 15 dodges any timezone edge. */
@@ -123,6 +131,7 @@ export default function ProgressScreen() {
     minutes: e.minutes,
     color: colorFor(e.name),
   }));
+
 
   // ── Achievements (count + whether anything is ready to claim) ─────────────
   const achievementStat = (key: string): number =>
@@ -231,7 +240,9 @@ export default function ProgressScreen() {
               slices={ringData}
               otherMinutes={otherMinutes}
               size={168 * ps}>
-              <ThemedText style={styles.ringTotal}>{formatMinutesShort(total, t)}</ThemedText>
+              <FitText numberOfLines={1} minScale={0.55} style={styles.ringTotal}>
+                {formatDuration(total, t)}
+              </FitText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.ringCaption}>
                 {t(RANGE_CAPTION_KEY[range])}
               </ThemedText>
@@ -283,9 +294,15 @@ export default function ProgressScreen() {
                   return (
                     <ThemedView key={e.name} type="transparent" style={styles.rankRow}>
                       <View style={[styles.rankDot, { backgroundColor: colorFor(e.name) }]} />
-                      <FitText type="smallBold" numberOfLines={1} style={styles.rankName}>
-                        {localizeSubjectName(e.name, t)}
-                      </FitText>
+                      {/* FitText needs a parent with an already-resolved width:
+                          adjustsFontSizeToFit measures unreliably when the width
+                          itself comes from flex, and shrinks some rows and not
+                          others. The wrapper owns the flex; the text just fills it. */}
+                      <View style={styles.rankNameWrap}>
+                        <FitText type="smallBold" numberOfLines={1} style={styles.rankName}>
+                          {localizeSubjectName(e.name, t)}
+                        </FitText>
+                      </View>
                       <ThemedText type="small" themeColor="textSecondary" style={styles.rankPct}>
                         {pct}%
                       </ThemedText>
@@ -444,7 +461,8 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     paddingVertical: 9 * s,
   },
   rankDot: { width: 10 * s, height: 10 * s, borderRadius: 5 * s },
-  rankName: { flex: 1 },
+  rankNameWrap: { flex: 1 },
+  rankName: { width: '100%' },
   rankPct: { minWidth: 34 * s, textAlign: 'right' },
   rankMin: { minWidth: 62 * s, textAlign: 'right', color: BakeryColors.cocoa },
   manageRow: { alignItems: 'flex-end', paddingVertical: 8 * s },

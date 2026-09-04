@@ -85,8 +85,13 @@ export function SubjectRing({ slices, otherMinutes = 0, size = 158, thickness, c
             })}
         </G>
       </Svg>
+      {/* Centre content is clamped to the hole's width. Without this a large
+          total ("3755 minutes") renders wider than the hole and overlaps the
+          arc. 0.86 leaves a little breathing room inside the inner edge. */}
       <View style={styles.center} pointerEvents="none">
-        {children}
+        <View style={{ width: (size - stroke * 2) * 0.86, alignItems: 'center' }}>
+          {children}
+        </View>
       </View>
     </View>
   );
