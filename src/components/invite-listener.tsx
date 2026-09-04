@@ -38,7 +38,7 @@ const GAME_LABEL_KEY: Record<OnlineGameId, string> = {
 const SURFACE_INVITE_OVER = new Set([
   '/settings', '/friends', '/profile', '/friend-card', '/dm-chat', '/companion-chat', '/companion-pfp',
   '/session-picker', '/add-task', '/add-exam', '/reminder-settings', '/manage-subjects',
-  '/weekly-report', '/subject-chart', '/plus-upgrade', '/coin-shop', '/ambience-picker',
+  '/weekly-report', '/streak-detail', '/plus-upgrade', '/coin-shop', '/ambience-picker',
   '/companion-gallery', '/edit-room', '/food-gallery', '/legal', '/party-invite', '/custom-timer',
   '/achievements', '/mailbox',
 ]);

@@ -21,6 +21,7 @@ import { computeTaskRollover } from '@/lib/task-recurrence';
 import { uploadProfile } from '@/lib/profile-sync';
 import { claimMailRemote } from '@/lib/mail';
 import { companionLevelInfo } from '@/lib/companion-level';
+import { monthKeyOf } from '@/lib/progress-ranges';
 import { uploadStudyDay } from '@/lib/study-buddy';
 import { HANJI_COMPANION_ID, recipeBadgeKey, badgesFromMadeFoods, hasAllCharacterBadges, RECIPE_IDS, RECIPE_BADGES, starterRecipe } from '@/constants/recipes';
 
@@ -286,6 +287,11 @@ type PersistedState = {
   ownedShopItems: string[];
   equippedShopItems: EquippedShopItems;
   subjectTimeMap: Record<string, number>;
+  /** Per-month, per-subject minutes: "YYYY-MM" -> subject -> minutes. Never
+   *  trimmed, unlike sessionHistory — it is the only honest source for the
+   *  Progress tab's Year range once raw records age out. Tiny: roughly six
+   *  subjects x twelve months of numbers per year. */
+  subjectMonthly: Record<string, Record<string, number>>;
   skipSubjectCount: number;
   sessionHistory: SessionRecord[];
   // Minutes studied with each companion (companionId → minutes). Drives the per-
@@ -483,6 +489,7 @@ const DEFAULTS: PersistedState = {
     pose: null,
   },
   subjectTimeMap: {},
+  subjectMonthly: {},
   skipSubjectCount: 0,
   sessionHistory: [],
   companionMinutes: {},
@@ -1081,6 +1088,11 @@ type AppContextType = {
   ownedShopItems: string[];
   equippedShopItems: EquippedShopItems;
   subjectTimeMap: Record<string, number>;
+  /** Per-month, per-subject minutes: "YYYY-MM" -> subject -> minutes. Never
+   *  trimmed, unlike sessionHistory — it is the only honest source for the
+   *  Progress tab's Year range once raw records age out. Tiny: roughly six
+   *  subjects x twelve months of numbers per year. */
+  subjectMonthly: Record<string, Record<string, number>>;
   skipSubjectCount: number;
   sessionHistory: SessionRecord[];
   companionMinutes: Record<string, number>;
@@ -2263,14 +2275,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addSubjectTime = (subjectName: string | null, minutes: number) => {
     const key = subjectName ?? 'General Study';
-    const record: SessionRecord = { dateISO: todayISO(), minutes, subjectName };
+    const dateISO = todayISO();
+    const record: SessionRecord = { dateISO, minutes, subjectName };
+    const monthKey = monthKeyOf(dateISO);
     setS((prev) => ({
       ...prev,
       subjectTimeMap: {
         ...prev.subjectTimeMap,
         [key]: (prev.subjectTimeMap[key] ?? 0) + minutes,
       },
-      sessionHistory: [record, ...prev.sessionHistory].slice(0, 1000),
+      // Same minutes, bucketed by calendar month. subjectTimeMap can't answer
+      // "this year" (no dates) and sessionHistory won't reach back far enough
+      // once the cap bites, so the Progress tab's Year range reads this.
+      subjectMonthly: {
+        ...prev.subjectMonthly,
+        [monthKey]: {
+          ...(prev.subjectMonthly[monthKey] ?? {}),
+          [key]: (prev.subjectMonthly[monthKey]?.[key] ?? 0) + minutes,
+        },
+      },
+      // 5000, not 1000: at three sessions a day 1000 records is only about
+      // eleven months, so the Month range would start under-reporting before
+      // the Year range did. The monthly rollup covers everything older.
+      sessionHistory: [record, ...prev.sessionHistory].slice(0, 5000),
     }));
   };
 
@@ -3249,6 +3276,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ownedShopItems: s.ownedShopItems,
         equippedShopItems: s.equippedShopItems,
         subjectTimeMap: s.subjectTimeMap,
+        subjectMonthly: s.subjectMonthly ?? {},
         skipSubjectCount: s.skipSubjectCount,
         sessionHistory: s.sessionHistory,
         companionMinutes: s.companionMinutes ?? {},

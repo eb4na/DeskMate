@@ -488,6 +488,15 @@
   },
   "progress": {
     "title": "Progress",
+    "rangeWeek": "Week",
+    "rangeMonth": "Month",
+    "rangeYear": "Year",
+    "rangeAll": "All",
+    "capThisWeek": "this week",
+    "capThisMonth": "this month",
+    "capThisYear": "this year",
+    "capAllTime": "all time",
+    "bestMonth": "Best month",
     "weeklyReport": "Weekly Report",
     "totalStudyTime": "Total study time",
     "sessionsCompleted": "Sessions completed",
@@ -527,9 +536,6 @@
     "tagSessionsHint": "Tag sessions with a subject to see your breakdown here.",
     "mostStudied": "Most studied:",
     "leastStudied": "Least studied:",
-    "subjectChartBtn": "Subject chart",
-    "historyCapTitle": "Your full history",
-    "historyCapDesc": "Free accounts show your last {{months}} months of progress. Unlock your full study history with Plus.",
     "companions": "Companions",
     "companionGallery": "Companion Gallery",
     "switchWhoStudies": "Switch who studies with you",
@@ -1386,16 +1392,6 @@
     "guestGateTitle": "Study Buddy needs an account",
     "guestGateBody": "Create a free account to get matched with a study buddy."
   },
-  "subjectChart": {
-    "day": "Today",
-    "week": "Week",
-    "month": "Month",
-    "year": "Year",
-    "totalTime": "Total time studied",
-    "minutes": "{{count}} min",
-    "noData": "No sessions tracked in this range yet.",
-    "general": "General Study"
-  },
   "screens": {
     "addExamCountdown": "Add exam countdown",
     "dailyReminder": "Daily reminder",
@@ -1405,8 +1401,7 @@
     "deskmatePlus": "Memobun Plus",
     "ambience": "Ambience",
     "settings": "Settings",
-    "getCoins": "Get Coins",
-    "subjectChart": "Subject Chart"
+    "getCoins": "Get Coins"
   },
   "studyRoom": {
     "friend": "Friend",

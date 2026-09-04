@@ -488,6 +488,15 @@
   },
   "progress": {
     "title": "Progression",
+    "rangeWeek": "Semaine",
+    "rangeMonth": "Mois",
+    "rangeYear": "Année",
+    "rangeAll": "Tout",
+    "capThisWeek": "cette semaine",
+    "capThisMonth": "ce mois-ci",
+    "capThisYear": "cette année",
+    "capAllTime": "au total",
+    "bestMonth": "Meilleur mois",
     "weeklyReport": "Rapport hebdomadaire",
     "totalStudyTime": "Temps total d'étude",
     "sessionsCompleted": "Sessions complétées",
@@ -527,9 +536,6 @@
     "tagSessionsHint": "Associe une matière à tes sessions pour voir ta répartition ici.",
     "mostStudied": "Le plus étudié :",
     "leastStudied": "Le moins étudié :",
-    "subjectChartBtn": "Graphique par matière",
-    "historyCapTitle": "Ton historique complet",
-    "historyCapDesc": "Les comptes gratuits affichent tes {{months}} derniers mois de progression. Débloque tout ton historique d'étude avec Premium.",
     "companions": "Compagnons",
     "companionGallery": "Galerie des compagnons",
     "switchWhoStudies": "Change qui étudie avec toi",
@@ -1386,16 +1392,6 @@
     "guestGateTitle": "Le binôme d'étude nécessite un compte",
     "guestGateBody": "Crée un compte gratuit pour être jumelé à un binôme d'étude."
   },
-  "subjectChart": {
-    "day": "Aujourd'hui",
-    "week": "Semaine",
-    "month": "Mois",
-    "year": "Année",
-    "totalTime": "Temps total étudié",
-    "minutes": "{{count}} min",
-    "noData": "Aucune session sur cette période pour l'instant.",
-    "general": "Étude générale"
-  },
   "screens": {
     "addExamCountdown": "Ajouter un compte à rebours d'examen",
     "dailyReminder": "Rappel quotidien",
@@ -1405,8 +1401,7 @@
     "deskmatePlus": "Memobun Premium",
     "ambience": "Ambiance",
     "settings": "Réglages",
-    "getCoins": "Obtenir des pièces",
-    "subjectChart": "Graphique par matière"
+    "getCoins": "Obtenir des pièces"
   },
   "studyRoom": {
     "friend": "Ami",

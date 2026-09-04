@@ -572,6 +572,15 @@
   },
   "progress": {
     "title": "進度",
+    "rangeWeek": "本週",
+    "rangeMonth": "本月",
+    "rangeYear": "全年",
+    "rangeAll": "全部",
+    "capThisWeek": "本週",
+    "capThisMonth": "本月",
+    "capThisYear": "今年",
+    "capAllTime": "全部時間",
+    "bestMonth": "最佳月份",
     "weeklyReport": "週報",
     "totalStudyTime": "總學習時間",
     "sessionsCompleted": "完成場次",
@@ -610,9 +619,6 @@
     "tagSessionsHint": "給專注標記科目，即可在此檢視明細。",
     "mostStudied": "學習最多：",
     "leastStudied": "學習最少：",
-    "subjectChartBtn": "科目圖表",
-    "historyCapTitle": "完整的學習記錄",
-    "historyCapDesc": "免費帳戶僅顯示最近 {{months}} 個月的進度。升級會員解鎖完整的學習記錄。",
     "companions": "夥伴",
     "companionGallery": "夥伴畫廊",
     "switchWhoStudies": "切換陪你學習的夥伴",
@@ -1469,16 +1475,6 @@
     "guestGateTitle": "學習搭子需要帳號",
     "guestGateBody": "建立一個免費帳號，即可匹配學習搭子。"
   },
-  "subjectChart": {
-    "day": "今天",
-    "week": "本週",
-    "month": "本月",
-    "year": "全年",
-    "totalTime": "總學習時長",
-    "minutes": "{{count}}分鐘",
-    "noData": "此時間段內還沒有學習記錄。",
-    "general": "通用學習"
-  },
   "screens": {
     "addExamCountdown": "新增考試倒計時",
     "dailyReminder": "每日提醒",
@@ -1488,8 +1484,7 @@
     "deskmatePlus": "Memobun 會員",
     "ambience": "環境音",
     "settings": "設定",
-    "getCoins": "獲取金幣",
-    "subjectChart": "科目圖表"
+    "getCoins": "獲取金幣"
   },
   "studyRoom": {
     "friend": "好友",

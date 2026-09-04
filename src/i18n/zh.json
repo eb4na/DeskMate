@@ -488,6 +488,15 @@
   },
   "progress": {
     "title": "进度",
+    "rangeWeek": "本周",
+    "rangeMonth": "本月",
+    "rangeYear": "全年",
+    "rangeAll": "全部",
+    "capThisWeek": "本周",
+    "capThisMonth": "本月",
+    "capThisYear": "今年",
+    "capAllTime": "全部时间",
+    "bestMonth": "最佳月份",
     "weeklyReport": "周报",
     "totalStudyTime": "总学习时间",
     "sessionsCompleted": "完成场次",
@@ -526,9 +535,6 @@
     "tagSessionsHint": "给专注标记科目，即可在此查看明细。",
     "mostStudied": "学习最多：",
     "leastStudied": "学习最少：",
-    "subjectChartBtn": "科目图表",
-    "historyCapTitle": "完整的学习记录",
-    "historyCapDesc": "免费账户仅显示最近 {{months}} 个月的进度。升级会员解锁完整的学习记录。",
     "companions": "伙伴",
     "companionGallery": "伙伴画廊",
     "switchWhoStudies": "切换陪你学习的伙伴",
@@ -1385,16 +1391,6 @@
     "guestGateTitle": "学习搭子需要账号",
     "guestGateBody": "创建一个免费账号，即可匹配学习搭子。"
   },
-  "subjectChart": {
-    "day": "今天",
-    "week": "本周",
-    "month": "本月",
-    "year": "全年",
-    "totalTime": "总学习时长",
-    "minutes": "{{count}}分钟",
-    "noData": "此时间段内还没有学习记录。",
-    "general": "通用学习"
-  },
   "screens": {
     "addExamCountdown": "添加考试倒计时",
     "dailyReminder": "每日提醒",
@@ -1404,8 +1400,7 @@
     "deskmatePlus": "Memobun 会员",
     "ambience": "环境音",
     "settings": "设置",
-    "getCoins": "获取金币",
-    "subjectChart": "科目图表"
+    "getCoins": "获取金币"
   },
   "studyRoom": {
     "friend": "好友",

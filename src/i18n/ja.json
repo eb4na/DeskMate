@@ -488,6 +488,15 @@
   },
   "progress": {
     "title": "進捗",
+    "rangeWeek": "週",
+    "rangeMonth": "月",
+    "rangeYear": "年",
+    "rangeAll": "すべて",
+    "capThisWeek": "今週",
+    "capThisMonth": "今月",
+    "capThisYear": "今年",
+    "capAllTime": "累計",
+    "bestMonth": "ベストの月",
     "weeklyReport": "週間レポート",
     "totalStudyTime": "総学習時間",
     "sessionsCompleted": "完了セッション",
@@ -526,9 +535,6 @@
     "tagSessionsHint": "セッションに科目を付けると、ここに内訳が表示されます。",
     "mostStudied": "最も勉強した科目:",
     "leastStudied": "最も少ない科目:",
-    "subjectChartBtn": "科目チャート",
-    "historyCapTitle": "すべての履歴",
-    "historyCapDesc": "無料アカウントでは直近{{months}}か月分の記録が表示されます。プラスですべての学習履歴をアンロックしましょう。",
     "companions": "コンパニオン",
     "companionGallery": "コンパニオンギャラリー",
     "switchWhoStudies": "一緒に勉強する仲間を切り替え",
@@ -1385,16 +1391,6 @@
     "guestGateTitle": "勉強仲間にはアカウントが必要です",
     "guestGateBody": "無料アカウントを作成して勉強仲間とマッチングしましょう。"
   },
-  "subjectChart": {
-    "day": "今日",
-    "week": "週",
-    "month": "月",
-    "year": "年",
-    "totalTime": "合計学習時間",
-    "minutes": "{{count}}分",
-    "noData": "この期間に記録されたセッションはまだありません。",
-    "general": "一般学習"
-  },
   "screens": {
     "addExamCountdown": "試験カウントダウンを追加",
     "dailyReminder": "毎日のリマインダー",
@@ -1404,8 +1400,7 @@
     "deskmatePlus": "Memobun プラス",
     "ambience": "環境音",
     "settings": "設定",
-    "getCoins": "コインを入手",
-    "subjectChart": "科目チャート"
+    "getCoins": "コインを入手"
   },
   "studyRoom": {
     "friend": "フレンド",

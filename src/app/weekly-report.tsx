@@ -25,7 +25,8 @@ function formatDateRange(startISO: string, endISO: string): string {
   return `${fmt(startISO)} – ${fmt(endISO)}`;
 }
 
-// Pie chart geometry — mirrors subject-chart.tsx so the two read the same.
+// Pie chart geometry. Kept in step with the Progress tab's SubjectRing so the two
+// readings of the same data look like siblings.
 const PIE_SIZE = 180;
 const PIE_RADIUS = PIE_SIZE / 2;
 const GENERAL_PIE_COLOR = '#B8A98C';

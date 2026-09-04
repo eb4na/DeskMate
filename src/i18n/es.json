@@ -488,6 +488,15 @@
   },
   "progress": {
     "title": "Progreso",
+    "rangeWeek": "Semana",
+    "rangeMonth": "Mes",
+    "rangeYear": "Año",
+    "rangeAll": "Todo",
+    "capThisWeek": "esta semana",
+    "capThisMonth": "este mes",
+    "capThisYear": "este año",
+    "capAllTime": "en total",
+    "bestMonth": "Mejor mes",
     "weeklyReport": "Informe semanal",
     "totalStudyTime": "Tiempo total de estudio",
     "sessionsCompleted": "Sesiones completadas",
@@ -527,9 +536,6 @@
     "tagSessionsHint": "Etiqueta las sesiones con una asignatura para ver tu desglose aquí.",
     "mostStudied": "Más estudiado:",
     "leastStudied": "Menos estudiado:",
-    "subjectChartBtn": "Gráfico por asignatura",
-    "historyCapTitle": "Tu historial completo",
-    "historyCapDesc": "Las cuentas gratuitas muestran tus últimos {{months}} meses de progreso. Desbloquea tu historial de estudio completo con Premium.",
     "companions": "Compañeros",
     "companionGallery": "Galería de compañeros",
     "switchWhoStudies": "Cambia quién estudia contigo",
@@ -1386,16 +1392,6 @@
     "guestGateTitle": "Compañero de estudio necesita una cuenta",
     "guestGateBody": "Crea una cuenta gratis para emparejarte con un compañero de estudio."
   },
-  "subjectChart": {
-    "day": "Hoy",
-    "week": "Semana",
-    "month": "Mes",
-    "year": "Año",
-    "totalTime": "Tiempo total estudiado",
-    "minutes": "{{count}} min",
-    "noData": "Aún no hay sesiones en este periodo.",
-    "general": "Estudio general"
-  },
   "screens": {
     "addExamCountdown": "Añadir cuenta atrás de examen",
     "dailyReminder": "Recordatorio diario",
@@ -1405,8 +1401,7 @@
     "deskmatePlus": "Memobun Premium",
     "ambience": "Ambiente",
     "settings": "Ajustes",
-    "getCoins": "Conseguir monedas",
-    "subjectChart": "Gráfico por asignatura"
+    "getCoins": "Conseguir monedas"
   },
   "studyRoom": {
     "friend": "Amigo",

@@ -488,6 +488,15 @@
   },
   "progress": {
     "title": "진행 상황",
+    "rangeWeek": "주",
+    "rangeMonth": "월",
+    "rangeYear": "년",
+    "rangeAll": "전체",
+    "capThisWeek": "이번 주",
+    "capThisMonth": "이번 달",
+    "capThisYear": "올해",
+    "capAllTime": "전체 기간",
+    "bestMonth": "최고의 달",
     "weeklyReport": "주간 보고서",
     "totalStudyTime": "총 학습 시간",
     "sessionsCompleted": "완료된 세션",
@@ -526,9 +535,6 @@
     "tagSessionsHint": "세션에 과목을 태그하면 여기에서 분석을 볼 수 있습니다.",
     "mostStudied": "가장 많이 공부함:",
     "leastStudied": "가장 적게 공부함:",
-    "subjectChartBtn": "과목 차트",
-    "historyCapTitle": "전체 기록 보기",
-    "historyCapDesc": "무료 계정은 최근 {{months}}개월의 진행 상황만 표시됩니다. 프리미엄으로 전체 학습 기록을 잠금 해제하세요.",
     "companions": "친구들",
     "companionGallery": "친구 갤러리",
     "switchWhoStudies": "함께 공부할 친구를 바꾸세요",
@@ -1385,16 +1391,6 @@
     "guestGateTitle": "스터디 메이트는 계정이 필요해요",
     "guestGateBody": "무료 계정을 만들고 스터디 메이트와 매칭해 보세요."
   },
-  "subjectChart": {
-    "day": "오늘",
-    "week": "주",
-    "month": "월",
-    "year": "년",
-    "totalTime": "총 학습 시간",
-    "minutes": "{{count}}분",
-    "noData": "이 기간에 기록된 세션이 아직 없습니다.",
-    "general": "일반 학습"
-  },
   "screens": {
     "addExamCountdown": "시험 카운트다운 추가",
     "dailyReminder": "매일 알림",
@@ -1404,8 +1400,7 @@
     "deskmatePlus": "Memobun 프리미엄",
     "ambience": "환경음",
     "settings": "설정",
-    "getCoins": "코인 받기",
-    "subjectChart": "과목 차트"
+    "getCoins": "코인 받기"
   },
   "studyRoom": {
     "friend": "친구",

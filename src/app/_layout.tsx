@@ -367,7 +367,9 @@ function RootNavigator() {
         <Stack.Screen name="manage-subjects" options={{ presentation: 'modal', headerShown: false }} />
         {/* Wave 3 */}
         <Stack.Screen name="weekly-report" options={{ presentation: 'modal', title: t('screens.weeklyReport') }} />
-        <Stack.Screen name="subject-chart" options={{ presentation: 'modal', title: t('screens.subjectChart') }} />
+        {/* Streak + freeze, moved off the Progress tab. Rectangle popup, not a
+            swipe-down sheet — same options as achievements. */}
+        <Stack.Screen name="streak-detail" options={{ headerShown: false, gestureEnabled: false, animation: 'fade', presentation: 'transparentModal', contentStyle: { backgroundColor: 'transparent' } }} />
         <Stack.Screen name="break-game" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="next-session" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="session-checkpoint" options={{ headerShown: false, gestureEnabled: false, animation: 'fade', presentation: 'transparentModal', contentStyle: { backgroundColor: 'transparent' } }} />
