@@ -1,7 +1,7 @@
 import { Asset } from 'expo-asset';
 import { useFonts } from 'expo-font';
 import { Image as ExpoImage } from 'expo-image';
-import { DefaultTheme, ThemeProvider, Stack } from 'expo-router';
+import { DefaultTheme, ThemeProvider, Stack, router } from 'expo-router';
 import { Animated, Appearance, Easing, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { I18nextProvider } from 'react-i18next';
@@ -153,7 +153,12 @@ function RootNavigator() {
 
   // Rounded display font (Baloo 2 ExtraBold) for the study countdown — loads from the
   // bundled asset; non-blocking (the timer falls back to system until it's ready).
-  useFonts({ Baloo2: require('@/assets/fonts/Baloo2-ExtraBold.ttf') });
+  // Caveat is the handwriting face on the Subjects notebook page. Latin-only, so
+  // CJK subject names fall back to the system font — the ruled paper still reads.
+  useFonts({
+    Baloo2: require('@/assets/fonts/Baloo2-ExtraBold.ttf'),
+    Caveat: require('@/assets/fonts/Caveat-Bold.ttf'),
+  });
 
   // Keep the tap-sound helper's gate in sync with the user's setting.
   useEffect(() => { setTapSoundEnabled(soundEffectsEnabled); }, [soundEffectsEnabled]);
@@ -355,7 +360,11 @@ function RootNavigator() {
         <Stack.Screen name="reminder-settings" options={{ presentation: 'modal', title: t('screens.dailyReminder') }} />
         {/* Wave 2 modals */}
         <Stack.Screen name="add-task" options={{ presentation: 'modal', title: t('screens.task') }} />
-        <Stack.Screen name="manage-subjects" options={{ presentation: 'modal', title: t('screens.subjects') }} />
+        {/* No native header: on iOS 26 a bar-button gets a glass capsule that reads
+            as a raised chip, and react-native-screens exposes no way to turn it off.
+            The screen draws its own flat Done instead — which is also what every
+            other modal in this app already does. */}
+        <Stack.Screen name="manage-subjects" options={{ presentation: 'modal', headerShown: false }} />
         {/* Wave 3 */}
         <Stack.Screen name="weekly-report" options={{ presentation: 'modal', title: t('screens.weeklyReport') }} />
         <Stack.Screen name="subject-chart" options={{ presentation: 'modal', title: t('screens.subjectChart') }} />

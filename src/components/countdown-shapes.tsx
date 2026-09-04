@@ -14,6 +14,11 @@ export type CountdownShapeKey = (typeof COUNTDOWN_SHAPES)[number];
 export const DAY_SHAPES = COUNTDOWN_SHAPES.filter((s) => s !== 'star');
 export const EXAM_SHAPE: CountdownShapeKey = 'star';
 
+// Stored in dayShapes to mean "this day is deliberately BARE". Needed as a real
+// value rather than an absent key: on an exam day an absent key falls back to the
+// star, so deleting can't express "no mark". Never a renderable shape.
+export const NO_SHAPE = 'none';
+
 export const DEFAULT_COUNTDOWN_SHAPE: CountdownShapeKey = 'star';
 
 type Props = { shape?: string; size?: number; color?: ColorValue };
@@ -57,10 +62,12 @@ export function CountdownShape({ shape, size = 18, color = BakeryColors.jam }: P
       )}
       {key === 'tear' && (
         // Symmetric classic water-drop: a sharp top point tapering into a round bulb
-        // (circle r5.4 centred at 12,14). Nudged down 1.2 from where it sat, so its
-        // tip no longer crowds the top of the box.
+        // (circle r6.1 centred at 12,14.3). Scaled about the shape's OWN centre
+        // (12, 11.65) rather than the viewBox's, so it grows in place instead of
+        // drifting as it changes size. Wider than before, since a drop is naturally
+        // narrower than the heart and circle and read small beside them.
         <Path
-          d="M12 3.8 C9.2 8.8 6.6 11.5 6.6 14 a5.4 5.4 0 1 0 10.8 0 C17.4 11.5 14.8 8.8 12 3.8 Z"
+          d="M12 2.8 C8.9 8.5 5.9 11.5 5.9 14.3 a6.1 6.1 0 1 0 12.2 0 C18.1 11.5 15.1 8.5 12 2.8 Z"
           fill={fill}
         />
       )}

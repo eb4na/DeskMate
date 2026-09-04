@@ -424,6 +424,7 @@ export function StudyRoomView({
   const onBreakRef = useRef(false);
   const breakLeftRef = useRef(0);
   const isSoloRef = useRef(false);
+  const lockedInRef = useRef(false);
   useEffect(() => {
     const AWAY_MS = 60_000;
     let awayAt: number | null = null;
@@ -437,13 +438,12 @@ export function StudyRoomView({
         // auto-stop the session. The break-ending nudge is already scheduled (see
         // the timed-break effect below) — it fires with the app open or closed.
         if (onBreakRef.current) return;
-        // Multiplayer: stepping out of the app does NOT end your session. You're
-        // studying with other people, and silently force-ending (no prompt, no
-        // coins) because someone checked a text was the wrong call. Solo keeps the
-        // 60s auto-stop, where it just means you stopped studying. The nudge is
-        // skipped too — its copy promises the session will stop, which would be a
-        // lie here. Leaving on purpose still ends it, via the Leave button.
-        if (!isSoloRef.current) return;
+        // Leaving the app only ends a session you chose to LOCK IN — solo, opt-in,
+        // and paid for with double coins. Everything else (multiplayer, and solo
+        // without it) just carries on: force-ending with no prompt and no coins
+        // because someone checked a text was the wrong default. The nudge is
+        // skipped alongside it, since its copy promises the session will stop.
+        if (!isSoloRef.current || !lockedInRef.current) return;
         if (awayAt != null) return; // already away
         awayAt = Date.now();
         // If they just tapped "open in Spotify", hold the nudge ~10s so it doesn't
@@ -600,6 +600,7 @@ export function StudyRoomView({
   onBreakRef.current = onBreak;
   breakLeftRef.current = breakLeft;
   isSoloRef.current = isSolo;
+  lockedInRef.current = !!activeSession?.lockedIn;
   const breakMinutes = activeSession?.breakMinutes && activeSession.breakMinutes > 0
     ? activeSession.breakMinutes
     : autoBreakMinutes(activeSession?.durationMinutes ?? 25);

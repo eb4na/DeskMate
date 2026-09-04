@@ -33,7 +33,7 @@ import { setTutorialTarget } from '@/lib/tutorial-targets';
 import i18n, { useTranslation } from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
 import { upcomingUntilMs } from '@/lib/task-recurrence';
-import { BREAK_GAME_ENABLED, coinsForMinutes, formatCoins } from '@/constants/placeholder-data';
+import { BREAK_GAME_ENABLED, coinsForMinutes, LOCK_IN_COIN_MULTIPLIER, formatCoins } from '@/constants/placeholder-data';
 import { hanjiIsAnimated, resolveActiveCompanion } from '@/lib/companion-utils';
 import { HanjiFigure } from '@/components/hanji-figure';
 import { CompanionPet, PetCloudHost } from '@/components/companion-pet';
@@ -821,7 +821,7 @@ export default function HomeScreen() {
     showLoadingScreen(() => {
       shiftSessionStart((Date.now() - new Date(FROZEN_START).getTime()) / 1000);
     }, { quick: true, until: preloadStudyAssets(studyCharacterSource) });
-    startActiveSession({ durationMinutes: ds.durationMinutes, subjectName: ds.subjectName, taskId: ds.taskId, taskTitle: ds.taskTitle, breakMinutes: ds.breakMinutes, startedAt: FROZEN_START });
+    startActiveSession({ durationMinutes: ds.durationMinutes, subjectName: ds.subjectName, taskId: ds.taskId, taskTitle: ds.taskTitle, breakMinutes: ds.breakMinutes, lockedIn: ds.lockedIn, startedAt: FROZEN_START });
   };
 
   // Auto-start a session queued by the session picker. Runs in its own effect
@@ -983,7 +983,10 @@ export default function HomeScreen() {
     // let the study view play the recipe-pop for a beat before we navigate (below).
     finishStudyBlock({
       minutes: activeSession.durationMinutes,
-      coins: coinsForMinutes(activeSession.durationMinutes),
+      // Locked-in sessions pay double. Applied BEFORE finishStudyBlock, which
+      // then layers the Plus multiplier and trims to the daily cap — so Plus +
+      // locked in is 4x, and the cap still binds.
+      coins: coinsForMinutes(activeSession.durationMinutes) * (activeSession.lockedIn ? LOCK_IN_COIN_MULTIPLIER : 1),
       subjectName: activeSession.subjectName ?? null,
     });
     finishParamsRef.current = {
@@ -1010,7 +1013,7 @@ export default function HomeScreen() {
       handledCompletionId.current = activeSession.id;
       finishStudyBlock({
         minutes: activeSession.durationMinutes,
-        coins: coinsForMinutes(activeSession.durationMinutes),
+        coins: coinsForMinutes(activeSession.durationMinutes) * (activeSession.lockedIn ? LOCK_IN_COIN_MULTIPLIER : 1),
         subjectName: activeSession.subjectName ?? null,
       });
       finishParamsRef.current = {

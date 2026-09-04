@@ -172,27 +172,16 @@ export default function EditRoomScreen() {
     onLocked: () => void;
   }) => (
     <Pressable
-      style={[styles.thumbCard, active && styles.thumbCardActive, !owned && styles.thumbCardLocked]}
+      style={[styles.thumb, active && styles.thumbActive, !owned && styles.thumbLocked]}
       onPress={owned ? onPress : onLocked}>
-      <View style={styles.thumbImgWrap}>
-        <Image source={image} style={styles.thumbImg} contentFit="cover" />
-        {!owned && <LockOverlay size={Math.round(30 * scale)} radius={Math.round(12 * scale)} />}
-      </View>
-      <Text style={styles.thumbName} numberOfLines={1}>{roomLabel(room, itemId)}</Text>
-      {active ? (
-        <View style={styles.activePill}><Text style={styles.activePillText}>{t('editRoom.inUse')}</Text></View>
-      ) : owned ? (
-        <Text style={styles.tapText}>{t('editRoom.tapToUse')}</Text>
-      ) : (
-        <Text style={styles.lockedText}>{t('editRoom.tapToUnlock')}</Text>
-      )}
-      {/* Corner badges LAST so they sit above the image for touches too — an
-          earlier sibling raised only by zIndex paints on top but can lose the
-          tap to the overlapping image on the new RN architecture. */}
-      <PairButton room={room} />
-      <InfoButton room={room} itemId={itemId} />
+      <Image source={image} style={styles.thumbImg} contentFit="cover" />
+      {!owned && <LockOverlay size={Math.round(20 * scale)} radius={Math.round(10 * scale)} />}
     </Pressable>
   );
+
+  // What the preview shows: the equipped pair.
+  const previewBg = ROOM_PAIRS.find((r) => r.id === equippedBackgroundRoomId) ?? ROOM_PAIRS[0];
+  const previewDesk = ROOM_PAIRS.find((r) => r.id === equippedDeskRoomId) ?? null;
 
   // Only rooms with a distinct desk show in the Desk list (others share the default).
   // Only show rooms the player owns — locked items live in the Shop, not here.
@@ -227,8 +216,29 @@ export default function EditRoomScreen() {
             </View>
           </View>
 
+          {/* The room as it will actually look — background with the chosen desk
+              across the bottom. The old screen showed the two as separate cards,
+              so you never saw the pair you were assembling. */}
+          {previewBg && (
+            <View style={styles.preview}>
+              <Image source={previewBg.backgroundImage} style={styles.previewImg} contentFit="cover" />
+              {previewDesk?.deskImage && (
+                <Image source={previewDesk.deskImage} style={styles.previewDesk} contentFit="cover" />
+              )}
+              <View style={styles.previewName}>
+                <Text style={styles.previewNameText} numberOfLines={1}>
+                  {roomLabel(previewBg, previewBg.backgroundId)}
+                </Text>
+              </View>
+              {/* Both badges act on the previewed room, so they only need to exist
+                  once here rather than on every thumbnail. */}
+              <PairButton room={previewBg} />
+              <InfoButton room={previewBg} itemId={previewBg.backgroundId} />
+            </View>
+          )}
+
           <Text style={styles.sectionTitle}>{t('editRoom.background')}</Text>
-          <View style={styles.row}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
             {backgroundRooms.map((room) => (
               <Card
                 key={room.id}
@@ -241,10 +251,10 @@ export default function EditRoomScreen() {
                 onLocked={() => setBuyTarget({ room, kind: 'background' })}
               />
             ))}
-          </View>
+          </ScrollView>
 
           <Text style={styles.sectionTitle}>{t('editRoom.desk')}</Text>
-          <View style={styles.row}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
             {deskRooms.map((room) => (
               <Card
                 key={room.id}
@@ -257,7 +267,7 @@ export default function EditRoomScreen() {
                 onLocked={() => setBuyTarget({ room, kind: 'desk' })}
               />
             ))}
-          </View>
+          </ScrollView>
 
           <Text style={styles.sectionTitle}>{t('editRoom.effect')}</Text>
           <View style={styles.comingSoon}>
@@ -407,7 +417,31 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   },
   subtitleRing2: { left: 7 * s },
   sectionTitle: { fontSize: 16 * s, fontWeight: '800', color: P.brown, marginTop: Spacing.one * s },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three * s },
+  // A strip, not a wrapping grid: the thumbnails scroll sideways under the preview.
+  row: { flexDirection: 'row', gap: Spacing.two * s, paddingRight: Spacing.three * s },
+
+  // ── The composed preview ────────────────────────────────────────────────
+  preview: {
+    width: '100%', aspectRatio: 16 / 11, borderRadius: 18 * s, overflow: 'hidden',
+    borderWidth: 2, borderColor: P.pinkSoft, backgroundColor: P.pinkSoft,
+  },
+  previewImg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  // The desk sits across the bottom the way it does in the room itself.
+  previewDesk: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '32%' },
+  previewName: {
+    position: 'absolute', left: 10 * s, bottom: 10 * s,
+    backgroundColor: 'rgba(255,253,251,0.94)', borderRadius: 10 * s,
+    paddingHorizontal: 10 * s, paddingVertical: 4 * s, maxWidth: '70%',
+  },
+  previewNameText: { fontSize: 13 * s, fontWeight: '800', color: P.brown },
+
+  // ── Strip thumbnails ────────────────────────────────────────────────────
+  thumb: {
+    width: 56 * s, height: 56 * s, borderRadius: 12 * s, overflow: 'hidden',
+    borderWidth: 2, borderColor: 'transparent', backgroundColor: P.pinkSoft,
+  },
+  thumbActive: { borderColor: P.pink },
+  thumbLocked: { opacity: 0.5 },
   thumbCard: {
     width: '47%',
     backgroundColor: P.card,

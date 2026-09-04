@@ -297,6 +297,8 @@
     "a11yFriends": "Amigos"
   },
   "sessionPicker": {
+    "lockIn": "Modo concentración",
+    "lockInNote": "Salir de la app termina la sesión: complétala y gana el doble de monedas. Los descansos no cuentan.",
     "title": "Iniciar sesión",
     "subtitle": "Elige tu receta de enfoque",
     "hint": "Hora de estudiar, guardé tu lugar.",

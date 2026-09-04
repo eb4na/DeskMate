@@ -297,6 +297,8 @@
     "a11yFriends": "친구"
   },
   "sessionPicker": {
+    "lockIn": "집중 잠금",
+    "lockInNote": "앱을 벗어나면 세션이 종료돼요 — 끝까지 마치면 코인 2배. 휴식 중에는 해당되지 않아요.",
     "title": "학습 시작",
     "subtitle": "집중 레시피를 선택하세요",
     "hint": "학습 시간, 자리를 마련해 두었어요.",
@@ -1129,7 +1131,7 @@
     "comesWith": "{{recipe}} 레시피 포함",
     "hint": "화살표를 눌러 모두를 만나보세요",
     "confirmTitle": "{{name}} 친구로 정할까요?",
-    "confirmBody": "이 친구가 처음부터 함께하는 단짝이 돼요. 다른 친구들은 나중에 상점에서 데려올 수 있어요.",
+    "confirmBody": "{{name}}이(가) 처음부터 함께하는 단짝이 돼요. 다른 친구들은 나중에 상점에서 데려올 수 있어요.",
     "confirmYes": "네, 결정했어요!",
     "confirmBack": "다시 고를래요",
     "seeOutfits": "의상 모두 보기",

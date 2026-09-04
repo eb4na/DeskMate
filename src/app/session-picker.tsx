@@ -76,6 +76,9 @@ export default function SessionPickerScreen() {
   const [selected, setSelected] = useState<number | null>(30);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>('single');
+  // Solo "lock in". Off by default: it costs you the session if you step away, so
+  // it has to be chosen, not stumbled into.
+  const [lockedIn, setLockedIn] = useState(false);
 
   const activeSubjects = subjects.filter((s) => !s.archived).sort((a, b) => a.order - b.order);
   // Single-player break: the automatic one (5 min under an hour, 15 min for an
@@ -93,6 +96,7 @@ export default function SessionPickerScreen() {
     setPendingDragSession({
       durationMinutes: selected,
       subjectName,
+      lockedIn,
       taskId: null,
       taskTitle: null,
     });
@@ -221,7 +225,13 @@ export default function SessionPickerScreen() {
                     ]}
                     onPress={() => setSelectedSubjectId(isActive ? null : s.id)}>
                     <View style={styles.chipInner}>
-                      {isActive && <CheckBox checked size={isTablet ? Math.round(18 * grow) : 15} color={s.color} />}
+                      <View
+                        style={[
+                          styles.subjectDot,
+                          isTablet && styles.subjectDotTablet,
+                          { backgroundColor: s.color },
+                        ]}
+                      />
                       <Text style={[styles.chipText, isTablet && styles.chipTextTablet, isActive && { color: s.color }]}>
                         {s.emoji ? `${s.emoji} ` : ''}{localizeSubjectName(s.name, t)}
                       </Text>
@@ -233,6 +243,34 @@ export default function SessionPickerScreen() {
                 <Text style={[styles.chipText, isTablet && styles.chipTextTablet, { color: C.berry }]}>{t('common.addChip')}</Text>
               </Pressable>
             </ScrollView>
+
+            {/* Lock in — solo only. In a room this would end everyone's session
+                because one person got a text, so it isn't offered there. */}
+            {mode === 'single' && (
+              <>
+                <View style={styles.menuDivider} />
+                <Pressable
+                  style={({ pressed }) => [styles.menuRow, isTablet && styles.menuRowTablet, lockedIn && styles.menuRowActive, pressed && styles.pressed]}
+                  onPress={() => { playPaper(); setLockedIn((v) => !v); }}>
+                  <View style={styles.menuBody}>
+                    <View style={styles.menuTopLine}>
+                      <Text style={[styles.menuName, isTablet && styles.menuNameTablet, lockedIn && styles.menuNameActive]} numberOfLines={1}>
+                        {t('sessionPicker.lockIn')}
+                      </Text>
+                      <View style={styles.menuLeader} />
+                      <CoinIcon size={isTablet ? Math.round(18 * grow) : 14} />
+                      <Text style={[styles.menuPrice, isTablet && styles.menuPriceTablet]}>×2</Text>
+                    </View>
+                    <View style={styles.menuSubLine}>
+                      <Text style={[styles.menuCoinText, isTablet && styles.menuCoinTextTablet]} numberOfLines={2}>
+                        {t('sessionPicker.lockInNote')}
+                      </Text>
+                    </View>
+                  </View>
+                  <CheckBox checked={lockedIn} size={isTablet ? Math.round(28 * grow) : 24} color={C.buttonPink} />
+                </Pressable>
+              </>
+            )}
 
             {/* Custom duration — a Plus feature, as a final menu row. Free users see
                 a lock and are sent to the paywall instead of the timer. Hidden in
@@ -388,6 +426,10 @@ const makeStyles = (g: number) => StyleSheet.create({
   chip: { borderRadius: BakeryRadii.pill, borderWidth: 1.5, paddingHorizontal: 13 * g, paddingVertical: 8 * g },
   chipInner: { flexDirection: 'row', alignItems: 'center', gap: 5 * g },
   chipAdd: { borderColor: C.jam, borderStyle: 'dashed', backgroundColor: 'transparent' },
+  // Always-on colour dot: the subject's colour reads before selection, where the
+  // old checkmark only appeared once a chip was picked.
+  subjectDot: { width: 8 * g, height: 8 * g, borderRadius: 4 * g },
+  subjectDotTablet: { width: 10 * g, height: 10 * g, borderRadius: 5 * g },
   chipText: { fontSize: 13.5 * g, color: C.mocha, fontWeight: '700' },
 
   customPill: {

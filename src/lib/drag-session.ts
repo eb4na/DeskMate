@@ -5,6 +5,8 @@ export type DragSessionData = {
   taskTitle: string | null;
   /** Optional custom break length (minutes) chosen on the custom timer. */
   breakMinutes?: number;
+  /** Solo "lock in": leaving the app ends the session, and finishing pays double. */
+  lockedIn?: boolean;
 };
 
 let _pending: DragSessionData | null = null;

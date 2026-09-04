@@ -297,6 +297,8 @@
     "a11yFriends": "Amis"
   },
   "sessionPicker": {
+    "lockIn": "Mode concentration",
+    "lockInNote": "Quitter l'app met fin à la session — allez au bout et gagnez le double de pièces. Les pauses ne comptent pas.",
     "title": "Démarrer",
     "subtitle": "Choisissez votre recette",
     "hint": "C'est l'heure d'étudier, votre place est prête.",

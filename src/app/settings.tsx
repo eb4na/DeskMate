@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DeleteAccountModal } from '@/components/delete-account-modal';
 import { InstagramFollowRow } from '@/components/instagram-follow-row';
 import { PlusIcon } from '@/components/plus-icon';
+import { CoinIcon } from '@/components/coin-icon';
 import { EnvelopeIcon, ScrollSealIcon } from '@/components/settings-icons';
 import { fetchMail, fetchMailClaims } from '@/lib/mail';
 import { LockBadge } from '@/components/lock-badge';
@@ -34,10 +35,12 @@ const SETTINGS_ICONS = {
   info: require('@/assets/images/settings/info.png'),
 } as const;
 
-function SettingsIcon({ name, size = 34 }: { name: keyof typeof SETTINGS_ICONS; size?: number }) {
+// The colour PNGs are gone: at 34-44px they set the row height and made seven
+// sections into a very long scroll, and a different colour per row read as noise.
+// One monoline set at 22px, all in the same ink, identified by shape.
+function SettingsIcon({ name, size = 22 }: { name: SettingsLineIconName; size?: number }) {
   const { scale } = useTabletScale();
-  const px = size * scale;
-  return <Image source={SETTINGS_ICONS[name]} style={{ width: px, height: px }} contentFit="contain" />;
+  return <SettingsLineIcon name={name} size={size * scale} />;
 }
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -46,7 +49,7 @@ import { useAuth } from '@/context/auth-context';
 import { supabase } from '@/lib/supabase';
 import { linkProvider } from '@/lib/oauth';
 import { AppleLogoIcon, GoogleGIcon, LockIcon, MailIcon } from '@/components/auth-icons';
-import { ReplayGlyph, TrashGlyph } from '@/components/settings-glyphs';
+import { SettingsLineIcon, type SettingsLineIconName } from '@/components/settings-line-icons';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
 import i18n, { LANGUAGES, useTranslation } from '@/i18n';
 import { DateWheelPicker } from '@/components/date-wheel-picker';
@@ -338,7 +341,7 @@ export default function SettingsScreen() {
           {/* Mailbox */}
           <ThemedView type="backgroundElement" style={styles.group}>
             <SettingRow
-              icon={<EnvelopeIcon size={34} />}
+              icon={<SettingsIcon name="mail" />}
               label={t('mailbox.title')}
               value={t('settings.mailboxSub')}
               badge={unreadMail > 0 ? (unreadMail > 9 ? '9+' : String(unreadMail)) : undefined}
@@ -360,7 +363,7 @@ export default function SettingsScreen() {
             {/* Birthday: set at onboarding, changeable up to BIRTHDAY_CHANGE_LIMIT times
                 here. Once every change is used, the row locks for good. */}
             <SettingRow
-              icon={<Image source={BIRTHDAY_ICON} style={{ width: 30 * scale, height: 30 * scale }} contentFit="contain" />}
+              icon={<SettingsIcon name="birthday" />}
               label={t('profileCard.birthday')}
               value={profileBirthday ? formatBirthday(profileBirthday) : t('profileCard.addBirthday')}
               onPress={bdayChangesLeft <= 0 ? undefined : () => { setBdayDraft(profileBirthday || '2008-01-01'); setBdayOpen(true); }}
@@ -442,7 +445,7 @@ export default function SettingsScreen() {
                   }}
                   style={({ pressed }) => [styles.row, !upgrading && pressed && styles.rowPressed]}>
                   <View style={styles.rowIconImage}>
-                    <MailIcon size={26} />
+                    <SettingsIcon name="mail" />
                   </View>
                   <View style={styles.rowBody}>
                     <ThemedText type="smallBold">{t('auth.continueWithEmail')}</ThemedText>
@@ -512,98 +515,13 @@ export default function SettingsScreen() {
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
             <SettingRow
-              icon={<PlusIcon size={38 * scale} />}
+              icon={<PlusIcon size={26 * scale} />}
               label={t('settings.plus')}
               value={isPlus ? t('settings.plusActive') : t('settings.freePlan')}
               badge={isPlus ? 'PLUS' : undefined}
               onPress={() => router.push('/plus-upgrade')}
             />
-            {/* DEV-ONLY test affordances. Gated behind __DEV__ so release builds
-                (TestFlight / App Store) can't grant Plus, coins, or badges for free —
-                that would defeat the real IAP flow. They stay available in Expo/dev. */}
-            {__DEV__ && (
-            <>
-            <View style={styles.divider} />
-            {/* TEST/PLACEHOLDER — wipe items/progress (keep the account), grant 1,000,000 coins. Remove before launch. */}
-            <Pressable
-              onPress={() => setResetOpen(true)}
-              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
-              <View style={styles.rowIconImage}>
-                <SettingsIcon name="reset" />
-              </View>
-              <View style={styles.rowBody}>
-                <ThemedText type="smallBold" style={styles.dangerText}>Reset items &amp; progress</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">Test button — keeps your account, removes everything owned (back to just Bun), grants 1M coins</ThemedText>
-              </View>
-            </Pressable>
-            {/* TEST — max out the account: own everything, all badges, 9,999,999 coins, Plus. */}
-            <Pressable
-              // Stamp the anti-freeze signal before closing: these dev buttons arm a
-              // Home popup (a native <Modal> gated by useModalSafeVisible), and Settings
-              // is itself a native modal. Without the stamp the popup tries to present
-              // while Settings is still dismissing and iOS silently drops it — so the
-              // celebration never appears. The stamp makes it wait out the dismiss.
-              onPress={() => { devMaxOutAccount(); noteModalTransition(); router.back(); }}
-              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
-              <View style={styles.rowIconImage}>
-                <SettingsIcon name="reset" />
-              </View>
-              <View style={styles.rowBody}>
-                <ThemedText type="smallBold">Max out account</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">Test button — grants every shop item, all recipes &amp; badges (incl. Hanji), 9,999,999 coins, max companion bond, and Plus</ThemedText>
-              </View>
-            </Pressable>
-            {/* TEST — preview the bond/chef level-up celebration on Home without studying. */}
-            <Pressable
-              onPress={() => { previewBondLevelUp(); noteModalTransition(); router.back(); }}
-              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
-              <View style={styles.rowIconImage}>
-                <SettingsIcon name="reset" />
-              </View>
-              <View style={styles.rowBody}>
-                <ThemedText type="smallBold">Preview level-up</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">Test button — shows the level-up celebration on Home for your active companion</ThemedText>
-              </View>
-            </Pressable>
-            {/* TEST — grant all recipes + badges, actually grant Hanji, and show the unlock celebration. */}
-            <Pressable
-              onPress={() => { devUnlockHanji(); noteModalTransition(); router.back(); }}
-              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
-              <View style={styles.rowIconImage}>
-                <SettingsIcon name="reset" />
-              </View>
-              <View style={styles.rowBody}>
-                <ThemedText type="smallBold">Unlock Hanji</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">Test button — grants all recipes &amp; badges, gives you Hanji, and shows the 5/5 badge screen then the Hanji unlock celebration on Home</ThemedText>
-              </View>
-            </Pressable>
-            {/* TEST — fake a 1-day streak lapse (+1 freeze) so the "Use streak freeze" rescue prompt shows on Home. */}
-            <Pressable
-              onPress={() => { devLapseStreak(); noteModalTransition(); router.back(); }}
-              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
-              <View style={styles.rowIconImage}>
-                <SettingsIcon name="reset" />
-              </View>
-              <View style={styles.rowBody}>
-                <ThemedText type="smallBold">Test streak freeze</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">Test button — fakes a 1-day streak lapse and gives you a freeze, so the “Use streak freeze” prompt appears on Home</ThemedText>
-              </View>
-            </Pressable>
-            {/* TEST — lapse to the LAST day of the rescue window, to check the far edge of the
-                30-day grace period (and that one more day expires it). */}
-            <Pressable
-              onPress={() => { devLapseStreak(STREAK_RESCUE_MAX_GAP); noteModalTransition(); router.back(); }}
-              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
-              <View style={styles.rowIconImage}>
-                <SettingsIcon name="reset" />
-              </View>
-              <View style={styles.rowBody}>
-                <ThemedText type="smallBold">Test streak freeze (last day)</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">Test button — fakes a {STREAK_RESCUE_DAYS}-day lapse, the final day a freeze can still save the streak</ThemedText>
-              </View>
-            </Pressable>
-            </>
-            )}
+            
           </ThemedView>
 
           {/* Balances */}
@@ -611,7 +529,7 @@ export default function SettingsScreen() {
             {t('settings.secBalances')}
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
-            <SettingRow icon={<SettingsIcon name="coin" size={38} />} label={t('settings.focusCoins')} value={t('settings.coinsValue', { count: coins })} />
+            <SettingRow icon={<CoinIcon size={24 * scale} />} label={t('settings.focusCoins')} value={t('settings.coinsValue', { count: coins })} />
           </ThemedView>
 
           {/* Focus & study */}
@@ -809,7 +727,7 @@ export default function SettingsScreen() {
             )}
             <View style={styles.divider} />
             <SettingRow
-              icon={<ReplayGlyph />}
+              icon={<SettingsIcon name="reset" />}
               label={t('tutorial.replay')}
               value={t('tutorial.replayNote')}
               onPress={() => { replayTutorial(); router.back(); }}
@@ -843,7 +761,9 @@ export default function SettingsScreen() {
               onPress={() => setDeleteOpen(true)}
               style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
               <View style={styles.rowIconImage}>
-                <TrashGlyph />
+                {/* Danger red rather than the shared ink — the one row where the
+                    colour is carrying meaning, not decoration. */}
+                <SettingsLineIcon name="trash" size={22 * scale} color={BakeryColors.danger} />
               </View>
               <View style={styles.rowBody}>
                 <ThemedText type="smallBold" style={styles.dangerText}>
@@ -1025,11 +945,14 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   },
   closeText: { color: BakeryColors.cocoaDark },
   sectionTitle: {
-    fontSize: 12 * s,
-    letterSpacing: 0.6,
-    marginTop: Spacing.three * s,
-    marginBottom: Spacing.one * s,
-    marginLeft: Spacing.two * s,
+    fontSize: 11.5 * s,
+    fontWeight: '800',
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
+    color: BakeryColors.mocha,
+    marginTop: Spacing.four * s,
+    marginBottom: Spacing.two * s,
+    marginLeft: Spacing.three * s,
   },
   group: {
     borderRadius: BakeryRadii.card * s,
@@ -1040,11 +963,14 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.three * s,
     paddingHorizontal: Spacing.three * s,
-    paddingVertical: Spacing.three * s,
+    // Was Spacing.three top and bottom, which with a 44px icon made every row
+    // about twice the height it needed.
+    paddingVertical: Spacing.two * s,
+    minHeight: 44 * s,
   },
   rowPressed: { opacity: 0.7 },
-  rowIcon: { fontSize: 22 * s, lineHeight: 28 * s, width: 28 * s, textAlign: 'center' },
-  rowIconImage: { width: 44 * s, height: 44 * s, alignItems: 'center', justifyContent: 'center' },
+  rowIcon: { fontSize: 17 * s, lineHeight: 22 * s, width: 24 * s, textAlign: 'center' },
+  rowIconImage: { width: 24 * s, height: 24 * s, alignItems: 'center', justifyContent: 'center' },
   rowBody: { flex: 1, gap: 2 * s },
   connectedTag: { color: '#5BA86B', fontWeight: '700' },
   chevron: { fontSize: 22 * s, lineHeight: 24 * s },

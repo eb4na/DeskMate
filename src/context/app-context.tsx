@@ -126,6 +126,9 @@ export type ActiveSession = {
   /** True when this session began via the post-break auto-start (no human pick).
    *  Used to cap auto-start to ONE in a row — see the next-session picker. */
   autoStarted?: boolean;
+  /** Solo "lock in": leaving the app for a minute ends this session, and finishing
+   *  it pays double. Opt-in per session; never set in multiplayer. */
+  lockedIn?: boolean;
   /** True when this block is a "Continue studying" continuation of the same run
    *  (see the session-checkpoint flow). A continued block keeps accumulating into
    *  `sessionRun`; a fresh (non-continued) start resets the run accumulator. */
@@ -1251,6 +1254,10 @@ type AppContextType = {
   // Wave 2 subject actions
   addSubject: (name: string, color: string, emoji?: string) => boolean;
   renameSubject: (id: string, name: string) => void;
+  /** Change an existing subject's colour. The value is a #RRGGBB hex — several
+   *  render sites append an alpha suffix to it (`color + '2E'`), so the 7-char
+   *  form is load-bearing. */
+  recolorSubject: (id: string, color: string) => void;
   archiveSubject: (id: string) => void;
   deleteSubject: (id: string) => void;
   reorderSubjects: (orderedIds: string[]) => void;
@@ -1277,6 +1284,7 @@ type AppContextType = {
     breakMinutes?: number;
     /** True when auto-started by the post-break next-session countdown. */
     autoStarted?: boolean;
+    lockedIn?: boolean;
     /** True when this block continues the same run (keeps the run accumulator). */
     continuedRun?: boolean;
   }) => string; // returns the new session's id
@@ -2118,6 +2126,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       subjects: prev.subjects.map((s) => (s.id === id ? { ...s, name: maskProfanity(name) } : s)),
     }));
 
+  const recolorSubject = (id: string, color: string) =>
+    setS((prev) => ({
+      ...prev,
+      subjects: prev.subjects.map((s) => (s.id === id ? { ...s, color } : s)),
+    }));
+
   const archiveSubject = (id: string) =>
     setS((prev) => ({
       ...prev,
@@ -2269,6 +2283,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isMultiplayer,
     breakMinutes,
     autoStarted,
+    lockedIn,
     continuedRun,
   }: {
     durationMinutes: number;
@@ -2278,6 +2293,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     startedAt?: string;
     isMultiplayer?: boolean;
     breakMinutes?: number;
+    lockedIn?: boolean;
     autoStarted?: boolean;
     continuedRun?: boolean;
   }) => {
@@ -2295,6 +2311,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isMultiplayer,
       breakMinutes,
       autoStarted,
+      lockedIn,
       continuedRun,
     });
     return sessionId;
@@ -3255,6 +3272,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updateStreak,
         addSubject,
         renameSubject,
+        recolorSubject,
         archiveSubject,
         deleteSubject,
         reorderSubjects,

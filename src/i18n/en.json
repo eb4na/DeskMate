@@ -297,6 +297,8 @@
     "a11yFriends": "Friends"
   },
   "sessionPicker": {
+    "lockIn": "Lock in",
+    "lockInNote": "Leaving the app ends the session — finish it and earn double coins. Breaks don’t count.",
     "title": "Start Session",
     "subtitle": "Choose your focus time",
     "hint": "Study time, I saved your seat.",

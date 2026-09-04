@@ -12,7 +12,9 @@ import {
 } from 'react-native';
 
 
-import { CountdownShape, COUNTDOWN_SHAPES, DAY_SHAPES, EXAM_SHAPE, DEFAULT_COUNTDOWN_SHAPE } from '@/components/countdown-shapes';
+import Svg, { Circle, Path } from 'react-native-svg';
+
+import { CountdownShape, COUNTDOWN_SHAPES, DAY_SHAPES, EXAM_SHAPE, NO_SHAPE, DEFAULT_COUNTDOWN_SHAPE } from '@/components/countdown-shapes';
 
 // Label ink for a filled subject chip. Subject colours span pale yellows to mid
 // purples, so neither white nor brown works on all of them — measure the WCAG
@@ -277,7 +279,13 @@ function CalendarMonthCard({
   // ~62% of the SVG box (the shapes' Bézier CONTROL points sit near the edge of the
   // 24x24 viewBox and a curve never reaches its control point), so divide by that
   // to turn the room available into a box size. Whichever is smaller wins.
-  const EXAM_MARK = Math.round(Math.min(DAYNUM_H * 2, (DAYNUM_H + PAD_V * 2) / 0.62));
+  // The corner mark — the day's ONLY marked-state signal now, so it carries a
+  // little more weight than a pure accent would, while still staying clear of
+  // the date's size so the two read as separate things.
+  const CORNER_MARK = clampN(Math.round(cellW * 0.30), 12, 20);
+  // The star inside an exam chip — bounded by the chip's own height so it can
+  // never push the row taller than the text it sits beside.
+  const CHIP_STAR = clampN(Math.round(CHIP_H * 0.86), 7, 14);
   const DOT = Math.max(5, Math.round(cellW * 0.13));
 
   // Cells stay SQUARE — the calendar keeps the footprint it always had; the chips
@@ -335,9 +343,9 @@ function CalendarMonthCard({
           const isToday = iso === today;
           const dayTasks = tasksByDay[iso] ?? [];
           const dayExams = examsByDay[iso] ?? [];
-          // Red dot when this day carries an unfinished deadline (isDeadline !==
-          // false; legacy dated tasks count). tasksByDay now keeps done tasks for
-          // the struck-through chips, so the dot has to skip them itself.
+          // The date itself turns red when this day carries an unfinished deadline
+          // (isDeadline !== false; legacy dated tasks count). tasksByDay now keeps
+          // done tasks for the struck-through chips, so this has to skip them.
           const hasDeadline = dayTasks.some((t) => t.status !== 'done' && t.isDeadline !== false);
           const hasNote = !!dayNotes[iso];
           // Exams lead the stack (they're the day's fixed points), then open tasks.
@@ -355,7 +363,8 @@ function CalendarMonthCard({
           // An exam day is marked with a star by DEFAULT, but the player can pick
           // something else for it — an explicit choice always wins. A day with no
           // exam and no pick carries no mark at all.
-          const markShape = dayShapes[iso] ?? (dayExam ? EXAM_SHAPE : null);
+          const picked = dayShapes[iso];
+          const markShape = picked === NO_SHAPE ? null : (picked ?? (dayExam ? EXAM_SHAPE : null));
           // Tint follows the same precedence: the subject picked for this day wins,
           // then the exam's subject, then the day's first task's, then a soft
           // default so a bare mark still reads.
@@ -377,32 +386,34 @@ function CalendarMonthCard({
                 cellBorder,
                 { width: cellW, height: cellH, padding: PAD_V },
               ]}>
+              {/* The day's mark, in the corner opposite the date so the two can
+                  never collide — which is what made the old behind-the-number
+                  version read as ragged. The cell itself stays untinted, so a
+                  heavily-marked month doesn't turn patchy. */}
+              {markShape && (
+                <View style={[styles.cornerMark, { top: PAD_V, right: PAD_V }]} pointerEvents="none">
+                  <CountdownShape shape={markShape} color={markColor} size={CORNER_MARK} />
+                </View>
+              )}
               {/* The date leads the row and the "+N" closes it, so the overflow
                   count costs no vertical room in a square cell. */}
               <View style={[styles.dayNumRow, { height: DAYNUM_H }]}>
-                {/* The shape sits directly behind the date, centred on it. */}
-                {markShape && (
-                  <View
-                    style={[
-                      styles.examMark,
-                      // Centre it on the date row: an absolute child with no `top`
-                      // pins to the row's top edge and overflows downward instead.
-                      { width: EXAM_MARK, height: EXAM_MARK, top: (DAYNUM_H - EXAM_MARK) / 2 },
-                    ]}
-                    pointerEvents="none">
-                    <CountdownShape shape={markShape} color={markColor} size={EXAM_MARK} />
-                  </View>
-                )}
                 <View
                   style={[
                     styles.dayNumBadge,
                     { minWidth: DAYNUM_H, height: DAYNUM_H, borderRadius: DAYNUM_H / 2 },
                   ]}>
-                  <Text style={[styles.dayNum, { fontSize: DAYNUM_FT }, isToday && styles.dayNumToday]}>{d}</Text>
+                  <Text
+                    style={[
+                      styles.dayNum,
+                      { fontSize: DAYNUM_FT },
+                      isToday && styles.dayNumToday,
+                      // Red LAST so a deadline still reads on today's bold date.
+                      hasDeadline && styles.dayNumDeadline,
+                    ]}>
+                    {d}
+                  </Text>
                 </View>
-                {hasDeadline && (
-                  <View style={[styles.deadlineDot, { width: DOT, height: DOT, borderRadius: DOT / 2 }]} pointerEvents="none" />
-                )}
                 {hasNote && (
                   <View
                     style={[styles.noteDot, { width: DOT * 0.66, height: DOT * 0.66, borderRadius: DOT * 0.33 }]}
@@ -413,7 +424,14 @@ function CalendarMonthCard({
                     does not fit ~40pt, and this needs no key in all seven locales.
                     Floated right so it can't push the date off-centre. */}
                 {overflow > 0 && (
-                  <Text style={[styles.overflowText, styles.overflowFloat, { fontSize: OVERFLOW_FT }]}>{`+${overflow}`}</Text>
+                  <Text
+                    style={[
+                      styles.overflowText,
+                      styles.overflowFloat,
+                      // Step left past the corner mark when the day has one —
+                      // they both want the top-right otherwise.
+                      { fontSize: OVERFLOW_FT, right: markShape ? CORNER_MARK + 2 : 0 },
+                    ]}>{`+${overflow}`}</Text>
                 )}
               </View>
 
@@ -435,6 +453,10 @@ function CalendarMonthCard({
                       backgroundColor: tint(c.color, c.done ? 0.91 : 0.82),
                     },
                   ]}>
+                  {/* Exam chips lead with a star, so an exam is identifiable inside
+                      the cell as well as by the day's corner mark — the outline alone
+                      was easy to miss at chip size. */}
+                  {c.isExam && <CountdownShape shape={EXAM_SHAPE} color={c.color} size={CHIP_STAR} />}
                   {/* Deliberately truncated, not shrunk-to-fit: a month cell is a
                       glance, and the day popup carries the full title. */}
                   <Text
@@ -595,6 +617,26 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
                   {i18n.t('addExam.shape')}
                 </Text>
                 <View style={styles.shapeRowBtns}>
+                  {/* "No shape" is stored as an explicit value, not by deleting the
+                      entry: on an exam day, deleting would fall back to the star, so
+                      there'd be no way to say "I want this day bare". */}
+                  {(() => {
+                    const none = dayShapes[iso] === NO_SHAPE;
+                    return (
+                      <Pressable
+                        onPress={() => setDayShape(iso, none ? null : NO_SHAPE)}
+                        style={({ pressed }) => [
+                          styles.shapeBtn,
+                          none && { borderColor: C.mocha, backgroundColor: C.mocha + '1F' },
+                          pressed && styles.pressed,
+                        ]}>
+                        <Svg width={22} height={22} viewBox="0 0 24 24">
+                          <Circle cx="12" cy="12" r="8.4" fill="none" stroke={C.latte} strokeWidth={1.8} strokeDasharray="3 2.6" />
+                          <Path d="M7.4 16.6 16.6 7.4" stroke={C.latte} strokeWidth={1.8} strokeLinecap="round" />
+                        </Svg>
+                      </Pressable>
+                    );
+                  })()}
                   {(dayExams.length > 0 ? COUNTDOWN_SHAPES : DAY_SHAPES).map((sh) => {
                     const picked = daySubjects[iso];
                     const examSub = dayExams.length
@@ -603,7 +645,8 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
                     const color =
                       (picked ? subjects.find((sub) => sub.id === picked)?.color : null) ?? examSub ?? '#F4A8C0';
                     // Mirrors the grid: an explicit pick wins, else the exam's star.
-                    const current = dayShapes[iso] ?? (dayExams.length ? EXAM_SHAPE : null);
+                    const current =
+                      dayShapes[iso] === NO_SHAPE ? null : (dayShapes[iso] ?? (dayExams.length ? EXAM_SHAPE : null));
                     const active = current === sh;
                     return (
                       <Pressable
@@ -623,7 +666,7 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
 
               {/* Colour for that shape, chosen as a SUBJECT rather than a raw colour
                   so it stays in step if the subject is later recoloured. */}
-              {(dayShapes[iso] || dayExams.length > 0) && subjects.filter((sub) => !sub.archived).length > 0 && (
+              {dayShapes[iso] !== NO_SHAPE && (dayShapes[iso] || dayExams.length > 0) && subjects.filter((sub) => !sub.archived).length > 0 && (
                 <View style={styles.shapeRow}>
                   <Text style={[styles.shapeRowLabel, ms !== 1 && { fontSize: 13 * ms }]}>
                     {i18n.t('addTask.subject')}
@@ -763,7 +806,7 @@ function HorizontalPreview({ onClose }: { onClose: () => void }) {
 // ─── root ────────────────────────────────────────────────────────────────────
 /** Cards under the calendar listing what is due on the selected day. */
 function DueDayStrip({ iso }: { iso: string }) {
-  const { tasks, examCountdowns } = useApp();
+  const { tasks, examCountdowns, subjects } = useApp();
   const dayTasks = useMemo(() => tasksOnDay(tasks, iso, true), [tasks, iso]);
   const dayExams = useMemo(
     () => examCountdowns.filter((e) => e.dateISO.slice(0, 10) === iso),
@@ -775,11 +818,18 @@ function DueDayStrip({ iso }: { iso: string }) {
       <Text style={styles.monthLabel}>{longLabel(iso)}</Text>
       {dayTasks.length || dayExams.length ? (
         <View style={styles.previewList}>
-          {dayExams.map((e) => (
-            <View key={e.id} style={styles.searchResult}>
-              <Text style={styles.searchResultDate}>{e.name}</Text>
-            </View>
-          ))}
+          {/* Exams carry the star here too. In this list a task shows a checkbox
+              and a subject chip while an exam showed only its name, so the two
+              were indistinguishable — the star is the same mark the grid uses. */}
+          {dayExams.map((e) => {
+            const color = (e.subject ? subjects.find((s) => s.name === e.subject)?.color : null) ?? '#F4A8C0';
+            return (
+              <View key={e.id} style={[styles.searchResult, styles.examResult]}>
+                <CountdownShape shape={EXAM_SHAPE} color={color} size={16} />
+                <Text style={styles.searchResultDate}>{e.name}</Text>
+              </View>
+            );
+          })}
           {dayTasks.map((t) => (
             <TaskPreviewCard key={t.id} task={t} />
           ))}
@@ -907,15 +957,17 @@ const styles = StyleSheet.create({
     borderColor: C.latte,
     overflow: 'hidden',
   },
-  // The date is centred in the cell; the dots ride beside it and the "+N"
-  // overflow floats to the right edge so neither shifts the number off centre.
-  dayNumRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, alignSelf: 'stretch' },
+  // The date leads from the top-left; the dots ride beside it. The "+N" overflow
+  // still floats right, but clears the corner mark that now lives there.
+  dayNumRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 2, alignSelf: 'stretch' },
   dayNumBadge: { alignItems: 'center', justifyContent: 'center' },
   dayNum: { color: C.cocoaDark, fontWeight: '600' },
   dayNumToday: { fontWeight: '800' },
-  // Deadline / note markers sit INLINE beside the day number now — the cell's
-  // corners belong to the chips.
-  deadlineDot: { backgroundColor: '#E5484D' },
+  // A deadline recolours the date rather than adding a dot beside it: the cell is
+  // ~40pt wide and the dot was competing with the number for that row.
+  dayNumDeadline: { color: '#E5484D', fontWeight: '800' },
+  // The note marker still sits INLINE beside the day number — the cell's corners
+  // belong to the chips and the day mark.
   noteDot: { backgroundColor: C.mocha },
   // Task preview chip: subject-tinted, title only. No time — at ~52pt of cell width
   // a time string consumes the whole chip and leaves nothing of the title.
@@ -924,7 +976,9 @@ const styles = StyleSheet.create({
   chipExam: { borderWidth: 1 },
   // The exam's day mark: a big translucent shape filling the cell, painted behind
   // the date and the previews (first child = bottom of the stack).
-  examMark: { position: 'absolute', alignSelf: 'center', alignItems: 'center', justifyContent: 'center', opacity: 0.55 },
+  cornerMark: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
+  // Exam rows in the day preview: star first, then the name.
+  examResult: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   // "Shape for this day" row in the day popup (exam days only).
   shapeRow: { gap: Spacing.two },
   shapeRowLabel: { fontSize: 13, fontWeight: '700', color: C.cocoaDark },

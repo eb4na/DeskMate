@@ -150,24 +150,25 @@ function GalleryContent() {
   // Defaults below match the StyleSheet; dial them in on-device, hit "Log
   // values", then bake the numbers into the styles. No effect in production.
   const [tweak, setTweak] = useState({
-    cardWidth: 47,    // companionCard width %
-    gridGap: 16,      // companionGrid gap
-    cardPad: 16,      // companionCard padding
-    cardRadius: 22,   // companionCard borderRadius
-    imgSize: 80,      // companionImageWrap width %
-    nameSize: 15,     // companionName fontSize
-    subSize: 11,      // companionSubtitle fontSize
+    cardPad: 20,      // preview padding
+    cardRadius: 26,   // preview borderRadius
+    imgSize: 62,      // previewImageWrap width %
+    nameSize: 22,     // companionName fontSize
+    subSize: 13,      // companionSubtitle fontSize
+    thumbSize: 76,    // strip thumbnail side (pt, pre-scale)
   });
   const knobs: Knob[] = [
-    { key: 'cardWidth', label: 'Card width %', value: tweak.cardWidth, min: 30, max: 100, step: 1 },
-    { key: 'gridGap', label: 'Grid gap', value: tweak.gridGap, min: 0, max: 40, step: 1 },
-    { key: 'cardPad', label: 'Card padding', value: tweak.cardPad, min: 0, max: 32, step: 1 },
-    { key: 'cardRadius', label: 'Card radius', value: tweak.cardRadius, min: 0, max: 40, step: 1 },
-    { key: 'imgSize', label: 'Image size %', value: tweak.imgSize, min: 40, max: 100, step: 1 },
-    { key: 'nameSize', label: 'Name font', value: tweak.nameSize, min: 10, max: 24, step: 0.5 },
-    { key: 'subSize', label: 'Tagline font', value: tweak.subSize, min: 8, max: 18, step: 0.5 },
+    { key: 'cardPad', label: 'Preview padding', value: tweak.cardPad, min: 0, max: 40, step: 1 },
+    { key: 'cardRadius', label: 'Preview radius', value: tweak.cardRadius, min: 0, max: 40, step: 1 },
+    { key: 'imgSize', label: 'Image size %', value: tweak.imgSize, min: 30, max: 100, step: 1 },
+    { key: 'nameSize', label: 'Name font', value: tweak.nameSize, min: 12, max: 34, step: 0.5 },
+    { key: 'subSize', label: 'Tagline font', value: tweak.subSize, min: 8, max: 20, step: 0.5 },
+    { key: 'thumbSize', label: 'Thumb size', value: tweak.thumbSize, min: 48, max: 130, step: 1 },
   ];
 
+  // Tapping a strip thumbnail only previews; "Set Active" is what commits (and
+  // leaves the screen), so you can look through everyone without switching.
+  const [previewId, setPreviewId] = useState<string>(activeCompanionId);
   const [wardrobeFor, setWardrobeFor] = useState<{ id: string; name: string } | null>(null);
   // In-place unlock popup for a coin-priced item (a locked companion or skin).
   const [buyItem, setBuyItem] = useState<{ id: string; name: string; image: number | null; price: number } | null>(null);
@@ -411,6 +412,14 @@ function GalleryContent() {
     })),
   ];
 
+  // Who the big preview is showing. Generated slots are deletable, so the id can
+  // go stale mid-session — fall back to the active companion, then to the first
+  // one, rather than rendering an empty screen.
+  const preview =
+    obtainedCharacters.find((c) => c.id === previewId) ??
+    obtainedCharacters.find((c) => c.isActive) ??
+    obtainedCharacters[0];
+
   return (
     <>
     <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: P.cream }}>
@@ -421,67 +430,91 @@ function GalleryContent() {
           <Text style={styles.headerSubtitle}>{t('gallery.chooseToday')}</Text>
         </View>
 
-        {/* My Companions */}
+        {/* The companion you're looking at, shown big. The old grid made the art —
+            the thing you're actually choosing between — the smallest part of each
+            card; here one companion gets the room and the rest live in a strip. */}
+        {preview && (
+          <View
+            style={[
+              styles.preview,
+              { padding: tweak.cardPad, borderRadius: tweak.cardRadius },
+              preview.isActive && styles.previewActive,
+            ]}>
+            {preview.deletable && (
+              <Pressable style={styles.cardDelete} onPress={preview.onDelete} hitSlop={8}>
+                <Text style={styles.cardDeleteText}>✕</Text>
+              </Pressable>
+            )}
+            {/* Opens the wardrobe for the PREVIEWED companion (wardrobeSkins keys
+                off wardrobeFor, not the active companion, so this is safe). */}
+            <Pressable
+              style={({ pressed }) => [styles.hangerBtn, pressed && styles.pressed]}
+              onPress={() => setWardrobeFor({ id: preview.id, name: localizeCompanionName(preview.name, t) })}
+              hitSlop={8}>
+              <HangerIcon color="#FFFFFF" size={22 * scale} />
+            </Pressable>
+            {/* Pairing button — set the matched room when the worn outfit has one. */}
+            {preview.currentSkin && roomById(preview.currentSkin.roomId) && (
+              <Pressable
+                style={({ pressed }) => [styles.linkBadge, pressed && styles.pressed]}
+                onPress={() => equipMatchedRoom(preview.currentSkin!)}
+                hitSlop={8}>
+                <ChainLinkIcon color="#FFFFFF" size={15 * scale} />
+              </Pressable>
+            )}
+            <View style={[styles.previewImageWrap, { width: `${tweak.imgSize}%` }]}>
+              {preview.image ? (
+                <Image source={preview.image} style={styles.companionImage} contentFit="contain" />
+              ) : (
+                <View style={styles.companionImagePlaceholder} />
+              )}
+            </View>
+            <Text style={[styles.companionName, { fontSize: tweak.nameSize * scale }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
+              {localizeCompanionName(preview.name, t)}
+            </Text>
+            <Text style={[styles.companionSubtitle, { fontSize: tweak.subSize * scale }]} numberOfLines={2}>
+              {TAGLINE_KEYS[preview.name] ? t(TAGLINE_KEYS[preview.name]) : t('gallery.defaultTagline')}
+            </Text>
+            <CompanionLevel minutes={companionMinutes?.[preview.id] ?? 0} scale={scale} />
+            {preview.isActive ? (
+              <View style={styles.activePill}>
+                <Text style={styles.activePillText}>{t('gallery.active')}</Text>
+              </View>
+            ) : (
+              <Pressable
+                style={({ pressed }) => [styles.setActiveBtn, pressed && styles.pressed]}
+                onPress={preview.onSelect}>
+                <Text style={styles.setActiveBtnText}>{t('gallery.setActive')}</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+
+        {/* My Companions — a swipeable strip under the preview. Tapping only
+            previews; "Set Active" is what commits and leaves the screen. */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('gallery.myCompanions')}</Text>
-          <View style={[styles.companionGrid, { gap: tweak.gridGap }]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
             {obtainedCharacters.map((char) => (
-              <View
+              <Pressable
                 key={char.id}
                 style={[
-                  styles.companionCard,
-                  { width: `${tweak.cardWidth}%`, padding: tweak.cardPad, borderRadius: tweak.cardRadius },
-                  char.isActive && styles.companionCardActive,
-                ]}>
-                {char.deletable && (
-                  <Pressable
-                    style={styles.cardDelete}
-                    onPress={char.onDelete}
-                    hitSlop={8}>
-                    <Text style={styles.cardDeleteText}>✕</Text>
-                  </Pressable>
-                )}
-                <Pressable
-                  style={({ pressed }) => [styles.hangerBtn, pressed && styles.pressed]}
-                  onPress={() => setWardrobeFor({ id: char.id, name: localizeCompanionName(char.name, t) })}
-                  hitSlop={8}>
-                  <HangerIcon color="#FFFFFF" size={22 * scale} />
-                </Pressable>
-                {/* Pairing button — set the matched room when the worn outfit has one. */}
-                {char.currentSkin && roomById(char.currentSkin.roomId) && (
-                  <Pressable
-                    style={({ pressed }) => [styles.linkBadge, pressed && styles.pressed]}
-                    onPress={() => equipMatchedRoom(char.currentSkin!)}
-                    hitSlop={8}>
-                    <ChainLinkIcon color="#FFFFFF" size={15 * scale} />
-                  </Pressable>
-                )}
-                <View style={[styles.companionImageWrap, { width: `${tweak.imgSize}%` }]}>
-                  {char.image ? (
-                    <Image source={char.image} style={styles.companionImage} contentFit="contain" />
-                  ) : (
-                    <View style={styles.companionImagePlaceholder} />
-                  )}
-                </View>
-                <Text style={[styles.companionName, { fontSize: tweak.nameSize * scale }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
-                  {localizeCompanionName(char.name, t)}
-                </Text>
-                <Text style={[styles.companionSubtitle, { fontSize: tweak.subSize * scale }]} numberOfLines={2}>{TAGLINE_KEYS[char.name] ? t(TAGLINE_KEYS[char.name]) : t('gallery.defaultTagline')}</Text>
-                <CompanionLevel minutes={companionMinutes?.[char.id] ?? 0} scale={scale} />
-                {char.isActive ? (
-                  <View style={styles.activePill}>
-                    <Text style={styles.activePillText}>{t('gallery.active')}</Text>
-                  </View>
+                  styles.thumb,
+                  { width: tweak.thumbSize * scale, height: tweak.thumbSize * scale },
+                  preview?.id === char.id && styles.thumbActive,
+                ]}
+                onPress={() => setPreviewId(char.id)}>
+                {char.image ? (
+                  <Image source={char.image} style={styles.thumbImg} contentFit="contain" />
                 ) : (
-                  <Pressable
-                    style={({ pressed }) => [styles.setActiveBtn, pressed && styles.pressed]}
-                    onPress={char.onSelect}>
-                    <Text style={styles.setActiveBtnText}>{t('gallery.setActive')}</Text>
-                  </Pressable>
+                  <View style={styles.companionImagePlaceholder} />
                 )}
-              </View>
+                {/* Marks who's actually active, since the pink border now means
+                    "previewed" rather than "in use". */}
+                {char.isActive && <View style={styles.thumbActiveDot} pointerEvents="none" />}
+              </Pressable>
             ))}
-          </View>
+          </ScrollView>
         </View>
 
         {/* Done */}
@@ -965,19 +998,13 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   skinPillText: { fontSize: 11 * s, color: P.pinkActiveText, fontWeight: '800' },
   skinTap: { fontSize: 11 * s, color: P.mutedBrown, fontWeight: '600', marginTop: 6 * s },
 
-  // Companion grid
-  companionGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.three * s,
-  },
-  companionCard: {
-    width: '47%',
+  // ── The preview ─────────────────────────────────────────────────────────
+  // Padding / radius come from the dev knobs; everything else is fixed.
+  preview: {
+    width: '100%',
     backgroundColor: P.card,
-    borderRadius: 22 * s,
     borderWidth: 2,
     borderColor: P.pinkSoft,
-    padding: Spacing.three * s,
     alignItems: 'center',
     gap: 4 * s,
     shadowColor: '#C9A18A',
@@ -986,12 +1013,43 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-  companionCardActive: {
+  previewActive: {
     borderColor: P.pink,
     backgroundColor: '#FFF4F6',
     shadowColor: P.pink,
     shadowOpacity: 0.4,
     shadowRadius: 12,
+  },
+  // contentFit stays "contain" — companion art is a transparent figure PNG, and
+  // "cover" would crop hats and ears. Size differences between companions are an
+  // artwork matter (see AGENTS.md), never a per-companion scale in code.
+  previewImageWrap: {
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2 * s,
+  },
+
+  // ── The strip ───────────────────────────────────────────────────────────
+  strip: { flexDirection: 'row', gap: Spacing.two * s, paddingRight: Spacing.three * s, paddingTop: 4 * s },
+  thumb: {
+    borderRadius: 18 * s,
+    borderWidth: 2,
+    borderColor: P.pinkSoft,
+    backgroundColor: P.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 5 * s,
+  },
+  thumbActive: { borderColor: P.pink, backgroundColor: '#FFF4F6' },
+  thumbImg: { width: '100%', height: '100%' },
+  // Solid dot = the companion actually in use, since the border now reads as
+  // "previewed".
+  thumbActiveDot: {
+    position: 'absolute', top: -3 * s, right: -3 * s,
+    width: 16 * s, height: 16 * s, borderRadius: 8 * s,
+    backgroundColor: P.pinkActive,
+    borderWidth: 2, borderColor: '#FFFFFF',
   },
   cardDelete: {
     position: 'absolute',
@@ -1006,13 +1064,6 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     backgroundColor: P.pinkSoft,
   },
   cardDeleteText: { fontSize: 11 * s, color: P.brown, fontWeight: '700' },
-  companionImageWrap: {
-    width: '80%',
-    aspectRatio: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2 * s,
-  },
   companionImage: { width: '100%', height: '100%' },
   companionImagePlaceholder: { width: '100%', height: '100%' },
   companionName: {

@@ -412,7 +412,9 @@
     "breakInfoSingle": "包含一次 {{min}} 分鐘休息",
     "breakInfoNone": "無休息 — 短時熱身",
     "menuBreak": "{{min}}分鐘休息",
-    "breakInfoMulti": "多人模式可隨時休息"
+    "breakInfoMulti": "多人模式可隨時休息",
+    "lockIn": "專注鎖定",
+    "lockInNote": "離開應用程式就會結束本次專注 —— 堅持到最後可獲得雙倍金幣。休息期間不算。"
   },
   "customTimer": {
     "hr": "小時",

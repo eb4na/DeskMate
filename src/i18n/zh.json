@@ -297,6 +297,8 @@
     "a11yFriends": "好友"
   },
   "sessionPicker": {
+    "lockIn": "专注锁定",
+    "lockInNote": "离开应用就会结束本次专注 —— 坚持到最后可获得双倍金币。休息期间不算。",
     "title": "开始学习",
     "subtitle": "选择你的专注食谱",
     "hint": "学习时光，我为你留好了位置。",
