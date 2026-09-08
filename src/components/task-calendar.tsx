@@ -85,6 +85,42 @@ function todayISO() {
 function fromISO(iso: string) {
   return new Date(iso + 'T00:00:00');
 }
+
+// The "today" marker: a tilted, hand-drawn loop around the date, in place of the
+// bold weight it used to get. One FIXED path rather than a per-render wobble — a
+// randomised one would make today's date shimmer every time the month re-renders.
+//
+// Cocoa rather than the app's pink: a deadline already turns the date red, and pink
+// beside red inside a ~46pt cell goes muddy. Brown reads as ink, not as UI.
+//
+// The loop closes slightly PAST where it began, leaving a short crossing tail — that
+// overshoot is the one detail that still reads as hand-drawn at ~16pt; without it the
+// shape just looks like a badge outline.
+//
+// preserveAspectRatio="none" lets it stretch to whatever box the date needs, so a
+// two-digit "28" gets a wider loop instead of a clipped one. The stretch stays mild
+// enough that the slight stroke anisotropy reads as pen pressure.
+const TODAY_RING_PATH =
+  'M34 17 C14 25 6 48 14 66 C23 86 54 94 74 82 C92 71 96 45 84 28 C74 14 50 8 33 16 C27 19 23 24 21 30';
+
+function TodayRing({ overshoot }: { overshoot: number }) {
+  return (
+    <View
+      style={{ position: 'absolute', left: 0, right: 0, top: -overshoot, bottom: -overshoot }}
+      pointerEvents="none">
+      <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <Path
+          d={TODAY_RING_PATH}
+          fill="none"
+          stroke={C.cocoa}
+          strokeWidth={6.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    </View>
+  );
+}
 function longLabel(iso: string) {
   return fromISO(iso).toLocaleDateString(i18n.language || 'en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 }
@@ -273,6 +309,14 @@ function CalendarMonthCard({
   const DAYNUM_FT = clampN(Math.round(cellW * 0.26), 11, 20);
   const DAYNUM_H = Math.round(DAYNUM_FT * 1.25);
   const PAD_V = Math.max(2, Math.round(cellW * 0.035));
+  // The ring needs room on BOTH axes. Horizontally the badge itself grows (see
+  // dayNumBadge below) so the row's flex layout pushes the note dot clear instead of
+  // the loop landing on top of it — the row's gap is only 2pt. Vertically the loop
+  // just overshoots the row, which has PAD_V of slack above it.
+  const RING_PAD_X = Math.max(2, Math.round(DAYNUM_FT * 0.18));
+  // Capped at PAD_V: the cell clips (overflow:hidden) and the date row starts PAD_V
+  // from its top, so anything more than that is silently sliced off the loop's crown.
+  const RING_OVERSHOOT_Y = Math.min(PAD_V, Math.max(2, Math.round(DAYNUM_FT * 0.15)));
   // The day's shape, drawn behind the date. dayCell CLIPS (overflow:hidden) and the
   // date row sits PAD_V from the cell's top, so the mark's ink can only reach
   // DAYNUM_H/2 + PAD_V above the row's centre before it gets cut off. The ink spans
@@ -402,13 +446,15 @@ function CalendarMonthCard({
                   style={[
                     styles.dayNumBadge,
                     { minWidth: DAYNUM_H, height: DAYNUM_H, borderRadius: DAYNUM_H / 2 },
+                    isToday && { paddingHorizontal: RING_PAD_X },
                   ]}>
+                  {isToday && <TodayRing overshoot={RING_OVERSHOOT_Y} />}
                   <Text
                     style={[
                       styles.dayNum,
                       { fontSize: DAYNUM_FT },
-                      isToday && styles.dayNumToday,
-                      // Red LAST so a deadline still reads on today's bold date.
+                      // No bold for today any more — the ring is the marker, and doing
+                      // both reads heavy. Red LAST so a deadline still reads through it.
                       hasDeadline && styles.dayNumDeadline,
                     ]}>
                     {d}
@@ -962,7 +1008,6 @@ const styles = StyleSheet.create({
   dayNumRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 2, alignSelf: 'stretch' },
   dayNumBadge: { alignItems: 'center', justifyContent: 'center' },
   dayNum: { color: C.cocoaDark, fontWeight: '600' },
-  dayNumToday: { fontWeight: '800' },
   // A deadline recolours the date rather than adding a dot beside it: the cell is
   // ~40pt wide and the dot was competing with the number for that row.
   dayNumDeadline: { color: '#E5484D', fontWeight: '800' },
