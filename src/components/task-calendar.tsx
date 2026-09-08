@@ -856,39 +856,74 @@ function HorizontalPreview({ onClose }: { onClose: () => void }) {
 }
 
 // ─── root ────────────────────────────────────────────────────────────────────
-/** Cards under the calendar listing what is due on the selected day. */
-function DueDayStrip({ iso }: { iso: string }) {
+/** How many days the strip looks ahead, today included. */
+const WEEK_AHEAD_DAYS = 7;
+
+/**
+ * One card per day for the week ahead, each holding everything due that day.
+ *
+ * Days with nothing on them are skipped rather than shown empty — a run of blank
+ * cards pushes the days that matter off the screen, which is the whole reason this
+ * isn't just seven fixed cards.
+ *
+ * Stacked vertically, not in the horizontal scroller the search view uses: a
+ * horizontal card can only show a task or two before the rest are cut off, and the
+ * point here is to see a day's whole load at once.
+ *
+ * It deliberately does NOT follow the day you tap. Tapping a date opens the day
+ * modal, which is still how you inspect one specific day — including days outside
+ * this window — so nothing is lost by letting the strip stay on the week ahead.
+ */
+function WeekAheadStrip() {
   const { tasks, examCountdowns, subjects } = useApp();
-  const dayTasks = useMemo(() => tasksOnDay(tasks, iso, true), [tasks, iso]);
-  const dayExams = useMemo(
-    () => examCountdowns.filter((e) => e.dateISO.slice(0, 10) === iso),
-    [examCountdowns, iso],
-  );
+
+  const days = useMemo(() => {
+    const start = todayISO();
+    const out: { iso: string; dayTasks: Task[]; dayExams: typeof examCountdowns }[] = [];
+    for (let i = 0; i < WEEK_AHEAD_DAYS; i++) {
+      // Pure UTC calendar math on the ISO string, the way the rest of this file
+      // shifts dates — a local Date would slide a day for anyone east of UTC.
+      const [y, m, d] = start.split('-').map(Number);
+      const iso = new Date(Date.UTC(y, m - 1, d) + i * 86400000).toISOString().split('T')[0];
+      const dayTasks = tasksOnDay(tasks, iso, true);
+      const dayExams = examCountdowns.filter((e) => e.dateISO.slice(0, 10) === iso);
+      if (dayTasks.length || dayExams.length) out.push({ iso, dayTasks, dayExams });
+    }
+    return out;
+  }, [tasks, examCountdowns]);
+
+  if (days.length === 0) {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.searchEmpty}>{i18n.t('calendar.noUpcoming')}</Text>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.monthLabel}>{longLabel(iso)}</Text>
-      {dayTasks.length || dayExams.length ? (
-        <View style={styles.previewList}>
-          {/* Exams carry the star here too. In this list a task shows a checkbox
-              and a subject chip while an exam showed only its name, so the two
-              were indistinguishable — the star is the same mark the grid uses. */}
-          {dayExams.map((e) => {
-            const color = (e.subject ? subjects.find((s) => s.name === e.subject)?.color : null) ?? '#F4A8C0';
-            return (
-              <View key={e.id} style={[styles.searchResult, styles.examResult]}>
-                <CountdownShape shape={EXAM_SHAPE} color={color} size={16} />
-                <Text style={styles.searchResultDate}>{e.name}</Text>
-              </View>
-            );
-          })}
-          {dayTasks.map((t) => (
-            <TaskPreviewCard key={t.id} task={t} />
-          ))}
+    <View style={styles.weekAhead}>
+      {days.map(({ iso, dayTasks, dayExams }) => (
+        <View key={iso} style={styles.card}>
+          <Text style={styles.monthLabel}>{longLabel(iso)}</Text>
+          <View style={styles.previewList}>
+            {/* Exams carry the star here too. In this list a task shows a checkbox
+                and a subject chip while an exam showed only its name, so the two
+                were indistinguishable — the star is the same mark the grid uses. */}
+            {dayExams.map((e) => {
+              const color = (e.subject ? subjects.find((sub) => sub.name === e.subject)?.color : null) ?? '#F4A8C0';
+              return (
+                <View key={e.id} style={[styles.searchResult, styles.examResult]}>
+                  <CountdownShape shape={EXAM_SHAPE} color={color} size={16} />
+                  <Text style={styles.searchResultDate}>{e.name}</Text>
+                </View>
+              );
+            })}
+            {dayTasks.map((t) => (
+              <TaskPreviewCard key={t.id} task={t} />
+            ))}
+          </View>
         </View>
-      ) : (
-        <Text style={styles.searchEmpty}>{i18n.t('calendar.nothingDueDay')}</Text>
-      )}
+      ))}
     </View>
   );
 }
@@ -903,9 +938,6 @@ export function TaskCalendar({ searchMode = false, onCloseSearch }: { searchMode
   const { width } = useWindowDimensions();
   const [monthOffset, setMonthOffset] = useState(0);
   const [modalDate, setModalDate] = useState<string | null>(null);
-  // The strip under the calendar follows the last day you tapped, starting today.
-  // Kept separate from modalDate so closing the popup doesn't blank the strip.
-  const [selectedDay, setSelectedDay] = useState(() => todayISO());
 
   // The calendar spans the full centered content column on tablet. CALENDAR_FILL is
   // the fraction of the column the calendar card spans — dial it to taste. Cell size
@@ -931,7 +963,6 @@ export function TaskCalendar({ searchMode = false, onCloseSearch }: { searchMode
             monthOffset={monthOffset}
             setMonthOffset={setMonthOffset}
             onPickDate={(iso) => {
-              setSelectedDay(iso);
               setModalDate(iso);
             }}
             cellW={cellW}
@@ -939,7 +970,7 @@ export function TaskCalendar({ searchMode = false, onCloseSearch }: { searchMode
             isTablet={isTablet}
             scale={isTablet ? scale : 1}
           />
-          <DueDayStrip iso={selectedDay} />
+          <WeekAheadStrip />
         </>
       )}
 
@@ -950,6 +981,7 @@ export function TaskCalendar({ searchMode = false, onCloseSearch }: { searchMode
 
 const styles = StyleSheet.create({
   root: { gap: Spacing.three },
+  weekAhead: { gap: Spacing.three },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   titleLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   title: { fontSize: 18, fontWeight: '800', color: C.cocoaDark },
