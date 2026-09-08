@@ -974,6 +974,30 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
     ...(merged.equippedShopItems ?? {}),
   };
 
+  // Backfill the monthly per-subject rollup from raw history.
+  //
+  // subjectMonthly is only written forward, by addSubjectTime. Every account that
+  // existed before that field did therefore loads with {} — and the Progress tab's
+  // Year range reads ONLY this map, so it rendered completely empty for everyone
+  // until they happened to finish a new session. sessionHistory already carries the
+  // dateISO / minutes / subjectName needed to rebuild it, so do that once.
+  //
+  // Guarded on "empty": once the map has anything in it, it is the authority. Raw
+  // history is capped (5000 records) and the rollup is not, so rebuilding a
+  // populated map from history would DISCARD months that have already aged out.
+  if (!merged.subjectMonthly || Object.keys(merged.subjectMonthly).length === 0) {
+    const rebuilt: Record<string, Record<string, number>> = {};
+    for (const rec of merged.sessionHistory ?? []) {
+      if (!rec?.dateISO || !rec.minutes) continue;
+      const monthKey = rec.dateISO.slice(0, 7);
+      const subject = rec.subjectName ?? 'General Study';
+      rebuilt[monthKey] = rebuilt[monthKey] ?? {};
+      rebuilt[monthKey][subject] = (rebuilt[monthKey][subject] ?? 0) + rec.minutes;
+    }
+    merged.subjectMonthly = rebuilt;
+  }
+
+
   merged.companionSlots = (merged.companionSlots ?? []).map((slot) => {
     const normalizedSlot = slot as Partial<CompanionSlot>;
     return {
