@@ -93,15 +93,17 @@ function fromISO(iso: string) {
 // Cocoa rather than the app's pink: a deadline already turns the date red, and pink
 // beside red inside a ~46pt cell goes muddy. Brown reads as ink, not as UI.
 //
-// The loop closes slightly PAST where it began, leaving a short crossing tail — that
-// overshoot is the one detail that still reads as hand-drawn at ~16pt; without it the
-// shape just looks like a badge outline.
+// Deliberately lopsided: narrow at the top, heavy and wide at the bottom, and tilted,
+// as if drawn in one fast stroke. An earlier version had even curvature and closed on
+// itself, which read as a PRINTED circle — uniformity is the tell. The loop also
+// carries well past its start, and that long crossing tail is the detail that still
+// registers at ~16pt where a stubby one just disappears.
 //
 // preserveAspectRatio="none" lets it stretch to whatever box the date needs, so a
 // two-digit "28" gets a wider loop instead of a clipped one. The stretch stays mild
 // enough that the slight stroke anisotropy reads as pen pressure.
 const TODAY_RING_PATH =
-  'M34 17 C14 25 6 48 14 66 C23 86 54 94 74 82 C92 71 96 45 84 28 C74 14 50 8 33 16 C27 19 23 24 21 30';
+  'M52 10 C31 12 17 26 15 44 C13 64 27 84 50 89 C74 94 92 79 93 58 C94 39 80 21 58 14 C46 10 34 11 25 17 C20 21 16 26 14 32';
 
 function TodayRing({ overshoot }: { overshoot: number }) {
   return (
