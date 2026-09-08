@@ -642,6 +642,8 @@
     "notNow": "나중에"
   },
   "settings": {
+    "weekStartsMonday": "월요일에 주 시작",
+    "weekStartsMondayOn": "달력의 주가 월요일부터 일요일까지 표시됩니다",
     "title": "설정",
     "account": "계정",
     "signOut": "로그아웃",
@@ -668,6 +670,7 @@
     "secBalances": "잔액",
     "secFocusStudy": "집중 & 공부",
     "secReminders": "알림",
+    "secPreferences": "환경설정",
     "secAbout": "정보",
     "followInstagram": "인스타그램에서 팔로우",
     "followInstagramReward": "@memobun.app 팔로우하고 100코인 받기!",

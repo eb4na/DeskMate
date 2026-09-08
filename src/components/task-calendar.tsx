@@ -51,7 +51,10 @@ import { MODAL_SETTLE_MS, useReportModalTransition } from '@/lib/modal-traffic';
 
 
 const C = BakeryColors;
-const weekdayLetters = () => [0, 1, 2, 3, 4, 5, 6].map((i) => i18n.t(`calendar.wd_${i}`));
+// The wd_* keys stay Sunday-indexed (wd_0 = Sunday) in every locale; only the ORDER
+// they're read in changes, so a Monday-start week needs no new translations.
+const weekdayLetters = (mondayFirst: boolean) =>
+  (mondayFirst ? [1, 2, 3, 4, 5, 6, 0] : [0, 1, 2, 3, 4, 5, 6]).map((i) => i18n.t(`calendar.wd_${i}`));
 const SCREEN_PAD = Spacing.four;
 const CARD_PAD = 14;
 
@@ -239,7 +242,7 @@ function CalendarMonthCard({
   // label, padding) so the whole calendar grows at the same ratio as the grid.
   scale?: number;
 }) {
-  const { tasks, subjects, dayNotes, dayShapes, daySubjects, examCountdowns } = useApp();
+  const { tasks, subjects, dayNotes, dayShapes, daySubjects, examCountdowns, weekStartsMonday } = useApp();
   const today = todayISO();
 
   // Every countdown on a day, closest-to-now first. Each renders as its own chip,
@@ -263,7 +266,11 @@ function CalendarMonthCard({
   const view = new Date(base.getFullYear(), base.getMonth() + monthOffset, 1);
   const year = view.getFullYear();
   const month = view.getMonth();
-  const firstWeekday = new Date(year, month, 1).getDay();
+  // getDay() is 0=Sunday. On a Monday-start grid Sunday belongs at the END of the
+  // week, so it needs six blanks ahead of it rather than none — hence (+6) % 7.
+  const firstWeekday = weekStartsMonday
+    ? (new Date(year, month, 1).getDay() + 6) % 7
+    : new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const monthLabel = view.toLocaleDateString(i18n.language || 'en-US', { month: 'long', year: 'numeric' });
 
@@ -375,7 +382,7 @@ function CalendarMonthCard({
       </View>
 
       <View style={[styles.weekRow, { width: cellW * 7 }]}>
-        {weekdayLetters().map((w, i) => (
+        {weekdayLetters(weekStartsMonday).map((w, i) => (
           <Text key={i} style={[styles.weekday, { width: cellW, fontSize: Math.round(cellW * 0.26) }]}>{w}</Text>
         ))}
       </View>

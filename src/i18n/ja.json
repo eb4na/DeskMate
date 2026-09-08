@@ -642,6 +642,8 @@
     "notNow": "あとで"
   },
   "settings": {
+    "weekStartsMonday": "週の始まりを月曜日に",
+    "weekStartsMondayOn": "カレンダーの週が月曜日から日曜日になります",
     "title": "設定",
     "account": "アカウント",
     "signOut": "ログアウト",
@@ -668,6 +670,7 @@
     "secBalances": "残高",
     "secFocusStudy": "集中と学習",
     "secReminders": "リマインダー",
+    "secPreferences": "環境設定",
     "secAbout": "アプリについて",
     "followInstagram": "Instagramでフォロー",
     "followInstagramReward": "@memobun.app をフォローして100コインをゲット！",

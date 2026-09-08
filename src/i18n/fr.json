@@ -643,6 +643,8 @@
     "notNow": "Plus tard"
   },
   "settings": {
+    "weekStartsMonday": "Commencer la semaine le lundi",
+    "weekStartsMondayOn": "Les semaines vont du lundi au dimanche",
     "title": "Paramètres",
     "account": "Compte",
     "signOut": "Se déconnecter",
@@ -669,6 +671,7 @@
     "secBalances": "SOLDES",
     "secFocusStudy": "CONCENTRATION ET ÉTUDE",
     "secReminders": "RAPPELS",
+    "secPreferences": "Préférences",
     "secAbout": "À PROPOS",
     "followInstagram": "Suivez-nous sur Instagram",
     "followInstagramReward": "Touchez pour suivre @memobun.app — gagnez 100 pièces !",
@@ -1685,13 +1688,13 @@
     "noUpcoming": "Aucune tâche pour aujourd'hui. Ajoutes-en une pour la voir ici.",
     "nothingDueDay": "Rien pour ce jour.",
     "addTaskForDay": "＋ Ajouter une tâche pour ce jour",
-    "wd_0": "D",
-    "wd_1": "L",
-    "wd_2": "M",
-    "wd_3": "M",
-    "wd_4": "J",
-    "wd_5": "V",
-    "wd_6": "S"
+    "wd_0": "Di",
+    "wd_1": "Lu",
+    "wd_2": "Ma",
+    "wd_3": "Me",
+    "wd_4": "Je",
+    "wd_5": "Ve",
+    "wd_6": "Sa"
   },
   "games": {
     "comingSoon": "Bientôt disponible",

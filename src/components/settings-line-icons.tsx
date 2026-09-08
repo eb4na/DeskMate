@@ -13,7 +13,7 @@ const SW = 1.9;
 export type SettingsLineIconName =
   | 'account' | 'bell' | 'books' | 'bug' | 'clock24' | 'coin' | 'info'
   | 'language' | 'progress' | 'radio' | 'reset' | 'signout' | 'timer'
-  | 'birthday' | 'mail' | 'lock' | 'plus' | 'trash' | 'gift';
+  | 'birthday' | 'mail' | 'lock' | 'plus' | 'trash' | 'gift' | 'calendar';
 
 export function SettingsLineIcon({
   name,
@@ -31,6 +31,17 @@ export function SettingsLineIcon({
         <>
           <Circle cx="12" cy="8.5" r="3.6" {...p} />
           <Path d="M5.2 19.5c1-3.4 3.7-5.2 6.8-5.2s5.8 1.8 6.8 5.2" {...p} />
+        </>
+      )}
+      {name === 'calendar' && (
+        <>
+          <Rect x="3.6" y="5.4" width="16.8" height="14.2" rx="2.6" {...p} />
+          {/* The rule under the header is what makes it read as a calendar rather
+              than a plain card at 22px — the two hanging rings alone aren't enough. */}
+          <Path d="M3.6 10.1h16.8" {...p} />
+          <Path d="M8.4 3.4v3.4M15.6 3.4v3.4" {...p} />
+          {/* A single marked day, echoing the grid without drawing all 35 cells. */}
+          <Rect x="7.2" y="12.8" width="3.4" height="3.2" rx="1" {...p} />
         </>
       )}
       {name === 'bell' && (

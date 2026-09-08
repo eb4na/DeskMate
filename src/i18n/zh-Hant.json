@@ -726,6 +726,8 @@
     "notNow": "稍後"
   },
   "settings": {
+    "weekStartsMonday": "每週從週一開始",
+    "weekStartsMondayOn": "行事曆以週一到週日顯示",
     "title": "設定",
     "account": "帳戶",
     "signOut": "退出登入",
@@ -752,6 +754,7 @@
     "secBalances": "餘額",
     "secFocusStudy": "專注與學習",
     "secReminders": "提醒",
+    "secPreferences": "偏好設定",
     "secAbout": "關於",
     "followInstagram": "在 Instagram 上關注我們",
     "followInstagramReward": "點選關注 @memobun.app，獲得 100 金幣！",

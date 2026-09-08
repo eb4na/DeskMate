@@ -643,6 +643,8 @@
     "notNow": "Ahora no"
   },
   "settings": {
+    "weekStartsMonday": "Empezar la semana en lunes",
+    "weekStartsMondayOn": "Las semanas van de lunes a domingo",
     "title": "Configuración",
     "account": "Cuenta",
     "signOut": "Cerrar sesión",
@@ -669,6 +671,7 @@
     "secBalances": "SALDOS",
     "secFocusStudy": "CONCENTRACIÓN Y ESTUDIO",
     "secReminders": "RECORDATORIOS",
+    "secPreferences": "Preferencias",
     "secAbout": "ACERCA DE",
     "followInstagram": "Síguenos en Instagram",
     "followInstagramReward": "Toca para seguir a @memobun.app — ¡gana 100 monedas!",

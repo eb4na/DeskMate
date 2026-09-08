@@ -261,6 +261,9 @@ type PersistedState = {
   notifExams: boolean;
   use24HourTime: boolean;
   soundEffectsEnabled: boolean;
+  /** Calendar grid starts the week on Monday instead of Sunday. Display only —
+   *  it does NOT move the Progress tab's week, which is already Monday-based. */
+  weekStartsMonday: boolean;
   vinylColor: string;
   // "Spotify background" study mode: replace the room background with a solid colour +
   // a large album-cover vinyl while studying. Colour is the user's pick.
@@ -461,6 +464,7 @@ const DEFAULTS: PersistedState = {
   notifExams: true,
   use24HourTime: false,
   soundEffectsEnabled: true,
+  weekStartsMonday: false,
   vinylColor: '#3B3340',
   spotifyBgEnabled: false,
   spotifyBgColor: 'black',
@@ -1084,6 +1088,9 @@ type AppContextType = {
   setNotifExams: (value: boolean) => void;
   use24HourTime: boolean;
   soundEffectsEnabled: boolean;
+  /** Calendar grid starts the week on Monday instead of Sunday. Display only —
+   *  it does NOT move the Progress tab's week, which is already Monday-based. */
+  weekStartsMonday: boolean;
   vinylColor: string;
   // "Spotify background" study mode: replace the room background with a solid colour +
   // a large album-cover vinyl while studying. Colour is the user's pick.
@@ -1278,6 +1285,7 @@ type AppContextType = {
   setReminder: (enabled: boolean, time: string) => void;
   setUse24HourTime: (value: boolean) => void;
   setSoundEffectsEnabled: (value: boolean) => void;
+  setWeekStartsMonday: (value: boolean) => void;
   setVinylColor: (value: string) => void;
   setSpotifyBgEnabled: (value: boolean) => void;
   setSpotifyBgColor: (value: 'black' | 'white') => void;
@@ -2059,6 +2067,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const setSoundEffectsEnabled = (value: boolean) =>
     setS((prev) => ({ ...prev, soundEffectsEnabled: value }));
+  const setWeekStartsMonday = (value: boolean) =>
+    setS((prev) => ({ ...prev, weekStartsMonday: value }));
   const setVinylColor = (value: string) =>
     setS((prev) => ({ ...prev, vinylColor: value }));
   const setSpotifyBgEnabled = (value: boolean) =>
@@ -3276,6 +3286,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setNotifExams,
         use24HourTime: s.use24HourTime,
         soundEffectsEnabled: s.soundEffectsEnabled,
+        weekStartsMonday: s.weekStartsMonday ?? false,
+        setWeekStartsMonday,
         vinylColor: s.vinylColor,
         spotifyBgEnabled: s.spotifyBgEnabled ?? false,
         spotifyBgColor: s.spotifyBgColor ?? 'black',
