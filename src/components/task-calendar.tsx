@@ -86,41 +86,42 @@ function fromISO(iso: string) {
   return new Date(iso + 'T00:00:00');
 }
 
-// The "today" marker: a tilted, hand-drawn loop around the date, in place of the
-// bold weight it used to get. One FIXED path rather than a per-render wobble — a
-// randomised one would make today's date shimmer every time the month re-renders.
+// The "today" marker: a translucent highlighter swipe behind the date, in place of
+// the bold weight it used to get.
 //
-// Cocoa rather than the app's pink: a deadline already turns the date red, and pink
-// beside red inside a ~46pt cell goes muddy. Brown reads as ink, not as UI.
+// A swipe rather than a drawn shape because each cell's top-right corner ALREADY
+// carries a shape the user picked (circle / heart / teardrop, plus a star reserved
+// for exams). One more outline there would just compete; a wash of colour behind the
+// number is a different kind of gesture and stays out of that conversation.
 //
-// Deliberately lopsided: narrow at the top, heavy and wide at the bottom, and tilted,
-// as if drawn in one fast stroke. An earlier version had even curvature and closed on
-// itself, which read as a PRINTED circle — uniformity is the tell. The loop also
-// carries well past its start, and that long crossing tail is the detail that still
-// registers at ~16pt where a stubby one just disappears.
+// It also sits BEHIND the digit, so unlike a ring it can never crowd the note dot
+// that shares the date row.
 //
-// preserveAspectRatio="none" lets it stretch to whatever box the date needs, so a
-// two-digit "28" gets a wider loop instead of a clipped one. The stretch stays mild
-// enough that the slight stroke anisotropy reads as pen pressure.
-const TODAY_RING_PATH =
-  'M52 10 C31 12 17 26 15 44 C13 64 27 84 50 89 C74 94 92 79 93 58 C94 39 80 21 58 14 C46 10 34 11 25 17 C20 21 16 26 14 32';
-
-function TodayRing({ overshoot }: { overshoot: number }) {
+// The path is drawn once and fixed — no per-render jitter, or today's date would
+// shimmer every time the month re-renders. preserveAspectRatio="none" lets one path
+// stretch to whatever width the date needs, so a two-digit "28" gets a longer swipe.
+// Drawn as a rotated, rounded bar rather than an SVG stroke. A stroke has to be
+// stretched to fit the date's box, and non-uniform scaling turns its round caps into
+// steep slanted edges — it stopped reading as a swipe and started reading as a slab.
+// A plain View rotates and scales predictably at any cell size, and at ~16pt the
+// ragged ends of a "real" highlighter are invisible anyway.
+function TodayHighlight({ height }: { height: number }) {
   return (
     <View
-      style={{ position: 'absolute', left: 0, right: 0, top: -overshoot, bottom: -overshoot }}
-      pointerEvents="none">
-      <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <Path
-          d={TODAY_RING_PATH}
-          fill="none"
-          stroke={C.cocoa}
-          strokeWidth={6.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </Svg>
-    </View>
+      style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: '50%',
+        height,
+        marginTop: -height / 2,
+        backgroundColor: C.mint,
+        opacity: 0.85,
+        borderRadius: 2,
+        transform: [{ rotate: '-5deg' }],
+      }}
+      pointerEvents="none"
+    />
   );
 }
 function longLabel(iso: string) {
@@ -315,10 +316,13 @@ function CalendarMonthCard({
   // dayNumBadge below) so the row's flex layout pushes the note dot clear instead of
   // the loop landing on top of it — the row's gap is only 2pt. Vertically the loop
   // just overshoots the row, which has PAD_V of slack above it.
-  const RING_PAD_X = Math.max(2, Math.round(DAYNUM_FT * 0.18));
-  // Capped at PAD_V: the cell clips (overflow:hidden) and the date row starts PAD_V
-  // from its top, so anything more than that is silently sliced off the loop's crown.
-  const RING_OVERSHOOT_Y = Math.min(PAD_V, Math.max(2, Math.round(DAYNUM_FT * 0.15)));
+  // Horizontal breathing room so the swipe runs a little past the digit on each side,
+  // the way a real highlighter overshoots. The badge grows, so the row's flex layout
+  // pushes the note dot clear rather than the colour running under it.
+  const SWIPE_PAD_X = Math.max(2, Math.round(DAYNUM_FT * 0.22));
+  // Shorter than the row so the swipe reads as a band across the digit rather
+  // than a filled cell behind it.
+  const SWIPE_H = Math.max(9, Math.round(DAYNUM_H * 0.72));
   // The day's shape, drawn behind the date. dayCell CLIPS (overflow:hidden) and the
   // date row sits PAD_V from the cell's top, so the mark's ink can only reach
   // DAYNUM_H/2 + PAD_V above the row's centre before it gets cut off. The ink spans
@@ -448,9 +452,9 @@ function CalendarMonthCard({
                   style={[
                     styles.dayNumBadge,
                     { minWidth: DAYNUM_H, height: DAYNUM_H, borderRadius: DAYNUM_H / 2 },
-                    isToday && { paddingHorizontal: RING_PAD_X },
+                    isToday && { paddingHorizontal: SWIPE_PAD_X },
                   ]}>
-                  {isToday && <TodayRing overshoot={RING_OVERSHOOT_Y} />}
+                  {isToday && <TodayHighlight height={SWIPE_H} />}
                   <Text
                     style={[
                       styles.dayNum,
