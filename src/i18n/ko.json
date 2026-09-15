@@ -455,7 +455,7 @@
     "rescueStreakQ": "연속 기록을 유지할까요?",
     "rescueStreakMsg": "며칠 빠졌어요. 연속 보호를 사용해 {{count}}일 연속 기록을 유지할까요?",
     "letItReset": "초기화하기",
-    "freezeUsedMsg": "연속 보호를 사용했어요. 이번 달 {{count}}개 남았습니다."
+    "freezeUsedMsg": "연속 보호를 사용했어요. {{count}}개 남았습니다."
   },
   "tasks": {
     "title": "과제",

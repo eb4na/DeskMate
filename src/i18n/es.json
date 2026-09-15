@@ -455,7 +455,7 @@
     "rescueStreakQ": "¿Mantener tu racha?",
     "rescueStreakMsg": "Te saltaste algunos días. ¿Usar una congelación de racha para mantener tu racha de {{count}} días?",
     "letItReset": "Dejar que se reinicie",
-    "freezeUsedMsg": "Congelación de racha usada. Te quedan {{count}} este mes."
+    "freezeUsedMsg": "Congelación de racha usada. Te quedan {{count}}."
   },
   "tasks": {
     "title": "Tareas",

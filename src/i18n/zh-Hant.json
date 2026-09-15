@@ -539,7 +539,7 @@
     "rescueStreakQ": "保留你的連續記錄？",
     "rescueStreakMsg": "你錯過了幾天。要使用連續凍結來保留 {{count}} 天的連續記錄嗎？",
     "letItReset": "讓它重置",
-    "freezeUsedMsg": "已使用連續凍結。本月還剩 {{count}} 個。"
+    "freezeUsedMsg": "已使用連續凍結。還剩 {{count}} 個。"
   },
   "tasks": {
     "title": "任務",

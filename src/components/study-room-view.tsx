@@ -885,7 +885,8 @@ export function StudyRoomView({
   };
 
   // The "+" opens a small "room members" sheet (below): tap a member to see their
-  // card & friend them, plus an "Invite a friend" row when the room isn't full.
+  // card & friend them (your own row, listed first, opens your card), plus an
+  // "Invite a friend" row when the room isn't full.
   const otherMembers = participants.filter((p) => p.code !== friendCode);
   const openMemberCard = (code: string) => {
     // Close the in-view sheet first, THEN push the friend-card native modal — the
@@ -1509,10 +1510,15 @@ export function StudyRoomView({
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setMembersOpen(false)} />
           <View style={styles.memberCard}>
             <Text style={styles.memberTitle}>{t('studyRoom.membersTitle')}</Text>
-            {otherMembers.map((m) => (
+            {participants.map((m) => (
               <Pressable key={m.code} onPress={() => openMemberCard(m.code)} style={({ pressed }) => [styles.memberRow, pressed && styles.pressed]}>
                 <Image source={getCompanionImage(m.companionId, m.skinId)} style={styles.memberAvatar} contentFit="contain" />
                 <Text style={styles.memberName} numberOfLines={1}>{m.name}</Text>
+                {m.code === friendCode && (
+                  <View style={styles.memberYouPill}>
+                    <Text style={styles.memberYouText}>{t('studyRoom.you')}</Text>
+                  </View>
+                )}
                 <Text style={styles.memberChevron}>›</Text>
               </Pressable>
             ))}
@@ -1806,6 +1812,8 @@ const styles = StyleSheet.create({
   memberRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, paddingHorizontal: 10, borderRadius: BakeryRadii.button, backgroundColor: BakeryColors.cream, borderWidth: 1, borderColor: BakeryColors.shortbread },
   memberAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: BakeryColors.rose },
   memberName: { flex: 1, fontSize: 15, fontWeight: '800', color: BakeryColors.cocoaDark },
+  memberYouPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: BakeryColors.buttonPink },
+  memberYouText: { fontSize: 11, fontWeight: '800', color: '#FFFFFF' },
   memberChevron: { fontSize: 22, fontWeight: '900', color: BakeryColors.mocha, marginTop: -2 },
   memberEmpty: { fontSize: 13, color: BakeryColors.mocha, textAlign: 'center', paddingVertical: 8 },
   memberInvite: { paddingVertical: 12, borderRadius: BakeryRadii.button, alignItems: 'center', backgroundColor: BakeryColors.jam, marginTop: Spacing.one },

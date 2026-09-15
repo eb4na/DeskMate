@@ -455,7 +455,7 @@
     "rescueStreakQ": "Garder ta série ?",
     "rescueStreakMsg": "Tu as manqué quelques jours. Utiliser un gel de série pour conserver ta série de {{count}} jours ?",
     "letItReset": "Laisser réinitialiser",
-    "freezeUsedMsg": "Gel de série utilisé. Il t'en reste {{count}} ce mois-ci."
+    "freezeUsedMsg": "Gel de série utilisé. Il t'en reste {{count}}."
   },
   "tasks": {
     "title": "Tâches",

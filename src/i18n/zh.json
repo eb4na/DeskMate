@@ -455,7 +455,7 @@
     "rescueStreakQ": "保留你的连续记录？",
     "rescueStreakMsg": "你错过了几天。要使用连续冻结来保留 {{count}} 天的连续记录吗？",
     "letItReset": "让它重置",
-    "freezeUsedMsg": "已使用连续冻结。本月还剩 {{count}} 个。"
+    "freezeUsedMsg": "已使用连续冻结。还剩 {{count}} 个。"
   },
   "tasks": {
     "title": "任务",

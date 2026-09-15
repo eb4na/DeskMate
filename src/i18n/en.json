@@ -455,7 +455,7 @@
     "rescueStreakQ": "Keep your streak?",
     "rescueStreakMsg": "You missed a few days. Use a Streak Freeze to keep your {{count}}-day streak going?",
     "letItReset": "Let it reset",
-    "freezeUsedMsg": "Streak freeze used. {{count}} left this month."
+    "freezeUsedMsg": "Streak freeze used. {{count}} left."
   },
   "tasks": {
     "title": "Tasks",

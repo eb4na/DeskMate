@@ -883,9 +883,10 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
   }
   delete merged.profileBirthdayChanged;
 
-  // Only Plus members get the monthly allotment of free streak freezes.
+  // Only Plus members get the monthly allotment of free streak freezes. It ADDS 3 on
+  // top of what they already have (unused freezes carry over), never resets to 3.
   if (merged.isPlus && (!merged.streakFreezeResetMonth || merged.streakFreezeResetMonth < month)) {
-    merged.streakFreezes = 3;
+    merged.streakFreezes = (merged.streakFreezes ?? 0) + 3;
     merged.streakFreezeResetMonth = month;
   }
 
@@ -2532,12 +2533,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       // Grant this month's 3 streak freezes THE MOMENT Plus activates (the
       // load-merge grant only runs on the next app launch, which made a fresh
-      // purchase feel like it gave nothing). Idempotent per month, and Math.max
-      // never lowers freezes the user separately bought. A confirmation popup
-      // shows only when this actually grants (so the launch-time entitlement
-      // re-sync can't spam it).
+      // purchase feel like it gave nothing). Idempotent per month (same month key as
+      // the load-merge grant, so a month is only ever granted once), and it ADDS 3 on
+      // top of freezes they already own. A confirmation popup shows only when this
+      // actually grants (so the launch-time entitlement re-sync can't spam it).
       if (value && (!prev.streakFreezeResetMonth || prev.streakFreezeResetMonth < month)) {
-        updates.streakFreezes = Math.max(prev.streakFreezes, 3);
+        updates.streakFreezes = prev.streakFreezes + 3;
         updates.streakFreezeResetMonth = month;
         // If their streak lapsed and today's rescue prompt was already dismissed
         // (e.g. they had no freeze to use, then went and bought Plus), un-dismiss

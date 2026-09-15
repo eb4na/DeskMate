@@ -455,7 +455,7 @@
     "rescueStreakQ": "ストリークを維持しますか？",
     "rescueStreakMsg": "数日空いてしまいました。ストリークフリーズを使って{{count}}日のストリークを維持しますか？",
     "letItReset": "リセットする",
-    "freezeUsedMsg": "ストリークフリーズを使用しました。今月は残り{{count}}個です。"
+    "freezeUsedMsg": "ストリークフリーズを使用しました。残り{{count}}個です。"
   },
   "tasks": {
     "title": "タスク",

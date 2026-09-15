@@ -53,8 +53,11 @@ function formatBirthday(iso?: string): string {
 export default function FriendCardScreen() {
   const { t } = useTranslation();
   const { code } = useLocalSearchParams<{ code: string }>();
-  const { friends, setFriendProfile, blockUser, friendCode } = useApp();
+  const { friends, setFriendProfile, blockUser, friendCode, profileDisplayName } = useApp();
   const { user } = useAuth();
+  // Your own card (opened from the study room's member list): same card as friends
+  // see, minus Add friend / Report / Block.
+  const isSelf = !!code && code === friendCode;
   const friend = friends.find((f) => f.code === code);
   const isFriend = !!friend;
   const [, force] = useState(0);
@@ -92,7 +95,7 @@ export default function FriendCardScreen() {
   }, [code]);
 
   // Prefer the friend-store entry (kept in sync), else the freshly-fetched profile.
-  const name = friend?.displayName || friend?.name || fetched?.displayName || t('friendCard.friendFallback', { code });
+  const name = friend?.displayName || friend?.name || fetched?.displayName || (isSelf && profileDisplayName) || t('friendCard.friendFallback', { code });
   const backgroundId = friend?.backgroundId ?? fetched?.backgroundId;
   const bgRoom = ROOM_PAIRS.find((r) => r.id === backgroundId) ?? ROOM_PAIRS[0];
   const figure = getCompanionImage(friend?.companionId ?? fetched?.companionId, friend?.skinId ?? fetched?.skinId);
@@ -107,7 +110,7 @@ export default function FriendCardScreen() {
   // colours lapse with Plus, like the avatar frame); everyone else stays pink.
   const cc = cardColors(isPlusFrame(avatarFrame) ? ((friend?.cardColor ?? fetched?.cardColor) || 'pink') : 'pink');
   // "Add friend" only when this is someone else and not already a friend.
-  const canAddFriend = !!code && code !== friendCode && !isFriend;
+  const canAddFriend = !!code && !isSelf && !isFriend;
 
   // friend-card is presented as a native modal, so confirmations use a LOCAL modal —
   // the root showPopup renders BEHIND the native sheet and the tap just looks dead.
@@ -186,15 +189,17 @@ export default function FriendCardScreen() {
           </Pressable>
 
           {/* Moderation — report files to Supabase; block removes + hides them. */}
-          <View style={styles.modRow}>
-            <Pressable style={({ pressed }) => [styles.modBtn, pressed && styles.pressed]} onPress={() => setMod('report')} hitSlop={6}>
-              <Text style={styles.modText}>{t('report.report')}</Text>
-            </Pressable>
-            <Text style={styles.modDivider}>·</Text>
-            <Pressable style={({ pressed }) => [styles.modBtn, pressed && styles.pressed]} onPress={() => setMod('block')} hitSlop={6}>
-              <Text style={[styles.modText, styles.modBlock]}>{t('report.block')}</Text>
-            </Pressable>
-          </View>
+          {!isSelf && (
+            <View style={styles.modRow}>
+              <Pressable style={({ pressed }) => [styles.modBtn, pressed && styles.pressed]} onPress={() => setMod('report')} hitSlop={6}>
+                <Text style={styles.modText}>{t('report.report')}</Text>
+              </Pressable>
+              <Text style={styles.modDivider}>·</Text>
+              <Pressable style={({ pressed }) => [styles.modBtn, pressed && styles.pressed]} onPress={() => setMod('block')} hitSlop={6}>
+                <Text style={[styles.modText, styles.modBlock]}>{t('report.block')}</Text>
+              </Pressable>
+            </View>
+          )}
         </SafeAreaView>
       </ScrollView>
 
