@@ -5,7 +5,6 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { FitText } from '@/components/fit-text';
 import { SubjectRing, type RingSlice } from '@/components/subject-ring';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -212,12 +211,12 @@ export default function ProgressScreen() {
                   key={r}
                   style={({ pressed }) => [styles.rangePill, active && styles.rangePillOn, pressed && styles.pressed]}
                   onPress={() => setRange(r)}>
-                  <FitText
+                  <ThemedText
                     type="smallBold"
                     numberOfLines={1}
                     style={[styles.rangeText, active && styles.rangeTextOn]}>
                     {t(RANGE_LABEL_KEY[r])}
-                  </FitText>
+                  </ThemedText>
                 </Pressable>
               );
             })}
@@ -240,9 +239,11 @@ export default function ProgressScreen() {
               slices={ringData}
               otherMinutes={otherMinutes}
               size={168 * ps}>
-              <FitText numberOfLines={1} minScale={0.55} style={styles.ringTotal}>
+              {/* Fixed size on every range: a long total ("123h 45m", "12時間30分")
+                  wraps onto a second line inside the hole instead of shrinking. */}
+              <ThemedText numberOfLines={2} style={styles.ringTotal}>
                 {formatDuration(total, t)}
-              </FitText>
+              </ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.ringCaption}>
                 {t(RANGE_CAPTION_KEY[range])}
               </ThemedText>
@@ -294,14 +295,13 @@ export default function ProgressScreen() {
                   return (
                     <ThemedView key={e.name} type="transparent" style={styles.rankRow}>
                       <View style={[styles.rankDot, { backgroundColor: colorFor(e.name) }]} />
-                      {/* FitText needs a parent with an already-resolved width:
-                          adjustsFontSizeToFit measures unreliably when the width
-                          itself comes from flex, and shrinks some rows and not
-                          others. The wrapper owns the flex; the text just fills it. */}
+                      {/* Every row's name is the same size: auto-shrink here made
+                          some rows tiny and others not, so a long name (up to 30
+                          chars) wraps onto a second line instead. */}
                       <View style={styles.rankNameWrap}>
-                        <FitText type="smallBold" numberOfLines={1} style={styles.rankName}>
+                        <ThemedText type="smallBold" numberOfLines={2} style={styles.rankName}>
                           {localizeSubjectName(e.name, t)}
-                        </FitText>
+                        </ThemedText>
                       </View>
                       <ThemedText type="small" themeColor="textSecondary" style={styles.rankPct}>
                         {pct}%
@@ -428,6 +428,7 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     lineHeight: 30 * s,
     fontWeight: '800',
     color: BakeryColors.berry,
+    textAlign: 'center',
   },
   ringCaption: { marginTop: 1 * s },
   insightRow: {
