@@ -488,9 +488,7 @@
   },
   "streakRescue": {
     "title": "拯救你的連續記錄？",
-    "msgUse": "你錯過了幾天。要使用連續凍結來保留 {{count}} 天的連續記錄嗎？",
-    "msgBuy": "你錯過了幾天。要購買連續凍結來保留 {{count}} 天的連續記錄嗎？",
-    "buyButton": "購買凍結 · {{price}}"
+    "msgUse": "你錯過了幾天。要使用連續凍結來保留 {{count}} 天的連續記錄嗎？"
   },
   "sessionComplete": {
     "title": "學習完成！",
@@ -597,12 +595,11 @@
     "streakFreeze": "連續凍結",
     "freezesRemaining": "你擁有 {{count}} 個",
     "useFreezeQ": "使用連續凍結？",
-    "useFreezeMsg": "這會補上缺失的一天，讓你今天學習後能延續連續記錄。一次凍結可彌補整個缺口。不會獲得金幣。",
+    "useFreezeMsg": "這會補上缺失的日子，讓你今天學習後能延續連續記錄。一次凍結可彌補整個缺口。不會獲得金幣。",
     "useFreeze": "使用凍結",
     "use": "使用",
     "streakProtected": "連續記錄已保護！",
     "streakSafe": "你的連續記錄安全了。",
-    "noFreezesLeft": "本月已無凍結次數。將於每月 1 日重置。",
     "freezeCoversOne": "凍結可在缺勤後 3 天內挽救你的連續記錄。之後請完成一次專注以開始新的連續記錄。",
     "previousStreak": "上次連續記錄",
     "streakAtRisk": "已暫停 — 使用凍結即可保留。",
@@ -705,7 +702,7 @@
     "coinsAdded": "+{{coins}} 枚金幣已新增！",
     "mockComplete": "模擬購買完成。",
     "streakFreezeName": "連續凍結",
-    "streakFreezeDesc": "漏掉一天時保住你的連續記錄。",
+    "streakFreezeDesc": "如果你 3 天內沒有回來，幫你保住連續記錄。",
     "freezeOwned": "擁有 {{count}}",
     "freezeAdded": "已新增連續凍結！",
     "plusAlreadyHaveSound": "你有會員已可免費使用，購買後即使會員結束也能永久保留。",

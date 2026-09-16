@@ -404,9 +404,7 @@
   },
   "streakRescue": {
     "title": "연속 기록을 지킬까요?",
-    "msgUse": "며칠 빠졌어요. 연속 보호를 사용해 {{count}}일 연속 기록을 유지할까요?",
-    "msgBuy": "며칠 빠졌어요. 연속 보호를 구매해 {{count}}일 연속 기록을 유지할까요?",
-    "buyButton": "프리즈 구매 · {{price}}"
+    "msgUse": "며칠 빠졌어요. 연속 보호를 사용해 {{count}}일 연속 기록을 유지할까요?"
   },
   "sessionComplete": {
     "title": "세션 완료!",
@@ -518,7 +516,6 @@
     "use": "사용",
     "streakProtected": "연속 기록을 지켰어요!",
     "streakSafe": "연속 기록이 안전합니다.",
-    "noFreezesLeft": "이번 달 보호 횟수가 없습니다. 매월 1일에 초기화됩니다.",
     "freezeCoversOne": "보호는 빠진 후 3일 이내에 연속 기록을 살릴 수 있습니다. 이후에는 세션을 완료해 새 연속 기록을 시작하세요.",
     "previousStreak": "이전 연속 기록",
     "streakAtRisk": "일시정지됨 — 보호를 사용해 유지하세요.",
@@ -621,7 +618,7 @@
     "coinsAdded": "+{{coins}}코인 추가됨!",
     "mockComplete": "모의 구매 완료.",
     "streakFreezeName": "스트릭 프리즈",
-    "streakFreezeDesc": "하루 빠져도 스트릭을 지켜줘요.",
+    "streakFreezeDesc": "3일 안에 돌아오지 못해도 스트릭을 지켜줘요.",
     "freezeOwned": "{{count}}개 보유",
     "freezeAdded": "스트릭 프리즈 추가됨!",
     "plusAlreadyHaveSound": "프리미엄 회원은 무료로 사용할 수 있어요. 구매하면 프리미엄이 끝나도 계속 소장해요.",

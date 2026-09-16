@@ -1,21 +1,23 @@
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, type LayoutChangeEvent } from 'react-native';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
 
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { ColorWheelPicker, hslToHex } from '@/components/color-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { ArrowUpIcon, ArrowDownIcon, RemoveIcon } from '@/components/subject-icons';
+import { GripIcon, RemoveIcon } from '@/components/subject-icons';
 import { useApp, MAX_SUBJECTS } from '@/context/app-context';
 import { containsProfanity } from '@/lib/profanity';
 import { localizeSubjectName } from '@/lib/subject-utils';
 import { SUBJECT_COLORS } from '@/constants/placeholder-data';
 import { useTranslation } from '@/i18n';
-import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, MIN_POPUP_WIDTH, popupMaxWidth, Spacing } from '@/constants/theme';
+import { BakeryColors, BakeryRadii, BakeryShadow, Fonts, MaxContentWidth, MIN_POPUP_WIDTH, popupMaxWidth, Spacing } from '@/constants/theme';
 import { useReportModalTransition } from '@/lib/modal-traffic';
 
 // The 7th swatch: a hue ring that opens the wheel. Drawn rather than an image so
@@ -47,12 +49,63 @@ function WheelSwatch({ value, onPress, selected }: { value: string; onPress: () 
   );
 }
 
-// Caveat covers Latin only. CJK and Hangul fall through to the system face, where
-// the handwriting size renders far larger and heavier than the script it was tuned
-// for — so those names get the app's normal label size instead. Checked per name,
-// not per app language, since one list can hold both.
+// Caveat covers Latin only. CJK and Hangul use a rounded native face instead so
+// they read soft/handwritten-adjacent without rendering oversized or broken.
 const NON_LATIN = /[\u3000-\u9FFF\uAC00-\uD7AF\uFF00-\uFFEF]/;
 const isHandwritten = (text: string) => !NON_LATIN.test(text);
+const roundedCjkFont = Platform.select({
+  ios: 'Hiragino Maru Gothic ProN',
+  android: 'sans-serif-rounded',
+  default: undefined,
+});
+
+function normalizeHexInput(value: string): string | null {
+  const raw = value.trim().replace(/^#/, '');
+  if (/^[0-9A-Fa-f]{3}$/.test(raw)) {
+    return `#${raw.split('').map((c) => c + c).join('')}`.toUpperCase();
+  }
+  if (/^[0-9A-Fa-f]{6}$/.test(raw)) return `#${raw}`.toUpperCase();
+  return null;
+}
+
+// One animated style per row, always applied.
+//
+// The first version swapped between an animated style (while dragging) and a plain
+// one (otherwise). That leaves the row permanently lifted: removing a
+// useAnimatedStyle from a view does NOT reset the props Reanimated already wrote to
+// it natively, so the scale and shadow survived the drop. Giving every row its own
+// style that simply evaluates to zero when idle avoids the whole problem — and a
+// component is the only way to call the hook per row, since hooks cannot live
+// inside the .map().
+function DraggableRow({
+  dragging,
+  dragY,
+  shift,
+  onLayout,
+  children,
+}: {
+  dragging: boolean;
+  dragY: SharedValue<number>;
+  shift: number;
+  onLayout?: (e: LayoutChangeEvent) => void;
+  children: React.ReactNode;
+}) {
+  const style = useAnimatedStyle(
+    () => ({
+      transform: [
+        { translateY: dragging ? dragY.value : withSpring(shift, { damping: 20, stiffness: 200 }) },
+        { scale: withSpring(dragging ? 1.03 : 1, { damping: 20, stiffness: 200 }) },
+      ],
+      zIndex: dragging ? 20 : 0,
+    }),
+    [dragging, shift],
+  );
+  return (
+    <Animated.View onLayout={onLayout} style={[style, dragging && styles.rowLifted]}>
+      {children}
+    </Animated.View>
+  );
+}
 
 export default function ManageSubjectsScreen() {
   const { t } = useTranslation();
@@ -72,6 +125,9 @@ export default function ManageSubjectsScreen() {
   // confirm, so this screen still only ever presents ONE local modal at a time.
   const nameRef = useRef<TextInput>(null);
   const [wheelFor, setWheelFor] = useState<string | 'new' | null>(null);
+  // Explicitly <string>: SUBJECT_COLORS is `as const`, so inferring from element 0
+  // types the state as the literal '#64B5F6' and no other colour can be set.
+  const [hexDraft, setHexDraft] = useState<string>(SUBJECT_COLORS[0]);
   // Lifetime minutes per subject, keyed by NAME (that's how subjectTimeMap is
   // written). Shown on each ruled line so the page says what you've actually done,
   // not just what exists.
@@ -92,8 +148,27 @@ export default function ManageSubjectsScreen() {
       ? newName.trim() || t('manageSubjects.subjectNamePlaceholder')
       : localizeSubjectName(subjects.find((s) => s.id === wheelFor)?.name ?? '', t);
   const applyWheel = (hex: string) => {
+    setHexDraft(hex.toUpperCase());
     if (wheelFor === 'new') setSelectedColor(hex);
     else if (wheelFor) recolorSubject(wheelFor, hex);
+  };
+  const openWheel = (target: string | 'new') => {
+    const value = target === 'new'
+      ? selectedColor
+      : subjects.find((s) => s.id === target)?.color ?? SUBJECT_COLORS[0];
+    setHexDraft(value.toUpperCase());
+    setWheelFor(target);
+  };
+  const handleHexChange = (text: string) => {
+    if (text.length === 0) {
+      setHexDraft('');
+      return;
+    }
+    const withHash = text.startsWith('#') ? text : `#${text}`;
+    const display = withHash.slice(0, 7).toUpperCase();
+    setHexDraft(display);
+    const normalized = normalizeHexInput(display);
+    if (normalized) applyWheel(normalized);
   };
   useReportModalTransition(deleteTarget !== null || wheelFor !== null);
 
@@ -146,20 +221,49 @@ export default function ManageSubjectsScreen() {
     setEditName('');
   };
 
-  const handleMoveUp = (id: string) => {
+  // ── Drag to reorder ────────────────────────────────────────────────────────
+  // Replaces the old up/down arrows. The gesture lives on the grip handle ONLY:
+  // the list sits inside a ScrollView, and a pan on the whole row would fight the
+  // scroll for the same finger.
+  //
+  // Row height is measured rather than hardcoded so it survives tablet scaling and
+  // the larger type sizes; until the first row reports, dragging is a no-op.
+  const [rowH, setRowH] = useState(0);
+  const [dragId, setDragId] = useState<string | null>(null);
+  // How many slots the lifted row has travelled. Kept in React state (not just a
+  // shared value) because the OTHER rows need to re-render to open the gap.
+  const [dragOffset, setDragOffset] = useState(0);
+
+  const dropAt = (id: string, slots: number) => {
+    setDragId(null);
+    setDragOffset(0);
+    if (!slots) return;
     const sorted = [...activeSubjects];
-    const idx = sorted.findIndex((s) => s.id === id);
-    if (idx <= 0) return;
-    [sorted[idx - 1], sorted[idx]] = [sorted[idx], sorted[idx - 1]];
-    reorderSubjects(sorted.map((s) => s.id));
+    const from = sorted.findIndex((sub) => sub.id === id);
+    if (from < 0) return;
+    const to = Math.max(0, Math.min(sorted.length - 1, from + slots));
+    if (to === from) return;
+    const [moved] = sorted.splice(from, 1);
+    sorted.splice(to, 0, moved);
+    reorderSubjects(sorted.map((sub) => sub.id));
   };
 
-  const handleMoveDown = (id: string) => {
-    const sorted = [...activeSubjects];
-    const idx = sorted.findIndex((s) => s.id === id);
-    if (idx < 0 || idx >= sorted.length - 1) return;
-    [sorted[idx], sorted[idx + 1]] = [sorted[idx + 1], sorted[idx]];
-    reorderSubjects(sorted.map((s) => s.id));
+  // One shared value for the whole list rather than one per row: only ever a single
+  // row is lifted, so the other rows only need a static offset, which React can hand
+  // them. useAnimatedStyle is a hook and cannot live inside the .map().
+  const dragY = useSharedValue(0);
+  const lastSlots = useSharedValue(0);
+
+  // Where a NON-dragged row sits while the lifted one passes it — one row-height out
+  // of the way, so the gap follows the finger instead of appearing only on drop.
+  const shiftFor = (idx: number) => {
+    if (!dragId || !rowH || !dragOffset) return 0;
+    const from = activeSubjects.findIndex((sub) => sub.id === dragId);
+    if (from < 0 || idx === from) return 0;
+    const to = Math.max(0, Math.min(activeSubjects.length - 1, from + dragOffset));
+    if (from < to && idx > from && idx <= to) return -rowH;
+    if (from > to && idx < from && idx >= to) return rowH;
+    return 0;
   };
 
   const handleDelete = (id: string, name: string) => setDeleteTarget({ id, name });
@@ -176,6 +280,12 @@ export default function ManageSubjectsScreen() {
   ];
 
   return (
+    // Wrapped HERE rather than at the app root. Nothing else in the app uses
+    // react-native-gesture-handler, so a root-level wrapper would change touch
+    // handling everywhere for one screen's benefit — and this screen is presented
+    // as a NATIVE modal, which iOS puts in its own view hierarchy that a root
+    // wrapper does not reach into. Without this the drag throws outright.
+    <GestureHandlerRootView style={styles.container}>
     <ThemedView style={styles.container}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 48 }}>
         <SafeAreaView style={styles.safeArea}>
@@ -188,9 +298,14 @@ export default function ManageSubjectsScreen() {
             <ThemedText style={styles.doneTopText}>{t('common.done')}</ThemedText>
           </Pressable>
 
-          {/* A page from a study notebook. No heading of its own — the list is the
-              screen, and a title here only repeated what got you to it. */}
-          <ThemedView style={styles.paper}>
+          <ThemedView style={styles.header}>
+            <ThemedText style={styles.title}>{t('manageSubjects.title')}</ThemedText>
+            <ThemedText style={styles.headerMeta}>
+              {activeSubjects.length}/{subjectLimit}
+            </ThemedText>
+          </ThemedView>
+
+          <ThemedView style={styles.subjectPanel}>
 
             {activeSubjects.length === 0 && (
               <ThemedView type="backgroundElement" style={styles.emptyCard}>
@@ -200,8 +315,45 @@ export default function ManageSubjectsScreen() {
               </ThemedView>
             )}
 
-            {activeSubjects.map((sub, idx) => (
-              <ThemedView key={sub.id} style={styles.ruledLine}>
+            {activeSubjects.map((sub, idx) => {
+              // Pan on the HANDLE only. The list is inside a ScrollView, so a pan on
+              // the whole row would compete with the scroll for the same finger.
+              const pan = Gesture.Pan()
+                .onStart(() => {
+                  lastSlots.value = 0;
+                  runOnJS(setDragId)(sub.id);
+                })
+                .onUpdate((e) => {
+                  dragY.value = e.translationY;
+                  if (!rowH) return;
+                  const slots = Math.round(e.translationY / rowH);
+                  // Only cross into JS when the target slot actually changes —
+                  // per-frame setState here drops the drag to single figures.
+                  if (slots !== lastSlots.value) {
+                    lastSlots.value = slots;
+                    runOnJS(setDragOffset)(slots);
+                  }
+                })
+                .onFinalize(() => {
+                  const slots = lastSlots.value;
+                  dragY.value = 0;
+                  lastSlots.value = 0;
+                  runOnJS(dropAt)(sub.id, slots);
+                });
+              const dragging = dragId === sub.id;
+              return (
+              <DraggableRow
+                key={sub.id}
+                dragging={dragging}
+                dragY={dragY}
+                shift={shiftFor(idx)}
+                onLayout={idx === 0 ? (e) => setRowH(e.nativeEvent.layout.height + Spacing.two) : undefined}>
+              <ThemedView style={styles.subjectCard}>
+                <GestureDetector gesture={pan}>
+                  <ThemedView style={styles.dragHandle}>
+                    <GripIcon />
+                  </ThemedView>
+                </GestureDetector>
                 {editingId === sub.id ? (
                   <TextInput
                     style={[inputStyle, styles.inlineInput]}
@@ -214,15 +366,11 @@ export default function ManageSubjectsScreen() {
                   />
                 ) : (
                   <ThemedView style={styles.subjectInfo}>
-                    {/* Colour lives in the margin, as a page tab. Tapping the NAME has
-                        always renamed and people expect that, so the recolour control
-                        can't sit on it — the margin is empty space the notebook gives
-                        us for free. */}
-                    <Pressable onPress={() => setWheelFor(sub.id)} hitSlop={12} style={styles.marginTabHit}>
-                      <ThemedView style={[styles.marginTab, { backgroundColor: sub.color }]} />
+                    <Pressable onPress={() => openWheel(sub.id)} hitSlop={10} style={styles.subjectColorButton}>
+                      <ThemedView style={[styles.subjectColorDot, { backgroundColor: sub.color }]} />
                     </Pressable>
-                    <Pressable onPress={() => handleRenameStart(sub.id, sub.name)} hitSlop={6}>
-                      <ThemedView style={[styles.highlight, { backgroundColor: sub.color + '55' }]}>
+                    <Pressable onPress={() => handleRenameStart(sub.id, sub.name)} hitSlop={6} style={styles.subjectNamePressable}>
+                      <ThemedView style={[styles.subjectNameChip, { backgroundColor: sub.color + '33' }]}>
                         <ThemedText
                           style={isHandwritten(localizeSubjectName(sub.name, t)) ? styles.handName : styles.blockName}
                           numberOfLines={1}>
@@ -238,70 +386,18 @@ export default function ManageSubjectsScreen() {
                         <ThemedText style={styles.timePillText}>{studiedLabel(sub.name)}</ThemedText>
                       </ThemedView>
                     )}
-                    <ThemedView style={styles.lineSpacer} />
                   </ThemedView>
                 )}
 
-                {/* The arrow slots are always rendered — hidden, not removed, at the
-                    ends of the list. Dropping them made every row a different width
-                    and the column of actions read as ragged. */}
                 <ThemedView style={styles.subjectActions}>
-                  <Pressable
-                    style={styles.iconBtn}
-                    disabled={idx === 0}
-                    onPress={() => handleMoveUp(sub.id)}>
-                    <ThemedView style={idx === 0 && styles.iconHidden}>
-                      <ArrowUpIcon />
-                    </ThemedView>
-                  </Pressable>
-                  <Pressable
-                    style={styles.iconBtn}
-                    disabled={idx === activeSubjects.length - 1}
-                    onPress={() => handleMoveDown(sub.id)}>
-                    <ThemedView style={idx === activeSubjects.length - 1 && styles.iconHidden}>
-                      <ArrowDownIcon />
-                    </ThemedView>
-                  </Pressable>
                   <Pressable style={styles.iconBtn} onPress={() => handleDelete(sub.id, sub.name)}>
                     <RemoveIcon />
                   </Pressable>
                 </ThemedView>
               </ThemedView>
-            ))}
-            {/* You write the new subject on the page's next line, in the same hand
-                as the others — no separate field below. The swatch shows the colour
-                it'll be saved with, so the line previews the finished entry. */}
-            <ThemedView style={styles.ruledLine}>
-              <ThemedView style={styles.subjectInfo}>
-                <Pressable onPress={() => setWheelFor('new')} hitSlop={12} style={styles.marginTabHit}>
-                  <ThemedView style={[styles.marginTab, { backgroundColor: selectedColor }]} />
-                </Pressable>
-                {/* The swipe only appears once there's something to highlight —
-                    an empty one read as a big coloured block. */}
-                <ThemedView
-                  style={[
-                    styles.highlight,
-                    styles.writeSwipe,
-                    newName.trim().length > 0 && { backgroundColor: selectedColor + '55' },
-                  ]}>
-                  <TextInput
-                    ref={nameRef}
-                    style={isHandwritten(newName) ? styles.handInput : styles.blockInput}
-                    placeholder={t('manageSubjects.addNewSubject')}
-                    placeholderTextColor={BakeryColors.latte}
-                    value={newName}
-                    onChangeText={setNewName}
-                    onSubmitEditing={handleAdd}
-                    maxLength={30}
-                    returnKeyType="done"
-                  />
-                </ThemedView>
-              </ThemedView>
-            </ThemedView>
-            {/* The margin rule goes LAST, on top. Drawn first it was hidden behind
-                every row — ThemedView paints an opaque background by default, so
-                only the final row (which has none) ever showed it. */}
-            <ThemedView style={styles.marginRule} pointerEvents="none" />
+              </DraggableRow>
+              );
+            })}
           </ThemedView>
 
             {nameHasProfanity && (
@@ -310,7 +406,24 @@ export default function ManageSubjectsScreen() {
               </ThemedText>
             )}
 
-            {/* Colour: six presets, then the wheel for anything else. */}
+          <ThemedView style={styles.addPanel}>
+            <ThemedView style={styles.addInputRow}>
+              <Pressable onPress={() => openWheel('new')} hitSlop={12} style={styles.addColorButton}>
+                <ThemedView style={[styles.subjectColorDot, { backgroundColor: selectedColor }]} />
+              </Pressable>
+              <TextInput
+                ref={nameRef}
+                style={styles.addInput}
+                placeholder={t('manageSubjects.addNewSubject')}
+                placeholderTextColor={BakeryColors.latte}
+                value={newName}
+                onChangeText={setNewName}
+                onSubmitEditing={handleAdd}
+                maxLength={30}
+                returnKeyType="done"
+              />
+            </ThemedView>
+
             <ThemedView style={styles.colorGrid}>
               {SUBJECT_COLORS.map((color) => (
                 <Pressable key={color} onPress={() => setSelectedColor(color)}>
@@ -325,7 +438,7 @@ export default function ManageSubjectsScreen() {
               ))}
               <WheelSwatch
                 value={selectedColor}
-                onPress={() => setWheelFor('new')}
+                onPress={() => openWheel('new')}
                 selected={!(SUBJECT_COLORS as readonly string[]).includes(selectedColor)}
               />
             </ThemedView>
@@ -338,6 +451,7 @@ export default function ManageSubjectsScreen() {
                 {activeSubjects.length >= subjectLimit ? t('manageSubjects.limitReachedN', { limit: subjectLimit }) : t('manageSubjects.addSubjectBtn')}
               </ThemedText>
             </Pressable>
+          </ThemedView>
         </SafeAreaView>
       </ScrollView>
 
@@ -378,7 +492,20 @@ export default function ManageSubjectsScreen() {
               <ThemedText style={[styles.wheelChipText, { color: wheelValue }]} numberOfLines={1}>
                 {wheelLabel}
               </ThemedText>
+              <ThemedText style={styles.wheelHexText} numberOfLines={1}>
+                {wheelValue.toUpperCase()}
+              </ThemedText>
             </ThemedView>
+            <TextInput
+              value={hexDraft}
+              onChangeText={handleHexChange}
+              placeholder="#64B5F6"
+              placeholderTextColor={BakeryColors.latte}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={7}
+              style={styles.hexInput}
+            />
             <Pressable
               style={({ pressed }) => [styles.wheelDoneBtn, styles.wheelDoneWide, pressed && styles.pressed]}
               onPress={() => setWheelFor(null)}>
@@ -388,22 +515,53 @@ export default function ManageSubjectsScreen() {
         </Pressable>
       </Modal>
     </ThemedView>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: BakeryColors.frosting },
   safeArea: {
-    padding: Spacing.four,
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.four,
     maxWidth: MaxContentWidth,
     width: '100%',
     alignSelf: 'center',
-    gap: Spacing.four,
+    gap: Spacing.three,
   },
-  title: { fontSize: 24, lineHeight: 30 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: Spacing.two,
+    marginBottom: Spacing.one,
+  },
+  title: { fontSize: 28, lineHeight: 34, fontWeight: '900', color: BakeryColors.cocoaDark },
+  headerMeta: {
+    minWidth: 48,
+    textAlign: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    overflow: 'hidden',
+    backgroundColor: '#FFF6E6',
+    borderWidth: 1.5,
+    borderColor: '#E2C9A6',
+    color: BakeryColors.mocha,
+    fontSize: 13,
+    fontWeight: '900',
+  },
   section: { gap: Spacing.two },
   sectionLabel: { fontSize: 13, marginBottom: 2 },
-  emptyCard: { borderRadius: 14, padding: Spacing.three, alignItems: 'center' },
+  emptyCard: {
+    borderRadius: 16,
+    padding: Spacing.four,
+    alignItems: 'center',
+    backgroundColor: '#FFFBF4',
+    borderWidth: 1.5,
+    borderColor: '#F0D8B7',
+  },
   emptyText: { textAlign: 'center' },
   subjectRow: {
     borderRadius: 14,
@@ -412,21 +570,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
-  subjectInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  subjectInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, minWidth: 0 },
 
   doneTop: { alignSelf: 'flex-end', paddingVertical: 4, paddingHorizontal: 2 },
   doneTopText: { fontFamily: 'Baloo2', fontSize: 16, color: BakeryColors.buttonPink },
 
-  // ── The notebook page ────────────────────────────────────────────────────
-  // Ruled paper: each line draws its own bottom rule, which is simpler and
-  // sharper than a repeating background and keeps the rules locked to the rows.
+  subjectPanel: {
+    gap: Spacing.two,
+  },
   paper: {
-    backgroundColor: BakeryColors.frosting,
-    borderRadius: BakeryRadii.card,
-    borderWidth: 1.5,
-    borderColor: BakeryColors.shortbread,
-    overflow: 'hidden',
-    paddingVertical: 2,
+    backgroundColor: 'transparent',
   },
   // The red margin rule down the left, behind every line.
   marginRule: {
@@ -443,32 +596,112 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(195,143,114,0.24)',
   },
+  // Wide enough to grab without a stray press landing on the colour dot beside it.
+  dragHandle: {
+    width: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
+    backgroundColor: 'transparent',
+  },
+  // The lifted row needs to read as picked UP, not just moved — shadow does that
+  // where the 1.03 scale alone is too subtle on a cream-on-cream list.
+  rowLifted: {
+    shadowColor: '#5E3E2D',
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 6,
+  },
+  subjectCard: {
+    minHeight: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingVertical: 8,
+    paddingLeft: 10,
+    paddingRight: 8,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 246, 230, 0.94)',
+    borderWidth: 1.5,
+    borderColor: '#E2C9A6',
+    shadowColor: '#8B6B57',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
   // The colour tab in the margin — the recolour button, using space the ruled
   // page already leaves empty to the left of the red rule.
   marginTabHit: { width: 24, alignItems: 'center' },
   marginTab: { width: 11, height: 11, borderRadius: 3 },
+  subjectColorButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF8EF',
+    borderWidth: 1.5,
+    borderColor: '#F0D8B7',
+    flexShrink: 0,
+  },
+  addColorButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF8EF',
+    borderWidth: 1.5,
+    borderColor: '#F0D8B7',
+  },
+  subjectColorDot: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+  },
   // Takes the slack between the name and the actions.
   lineSpacer: { flex: 1, minWidth: 8 },
   // Highlighter swipe behind the name.
   highlight: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 5 },
-  handName: {
-    fontFamily: 'Caveat', fontSize: 23, lineHeight: 28, color: BakeryColors.cocoaDark,
+  subjectNamePressable: { flex: 1, minWidth: 0 },
+  subjectNameChip: {
+    maxWidth: '100%',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
   },
-  // The non-Latin counterpart: system face at a normal label size.
-  blockName: { fontSize: 16, lineHeight: 22, fontWeight: '800', color: BakeryColors.cocoaDark },
+  handName: {
+    fontFamily: Fonts.rounded,
+    fontSize: 15.5,
+    fontStyle: 'italic',
+    fontWeight: '800',
+    color: BakeryColors.cocoaDark,
+  },
+  blockName: {
+    fontFamily: roundedCjkFont,
+    fontSize: 14.5,
+    fontWeight: '800',
+    color: BakeryColors.cocoaDark,
+  },
   // Lifetime study time, straight after the name.
-  timePill: { marginLeft: Spacing.two, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
+  timePill: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999, flexShrink: 0 },
   timePillText: { fontSize: 10.5, fontWeight: '800', color: '#fff' },
   // Fills the rest of the line so tapping the empty paper renames.
   renameHit: { flex: 1, alignSelf: 'stretch', minWidth: 20 },
   // The write-on line: the swipe stretches so the field has somewhere to grow.
   writeSwipe: { flex: 1, marginRight: Spacing.three, paddingVertical: 0 },
   handInput: {
-    fontFamily: 'Caveat', fontSize: 23, lineHeight: 28,
+    fontFamily: Fonts.rounded,
+    fontSize: 15,
+    fontStyle: 'italic',
+    fontWeight: '800',
     color: BakeryColors.cocoaDark, paddingVertical: 6, padding: 0,
   },
   blockInput: {
-    fontSize: 16, lineHeight: 22, fontWeight: '800',
+    fontFamily: roundedCjkFont,
+    fontSize: 14.5, fontWeight: '800',
     color: BakeryColors.cocoaDark, paddingVertical: 9, padding: 0,
   },
   // A ringed swatch, sized like a control rather than a status dot.
@@ -492,7 +725,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8, overflow: 'hidden',
   },
   wheelChipDot: { width: 9, height: 9, borderRadius: 5 },
-  wheelChipText: { fontSize: 13, fontWeight: '800', flexShrink: 1 },
+  wheelChipText: { fontSize: 13, fontWeight: '800', flex: 1, minWidth: 0 },
+  wheelHexText: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 251, 244, 0.86)',
+    borderWidth: 1,
+    borderColor: '#F0D8B7',
+    color: BakeryColors.cocoaDark,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  hexInput: {
+    alignSelf: 'stretch',
+    minHeight: 44,
+    borderRadius: 14,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 10,
+    backgroundColor: BakeryColors.cream,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+    color: BakeryColors.cocoaDark,
+    fontSize: 15,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
   // The app's primary pink, and a normal label size — this used to borrow the
   // delete button's style, which is red and deliberately loud.
   wheelDoneBtn: {
@@ -505,8 +764,15 @@ const styles = StyleSheet.create({
   subjectName: { flex: 1 },
   editHint: { fontSize: 11 },
   subjectActions: { flexDirection: 'row', gap: 2 },
-  iconBtn: { padding: 6 },
-  inlineInput: { flex: 1, paddingVertical: 6, fontSize: 14 },
+  iconBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 251, 244, 0.8)',
+  },
+  inlineInput: { flex: 1, paddingVertical: 8, fontSize: 15 },
   input: {
     borderWidth: 1.5,
     borderRadius: 12,
@@ -518,8 +784,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginVertical: Spacing.three,
-    gap: Spacing.two,
+    gap: Spacing.three,
   },
   colorSwatch: {
     width: 32,
@@ -530,8 +795,33 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#7C6F5A',
   },
+  addPanel: {
+    gap: Spacing.three,
+    borderRadius: 18,
+    padding: Spacing.three,
+    backgroundColor: '#FFFBF4',
+    borderWidth: 1.5,
+    borderColor: '#F0D8B7',
+  },
+  addInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  addInput: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: 14,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 10,
+    color: BakeryColors.cocoaDark,
+    backgroundColor: BakeryColors.cream,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+    fontSize: 15,
+    fontWeight: '800',
+  },
   addBtn: {
-    // Was a taupe #7C6F5A, the one primary button in the app that wasn't pink.
     backgroundColor: BakeryColors.buttonPink,
     borderRadius: 14,
     paddingVertical: Spacing.three,

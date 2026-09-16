@@ -11,6 +11,8 @@ import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View 
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot';
+import { FitText } from '@/components/fit-text';
+import { SHOP_ITEMS } from '@/constants/shop-data';
 
 const STREAK_ICON = require('@/assets/images/profile/streak-cupcake.png');
 const BEST_STREAK_ICON = require('@/assets/images/profile/best-streak-cupcake.png');
@@ -19,7 +21,7 @@ const BIRTHDAY_ICON = require('@/assets/images/profile/birthday-candle.png');
 import { useApp } from '@/context/app-context';
 import i18n, { useTranslation } from '@/i18n';
 import { formatDuration } from '@/lib/format-duration';
-import { ROOM_PAIRS, backgroundOwned } from '@/constants/room-data';
+import { ROOM_PAIRS, backgroundOwned, type RoomPair } from '@/constants/room-data';
 import { cardColors, CARD_COLORS, type CardColorKey } from '@/constants/card-colors';
 import { ColorWheelPicker, hslToHex } from '@/components/color-wheel-picker';
 import { LockBadge } from '@/components/lock-badge';
@@ -32,6 +34,8 @@ import {
   getStarterActiveId,
   isBunSkinUnlocked,
   localizeCompanionName,
+  localizeOutfitName,
+  localizeShopItemName,
   resolveActiveCompanion,
   SHOP_COMPANIONS,
 } from '@/lib/companion-utils';
@@ -115,6 +119,14 @@ export default function ProfileScreen() {
     ? BUN_SKINS.filter((s) => isBunSkinUnlocked(s, ownedShopItems))
     : getCompanionSkins(selectedCharId).filter((s) => !s.shopItemId || ownedShopItems.includes(s.shopItemId));
   const skinId = ownedSkins.some((s) => s.id === profileSkinId) ? profileSkinId : 'classic';
+
+  // Localized background name, same rule as Edit Room: shop-backed rooms are named by
+  // their shop item (translated in every language); the default Cozy Bakery has no item
+  // and falls back to its room-level name.
+  const roomLabel = (room: RoomPair) => {
+    const item = room.backgroundId ? SHOP_ITEMS.find((s) => s.id === room.backgroundId) : undefined;
+    return item ? localizeShopItemName(item, t) : t(`roomNames.${room.id}`, { defaultValue: room.name });
+  };
 
   // Figure image for the card.
   const figureSource = profileCompanionId
@@ -319,7 +331,9 @@ export default function ProfileScreen() {
                     <View style={[styles.charThumbWrap, selected && styles.charThumbSelected]}>
                       <Image source={thumb} style={styles.charThumb} contentFit="contain" />
                     </View>
-                    <Text style={styles.charName} numberOfLines={1}>{localizeCompanionName(c.name, t)}</Text>
+                    <View style={styles.charNameBox}>
+                      <FitText style={styles.charName}>{localizeCompanionName(c.name, t)}</FitText>
+                    </View>
                   </Pressable>
                 );
               })}
@@ -340,7 +354,9 @@ export default function ProfileScreen() {
                     <View style={[styles.charThumbWrap, selected && styles.charThumbSelected]}>
                       <Image source={img} style={styles.charThumb} contentFit="contain" />
                     </View>
-                    <Text style={styles.charName} numberOfLines={1}>{s.name}</Text>
+                    <View style={styles.charNameBox}>
+                      <FitText style={styles.charName}>{localizeOutfitName(s.name, t)}</FitText>
+                    </View>
                   </Pressable>
                 );
               })}
@@ -354,12 +370,19 @@ export default function ProfileScreen() {
               {ROOM_PAIRS.filter((r) => backgroundOwned(r, ownedShopItems)).map((r) => {
                 const selected = r.id === profileBackgroundId;
                 return (
-                  <Pressable key={r.id} onPress={() => updateProfile({ backgroundId: r.id })}>
+                  <Pressable key={r.id} onPress={() => updateProfile({ backgroundId: r.id })} style={styles.bgItem}>
                     <Image
                       source={r.backgroundImage}
                       style={[styles.bgThumb, selected && styles.bgThumbSelected]}
                       contentFit="cover"
                     />
+                    {/* Sized box around the label — a bare auto-shrinking Text measures
+                        against an unbounded width in a row and picks an arbitrary size. */}
+                    <View style={styles.bgNameBox}>
+                      <FitText style={[styles.charName, selected && styles.bgNameSelected]}>
+                        {roomLabel(r)}
+                      </FitText>
+                    </View>
                   </Pressable>
                 );
               })}
@@ -514,6 +537,10 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   },
   bdaySaveBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 * s },
   bgRow: { gap: 10 * s, paddingVertical: 2 * s },
+  // Column: the background thumbnail with its name underneath.
+  bgItem: { alignItems: 'center', gap: 4 * s, width: 84 * s },
+  bgNameBox: { width: 84 * s, height: 30 * s, justifyContent: 'center' },
+  bgNameSelected: { color: P.pink },
   bgThumb: { width: 84 * s, height: 60 * s, borderRadius: 12 * s, borderWidth: 2, borderColor: '#fff' },
   bgThumbSelected: { borderColor: P.pink, borderWidth: 3 },
   charItem: { alignItems: 'center', gap: 4 * s, width: 72 * s },
@@ -530,7 +557,10 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   },
   charThumbSelected: { borderColor: P.pink, borderWidth: 3 },
   charThumb: { width: '132%', height: '132%', marginTop: -4 },
-  charName: { fontSize: 11 * s, fontWeight: '700', color: P.cocoa },
+  // Sized box so the name wraps/shrinks to fit instead of truncating (it used to
+  // clip: "Strawberr...").
+  charNameBox: { width: 72 * s, height: 30 * s, justifyContent: 'center' },
+  charName: { fontSize: 11 * s, fontWeight: '700', color: P.cocoa, textAlign: 'center' },
   bgHint: { fontSize: 11.5 * s, color: P.muted, lineHeight: 16 * s },
   // Frame swatches — paddingTop leaves room for the crown/ears overhang so it
   // isn't clipped by the horizontal scroller.

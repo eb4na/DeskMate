@@ -693,15 +693,17 @@ export const MAX_EXAMS = 50;
 export const MAX_TASKS = 1000;
 const STREAK_MAX = 200; // study-day streak caps here
 
-// How long a lapsed streak stays rescuable, measured as the gap since lastStudyDate
-// (daysBetween, account timezone). gap 1 = studied yesterday, still alive and needing no
-// rescue; gap 2 = one missed day, the FIRST day the rescue is offered; gap 31 = 30 missed
-// days, the LAST day it's offered. So the player gets exactly 30 days to come back and
-// spend a freeze. Every gate — the engine, the on-open prompt, the session-complete
-// prompt, the Progress banner — reads these, so they can never drift apart again.
-export const STREAK_RESCUE_MIN_GAP = 2;
+// Streak windows, measured as the gap since lastStudyDate (daysBetween, account timezone).
+// Grace: the player has STREAK_GRACE_DAYS days to come back, free — gap 1–3 (up to two
+// missed days) just continues the streak, no freeze and no prompt. gap 4 = three missed
+// days, the FIRST day a freeze is needed; gap 31 is the LAST day one can still save it.
+// The rescue is only offered to a player who already owns a freeze (it's never sold at
+// the miss moment). Every gate — the engine, the on-open prompt, the session-complete
+// prompt, the streak screen — reads these, so they can never drift apart again.
+export const STREAK_GRACE_DAYS = 3;
+export const STREAK_RESCUE_MIN_GAP = STREAK_GRACE_DAYS + 1;
 export const STREAK_RESCUE_MAX_GAP = 31;
-export const STREAK_RESCUE_DAYS = STREAK_RESCUE_MAX_GAP - STREAK_RESCUE_MIN_GAP + 1; // 30
+export const STREAK_RESCUE_DAYS = STREAK_RESCUE_MAX_GAP - STREAK_RESCUE_MIN_GAP + 1; // 28
 
 // Whole-day difference between two YYYY-MM-DD strings via pure UTC calendar math
 // (timezone/DST independent). Single source of truth for streak day-counting — the
@@ -715,10 +717,10 @@ export function daysBetween(a: string, b: string): number {
 
 // Pure streak transition for a study completion on `today`. `changed` is false when
 // the day already counts (so callers can leave state untouched and award no bonus).
-// `next` is both the new streak number and the coin bonus for the day. When `rescue`
-// is set and the gap is within the freeze window (STREAK_RESCUE_DAYS days to act,
-// counting from the first missed day), the streak is bridged and continued (consuming a
-// freeze) instead of resetting.
+// `next` is both the new streak number and the coin bonus for the day. Coming back within
+// the grace window (STREAK_GRACE_DAYS) continues the streak for free. Past that, when
+// `rescue` is set and the gap is still inside the freeze window, the streak is bridged
+// and continued (consuming a freeze) instead of resetting.
 function nextStreakState(
   st: StreakData,
   today: string,
@@ -727,7 +729,7 @@ function nextStreakState(
   if (!st.lastStudyDate) return { changed: true, next: 1, isComeback: false, useFreeze: false };
   const diff = daysBetween(st.lastStudyDate, today);
   if (diff === 0) return { changed: false, next: st.currentStreak, isComeback: false, useFreeze: false };
-  if (diff === 1) {
+  if (diff <= STREAK_GRACE_DAYS) {
     return { changed: true, next: Math.min(STREAK_MAX, st.currentStreak + 1), isComeback: false, useFreeze: false };
   }
   if (rescue && diff <= STREAK_RESCUE_MAX_GAP) {
@@ -738,24 +740,23 @@ function nextStreakState(
   return { changed: true, next: 1, isComeback: true, useFreeze: false };
 }
 
-// True when a lapsed streak can STILL be rescued: the gap since last activity is inside
-// the freeze window (STREAK_RESCUE_DAYS days to act, counting from the first missed day).
-// A streak already given up via declineStreakRescue has currentStreak 0 and is NOT
-// rescuable — that guard is what stops a declined prompt reappearing tomorrow, since the
-// dismissed-date stamp alone only suppresses it for the day.
-// Rescue is possible for ANY user here — they can
-// use an owned freeze OR buy one on the spot (freezes are no longer Plus-only to use),
-// so this depends only on the gap, not on Plus or current inventory. The login reward
-// + home streak display consult it so neither shows nor commits a reset for a streak
-// the rescue prompt can still save — without it, claiming the daily reward (or the
-// login flow advancing the streak) before rescuing would silently kill the streak.
+// True when a lapsed streak can STILL be rescued: the grace window has passed, the gap is
+// inside the freeze window, and the player OWNS a freeze (anyone may use one — not
+// Plus-gated — but it's never sold at the miss moment, so no freeze = no rescue and the
+// streak simply resets). A streak already given up via declineStreakRescue has
+// currentStreak 0 and is NOT rescuable — that guard is what stops a declined prompt
+// reappearing tomorrow, since the dismissed-date stamp alone only suppresses it for the day.
+// The login reward + home streak display consult it so neither shows nor commits a reset
+// for a streak the rescue prompt can still save — without it, claiming the daily reward
+// (or the login flow advancing the streak) before rescuing would silently kill the streak.
 export function streakRescueAvailable(
-  s: { streak: StreakData },
+  s: { streak: StreakData; streakFreezes: number },
   today: string,
 ): boolean {
   const last = s.streak.lastStudyDate;
   if (!last) return false;
   if (s.streak.currentStreak <= 0) return false;
+  if (s.streakFreezes <= 0) return false;
   const gap = daysBetween(last, today);
   return gap >= STREAK_RESCUE_MIN_GAP && gap <= STREAK_RESCUE_MAX_GAP;
 }
@@ -767,7 +768,7 @@ export function streakRescueAvailable(
 // dismissed date is stamped to today → pending goes false → the streak reverts to its
 // normal projection (a decline resets it on the next claim/study; a rescue continues it).
 export function streakRescuePending(
-  s: { streak: StreakData; streakRescueDismissedDate: string },
+  s: { streak: StreakData; streakFreezes: number; streakRescueDismissedDate: string },
   today: string,
 ): boolean {
   return streakRescueAvailable(s, today) && s.streakRescueDismissedDate !== today;
@@ -794,7 +795,7 @@ export function nextLoginReward(
   // instead of the day-1 projection, leaving the decision to the rescue prompt. Once
   // it's resolved (dismissedDate stamped), fall back to the normal projection so a
   // declined streak resets on claim (matches claimLoginReward).
-  const pending = streakRescuePending({ streak: s.streak, streakRescueDismissedDate: s.streakRescueDismissedDate ?? '' }, today);
+  const pending = streakRescuePending({ streak: s.streak, streakFreezes: s.streakFreezes, streakRescueDismissedDate: s.streakRescueDismissedDate ?? '' }, today);
   const day = pending ? s.streak.currentStreak : nextStreakState(s.streak, today).next;
   const baseCoins = dailyRewardCoins(day);
   return { available: s.loginRewardDate !== today, day, baseCoins, coins: s.isPlus ? baseCoins * 2 : baseCoins };
@@ -1361,8 +1362,6 @@ type AppContextType = {
   // Wave 4 actions
   setIsPlus: (value: boolean, plan?: 'monthly' | 'annual', untilOverride?: string, announce?: boolean) => void;
   useStreakFreeze: () => boolean;
-  // Bridge the streak after buying a freeze on the spot (net-zero inventory).
-  rescueStreakByPurchase: () => boolean;
   // Mark today's on-open rescue prompt handled so it doesn't reshow.
   dismissStreakRescue: () => void;
   declineStreakRescue: () => void;
@@ -1597,10 +1596,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [appStateScope]);
 
-  // Streak-protection nudges: if the player doesn't OPEN the app on a given day, send
-  // up to 2 spaced-out reminders that day to come back before their streak resets at
-  // midnight. Resynced on launch AND every foreground — each open reschedules for the
-  // next few days only (never today, since opening = they've shown up), so a nudge
+  // Streak-protection nudges: if the player doesn't OPEN the app on a day inside the
+  // grace window, remind them to come back, with a "last call" on the final day before
+  // that midnight resets the streak. Resynced on launch AND every foreground — each open
+  // reschedules for the grace days only (never today, since opening = they've shown up), so a nudge
   // only ever fires on a day with no app open. Gated on having a streak to protect +
   // finished onboarding; read through a ref so foregrounds use the latest state/lang
   // without re-subscribing. Permission is never *requested* here (see notifications.ts).
@@ -1625,6 +1624,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const sync = () => {
       void syncStreakReminders({
         enabled: streakNudgeEnabledRef.current,
+        graceDays: STREAK_GRACE_DAYS,
         title: i18n.t('notifications.streakTitle'),
         afternoonBody: i18n.t('notifications.streakAfternoonBody'),
         eveningBody: i18n.t('notifications.streakEveningBody'),
@@ -2104,8 +2104,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
 
   // Streak counts STUDY days only (called from session-complete). Each study day
-  // rewards coins equal to the new streak number (1, 2, 3, … up to 200). Missing a
-  // day resets the streak — today becomes day 1 again.
+  // rewards coins equal to the new streak number (1, 2, 3, … up to 200). Staying away
+  // longer than the grace window resets the streak — today becomes day 1 again.
   // Pass `rescueWithFreeze` when the user opted to spend a freeze to keep a streak
   // that lapsed inside the rescue window (the session-complete "keep your streak?" prompt).
   const updateStreak = (
@@ -2441,10 +2441,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // Streak lapsed inside the rescue window and the user owns a freeze → ask whether to
     // spend one (same guard the receipt used). Otherwise commit straight through.
-    const last = s.streak.lastStudyDate;
-    const gap = last ? daysBetween(last, todayISO()) : 0;
-    const canRescue = gap >= STREAK_RESCUE_MIN_GAP && gap <= STREAK_RESCUE_MAX_GAP && s.streakFreezes > 0 && streakRescuePending(s, todayISO());
-    if (canRescue) {
+    // streakRescuePending already covers the window, the owned freeze, and today's dismissal.
+    if (streakRescuePending(s, todayISO())) {
       showPopup(
         i18n.t('sessionComplete.rescueStreakQ'),
         i18n.t('sessionComplete.rescueStreakMsg', { count: s.streak.currentStreak }),
@@ -2538,13 +2536,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // top of freezes they already own. A confirmation popup shows only when this
       // actually grants (so the launch-time entitlement re-sync can't spam it).
       if (value && (!prev.streakFreezeResetMonth || prev.streakFreezeResetMonth < month)) {
-        updates.streakFreezes = prev.streakFreezes + 3;
+        const grantedFreezes = prev.streakFreezes + 3;
+        updates.streakFreezes = grantedFreezes;
         updates.streakFreezeResetMonth = month;
-        // If their streak lapsed and today's rescue prompt was already dismissed
-        // (e.g. they had no freeze to use, then went and bought Plus), un-dismiss
-        // it so the Home rescue re-offers — the new freezes can save the streak
-        // the same day.
-        if (streakRescueAvailable({ streak: prev.streak }, today) && prev.streakRescueDismissedDate === today) {
+        // If their streak lapsed and today's rescue prompt was already dismissed, un-dismiss
+        // it so the Home rescue re-offers — the new freezes can save the streak the same
+        // day. Checked against the GRANTED count: with no freeze there is no rescue at all.
+        if (streakRescueAvailable({ streak: prev.streak, streakFreezes: grantedFreezes }, today) && prev.streakRescueDismissedDate === today) {
           updates.streakRescueDismissedDate = '';
         }
       }
@@ -2584,8 +2582,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // A freeze rescues a streak for STREAK_RESCUE_DAYS days after the first missed day
-  // (daysBetween STREAK_RESCUE_MIN_GAP…MAX_GAP). One freeze bridges the whole gap to
+  // Once the free grace window has passed, a freeze rescues a streak for STREAK_RESCUE_DAYS
+  // days (daysBetween STREAK_RESCUE_MIN_GAP…MAX_GAP). One freeze bridges the whole gap to
   // yesterday — flat cost, however long the gap — so studying today continues the streak.
   const canFreezeGap = (gap: number) =>
     gap >= STREAK_RESCUE_MIN_GAP && gap <= STREAK_RESCUE_MAX_GAP;
@@ -2609,40 +2607,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
-  // Rescue the streak after buying a freeze on the spot (the on-open rescue prompt's
-  // "Buy a freeze" path). The purchase and the spend cancel out — net-zero inventory —
-  // so we bridge the gap directly instead of add-then-consume (which would hit a stale
-  // `streakFreezes` read across two setS calls). Window-checked like useStreakFreeze.
-  const rescueStreakByPurchase = (): boolean => {
-    const { lastStudyDate } = s.streak;
-    if (!lastStudyDate || !canFreezeGap(daysBetween(lastStudyDate, todayISO()))) return false;
-    setS((prev) => {
-      const { lastStudyDate: last } = prev.streak;
-      if (!last || !canFreezeGap(daysBetween(last, todayISO()))) return prev;
-      return {
-        ...prev,
-        // Bridge exactly one missed day; freezes unchanged (bought one, spent it).
-        streak: { ...prev.streak, lastStudyDate: yesterdayISO() },
-        streakRescueDismissedDate: todayISO(),
-      };
-    });
-    return true;
-  };
-
   // Mark the on-open streak-rescue prompt handled for today so it doesn't reshow (used
-  // when the player picks "Let it reset", or after a successful use/purchase rescue).
+  // when the player picks "Let it reset", or after a successful freeze rescue).
   const dismissStreakRescue = () =>
     setS((prev) => ({ ...prev, streakRescueDismissedDate: todayISO() }));
 
   // "Let it reset" — the player deliberately gave the streak up. Commit that NOW rather
   // than leaving it to the next login-reward claim, because the dismissed-date stamp only
-  // suppresses the prompt for today: over the 30-day rescue window, declining and then
+  // suppresses the prompt for today: over the month-long rescue window, declining and then
   // quitting before claiming would pop the prompt again tomorrow with the Home chip
   // bouncing N → 1 → N. Zeroing currentStreak is what makes streakRescueAvailable go
   // false for good. lastStudyDate is deliberately left alone (study-buddy sync mirrors
   // it), and longestStreak is untouched so streak achievements keep their record.
   // The value is transient: the daily-reward claim that follows sees the old lastStudyDate
-  // at a gap >= 2, so it commits currentStreak 1 and pays day 1 — today still counts as
+  // past the grace window, so it commits currentStreak 1 and pays day 1 — today still counts as
   // day 1 of a fresh streak, exactly as before this window change.
   const declineStreakRescue = () =>
     setS((prev) => ({
@@ -2913,9 +2891,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setBondLevelUp({ companionId: id, level: companionLevelInfo(mins).level + 1 });
   };
 
-  // DEV-only: simulate a streak that lapsed one full day (gap = 2, the freeze window)
-  // and hand the player a freeze, so the on-open "Use streak freeze" rescue prompt fires
-  // next time Home renders. Lets us verify the rescue flow without waiting 2 real days.
+  // DEV-only: simulate a streak that lapsed past the grace window (gap = MIN_GAP, the
+  // first freeze day) and hand the player a freeze, so the on-open "Use streak freeze"
+  // rescue prompt fires next time Home renders — it only shows to freeze owners.
   // `daysAgo` is the gap to fake (daysBetween lastStudyDate → today), so the caller can
   // land on any point of the rescue window: MIN_GAP = the first offered day, MAX_GAP = the
   // last, MAX_GAP + 1 = just expired. Defaults to the first offered day.
@@ -3454,7 +3432,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         markMailRead,
         setIsPlus,
         useStreakFreeze,
-        rescueStreakByPurchase,
         dismissStreakRescue,
         declineStreakRescue,
         saveTimerPreset,

@@ -404,9 +404,7 @@
   },
   "streakRescue": {
     "title": "¿Salvar tu racha?",
-    "msgUse": "Te saltaste algunos días. ¿Usar una congelación de racha para mantener tu racha de {{count}} días?",
-    "msgBuy": "Te saltaste algunos días. ¿Comprar una congelación de racha para mantener tu racha de {{count}} días?",
-    "buyButton": "Comprar congelación · {{price}}"
+    "msgUse": "Te saltaste algunos días. ¿Usar una congelación de racha para mantener tu racha de {{count}} días?"
   },
   "sessionComplete": {
     "title": "¡Sesión completa!",
@@ -514,12 +512,11 @@
     "streakFreeze": "Congelar racha",
     "freezesRemaining": "Tienes {{count}}",
     "useFreezeQ": "¿Usar congelar racha?",
-    "useFreezeMsg": "Esto rescata tu racha tras un día perdido para que continúe cuando estudies hoy. Una congelación cubre todo el hueco. No se otorgan monedas.",
+    "useFreezeMsg": "Esto rescata tu racha tras los días perdidos para que continúe cuando estudies hoy. Una congelación cubre todo el hueco. No se otorgan monedas.",
     "useFreeze": "Usar congelación",
     "use": "Usar",
     "streakProtected": "¡Racha protegida!",
     "streakSafe": "Tu racha está a salvo.",
-    "noFreezesLeft": "No quedan congelaciones este mes. Se restablecen el día 1.",
     "freezeCoversOne": "Una congelación rescata tu racha dentro de los 3 días tras faltar. Después, completa una sesión para empezar una nueva racha.",
     "previousStreak": "Racha anterior",
     "streakAtRisk": "En pausa: usa una congelación para mantenerla.",
@@ -622,7 +619,7 @@
     "coinsAdded": "¡+{{coins}} monedas añadidas!",
     "mockComplete": "Compra simulada completada.",
     "streakFreezeName": "Congelar racha",
-    "streakFreezeDesc": "Protege tu racha cuando te saltas un día.",
+    "streakFreezeDesc": "Protege tu racha si no vuelves en 3 días.",
     "freezeOwned": "{{count}} en propiedad",
     "freezeAdded": "¡Congelación de racha añadida!",
     "plusAlreadyHaveSound": "Ya lo tienes gratis con Premium: cómpralo para conservarlo para siempre.",

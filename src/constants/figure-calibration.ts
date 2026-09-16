@@ -16,7 +16,7 @@ export const FIGURE_METRICS: Record<string, { fill: number; pad: number }> = {
   'companion_cocoa/demon': { fill: 0.8892, pad: 0.0606 },
   'companion_cocoa/relax': { fill: 0.8349, pad: 0.0606 },
   'companion_honey/champion': { fill: 0.8325, pad: 0.0255 },
-  'companion_honey/classic': { fill: 0.9537, pad: 0.0255 },
+  'companion_honey/classic': { fill: 0.9593, pad: 0.0239 },
   'companion_honey/zzz': { fill: 0.9107, pad: 0.0263 },
   'companion_tira/afternoontrain': { fill: 0.7536, pad: 0.0510 },
   'companion_tira/chocomint': { fill: 0.8796, pad: 0.0494 },

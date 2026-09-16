@@ -404,9 +404,7 @@
   },
   "streakRescue": {
     "title": "Save your streak?",
-    "msgUse": "You missed a few days. Use a Streak Freeze to keep your {{count}}-day streak going?",
-    "msgBuy": "You missed a few days. Buy a Streak Freeze to keep your {{count}}-day streak going?",
-    "buyButton": "Buy a freeze · {{price}}"
+    "msgUse": "You missed a few days. Use a Streak Freeze to keep your {{count}}-day streak going?"
   },
   "sessionComplete": {
     "title": "Session Complete!",
@@ -514,12 +512,11 @@
     "streakFreeze": "Streak Freeze",
     "freezesRemaining": "You have {{count}}",
     "useFreezeQ": "Use Streak Freeze?",
-    "useFreezeMsg": "This rescues your streak after a missed day so it continues when you study today. One freeze covers the whole gap. No coins are awarded.",
+    "useFreezeMsg": "This rescues your streak after the days you missed so it continues when you study today. One freeze covers the whole gap. No coins are awarded.",
     "useFreeze": "Use Freeze",
     "use": "Use",
     "streakProtected": "Streak protected!",
     "streakSafe": "Your streak is safe.",
-    "noFreezesLeft": "No freezes left this month. They reset on the 1st.",
     "freezeCoversOne": "A freeze rescues your streak within 3 days of missing. After that, finish a session to start a new streak.",
     "previousStreak": "Previous streak",
     "streakAtRisk": "Paused — use a freeze to keep it.",
@@ -622,7 +619,7 @@
     "coinsAdded": "+{{coins}} coins added!",
     "mockComplete": "Mock purchase complete.",
     "streakFreezeName": "Streak Freeze",
-    "streakFreezeDesc": "Saves your streak when you miss a day.",
+    "streakFreezeDesc": "Saves your streak if you don't come back within 3 days.",
     "freezeOwned": "{{count}} owned",
     "freezeAdded": "Streak freeze added!",
     "plusAlreadyHaveSound": "You already have this free with Plus — buy to keep it forever.",

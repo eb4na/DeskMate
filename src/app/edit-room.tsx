@@ -6,6 +6,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinAmount, CoinIcon } from '@/components/coin-icon';
+import { FitText } from '@/components/fit-text';
 import { LockOverlay } from '@/components/lock-badge';
 import { ThemedView } from '@/components/themed-view';
 import { useApp } from '@/context/app-context';
@@ -171,11 +172,19 @@ export default function EditRoomScreen() {
     onPress: () => void;
     onLocked: () => void;
   }) => (
-    <Pressable
-      style={[styles.thumb, active && styles.thumbActive, !owned && styles.thumbLocked]}
-      onPress={owned ? onPress : onLocked}>
-      <Image source={image} style={styles.thumbImg} contentFit="cover" />
-      {!owned && <LockOverlay size={Math.round(20 * scale)} radius={Math.round(10 * scale)} />}
+    <Pressable style={styles.thumbSlot} onPress={owned ? onPress : onLocked}>
+      <View style={[styles.thumb, active && styles.thumbActive, !owned && styles.thumbLocked]}>
+        <Image source={image} style={styles.thumbImg} contentFit="cover" />
+        {!owned && <LockOverlay size={Math.round(20 * scale)} radius={Math.round(10 * scale)} />}
+      </View>
+      {/* Fixed box around the label: a bare auto-shrinking Text measures against an
+          unbounded width here and picks an arbitrary size (one name spilled past the
+          thumb, the next rendered tiny). A sized View gives it a real box to fit. */}
+      <View style={styles.thumbNameBox}>
+        <FitText style={[styles.thumbName, active && styles.thumbNameActive, !owned && styles.thumbLocked]}>
+          {roomLabel(room, itemId)}
+        </FitText>
+      </View>
     </Pressable>
   );
 
@@ -436,6 +445,8 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   previewNameText: { fontSize: 13 * s, fontWeight: '800', color: P.brown },
 
   // ── Strip thumbnails ────────────────────────────────────────────────────
+  // Column: the thumbnail with its room name underneath.
+  thumbSlot: { width: 56 * s, alignItems: 'center', gap: 4 * s },
   thumb: {
     width: 56 * s, height: 56 * s, borderRadius: 12 * s, overflow: 'hidden',
     borderWidth: 2, borderColor: 'transparent', backgroundColor: P.pinkSoft,
@@ -493,7 +504,13 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   infoMessage: { fontSize: 14 * s, fontWeight: '600', color: P.mutedBrown, textAlign: 'center', lineHeight: 20 * s },
   infoOkBtn: { backgroundColor: P.pink, borderRadius: 18 * s, paddingVertical: Spacing.three * s, alignItems: 'center' },
   infoOkText: { color: '#FFF', fontSize: 16 * s, fontWeight: '800' },
-  thumbName: { fontSize: 13 * s, fontWeight: '800', color: P.brown },
+  // Explicit width AND height: the width is what the auto-shrink measures against (a
+  // bare label measures unbounded and picks an arbitrary scale), and the height needs
+  // slack for two lines — with a tight box the shrink squeezes a longer name onto one
+  // tiny line instead of wrapping it at full size.
+  thumbNameBox: { width: 56 * s, height: 32 * s, justifyContent: 'center' },
+  thumbName: { fontSize: 11 * s, fontWeight: '700', color: P.mutedBrown, textAlign: 'center' },
+  thumbNameActive: { color: P.jam },
   activePill: {
     backgroundColor: '#DCF3EF', borderRadius: 999, paddingHorizontal: 12 * s, paddingVertical: 4 * s,
     borderWidth: 1.5, borderColor: '#7FCFC4',

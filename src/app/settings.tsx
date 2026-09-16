@@ -148,6 +148,8 @@ export default function SettingsScreen() {
     use24HourTime,
     setUse24HourTime,
     soundEffectsEnabled,
+    weekStartsMonday,
+    setWeekStartsMonday,
     notifTasks,
     notifStreak,
     notifExams,
@@ -634,6 +636,35 @@ export default function SettingsScreen() {
               <Switch
                 value={notifStreak}
                 onValueChange={setNotifStreak}
+                trackColor={{ true: BakeryColors.jam, false: BakeryColors.shortbread }}
+                thumbColor="#FFF"
+              />
+            </View>
+          </ThemedView>
+
+          {/* Preferences — display choices, NOT reminders. These three sat inside
+              the Reminders group, so a section about notifications also decided the
+              clock format and the button sounds. */}
+          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
+            {t('settings.secPreferences')}
+          </ThemedText>
+          <ThemedView type="backgroundElement" style={styles.group}>
+            {/* Display only: this moves the CALENDAR grid. The Progress tab's week is
+                already Monday-based and is deliberately left alone, since shifting it
+                would move streak-adjacent week maths. */}
+            <View style={styles.row}>
+              <View style={styles.rowIconImage}>
+                <SettingsIcon name="calendar" />
+              </View>
+              <View style={styles.rowBody}>
+                <ThemedText type="smallBold">{t('settings.weekStartsMonday')}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {weekStartsMonday ? t('settings.weekStartsMondayOn') : t('settings.off')}
+                </ThemedText>
+              </View>
+              <Switch
+                value={weekStartsMonday}
+                onValueChange={setWeekStartsMonday}
                 trackColor={{ true: BakeryColors.jam, false: BakeryColors.shortbread }}
                 thumbColor="#FFF"
               />

@@ -18,6 +18,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { CoinIcon } from '@/components/coin-icon';
 import { DevKnobs, type Knob } from '@/components/dev-knobs';
+import { FitText } from '@/components/fit-text';
 import { LockOverlay } from '@/components/lock-badge';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { ThemedView } from '@/components/themed-view';
@@ -183,10 +184,12 @@ function GalleryContent() {
   // Matched-room buy popup: purchase an outfit's paired room (background + desk,
   // plus the outfit itself if it's still locked) right here, instead of jumping
   // to the Shop. All chain-link-reachable rooms are plain coin items.
-  const [pairBuy, setPairBuy] = useState<{ pair: RoomPair; skin: BunSkin } | null>(null);
+  // `ownerId` is who wears the outfit — the chain badge fires from the preview card
+  // as well as the wardrobe sheet, so the target can't be read off `wardrobeFor`.
+  const [pairBuy, setPairBuy] = useState<{ pair: RoomPair; skin: BunSkin; ownerId: string } | null>(null);
   // Confirm-before-equip for an already-owned matched room: preview the room
   // (background + desk if it has one) and let the player confirm.
-  const [pairConfirm, setPairConfirm] = useState<{ pair: RoomPair; skin: BunSkin } | null>(null);
+  const [pairConfirm, setPairConfirm] = useState<{ pair: RoomPair; skin: BunSkin; ownerId: string } | null>(null);
   // Outfit lore popup.
   const [lorePopup, setLorePopup] = useState<{ name: string; text: string } | null>(null);
   // Report this screen's native <Modal>s (buy / pair-buy / pair-confirm / lore / Plus
@@ -236,32 +239,40 @@ function GalleryContent() {
       return;
     }
     for (const it of pairNeedItems) purchaseShopItem(it.id, Math.floor(it.price * buyDiscount));
-    const { pair, skin } = pairBuy;
+    const { pair, skin, ownerId } = pairBuy;
     setEquippedBackground(pair.id);
     // Deskless scene rooms keep the player's current desk (see equipMatchedRoom).
     if (pair.deskId) setEquippedDesk(pair.id);
-    equipWardrobeSkin(skin.id);
+    wearSkin(ownerId, skin.id);
     // Drop back home so the new room + outfit are visible (matches character-equip).
     // The buy modal sits on TOP of the still-open wardrobe sheet (itself atop the gallery
     // native modal); finishMatchedRoomEquip tears all three down deterministically so the
     // gallery never dismisses while the wardrobe is still transitioning (iOS freeze).
     finishMatchedRoomEquip(() => setPairBuy(null));
   };
-  const wardrobeIsBun = wardrobeFor?.id === getStarterActiveId('girl');
-  // Skins for the open wardrobe (Bun uses its own list; shop companions use COMPANION_SKINS).
+  // Wardrobe reads/writes are keyed by companion id rather than by the open sheet, so
+  // the outfit row on the preview card (and the card's chain badge) can drive them with
+  // no sheet open — reading `wardrobeFor` directly made those paths silently no-op.
+  const isBunId = (id: string) => id === getStarterActiveId('girl');
   // Shown cheapest -> most expensive; base/owned skins (no shop item) count as 0 and sort
   // first. Sort a copy so the source lists keep their data order.
   const skinPrice = (skin: { shopItemId?: string | null }) =>
     skin.shopItemId ? (getShopItem(skin.shopItemId)?.price ?? 0) : 0;
-  const wardrobeSkins = wardrobeFor
-    ? [...(wardrobeIsBun ? BUN_SKINS : getCompanionSkins(wardrobeFor.id))].sort((a, b) => skinPrice(a) - skinPrice(b))
-    : [];
-  const wardrobeEquipped = wardrobeIsBun
-    ? (bunSkinId ?? 'classic')
-    : (wardrobeFor ? (companionSkins[wardrobeFor.id] ?? 'classic') : 'classic');
+  // Bun has its own skin list; shop companions use COMPANION_SKINS.
+  const skinsFor = (id: string) =>
+    [...(isBunId(id) ? BUN_SKINS : getCompanionSkins(id))].sort((a, b) => skinPrice(a) - skinPrice(b));
+  const wornSkinId = (id: string) => (isBunId(id) ? (bunSkinId ?? 'classic') : (companionSkins[id] ?? 'classic'));
+  const wearSkin = (id: string, skinId: string) => {
+    if (isBunId(id)) setBunSkin(skinId);
+    else setCompanionSkin(id, skinId);
+  };
+  const skinIsOwned = (skin: { shopItemId?: string | null }) =>
+    !skin.shopItemId || ownedShopItems.includes(skin.shopItemId);
+
+  const wardrobeSkins = wardrobeFor ? skinsFor(wardrobeFor.id) : [];
+  const wardrobeEquipped = wardrobeFor ? wornSkinId(wardrobeFor.id) : 'classic';
   const equipWardrobeSkin = (skinId: string) => {
-    if (wardrobeIsBun) setBunSkin(skinId);
-    else if (wardrobeFor) setCompanionSkin(wardrobeFor.id, skinId);
+    if (wardrobeFor) wearSkin(wardrobeFor.id, skinId);
   };
 
   // The chain icon: set the outfit's matched room (background + desk) and wear the
@@ -269,35 +280,32 @@ function GalleryContent() {
   // in-place buy popup (an in-file <Modal>, which presents fine over this native-
   // modal screen) so the player can purchase the whole look without leaving for
   // the Shop.
-  const equipMatchedRoom = (skin: BunSkin) => {
+  const equipMatchedRoom = (skin: BunSkin, ownerId: string) => {
     const pair = roomById(skin.roomId);
     if (!pair) return;
     // The whole look is owned only when the room AND the outfit are owned.
-    const lookOwned = isPairOwned(pair, ownedShopItems) && (!skin.shopItemId || ownedShopItems.includes(skin.shopItemId));
+    const lookOwned = isPairOwned(pair, ownedShopItems) && skinIsOwned(skin);
     if (!lookOwned) {
       // Buy the whole look (room + outfit) in place — the pair-buy popup presents
       // fine over this screen, unlike a navigation to the Shop mid-modal (freeze).
-      setPairBuy({ pair, skin });
+      setPairBuy({ pair, skin, ownerId });
       return;
     }
     // Fully owned — preview the room (and its desk, if any) and confirm before applying.
-    setPairConfirm({ pair, skin });
+    setPairConfirm({ pair, skin, ownerId });
   };
 
   // Apply the previewed matched room after the player confirms.
   const confirmPairEquip = () => {
     if (!pairConfirm) return;
-    const { pair, skin } = pairConfirm;
+    const { pair, skin, ownerId } = pairConfirm;
     setEquippedBackground(pair.id);
     // A matched room can be a full scene with no desk surface (deskId null).
     // Don't switch the player onto a deskless room — keep whatever desk
     // they're currently using; only swap the desk when the room actually has one.
     if (pair.deskId) setEquippedDesk(pair.id);
     // Wear the outfit too — but only if it's unlocked (a locked skin can't be worn).
-    const skinLocked = !!skin.shopItemId && !ownedShopItems.includes(skin.shopItemId);
-    // Must run before the closes below — equipWardrobeSkin reads the current-render
-    // `wardrobeFor`, and the deferred setWardrobeFor(null) would otherwise starve it.
-    if (!skinLocked) equipWardrobeSkin(skin.id);
+    if (skinIsOwned(skin)) wearSkin(ownerId, skin.id);
     // Deterministic teardown of confirm → wardrobe → navigate (see finishMatchedRoomEquip).
     finishMatchedRoomEquip(() => setPairConfirm(null));
   };
@@ -420,6 +428,13 @@ function GalleryContent() {
     obtainedCharacters.find((c) => c.isActive) ??
     obtainedCharacters[0];
 
+  // Outfits the previewed companion already owns — the row above their art, so you can
+  // change clothes while looking at them instead of going through the wardrobe sheet.
+  // Locked/buyable outfits stay behind the hanger button; this row only switches between
+  // ones you have, so it appears only when there's actually a choice to make.
+  const previewSkins = preview && !preview.isGenerated ? skinsFor(preview.id).filter(skinIsOwned) : [];
+  const previewWornSkin = preview ? wornSkinId(preview.id) : 'classic';
+
   return (
     <>
     <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: P.cream }}>
@@ -457,11 +472,40 @@ function GalleryContent() {
             {preview.currentSkin && roomById(preview.currentSkin.roomId) && (
               <Pressable
                 style={({ pressed }) => [styles.linkBadge, pressed && styles.pressed]}
-                onPress={() => equipMatchedRoom(preview.currentSkin!)}
+                onPress={() => equipMatchedRoom(preview.currentSkin!, preview.id)}
                 hitSlop={8}>
                 <ChainLinkIcon color="#FFFFFF" size={15 * scale} />
               </Pressable>
             )}
+            {/* Owned outfits, above the companion. Tapping one dresses them right here —
+                the big art below is already skin-aware, so the change is immediate. */}
+            {previewSkins.length > 1 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.outfitRow}
+                contentContainerStyle={styles.outfitRowContent}>
+                {previewSkins.map((skin) => {
+                  const worn = previewWornSkin === skin.id;
+                  return (
+                    <Pressable
+                      key={skin.id}
+                      style={({ pressed }) => [styles.outfitSlot, pressed && styles.pressed]}
+                      onPress={() => wearSkin(preview.id, skin.id)}>
+                      <View style={[styles.outfitChip, worn && styles.outfitChipActive]}>
+                        <Image source={skin.image} style={styles.outfitChipImg} contentFit="contain" />
+                      </View>
+                      <View style={styles.outfitChipNameBox}>
+                        <FitText style={[styles.outfitChipName, worn && styles.outfitChipNameActive]}>
+                          {localizeOutfitName(skin.name, t)}
+                        </FitText>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            )}
+
             <View style={[styles.previewImageWrap, { width: `${tweak.imgSize}%` }]}>
               {preview.image ? (
                 <Image source={preview.image} style={styles.companionImage} contentFit="contain" />
@@ -498,20 +542,30 @@ function GalleryContent() {
             {obtainedCharacters.map((char) => (
               <Pressable
                 key={char.id}
-                style={[
-                  styles.thumb,
-                  { width: tweak.thumbSize * scale, height: tweak.thumbSize * scale },
-                  preview?.id === char.id && styles.thumbActive,
-                ]}
+                style={[styles.thumbSlot, { width: tweak.thumbSize * scale }]}
                 onPress={() => setPreviewId(char.id)}>
-                {char.image ? (
-                  <Image source={char.image} style={styles.thumbImg} contentFit="contain" />
-                ) : (
-                  <View style={styles.companionImagePlaceholder} />
-                )}
-                {/* Marks who's actually active, since the pink border now means
-                    "previewed" rather than "in use". */}
-                {char.isActive && <View style={styles.thumbActiveDot} pointerEvents="none" />}
+                <View
+                  style={[
+                    styles.thumb,
+                    { width: tweak.thumbSize * scale, height: tweak.thumbSize * scale },
+                    preview?.id === char.id && styles.thumbActive,
+                  ]}>
+                  {char.image ? (
+                    <Image source={char.image} style={styles.thumbImg} contentFit="contain" />
+                  ) : (
+                    <View style={styles.companionImagePlaceholder} />
+                  )}
+                  {/* Marks who's actually active, since the pink border now means
+                      "previewed" rather than "in use". */}
+                  {char.isActive && <View style={styles.thumbActiveDot} pointerEvents="none" />}
+                </View>
+                {/* Sized box around the label — a bare auto-shrinking Text measures
+                    against an unbounded width here and spills past the thumbnail. */}
+                <View style={[styles.thumbNameBox, { width: tweak.thumbSize * scale }]}>
+                  <FitText style={[styles.thumbName, preview?.id === char.id && styles.thumbNameActive]}>
+                    {localizeCompanionName(char.name, t)}
+                  </FitText>
+                </View>
               </Pressable>
             ))}
           </ScrollView>
@@ -571,7 +625,7 @@ function GalleryContent() {
                           {hasMatchedRoom && (
                             <Pressable
                               style={({ pressed }) => [styles.linkBadge, pressed && styles.pressed]}
-                              onPress={() => equipMatchedRoom(skin)}
+                              onPress={() => wardrobeFor && equipMatchedRoom(skin, wardrobeFor.id)}
                               hitSlop={8}>
                               <ChainLinkIcon color="#FFFFFF" size={15 * scale} />
                             </Pressable>
@@ -1030,8 +1084,37 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     marginTop: 2 * s,
   },
 
+  // ── Outfit row (above the previewed companion) ──────────────────────────
+  // The hanger and chain badges are absolutely positioned at top: 8 and stand up to
+  // 34pt tall, so the row starts below them rather than under them.
+  outfitRow: { alignSelf: 'stretch', flexGrow: 0, marginTop: 30 * s },
+  outfitRowContent: { gap: Spacing.two * s, paddingHorizontal: 2 * s, alignItems: 'flex-start' },
+  outfitSlot: { width: 58 * s, alignItems: 'center', gap: 3 * s },
+  outfitChip: {
+    width: 58 * s,
+    height: 58 * s,
+    borderRadius: 16 * s,
+    borderWidth: 2,
+    borderColor: P.pinkSoft,
+    backgroundColor: P.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 3 * s,
+    overflow: 'hidden',
+  },
+  outfitChipActive: { borderColor: P.pink, backgroundColor: '#FFF4F6' },
+  outfitChipImg: { width: '100%', height: '100%' },
+  outfitChipNameBox: { width: 58 * s, height: 32 * s, justifyContent: 'center' },
+  outfitChipName: { fontSize: 10 * s, fontWeight: '700', color: P.mutedBrown, textAlign: 'center' },
+  outfitChipNameActive: { color: P.pinkActiveText },
+
   // ── The strip ───────────────────────────────────────────────────────────
   strip: { flexDirection: 'row', gap: Spacing.two * s, paddingRight: Spacing.three * s, paddingTop: 4 * s },
+  // Column: the thumbnail with its name underneath.
+  thumbSlot: { alignItems: 'center', gap: 4 * s },
+  thumbNameBox: { height: 32 * s, justifyContent: 'center' },
+  thumbName: { fontSize: 11 * s, fontWeight: '700', color: P.mutedBrown, textAlign: 'center' },
+  thumbNameActive: { color: P.pinkActiveText },
   thumb: {
     borderRadius: 18 * s,
     borderWidth: 2,

@@ -498,17 +498,16 @@ export async function syncExamReminders(opts: {
 }
 
 const STREAK_REMINDER_KIND = 'streak-reminder';
-// How many upcoming days to pre-schedule streak nudges for. Kept small on purpose:
-// iOS silently caps at 64 pending notifications and drops the overflow, so we must
-// not crowd out task/study reminders. 3 days (×2 = 6 nudges) covers the realistic
-// window. The streak stays rescuable far longer than that (STREAK_RESCUE_DAYS), but we
-// deliberately don't nudge across the whole grace period: this only reschedules on
-// foreground, so someone who stops opening the app gets these 6 and then silence
-// rather than a month of reminders.
-const STREAK_REMINDER_DAYS_AHEAD = 3;
-// Two nudges per un-opened day, spaced far apart but both before midnight (when the
-// streak day rolls over). Device-local hours: early afternoon + late evening.
-const STREAK_REMINDER_HOURS = [13, 21] as const;
+// Nudges are pre-scheduled across the free grace window only (`graceDays`, 3 days → 4
+// nudges). Kept small on purpose: iOS silently caps at 64 pending notifications and drops
+// the overflow, so we must not crowd out task/study reminders. A freeze can save the
+// streak for weeks after that, but we deliberately don't nudge across it: this only
+// reschedules on foreground, so someone who stops opening the app gets these few and
+// then silence rather than a month of reminders.
+// Device-local hours: an early-afternoon nudge on every un-opened grace day, plus a
+// late-evening "last call" on the final one only, since that midnight is the real reset.
+const STREAK_REMINDER_AFTERNOON_HOUR = 13;
+const STREAK_REMINDER_EVENING_HOUR = 21;
 
 // Read-only permission check — NEVER requests. A re-engagement nudge must not trigger
 // a permission prompt; it piggybacks on permission already granted for tasks/reminders.
@@ -526,15 +525,17 @@ async function cancelStreakReminders() {
   );
 }
 
-// Streak-protection nudges: if the player doesn't OPEN the app on a given day, fire up
-// to 2 reminders that day so they come back before their streak resets at midnight.
-// Call on every launch + foreground — it cancels all pending streak nudges and
-// reschedules for the NEXT few days only (never today, since opening the app means
-// they've shown up today). So a nudge only ever fires on a day with no app open, which
-// is exactly "the user hasn't logged in yet". `enabled` is false when there's no streak
-// to protect (or onboarding isn't done); we still cancel so a stale set gets cleared.
+// Streak-protection nudges: if the player doesn't OPEN the app on a given day inside the
+// grace window, remind them to come back; on the window's last day, add a "last call"
+// before that midnight resets the streak. Call on every launch + foreground — it cancels
+// all pending streak nudges and reschedules for the NEXT `graceDays` days only (never
+// today, since opening the app means they've shown up today). So a nudge only ever fires
+// on a day with no app open, which is exactly "the user hasn't logged in yet". `enabled`
+// is false when there's no streak to protect (or onboarding isn't done); we still cancel
+// so a stale set gets cleared.
 export async function syncStreakReminders(opts: {
   enabled: boolean;
+  graceDays: number;
   title: string;
   afternoonBody: string;
   eveningBody: string;
@@ -546,8 +547,11 @@ export async function syncStreakReminders(opts: {
   if (!(await hasNotificationPermission())) return;
 
   const now = Date.now();
-  for (let day = 1; day <= STREAK_REMINDER_DAYS_AHEAD; day += 1) {
-    for (const hour of STREAK_REMINDER_HOURS) {
+  for (let day = 1; day <= opts.graceDays; day += 1) {
+    const hours = day === opts.graceDays
+      ? [STREAK_REMINDER_AFTERNOON_HOUR, STREAK_REMINDER_EVENING_HOUR]
+      : [STREAK_REMINDER_AFTERNOON_HOUR];
+    for (const hour of hours) {
       const when = new Date();
       when.setDate(when.getDate() + day);
       when.setHours(hour, 0, 0, 0);
@@ -555,7 +559,7 @@ export async function syncStreakReminders(opts: {
       await Notifications.scheduleNotificationAsync({
         content: {
           title: opts.title,
-          body: hour >= 18 ? opts.eveningBody : opts.afternoonBody,
+          body: hour === STREAK_REMINDER_EVENING_HOUR ? opts.eveningBody : opts.afternoonBody,
           sound: 'default',
           data: { kind: STREAK_REMINDER_KIND },
         },

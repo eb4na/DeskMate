@@ -17,9 +17,10 @@ import { StreakFreezeIcon } from '@/components/streak-freeze-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import {
+  STREAK_GRACE_DAYS,
   STREAK_RESCUE_MAX_GAP,
-  STREAK_RESCUE_MIN_GAP,
   daysBetween,
+  streakRescueAvailable,
   todayISO,
   useApp,
 } from '@/context/app-context';
@@ -54,10 +55,10 @@ export default function StreakDetailScreen() {
   const dismiss = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   const missed = streak.lastStudyDate ? daysSince(streak.lastStudyDate) : 0;
-  const streakRescuable =
-    missed >= STREAK_RESCUE_MIN_GAP && missed <= STREAK_RESCUE_MAX_GAP && streak.currentStreak > 0;
-  const streakLost =
-    missed > STREAK_RESCUE_MAX_GAP || (missed >= STREAK_RESCUE_MIN_GAP && streak.currentStreak <= 0);
+  // Rescuable only while the player owns a freeze. Without one, a streak past the grace
+  // window is simply lost — matching Home, which already projects it back to day 1.
+  const streakRescuable = streakRescueAvailable({ streak, streakFreezes }, todayISO());
+  const streakLost = missed > STREAK_GRACE_DAYS && !streakRescuable;
   const freezeDaysLeft = STREAK_RESCUE_MAX_GAP - missed + 1;
   const displayStreak = streakLost ? 0 : streak.currentStreak;
 
@@ -123,7 +124,7 @@ export default function StreakDetailScreen() {
                   {t('progress.freezesRemaining', { count: streakFreezes })}
                 </ThemedText>
               </ThemedView>
-              {streakRescuable && streakFreezes > 0 && (
+              {streakRescuable && (
                 <Pressable
                   style={({ pressed }) => [styles.freezeBtn, pressed && styles.pressed]}
                   onPress={confirmFreeze}>
@@ -131,14 +132,9 @@ export default function StreakDetailScreen() {
                 </Pressable>
               )}
             </ThemedView>
-            {streakRescuable && streakFreezes > 0 && (
+            {streakRescuable && (
               <ThemedText type="small" themeColor="textSecondary">
                 {t('progress.freezeDaysLeft', { count: freezeDaysLeft })}
-              </ThemedText>
-            )}
-            {streakRescuable && streakFreezes <= 0 && (
-              <ThemedText type="small" themeColor="textSecondary">
-                {t('progress.noFreezesLeft')}
               </ThemedText>
             )}
           </ThemedView>

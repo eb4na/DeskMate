@@ -35,3 +35,18 @@ export function RemoveIcon({ size = 18 }: IconProps) {
     </Svg>
   );
 }
+
+// ── ≡ Drag handle → sketch grip ───────────────────────────────────────────────
+// Three lines rather than the usual six-dot grip: the rest of this screen is drawn
+// with a pen (sketch arrows, sketch cross), and a dot grid reads as a different,
+// more "system UI" language beside them. The middle line is shortest so the shape
+// still reads as a handle and not as a hamburger menu.
+export function GripIcon({ size = 18 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M6 8 L18 8" stroke={S} strokeWidth="2.4" strokeLinecap="round" />
+      <Path d="M7.5 12 L16.5 12" stroke={S} strokeWidth="2.4" strokeLinecap="round" />
+      <Path d="M6 16 L18 16" stroke={S} strokeWidth="2.4" strokeLinecap="round" />
+    </Svg>
+  );
+}

@@ -4,6 +4,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { FitText } from '@/components/fit-text';
 import { useApp } from '@/context/app-context';
 import { useIsTablet } from '@/hooks/use-device-class';
 import { useTranslation } from '@/i18n';
@@ -200,24 +201,34 @@ export default function FoodGalleryScreen() {
                 return (
                   <Pressable
                     key={food.id}
-                    style={[
-                      styles.thumb,
-                      isTablet && styles.thumbTablet,
-                      isPreviewed && styles.thumbActive,
-                      locked && styles.thumbLocked,
-                    ]}
+                    style={[styles.thumbSlot, isTablet && styles.thumbSlotTablet]}
                     onPress={() => setPreviewId(food.id)}>
-                    <Image
-                      source={food.image}
-                      style={[styles.thumbImg, locked && styles.lockedImg]}
-                      contentFit="contain"
-                    />
-                    {/* Read-only badge slot — zooming stays on the preview so the
-                        thumbnail keeps one tap target. */}
-                    <View style={[styles.thumbBadge, isTablet && styles.thumbBadgeTablet]} pointerEvents="none">
-                      {isMade && (
-                        <Image source={food.madeBadge ?? BUN_FINISHED} style={styles.madeBadgeImg} contentFit="cover" />
-                      )}
+                    <View
+                      style={[
+                        styles.thumb,
+                        isTablet && styles.thumbTablet,
+                        isPreviewed && styles.thumbActive,
+                        locked && styles.thumbLocked,
+                      ]}>
+                      <Image
+                        source={food.image}
+                        style={[styles.thumbImg, locked && styles.lockedImg]}
+                        contentFit="contain"
+                      />
+                      {/* Read-only badge slot — zooming stays on the preview so the
+                          thumbnail keeps one tap target. */}
+                      <View style={[styles.thumbBadge, isTablet && styles.thumbBadgeTablet]} pointerEvents="none">
+                        {isMade && (
+                          <Image source={food.madeBadge ?? BUN_FINISHED} style={styles.madeBadgeImg} contentFit="cover" />
+                        )}
+                      </View>
+                    </View>
+                    {/* Sized box around the label — a bare auto-shrinking Text measures
+                        against an unbounded width here and spills past the thumbnail. */}
+                    <View style={[styles.thumbNameBox, isTablet && styles.thumbNameBoxTablet]}>
+                      <FitText style={[styles.thumbName, isTablet && styles.thumbNameTablet, isPreviewed && styles.thumbNameActive]}>
+                        {t(`foodGallery.food_${food.id}`)}
+                      </FitText>
                     </View>
                   </Pressable>
                 );
@@ -299,6 +310,14 @@ const styles = StyleSheet.create({
 
   // ── The strip ───────────────────────────────────────────────────────────
   strip: { flexDirection: 'row', gap: Spacing.two, paddingRight: Spacing.three, paddingTop: 4 },
+  // Column: the thumbnail with its recipe name underneath.
+  thumbSlot: { width: 76, alignItems: 'center', gap: 4 },
+  thumbSlotTablet: { width: 112, gap: 6 },
+  thumbNameBox: { width: 76, height: 32, justifyContent: 'center' },
+  thumbNameBoxTablet: { width: 112, height: 46 },
+  thumbName: { fontSize: 11, fontWeight: '700', color: P.mutedBrown, textAlign: 'center' },
+  thumbNameTablet: { fontSize: 15 },
+  thumbNameActive: { color: P.pinkActiveText },
   thumb: {
     width: 76, height: 76, borderRadius: 18,
     borderWidth: 2, borderColor: P.pinkSoft,

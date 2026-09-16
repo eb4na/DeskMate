@@ -404,9 +404,7 @@
   },
   "streakRescue": {
     "title": "Sauver ta série ?",
-    "msgUse": "Tu as manqué quelques jours. Utiliser un gel de série pour conserver ta série de {{count}} jours ?",
-    "msgBuy": "Tu as manqué quelques jours. Acheter un gel de série pour conserver ta série de {{count}} jours ?",
-    "buyButton": "Acheter un gel · {{price}}"
+    "msgUse": "Tu as manqué quelques jours. Utiliser un gel de série pour conserver ta série de {{count}} jours ?"
   },
   "sessionComplete": {
     "title": "Session terminée !",
@@ -514,12 +512,11 @@
     "streakFreeze": "Gel de série",
     "freezesRemaining": "Tu en as {{count}}",
     "useFreezeQ": "Utiliser le gel de série ?",
-    "useFreezeMsg": "Cela sauve ta série après un jour manqué pour qu'elle continue quand tu étudies aujourd'hui. Un gel couvre tout l'écart. Aucune pièce n'est accordée.",
+    "useFreezeMsg": "Cela sauve ta série après des jours manqués pour qu'elle continue quand tu étudies aujourd'hui. Un gel couvre tout l'écart. Aucune pièce n'est accordée.",
     "useFreeze": "Utiliser le gel",
     "use": "Utiliser",
     "streakProtected": "Série protégée !",
     "streakSafe": "Ta série est sauve.",
-    "noFreezesLeft": "Plus de gels ce mois-ci. Ils se réinitialisent le 1er.",
     "freezeCoversOne": "Un gel sauve ta série dans les 3 jours après un oubli. Ensuite, termine une session pour démarrer une nouvelle série.",
     "previousStreak": "Série précédente",
     "streakAtRisk": "En pause — utilise un gel pour la garder.",
@@ -622,7 +619,7 @@
     "coinsAdded": "+{{coins}} pièces ajoutées !",
     "mockComplete": "Achat simulé terminé.",
     "streakFreezeName": "Gel de série",
-    "streakFreezeDesc": "Protège ta série quand tu rates un jour.",
+    "streakFreezeDesc": "Protège ta série si tu ne reviens pas dans les 3 jours.",
     "freezeOwned": "{{count}} en stock",
     "freezeAdded": "Gel de série ajouté !",
     "plusAlreadyHaveSound": "Tu l'as déjà gratuitement avec Premium — achète-le pour le garder pour toujours.",

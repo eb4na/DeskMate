@@ -1265,10 +1265,8 @@ export default function HomeScreen() {
                         examIsPast && styles.metaCardPast,
                       ]}>
                       <View style={styles.metaCardHeader}>
-                        <View style={styles.examTitleRow}>
-                          <Image source={EXAM_BOOK_ICON} style={styles.examBookIcon} contentFit="contain" accessibilityLabel="" />
-                          <CardText style={[styles.metaCardTitle, cardFont(15, 19)]} numberOfLines={1}>{t('home.upcomingExam')}</CardText>
-                        </View>
+                        <Image source={EXAM_BOOK_ICON} style={styles.examBookIcon} contentFit="contain" accessibilityLabel="" />
+                        <CardText style={[styles.metaCardTitle, cardFont(11, 14)]} numberOfLines={1}>{t('home.upcomingExam')}</CardText>
                       </View>
                       <View style={styles.metaCardContent}>
                         <View style={styles.metaCardTextBlock}>
@@ -1282,16 +1280,18 @@ export default function HomeScreen() {
                               </View>
                               <CardText style={[styles.metaSubline, cardFont(10.5, 13)]} numberOfLines={1}>{formatExamDate(featuredExam.dateISO)}</CardText>
                               <View style={styles.examCountdownRow}>
-                                <CardText
-                                  style={[
-                                    styles.metaAccentText,
-                                    examIsUrgent && styles.metaAccentTextUrgent,
-                                    examIsPast && styles.metaAccentTextPast,
-                                    cardFont(10.5, 13),
-                                  ]}
-                                  numberOfLines={1}>
-                                  {examCountdownText}
-                                </CardText>
+                                <View style={[styles.metaInfoPill, examIsUrgent && styles.metaInfoPillUrgent]}>
+                                  <CardText
+                                    style={[
+                                      styles.metaAccentText,
+                                      examIsUrgent && styles.metaAccentTextUrgent,
+                                      examIsPast && styles.metaAccentTextPast,
+                                      cardFont(10.5, 13),
+                                    ]}
+                                    numberOfLines={1}>
+                                    {examCountdownText}
+                                  </CardText>
+                                </View>
                                 {featuredExam.subject ? (
                                   <View style={styles.examSubjectChip}>
                                     <View style={[styles.examSubjectDot, { backgroundColor: examSubjectColor }]} />
@@ -1304,7 +1304,7 @@ export default function HomeScreen() {
                             </>
                           ) : (
                             <>
-                              <CardText style={[styles.metaHeadline, cardFont(12.5, 14)]}>{t('home.noExamYet')}</CardText>
+                              <CardText style={[styles.metaHeadline, cardFont(12.5, 14)]} numberOfLines={1}>{t('home.noExamYet')}</CardText>
                               <CardText style={[styles.metaSubline, cardFont(10.5, 13)]}>{t('home.tapToAdd')}</CardText>
                             </>
                           )}
@@ -1318,10 +1318,8 @@ export default function HomeScreen() {
                     onPress={() => router.push(nextTask ? '/tasks' : '/add-task')}>
                     <View style={[styles.metaCard, tCardPad]}>
                       <View style={styles.metaCardHeader}>
-                        <View style={styles.reminderTitleRow}>
-                          <Image source={REMINDER_BELL_ICON} style={styles.reminderBellIcon} contentFit="contain" accessibilityLabel="" />
-                          <CardText style={[styles.metaCardTitle, cardFont(15, 19)]} numberOfLines={1}>{t('home.upcomingTask')}</CardText>
-                        </View>
+                        <Image source={REMINDER_BELL_ICON} style={styles.reminderBellIcon} contentFit="contain" accessibilityLabel="" />
+                        <CardText style={[styles.metaCardTitle, cardFont(11, 14)]} numberOfLines={1}>{t('home.upcomingTask')}</CardText>
                       </View>
                       <View style={styles.metaCardContent}>
                         <View style={styles.metaCardTextBlock}>
@@ -1330,7 +1328,7 @@ export default function HomeScreen() {
                               <CardText style={[styles.metaHeadline, cardFont(12.5, 14)]} numberOfLines={1}>{nextTask.title}</CardText>
                               <CardText style={[styles.metaSubline, cardFont(10.5, 13)]} numberOfLines={1}>{formatExamDate(nextTask.dueDate!)}</CardText>
                               {nextTask.subjectId ? (
-                                <View style={styles.examSubjectChip}>
+                                <View style={[styles.examSubjectChip, styles.taskSubjectChip]}>
                                   <View style={[styles.examSubjectDot, { backgroundColor: nextTaskColor }]} />
                                   <CardText style={styles.examSubjectText} numberOfLines={1}>
                                     {subjects.find((s) => s.id === nextTask.subjectId)?.name}
@@ -1340,7 +1338,7 @@ export default function HomeScreen() {
                             </>
                           ) : (
                             <>
-                              <CardText style={[styles.metaHeadline, cardFont(12.5, 14)]}>{t('home.noTaskYet')}</CardText>
+                              <CardText style={[styles.metaHeadline, cardFont(12.5, 14)]} numberOfLines={1}>{t('home.noTaskYet')}</CardText>
                               <CardText style={[styles.metaSubline, cardFont(10.5, 13)]}>{t('home.tapToAdd')}</CardText>
                             </>
                           )}
@@ -1464,7 +1462,10 @@ export default function HomeScreen() {
                     onPress={handleStartSession}
                     accessibilityLabel={t('home.a11yStartSession')}>
                     <Image source={START_SESSION_BTN} style={styles.startSessionBg} contentFit="fill" />
-                    <ThemedText style={styles.startSessionLabel}>{t('home.startSession')}</ThemedText>
+                    {/* FitText, not ThemedText: the button art is a fixed 232x66, and
+                        at this size the longest locale ("Iniciar sesión") has little room
+                        left. FitText shrinks to fit rather than clipping the word. */}
+                    <FitText numberOfLines={1} style={styles.startSessionLabel}>{t('home.startSession')}</FitText>
                   </SoundPressable>
                 </View>
                 {BREAK_GAME_ENABLED && (
@@ -1523,16 +1524,16 @@ export default function HomeScreen() {
   );
 }
 
-const META_CARD_RATIO = 1.55;
+const META_CARD_RATIO = 1.78;
 const META_ROW_INSET = 12;
-const META_ROW_GAP = 6;
+const META_ROW_GAP = 8;
 
 const metaCardShadow = {
   shadowColor: '#8B6B57',
-  shadowOpacity: 0.1,
-  shadowRadius: 10,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 3,
+  shadowOpacity: 0.08,
+  shadowRadius: 8,
+  shadowOffset: { width: 0, height: 3 },
+  elevation: 2,
 } as const;
 
 const styles = StyleSheet.create({
@@ -1901,32 +1902,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    minHeight: 52,
+    gap: 7,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+    minHeight: 44,
     overflow: 'hidden',
-    borderRadius: BakeryRadii.pill,
-    backgroundColor: '#FFF3EC',
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 246, 230, 0.94)',
     borderWidth: 1.5,
-    borderColor: '#E8A870',
+    borderColor: '#E2C9A6',
     ...metaCardShadow,
   },
   coinChip: {
     paddingLeft: 12,
-    paddingRight: 6,
-    paddingVertical: 6,
+    paddingRight: 7,
+    paddingVertical: 7,
   },
   coinChipText: {
     color: BakeryColors.cocoaDark,
   },
   coinAddBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#F4A0A8',
-    borderWidth: 1.5,
-    borderColor: '#E8B87A',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#F3A2AA',
+    borderWidth: 1,
+    borderColor: 'rgba(184, 122, 90, 0.22)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1939,6 +1940,7 @@ const styles = StyleSheet.create({
   statusChipText: {
     fontSize: 13,
     lineHeight: 16,
+    fontWeight: '900',
     color: BakeryColors.cocoaDark,
   },
   // Paused/at-risk look for a lapsed-but-rescuable streak (see the chip above).
@@ -2092,43 +2094,45 @@ const styles = StyleSheet.create({
   metaCard: {
     width: '100%',
     height: '100%',
-    paddingHorizontal: 10,
-    paddingTop: 10,
-    paddingBottom: 8,
-    gap: 4,
-    borderRadius: 20,
-    backgroundColor: '#FFF8F6',
+    paddingHorizontal: 11,
+    paddingTop: 9,
+    paddingBottom: 9,
+    gap: 5,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 246, 230, 0.94)',
     borderWidth: 1.5,
-    borderColor: '#EAB0B0',
+    borderColor: '#E2C9A6',
     overflow: 'hidden',
     ...metaCardShadow,
   },
   metaCardTitle: {
-    fontSize: 15,
-    lineHeight: 19,
-    fontWeight: '800',
-    color: BakeryColors.cocoaDark,
+    flex: 1,
+    minWidth: 0,
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '900',
+    color: '#8F604E',
+    textTransform: 'uppercase',
   },
   metaSubline: {
     fontSize: 10.5,
     lineHeight: 13,
-    fontWeight: '500',
-    color: BakeryColors.mocha,
+    fontWeight: '700',
+    color: '#B07A62',
   },
   metaCardContent: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 44,
+    minHeight: 36,
     overflow: 'hidden',
     backgroundColor: 'transparent',
   },
   metaCardTextBlock: {
     flex: 1,
     minWidth: 0,
-    paddingRight: 4,
-    paddingBottom: 2,
-    gap: 2,
+    paddingRight: 0,
+    gap: 3,
     justifyContent: 'center',
     backgroundColor: 'transparent',
   },
@@ -2166,7 +2170,8 @@ const styles = StyleSheet.create({
   },
   metaCardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 7,
+    justifyContent: 'flex-start',
     alignItems: 'center',
     backgroundColor: 'transparent',
   },
@@ -2183,26 +2188,56 @@ const styles = StyleSheet.create({
     opacity: 0.92,
   },
   metaHeadline: {
-    fontSize: 12.5,
-    lineHeight: 14,
-    fontWeight: '700',
+    fontSize: 13.5,
+    lineHeight: 16,
+    fontWeight: '900',
     color: BakeryColors.cocoaDark,
   },
-  examHeadlineRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  examHeadlineRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   examHeadlineText: { flexShrink: 1 },
   metaAccentText: {
     fontSize: 10.5,
     lineHeight: 13,
-    fontWeight: '700',
+    fontWeight: '900',
     color: '#B87A5A',
   },
   // nowrap on purpose: the card's height is fixed (aspectRatio), so letting a long
   // subject wrap this row to a second line pushed the block past the card and clipped
   // the exam name. The chip shrinks + its label auto-shrinks instead.
-  examCountdownRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'nowrap' },
-  examSubjectChip: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1, minWidth: 0 },
-  examSubjectDot: { width: 8, height: 8, borderRadius: 4 },
-  examSubjectText: { fontSize: 10.5, lineHeight: 13, fontWeight: '700', color: BakeryColors.mocha, flexShrink: 1 },
+  examCountdownRow: { flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'nowrap' },
+  metaInfoPill: {
+    minHeight: 18,
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    backgroundColor: '#FFF0E7',
+    borderWidth: 1,
+    borderColor: 'rgba(226, 154, 118, 0.44)',
+    flexShrink: 0,
+  },
+  metaInfoPillUrgent: {
+    backgroundColor: '#FFECE8',
+    borderColor: 'rgba(196, 94, 74, 0.38)',
+  },
+  examSubjectChip: {
+    minHeight: 18,
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    backgroundColor: 'rgba(255, 246, 238, 0.84)',
+    borderWidth: 1,
+    borderColor: 'rgba(199, 161, 138, 0.32)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  taskSubjectChip: {
+    alignSelf: 'flex-start',
+  },
+  examSubjectDot: { width: 7, height: 7, borderRadius: 3.5 },
+  examSubjectText: { fontSize: 10.5, lineHeight: 13, fontWeight: '800', color: BakeryColors.mocha, flexShrink: 1 },
   metaAccentTextUrgent: {
     color: '#C45E4A',
   },
@@ -2252,11 +2287,17 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   startSessionLabel: {
-    fontSize: 20,
-    lineHeight: 24,
+    fontSize: 23,
+    // No fixed lineHeight: FitText strips it anyway, because a hard lineHeight with
+    // adjustsFontSizeToFit shrinks the glyphs while the line box stays put, and the
+    // text clips instead of fitting.
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.4,
+    // Full width + centred so FitText has a concrete box to measure against; an
+    // intrinsically-sized label gives adjustsFontSizeToFit nothing to fit to.
+    width: '100%',
+    textAlign: 'center',
     transform: [{ translateY: -2 }],
   },
   settingsFloating: {
@@ -2269,8 +2310,8 @@ const styles = StyleSheet.create({
   },
   startButtonPressed: { opacity: 0.88 },
   statusStreakIcon: { width: 22, height: 22 },
-  examBookIcon: { width: 22, height: 22 },
-  reminderBellIcon: { width: 24, height: 28 },
+  examBookIcon: { width: 18, height: 18 },
+  reminderBellIcon: { width: 19, height: 22 },
   examCalendarIcon: { width: 44, height: 48 },
   reminderBreadIcon: { width: 34, height: 44 },
   startButtonText: { color: BakeryColors.cocoaDark, fontSize: 17 },

@@ -404,9 +404,7 @@
   },
   "streakRescue": {
     "title": "ストリークを守りますか？",
-    "msgUse": "数日空いてしまいました。ストリークフリーズを使って{{count}}日のストリークを維持しますか？",
-    "msgBuy": "数日空いてしまいました。ストリークフリーズを購入して{{count}}日のストリークを維持しますか？",
-    "buyButton": "フリーズを購入 · {{price}}"
+    "msgUse": "数日空いてしまいました。ストリークフリーズを使って{{count}}日のストリークを維持しますか？"
   },
   "sessionComplete": {
     "title": "セッション完了！",
@@ -518,7 +516,6 @@
     "use": "使う",
     "streakProtected": "ストリークを守りました！",
     "streakSafe": "ストリークは安全です。",
-    "noFreezesLeft": "今月のフリーズはありません。毎月1日にリセットされます。",
     "freezeCoversOne": "フリーズは欠けてから3日以内ならストリークを救えます。その後はセッションを完了して新しいストリークを始めましょう。",
     "previousStreak": "前回のストリーク",
     "streakAtRisk": "一時停止中 — フリーズで維持できます。",
@@ -621,7 +618,7 @@
     "coinsAdded": "+{{coins}}コインを追加しました！",
     "mockComplete": "仮の購入が完了しました。",
     "streakFreezeName": "ストリークフリーズ",
-    "streakFreezeDesc": "1日休んでもストリークを守ります。",
+    "streakFreezeDesc": "3日以内に戻れなかったときにストリークを守ります。",
     "freezeOwned": "所持 {{count}}",
     "freezeAdded": "ストリークフリーズを追加しました！",
     "plusAlreadyHaveSound": "プラス会員なら無料で使えます。購入すれば解約後もずっと使えます。",
