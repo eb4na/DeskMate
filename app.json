@@ -10,7 +10,7 @@
     "ios": {
       "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.sophialin.memobun",
-      "buildNumber": "42",
+      "buildNumber": "43",
       "supportsTablet": true,
       "requireFullScreen": true,
       "usesAppleSignIn": true,
