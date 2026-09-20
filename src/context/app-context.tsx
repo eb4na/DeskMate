@@ -3052,14 +3052,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { ok: true };
   };
 
-  const removeFriend = (code: string) =>
+  // Losing the friendship also drops their unread count: with no row on the Friends
+  // screen there's no chat left to open, so a leftover count could never be cleared.
+  const removeFriend = (code: string) => {
     setS((prev) => ({ ...prev, friends: prev.friends.filter((f) => f.code !== code) }));
+    clearDmUnread(code);
+  };
 
   // Block: drop the friendship, hide them everywhere (friends/requests/DMs are
   // filtered by `blockedCodes`), and persist the block to Supabase. Optimistic.
   const blockUser = (code: string) => {
     setBlockedCodes((prev) => (prev.includes(code) ? prev : [...prev, code]));
     setS((prev) => ({ ...prev, friends: prev.friends.filter((f) => f.code !== code) }));
+    clearDmUnread(code);
     blockUserRemote(code);
   };
   const unblockUser = (code: string) => {
@@ -3080,13 +3085,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ─── Direct-message unread counts (in-memory, by friend code) ─────────────
   const setDmUnreadCounts = (counts: Record<string, number>) => setDmUnreadState(counts);
+  // Only count pings from someone still on the friends list. A message from anyone else
+  // (a blocked sender, or a friendship that ended on this side) has no row to tap on the
+  // Friends screen, so its count could never be cleared and the Home dot stuck on.
   const bumpDmUnread = (code: string) =>
-    setDmUnreadState((prev) => ({ ...prev, [code]: (prev[code] ?? 0) + 1 }));
+    setDmUnreadState((prev) => {
+      const key = code.trim().toUpperCase();
+      if (!s.friends.some((f) => f.code.trim().toUpperCase() === key)) return prev;
+      return { ...prev, [code]: (prev[code] ?? 0) + 1 };
+    });
+  // Case-insensitive: the map is keyed by the server's uppercase from_code, while an
+  // older local friend record (and so the chat screen's route param) can be lower-case.
+  // An exact-key delete missed those and left the Home dot lit after reading the chat.
   const clearDmUnread = (code: string) =>
     setDmUnreadState((prev) => {
-      if (!prev[code]) return prev;
+      const key = code.trim().toUpperCase();
+      const hit = Object.keys(prev).filter((k) => k.trim().toUpperCase() === key);
+      if (!hit.length) return prev;
       const next = { ...prev };
-      delete next[code];
+      for (const k of hit) delete next[k];
       return next;
     });
 

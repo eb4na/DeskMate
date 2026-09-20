@@ -219,6 +219,33 @@ export async function markConversationRead(myUserId: string, otherUserId: string
     .is('read_at', null);
 }
 
+/**
+ * True when any CURRENT friend has unread messages — the one source for the Home
+ * friend button's red dot.
+ *
+ * It must be asked of the friends list, not of the unread map alone: the map is
+ * seeded from every unread row addressed to me (fetchUnreadCounts), which includes
+ * senders who are no longer friends — someone blocked, or a friendship that ended.
+ * Those conversations have no row on the Friends screen, so they can never be opened
+ * and nothing marks them read; a dot keyed off the raw map stayed lit forever and
+ * came back on every launch. `friends` from app-context already excludes blocked codes.
+ *
+ * Codes are uppercase server-side, but older local friend records can be lower-case,
+ * so both sides are compared case-insensitively.
+ */
+export function hasUnreadFromFriends(
+  friends: { code: string }[],
+  unread: Record<string, number>,
+): boolean {
+  const senders = new Set(
+    Object.entries(unread)
+      .filter(([, n]) => n > 0)
+      .map(([code]) => code.trim().toUpperCase()),
+  );
+  if (!senders.size) return false;
+  return friends.some((f) => senders.has(f.code.trim().toUpperCase()));
+}
+
 /** Unread counts addressed to me, grouped by the sender's friend code. */
 export async function fetchUnreadCounts(myUserId: string): Promise<Record<string, number>> {
   const { data, error } = await supabase

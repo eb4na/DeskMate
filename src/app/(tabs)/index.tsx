@@ -39,6 +39,7 @@ import { HanjiFigure } from '@/components/hanji-figure';
 import { CompanionPet, PetCloudHost } from '@/components/companion-pet';
 import { useAuth } from '@/context/auth-context';
 import { listBlocked, listIncomingRequests } from '@/lib/friend-requests';
+import { hasUnreadFromFriends } from '@/lib/direct-messages';
 import { fetchMail, fetchMailClaims } from '@/lib/mail';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { takePendingDragSession, setDragActive, type DragSessionData } from '@/lib/drag-session';
@@ -630,13 +631,16 @@ export default function HomeScreen() {
     petCompanion,
     addSubjectTime,
     dmUnread,
+    friends,
     claimedMailIds,
     readMailIds,
   } = useApp();
   // Current pet speech-bubble line — lifted here so it can be drawn in a high-zIndex
   // layer (above the desk/mixer), not trapped inside the low-z character layer.
-  // Any unread friend DM → a red dot on the Home friend button.
-  const hasUnreadDM = Object.values(dmUnread ?? {}).some((n) => n > 0);
+  // An unread DM from a CURRENT friend → a red dot on the Home friend button. Asking
+  // the unread map alone lit the dot for senders who are no longer friends (blocked, or
+  // the friendship ended), whose chat can't be opened to clear it — a permanent dot.
+  const hasUnreadDM = hasUnreadFromFriends(friends, dmUnread ?? {});
   const { user } = useAuth();
 
   // Count of pending friend requests → red badge on the friend button.
