@@ -76,6 +76,11 @@ export default function AddTaskScreen() {
   // saved date when editing, or today for a bare "＋ Add" — there's no in-form date
   // picker anymore. You choose the day by tapping a calendar cell.
   const targetDate = existingTask?.dueDate?.slice(0, 10) ?? date ?? todayISO;
+  // A task quick-added from the to-do list has NO day at all — that's the whole
+  // point of the Anytime pile. Editing it here must not silently re-date it to
+  // today (which would move it onto the calendar and out of that pile), so an
+  // undated task stays undated until you deliberately give it a day.
+  const [dated, setDated] = useState(editing ? existingTask?.dueDate != null : true);
   // "Due that day?" — Yes = a real deadline (drives the calendar red dot); No = the
   // task just sits on that day. NEW tasks default to No, so a day only turns into a
   // deadline when the player says so. Editing keeps the task's own answer; legacy
@@ -134,7 +139,7 @@ export default function AddTaskScreen() {
   const autoFiresNothing =
     reminderMode === 'auto' &&
     taskReminderTimes(
-      { dueDate: targetDate, dueTime: dueTimeEnabled ? dueTime : null, notifyAt: null, reminderMode: 'auto' },
+      { dueDate: dated ? targetDate : null, dueTime: dueTimeEnabled ? dueTime : null, notifyAt: null, reminderMode: 'auto' },
       openedAt,
     ).length === 0;
   const titleHasProfanity = containsProfanity(title);
@@ -149,8 +154,13 @@ export default function AddTaskScreen() {
       showPopup(t('common.inappropriateLanguage'));
       return;
     }
-    const dueDateValue = targetDate;
-    const dueTimeValue = dueTimeEnabled ? dueTime : null;
+    // Without a day there is nothing for a time, a repeat or a reminder to hang on:
+    // taskFallsOn can't place a dateless task on the calendar and computeTaskReminders
+    // schedules nothing for one. Save that state honestly rather than storing settings
+    // that quietly do nothing.
+    const dueDateValue = dated ? targetDate : null;
+    const dueTimeValue = dated && dueTimeEnabled ? dueTime : null;
+    const reminderModeValue: TaskReminderMode = dated ? reminderMode : 'off';
 
     // A hand-picked reminder fires `notifyOffset` minutes before the due date+time;
     // Anytime tasks (no due time) anchor it to DEFAULT_REMINDER_TIME on the due date.
@@ -158,7 +168,7 @@ export default function AddTaskScreen() {
     // time the pending set is rebuilt, so they follow the task when it's edited or a
     // repeat rolls it forward.
     let notifyAt: string | null = null;
-    if (reminderMode === 'custom' && dueDateValue) {
+    if (reminderModeValue === 'custom' && dueDateValue) {
       const [h, m] = (dueTimeValue ?? DEFAULT_REMINDER_TIME).split(':').map(Number);
       const due = new Date(`${dueDateValue}T00:00:00`);
       due.setHours(h, m, 0, 0);
@@ -175,10 +185,10 @@ export default function AddTaskScreen() {
 
     // Saving a task WITH a reminder is the opt-in gesture that may prompt for
     // notification permission — the background resyncs only ever check it.
-    if (reminderMode !== 'off') await requestNotificationPermission();
+    if (reminderModeValue !== 'off') await requestNotificationPermission();
 
     // Repeats roll the task's day forward each matching weekday.
-    const repeatDaysValue = repeatDays.length ? repeatDays : undefined;
+    const repeatDaysValue = dated && repeatDays.length ? repeatDays : undefined;
     const repeatUntilValue = repeatDaysValue && repeatUntilEnabled ? repeatUntil.trim() || undefined : undefined;
 
     const titleVal = title.trim();
@@ -188,13 +198,13 @@ export default function AddTaskScreen() {
       description: descriptionVal,
       subjectId,
       dueDate: dueDateValue,
-      isDeadline,
+      isDeadline: dated && isDeadline,
       dueTime: dueTimeValue,
       estimatedMinutes: existingTask?.estimatedMinutes ?? null,
       priority: existingTask?.priority ?? 'medium',
       status: 'not_started',
       notifyAt,
-      reminderMode,
+      reminderMode: reminderModeValue,
       repeatDays: repeatDaysValue,
       repeatUntil: repeatUntilValue,
     });
@@ -210,7 +220,7 @@ export default function AddTaskScreen() {
     if (editing) {
       // Status isn't edited here — it's driven only by the checkmark on the task
       // list — so we leave the existing status untouched on save.
-      updateTask(taskId!, { title: titleVal, description: descriptionVal, subjectId, dueDate: dueDateValue, isDeadline, dueTime: dueTimeValue, notifyAt, reminderMode, repeatDays: repeatDaysValue, repeatUntil: repeatUntilValue });
+      updateTask(taskId!, { title: titleVal, description: descriptionVal, subjectId, dueDate: dueDateValue, isDeadline: dated && isDeadline, dueTime: dueTimeValue, notifyAt, reminderMode: reminderModeValue, repeatDays: repeatDaysValue, repeatUntil: repeatUntilValue });
     }
 
     router.back();
@@ -327,11 +337,21 @@ export default function AddTaskScreen() {
               just sits on that day (No). */}
           <ThemedView style={styles.fieldGroup}>
             <ThemedText type="smallBold" style={styles.label}>
-              {t('addTask.dueThatDay')}
+              {dated ? t('addTask.dueThatDay') : t('addTask.dueDateOptional')}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              {formatDateLabel(targetDate)}
+              {dated ? formatDateLabel(targetDate) : t('addTask.noDueDateSelected')}
             </ThemedText>
+            {!dated && (
+              <ThemedView style={styles.chipRow}>
+                <Pressable onPress={() => setDated(true)} style={({ pressed }) => [pressed && styles.pressed]}>
+                  <ThemedView type="backgroundElement" style={styles.chip}>
+                    <ThemedText type="small">{t('addTask.pickDate')}</ThemedText>
+                  </ThemedView>
+                </Pressable>
+              </ThemedView>
+            )}
+            {dated && (
             <ThemedView style={styles.chipRow}>
               <Pressable
                 onPress={() => setIsDeadline(true)}
@@ -352,7 +372,12 @@ export default function AddTaskScreen() {
                 </ThemedView>
               </Pressable>
             </ThemedView>
+            )}
           </ThemedView>
+
+          {/* Time, repeat and reminders all hang off the day, so an undated task
+              shows none of them — see the save path. */}
+          {dated && (<>
 
           {/* Time — optional time of day on that date (default "Anytime"). */}
           <ThemedView style={styles.fieldGroup}>
@@ -478,6 +503,8 @@ export default function AddTaskScreen() {
               </ThemedText>
             )}
           </ThemedView>
+
+          </>)}
 
           {/* Save */}
           <SoundPressable

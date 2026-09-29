@@ -61,6 +61,9 @@ export function Leader({ style }: { style?: StyleProp<ViewStyle> }) {
 export type MenuRowProps = {
   /** Item name (string auto-shrinks; nodes render as-is). */
   name: ReactNode;
+  /** Extra style for a STRING name — e.g. the line-through a ticked to-do wears.
+   *  Lets a caller restyle the name without giving up the auto-shrinking FitText. */
+  nameStyle?: StyleProp<TextStyle>;
   /** Small line under the name. */
   sub?: ReactNode;
   /** Leading art/icon (dessert PNG, subject dot, etc.). */
@@ -71,6 +74,10 @@ export type MenuRowProps = {
   checkable?: boolean;
   checked?: boolean;
   checkColor?: string;
+  /** Give the checkbox its OWN tap target, separate from the row's. A to-do row
+   *  needs this: tapping the box ticks the item, tapping the row opens it. Without
+   *  it the box is decoration and the whole row does one thing. */
+  onCheckPress?: () => void;
   /** Draw the dotted leader between name and trailing (classic menu look). */
   leader?: boolean;
   /** Highlight fill when selected/checked. */
@@ -83,12 +90,14 @@ export type MenuRowProps = {
 
 export function MenuRow({
   name,
+  nameStyle,
   sub,
   icon,
   trailing,
   checkable = false,
   checked = false,
   checkColor = C.buttonPink,
+  onCheckPress,
   leader = true,
   active = false,
   onPress,
@@ -100,12 +109,19 @@ export function MenuRow({
   const pressProps = onPress ? { sound, onPress: disabled ? undefined : onPress, disabled } : {};
   return (
     <Container {...pressProps} style={[styles.row, active && styles.rowActive, disabled && styles.rowDisabled, style]}>
-      {checkable && <CheckBox checked={checked} size={24} color={checkColor} />}
+      {checkable &&
+        (onCheckPress ? (
+          <SoundPressable onPress={onCheckPress} hitSlop={10} disabled={disabled}>
+            <CheckBox checked={checked} size={24} color={checkColor} />
+          </SoundPressable>
+        ) : (
+          <CheckBox checked={checked} size={24} color={checkColor} />
+        ))}
       {icon != null && <View style={styles.icon}>{icon}</View>}
       <View style={styles.body}>
         <View style={styles.topLine}>
           {typeof name === 'string' ? (
-            <FitText numberOfLines={1} minScale={0.75} style={[styles.name, active && styles.nameActive]}>{name}</FitText>
+            <FitText numberOfLines={1} minScale={0.75} style={[styles.name, active && styles.nameActive, nameStyle]}>{name}</FitText>
           ) : (
             name
           )}

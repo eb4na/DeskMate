@@ -32,7 +32,7 @@ import { DiscoBackdrop } from '@/components/disco-backdrop';
 import { setTutorialTarget } from '@/lib/tutorial-targets';
 import i18n, { useTranslation } from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
-import { upcomingUntilMs } from '@/lib/task-recurrence';
+import { openOccurrencesFrom, upcomingUntilMs } from '@/lib/task-recurrence';
 import { BREAK_GAME_ENABLED, coinsForMinutes, LOCK_IN_COIN_MULTIPLIER, formatCoins } from '@/constants/placeholder-data';
 import { hanjiIsAnimated, resolveActiveCompanion } from '@/lib/companion-utils';
 import { HanjiFigure } from '@/components/hanji-figure';
@@ -901,20 +901,26 @@ export default function HomeScreen() {
   const featuredExam = [...examCountdowns]
     .filter((exam) => upcomingUntilMs(exam.dateISO, exam.time) > nowMs)
     .sort((a, b) => a.dateISO.localeCompare(b.dateISO))[0] ?? null;
-  // Soonest still-pending task (by due date + time), shown on the home card.
+  // Soonest still-pending task OCCURRENCE (by date + time), shown on the home card.
   // Same rule as exams: once its due moment has passed it's no longer "upcoming"
   // (overdue deadlines still surface via the red dot on the Tasks tab).
-  const nextTask =
-    [...tasks]
-      .filter(
-        (tk) =>
-          tk.status !== 'done' &&
-          tk.dueDate &&
-          upcomingUntilMs(tk.dueDate, tk.dueTime) > nowMs,
+  //
+  // A repeating task is one task on many days, so the card can't just read `dueDate`
+  // — that's where the series started, so a weekly task dropped off this card the
+  // day after its first occurrence and never came back. openOccurrencesFrom walks
+  // forward to the next day it falls on that isn't crossed out yet.
+  const nextTaskOcc =
+    tasks
+      .flatMap((tk) =>
+        openOccurrencesFrom(tk, todayISO())
+          .filter((iso) => upcomingUntilMs(iso, tk.dueTime) > nowMs)
+          .slice(0, 1)
+          .map((iso) => ({ task: tk, iso })),
       )
       .sort((a, b) =>
-        (a.dueDate! + (a.dueTime ?? '99:99')).localeCompare(b.dueDate! + (b.dueTime ?? '99:99')),
+        (a.iso + (a.task.dueTime ?? '99:99')).localeCompare(b.iso + (b.task.dueTime ?? '99:99')),
       )[0] ?? null;
+  const nextTask = nextTaskOcc?.task ?? null;
   const nextTaskColor =
     (nextTask?.subjectId ? subjects.find((s) => s.id === nextTask.subjectId)?.color : null) ?? '#C9A18A';
   const examDays = featuredExam ? daysUntil(featuredExam.dateISO) : null;
@@ -1330,7 +1336,7 @@ export default function HomeScreen() {
                           {nextTask ? (
                             <>
                               <CardText style={[styles.metaHeadline, cardFont(12.5, 14)]} numberOfLines={1}>{nextTask.title}</CardText>
-                              <CardText style={[styles.metaSubline, cardFont(10.5, 13)]} numberOfLines={1}>{formatExamDate(nextTask.dueDate!)}</CardText>
+                              <CardText style={[styles.metaSubline, cardFont(10.5, 13)]} numberOfLines={1}>{formatExamDate(nextTaskOcc!.iso)}</CardText>
                               {nextTask.subjectId ? (
                                 <View style={[styles.examSubjectChip, styles.taskSubjectChip]}>
                                   <View style={[styles.examSubjectDot, { backgroundColor: nextTaskColor }]} />

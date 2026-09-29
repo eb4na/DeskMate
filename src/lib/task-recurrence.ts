@@ -38,9 +38,84 @@ export function upcomingUntilMs(dateISO: string, time?: string | null): number {
   return d.getTime();
 }
 
+/** Does `task` land on `iso`? A repeating task lands on every selected weekday
+ *  from its due date (the series start) through `repeatUntil`; a one-off task only
+ *  on its own due date. Every surface that places a task on a day goes through
+ *  this, so the month grid, the day popup, the week strip and the Home card can't
+ *  disagree about which days a series covers. */
+export function taskFallsOn(
+  t: Pick<Task, 'dueDate' | 'repeatDays' | 'repeatUntil'>,
+  iso: string,
+): boolean {
+  if (!t.dueDate) return false;
+  const start = t.dueDate.slice(0, 10);
+  if (t.repeatDays?.length) {
+    if (iso < start) return false;
+    if (t.repeatUntil && iso > t.repeatUntil) return false;
+    return t.repeatDays.includes(new Date(`${iso}T00:00:00`).getDay());
+  }
+  return start === iso;
+}
+
+/** Is the occurrence ON `iso` crossed out?
+ *
+ *  A repeating task is a SERIES, so completion has to be per-date: `completedDates`
+ *  holds the days already ticked off. It deliberately does NOT read `status` —
+ *  ticking Monday's occurrence once used to set the series' single status to 'done',
+ *  which struck the task out on every past and future day at once.
+ *
+ *  A one-off task has exactly one occurrence, so its `status` is the answer. */
+export function isTaskDoneOn(
+  t: Pick<Task, 'repeatDays' | 'completedDates' | 'status'>,
+  iso: string,
+): boolean {
+  if (t.repeatDays?.length) return !!t.completedDates?.includes(iso.slice(0, 10));
+  return t.status === 'done';
+}
+
+/** How many days ahead `openOccurrencesFrom` will look. Bounded on purpose: a repeat
+ *  with no end date has infinitely many occurrences, and every caller only ever
+ *  wants the next one or two. Four weeks covers any weekday pattern even when the
+ *  nearer occurrences have already been ticked off. */
+const OCCURRENCE_SCAN_DAYS = 28;
+
+/** The task's occurrence dates from `fromISO` (inclusive) onward, soonest first.
+ *  Only occurrences still open (not crossed out) are returned — the callers that
+ *  ask "what's next?" never mean an occurrence already dealt with. Empty when the
+ *  series has ended, or when everything in the scan window is done. */
+export function openOccurrencesFrom(
+  t: Pick<Task, 'dueDate' | 'repeatDays' | 'repeatUntil' | 'completedDates' | 'status'>,
+  fromISO: string,
+): string[] {
+  if (!t.dueDate) return [];
+  const start = t.dueDate.slice(0, 10);
+  if (!t.repeatDays?.length) {
+    // One-off: its own day, if that day hasn't passed and it isn't ticked off.
+    return start >= fromISO && t.status !== 'done' ? [start] : [];
+  }
+  const base = start > fromISO ? start : fromISO;
+  const out: string[] = [];
+  const d = new Date(`${base}T00:00:00`);
+  if (isNaN(d.getTime())) return [];
+  for (let i = 0; i < OCCURRENCE_SCAN_DAYS; i++) {
+    const day = new Date(d);
+    day.setDate(d.getDate() + i);
+    const iso = toISO(day);
+    if (t.repeatUntil && iso > t.repeatUntil) break;
+    if (taskFallsOn(t, iso) && !isTaskDoneOn(t, iso)) out.push(iso);
+  }
+  return out;
+}
+
 // For a repeating task being completed, compute its next occurrence's due date
 // and (if it had a reminder) the shifted reminder time. Returns null when the
 // task doesn't repeat or has no due date to roll forward.
+//
+// NOT how completion works any more: rolling `dueDate` forward moves the series'
+// START date, and every calendar surface expands a series FROM that date — so the
+// occurrences already behind it would drop out of the grid. Ticking one occurrence
+// records its date instead (isTaskDoneOn / toggleTaskOccurrence). Kept because it's
+// still on the context's API surface.
 export function computeTaskRollover(
   task: Pick<Task, 'repeatDays' | 'dueDate' | 'dueTime' | 'notifyAt' | 'repeatUntil'>,
 ): { dueDate: string; notifyAt: string | null } | null {

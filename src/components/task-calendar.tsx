@@ -43,6 +43,7 @@ import { useApp } from '@/context/app-context';
 import type { ExamCountdown, Task } from '@/context/app-context';
 import i18n from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
+import { isTaskDoneOn, openOccurrencesFrom, taskFallsOn } from '@/lib/task-recurrence';
 import { formatMinutesShort } from '@/lib/format-duration';
 import { formatTimeLabel } from '@/components/time-wheel-picker';
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, PastelCards, Spacing } from '@/constants/theme';
@@ -154,19 +155,12 @@ function formatTime(task: Pick<Task, 'dueTime' | 'notifyAt'>, use24Hour: boolean
 // ─── one place decides what lands on a day ───────────────────────────────────
 // The month grid used to expand `repeatDays` while the day popup and the strip
 // below matched on the raw dueDate, so a repeating task could show in the grid and
-// then open an empty day. Every caller goes through this predicate now.
-function taskFallsOn(t: Task, iso: string) {
-  if (!t.dueDate) return false;
-  const start = t.dueDate.slice(0, 10);
-  if (t.repeatDays?.length) {
-    if (iso < start) return false;
-    if (t.repeatUntil && iso > t.repeatUntil) return false;
-    return t.repeatDays.includes(fromISO(iso).getDay());
-  }
-  return start === iso;
-}
+// then open an empty day. Every caller goes through `taskFallsOn` now — it lives in
+// lib/task-recurrence so the Home card answers "which day?" the same way.
+// `includeDone` is judged PER DAY: a repeating task crossed out on Monday is still
+// open on Tuesday, so it must keep showing up there.
 function tasksOnDay(tasks: Task[], iso: string, includeDone: boolean) {
-  return tasks.filter((t) => (includeDone || t.status !== 'done') && taskFallsOn(t, iso));
+  return tasks.filter((t) => (includeDone || !isTaskDoneOn(t, iso)) && taskFallsOn(t, iso));
 }
 
 function clampN(v: number, lo: number, hi: number) {
@@ -177,13 +171,23 @@ function clampN(v: number, lo: number, hi: number) {
 // `onNavigate` (set only when this card lives INSIDE the day modal) routes the
 // edit tap through the modal's dismiss-then-navigate path so add-task never
 // presents on top of the still-open native modal (which wedges iOS).
-function TaskPreviewCard({ task, onNavigate }: { task: Task; onNavigate?: (go: () => void) => void }) {
-  const { subjects, updateTask, use24HourTime } = useApp();
+function TaskPreviewCard({
+  task,
+  occurrenceISO,
+  onNavigate,
+}: {
+  task: Task;
+  /** Which day this card is standing in for. A repeating task is one task shown on
+   *  many days, so the checkbox has to know WHICH occurrence it's crossing out. */
+  occurrenceISO: string;
+  onNavigate?: (go: () => void) => void;
+}) {
+  const { subjects, toggleTaskOccurrence, use24HourTime } = useApp();
   // The day popup grows on tablet, so its content rows must grow with it.
   const { isTablet, scale } = useTabletScale();
   const c = isTablet ? scale : 1;
   const subject = task.subjectId ? subjects.find((s) => s.id === task.subjectId) : null;
-  const done = task.status === 'done';
+  const done = isTaskDoneOn(task, occurrenceISO);
   const time = formatTime(task, use24HourTime);
 
   return (
@@ -196,7 +200,7 @@ function TaskPreviewCard({ task, onNavigate }: { task: Task; onNavigate?: (go: (
       {/* completion checkbox */}
       <Pressable
         hitSlop={8}
-        onPress={() => updateTask(task.id, { status: done ? 'not_started' : 'done' })}
+        onPress={() => toggleTaskOccurrence(task.id, occurrenceISO)}
         style={[styles.checkbox, c !== 1 && { width: 24 * c, height: 24 * c, borderRadius: 12 * c }, done && styles.checkboxDone]}>
         {done && <BakeryCheckEmoji size={13 * c} />}
       </Pressable>
@@ -296,9 +300,10 @@ function CalendarMonthCard({
       }
     }
     // Open tasks lead each day: a cell only shows `slots` chips, and a finished
-    // task must never be the reason an open one is hidden behind "+N".
+    // task must never be the reason an open one is hidden behind "+N". Judged per
+    // day — a repeat ticked off on Monday is still an open task on Tuesday.
     for (const iso of Object.keys(map)) {
-      map[iso].sort((a, b) => Number(a.status === 'done') - Number(b.status === 'done'));
+      map[iso].sort((a, b) => Number(isTaskDoneOn(a, iso)) - Number(isTaskDoneOn(b, iso)));
     }
     return map;
   }, [tasks, year, month, daysInMonth]);
@@ -403,12 +408,12 @@ function CalendarMonthCard({
           // The date itself turns red when this day carries an unfinished deadline
           // (isDeadline !== false; legacy dated tasks count). tasksByDay now keeps
           // done tasks for the struck-through chips, so this has to skip them.
-          const hasDeadline = dayTasks.some((t) => t.status !== 'done' && t.isDeadline !== false);
+          const hasDeadline = dayTasks.some((t) => !isTaskDoneOn(t, iso) && t.isDeadline !== false);
           const hasNote = !!dayNotes[iso];
           // Exams lead the stack (they're the day's fixed points), then open tasks.
           const chips = [
             ...dayExams.map((e) => ({ key: `e${e.id}`, label: e.name, color: examColor(e), isExam: true, done: false })),
-            ...dayTasks.map((t) => ({ key: `t${t.id}`, label: t.title, color: subjectColor(t.subjectId), isExam: false, done: t.status === 'done' })),
+            ...dayTasks.map((t) => ({ key: `t${t.id}`, label: t.title, color: subjectColor(t.subjectId), isExam: false, done: isTaskDoneOn(t, iso) })),
           ];
           // A day can be marked with a big shape filling the whole cell as a
           // translucent watermark — the date and previews paint on top of it. ANY
@@ -644,7 +649,7 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
                 <View key={t.id} style={styles.agendaRow}>
                   <Text style={styles.agendaTime}>{formatTimeLabel(t.dueTime!, use24HourTime)}</Text>
                   <View style={styles.agendaCard}>
-                    <TaskPreviewCard task={t} onNavigate={navigateAfterClose} />
+                    <TaskPreviewCard task={t} occurrenceISO={iso!} onNavigate={navigateAfterClose} />
                   </View>
                 </View>
               ))}
@@ -657,7 +662,7 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
                     <Text style={styles.agendaAnytimeLabel}>{i18n.t('calendar.anytime')}</Text>
                   )}
                   {untimedTasks.map((t) => (
-                    <TaskPreviewCard key={t.id} task={t} onNavigate={navigateAfterClose} />
+                    <TaskPreviewCard key={t.id} task={t} occurrenceISO={iso!} onNavigate={navigateAfterClose} />
                   ))}
                 </View>
               )}
@@ -780,9 +785,9 @@ function HorizontalPreview({ onClose }: { onClose: () => void }) {
   // the renderer below stays the same shape; it just never holds more than today.
   const upcoming = useMemo(() => {
     const today = todayISO();
-    const todays = tasks.filter(
-      (t) => t.dueDate && t.status !== 'done' && t.dueDate.slice(0, 10) === today,
-    );
+    // Matched on the raw dueDate before, which meant a repeating task only ever
+    // appeared on the day its series began — every later occurrence was missing.
+    const todays = tasksOnDay(tasks, today, false);
     return todays.length ? ([[today, todays]] as [string, Task[]][]) : [];
   }, [tasks]);
 
@@ -825,12 +830,20 @@ function HorizontalPreview({ onClose }: { onClose: () => void }) {
         // Filtered results
         matches.length > 0 ? (
           <View style={styles.previewList}>
-            {matches.map((t) => (
-              <View key={t.id} style={styles.searchResult}>
-                {t.dueDate && <Text style={styles.searchResultDate}>{longLabel(t.dueDate.slice(0, 10))}</Text>}
-                <TaskPreviewCard task={t} />
-              </View>
-            ))}
+            {matches.map((t) => {
+              // A search hit isn't tied to a day the way a grid chip is, and a
+              // repeating task's `dueDate` is only where the series STARTED — often
+              // months back. Stand in for its next occurrence still open (falling
+              // back to the start date once the series is spent), so the row shows a
+              // date that means something and its checkbox ticks off that same day.
+              const occ = openOccurrencesFrom(t, todayISO())[0] ?? t.dueDate?.slice(0, 10) ?? '';
+              return (
+                <View key={t.id} style={styles.searchResult}>
+                  {occ && <Text style={styles.searchResultDate}>{longLabel(occ)}</Text>}
+                  <TaskPreviewCard task={t} occurrenceISO={occ} />
+                </View>
+              );
+            })}
           </View>
         ) : (
           <Text style={styles.searchEmpty}>{i18n.t('calendar.noMatch', { query: query.trim() })}</Text>
@@ -849,7 +862,7 @@ function HorizontalPreview({ onClose }: { onClose: () => void }) {
               </Text>
               <View style={styles.hCardTasks}>
                 {dayTasks.map((t) => (
-                  <TaskPreviewCard key={t.id} task={t} />
+                  <TaskPreviewCard key={t.id} task={t} occurrenceISO={iso} />
                 ))}
               </View>
             </View>
@@ -926,7 +939,7 @@ function WeekAheadStrip() {
               );
             })}
             {dayTasks.map((t) => (
-              <TaskPreviewCard key={t.id} task={t} />
+              <TaskPreviewCard key={t.id} task={t} occurrenceISO={iso} />
             ))}
           </View>
         </View>

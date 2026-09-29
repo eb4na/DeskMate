@@ -17,7 +17,7 @@ import { AD_REWARD_COINS, DAILY_AD_LIMIT } from '@/lib/ads';
 import { loadBlockedCodes, blockUserRemote, unblockUserRemote } from '@/lib/moderation';
 import { syncExamReminders, syncStreakReminders, syncTaskReminders, taskReminderMode } from '@/lib/notifications';
 import type { TaskReminderInput, TaskReminderMode, TaskReminderTier } from '@/lib/notifications';
-import { computeTaskRollover } from '@/lib/task-recurrence';
+import { computeTaskRollover, isTaskDoneOn } from '@/lib/task-recurrence';
 import { uploadProfile } from '@/lib/profile-sync';
 import { claimMailRemote } from '@/lib/mail';
 import { companionLevelInfo } from '@/lib/companion-level';
@@ -59,6 +59,9 @@ export type Subject = {
   archived: boolean;
   order: number;
 };
+
+/** The Tasks tab's two views: the month calendar, or the to-do checklist. */
+export type TasksView = 'calendar' | 'list';
 
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskStatus = 'not_started' | 'in_progress' | 'done';
@@ -106,6 +109,15 @@ export type Task = {
   repeatDays?: number[];
   /** Last date (ISO "YYYY-MM-DD") the repeat rolls to. Undefined = no end. */
   repeatUntil?: string;
+  /**
+   * Dates (ISO "YYYY-MM-DD") whose occurrence of a REPEATING task is crossed out.
+   * A repeat is one task shown on many days, so completion can't live in `status`:
+   * that's a single flag, and setting it struck the task out on every day at once.
+   * Only repeating tasks use this; a one-off task's completion stays in `status`.
+   * Oldest entries are dropped past MAX_COMPLETED_DATES so an endless daily repeat
+   * can't grow forever.
+   */
+  completedDates?: string[];
 };
 
 export type SessionRecord = {
@@ -264,6 +276,9 @@ type PersistedState = {
   /** Calendar grid starts the week on Monday instead of Sunday. Display only —
    *  it does NOT move the Progress tab's week, which is already Monday-based. */
   weekStartsMonday: boolean;
+  /** Which view the Tasks tab opens on. Remembered so someone who works from the
+   *  list isn't dropped back on the calendar every launch. */
+  tasksView: TasksView;
   vinylColor: string;
   // "Spotify background" study mode: replace the room background with a solid colour +
   // a large album-cover vinyl while studying. Colour is the user's pick.
@@ -465,6 +480,7 @@ const DEFAULTS: PersistedState = {
   use24HourTime: false,
   soundEffectsEnabled: true,
   weekStartsMonday: false,
+  tasksView: 'calendar',
   vinylColor: '#3B3340',
   spotifyBgEnabled: false,
   spotifyBgColor: 'black',
@@ -691,6 +707,11 @@ const MAX_COMPANION_SLOTS = 3;
 export const MAX_EXAMS = 50;
 // Total tasks a user can keep at once.
 export const MAX_TASKS = 1000;
+// How many crossed-out dates one repeating task remembers. A daily repeat with no
+// end date ticks off ~365 dates a year, so the list is capped and the OLDEST entries
+// fall off first: scroll back far enough in the calendar and ancient occurrences read
+// as open again, which is a far better trade than an unbounded list in every save.
+const MAX_COMPLETED_DATES = 400;
 const STREAK_MAX = 200; // study-day streak caps here
 
 // Streak windows, measured as the gap since lastStudyDate (daysBetween, account timezone).
@@ -1093,6 +1114,9 @@ type AppContextType = {
   /** Calendar grid starts the week on Monday instead of Sunday. Display only —
    *  it does NOT move the Progress tab's week, which is already Monday-based. */
   weekStartsMonday: boolean;
+  /** Which view the Tasks tab opens on. Remembered so someone who works from the
+   *  list isn't dropped back on the calendar every launch. */
+  tasksView: TasksView;
   vinylColor: string;
   // "Spotify background" study mode: replace the room background with a solid colour +
   // a large album-cover vinyl while studying. Colour is the user's pick.
@@ -1288,6 +1312,7 @@ type AppContextType = {
   setUse24HourTime: (value: boolean) => void;
   setSoundEffectsEnabled: (value: boolean) => void;
   setWeekStartsMonday: (value: boolean) => void;
+  setTasksView: (value: TasksView) => void;
   setVinylColor: (value: string) => void;
   setSpotifyBgEnabled: (value: boolean) => void;
   setSpotifyBgColor: (value: 'black' | 'white') => void;
@@ -1313,6 +1338,10 @@ type AppContextType = {
   updateTask: (id: string, patch: Partial<Pick<Task, 'title' | 'description' | 'subjectId' | 'dueDate' | 'isDeadline' | 'dueTime' | 'estimatedMinutes' | 'priority' | 'status' | 'notifyAt' | 'reminderMode' | 'repeatDays' | 'repeatUntil'>>) => void;
   deleteTask: (id: string) => void;
   completeTask: (id: string) => void;
+  /** Tick / untick the occurrence of `id` that falls on `iso`. Use this wherever a
+   *  task is shown on a specific day — for a repeating task it records just that
+   *  date, so crossing out one day leaves every other occurrence open. */
+  toggleTaskOccurrence: (id: string, iso: string) => void;
   postponeTask: (id: string) => void;
 
   // Wave 2 subject-time + session-history
@@ -2070,6 +2099,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setS((prev) => ({ ...prev, soundEffectsEnabled: value }));
   const setWeekStartsMonday = (value: boolean) =>
     setS((prev) => ({ ...prev, weekStartsMonday: value }));
+  const setTasksView = (value: TasksView) =>
+    setS((prev) => ({ ...prev, tasksView: value }));
   const setVinylColor = (value: string) =>
     setS((prev) => ({ ...prev, vinylColor: value }));
   const setSpotifyBgEnabled = (value: boolean) =>
@@ -2241,9 +2272,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     setS((prev) => ({
       ...prev,
-      tasks: prev.tasks.map((t) =>
-        t.id === id ? { ...t, ...safePatch, lastActivityAt: new Date().toISOString() } : t,
-      ),
+      tasks: prev.tasks.map((t) => {
+        if (t.id !== id) return t;
+        const next = { ...t, ...safePatch, lastActivityAt: new Date().toISOString() };
+        // Turning repeat ON for a task already marked done: its completion lived in
+        // `status`, which a repeating task doesn't read — so it would look open on
+        // every day while Home and the reminders kept skipping it on the stale flag.
+        // Clear the flag and let the per-date list be the only record.
+        if (next.repeatDays?.length && next.status === 'done') {
+          next.status = 'not_started';
+          next.completedAt = null;
+        }
+        // Turning repeat OFF: the per-date ticks belong to a series that no longer
+        // exists. Dropping them stops old dates striking themselves out if the user
+        // switches repeat back on later.
+        if (!next.repeatDays?.length) delete next.completedDates;
+        return next;
+      }),
     }));
   };
 
@@ -2294,6 +2339,59 @@ export function AppProvider({ children }: { children: ReactNode }) {
             ? { ...t, status: 'done' as TaskStatus, completedAt: now, lastActivityAt: now }
             : t,
         ),
+      };
+    });
+  };
+
+  // Tick / untick ONE day's occurrence. For a repeating task that's an entry in
+  // `completedDates`; for a one-off it's the task's own status, exactly as before.
+  const toggleTaskOccurrence = (id: string, iso: string) => {
+    const day = iso.slice(0, 10);
+    const now = new Date().toISOString();
+
+    setS((prev) => {
+      const task = prev.tasks.find((t) => t.id === id);
+      if (!task) return prev;
+      // A repeating task NEEDS a day to tick — without one there'd be nothing to
+      // record. (A one-off ignores `iso` entirely: its completion is its status.)
+      if (task.repeatDays?.length && !day) return prev;
+      const wasDone = isTaskDoneOn(task, day);
+      // Crossing something out counts toward the task achievements. Un-ticking does
+      // NOT give the count back: an achievement already earned shouldn't un-earn
+      // itself because the user corrected a stray tap.
+      const taskBump = wasDone ? {} : { lifetimeTasksCompleted: prev.lifetimeTasksCompleted + 1 };
+
+      return {
+        ...prev,
+        ...taskBump,
+        tasks: prev.tasks.map((t) => {
+          if (t.id !== id) return t;
+          if (!t.repeatDays?.length) {
+            return {
+              ...t,
+              status: (wasDone ? 'not_started' : 'done') as TaskStatus,
+              completedAt: wasDone ? null : now,
+              lastActivityAt: now,
+            };
+          }
+          const dates = (t.completedDates ?? []).filter((d) => d !== day);
+          if (!wasDone) {
+            dates.push(day);
+            dates.sort();
+            // Oldest first, so the overflow comes off the front.
+            if (dates.length > MAX_COMPLETED_DATES) dates.splice(0, dates.length - MAX_COMPLETED_DATES);
+          }
+          // Finishing an occurrence clears the postpone count, the way completing a
+          // one-off does. A repeating task's status never becomes 'done', so without
+          // this a repeat that was put off once would sit in the Tasks screen's
+          // avoidance tracker forever, with nothing able to take it back off.
+          return {
+            ...t,
+            completedDates: dates,
+            postponeCount: wasDone ? t.postponeCount : 0,
+            lastActivityAt: now,
+          };
+        }),
       };
     });
   };
@@ -3284,6 +3382,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         soundEffectsEnabled: s.soundEffectsEnabled,
         weekStartsMonday: s.weekStartsMonday ?? false,
         setWeekStartsMonday,
+        tasksView: s.tasksView ?? 'calendar',
+        setTasksView,
         vinylColor: s.vinylColor,
         spotifyBgEnabled: s.spotifyBgEnabled ?? false,
         spotifyBgColor: s.spotifyBgColor ?? 'black',
@@ -3340,6 +3440,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updateTask,
         deleteTask,
         completeTask,
+        toggleTaskOccurrence,
         postponeTask,
         addSubjectTime,
         startActiveSession,
