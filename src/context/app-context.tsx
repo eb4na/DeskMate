@@ -962,7 +962,9 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
 
   // Plus exclusive: ensure Plus members own the Berry Princess Bun skin and the
   // Strawberry Palace room (covers players who had Plus before these became perks).
-  for (const plusGrant of ['outfit_bun_strawberry', 'bg_strawberry_palace', 'desk_strawberry']) {
+  // The Plus wardrobe skin was retired with the old companion art; the Strawberry
+  // Palace room + desk are still Plus perks.
+  for (const plusGrant of ['bg_strawberry_palace', 'desk_strawberry']) {
     if (merged.isPlus && !(merged.ownedShopItems ?? []).includes(plusGrant)) {
       merged.ownedShopItems = [...(merged.ownedShopItems ?? []), plusGrant];
     }
@@ -1220,6 +1222,8 @@ type AppContextType = {
   /** DEV-only: max out the account — own the whole shop catalog, all recipes/badges
    *  (incl. Hanji), 9,999,999 coins, high bond with every companion, Plus active. */
   devMaxOutAccount: () => void;
+  /** DEV/TEST: add coins directly, bypassing the daily study-earn cap. */
+  devGrantCoins: (amount: number) => void;
   // True once this account's saved state has been *reliably* loaded (local/cloud) —
   // distinct from `loaded`, which also flips true when a load fails and saving is
   // paused. Guards the abandoned-onboarding reset from acting on default fallbacks.
@@ -2673,7 +2677,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // ends, so only sounds actually bought with coins stay.
       if (value) {
         const granted = prev.ownedShopItems;
-        const toGrant = ['outfit_bun_strawberry', 'bg_strawberry_palace', 'desk_strawberry'].filter((id) => !granted.includes(id));
+        const toGrant = ['bg_strawberry_palace', 'desk_strawberry'].filter((id) => !granted.includes(id));
         if (toGrant.length) updates.ownedShopItems = [...granted, ...toGrant];
       }
       return { ...prev, ...updates };
@@ -3014,6 +3018,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // grants 9,999,999 coins, a high bond level with every companion, and activates
   // Plus through the normal grant path (freezes/tickets/gold frame follow along).
   // Purely additive: never downgrades anything the account already has.
+  const devGrantCoins = (amount: number) =>
+    setS((prev) => ({ ...prev, coins: capCoins(prev.coins + amount) }));
+
   const devMaxOutAccount = () => {
     setRecipeBadgePending(null);
     setS((prev) => {
@@ -3502,6 +3509,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         previewBondLevelUp,
         devLapseStreak,
         devMaxOutAccount,
+        devGrantCoins,
         persistedStateReady,
         resetAccountForAbandonedOnboarding,
         resetGameData,

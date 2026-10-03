@@ -1,5 +1,6 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Image as ExpoImage } from 'expo-image';
 import { Dimensions, Image as RNImage, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { SoundPreviewButton } from '@/components/sound-preview-button';
@@ -33,7 +34,7 @@ import {
 } from '@/constants/shop-data';
 import { outfitsForCharacter } from '@/constants/outfit-data';
 import { pairForItem, isPairOwned, partnerItemId, ROOM_PAIRS } from '@/constants/room-data';
-import { SHOP_COMPANIONS, STARTER_COMPANION_IMAGES, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, localizeShopItemName, localizeShopItemDescription, BUN_SKINS, getCompanionSkins, pickSkinLore, skinLores } from '@/lib/companion-utils';
+import { SHOP_COMPANIONS, STARTER_COMPANION_IMAGES, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, localizeShopItemName, localizeShopItemDescription, BUN_SKINS, getCompanionSkins, pickSkinLore, skinLores, staticImageFor, animatedImageFor } from '@/lib/companion-utils';
 import { FOOD_ITEMS, RECIPE_IDS, hasAllRecipeBadges } from '@/app/food-gallery';
 import { dailyEarnCap, formatCoins } from '@/constants/placeholder-data';
 import {
@@ -745,7 +746,7 @@ export default function ShopScreen() {
                         ) : (
                           <View style={styles.outfitArtWrap}>
                             {c.image ? (
-                              <RNImage source={c.image} style={styles.outfitArtImg} resizeMode="contain" />
+                              <RNImage source={staticImageFor(c.image)} style={styles.outfitArtImg} resizeMode="contain" />
                             ) : (
                               <ThemedText style={[styles.itemEmoji, tEmoji]}>{c.emoji}</ThemedText>
                             )}
@@ -817,7 +818,7 @@ export default function ShopScreen() {
                             <View style={[styles.itemCard, charOwned && owned && styles.itemOwned, charOwned && !owned && !canAfford && styles.itemDim]}>
                               {o.image ? (
                                 <>
-                                  <RNImage source={o.image} style={[styles.outfitItemImg, tImg]} resizeMode="contain" />
+                                  <RNImage source={staticImageFor(o.image)} style={[styles.outfitItemImg, tImg]} resizeMode="contain" />
                                   <Pressable
                                     style={styles.zoomBtn}
                                     hitSlop={8}
@@ -950,7 +951,7 @@ export default function ShopScreen() {
                       ]}>
                         <View style={[styles.itemImageWrap, tImgWrap]}>
                           {item.image ? (
-                            <RNImage source={item.image} style={[styles.itemImage, tImg]} resizeMode="contain" />
+                            <RNImage source={staticImageFor(item.image)} style={[styles.itemImage, tImg]} resizeMode="contain" />
                           ) : (
                             <ThemedText style={[styles.itemEmoji, tEmoji]}>{item.emoji}</ThemedText>
                           )}
@@ -1132,7 +1133,7 @@ export default function ShopScreen() {
         <Pressable style={styles.zoomBackdrop} onPress={closeZoom}>
           {zoomImage !== null && (
             <View style={styles.zoomCard}>
-              <RNImage source={zoomImage} style={styles.zoomImage} resizeMode="contain" />
+              <ExpoImage source={animatedImageFor(zoomImage)} style={styles.zoomImage} contentFit="contain" />
               {!!zoomCaption && <ThemedText style={styles.zoomCaption}>{zoomCaption}</ThemedText>}
               <ThemedText style={styles.zoomHint}>{t('shop.tapToClose')}</ThemedText>
             </View>
@@ -1150,7 +1151,7 @@ export default function ShopScreen() {
                 <ThemedText style={[styles.buyTitle, ltTitle]}>{localizeOutfitName(outfitPreview.name, t)}</ThemedText>
                 <View style={styles.buyHero}>
                   {outfitPreview.image && (
-                    <RNImage source={outfitPreview.image} style={[styles.buyHeroImg, ltHeroImg]} resizeMode="contain" />
+                    <RNImage source={staticImageFor(outfitPreview.image)} style={[styles.buyHeroImg, ltHeroImg]} resizeMode="contain" />
                   )}
                 </View>
                 <ThemedText style={styles.previewNote}>{t('shop.charLockedMsg', { name: localizeCompanionName(outfitPreview.charName, t) })}</ThemedText>

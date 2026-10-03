@@ -35,7 +35,6 @@ import { LANGUAGES, type SupportedLanguage, useTranslation } from '@/i18n';
 import { useReportModalTransition } from '@/lib/modal-traffic';
 
 const LOGIN_BG = require('@/assets/images/auth/login-bg.png');
-const LOGIN_CAT = require('@/assets/images/auth/login-cat.png');
 const LOGO = require('@/assets/images/auth/memobun-sign.png');
 
 // Password-visibility toggle: a normal (open-eyed) bear while the password is
@@ -254,13 +253,7 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <RNImage source={LOGIN_BG} style={styles.bg} resizeMode="stretch" />
-      <View style={[styles.catWrap, isTablet && { bottom: lts.catBottom }]} pointerEvents="none">
-        <RNImage
-          source={LOGIN_CAT}
-          style={[styles.cat, isTablet && { width: lts.catSize, height: lts.catSize }]}
-          resizeMode="contain"
-        />
-      </View>
+      {/* Character spot at the bottom intentionally left empty. */}
       {/* Hanging Memobun sign — pinned to the very top so the strings meet the
           screen edge; the form below is padded down to clear it. */}
       <View style={[styles.signHang, isTablet && { top: lts.signTop, height: lts.signHeight }]} pointerEvents="none">

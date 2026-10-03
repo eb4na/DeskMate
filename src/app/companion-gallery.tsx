@@ -26,7 +26,7 @@ import { CompanionLevel } from '@/components/companion-level';
 import { Fonts, MaxContentWidth, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
-import { BUN_SKINS, type BunSkin, getBunSkinImage, getCompanionSkinImage, getCompanionSkins, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, pickSkinLore, skinLores, SHOP_COMPANIONS } from '@/lib/companion-utils';
+import { staticImageFor, BUN_SKINS, type BunSkin, getBunSkinImage, getCompanionSkinImage, getCompanionSkins, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, pickSkinLore, skinLores, SHOP_COMPANIONS } from '@/lib/companion-utils';
 import { SHOP_ITEMS } from '@/constants/shop-data';
 import { roomById, isPairOwned, type RoomPair } from '@/constants/room-data';
 
@@ -359,13 +359,30 @@ function GalleryContent() {
     }
   };
 
-  const handleUseSlot = (slotId: string, hasRenderableImage: boolean) => {
+  const handleUseSlot = (slotId: string, hasRenderableImage: boolean, close = true) => {
     if (!hasRenderableImage) {
       setGalleryAlert({ title: t('gallery.noArtTitle'), msg: t('gallery.noArtMsg') });
       return;
     }
     setActiveCompanion(slotId);
-    goHome();
+    if (close) goHome();
+  };
+
+  /** Equip a companion by id WITHOUT leaving the screen — the three kinds each
+   *  activate differently (the starter through setDefaultCompanion, a bought
+   *  companion through its `shop:` id, a custom slot through the art guard). */
+  const equipById = (id: string) => {
+    if (id === activeCompanionId) return;
+    if (id === getStarterActiveId('girl')) {
+      setDefaultCompanion('girl');
+      return;
+    }
+    if (id.startsWith('shop:')) {
+      setActiveCompanion(id);
+      return;
+    }
+    const slot = companionSlots.find((s) => s.id === id);
+    if (slot) handleUseSlot(slot.id, !!slot.imageUri, false);
   };
 
   const confirmDelete = (slotId: string, name: string) => {
@@ -493,7 +510,7 @@ function GalleryContent() {
                       style={({ pressed }) => [styles.outfitSlot, pressed && styles.pressed]}
                       onPress={() => wearSkin(preview.id, skin.id)}>
                       <View style={[styles.outfitChip, worn && styles.outfitChipActive]}>
-                        <Image source={skin.image} style={styles.outfitChipImg} contentFit="contain" />
+                        <Image source={staticImageFor(skin.image)} style={styles.outfitChipImg} contentFit="contain" />
                       </View>
                       <View style={styles.outfitChipNameBox}>
                         <FitText style={[styles.outfitChipName, worn && styles.outfitChipNameActive]}>
@@ -508,7 +525,7 @@ function GalleryContent() {
 
             <View style={[styles.previewImageWrap, { width: `${tweak.imgSize}%` }]}>
               {preview.image ? (
-                <Image source={preview.image} style={styles.companionImage} contentFit="contain" />
+                <Image source={staticImageFor(preview.image)} style={styles.companionImage} contentFit="contain" />
               ) : (
                 <View style={styles.companionImagePlaceholder} />
               )}
@@ -543,7 +560,13 @@ function GalleryContent() {
               <Pressable
                 key={char.id}
                 style={[styles.thumbSlot, { width: tweak.thumbSize * scale }]}
-                onPress={() => setPreviewId(char.id)}>
+                onPress={() => {
+                  // Choosing a companion equips them on the spot: the button below
+                  // is a confirmation of what already happened, not a second tap
+                  // you have to find. The sheet stays open so you can keep looking.
+                  setPreviewId(char.id);
+                  equipById(char.id);
+                }}>
                 <View
                   style={[
                     styles.thumb,
@@ -551,7 +574,7 @@ function GalleryContent() {
                     preview?.id === char.id && styles.thumbActive,
                   ]}>
                   {char.image ? (
-                    <Image source={char.image} style={styles.thumbImg} contentFit="contain" />
+                    <Image source={staticImageFor(char.image)} style={styles.thumbImg} contentFit="contain" />
                   ) : (
                     <View style={styles.companionImagePlaceholder} />
                   )}
@@ -632,7 +655,7 @@ function GalleryContent() {
                           )}
                           <View style={styles.skinImageWrap}>
                             <Image
-                              source={skin.image}
+                              source={staticImageFor(skin.image)}
                               style={styles.skinImage}
                               contentFit="contain"
                             />
@@ -710,7 +733,7 @@ function GalleryContent() {
               <View style={styles.buyCard}>
                 <Text style={styles.buyTitle}>{t('gallery.unlockTitle', { name: buyItem.name })}</Text>
                 {buyItem.image && (
-                  <Image source={buyItem.image} style={styles.buyImage} contentFit="contain" />
+                  <Image source={staticImageFor(buyItem.image)} style={styles.buyImage} contentFit="contain" />
                 )}
                 <View style={styles.buyBalanceRow}>
                   <Text style={styles.buyBalanceLabel}>{t('gallery.yourBalance')}</Text>

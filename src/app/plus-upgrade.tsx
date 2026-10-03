@@ -51,14 +51,12 @@ const FEATURES: {
   // drives, IS Plus-only and is listed below. Exam countdowns, tasks and SUBJECTS
   // are NOT Plus perks (same caps for everyone).
   // ── Looks (kept forever / while subscribed) ──
-  { titleKey: 'plus.f_exclusiveSkin', descKey: 'plus.f_exclusiveSkinDesc', art: require('@/assets/images/bun/bun-strawberry.png'), noteKey: 'plus.noteKeep', noteKind: 'keep' },
   { titleKey: 'plus.f_goldenTeahouse', descKey: 'plus.f_goldenTeahouseDesc', art: require('@/assets/images/backgrounds/strawberry-palace.png'), noteKey: 'plus.noteKeep', noteKind: 'keep' },
   { titleKey: 'plus.f_disco', descKey: 'plus.f_discoDesc', disco: true },
   { titleKey: 'plus.f_cardColor', descKey: 'plus.f_cardColorDesc', cardColor: true, noteKey: 'plus.noteExpire', noteKind: 'expire' },
 ];
 
-// Art shown in the first-time Plus reward popups (matches the in-game items).
-const SKIN_ART = require('@/assets/images/bun/bun-strawberry.png');
+// Art shown in the first-time Plus reward popup (matches the in-game item).
 const ROOM_ART = require('@/assets/images/backgrounds/strawberry-palace.png');
 
 export default function PlusUpgradeScreen() {
@@ -86,13 +84,14 @@ export default function PlusUpgradeScreen() {
   // We don't call router.back() from its callback (dismissing two modals at once
   // races on iOS); activating just flips the screen into its "Plus member" state
   // and the user closes the screen themselves.
-  // 'rewardSkin' → 'rewardRoom' are the two first-time-Plus unlock popups, shown
-  // back-to-back only when the perks were actually newly granted.
+  // 'rewardRoom' is the first-time-Plus unlock popup, shown only when the perks
+  // were actually newly granted. (A second one announced the wardrobe skin, which
+  // was retired along with the old companion art.)
   // 'activate' is the DEV-only mock-purchase confirm; the 'msg*' states are simple
   // info panels (store unavailable / failed / restore result) rendered as a local
   // modal because a root showPopup can fail to present over this native-modal screen.
   const [confirm, setConfirm] = useState<
-    null | 'activate' | 'deactivate' | 'rewardSkin' | 'rewardRoom' | 'msgUnavailable' | 'msgFailed' | 'msgRestored' | 'msgNoRestore' | 'guest'
+    null | 'activate' | 'deactivate' | 'rewardRoom' | 'msgUnavailable' | 'msgFailed' | 'msgRestored' | 'msgNoRestore' | 'guest'
   >(null);
 
   // True while a StoreKit purchase/restore is in flight. Tap → getProducts →
@@ -120,12 +119,14 @@ export default function PlusUpgradeScreen() {
   const activatePlus = (until?: string) => {
     // Perks are kept forever, so they're only newly granted the first time → only
     // then show the reward popups.
-    const firstTime = !ownedShopItems.includes('outfit_bun_strawberry');
+    // Keyed on the Strawberry Palace room: the wardrobe skin this used to check was
+    // retired with the old companion art.
+    const firstTime = !ownedShopItems.includes('bg_strawberry_palace');
     // announce=true → this is a genuine paywall purchase, so the "monthly freezes
     // granted" popup is appropriate. Restore / cold-launch re-sync paths pass no
     // announce, so they never spuriously fire it (e.g. logging in on another device).
     setIsPlus(true, plan, until, true);
-    setConfirm(firstTime ? 'rewardSkin' : null);
+    setConfirm(firstTime ? 'rewardRoom' : null);
   };
 
   // "Start Plus" CTA. Real StoreKit purchase when available; DEV mock otherwise;
@@ -359,26 +360,6 @@ export default function PlusUpgradeScreen() {
                   style={({ pressed }) => [styles.confirmDestructive, pressed && styles.pressed]}
                   onPress={() => { setIsPlus(false); setConfirm(null); }}>
                   <ThemedText style={styles.confirmDestructiveText}>{t('plus.deactivate')}</ThemedText>
-                </Pressable>
-              </>
-            ) : confirm === 'rewardSkin' ? (
-              <>
-                <Image source={SKIN_ART} style={styles.confirmArt} contentFit="contain" />
-                <ThemedText style={styles.confirmTitle}>
-                  {t('plus.rewardSkinTitle', { defaultValue: 'New outfit unlocked!' })}
-                </ThemedText>
-                <ThemedText style={styles.confirmMsg}>
-                  {t('plus.rewardSkinMsg', {
-                    defaultValue:
-                      "You got Bun's Berry Princess outfit — yours to keep forever. Find it in Bun's wardrobe.",
-                  })}
-                </ThemedText>
-                <Pressable
-                  style={({ pressed }) => [styles.confirmPrimary, pressed && styles.pressed]}
-                  onPress={() => setConfirm('rewardRoom')}>
-                  <ThemedText style={styles.confirmPrimaryText}>
-                    {t('common.next', { defaultValue: 'Next' })}
-                  </ThemedText>
                 </Pressable>
               </>
             ) : confirm === 'rewardRoom' ? (

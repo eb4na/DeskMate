@@ -1243,6 +1243,7 @@
     "companion_cocoa": "포근한 가을 기모노를 입은 느긋한 레서판다.",
     "companion_bunny": "프릴 가득한 핑크 드레스를 입은 공주님 토끼.",
     "companion_honey": "깅엄 셰프 코트를 입은 다정한 꿀곰 제빵사.",
+    "companion_pretzel": "셰프 모자에 프레첼을 꽂은 호기심 많은 고양이 제빵사.",
     "companion_tira": "코코아 가루 앞치마를 두른 티라미수 토끼.",
     "companion_hanji": "등나무 장식이 달린 라벤더빛 한푸를 입은 우아한 검은 고양이.",
     "outfit_bun_angel": "날개와 보닛이 달린 프릴 엔젤 드레스. 입고 있는 동안 빵이 포근하게 지켜주는 알림을 보내줘요 — 빵의 옷장에서 입을 수 있어요.",
@@ -1912,6 +1913,7 @@
     "history": "역사"
   },
   "outfitNames": {
+    "starry": "별밤",
     "classic": "클래식",
     "angel": "엔젤",
     "relax": "릴랙스",

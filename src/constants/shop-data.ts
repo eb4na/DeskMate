@@ -92,7 +92,9 @@ export const SHOP_ITEMS: ShopItem[] = [
     description: 'A princess bunny in a frilly pink gown.',
     price: 10000,
     category: 'companion',
-    image: require('@/assets/images/bunny/bunny.png'),
+    // Animated (blink/bounce/scratch) on expo-image surfaces; RN <Image> surfaces
+    // (shop grid) use the static first frame via staticImageFor().
+    image: require('@/assets/images/bunny/bunny-classic-anim.webp'),
   },
   {
     id: 'companion_honey',
@@ -104,13 +106,23 @@ export const SHOP_ITEMS: ShopItem[] = [
     image: require('@/assets/images/honey/honey.png'),
   },
   {
+    // TEST character — free (price 0) so it can be tried without coins.
+    id: 'companion_pretzel',
+    name: 'Pretzel',
+    emoji: '',
+    description: 'A curious cat baker with a pretzel pinned to his chef hat.',
+    price: 0,
+    category: 'companion',
+    image: require('@/assets/images/pretzel/pretzel.png'),
+  },
+  {
     id: 'companion_tira',
     name: 'Tira',
     emoji: '',
     description: 'A tiramisu bunny with a cocoa-dusted apron.',
     price: 10000,
     category: 'companion',
-    image: require('@/assets/images/tira/tira.png'),
+    image: require('@/assets/images/tira/tira-classic-anim.webp'),
   },
   {
     id: 'companion_hanji',
@@ -125,41 +137,13 @@ export const SHOP_ITEMS: ShopItem[] = [
 
   // ─── Outfits / wardrobe skins (10000; Carefree Days 7000; the 3 pajama sets 4000) ──
   {
-    id: 'outfit_bun_angel',
-    name: 'Angel Bun',
+    id: 'outfit_bun_starry',
+    name: 'Starry Night',
     emoji: '',
-    description: "A frilly angel gown with wings & bonnet. Bun sends soft, watch-over-you reminders while wearing it — wear it from Bun's Wardrobe.",
-    price: 10000,
-    category: 'outfits',
-    image: require('@/assets/images/bun/bun-angel.png'),
-  },
-  {
-    id: 'outfit_bun_snowrabbit',
-    name: 'Snow Rabbit',
-    emoji: '',
-    description: "A fluffy hooded winter coat with a flower headdress & blue tassels. Wear it from Bun's Wardrobe.",
-    price: 15000,
-    category: 'outfits',
-    image: require('@/assets/images/bun/bun-snowrabbit.png'),
-  },
-  {
-    id: 'outfit_bun_strawberry',
-    name: 'Strawberry Plus',
-    emoji: '',
-    description: "A royal strawberry-lolita gown with a lace bonnet & crown. Yours free with Plus — wear it from Bun's Wardrobe.",
-    price: 10000,
-    category: 'outfits',
-    image: require('@/assets/images/bun/bun-strawberry.png'),
-    plusOnly: true,
-  },
-  {
-    id: 'outfit_bun_dreams',
-    name: 'Strawberry Dreams',
-    emoji: '',
-    description: "A dreamy strawberry-print nightgown & matching sleep cap, with a little strawberry lantern. Wear it from Bun's Wardrobe.",
+    description: "A star-print nightgown with a sleep cap and a little star wand. Wear it from her Wardrobe.",
     price: 4000,
     category: 'outfits',
-    image: require('@/assets/images/bun/bun-dreams.png'),
+    image: require('@/assets/images/bun/bun-starry.png'),
   },
   {
     id: 'outfit_cocoa_demon',

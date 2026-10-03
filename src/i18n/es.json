@@ -1244,6 +1244,7 @@
     "companion_cocoa": "Un panda rojo relajado con un acogedor kimono otoñal.",
     "companion_bunny": "Una conejita princesa con un vestido rosa de volantes.",
     "companion_honey": "Un dulce osito panadero de miel con chaqueta de chef a cuadros.",
+    "companion_pretzel": "Un curioso gato panadero con un pretzel prendido en su gorro de chef.",
     "companion_tira": "Una conejita tiramisú con delantal espolvoreado de cacao.",
     "companion_hanji": "Una elegante gata negra con un hanfu lavanda y adornos de glicina.",
     "outfit_bun_angel": "Un vestido de ángel con volantes, alas y capota. Con él puesto, Bun envía recordatorios suaves y protectores — póntelo desde el armario de Bun.",
@@ -1913,6 +1914,7 @@
     "history": "Historia"
   },
   "outfitNames": {
+    "starry": "Noche estrellada",
     "classic": "Clásico",
     "angel": "Ángel",
     "relax": "Relax",

@@ -1244,6 +1244,7 @@
     "companion_cocoa": "A laid-back red panda in a cozy autumn kimono.",
     "companion_bunny": "A princess bunny in a frilly pink gown.",
     "companion_honey": "A sweet honey-bear baker in a gingham chef coat.",
+    "companion_pretzel": "A curious cat baker with a pretzel pinned to his chef hat.",
     "companion_tira": "A tiramisu bunny with a cocoa-dusted apron.",
     "companion_hanji": "An elegant black cat in a lavender hanfu with wisteria charms.",
     "outfit_bun_angel": "A frilly angel gown with wings & bonnet. Bun sends soft, watch-over-you reminders while wearing it — wear it from Bun's Wardrobe.",
@@ -1913,6 +1914,7 @@
     "history": "History"
   },
   "outfitNames": {
+    "starry": "Starry Night",
     "classic": "Classic",
     "angel": "Angel",
     "relax": "Relax",

@@ -167,6 +167,7 @@ export default function SettingsScreen() {
     devLapseStreak,
     devMaxOutAccount,
     devUnlockHanji,
+    devGrantCoins,
     replayTutorial,
     claimedMailIds,
     profileBirthday,
@@ -532,6 +533,14 @@ export default function SettingsScreen() {
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
             <SettingRow icon={<CoinIcon size={24 * scale} />} label={t('settings.focusCoins')} value={t('settings.coinsValue', { count: coins })} />
+            {/* DEV-ONLY test button — gated behind __DEV__ so TestFlight / App Store
+                builds can't grant free coins. */}
+            {__DEV__ && (
+              <>
+                <View style={styles.divider} />
+                <SettingRow icon={<CoinIcon size={24 * scale} />} label="Give 1M coins (dev test)" onPress={() => devGrantCoins(1_000_000)} />
+              </>
+            )}
           </ThemedView>
 
           {/* Focus & study */}

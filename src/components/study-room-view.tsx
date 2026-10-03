@@ -105,11 +105,11 @@ function mergePlayback(prev: Playback | null, next: Playback | null): Playback |
 // (re-run when art changes or a companion is added).
 const SOLO_BOOK_CANVAS = 300; // characterSolo width/height
 const SOLO_BOOK_OFFSET: Record<string, { dx: number; dy: number }> = {
-  bun: { dx: -0.035, dy: 0 },
+  bun: { dx: -0.012, dy: 0 },
   companion_cocoa: { dx: -0.032, dy: 0 },
-  companion_tira: { dx: -0.026, dy: 0 },
+  companion_tira: { dx: -0.028, dy: 0 },
   companion_honey: { dx: -0.026, dy: 0 },
-  companion_bunny: { dx: -0.032, dy: 0 },
+  companion_bunny: { dx: -0.034, dy: 0 },
   hanji: { dx: -0.018, dy: 0 },
 };
 const DEFAULT_SOLO_BOOK_OFFSET = { dx: -0.026, dy: 0 };
@@ -121,7 +121,7 @@ const DEFAULT_SOLO_BOOK_OFFSET = { dx: -0.026, dy: 0 };
 // own value. Phone-only: the tablet path uses its own soloCharBottomT geometry. Keyed
 // by soloBookKey (ladder key); dial by eye against the fixed desk line.
 const SOLO_WAIST_MB: Record<string, number> = {
-  bun: 103,
+  bun: 82,
   companion_cocoa: 74, // Aki (chunky, sits high via its -0.04 baseline lift)
   companion_bunny: 84,
   companion_honey: 66, // Miel (bear)

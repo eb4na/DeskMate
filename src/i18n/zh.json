@@ -1243,6 +1243,7 @@
     "companion_cocoa": "穿着秋日和服、悠闲自在的小熊猫。",
     "companion_bunny": "身穿粉色荷叶边礼服的公主兔。",
     "companion_honey": "穿着格纹厨师服的甜心蜂蜜熊面包师。",
+    "companion_pretzel": "厨师帽上别着椒盐卷饼的好奇小猫面包师。",
     "companion_tira": "系着可可粉围裙的提拉米苏兔。",
     "companion_hanji": "身着薰衣草色汉服、佩戴紫藤饰品的优雅黑猫。",
     "outfit_bun_angel": "带翅膀和软帽的荷叶边天使裙。穿上后布布会温柔地守护提醒你 — 在布布的衣橱中穿上。",
@@ -1912,6 +1913,7 @@
     "history": "历史"
   },
   "outfitNames": {
+    "starry": "星夜",
     "classic": "经典",
     "angel": "天使",
     "relax": "放松",

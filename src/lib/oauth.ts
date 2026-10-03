@@ -82,8 +82,22 @@ async function runOAuth(getUrl: () => Promise<UrlResult>): Promise<OAuthResult> 
   if (!url) return { ok: false, error: 'No sign-in URL was returned.' };
 
   // Opens the provider's login in a secure in-app browser and resolves once it
-  // redirects back to our scheme (or the user cancels).
-  const result = await WebBrowser.openAuthSessionAsync(brandAuthUrl(url), authCallbackUrl);
+  // redirects back to our scheme (or the user cancels). iOS allows only one auth
+  // session at a time and REJECTS the call ("Another web browser is already open")
+  // if a previous one is still up — e.g. a double tap, or a session orphaned by a
+  // reload. Dismiss any leftover first, and catch the rejection so callers always
+  // get a result (an uncaught throw left the login buttons stuck disabled).
+  if (Platform.OS === 'ios') {
+    try {
+      WebBrowser.dismissAuthSession();
+    } catch {}
+  }
+  let result: WebBrowser.WebBrowserAuthSessionResult;
+  try {
+    result = await WebBrowser.openAuthSessionAsync(brandAuthUrl(url), authCallbackUrl);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
   if (result.type === 'cancel' || result.type === 'dismiss') return { ok: false, cancelled: true };
   if (result.type !== 'success' || !result.url) return { ok: false, error: 'Sign-in was not completed.' };
 

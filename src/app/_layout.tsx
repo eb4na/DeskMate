@@ -2,7 +2,7 @@ import { Asset } from 'expo-asset';
 import { useFonts } from 'expo-font';
 import { Image as ExpoImage } from 'expo-image';
 import { DefaultTheme, ThemeProvider, Stack, router } from 'expo-router';
-import { Animated, Appearance, Easing, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Appearance, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { PostHogProvider } from 'posthog-react-native';
@@ -27,7 +27,7 @@ import { posthog, identifyUser, resetUser } from '@/lib/analytics';
 import { configurePurchases, currentPlusExpiry, onPlusEntitlementChange } from '@/lib/purchases';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
-import { BakeryColors, Spacing } from '@/constants/theme';
+import { BakeryColors } from '@/constants/theme';
 import '@/lib/notifications';
 import i18n, { useTranslation } from '@/i18n';
 
@@ -36,97 +36,31 @@ import i18n, { useTranslation } from '@/i18n';
 // still reaches react-native's useColorScheme, so force it app-wide here.
 Appearance.setColorScheme('light');
 
-// The one loading artwork, everywhere. This used to be a random pick from five
-// full-bleed illustrations; a single screen makes loading feel like one consistent
-// moment instead of a slideshow, and drops ~11MB of art from the bundle.
-const LOADING_IMG = require('@/assets/images/home/loading-bun-pink.png');
-// The art's flat ground. loadingRoot uses it so there's no colour seam in the frame
-// before the image decodes, and the label/bar colours below are chosen against it.
-const LOADING_BG = '#FBD8E0';
-// Bouncing-dots timing. Cycle = 2*HOP + 2*STAGGER = 800ms per dot.
-const DOT_HOP_MS = 260;
-const DOT_STAGGER_MS = 140;
-const DOT_RISE = 10;
 
-// Full-screen loading splash shown OVER the app — the home screen mounts behind
-// it (loading its art) and stays hidden until everything is ready. Only when
-// `ready` flips true does the overlay fill its bar and fade away (then onDone).
+// Invisible loading gate. There is no loading screen any more — the app shows
+// straight away — but screens still call showLoadingScreen(onDone) and rely on
+// onDone firing only once things are ready (e.g. the study timer stays frozen
+// until the study room's art has loaded). So this keeps the readiness wait and
+// renders nothing. FAIL-OPEN: a hard cap fires onDone even if `ready` never
+// flips, so a hung prefetch can't hold anything forever.
 function LoadingScreen({ ready, quick, onDone }: { ready: boolean; quick?: boolean; onDone: () => void }) {
-  const fade = useRef(new Animated.Value(1)).current;
-  // Three dots that hop in sequence, forever. One Animated.Value per dot.
-  const dots = useRef([0, 1, 2].map(() => new Animated.Value(0))).current;
-  const { t } = useTranslation();
-  const [slow, setSlow] = useState(false);
-  const [minDone, setMinDone] = useState(false);
-  // FAIL-OPEN failsafe: if `ready` never flips (e.g. a hung asset prefetch leaves a
-  // gate stuck), force-dismiss after a hard cap so the overlay can NEVER block the
-  // app forever. Generous so it doesn't cut a legitimately-slow load short.
   const [forceDone, setForceDone] = useState(false);
-
-  // Launch/login hold a little longer than quick in-app navigation, but neither
-  // sits on a fixed timer: the overlay lifts as soon as `ready` flips (home art
-  // painted / assets preloaded) past a short floor, so a warm launch feels instant
-  // instead of always eating 3s.
-  const minMs = quick ? 400 : 800;
   const maxMs = quick ? 6000 : 10000;
 
-  // Bounce the dots one after another, on repeat. Each dot's cycle is the SAME
-  // total length (lead delay + up + down + trailing delay = 800ms); only where the
-  // delay sits differs, so they stagger without ever drifting out of phase.
   useEffect(() => {
-    const anims = dots.map((v, i) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(i * DOT_STAGGER_MS),
-          Animated.timing(v, { toValue: 1, duration: DOT_HOP_MS, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-          Animated.timing(v, { toValue: 0, duration: DOT_HOP_MS, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-          Animated.delay((dots.length - 1 - i) * DOT_STAGGER_MS),
-        ]),
-      ),
-    );
-    anims.forEach((a) => a.start());
-    return () => anims.forEach((a) => a.stop());
-  }, [dots]);
-
-  useEffect(() => {
-    const minTimer = setTimeout(() => setMinDone(true), minMs);
-    const slowTimer = setTimeout(() => setSlow(true), 3000);
     const maxTimer = setTimeout(() => setForceDone(true), maxMs);
-    return () => {
-      clearTimeout(minTimer);
-      clearTimeout(slowTimer);
-      clearTimeout(maxTimer);
-    };
-  }, [minMs, maxMs]);
+    return () => clearTimeout(maxTimer);
+  }, [maxMs]);
 
-  // Finish once the app is ready AND the minimum hold has passed — OR once the hard
-  // max-hold failsafe trips (so a stuck `ready` can't freeze the screen).
-  const finished = (ready && minDone) || forceDone;
+  const finished = ready || forceDone;
+  const doneRef = useRef(false);
   useEffect(() => {
-    if (!finished) return;
-    Animated.timing(fade, { toValue: 0, duration: 400, useNativeDriver: true }).start(() => onDone());
-  }, [finished, fade, onDone]);
+    if (!finished || doneRef.current) return;
+    doneRef.current = true;
+    onDone();
+  }, [finished, onDone]);
 
-  return (
-    <Animated.View style={[styles.loadingRoot, { opacity: fade }]} pointerEvents={finished ? 'none' : 'auto'}>
-      <ExpoImage source={LOADING_IMG} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="center" />
-      <View style={styles.loadingBarWrap}>
-        <Text style={styles.loadingLabel}>{t('common.loading')}</Text>
-        <View style={styles.loadingDots}>
-          {dots.map((v, i) => (
-            <Animated.View
-              key={i}
-              style={[
-                styles.loadingDot,
-                { transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, -DOT_RISE] }) }] },
-              ]}
-            />
-          ))}
-        </View>
-        {slow && !ready && <Text style={styles.loadingSlow}>{t('common.loadingSlow')}</Text>}
-      </View>
-    </Animated.View>
-  );
+  return null;
 }
 
 // First-screen (home) art preloaded during the loading screen so nothing pops
@@ -234,6 +168,19 @@ function RootNavigator() {
   // Re-show the loading screen whenever the user becomes authenticated — i.e.
   // every time they log in or finish signing in (a guest also counts).
   const authed = !!session || isGuest;
+
+  // A guest restored at launch: the Stack picks its first screen before auth
+  // finishes initializing (guard still false), so it lands on (auth)/login — and
+  // unlike a real session (bounced by (auth)/_layout's Redirect) nothing moved a
+  // guest off it, so every cold launch looked like being logged out. Route a
+  // restored guest home once, at launch only (a guest who later opens signup from
+  // Settings must stay there).
+  const launchRoutedRef = useRef(false);
+  useEffect(() => {
+    if (launchRoutedRef.current || !initialized) return;
+    launchRoutedRef.current = true;
+    if (isGuest && !session) router.replace('/');
+  }, [initialized, isGuest, session]);
   const wasAuthed = useRef(false);
   useEffect(() => {
     if (authed && !wasAuthed.current) {
@@ -540,37 +487,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  loadingRoot: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: LOADING_BG,
-    // Above the consent gate / starter chooser (zIndex 1000) so those can mount
-    // underneath the splash and be revealed when it lifts — no home-screen flash.
-    zIndex: 1001,
-  },
-  loadingBarWrap: {
-    position: 'absolute',
-    bottom: '6%',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  // Three hopping dots in place of the old progress bar. Extra top/bottom room so
-  // the hop isn't clipped by the row's own height.
-  loadingDots: { flexDirection: 'row', alignItems: 'center', gap: 12, height: DOT_RISE + 14 },
-  // White on the artwork's pale pink is only ~1.4:1, so the dots carry a soft
-  // shadow — enough to read as three distinct dots without looking outlined.
-  loadingDot: {
-    width: 11, height: 11, borderRadius: 6, backgroundColor: '#fff',
-    shadowColor: '#C2708A', shadowOpacity: 0.5, shadowRadius: 3, shadowOffset: { width: 0, height: 1 },
-  },
-  // White on the pale-pink ground is only ~1.4:1 on its own, so both labels carry a
-  // rose drop-shadow (same family as the dots') to hold their edges. Text is still
-  // t('common.loading') / t('common.loadingSlow') — translated in all 7 locales.
-  loadingLabel: { fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: 0.5, textShadowColor: 'rgba(194,112,138,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
-  loadingSlow: { fontSize: 12, fontWeight: '700', color: '#fff', textShadowColor: 'rgba(194,112,138,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
 });

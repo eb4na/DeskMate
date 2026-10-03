@@ -9,7 +9,7 @@ import { FOOD_ITEMS } from '@/app/food-gallery';
 import { starterRecipe } from '@/constants/recipes';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
-import { BUN_SKINS, getCompanionSkins, isSkinShopObtainable, localizeCompanionName, localizeOutfitName, STARTER_CHOICES } from '@/lib/companion-utils';
+import { staticImageFor, BUN_SKINS, getCompanionSkins, isSkinShopObtainable, localizeCompanionName, localizeOutfitName, STARTER_CHOICES } from '@/lib/companion-utils';
 import { showLoadingScreen } from '@/lib/loading-signal';
 import { playSwoosh, playTapConfirm } from '@/lib/sounds';
 
@@ -254,7 +254,7 @@ export function StarterChooser() {
               {skins.map((skin) => (
                 <View key={skin.id} style={styles.outfitCell}>
                   <View style={styles.outfitThumb}>
-                    <Image source={skin.image} style={styles.outfitImage} contentFit="contain" />
+                    <Image source={staticImageFor(skin.image)} style={styles.outfitImage} contentFit="contain" />
                   </View>
                   <Text style={styles.outfitName} numberOfLines={1}>
                     {localizeOutfitName(skin.name, t)}

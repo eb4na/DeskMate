@@ -227,10 +227,10 @@ const BREAK_GAME_BTN = require('@/assets/images/home/break-game-btn.png');
 const FRIEND_BTN = require('@/assets/images/home/friend-btn.png');
 const GAME_BTN = require('@/assets/images/home/game-btn.png');
 const START_SESSION_BTN = require('@/assets/images/home/start-session-btn.png');
-const SWITCH_CHARACTER_BTN = require('@/assets/images/home/switch-character-btn.png');
-const FOOD_MENU_BTN = require('@/assets/images/home/food-menu-btn.png');
-const SETTINGS_BTN = require('@/assets/images/home/settings-scallop-btn.png');
-const EDIT_ROOM_BTN = require('@/assets/images/home/edit-room-btn.png');
+const SWITCH_CHARACTER_BTN = require('@/assets/images/home/switch-character-btn-soft-bakery.png');
+const FOOD_MENU_BTN = require('@/assets/images/home/food-menu-btn-soft-bakery.png');
+const SETTINGS_BTN = require('@/assets/images/home/settings-scallop-btn-soft-bakery.png');
+const EDIT_ROOM_BTN = require('@/assets/images/home/edit-room-btn-soft-bakery.png');
 const STREAK_FIRE_ICON = require('@/assets/images/home/streak-fire-icon.png');
 const EXAM_BOOK_ICON = require('@/assets/images/home/exam-book-icon.png');
 const EXAM_CALENDAR_ICON = require('@/assets/images/home/exam-calendar-icon.png');
@@ -878,7 +878,9 @@ export default function HomeScreen() {
   // Aki's art reads tall — nudge every Aki skin down a little on phones too
   // (the tablet has its own cocoaY knob above). Was 30 for the old Cocoa art;
   // the new chef art sits lower in its box, so halved to keep him above the desk.
-  const companionTranslateY = isCocoaCompanion ? 15 : 0;
+  // The starter sits a touch high against the counter once scaled up — nudge her
+  // down, same knob and units Aki uses.
+  const companionTranslateY = isCocoaCompanion ? 15 : activeCompanion.type === 'starter' ? 8 : 0;
   // Full ×u box (the static bottom:'38%' converted against the REFERENCE scene
   // height, riding the desk via deskDriftY) + the knob nudges as transform.
   const tCharLayer =

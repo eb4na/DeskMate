@@ -1,8 +1,9 @@
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Image, type ImageSource } from 'expo-image';
-import { router, Tabs } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { Tabs } from 'expo-router';
+import { useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { StyleSheet, Text, View, type ImageStyle, type StyleProp } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 import { subscribeDragActive } from '@/lib/drag-session';
 import { setTutorialTarget } from '@/lib/tutorial-targets';
 import { SoundPressable } from '@/components/sound-pressable';
@@ -12,18 +13,9 @@ import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 
-import {
-  BottomTabInset,
-  TabBarBottomOffset,
-  TabBarBowHeight,
-  TabBarBowWidth,
-  TabBarHeight,
-  TabBarTotalHeight,
-} from '@/constants/theme';
+import { BottomTabInset, Fonts } from '@/constants/theme';
 
-const LACE_BG = require('@/assets/images/home/bottom-nav-lace.png');
-const COMPANION_BTN = require('@/assets/images/home/companion-button.png');
-const BOW = require('@/assets/images/home/bottom-nav-bow.png');
+type BottomTabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
 
 const HOME_ICON = require('@/assets/images/tabIcons/gen-home.png');
 // The gen-*-active.png variants are flat, featureless silhouettes, so selecting a tab
@@ -44,8 +36,6 @@ const LABEL_KEYS: Record<string, string> = {
   shop: 'nav.shop',
 };
 
-const LEFT_ROUTES = ['index', 'tasks'];
-const RIGHT_ROUTES = ['progress', 'shop'];
 const ROUTE_INDEX: Record<string, number> = { index: 0, tasks: 1, progress: 2, shop: 3 };
 
 function TabItem({ name, isFocused, onPress, iconStyle, targetId }: { name: string; isFocused: boolean; onPress: () => void; iconStyle?: StyleProp<ImageStyle>; targetId?: string }) {
@@ -62,10 +52,13 @@ function TabItem({ name, isFocused, onPress, iconStyle, targetId }: { name: stri
         name === 'shop' && styles.tabShop,
       ]}
       onPress={onPress}
+      accessibilityRole="tab"
+      accessibilityLabel={t(LABEL_KEYS[name])}
+      accessibilityState={{ selected: isFocused }}
     >
       <View
         ref={targetId ? (n) => setTutorialTarget(targetId, n) : undefined}
-        style={styles.iconWrap}>
+        style={[styles.iconWrap, isFocused && styles.iconWrapActive]}>
         <Image
           source={ICONS[name]}
           style={[styles.icon, name === 'index' && styles.iconHome, iconStyle]}
@@ -77,11 +70,15 @@ function TabItem({ name, isFocused, onPress, iconStyle, targetId }: { name: stri
   );
 }
 
+const LACE_EDGE = 'M0 10 ' + Array.from({ length: 10 }, (_, i) => `Q${i * 40 + 20} 5 ${i * 40 + 40} 10`).join(' ');
+
 const ALL_ROUTES = ['index', 'tasks', 'progress', 'shop'];
 
 function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const { scale } = useTabletScale();
   const styles = useMemo(() => makeStyles(scale), [scale]);
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, 10 * scale);
   // Tablet-only per-icon nudge so each icon centers in its lace segment.
   const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('menubar', [
     { name: 'index', label: 'Home icon' },
@@ -90,11 +87,15 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
     { name: 'shop', label: 'Shop icon' },
   ]);
   return (
-    <View style={styles.wrapper}>
-      <View style={styles.laceSlot}>
-        <Image source={LACE_BG} style={styles.lace} contentFit="fill" />
+    <View style={[styles.wrapper, { height: 98 * scale + bottomPadding }]}>
+      <View pointerEvents="none" style={styles.laceSlot}>
+        <Svg width="100%" height="100%" viewBox="0 0 400 24" preserveAspectRatio="none">
+          <Path d={LACE_EDGE + ' L400 24 L0 24 Z'} fill="#FFF9ED" />
+          <Path d={LACE_EDGE} fill="none" stroke="#D5A653" strokeWidth="1.5" />
+        </Svg>
       </View>
-      <View style={styles.row}>
+      <View pointerEvents="none" style={styles.panel} />
+      <View style={[styles.row, { bottom: bottomPadding }]}>
         {ALL_ROUTES.map((name) => {
           const index = ROUTE_INDEX[name];
           const isFocused = state.index === index;
@@ -145,7 +146,6 @@ export default function AppTabs() {
           borderTopWidth: 0,
           elevation: 0,
         },
-        tabBarSafeAreaInsets: { bottom: 0 },
       }}>
       <Tabs.Screen name="index" options={{ title: t('nav.home') }} />
       <Tabs.Screen name="tasks" options={{ title: t('nav.tasks') }} />
@@ -155,122 +155,40 @@ export default function AppTabs() {
   );
 }
 
-// Tablet scales the whole bar (icons, labels, white panel, vertical geometry) by the
-// shared proportional `scale` — so the bar reads the same on every iPad size instead
-// of fixed pixels that are tiny on a big screen. On phone `s === 1` (no-op).
+// The ivory panel reaches the screen edge; only the controls respect the safe area.
 function makeStyles(s: number) {
   return StyleSheet.create({
     wrapper: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      bottom: TabBarBottomOffset * s,
-      height: TabBarTotalHeight * s,
-      justifyContent: 'flex-end',
-      backgroundColor: 'transparent',
+      position: 'absolute', left: 0, right: 0, bottom: 0,
     },
     laceSlot: {
-      position: 'absolute',
-      left: -26 * s,
-      right: -26 * s,
-      bottom: 60 * s,
-      height: 100 * s,
-      alignItems: 'center',
-      justifyContent: 'center',
+      position: 'absolute', left: 0, right: 0, top: 0, height: 24 * s,
     },
-    lace: {
-      width: '100%',
-      height: 100 * s,
-    },
-    dangleThread: {
-      position: 'absolute',
-      bottom: TabBarBowHeight - 2,
-      alignSelf: 'center',
-      width: 3,
-      height: 14,
-      backgroundColor: '#E8C4B8',
-      borderRadius: 2,
-    },
-    bowSlot: {
-      position: 'absolute',
-      bottom: 48,
-      left: 0,
-      right: 0,
-      height: TabBarBowHeight,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    bow: {
-      width: TabBarBowWidth,
-      height: TabBarBowHeight,
+    panel: {
+      position: 'absolute', left: 0, right: 0, top: 23 * s, bottom: 0,
+      backgroundColor: '#FFF9ED',
     },
     row: {
-      // Full-width so the four tabs split the screen into four equal segments,
-      // each item centered in its own quarter (even spacing relative to screen size).
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      bottom: 80 * s,
-      height: 66 * s,
-      flexDirection: 'row',
-      alignItems: 'center',
+      position: 'absolute', left: 0, right: 0, height: 74 * s,
+      flexDirection: 'row', alignItems: 'center',
     },
     tab: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 2 * s,
+      flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center', gap: 3 * s,
     },
-    tabHome: {},
-    tabTasks: {},
-    tabProgress: {},
-    tabShop: {},
-    heartButton: {
-      position: 'absolute',
-      alignSelf: 'center',
-      bottom: TabBarBowHeight + 52,
-      width: 62,
-      height: 62,
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 10,
-    },
-    heartButtonPressed: {
-      opacity: 0.75,
-    },
-    companionBtn: {
-      width: 62,
-      height: 62,
-    },
+    tabHome: {}, tabTasks: {}, tabProgress: {}, tabShop: {},
     iconWrap: {
-      width: 46 * s,
-      height: 46 * s,
-      borderRadius: 14 * s,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginTop: 0,
+      width: 56 * s, height: 46 * s, borderRadius: 20 * s,
+      borderWidth: 1, borderColor: 'transparent',
+      alignItems: 'center', justifyContent: 'center',
     },
     iconWrapActive: {
-      backgroundColor: 'rgba(255, 182, 205, 0.6)',
+      backgroundColor: '#FCE8E7', borderColor: '#E9C888',
     },
-    icon: {
-      width: 36 * s,
-      height: 36 * s,
-    },
-    iconHome: {
-      width: 36 * s,
-      height: 36 * s,
-      marginTop: 8 * s,
-    },
+    icon: { width: 38 * s, height: 38 * s },
+    iconHome: { width: 38 * s, height: 38 * s },
     label: {
-      fontSize: 12 * s,
-      color: '#C4728A',
-      fontWeight: '500',
-      marginTop: -3 * s,
+      fontSize: 12 * s, color: '#A87868', fontWeight: '500', fontFamily: Fonts.rounded,
     },
-    labelActive: {
-      color: '#D94F72',
-      fontWeight: '700',
-    },
+    labelActive: { color: '#BE627A', fontWeight: '700' },
   });
 }

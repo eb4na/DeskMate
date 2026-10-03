@@ -18,10 +18,11 @@ export type Outfit = {
 export const CHARACTER_OUTFITS: Record<string, Outfit[]> = {
   // Each outfit's `id` matches its shop item id so buying it unlocks the matching
   // wardrobe skin. Wearable from the Companion Bakery → that companion's Wardrobe.
+  // The starter companion has no alternate outfits: her old wardrobe was drawn for
+  // the character she replaced, so it was retired with that art. The key stays so
+  // wardrobe lookups keep returning a list rather than undefined.
   'starter:girl': [
-    { id: 'outfit_bun_angel', name: 'Angel', emoji: '', price: 10000, characterId: 'starter:girl', image: require('@/assets/images/bun/bun-angel.png') },
-    { id: 'outfit_bun_snowrabbit', name: 'Snow Rabbit', emoji: '', price: 15000, characterId: 'starter:girl', image: require('@/assets/images/bun/bun-snowrabbit.png') },
-    { id: 'outfit_bun_dreams', name: 'Strawberry Dreams', emoji: '', price: 4000, characterId: 'starter:girl', image: require('@/assets/images/bun/bun-dreams.png') },
+    { id: 'outfit_bun_starry', name: 'Starry Night', emoji: '', price: 4000, characterId: 'starter:girl', image: require('@/assets/images/bun/bun-starry.png') },
   ],
   'shop:companion_cocoa': [
     { id: 'outfit_cocoa_relax', name: 'Relax', emoji: '', price: 10000, characterId: 'shop:companion_cocoa', image: require('@/assets/images/cocoa/cocoa-relax.png') },

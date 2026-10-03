@@ -1,0 +1,30 @@
+{
+  "tool": "built-in image_gen",
+  "assets": [
+    {
+      "name": "switch-character-btn-soft-bakery",
+      "path": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-058c4b61-4226-460a-a829-c1d4016b0ca0.png",
+      "prompt": "Use case: precise-object-edit. Make only a subtle outline color adjustment to this approved button. Shift the outer scalloped lace badge outline from pale peach to a slightly richer warm champagne GOLD approximately #D5A653, with lighter #F1D397 highlights. A thin golden contour should make the edge more defined against cream backgrounds. Keep outline delicate and current thickness, absolutely no heavy rings. Preserve exactly the central illustration, its colors and composition, white cat if present, pink dashed stitching, ivory fill, all text if present, all silhouettes and current sizing. Do not darken the overall image. Keep the light pastel aesthetic and transparent alpha outside badge. Single square transparent PNG, same framing and dimensions as input."
+    },
+    {
+      "name": "food-menu-btn-soft-bakery",
+      "path": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-fa07a5d8-753b-4357-95a3-4cbe05015278.png",
+      "prompt": "Use case: precise-object-edit. Make only a subtle outline color adjustment to this approved button. Shift the outer scalloped lace badge outline from pale peach to a slightly richer warm champagne GOLD approximately #D5A653, with lighter #F1D397 highlights. A thin golden contour should make the edge more defined against cream backgrounds. Keep outline delicate and current thickness, absolutely no heavy rings. Preserve exactly the central illustration, its colors and composition, white cat if present, pink dashed stitching, ivory fill, all text if present, all silhouettes and current sizing. Do not darken the overall image. Keep the light pastel aesthetic and transparent alpha outside badge. Single square transparent PNG, same framing and dimensions as input."
+    },
+    {
+      "name": "edit-room-btn-soft-bakery",
+      "path": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-a3ec7f8c-bfa2-4e5a-b9e0-e1bf9b50da2c.png",
+      "prompt": "Use case: precise-object-edit. Make only a subtle outline color adjustment to this approved button. Shift the outer scalloped lace badge outline from pale peach to a slightly richer warm champagne GOLD approximately #D5A653, with lighter #F1D397 highlights. A thin golden contour should make the edge more defined against cream backgrounds. Keep outline delicate and current thickness, absolutely no heavy rings. Preserve exactly the central illustration, its colors and composition, white cat if present, pink dashed stitching, ivory fill, all text if present, all silhouettes and current sizing. Do not darken the overall image. Keep the light pastel aesthetic and transparent alpha outside badge. Single square transparent PNG, same framing and dimensions as input."
+    },
+    {
+      "name": "settings-scallop-btn-soft-bakery",
+      "path": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-e312b5bd-0c97-4a99-9210-f47d3f4c5cdd.png",
+      "prompt": "Use case: precise-object-edit. Make only a subtle outline color adjustment to this approved button. Shift the outer scalloped lace badge outline from pale peach to a slightly richer warm champagne GOLD approximately #D5A653, with lighter #F1D397 highlights. A thin golden contour should make the edge more defined against cream backgrounds. Keep outline delicate and current thickness, absolutely no heavy rings. Preserve exactly the central illustration, its colors and composition, white cat if present, pink dashed stitching, ivory fill, all text if present, all silhouettes and current sizing. Do not darken the overall image. Keep the light pastel aesthetic and transparent alpha outside badge. Single square transparent PNG, same framing and dimensions as input."
+    },
+    {
+      "name": "friend-btn",
+      "path": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-45824641-5464-4d9b-9cde-e0f1a319d34d.png",
+      "prompt": "Use case: style-transfer. Image 1 is the Friends button to update. Image 2 is the approved new matching button style. Redraw Friends to match image 2's airy pastel painted storybook art, ivory scalloped lace badge and pink dashed stitching. Preserve image 1's bunny and bear faces side by side with the add-friend plus symbol below; keep expressions cute and legible. Bunny ivory white, bear soft pastel honey peach, plus blush pink. Use a thin, distinct warm champagne GOLD outline along the outer scalloped edge, a little richer and more golden than image 2's pale peach edge, approximately #D5A653 with lighter #F1D397 accents. Keep it delicate, no thick rings or dark brown border. Keep all inner fills bright soft pastels and ivory. Same centered badge scale and proportions as image 2, square transparent PNG, 94 percent canvas occupancy. Transparent alpha outside entire scalloped badge, no shadows outside, no added text, no notification dot."
+    }
+  ]
+}

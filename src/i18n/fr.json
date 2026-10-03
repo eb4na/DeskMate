@@ -1244,6 +1244,7 @@
     "companion_cocoa": "Un panda roux décontracté en kimono d’automne douillet.",
     "companion_bunny": "Une lapine princesse en robe rose à volants.",
     "companion_honey": "Un adorable ourson boulanger au miel en veste de chef vichy.",
+    "companion_pretzel": "Un chat boulanger curieux avec un bretzel épinglé à sa toque.",
     "companion_tira": "Une lapine tiramisu au tablier saupoudré de cacao.",
     "companion_hanji": "Une élégante chatte noire en hanfu lavande orné de glycines.",
     "outfit_bun_angel": "Une robe d’ange à volants avec ailes et béguin. Quand Bun la porte, ses rappels deviennent doux et protecteurs — à enfiler depuis la garde-robe de Bun.",
@@ -1913,6 +1914,7 @@
     "history": "Histoire"
   },
   "outfitNames": {
+    "starry": "Nuit étoilée",
     "classic": "Classique",
     "angel": "Ange",
     "relax": "Détente",

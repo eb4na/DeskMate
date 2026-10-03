@@ -11,11 +11,12 @@ import { isHanjiActiveId, resolveActiveCompanion } from '@/lib/companion-utils';
 // differences (including every wardrobe skin) are normalized away via the
 // generated FIGURE_METRICS, so a skin swap can never change a character's height.
 export const HEIGHT_LADDER: Record<string, number> = {
-  companion_bunny: 1.0, // reference — renders exactly as before
-  bun: 0.84, // the shortest of the cast
+  companion_bunny: 0.94, // reference size is pinned (REF below); 0.94 keeps the animated classic's face the same size as her outfits
+  bun: 0.98, // the starter: a tall figure, so she sits near the top of the ladder
   companion_cocoa: 1.0,
   companion_tira: 0.98,
   companion_honey: 0.95,
+  companion_pretzel: 0.95,
   hanji: 1.0,
 };
 
@@ -28,7 +29,10 @@ export const BASELINE_LIFT: Record<string, number> = {
 
 // Bunny's classic art defines the baseline: every figure is scaled so its content
 // height = ladder × Bunny's content height, and its feet land on Bunny's baseline.
-const REF = FIGURE_METRICS['companion_bunny/classic'];
+// Pinned to Bunny's ORIGINAL classic art metrics (the approved cast size), so
+// redrawing Bunny's classic art can't silently resize every other companion.
+// Bunny's own height is now tuned through HEIGHT_LADDER like everyone else.
+const REF = { fill: 0.8939, pad: 0.0502 };
 
 /** Ladder/metrics key for a synced companion id (`shop:<itemId>` → itemId, Hanji
  * → 'hanji', anything else — absent/starter — → 'bun'). For YOUR OWN companion

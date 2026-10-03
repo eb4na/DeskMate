@@ -105,7 +105,7 @@ def draw_row(canvas: Image.Image, draw: ImageDraw.ImageDraw, entries: list[tuple
 def main() -> None:
     ladder = load_ladder()
     images = discover_images()
-    ref = measure(images['companion_bunny/classic'])
+    ref = (0.8939, 0.0502)  # pinned reference (fill, pad) — mirrors REF in src/lib/figure-height.ts
 
     # Row 1: the classic-skin lineup; rows 2+: each companion's full wardrobe.
     lineup = [(f'{c}/classic', images[f'{c}/classic'], NAMES[c]) for c in LINEUP]

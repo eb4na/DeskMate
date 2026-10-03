@@ -27,6 +27,7 @@ import { ColorWheelPicker, hslToHex } from '@/components/color-wheel-picker';
 import { LockBadge } from '@/components/lock-badge';
 import {
   BUN_SKINS,
+  staticImageFor,
   type BunSkin,
   getBunSkinImage,
   getCompanionSkinImage,
@@ -329,7 +330,7 @@ export default function ProfileScreen() {
                     onPress={() => updateProfile({ companionId: c.id, skinId: 'classic' })}
                     style={styles.charItem}>
                     <View style={[styles.charThumbWrap, selected && styles.charThumbSelected]}>
-                      <Image source={thumb} style={styles.charThumb} contentFit="contain" />
+                      <Image source={staticImageFor(thumb)} style={styles.charThumb} contentFit="contain" />
                     </View>
                     <View style={styles.charNameBox}>
                       <FitText style={styles.charName}>{localizeCompanionName(c.name, t)}</FitText>
@@ -352,7 +353,7 @@ export default function ProfileScreen() {
                     onPress={() => updateProfile({ companionId: selectedCharId, skinId: s.id })}
                     style={styles.charItem}>
                     <View style={[styles.charThumbWrap, selected && styles.charThumbSelected]}>
-                      <Image source={img} style={styles.charThumb} contentFit="contain" />
+                      <Image source={staticImageFor(img)} style={styles.charThumb} contentFit="contain" />
                     </View>
                     <View style={styles.charNameBox}>
                       <FitText style={styles.charName}>{localizeOutfitName(s.name, t)}</FitText>
