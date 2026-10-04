@@ -846,7 +846,7 @@ export default function HomeScreen() {
   // A multiplayer GUEST follows the host's synced state (so the host enabling it gives
   // every player the disco background, Plus or not); host + solo use their own setting.
   const followsHostDisco = studyRoom.active && !studyRoom.isHost;
-  const discoBgOn = !!activeSession && (followsHostDisco ? studyRoom.hostDiscoOn : (spotifyBgEnabled && isPlus && !studyRoom.discoSuppressed));
+  const discoBgOn = !!activeSession && (followsHostDisco ? studyRoom.hostDiscoOn : (spotifyBgEnabled && !studyRoom.discoSuppressed));
   const discoBgColor = followsHostDisco ? studyRoom.hostDiscoColor : spotifyBgColor;
   // Moonlit Balcony mood: during a session (not disco) this room gets a weak
   // blue/purple night multiply over the whole scene, plus a soft warm glow that

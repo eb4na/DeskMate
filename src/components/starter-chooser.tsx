@@ -9,12 +9,12 @@ import { FOOD_ITEMS } from '@/app/food-gallery';
 import { starterRecipe } from '@/constants/recipes';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
-import { staticImageFor, BUN_SKINS, getCompanionSkins, isSkinShopObtainable, localizeCompanionName, localizeOutfitName, STARTER_CHOICES } from '@/lib/companion-utils';
+import { staticImageFor, BUN_SKINS, getCompanionSkins, isSkinShopObtainable, localizeCompanionName, localizeOutfitName, OFFERED_STARTER_CHOICES } from '@/lib/companion-utils';
 import { showLoadingScreen } from '@/lib/loading-signal';
 import { playSwoosh, playTapConfirm } from '@/lib/sounds';
 
 // Per-character tagline i18n keys (shared with the gallery), keyed by the
-// canonical English name in STARTER_CHOICES.
+// canonical English name in OFFERED_STARTER_CHOICES.
 const TAGLINE_KEYS: Record<string, string> = {
   Bun: 'gallery.tagline_Bun',
   Cocoa: 'gallery.tagline_Cocoa',
@@ -67,13 +67,13 @@ function Cat({ size = 16, color = '#FFFFFF' }: { size?: number; color?: string }
 export function StarterChooser() {
   const { t } = useTranslation();
   const { chooseStarter } = useApp();
-  const [index, setIndex] = useState(0); // starts on Bun (STARTER_CHOICES[0])
-  const choice = STARTER_CHOICES[index];
+  const [index, setIndex] = useState(0); // starts on Bun (OFFERED_STARTER_CHOICES[0])
+  const choice = OFFERED_STARTER_CHOICES[index];
   // The companions on either side, shown as faded sneak peeks at the edges so you
   // can tell who's next (wraps around).
-  const n = STARTER_CHOICES.length;
-  const prev = STARTER_CHOICES[(index - 1 + n) % n];
-  const next = STARTER_CHOICES[(index + 1) % n];
+  const n = OFFERED_STARTER_CHOICES.length;
+  const prev = OFFERED_STARTER_CHOICES[(index - 1 + n) % n];
+  const next = OFFERED_STARTER_CHOICES[(index + 1) % n];
 
   // Idle bounce — identical feel to the Home companion: a slow rise with a tiny
   // squash-and-stretch. 0 = resting (squished), 1 = apex (stretched).
@@ -95,7 +95,7 @@ export function StarterChooser() {
 
   const step = (delta: number) => {
     playSwoosh();
-    setIndex((i) => (i + delta + STARTER_CHOICES.length) % STARTER_CHOICES.length);
+    setIndex((i) => (i + delta + OFFERED_STARTER_CHOICES.length) % OFFERED_STARTER_CHOICES.length);
   };
 
   // Swipe the carousel left/right to flip companions (in addition to the arrows).
@@ -222,7 +222,7 @@ export function StarterChooser() {
             </Pressable>
           </View>
           <View style={styles.dots}>
-            {STARTER_CHOICES.map((c, i) => (
+            {OFFERED_STARTER_CHOICES.map((c, i) => (
               <View key={c.shopItemId} style={[styles.dot, i === index && styles.dotActive]} />
             ))}
           </View>

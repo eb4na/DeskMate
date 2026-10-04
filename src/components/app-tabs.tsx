@@ -70,7 +70,7 @@ function TabItem({ name, isFocused, onPress, iconStyle, targetId }: { name: stri
   );
 }
 
-const LACE_EDGE = 'M0 10 ' + Array.from({ length: 10 }, (_, i) => `Q${i * 40 + 20} 5 ${i * 40 + 40} 10`).join(' ');
+const LACE_EDGE = 'M0 10 ' + Array.from({ length: 20 }, (_, i) => `Q${i * 20 + 10} -3 ${i * 20 + 20} 10`).join(' ');
 
 const ALL_ROUTES = ['index', 'tasks', 'progress', 'shop'];
 

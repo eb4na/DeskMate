@@ -1140,7 +1140,7 @@
   },
   "starter": {
     "title": "Pick your study buddy",
-    "subtitle": "Choose the companion who starts with you for free. The other four are waiting in the shop.",
+    "subtitle": "Choose the companion who starts with you for free. The others are waiting in the shop.",
     "choose": "Start with {{name}}",
     "comesWith": "Comes with {{recipe}}",
     "hint": "Swipe or tap the arrows to meet everyone",
@@ -1197,6 +1197,7 @@
     "tagline_Cocoa": "Work first, fun later.",
     "tagline_Bunny": "Bunny too cute to care.",
     "tagline_Miel": "Sleep now, study maybe.",
+    "tagline_Soda": "Fizz first, focus forever.",
     "tagline_Tira": "Dropped out but still smart.",
     "name_Hanji": "Hanji",
     "tagline_Hanji": "Quiet grace in lavender silk.",
@@ -1204,6 +1205,7 @@
     "name_Cocoa": "Aki",
     "name_Bunny": "Bunny",
     "name_Miel": "Miel",
+    "name_Soda": "Soda",
     "name_Tira": "Tira"
   },
   "roomNames": {
@@ -1244,7 +1246,7 @@
     "companion_cocoa": "A laid-back red panda in a cozy autumn kimono.",
     "companion_bunny": "A princess bunny in a frilly pink gown.",
     "companion_honey": "A sweet honey-bear baker in a gingham chef coat.",
-    "companion_pretzel": "A curious cat baker with a pretzel pinned to his chef hat.",
+    "companion_pretzel": "A mint-soda fox baker with a cherry pinned to his chef hat.",
     "companion_tira": "A tiramisu bunny with a cocoa-dusted apron.",
     "companion_hanji": "An elegant black cat in a lavender hanfu with wisteria charms.",
     "outfit_bun_angel": "A frilly angel gown with wings & bonnet. Bun sends soft, watch-over-you reminders while wearing it — wear it from Bun's Wardrobe.",
@@ -1260,6 +1262,7 @@
     "outfit_honey_zzz": "Cozy honey-pot pajamas & nightcap. Miel mumbles sleepy 'study-first, snuggle-after' reminders while wearing it — wear it from Miel's Wardrobe.",
     "outfit_bunny_jiraikei": "A pink-and-black jirai kei lolita outfit. Bunny turns cute-but-menacing in her reminders while wearing it — wear it from Bunny's Wardrobe.",
     "outfit_bunny_palace": "An ornate blue peony palace robe & headdress. Bunny issues regal by-royal-decree reminders while wearing it — wear it from Bunny's Wardrobe.",
+    "outfit_bunny_royal": "A crimson-and-gold strawberry princess gown with a lace bonnet & gold crown. Yours free with Plus — wear it from Bunny's Wardrobe.",
     "outfit_hanji_ivoryrose": "An ivory lace bonnet & cream wisteria hanfu with a white rose. Wear it from Hanji's Wardrobe.",
     "bg_modern_kitchen": "A sleek modern kitchen backdrop — pairs with the Marble desk.",
     "bg_washitsu": "A sunny seaside beach backdrop — pairs with the Wood desk.",
@@ -1485,6 +1488,8 @@
     "f_discoDesc": "Turn your study room into a glowing disco scene set to your music",
     "f_exclusiveSkin": "Exclusive Bun outfit",
     "f_exclusiveSkinDesc": "Get the royal Berry Princess Bun skin free the moment you go Plus",
+    "f_berryPrincess": "Berry Princess Bunny outfit",
+    "f_berryPrincessDesc": "An exclusive crimson-and-gold royal outfit for Bunny, free with Plus",
     "f_goldenTeahouse": "Golden Teahouse room",
     "f_goldenTeahouseDesc": "An exclusive royal teahouse background and matching desk, free with Plus",
     "f_avatarFrame": "Gold crown frame",
@@ -1492,8 +1497,8 @@
     "noteKeep": "One-time unlock — yours to keep even if Plus ends",
     "rewardSkinTitle": "New outfit unlocked!",
     "rewardSkinMsg": "You got Bun's Berry Princess outfit — yours to keep forever. Find it in Bun's wardrobe.",
-    "rewardRoomTitle": "New room & desk unlocked!",
-    "rewardRoomMsg": "You received the Golden Teahouse room and its matching desk — yours to keep forever. Find them in Edit Room.",
+    "rewardRoomTitle": "New outfit, room & desk unlocked!",
+    "rewardRoomMsg": "You received Bunny's Berry Princess outfit, plus the Golden Teahouse room and its matching desk — yours to keep forever. Find the outfit in Bunny's Wardrobe and the room in Edit Room.",
     "noteExpire": "Active while Plus is on — removed if Plus ends",
     "f_allGames": "All break games",
     "f_allGamesDesc": "Unlock Memory Cards, Word Puzzle, and future games",
@@ -1914,6 +1919,7 @@
     "history": "History"
   },
   "outfitNames": {
+    "heartcore": "Heartcore",
     "starry": "Starry Night",
     "classic": "Classic",
     "angel": "Angel",
@@ -2128,6 +2134,8 @@
     "bunny_classic": "Bunny lived in a pink palace where every curtain seemed to flutter just for her and every mirror reflected exactly what she already knew — that she was, undeniably, the cutest thing in the room. She walked through grand halls in a frilly gown, greeting the day with the kind of confidence most royals spent years trying to learn. She was sweet, yes, but never unaware. Bunny knew the effect she had on people, and she wore that knowledge like another ribbon.\n\nStill, being adorable was not the same as being idle. Bunny made decisions quickly, expected them followed, and never needed to raise her voice to be obeyed. Gardeners straightened when she passed. Servants hurried a little faster. Even guests seemed to sit up with better manners under her gaze. Yet she was never cruel about it. There was simply a natural authority in her sweetness, as if charm itself had decided to become a princess and rule the room.",
     "bunny_jiraikei": "In the city, people always had something to say. They whispered over outfits, side-eyed confidence, and judged anything they did not understand. Bunny learned early that if she listened to every voice around her, she would never be free enough to sound like herself. So she dressed exactly how she pleased — ribbons and lace in pink and black, soft at first glance, sharp if you looked longer — and walked through the streets as though other people's opinions were made of paper.\n\nThe stares never really stopped, but they stopped mattering. Bunny carried herself with the kind of cool certainty that made mockery feel small. If someone laughed, she did not flinch. If someone underestimated her, she let them. There was something almost dangerous in how unbothered she was, how cleanly she refused to bend just to be easier for others to understand. She looked sweet, but there was steel under the lace, and everyone could feel it.",
     "bunny_palace": "Bunny's blue robe moved like water as she walked through the palace gardens, embroidered peonies catching the light between cypress shadows and carved stone lanterns. The pathways curved through ponds, moon gates, and flowering trees, and attendants followed a few steps behind, careful not to disturb the hush around her. She did not need to say much. The rhythm of her steps alone seemed enough to quiet a space.\n\nShe often came to the garden in the late afternoon, when the sky was beginning to soften and the tiled roofs glowed under the fading sun. There, among blue blossoms and drifting silk sleeves, she seemed less like someone borrowing elegance and more like someone born from it. She paused to watch koi move beneath the water, to touch the petals of a peony, to let the breeze move through her hair ornaments. Everything around her felt deliberate, graceful, and old. Bunny walked through that world with the same poised authority she carried everywhere — beautiful, unmistakable, and impossible to ignore.",
+    "bunny_royal": "Once a year, the Strawberry Palace held a chocolate court, and Bunny presided over it in crimson and gold. Velvet bows lined her gown, tiny berries swung from her lace ribbons, and a small gold crown sat perfectly straight between her ears. Every chocolatier in the kingdom brought a heart-shaped box, and Bunny tasted each one with great ceremony, as if the fate of the realm depended on it.\n\nThe truth was simpler: she just loved chocolate. But she also believed that sweet things should be earned. So before opening a box, she would finish her studies for the day, one page at a time, and only then lift the lid and choose a single piece. A princess, she said, rules her day first and her dessert second.",
+    "pretzel_classic": "Soda runs the little soda counter at the back of the bakery, where the bubbles never stop fizzing. He tops every float with a single cherry and every study break with a cheerful pep talk.",
     "hanji_classic": "Hanji lived in a quiet residence tucked behind a wisteria garden where the air always smelled faintly of lavender and rain. She spoke softly, moved gently, and had the kind of presence that made a room settle the moment she entered it. Bells and chatter belonged to other places. Hanji's world was made of silk sleeves, pale blossoms, and the hush of pages turning in the late afternoon.\n\nShe liked the hours when the garden shadows stretched long and the light became tender. Then she would walk beneath the hanging wisteria and let the charms at her sleeves sway softly in the breeze. People often mistook her silence for distance, but it was not that. Hanji simply carried herself like someone who had no need to compete with noise. She was quiet, yes — but the kind of quiet that lingers, fragrant and unforgettable.",
     "hanji_ivoryrose": "Hanji walked along the busy Japanese street with the posture of someone taught carefully, lovingly, never to rush. Around her, the city moved in waves — shopkeepers calling, bicycles passing, signs glowing softly above the crowds — yet she remained composed in her ivory bonnet and cream dress, like a proper lady stepping through a world that had forgotten how to slow down. She carried herself so neatly that even the busiest corner seemed to grow a little more orderly when she passed.\n\nShe stopped at the flower stand, at the confectionery window, at the little tea shop tucked between brighter storefronts. The city was alive and full, but Hanji never seemed overwhelmed by it. She moved through it with quiet grace, as if elegance were not something put on for special occasions, but simply the shape of her nature. Against the restless street, she looked almost old-fashioned — and all the more beautiful for it, like a rose held steady in the middle of motion."
   },

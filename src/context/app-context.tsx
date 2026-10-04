@@ -466,6 +466,9 @@ export const CHAT_HISTORY_CAP = 50;
 // than anyone tracks at once, and small enough that the pickers/charts stay cheap.
 export const MAX_SUBJECTS = 50;
 
+// Plus one-time unlocks, granted on first Plus and kept forever after a lapse.
+const PLUS_GRANTS = ['bg_strawberry_palace', 'desk_strawberry', 'outfit_bunny_royal'];
+
 const DEFAULTS: PersistedState = {
   // New accounts start with a coin gift.
   coins: 1000,
@@ -960,11 +963,10 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
     }
   }
 
-  // Plus exclusive: ensure Plus members own the Berry Princess Bun skin and the
-  // Strawberry Palace room (covers players who had Plus before these became perks).
-  // The Plus wardrobe skin was retired with the old companion art; the Strawberry
-  // Palace room + desk are still Plus perks.
-  for (const plusGrant of ['bg_strawberry_palace', 'desk_strawberry']) {
+  // Plus exclusive: ensure Plus members own the Berry Princess Bunny skin and the
+  // Strawberry Palace room + desk (covers players who had Plus before these became
+  // perks).
+  for (const plusGrant of PLUS_GRANTS) {
     if (merged.isPlus && !(merged.ownedShopItems ?? []).includes(plusGrant)) {
       merged.ownedShopItems = [...(merged.ownedShopItems ?? []), plusGrant];
     }
@@ -2670,14 +2672,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updates.exchangeTicketLastGrantISO = today;
         updates.exchangeTicketPending = prev.exchangeTicketPending + 1;
       }
-      // Plus exclusive: getting Plus grants the Berry Princess Bun skin, the
+      // Plus exclusive: getting Plus grants the Berry Princess Bunny skin, the
       // Strawberry Palace room + desk for free — these are KEPT forever even if Plus
       // later lapses. Study/ambience sounds are NOT granted here: they're free while
       // subscribed (gated as `isPlus || owned` at use-time) but re-lock when Plus
       // ends, so only sounds actually bought with coins stay.
       if (value) {
         const granted = prev.ownedShopItems;
-        const toGrant = ['bg_strawberry_palace', 'desk_strawberry'].filter((id) => !granted.includes(id));
+        const toGrant = PLUS_GRANTS.filter((id) => !granted.includes(id));
         if (toGrant.length) updates.ownedShopItems = [...granted, ...toGrant];
       }
       return { ...prev, ...updates };

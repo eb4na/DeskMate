@@ -2,7 +2,7 @@ import { Image as ExpoImage } from 'expo-image';
 
 type Props = { size?: number };
 
-/** Memobun Plus / premium icon — golden chocolate gift box. */
+/** Memobun Plus / premium icon — crimson heart chocolate box. */
 export function PlusIcon({ size = 32 }: Props) {
   return (
     <ExpoImage

@@ -22,6 +22,7 @@ export const CHARACTER_OUTFITS: Record<string, Outfit[]> = {
   // the character she replaced, so it was retired with that art. The key stays so
   // wardrobe lookups keep returning a list rather than undefined.
   'starter:girl': [
+    { id: 'outfit_bun_heartcore', name: 'Heartcore', emoji: '', price: 10000, characterId: 'starter:girl', image: require('@/assets/images/bun/bun-heartcore.png') },
     { id: 'outfit_bun_starry', name: 'Starry Night', emoji: '', price: 4000, characterId: 'starter:girl', image: require('@/assets/images/bun/bun-starry.png') },
   ],
   'shop:companion_cocoa': [

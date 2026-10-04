@@ -21,6 +21,9 @@ export type ShopItem = {
   price: number;
   category: ShopCategory;
   image?: number;
+  // Temporarily hidden: not sold in the shop or offered as a starter. Players
+  // who already own it keep it (gallery, wardrobe, rendering are unaffected).
+  hidden?: boolean;
   // Plus-exclusive: cannot be bought with coins. Granted automatically the first
   // time a player gets Plus.
   plusOnly?: boolean;
@@ -84,6 +87,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     price: 10000,
     category: 'companion',
     image: require('@/assets/images/cocoa/cocoa.png'),
+    hidden: true, // Aki hidden for now
   },
   {
     id: 'companion_bunny',
@@ -107,10 +111,11 @@ export const SHOP_ITEMS: ShopItem[] = [
   },
   {
     // TEST character — free (price 0) so it can be tried without coins.
+    // Displays as Soda (was Pretzel); id stays companion_pretzel so saves carry over.
     id: 'companion_pretzel',
-    name: 'Pretzel',
+    name: 'Soda',
     emoji: '',
-    description: 'A curious cat baker with a pretzel pinned to his chef hat.',
+    description: 'A mint-soda fox baker with a cherry pinned to his chef hat.',
     price: 0,
     category: 'companion',
     image: require('@/assets/images/pretzel/pretzel.png'),
@@ -136,6 +141,15 @@ export const SHOP_ITEMS: ShopItem[] = [
   },
 
   // ─── Outfits / wardrobe skins (10000; Carefree Days 7000; the 3 pajama sets 4000) ──
+  {
+    id: 'outfit_bun_heartcore',
+    name: 'Heartcore',
+    emoji: '',
+    description: "Pink-and-black twintails, ribbon bows and a buckled pinafore. Wear it from her Wardrobe.",
+    price: 10000,
+    category: 'outfits',
+    image: require('@/assets/images/bun/bun-heartcore.png'),
+  },
   {
     id: 'outfit_bun_starry',
     name: 'Starry Night',
@@ -225,6 +239,16 @@ export const SHOP_ITEMS: ShopItem[] = [
     price: 10000,
     category: 'outfits',
     image: require('@/assets/images/bunny/bunny-palace.png'),
+  },
+  {
+    id: 'outfit_bunny_royal',
+    name: 'Berry Princess Bunny',
+    emoji: '',
+    description: "A crimson-and-gold strawberry princess gown with a lace bonnet & gold crown. Yours free with Plus — wear it from Bunny's Wardrobe.",
+    price: 10000,
+    category: 'outfits',
+    image: require('@/assets/images/bunny/bunny-royal.png'),
+    plusOnly: true,
   },
   {
     id: 'outfit_hanji_ivoryrose',

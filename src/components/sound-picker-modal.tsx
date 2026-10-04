@@ -268,12 +268,12 @@ export function SoundPickerModal({
                   // In a room, only the host controls disco — guests follow. Tapping
                   // does nothing; the caption below the row spells out why.
                   if (discoHostOnly) return;
-                  if (isPlus) { setSpotifyBgEnabled(!spotifyBgEnabled); } else { onClose(); router.push('/plus-upgrade'); }
+                  setSpotifyBgEnabled(!spotifyBgEnabled);
                 }}
                 accessibilityLabel={t('soundPicker.spotifyBg')}
                 style={({ pressed }) => [styles.bgIconBtn, pressed && styles.pressed]}
                 hitSlop={8}>
-                <DiscoBallGlyph on={isPlus && spotifyBgEnabled} locked={!isPlus} />
+                <DiscoBallGlyph on={spotifyBgEnabled} locked={false} />
               </Pressable>
             )}
           </View>
@@ -389,7 +389,7 @@ export function SoundPickerModal({
 
           {/* Black/white pick for the Spotify background (the on/off toggle lives in the
               top-right of this popup). Only shown once the background is enabled. */}
-          {mode === 'spotify' && isPlus && spotifyBgEnabled && (
+          {mode === 'spotify' && spotifyBgEnabled && (
             <View style={styles.bgRow}>
               <Pressable
                 onPress={() => setSpotifyBgColor('black')}

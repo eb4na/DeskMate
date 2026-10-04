@@ -104,6 +104,7 @@ const TAGLINE_KEYS: Record<string, string> = {
   Miel: 'gallery.tagline_Miel',
   Tira: 'gallery.tagline_Tira',
   Hanji: 'gallery.tagline_Hanji',
+  Soda: 'gallery.tagline_Soda',
 };
 
 type ObtainedCharacter = {

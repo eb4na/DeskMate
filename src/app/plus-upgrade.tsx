@@ -45,19 +45,19 @@ const FEATURES: {
   // ── Study features ──
   { titleKey: 'plus.f_streakFreezes', descKey: 'plus.f_streakFreezesDesc', art: require('@/assets/images/home/streak-freeze-icon.png') },
   { titleKey: 'plus.f_ambience', descKey: 'plus.f_ambienceDesc', art: require('@/assets/images/shop/icon-sound.png') },
-  { titleKey: 'plus.f_customTimers', descKey: 'plus.f_customTimersDesc', art: require('@/assets/images/settings/timer.png') },
   // Spotify itself is available to ALL users regardless of Plus, so connecting an
   // account isn't advertised here — but disco ("Spotify background"), the scene it
   // drives, IS Plus-only and is listed below. Exam countdowns, tasks and SUBJECTS
   // are NOT Plus perks (same caps for everyone).
   // ── Looks (kept forever / while subscribed) ──
+  { titleKey: 'plus.f_berryPrincess', descKey: 'plus.f_berryPrincessDesc', art: require('@/assets/images/bunny/bunny-royal.png'), noteKey: 'plus.noteKeep', noteKind: 'keep' },
   { titleKey: 'plus.f_goldenTeahouse', descKey: 'plus.f_goldenTeahouseDesc', art: require('@/assets/images/backgrounds/strawberry-palace.png'), noteKey: 'plus.noteKeep', noteKind: 'keep' },
-  { titleKey: 'plus.f_disco', descKey: 'plus.f_discoDesc', disco: true },
   { titleKey: 'plus.f_cardColor', descKey: 'plus.f_cardColorDesc', cardColor: true, noteKey: 'plus.noteExpire', noteKind: 'expire' },
 ];
 
 // Art shown in the first-time Plus reward popup (matches the in-game item).
 const ROOM_ART = require('@/assets/images/backgrounds/strawberry-palace.png');
+const SKIN_ART = require('@/assets/images/bunny/bunny-royal.png');
 
 export default function PlusUpgradeScreen() {
   const { t } = useTranslation();
@@ -364,14 +364,17 @@ export default function PlusUpgradeScreen() {
               </>
             ) : confirm === 'rewardRoom' ? (
               <>
-                <Image source={ROOM_ART} style={styles.confirmArtWide} contentFit="cover" />
+                <View style={styles.confirmArtStack}>
+                  <Image source={ROOM_ART} style={styles.confirmArtWide} contentFit="cover" />
+                  <Image source={SKIN_ART} style={styles.confirmArtSkin} contentFit="contain" />
+                </View>
                 <ThemedText style={styles.confirmTitle}>
-                  {t('plus.rewardRoomTitle', { defaultValue: 'New room & desk unlocked!' })}
+                  {t('plus.rewardRoomTitle', { defaultValue: 'New outfit, room & desk unlocked!' })}
                 </ThemedText>
                 <ThemedText style={styles.confirmMsg}>
                   {t('plus.rewardRoomMsg', {
                     defaultValue:
-                      "You received the Golden Teahouse room and its matching desk — yours to keep forever. Find them in Edit Room.",
+                      "You received Bunny's Berry Princess outfit, plus the Golden Teahouse room and its matching desk — yours to keep forever. Find the outfit in Bunny's Wardrobe and the room in Edit Room.",
                   })}
                 </ThemedText>
                 <Pressable
@@ -571,7 +574,9 @@ const styles = StyleSheet.create({
     borderColor: '#F2D9CF',
   },
   confirmArt: { width: 120, height: 120, alignSelf: 'center', backgroundColor: 'transparent' },
+  confirmArtStack: { width: '100%' },
   confirmArtWide: { width: '100%', height: 130, borderRadius: 16, backgroundColor: 'transparent' },
+  confirmArtSkin: { position: 'absolute', bottom: 0, alignSelf: 'center', width: 120, height: 120, backgroundColor: 'transparent' },
   confirmTitle: { fontSize: 19, fontWeight: '800', color: '#5B3A2E', textAlign: 'center' },
   confirmMsg: { fontSize: 14, fontWeight: '600', color: '#7C6F5A', textAlign: 'center', lineHeight: 20 },
   confirmPrimary: { backgroundColor: '#7C6F5A', borderRadius: 16, paddingVertical: Spacing.three, alignItems: 'center' },

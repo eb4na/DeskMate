@@ -59,24 +59,15 @@ const weekdayLetters = (mondayFirst: boolean) =>
 const SCREEN_PAD = Spacing.four;
 const CARD_PAD = 14;
 
-// The calendar card's own background — chips blend toward THIS, not white, so an
-// opaque chip sits invisibly on the grid.
-const CARD_BG = '#FEF8F1';
-
-// Opaque tint: `hex` mixed `t` of the way toward the card background (t=1 → the
-// background itself). Chips must stay OPAQUE — an exam day paints a big watermark
-// shape behind them, and an alpha fill would let that bleed through the label.
-function tint(hex: string, t: number): string {
+// Translucent version of a hex colour, for chips that let the watermark through.
+function withAlpha(hex: string, a: number): string {
   const h = hex.replace('#', '');
   const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h.slice(0, 6);
-  const to = CARD_BG.replace('#', '');
-  const mix = (i: number) => {
-    const a = parseInt(full.slice(i * 2, i * 2 + 2), 16);
-    const b = parseInt(to.slice(i * 2, i * 2 + 2), 16);
-    return Math.round(a + (b - a) * t).toString(16).padStart(2, '0');
-  };
-  return `#${mix(0)}${mix(1)}${mix(2)}`;
+  return `#${full}${Math.round(a * 255).toString(16).padStart(2, '0')}`;
 }
+
+// Today's highlighter swipe: a soft green, so it never reads as a pink task chip.
+const TODAY_GREEN = '#BDE5C4';
 
 // ─── date helpers (no dependency) ────────────────────────────────────────────
 function toISO(y: number, m: number, d: number) {
@@ -119,8 +110,8 @@ function TodayHighlight({ height }: { height: number }) {
         top: '50%',
         height,
         marginTop: -height / 2,
-        backgroundColor: C.mint,
-        opacity: 0.85,
+        backgroundColor: TODAY_GREEN,
+        opacity: 0.9,
         borderRadius: 2,
         transform: [{ rotate: '-5deg' }],
       }}
@@ -341,10 +332,10 @@ function CalendarMonthCard({
   // ~62% of the SVG box (the shapes' Bézier CONTROL points sit near the edge of the
   // 24x24 viewBox and a curve never reaches its control point), so divide by that
   // to turn the room available into a box size. Whichever is smaller wins.
-  // The corner mark — the day's ONLY marked-state signal now, so it carries a
-  // little more weight than a pure accent would, while still staying clear of
-  // the date's size so the two read as separate things.
-  const CORNER_MARK = clampN(Math.round(cellW * 0.30), 12, 20);
+  // The day's mark: one big faded shape filling the cell behind the date and
+  // chips (heart / circle / drop, star on exam days). The shapes' ink fills only
+  // ~62% of their box, so the box is oversized for the ink to nearly fill the cell.
+  const WATERMARK = Math.round(cellW * 1.25);
   // The star inside an exam chip — bounded by the chip's own height so it can
   // never push the row taller than the text it sits beside.
   const CHIP_STAR = clampN(Math.round(CHIP_H * 0.86), 7, 14);
@@ -448,15 +439,19 @@ function CalendarMonthCard({
                 cellBorder,
                 { width: cellW, height: cellH, padding: PAD_V },
               ]}>
+              {/* The day's mark as a big faded watermark behind everything. The
+                  task chips are see-through so it still shows under them. */}
+              {markShape && (
+                <View style={[styles.watermark, { width: cellW, height: cellH }]} pointerEvents="none">
+                  <View style={{ opacity: 0.28 }}>
+                    <CountdownShape shape={markShape} color={markColor} size={WATERMARK} />
+                  </View>
+                </View>
+              )}
               {/* The day's mark, in the corner opposite the date so the two can
                   never collide — which is what made the old behind-the-number
                   version read as ragged. The cell itself stays untinted, so a
                   heavily-marked month doesn't turn patchy. */}
-              {markShape && (
-                <View style={[styles.cornerMark, { top: PAD_V, right: PAD_V }]} pointerEvents="none">
-                  <CountdownShape shape={markShape} color={markColor} size={CORNER_MARK} />
-                </View>
-              )}
               {/* The date leads the row and the "+N" closes it, so the overflow
                   count costs no vertical room in a square cell. */}
               <View style={[styles.dayNumRow, { height: DAYNUM_H }]}>
@@ -492,9 +487,7 @@ function CalendarMonthCard({
                     style={[
                       styles.overflowText,
                       styles.overflowFloat,
-                      // Step left past the corner mark when the day has one —
-                      // they both want the top-right otherwise.
-                      { fontSize: OVERFLOW_FT, right: markShape ? CORNER_MARK + 2 : 0 },
+                      { fontSize: OVERFLOW_FT, right: 0 },
                     ]}>{`+${overflow}`}</Text>
                 )}
               </View>
@@ -511,10 +504,10 @@ function CalendarMonthCard({
                       paddingHorizontal: CHIP_PAD_H,
                       marginTop: CHIP_GAP,
                       gap: Math.max(1, Math.round(CHIP_PAD_H * 0.6)),
-                      // Opaque, not translucent: matches the old alpha look but
-                      // hides the exam watermark behind it. Finished tasks fade
-                      // further back, so the day still reads as "what's left".
-                      backgroundColor: tint(c.color, c.done ? 0.91 : 0.82),
+                      // Semi-transparent so the day's watermark shows through.
+                      // Finished tasks fade further back, so the day still reads
+                      // as "what's left".
+                      backgroundColor: withAlpha(c.color, c.done ? 0.1 : 0.2),
                     },
                   ]}>
                   {/* Exam chips lead with a star, so an exam is identifiable inside
@@ -1063,6 +1056,7 @@ const styles = StyleSheet.create({
   },
   // The date leads from the top-left; the dots ride beside it. The "+N" overflow
   // still floats right, but clears the corner mark that now lives there.
+  watermark: { position: 'absolute', top: 0, left: 0, alignItems: 'center', justifyContent: 'center' },
   dayNumRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 2, alignSelf: 'stretch' },
   dayNumBadge: { alignItems: 'center', justifyContent: 'center' },
   dayNum: { color: C.cocoaDark, fontWeight: '600' },
@@ -1079,7 +1073,6 @@ const styles = StyleSheet.create({
   chipExam: { borderWidth: 1 },
   // The exam's day mark: a big translucent shape filling the cell, painted behind
   // the date and the previews (first child = bottom of the stack).
-  cornerMark: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
   // Exam rows in the day preview: star first, then the name.
   examResult: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   // "Shape for this day" row in the day popup (exam days only).

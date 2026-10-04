@@ -145,12 +145,6 @@ export default function CustomTimerScreen() {
     else router.replace('/session-picker');
   };
 
-  // Custom timer is a Plus feature — guard the screen itself so no path (deep
-  // link, back-stack) can reach it without Plus; send free users to the paywall.
-  useEffect(() => {
-    if (!isPlus) router.replace('/plus-upgrade');
-  }, [isPlus]);
-
   const setFocusTotal = (m: number) => { setFocusHr(Math.floor(m / 60)); setFocusMin(m % 60); };
 
   // Navigate into the session. Kept separate from handleStart so both the normal

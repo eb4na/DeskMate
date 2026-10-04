@@ -1140,7 +1140,7 @@
   },
   "starter": {
     "title": "Elige tu compañero de estudio",
-    "subtitle": "Elige el compañero que empieza contigo gratis. Los otros cuatro te esperan en la tienda.",
+    "subtitle": "Elige el compañero que empieza contigo gratis. Los demás te esperan en la tienda.",
     "choose": "Empezar con {{name}}",
     "comesWith": "Incluye {{recipe}}",
     "hint": "Toca las flechas para conocerlos a todos",
@@ -1197,6 +1197,7 @@
     "tagline_Cocoa": "Primero el trabajo, luego la diversión.",
     "tagline_Bunny": "Demasiado linda para preocuparse.",
     "tagline_Miel": "Dormir ahora, estudiar quizá.",
+    "tagline_Soda": "Primero burbujas, luego a concentrarse.",
     "tagline_Tira": "Dejó la escuela, pero sigue siendo lista.",
     "name_Hanji": "Hanji",
     "tagline_Hanji": "Gracia serena en seda lavanda.",
@@ -1204,6 +1205,7 @@
     "name_Cocoa": "Aki",
     "name_Bunny": "Conejo",
     "name_Miel": "Miel",
+    "name_Soda": "Soda",
     "name_Tira": "Tira"
   },
   "roomNames": {
@@ -1244,7 +1246,7 @@
     "companion_cocoa": "Un panda rojo relajado con un acogedor kimono otoñal.",
     "companion_bunny": "Una conejita princesa con un vestido rosa de volantes.",
     "companion_honey": "Un dulce osito panadero de miel con chaqueta de chef a cuadros.",
-    "companion_pretzel": "Un curioso gato panadero con un pretzel prendido en su gorro de chef.",
+    "companion_pretzel": "Un zorro panadero color soda de menta con una cereza prendida en su gorro de chef.",
     "companion_tira": "Una conejita tiramisú con delantal espolvoreado de cacao.",
     "companion_hanji": "Una elegante gata negra con un hanfu lavanda y adornos de glicina.",
     "outfit_bun_angel": "Un vestido de ángel con volantes, alas y capota. Con él puesto, Bun envía recordatorios suaves y protectores — póntelo desde el armario de Bun.",
@@ -1260,6 +1262,7 @@
     "outfit_honey_zzz": "Un pijama de tarro de miel con gorro de dormir. Con él puesto, Miel murmura adormilado «primero estudiar, luego mimos» — póntelo desde el armario de Miel.",
     "outfit_bunny_jiraikei": "Un conjunto lolita jirai kei en rosa y negro. Con él puesto, Conejo se vuelve adorable pero amenazante en sus recordatorios — póntelo desde el armario de Conejo.",
     "outfit_bunny_palace": "Una lujosa túnica palaciega de peonía azul con tocado. Con ella puesta, Conejo emite recordatorios regios por decreto real — póntela desde el armario de Conejo.",
+    "outfit_bunny_royal": "Un vestido de princesa fresa en carmesí y dorado con capota de encaje y corona dorada. Gratis con Premium — póntelo desde el armario de Conejo.",
     "outfit_hanji_ivoryrose": "Una capota de encaje marfil y un hanfu crema de glicina con una rosa blanca. Póntelo desde el armario de Hanji.",
     "bg_modern_kitchen": "Un fondo de cocina moderna y elegante — combina con el Escritorio de Mármol.",
     "bg_washitsu": "Un fondo de playa soleada junto al mar — combina con el Escritorio de Madera.",
@@ -1485,6 +1488,8 @@
     "f_discoDesc": "Convierte tu sala de estudio en una escena disco que brilla con tu música",
     "f_exclusiveSkin": "Atuendo exclusivo de Bun",
     "f_exclusiveSkinDesc": "Consigue el aspecto Princesa Fresa de Bun gratis en cuanto te hagas Premium",
+    "f_berryPrincess": "Atuendo Princesa Berry de Conejo",
+    "f_berryPrincessDesc": "Un atuendo real exclusivo en carmesí y dorado para Conejo, gratis con Premium",
     "f_goldenTeahouse": "Salón de té dorado",
     "f_goldenTeahouseDesc": "Un fondo exclusivo de salón de té real y un escritorio a juego, gratis con Premium",
     "f_avatarFrame": "Marco con corona dorada",
@@ -1492,8 +1497,8 @@
     "noteKeep": "Desbloqueo único: es tuyo para siempre, aunque termine Premium",
     "rewardSkinTitle": "¡Nuevo atuendo desbloqueado!",
     "rewardSkinMsg": "Conseguiste el atuendo Princesa Berry de Bun: es tuyo para siempre. Encuéntralo en el armario de Bun.",
-    "rewardRoomTitle": "¡Nueva habitación y escritorio desbloqueados!",
-    "rewardRoomMsg": "Recibiste la habitación Salón de Té Real y su escritorio a juego: son tuyos para siempre. Encuéntralos en Editar habitación.",
+    "rewardRoomTitle": "¡Nuevo atuendo, habitación y escritorio desbloqueados!",
+    "rewardRoomMsg": "Recibiste el atuendo Princesa Berry de Conejo, además de la habitación Salón de Té Real y su escritorio a juego: son tuyos para siempre. Encuentra el atuendo en el armario de Conejo y la habitación en Editar habitación.",
     "noteExpire": "Activo mientras tengas Premium: se quita si Premium termina",
     "f_allGames": "Todos los juegos de descanso",
     "f_allGamesDesc": "Desbloquea Cartas de memoria, Crucigrama de palabras y futuros juegos",
@@ -1914,6 +1919,7 @@
     "history": "Historia"
   },
   "outfitNames": {
+    "heartcore": "Heartcore",
     "starry": "Noche estrellada",
     "classic": "Clásico",
     "angel": "Ángel",
@@ -2128,6 +2134,8 @@
     "bunny_classic": "Conejo vivía en un palacio rosa donde cada cortina parecía ondear solo para ella y cada espejo reflejaba exactamente lo que ya sabía: que era, sin discusión, lo más lindo de la sala. Caminaba por los grandes salones con su vestido de volantes, saludando al día con esa confianza que la mayoría de la realeza tarda años en aprender. Era dulce, sí, pero jamás ingenua. Conejo conocía el efecto que tenía en la gente, y llevaba ese conocimiento como un lazo más.\n\nAun así, ser adorable no era lo mismo que estar de brazos cruzados. Conejo tomaba decisiones rápido, esperaba que se cumplieran y nunca necesitó alzar la voz para que la obedecieran. Los jardineros se enderezaban a su paso. Los sirvientes apuraban un poco el paso. Hasta los invitados parecían sentarse con mejores modales bajo su mirada. Y sin embargo, nunca era cruel. Había simplemente una autoridad natural en su dulzura, como si el encanto mismo hubiera decidido convertirse en princesa y gobernar la sala.",
     "bunny_jiraikei": "En la ciudad, la gente siempre tenía algo que decir. Cuchicheaban sobre la ropa, miraban de reojo la seguridad ajena y juzgaban todo lo que no entendían. Conejo aprendió pronto que, si escuchaba cada voz a su alrededor, nunca sería lo bastante libre para sonar como ella misma. Así que se vestía exactamente como quería —lazos y encaje en rosa y negro, suave a primera vista, afilada si mirabas más tiempo— y cruzaba las calles como si las opiniones de los demás estuvieran hechas de papel.\n\nLas miradas nunca cesaron del todo, pero dejaron de importar. Conejo se movía con esa certeza fría que hace que la burla se sienta pequeña. Si alguien se reía, no se inmutaba. Si alguien la subestimaba, lo dejaba hacer. Había algo casi peligroso en lo poco que le afectaba, en la limpieza con la que se negaba a doblarse solo para resultar más fácil de entender. Parecía dulce, pero había acero bajo el encaje, y todos podían sentirlo.",
     "bunny_palace": "La túnica azul de Conejo se movía como agua mientras cruzaba los jardines del palacio, con las peonías bordadas atrapando la luz entre las sombras de los cipreses y los farolillos de piedra tallada. Los senderos se curvaban entre estanques, puertas de luna y árboles en flor, y los asistentes la seguían unos pasos por detrás, cuidando de no perturbar la quietud que la rodeaba. No necesitaba decir mucho. El ritmo de sus pasos bastaba para silenciar un lugar.\n\nSolía venir al jardín a media tarde, cuando el cielo empezaba a suavizarse y los tejados brillaban bajo el sol que se apagaba. Allí, entre flores azules y mangas de seda flotantes, parecía menos alguien que tomaba prestada la elegancia y más alguien nacido de ella. Se detenía a mirar las carpas moverse bajo el agua, a tocar los pétalos de una peonía, a dejar que la brisa pasara entre sus adornos del pelo. Todo a su alrededor se sentía deliberado, grácil y antiguo. Conejo atravesaba ese mundo con la misma autoridad serena que llevaba a todas partes: hermosa, inconfundible e imposible de ignorar.",
+    "bunny_royal": "Una vez al año, el Palacio de Fresa celebraba una corte del chocolate, y Conejo la presidía vestida de carmesí y oro. Lazos de terciopelo adornaban su vestido, pequeñas fresas se mecían en sus cintas de encaje y una diminuta corona dorada descansaba perfectamente recta entre sus orejas. Cada chocolatero del reino traía una caja en forma de corazón, y Conejo probaba cada una con gran ceremonia, como si el destino del reino dependiera de ello.\n\nLa verdad era más sencilla: simplemente le encantaba el chocolate. Pero también creía que las cosas dulces había que ganárselas. Así que, antes de abrir una caja, terminaba sus estudios del día, página a página, y solo entonces levantaba la tapa y elegía un único bombón. Una princesa, decía, gobierna primero su día y después su postre.",
+    "pretzel_classic": "Soda atiende el pequeño mostrador de refrescos al fondo de la panadería, donde las burbujas nunca dejan de chispear. Corona cada flotante con una sola cereza y cada descanso de estudio con unas palabras de ánimo.",
     "hanji_classic": "Hanji vivía en una residencia tranquila escondida tras un jardín de glicinas, donde el aire siempre olía levemente a lavanda y a lluvia. Hablaba bajito, se movía con suavidad y tenía esa clase de presencia que hacía que una habitación se serenara en cuanto entraba. Las campanas y el bullicio pertenecían a otros lugares. El mundo de Hanji estaba hecho de mangas de seda, flores pálidas y el silencio de las páginas que se pasan a media tarde.\n\nLe gustaban las horas en que las sombras del jardín se alargaban y la luz se volvía tierna. Entonces caminaba bajo las glicinas colgantes y dejaba que los dijes de sus mangas se mecieran despacio en la brisa. La gente solía confundir su silencio con distancia, pero no era eso. Hanji simplemente se comportaba como alguien que no necesita competir con el ruido. Era callada, sí — pero de ese silencio que perdura, fragante e inolvidable.",
     "hanji_ivoryrose": "Hanji caminaba por la concurrida calle japonesa con la postura de alguien educada con esmero y con cariño para no apresurarse jamás. A su alrededor, la ciudad se movía en oleadas —tenderos llamando, bicicletas pasando, letreros brillando suavemente sobre la multitud—, y sin embargo ella permanecía serena con su capota de marfil y su vestido crema, como una dama de verdad cruzando un mundo que había olvidado cómo ir despacio. Se conducía con tanta pulcritud que hasta la esquina más ajetreada parecía ordenarse un poco a su paso.\n\nSe detenía en el puesto de flores, en el escaparate de la confitería, en el pequeño salón de té encajado entre fachadas más llamativas. La ciudad estaba viva y llena, pero Hanji nunca parecía abrumada por ella. La atravesaba con una gracia silenciosa, como si la elegancia no fuera algo que se pone en ocasiones especiales, sino simplemente la forma de su naturaleza. Contra la calle inquieta parecía casi de otra época — y por eso mismo más hermosa, como una rosa sostenida en calma en medio del movimiento."
   },

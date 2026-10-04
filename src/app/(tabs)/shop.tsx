@@ -360,7 +360,7 @@ export default function ShopScreen() {
   // characters you still need to unlock.
   const allOutfitCharacters: { id: string; name: string; image: number | { uri: string } | null; emoji: string; owned: boolean }[] = [
     { id: getStarterActiveId('girl'), name: 'Bun', image: STARTER_COMPANION_IMAGES.girl, emoji: '', owned: ownsBun },
-    ...SHOP_COMPANIONS.map((c) => ({
+    ...SHOP_COMPANIONS.filter((c) => !c.hidden || isCompanionOwned(c.id, starterCompanionId, ownedShopItems)).map((c) => ({
       id: `shop:${c.id}`,
       name: c.name,
       image: (c.image as number) ?? null,
@@ -390,7 +390,7 @@ export default function ShopScreen() {
   // Some companions aren't sold: Plus-exclusive (Tira) are granted with Plus, and
   // badge-reward ones (Hanji, requiresAllRecipes) are granted by collecting every
   // recipe badge. Their data stays in SHOP_ITEMS for the gallery & wardrobe.
-  const items = SHOP_ITEMS.filter((i) => i.category === activeCategory && !i.plusOnly && !i.requiresAllRecipes && !i.free);
+  const items = SHOP_ITEMS.filter((i) => i.category === activeCategory && !i.plusOnly && !i.requiresAllRecipes && !i.free && !i.hidden);
   const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
   const pages = Array.from({ length: totalPages }, (_, i) => items.slice(i * ITEMS_PER_PAGE, (i + 1) * ITEMS_PER_PAGE));
   // Plus members have a higher daily study-earn ceiling.

@@ -10,7 +10,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CoinIcon } from '@/components/coin-icon';
 import { DevKnobs } from '@/components/dev-knobs';
 import { PlusIcon } from '@/components/plus-icon';
-import { LockBadge } from '@/components/lock-badge';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { useApp } from '@/context/app-context';
@@ -272,19 +271,14 @@ export default function SessionPickerScreen() {
               </>
             )}
 
-            {/* Custom duration — a Plus feature, as a final menu row. Free users see
-                a lock and are sent to the paywall instead of the timer. Hidden in
+            {/* Custom duration — open to everyone, as a final menu row. Hidden in
                 multiplayer: there each player sets their own length in the lobby. */}
             {mode === 'single' && (
               <>
                 <View style={styles.sectionRule} />
                 <Pressable
                   style={({ pressed }) => [styles.menuRow, isTablet && styles.menuRowTablet, pressed && styles.pressed]}
-                  onPress={() =>
-                    isPlus
-                      ? router.push('/custom-timer')
-                      : router.push('/plus-upgrade')
-                  }>
+                  onPress={() => router.push('/custom-timer')}>
                   <View style={[styles.customIconWrap, isTablet && styles.customIconWrapTablet]}>
                     <PlusIcon size={isTablet ? Math.round(42 * grow) : 32} />
                   </View>
@@ -292,13 +286,9 @@ export default function SessionPickerScreen() {
                     <Text style={[styles.menuName, isTablet && styles.menuNameTablet]}>{t('sessionPicker.customTitle')}</Text>
                     <Text style={[styles.menuCoinText, isTablet && styles.menuCoinTextTablet]}>{t('sessionPicker.customSub')}</Text>
                   </View>
-                  {isPlus ? (
-                    <View style={[styles.customPill, isTablet && styles.customPillTablet]}>
-                      <Text style={[styles.customPillText, isTablet && styles.customPillTextTablet]}>{t('sessionPicker.customSet')}</Text>
-                    </View>
-                  ) : (
-                    <LockBadge size={isTablet ? Math.round(38 * grow) : 30} />
-                  )}
+                  <View style={[styles.customPill, isTablet && styles.customPillTablet]}>
+                    <Text style={[styles.customPillText, isTablet && styles.customPillTextTablet]}>{t('sessionPicker.customSet')}</Text>
+                  </View>
                 </Pressable>
               </>
             )}

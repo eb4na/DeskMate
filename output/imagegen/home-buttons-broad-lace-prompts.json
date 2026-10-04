@@ -1,0 +1,30 @@
+{
+  "tool": "built-in image_gen",
+  "assets": [
+    {
+      "name": "switch-character-btn-soft-bakery",
+      "path": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-2e962724-d980-4dc8-8217-e8f921b2d3db.png",
+      "prompt": "Edit this exact app button. Simplify ONLY the lace border to EIGHT broad softly rounded scallops around the entire badge, fewer larger scallops than current. Retain a delicate champagne gold outline and ivory fill. Simplify pink stitching to about sixteen evenly spaced long curved dashes, no fine frills, no tiny detail. Keep the overall circular size, scale, pastel colors, center illustration and framing unchanged. Remove ALL cat facial features: no eyes, mouth, nose or blush on face. Keep white cat head silhouette with pink inner ears and pink switch arrows. Single square transparent-alpha PNG, badge fills 94% of canvas with even transparent margin. No background, no extra text, no notification dot."
+    },
+    {
+      "name": "food-menu-btn-soft-bakery",
+      "path": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-2e3910ef-672a-4d9a-a9dc-7e0cd1e411e4.png",
+      "prompt": "Edit this exact app button. Simplify ONLY the lace border to EIGHT broad softly rounded scallops around the entire badge, fewer larger scallops than current. Retain a delicate champagne gold outline and ivory fill. Simplify pink stitching to about sixteen evenly spaced long curved dashes, no fine frills, no tiny detail. Keep the overall circular size, scale, pastel colors, center illustration and framing unchanged. Preserve every detail of central illustration including any faces and text. Single square transparent-alpha PNG, badge fills 94% of canvas with even transparent margin. No background, no extra text, no notification dot."
+    },
+    {
+      "name": "edit-room-btn-soft-bakery",
+      "path": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-0e4ed5a2-9ff2-4042-8b64-899b0e205f3b.png",
+      "prompt": "Edit this exact app button. Simplify ONLY the lace border to EIGHT broad softly rounded scallops around the entire badge, fewer larger scallops than current. Retain a delicate champagne gold outline and ivory fill. Simplify pink stitching to about sixteen evenly spaced long curved dashes, no fine frills, no tiny detail. Keep the overall circular size, scale, pastel colors, center illustration and framing unchanged. Preserve every detail of central illustration including any faces and text. Single square transparent-alpha PNG, badge fills 94% of canvas with even transparent margin. No background, no extra text, no notification dot."
+    },
+    {
+      "name": "settings-scallop-btn-soft-bakery",
+      "path": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-e236c0e7-892c-4c4e-a4bf-a8fd1484be39.png",
+      "prompt": "Edit this exact app button. Simplify ONLY the lace border to EIGHT broad softly rounded scallops around the entire badge, fewer larger scallops than current. Retain a delicate champagne gold outline and ivory fill. Simplify pink stitching to about sixteen evenly spaced long curved dashes, no fine frills, no tiny detail. Keep the overall circular size, scale, pastel colors, center illustration and framing unchanged. Preserve every detail of central illustration including any faces and text. Single square transparent-alpha PNG, badge fills 94% of canvas with even transparent margin. No background, no extra text, no notification dot."
+    },
+    {
+      "name": "friend-btn",
+      "path": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-1683eee6-477c-4e0f-80d5-5a5d8f4b0246.png",
+      "prompt": "Edit this exact app button. Simplify ONLY the lace border to EIGHT broad softly rounded scallops around the entire badge, fewer larger scallops than current. Retain a delicate champagne gold outline and ivory fill. Simplify pink stitching to about sixteen evenly spaced long curved dashes, no fine frills, no tiny detail. Keep the overall circular size, scale, pastel colors, center illustration and framing unchanged. Preserve every detail of central illustration including any faces and text. Single square transparent-alpha PNG, badge fills 94% of canvas with even transparent margin. No background, no extra text, no notification dot."
+    }
+  ]
+}

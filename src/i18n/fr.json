@@ -1140,7 +1140,7 @@
   },
   "starter": {
     "title": "Choisis ton copain d'étude",
-    "subtitle": "Choisis le compagnon qui débute gratuitement avec toi. Les quatre autres t'attendent dans la boutique.",
+    "subtitle": "Choisis le compagnon qui débute gratuitement avec toi. Les autres t'attendent dans la boutique.",
     "choose": "Commencer avec {{name}}",
     "comesWith": "Inclut {{recipe}}",
     "hint": "Touche les flèches pour les rencontrer tous",
@@ -1197,6 +1197,7 @@
     "tagline_Cocoa": "Le travail d'abord, le plaisir après.",
     "tagline_Bunny": "Trop mignonne pour s'en faire.",
     "tagline_Miel": "Dormir maintenant, étudier peut-être.",
+    "tagline_Soda": "D'abord des bulles, puis on se concentre.",
     "tagline_Tira": "A quitté l'école, mais reste brillante.",
     "name_Hanji": "Hanji",
     "tagline_Hanji": "Grâce paisible en soie lavande.",
@@ -1204,6 +1205,7 @@
     "name_Cocoa": "Aki",
     "name_Bunny": "Lapin",
     "name_Miel": "Miel",
+    "name_Soda": "Soda",
     "name_Tira": "Tira"
   },
   "roomNames": {
@@ -1244,7 +1246,7 @@
     "companion_cocoa": "Un panda roux décontracté en kimono d’automne douillet.",
     "companion_bunny": "Une lapine princesse en robe rose à volants.",
     "companion_honey": "Un adorable ourson boulanger au miel en veste de chef vichy.",
-    "companion_pretzel": "Un chat boulanger curieux avec un bretzel épinglé à sa toque.",
+    "companion_pretzel": "Un renard boulanger couleur soda à la menthe, une cerise épinglée à sa toque.",
     "companion_tira": "Une lapine tiramisu au tablier saupoudré de cacao.",
     "companion_hanji": "Une élégante chatte noire en hanfu lavande orné de glycines.",
     "outfit_bun_angel": "Une robe d’ange à volants avec ailes et béguin. Quand Bun la porte, ses rappels deviennent doux et protecteurs — à enfiler depuis la garde-robe de Bun.",
@@ -1260,6 +1262,7 @@
     "outfit_honey_zzz": "Un pyjama pot de miel douillet avec bonnet de nuit. Quand Miel le porte, il marmonne d’un air endormi « d’abord les études, ensuite les câlins » — à enfiler depuis la garde-robe de Miel.",
     "outfit_bunny_jiraikei": "Une tenue lolita jirai kei rose et noire. Quand Lapin la porte, ses rappels deviennent mignons mais menaçants — à enfiler depuis la garde-robe de Lapin.",
     "outfit_bunny_palace": "Une somptueuse robe de palais à pivoines bleues avec coiffe. Quand Lapin la porte, ses rappels prennent des airs de décret royal — à enfiler depuis la garde-robe de Lapin.",
+    "outfit_bunny_royal": "Une robe de princesse fraise cramoisi et or avec béguin en dentelle et couronne dorée. Offerte avec Premium — à enfiler depuis la garde-robe de Lapin.",
     "outfit_hanji_ivoryrose": "Un béguin en dentelle ivoire et un hanfu crème aux glycines, avec une rose blanche. À enfiler depuis la garde-robe de Hanji.",
     "bg_modern_kitchen": "Un décor de cuisine moderne et épuré — s’accorde avec le Bureau en Marbre.",
     "bg_washitsu": "Un décor de plage ensoleillée en bord de mer — s’accorde avec le Bureau en Bois.",
@@ -1485,6 +1488,8 @@
     "f_discoDesc": "Transforme ta salle d'étude en scène disco lumineuse au rythme de ta musique",
     "f_exclusiveSkin": "Tenue exclusive de Bun",
     "f_exclusiveSkinDesc": "Obtiens le skin Princesse Fraise de Bun gratuitement dès que tu passes à Premium",
+    "f_berryPrincess": "Tenue Princesse Berry de Lapin",
+    "f_berryPrincessDesc": "Une tenue royale exclusive cramoisi et or pour Lapin, offerte avec Premium",
     "f_goldenTeahouse": "Salon de thé doré",
     "f_goldenTeahouseDesc": "Un décor exclusif de salon de thé royal et un bureau assorti, offerts avec Premium",
     "f_avatarFrame": "Cadre à couronne dorée",
@@ -1492,8 +1497,8 @@
     "noteKeep": "Déblocage unique — à vous pour toujours, même si Premium se termine",
     "rewardSkinTitle": "Nouvelle tenue débloquée !",
     "rewardSkinMsg": "Tu as obtenu la tenue Princesse Berry de Bun — à toi pour toujours. Retrouve-la dans la garde-robe de Bun.",
-    "rewardRoomTitle": "Nouvelle pièce et nouveau bureau débloqués !",
-    "rewardRoomMsg": "Tu as reçu la pièce Salon de Thé Royal et son bureau assorti — à toi pour toujours. Retrouve-les dans Modifier la pièce.",
+    "rewardRoomTitle": "Nouvelle tenue, pièce et bureau débloqués !",
+    "rewardRoomMsg": "Tu as reçu la tenue Princesse Berry de Lapin, ainsi que la pièce Salon de Thé Royal et son bureau assorti — à toi pour toujours. Retrouve la tenue dans la garde-robe de Lapin et la pièce dans Modifier la pièce.",
     "noteExpire": "Actif tant que Premium est actif — retiré si Premium se termine",
     "f_allGames": "Tous les jeux de pause",
     "f_allGamesDesc": "Débloque Cartes mémoire, Jeu de mots et les futurs jeux",
@@ -1914,6 +1919,7 @@
     "history": "Histoire"
   },
   "outfitNames": {
+    "heartcore": "Heartcore",
     "starry": "Nuit étoilée",
     "classic": "Classique",
     "angel": "Ange",
@@ -2128,6 +2134,8 @@
     "bunny_classic": "Lapin vivait dans un palais rose où chaque rideau semblait flotter rien que pour elle et où chaque miroir reflétait exactement ce qu'elle savait déjà — qu'elle était, indéniablement, la chose la plus mignonne de la pièce. Elle traversait les grandes salles dans sa robe à volants, saluant la journée avec cette assurance que la plupart des têtes couronnées mettent des années à apprendre. Elle était douce, oui, mais jamais dupe. Lapin connaissait l'effet qu'elle produisait sur les gens, et elle portait ce savoir comme un ruban de plus.\n\nPour autant, être adorable n'était pas la même chose qu'être oisive. Lapin décidait vite, s'attendait à être suivie, et n'eut jamais besoin d'élever la voix pour être obéie. Les jardiniers se redressaient sur son passage. Les domestiques pressaient un peu le pas. Même les invités semblaient mieux se tenir sous son regard. Et pourtant, elle n'était jamais cruelle. Il y avait simplement une autorité naturelle dans sa douceur, comme si le charme lui-même avait décidé de devenir princesse et de régner sur la pièce.",
     "bunny_jiraikei": "En ville, les gens avaient toujours quelque chose à dire. Ils chuchotaient sur les tenues, regardaient l'assurance de travers et jugeaient tout ce qu'ils ne comprenaient pas. Lapin comprit très tôt que si elle écoutait chaque voix autour d'elle, elle ne serait jamais assez libre pour être elle-même. Alors elle s'habillait exactement comme il lui plaisait — rubans et dentelle en rose et noir, doux au premier regard, tranchant si l'on regardait plus longtemps — et traversait les rues comme si l'opinion des autres était faite de papier.\n\nLes regards ne cessèrent jamais vraiment, mais ils cessèrent de compter. Lapin avançait avec cette froide certitude qui rend la moquerie toute petite. Si quelqu'un riait, elle ne bronchait pas. Si quelqu'un la sous-estimait, elle le laissait faire. Il y avait quelque chose de presque dangereux dans son calme, dans la netteté avec laquelle elle refusait de se plier juste pour être plus facile à comprendre. Elle avait l'air douce, mais il y avait de l'acier sous la dentelle, et tout le monde le sentait.",
     "bunny_palace": "La robe bleue de Lapin ondulait comme de l'eau tandis qu'elle traversait les jardins du palais, ses pivoines brodées attrapant la lumière entre l'ombre des cyprès et les lanternes de pierre sculptée. Les allées serpentaient entre les bassins, les portes de lune et les arbres en fleurs, et les suivantes marchaient quelques pas derrière, attentives à ne pas troubler le calme qui l'entourait. Elle n'avait pas besoin de dire grand-chose. Le rythme de ses pas suffisait, semblait-il, à apaiser un lieu.\n\nElle venait souvent au jardin en fin d'après-midi, quand le ciel commençait à s'adoucir et que les toits de tuiles luisaient sous le soleil déclinant. Là, parmi les fleurs bleues et les manches de soie flottantes, elle semblait moins emprunter l'élégance qu'en être née. Elle s'arrêtait pour regarder les carpes glisser sous l'eau, toucher les pétales d'une pivoine, laisser la brise passer dans ses ornements de cheveux. Tout autour d'elle semblait voulu, gracieux et ancien. Lapin traversait ce monde avec la même autorité posée qu'elle portait partout — belle, reconnaissable entre toutes, impossible à ignorer.",
+    "bunny_royal": "Une fois par an, le Palais des Fraises tenait une cour du chocolat, et Lapin la présidait vêtue de cramoisi et d'or. Des nœuds de velours ornaient sa robe, de petites fraises se balançaient à ses rubans de dentelle, et une minuscule couronne dorée trônait bien droite entre ses oreilles. Chaque chocolatier du royaume apportait une boîte en forme de cœur, et Lapin goûtait chacune avec une grande solennité, comme si le sort du royaume en dépendait.\n\nLa vérité était plus simple : elle adorait tout bonnement le chocolat. Mais elle croyait aussi que les douceurs se méritent. Alors, avant d'ouvrir une boîte, elle terminait ses révisions du jour, page après page, et seulement ensuite soulevait le couvercle pour choisir un seul chocolat. Une princesse, disait-elle, règne d'abord sur sa journée, puis sur son dessert.",
+    "pretzel_classic": "Soda tient le petit comptoir à sodas au fond de la boulangerie, où les bulles ne cessent jamais de pétiller. Il couronne chaque soda flotteur d'une seule cerise et chaque pause de révisions d'un mot d'encouragement joyeux.",
     "hanji_classic": "Hanji vivait dans une demeure tranquille cachée derrière un jardin de glycines, où l'air sentait toujours légèrement la lavande et la pluie. Elle parlait doucement, se déplaçait avec délicatesse et possédait cette présence qui apaise une pièce dès l'instant où elle y entre. Les clochettes et les bavardages appartenaient à d'autres lieux. Le monde de Hanji était fait de manches de soie, de fleurs pâles et du murmure des pages qu'on tourne en fin d'après-midi.\n\nElle aimait les heures où les ombres du jardin s'allongeaient et où la lumière devenait tendre. Alors elle marchait sous les glycines suspendues et laissait les breloques de ses manches se balancer doucement dans la brise. On prenait souvent son silence pour de la distance, mais ce n'était pas cela. Hanji se comportait simplement comme quelqu'un qui n'a pas besoin de rivaliser avec le bruit. Elle était silencieuse, oui — mais de ce silence qui s'attarde, parfumé et inoubliable.",
     "hanji_ivoryrose": "Hanji marchait le long de la rue japonaise animée avec le port de quelqu'un à qui l'on a appris, avec soin et avec amour, à ne jamais se presser. Autour d'elle, la ville avançait par vagues — commerçants qui interpellent, vélos qui filent, enseignes qui luisent doucement au-dessus de la foule — et pourtant elle restait sereine dans sa capote ivoire et sa robe crème, comme une vraie dame traversant un monde qui avait oublié comment ralentir. Elle se tenait si joliment que même le carrefour le plus agité semblait s'ordonner un peu sur son passage.\n\nElle s'arrêtait à l'étal de fleurs, devant la vitrine de la confiserie, au petit salon de thé niché entre des devantures plus criardes. La ville était vivante et pleine, mais Hanji ne semblait jamais s'y noyer. Elle la traversait avec une grâce silencieuse, comme si l'élégance n'était pas quelque chose qu'on enfile pour les grandes occasions, mais simplement la forme de sa nature. Sur fond de rue agitée, elle paraissait presque d'un autre temps — et n'en était que plus belle, comme une rose tenue immobile au milieu du mouvement."
   },
