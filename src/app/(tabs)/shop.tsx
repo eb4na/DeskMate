@@ -59,14 +59,14 @@ const CATEGORY_EMOJI: Partial<Record<ShopCategory, string>> = {
 };
 
 const CAT_ICON_IMG: Partial<Record<ShopCategory, number>> = {
-  companion: require('@/assets/images/shop/icon-buddy.png'),
-  outfits: require('@/assets/images/shop/icon-outfits.png'),
-  recipe: require('@/assets/images/shop/icon-recipe.png'),
-  background: require('@/assets/images/shop/icon-room.png'),
-  desk: require('@/assets/images/shop/icon-desk.png'),
-  sound: require('@/assets/images/shop/icon-sound.png'),
-  game: require('@/assets/images/shop/icon-game.png'),
-  reminder: require('@/assets/images/shop/icon-reminder.png'),
+  companion: require('@/assets/images/shop/icon-buddy-cartoon.png'),
+  outfits: require('@/assets/images/shop/icon-outfits-cartoon.png'),
+  recipe: require('@/assets/images/shop/icon-recipe-cartoon.png'),
+  background: require('@/assets/images/shop/icon-room-cartoon.png'),
+  desk: require('@/assets/images/shop/icon-desk-cartoon.png'),
+  sound: require('@/assets/images/shop/icon-sound-cartoon.png'),
+  game: require('@/assets/images/shop/icon-game-cartoon.png'),
+  reminder: require('@/assets/images/shop/icon-reminder-cartoon.png'),
 };
 
 function CategoryIcon({ id, size }: { id: ShopCategory; size?: number }) {

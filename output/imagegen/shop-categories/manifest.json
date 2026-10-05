@@ -1,0 +1,53 @@
+{
+  "tool": "built-in image_gen",
+  "assets": [
+    {
+      "name": "buddy",
+      "prompt": "Use case: style-transfer. Regenerate this shop category icon as an OUTFIT ONLY, absolutely no character, no cat, no animal, no head, face, body, paws or tail. Show the same pink-and-ivory strawberry chef uniform: puffy white chef hat with pink strawberry trim floating directly over a neatly arranged empty pink chef jacket and ivory apron, pink neckerchief and strawberry badge. No hanger needed. Match the original icon's warm golden brown smooth outline, pastel cream and blush pink, simple flat cartoon shading. Compact balanced centered composition, readable at 48 pixels, tiny even margin. Genuine transparent background, no surrounding tile, no lettering.",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-b4337727-4c8d-4777-b8cd-a431db5a2694.png",
+      "destination": "assets/images/shop/icon-buddy-cartoon.png"
+    },
+    {
+      "name": "outfits",
+      "prompt": "Use case: style-transfer. Regenerate the supplied shop category icon, keeping exactly the same subject, arrangement, decorative motifs and pastel pink/cream/gold palette. Make a fresh cohesive cute 2D cartoon game icon with confident warm golden brown outlines, slightly rounder shapes, simple flat pastel colors, minimal cel shading and fewer tiny glossy details. Keep the original identity and all recognizable objects. Compact centered composition readable at 48 pixels, small even margin. Genuine transparent background, no surrounding tile, no added text, no new objects.",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-073ee83b-a69d-4383-b6f2-cf0dcff12022.png",
+      "destination": "assets/images/shop/icon-outfits-cartoon.png"
+    },
+    {
+      "name": "recipe",
+      "prompt": "Use case: style-transfer. Regenerate the supplied shop category icon, keeping exactly the same subject, arrangement, decorative motifs and pastel pink/cream/gold palette. Make a fresh cohesive cute 2D cartoon game icon with confident warm golden brown outlines, slightly rounder shapes, simple flat pastel colors, minimal cel shading and fewer tiny glossy details. Keep the original identity and all recognizable objects. Compact centered composition readable at 48 pixels, small even margin. Genuine transparent background, no surrounding tile, no added text, no new objects.",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-f95a8f13-a5dd-4352-8cf9-7d03962eb37e.png",
+      "destination": "assets/images/shop/icon-recipe-cartoon.png"
+    },
+    {
+      "name": "room",
+      "prompt": "Use case: style-transfer. Regenerate the supplied shop category icon, keeping exactly the same subject, arrangement, decorative motifs and pastel pink/cream/gold palette. Make a fresh cohesive cute 2D cartoon game icon with confident warm golden brown outlines, slightly rounder shapes, simple flat pastel colors, minimal cel shading and fewer tiny glossy details. Keep the original identity and all recognizable objects. Compact centered composition readable at 48 pixels, small even margin. Genuine transparent background, no surrounding tile, no added text, no new objects.",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-659db5b4-313c-4507-bbc2-5a31e52828e6.png",
+      "destination": "assets/images/shop/icon-room-cartoon.png"
+    },
+    {
+      "name": "desk",
+      "prompt": "Use case: style-transfer. Regenerate the supplied shop category icon, keeping exactly the same subject, arrangement, decorative motifs and pastel pink/cream/gold palette. Make a fresh cohesive cute 2D cartoon game icon with confident warm golden brown outlines, slightly rounder shapes, simple flat pastel colors, minimal cel shading and fewer tiny glossy details. Keep the original identity and all recognizable objects. Compact centered composition readable at 48 pixels, small even margin. Genuine transparent background, no surrounding tile, no added text, no new objects.",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-1b0a4b2b-6d53-45fb-b75b-4ed82eacb6f8.png",
+      "destination": "assets/images/shop/icon-desk-cartoon.png"
+    },
+    {
+      "name": "sound",
+      "prompt": "Use case: style-transfer. Regenerate the supplied shop category icon, keeping exactly the same subject, arrangement, decorative motifs and pastel pink/cream/gold palette. Make a fresh cohesive cute 2D cartoon game icon with confident warm golden brown outlines, slightly rounder shapes, simple flat pastel colors, minimal cel shading and fewer tiny glossy details. Keep the original identity and all recognizable objects. Compact centered composition readable at 48 pixels, small even margin. Genuine transparent background, no surrounding tile, no added text, no new objects.",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-9d08f1c6-a62a-429e-a26d-861e16169860.png",
+      "destination": "assets/images/shop/icon-sound-cartoon.png"
+    },
+    {
+      "name": "game",
+      "prompt": "Use case: style-transfer. Regenerate the supplied shop category icon, keeping exactly the same subject, arrangement, decorative motifs and pastel pink/cream/gold palette. Make a fresh cohesive cute 2D cartoon game icon with confident warm golden brown outlines, slightly rounder shapes, simple flat pastel colors, minimal cel shading and fewer tiny glossy details. Keep the original identity and all recognizable objects. Compact centered composition readable at 48 pixels, small even margin. Genuine transparent background, no surrounding tile, no added text, no new objects.",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-70de65a3-b721-45af-bbcd-47b9469c6dbc.png",
+      "destination": "assets/images/shop/icon-game-cartoon.png"
+    },
+    {
+      "name": "reminder",
+      "prompt": "Use case: style-transfer. Regenerate the supplied shop category icon, keeping exactly the same subject, arrangement, decorative motifs and pastel pink/cream/gold palette. Make a fresh cohesive cute 2D cartoon game icon with confident warm golden brown outlines, slightly rounder shapes, simple flat pastel colors, minimal cel shading and fewer tiny glossy details. Keep the original identity and all recognizable objects. Compact centered composition readable at 48 pixels, small even margin. Genuine transparent background, no surrounding tile, no added text, no new objects.",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-a6600657-6ef3-4e2b-be6c-4fd833c72893.png",
+      "destination": "assets/images/shop/icon-reminder-cartoon.png"
+    }
+  ]
+}
