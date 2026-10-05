@@ -193,30 +193,30 @@ const HOME_ROOM_IMAGE = require('@/assets/images/home/home-room-bg.png');
 const DESK_OVERLAY = require('@/assets/images/home/desk-overlay.png');
 const DESK_HANDS = require('@/assets/images/home/desk-hands.png');
 const DESK_NEW = require('@/assets/images/home/desk-new.png');
-const DESK_MIXER = require('@/assets/images/home/desk-mixer.png');
+const DESK_MIXER = require('@/assets/images/home/recipes-cartoon/desk-mixer.png');
 const SUNLIGHT = require('@/assets/images/home/sunlight.png');
-const DESK_STRAWBERRIES = require('@/assets/images/home/desk-strawberries.png');
-const DESK_EGGS = require('@/assets/images/home/desk-eggs.png');
-const DESK_BUTTER = require('@/assets/images/home/desk-butter.png');
-// Pudding desk art (swap these placeholder PNGs for desk-style versions).
-const DESK_MIXER_PUDDING = require('@/assets/images/home/desk-mixer-pudding.png');
-const DESK_MILK = require('@/assets/images/home/desk-milk.png');
-const DESK_SUGAR = require('@/assets/images/home/desk-sugar.png');
-const DESK_CORNSTARCH = require('@/assets/images/home/desk-cornstarch.png');
-// Berry croissant desk art (reuses the kitchen ingredient PNGs).
-const DESK_MIXER_CROISSANT = require('@/assets/images/cake/mixer-croissant.png');
-const DESK_FLOUR = require('@/assets/images/cake/base-flour.png');
-const DESK_CR_BUTTER = require('@/assets/images/cake/filling-butter.png');
-const DESK_BERRIES = require('@/assets/images/cake/topping-berries.png');
-// Sakura mochi + matcha crepe desk art (reuses the kitchen ingredient PNGs).
-const DESK_MIXER_SAKURA = require('@/assets/images/cake/mixer-sakura.png');
-const DESK_RICEFLOUR = require('@/assets/images/cake/base-riceFlour.png');
-const DESK_REDBEAN = require('@/assets/images/cake/filling-redBean.png');
-const DESK_SAKURALEAF = require('@/assets/images/cake/topping-sakuraLeaf.png');
-const DESK_MIXER_MATCHA = require('@/assets/images/cake/mixer-matcha.png');
-const DESK_MATCHA = require('@/assets/images/cake/base-matcha.png');
-const DESK_MATCHA_MILK = require('@/assets/images/cake/filling-milk.png');
-const DESK_EGGFLOUR = require('@/assets/images/cake/topping-eggFlour.png');
+const DESK_STRAWBERRIES = require('@/assets/images/home/recipes-cartoon/desk-strawberries.png');
+const DESK_EGGS = require('@/assets/images/home/recipes-cartoon/desk-eggs.png');
+const DESK_BUTTER = require('@/assets/images/home/recipes-cartoon/desk-butter.png');
+// Cartoon recipe art, matched to the companion illustrations.
+const DESK_MIXER_PUDDING = require('@/assets/images/home/recipes-cartoon/desk-mixer-pudding.png');
+const DESK_MILK = require('@/assets/images/home/recipes-cartoon/desk-milk.png');
+const DESK_SUGAR = require('@/assets/images/home/recipes-cartoon/desk-sugar.png');
+const DESK_CORNSTARCH = require('@/assets/images/home/recipes-cartoon/desk-cornstarch.png');
+// Berry croissant desk art.
+const DESK_MIXER_CROISSANT = require('@/assets/images/home/recipes-cartoon/mixer-croissant.png');
+const DESK_FLOUR = require('@/assets/images/home/recipes-cartoon/base-flour.png');
+const DESK_CR_BUTTER = require('@/assets/images/home/recipes-cartoon/filling-butter.png');
+const DESK_BERRIES = require('@/assets/images/home/recipes-cartoon/topping-berries.png');
+// Sakura mochi + matcha crepe desk art.
+const DESK_MIXER_SAKURA = require('@/assets/images/home/recipes-cartoon/mixer-sakura.png');
+const DESK_RICEFLOUR = require('@/assets/images/home/recipes-cartoon/base-riceFlour.png');
+const DESK_REDBEAN = require('@/assets/images/home/recipes-cartoon/filling-redBean.png');
+const DESK_SAKURALEAF = require('@/assets/images/home/recipes-cartoon/topping-sakuraLeaf.png');
+const DESK_MIXER_MATCHA = require('@/assets/images/home/recipes-cartoon/mixer-matcha.png');
+const DESK_MATCHA = require('@/assets/images/home/recipes-cartoon/base-matcha.png');
+const DESK_MATCHA_MILK = require('@/assets/images/home/recipes-cartoon/filling-milk.png');
+const DESK_EGGFLOUR = require('@/assets/images/home/recipes-cartoon/topping-eggFlour.png');
 const HOME_CAT = require('@/assets/images/bun/bun-home.png');
 const BUN_STUDYING = require('@/assets/images/bun/bun-studying.png');
 const STUDY_OVEN = require('@/assets/images/cake/oven.png');
@@ -252,6 +252,7 @@ type DeskKit = {
 const DESK_KITS: Record<string, DeskKit> = {
   'strawberry-shortcake': {
     mixer: DESK_MIXER,
+    mixerStyle: { right: -22, bottom: '40%', width: 181, height: 136 },
     ingredients: [
       { id: 'strawberries', src: DESK_STRAWBERRIES },
       { id: 'eggs', src: DESK_EGGS },

@@ -26,7 +26,7 @@ import { CompanionLevel } from '@/components/companion-level';
 import { Fonts, MaxContentWidth, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
-import { staticImageFor, BUN_SKINS, type BunSkin, getBunSkinImage, getCompanionSkinImage, getCompanionSkins, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, pickSkinLore, skinLores, SHOP_COMPANIONS } from '@/lib/companion-utils';
+import { characterRank, staticImageFor, BUN_SKINS, type BunSkin, getBunSkinImage, getCompanionSkinImage, getCompanionSkins, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, pickSkinLore, skinLores, SHOP_COMPANIONS } from '@/lib/companion-utils';
 import { SHOP_ITEMS } from '@/constants/shop-data';
 import { roomById, isPairOwned, type RoomPair } from '@/constants/room-data';
 
@@ -436,7 +436,7 @@ function GalleryContent() {
       onSelect: () => handleUseSlot(slot.id, !!slot.imageUri),
       onDelete: () => confirmDelete(slot.id, slot.name),
     })),
-  ];
+  ].sort((a, b) => characterRank(a.id) - characterRank(b.id));
 
   // Who the big preview is showing. Generated slots are deletable, so the id can
   // go stale mid-session — fall back to the active companion, then to the first

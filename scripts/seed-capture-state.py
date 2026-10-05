@@ -112,7 +112,7 @@ def main():
     ap.add_argument("--companion", default="starter:girl",
                     help="activeCompanionId, e.g. shop:companion_bunny")
     ap.add_argument("--room", default="cozy",
-                    help="ROOM_PAIRS id, e.g. buns-room")
+                    help="ROOM_PAIRS id, e.g. miels-room")
     args = ap.parse_args()
     SERIAL = args.serial
 

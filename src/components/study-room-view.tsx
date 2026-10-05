@@ -22,7 +22,7 @@ import { useIsTablet } from '@/hooks/use-device-class';
 import { SubjectPickerModal } from '@/components/subject-picker-modal';
 import { FOOD_ITEMS } from '@/app/food-gallery';
 import { ThemedText } from '@/components/themed-text';
-import { useApp } from '@/context/app-context';
+import { MAX_SESSION_MINUTES, useApp } from '@/context/app-context';
 import { autoBreakMinutes, BREAK_GAME_ENABLED, coinsForMinutes, PLUS_STUDY_COIN_MULTIPLIER, SESSION_LENGTHS, formatCoins } from '@/constants/placeholder-data';
 import { SoundPickerModal } from '@/components/sound-picker-modal';
 import { DevKnobs } from '@/components/dev-knobs';
@@ -51,11 +51,27 @@ const PERSONA_BY_COMPANION: Record<string, string> = {
   'shop:companion_honey': 'miel',
   'shop:companion_tira': 'tira',
   'shop:companion_hanji': 'hanji',
+  'shop:companion_pretzel': 'gray',
 };
 
 const BUN_STUDYING = require('@/assets/images/bun/bun-studying.png');
 const PPL_ICON = require('@/assets/images/study/ppl-icon.png');
 const BREAK_PILL = require('@/assets/images/study/break-pill.png');
+// Step (and starting amount) of the add-time popup's counter, in minutes.
+const ADD_TIME_STEP = 5;
+
+// A white plus / minus built from bars, so it sits dead-centre in its round button
+// (a "+" text glyph rides low on the font baseline).
+function SignGlyph({ plus = false, size }: { plus?: boolean; size: number }) {
+  const t = Math.max(3, Math.round(size * 0.22));
+  const bar = { position: 'absolute' as const, backgroundColor: '#FFFFFF', borderRadius: t / 2 };
+  return (
+    <View style={{ width: size, height: size }} pointerEvents="none">
+      <View style={[bar, { left: 0, right: 0, top: (size - t) / 2, height: t }]} />
+      {plus && <View style={[bar, { top: 0, bottom: 0, left: (size - t) / 2, width: t }]} />}
+    </View>
+  );
+}
 const DESK = require('@/assets/images/home/desk-new.png');
 
 // Entirely-white game controller, drawn in code (Lucide gamepad-2 outline).
@@ -273,6 +289,7 @@ export function StudyRoomView({
     profileDisplayName,
     friendCode,
     shiftSessionStart,
+    extendActiveSession,
     setActiveSessionSubject,
     markSessionMultiplayer,
     startActiveSession,
@@ -300,11 +317,10 @@ export function StudyRoomView({
   // on gives every player the disco scene, Plus or not); the host + a solo studier use
   // their own setting.
   const followsHostDisco = room.active && !room.isHost;
-  // Disco is a Plus feature: you only get it for yourself with Plus (so a lapsed-Plus
-  // account stops seeing it). A non-Plus GUEST still gets it from a Plus host below.
-  // After a host migration, disco is suppressed for the rest of the session — even a
-  // Plus player who becomes host this way doesn't get their own disco back.
-  const focus = followsHostDisco ? room.hostDiscoOn : (spotifyBgEnabled && isPlus && !room.discoSuppressed);
+  // Disco is free for everyone (its Plus lock was dropped) — must match Home's
+  // discoBgOn exactly, or the disco backdrop shows under the normal desk scene.
+  // After a host migration, disco is suppressed for the rest of the session.
+  const focus = followsHostDisco ? room.hostDiscoOn : (spotifyBgEnabled && !room.discoSuppressed);
   const discoColor: 'black' | 'white' = followsHostDisco ? room.hostDiscoColor : spotifyBgColor;
   // Disco accent palette derived from the chosen vinyl colour (analogous hues).
   const discoPal = discoPalette(vinylColor, discoColor === 'black');
@@ -479,6 +495,10 @@ export function StudyRoomView({
 
   // My status (studying/break), toggled by the Break button in a room.
   const [onBreak, setOnBreak] = useState(false);
+  // Add-time popup: open flag + the amount picked on its counter.
+  const [addTimeOpen, setAddTimeOpen] = useState(false);
+  const [addTimeAmount, setAddTimeAmount] = useState(ADD_TIME_STEP);
+  const addTimeRoom = MAX_SESSION_MINUTES - (activeSession?.durationMinutes ?? MAX_SESSION_MINUTES);
   // Single-player: one timed break of floor(total/12) min, then auto-resume.
   const [breakUsed, setBreakUsed] = useState(false);
   const [breakLeft, setBreakLeft] = useState(0); // seconds remaining in the break
@@ -1482,9 +1502,24 @@ export function StudyRoomView({
           </SoundPressable>
         )}
       </View>
-      <SoundPressable onPress={handleLeave} style={({ pressed }) => [styles.endBtn, isTablet && { paddingHorizontal: 34, paddingVertical: 14, marginBottom: 34 }, focus && styles.btnFocusFlat, pressed && styles.endBtnPressed]} hitSlop={8}>
-        <Text style={[styles.endBtnText, isTablet && { fontSize: 18 }, focus && { color: focusFg }]}>{room.active ? t('studyRoom.leaveRoom') : t('session.endSession')}</Text>
-      </SoundPressable>
+      <View style={styles.endRow}>
+        <SoundPressable onPress={handleLeave} style={({ pressed }) => [styles.endBtn, styles.endBtnInRow, isTablet && { paddingHorizontal: 44, paddingVertical: 17, marginBottom: 34 }, focus && styles.btnFocusFlat, pressed && styles.endBtnPressed]} hitSlop={8}>
+          <Text style={[styles.endBtnText, isTablet && { fontSize: 21 }, focus && { color: focusFg }]}>{room.active ? t('studyRoom.leaveRoom') : t('session.endSession')}</Text>
+        </SoundPressable>
+        {/* "+ time": a round pink plus that opens the add-time popup. Solo only (in a
+            room everyone runs on the host's clock); hidden on break (the countdown
+            is frozen) and once the block is finishing. */}
+        {isSolo && !onBreak && !finishing && activeSession && (
+          <SoundPressable
+            onPress={() => { setAddTimeAmount(ADD_TIME_STEP); setAddTimeOpen(true); }}
+            disabled={addTimeRoom < ADD_TIME_STEP}
+            style={({ pressed }) => [styles.addTimeBtn, isTablet && styles.addTimeBtnTablet, addTimeRoom < ADD_TIME_STEP && styles.breakBtnDisabled, pressed && styles.endBtnPressed]}
+            hitSlop={8}
+            accessibilityLabel={t('session.addTimeTitle')}>
+            <SignGlyph plus size={isTablet ? 24 : 19} />
+          </SoundPressable>
+        )}
+      </View>
 
       {/* Multiplayer: pick your own subject at the start */}
       <SubjectPickerModal
@@ -1632,6 +1667,43 @@ export function StudyRoomView({
 
       {/* Radio: pick a bought sound to play while studying */}
       <SoundPickerModal visible={soundOpen} onClose={() => setSoundOpen(false)} playback={playback} onRefresh={refreshPlayback} discoHostOnly={followsHostDisco} />
+      {/* Add-time popup — an inline overlay, not a native Modal (stacking modals on
+          the session screen is what freezes iOS; see modal-traffic.ts). */}
+      {addTimeOpen && isSolo && !onBreak && !finishing && activeSession && (
+        <Pressable style={styles.addTimeBackdrop} onPress={() => setAddTimeOpen(false)}>
+          <Pressable style={styles.addTimeCard} onPress={(e) => e.stopPropagation?.()}>
+            <Text style={styles.addTimeTitle}>{t('session.addTimeTitle')}</Text>
+            <View style={styles.addTimeStepper}>
+              <SoundPressable
+                onPress={() => setAddTimeAmount((m) => Math.max(ADD_TIME_STEP, m - ADD_TIME_STEP))}
+                disabled={addTimeAmount <= ADD_TIME_STEP}
+                style={({ pressed }) => [styles.addTimeStepBtn, addTimeAmount <= ADD_TIME_STEP && styles.breakBtnDisabled, pressed && styles.endBtnPressed]}
+                hitSlop={6}
+                accessibilityLabel="-">
+                <SignGlyph size={16} />
+              </SoundPressable>
+              <Text style={styles.addTimeCount}>{t('session.addTime', { count: addTimeAmount })}</Text>
+              <SoundPressable
+                onPress={() => setAddTimeAmount((m) => Math.min(addTimeRoom, m + ADD_TIME_STEP))}
+                disabled={addTimeAmount + ADD_TIME_STEP > addTimeRoom}
+                style={({ pressed }) => [styles.addTimeStepBtn, addTimeAmount + ADD_TIME_STEP > addTimeRoom && styles.breakBtnDisabled, pressed && styles.endBtnPressed]}
+                hitSlop={6}
+                accessibilityLabel="+">
+                <SignGlyph plus size={16} />
+              </SoundPressable>
+            </View>
+            <Text style={styles.addTimeNote}>{t('session.addTimeTotal', { count: activeSession.durationMinutes + addTimeAmount })}</Text>
+            <SoundPressable
+              onPress={() => { extendActiveSession(addTimeAmount); setAddTimeOpen(false); }}
+              style={({ pressed }) => [styles.addTimeConfirm, pressed && styles.endBtnPressed]}>
+              <Text style={styles.addTimeConfirmText}>{t('session.addTimeConfirm')}</Text>
+            </SoundPressable>
+            <Pressable onPress={() => setAddTimeOpen(false)} style={({ pressed }) => [styles.addTimeCancel, pressed && styles.pressed]} hitSlop={6}>
+              <Text style={styles.addTimeCancelText}>{t('common.cancel')}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      )}
       <DevKnobs screen="studysession" knobs={twKnobs} onChange={twChange} />
     </View>
   );
@@ -1748,7 +1820,7 @@ const styles = StyleSheet.create({
   breakBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900', letterSpacing: 0.3 },
   endBtn: {
     alignSelf: 'center', marginTop: Spacing.two,
-    paddingHorizontal: 22, paddingVertical: 9,
+    paddingHorizontal: 34, paddingVertical: 13,
     borderRadius: BakeryRadii.pill,
     backgroundColor: 'rgba(255,255,255,0.8)',
     borderWidth: 1.5, borderColor: BakeryColors.shortbread,
@@ -1756,7 +1828,22 @@ const styles = StyleSheet.create({
     ...BakeryShadow,
   },
   endBtnPressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
-  endBtnText: { fontSize: 13, fontWeight: '800', color: BakeryColors.mocha },
+  endRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, alignSelf: 'center', marginTop: Spacing.two, zIndex: 2 },
+  endBtnInRow: { alignSelf: 'auto', marginTop: 0 },
+  addTimeBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: BakeryColors.buttonPink, alignItems: 'center', justifyContent: 'center', ...BakeryShadow },
+  addTimeBtnTablet: { width: 60, height: 60, borderRadius: 30, marginBottom: 34 },
+  addTimeBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50, backgroundColor: 'rgba(60,40,30,0.35)', alignItems: 'center', justifyContent: 'center', padding: Spacing.four },
+  addTimeCard: { width: '100%', maxWidth: 300, backgroundColor: '#FFFDF8', borderRadius: BakeryRadii.panel, padding: Spacing.four, gap: Spacing.three, borderWidth: 1.5, borderColor: BakeryColors.shortbread, ...BakeryShadow },
+  addTimeTitle: { fontSize: 19, fontWeight: '800', color: BakeryColors.cocoaDark, textAlign: 'center' },
+  addTimeStepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.three },
+  addTimeStepBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: BakeryColors.buttonPink, alignItems: 'center', justifyContent: 'center' },
+  addTimeCount: { minWidth: 96, textAlign: 'center', fontSize: 24, fontWeight: '900', color: BakeryColors.cocoaDark },
+  addTimeNote: { fontSize: 14, fontWeight: '600', color: BakeryColors.mocha, textAlign: 'center' },
+  addTimeConfirm: { borderRadius: BakeryRadii.button, paddingVertical: Spacing.three, alignItems: 'center', backgroundColor: BakeryColors.buttonPink },
+  addTimeConfirmText: { fontSize: 16, fontWeight: '800', color: BakeryColors.cocoaDark },
+  addTimeCancel: { alignItems: 'center', paddingVertical: Spacing.one },
+  addTimeCancelText: { fontSize: 14, fontWeight: '700', color: BakeryColors.mocha },
+  endBtnText: { fontSize: 16, fontWeight: '800', color: BakeryColors.mocha },
 
   // Add-friend (top right)
   addFriendBtn: {

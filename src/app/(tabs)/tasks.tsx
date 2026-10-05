@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FitText } from '@/components/fit-text';
 import { NotebookBackground } from '@/components/notebook-background';
+import { PAPER, PlannerPaper } from '@/components/planner-paper';
 import { TaskCalendar } from '@/components/task-calendar';
 import { TaskList } from '@/components/task-list';
 import { ThemedText } from '@/components/themed-text';
@@ -118,6 +119,8 @@ export default function TasksScreen() {
                   : t('tasks.nudgeGeneric');
                 return (
                   <ThemedView key={task.id} type="backgroundElement" style={styles.nudgeCard}>
+                    <PlannerPaper radius={BakeryRadii.card * scale} />
+                    <View style={styles.nudgeTape} pointerEvents="none" />
                     <FitText type="smallBold" style={styles.nudgeTitle} numberOfLines={1}>
                       {task.title}
                     </FitText>
@@ -212,11 +215,13 @@ const makeStyles = (s: number, contentWidth: number) => {
     borderRadius: BakeryRadii.card * s,
     padding: Spacing.three * s,
     gap: Spacing.two * s,
-    borderLeftWidth: 3,
-    borderLeftColor: BakeryColors.honey,
-    backgroundColor: BakeryColors.glass,
+    // A planner note: paper card, a honey tape tab at the top instead of a side stripe.
+    backgroundColor: PAPER,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
     ...BakeryShadow,
   },
+  nudgeTape: { position: 'absolute', top: -7, left: 18 * s, width: 46 * s, height: 14 * s, backgroundColor: BakeryColors.honey, opacity: 0.75, transform: [{ rotate: '-4deg' }] },
   nudgeTitle: { fontSize: 14 * s },
   nudgeText: { lineHeight: 20 * s, fontSize: 13 * s },
 

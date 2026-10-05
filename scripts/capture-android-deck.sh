@@ -27,7 +27,7 @@ grab --mode static
 
 # Passes 2 and 3 — the two halves of the "outfits and rooms" slide. Different
 # companion AND room, or the two halves twin and the slide looks like a bug.
-seed --companion "shop:companion_bunny" --room "buns-room"
+seed --companion "shop:companion_bunny" --room "strawberry-palace"
 grab --mode session --name STUDY_BUNNY
 
 seed --companion "shop:companion_honey" --room "miels-room"

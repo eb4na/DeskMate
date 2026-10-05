@@ -9,7 +9,7 @@ import { BakeryColors } from '@/constants/theme';
 
 // Maps a companion's display name to its pet-line key (see pet-lines.ts).
 const PERSONA_KEYS: Record<string, string> = {
-  Bun: 'bun', Cocoa: 'cocoa', Bunny: 'bunny', Miel: 'miel', Tira: 'tira', Hanji: 'hanji',
+  Bun: 'bun', Cocoa: 'cocoa', Bunny: 'bunny', Miel: 'miel', Tira: 'tira', Hanji: 'hanji', Soda: 'gray',
 };
 
 // Tiny single-listener bus so a tap shows the cloud WITHOUT re-rendering the (large)

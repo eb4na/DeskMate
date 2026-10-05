@@ -6,7 +6,7 @@
  */
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -78,11 +78,21 @@ export default function MailboxScreen() {
   // a Modal popup. A transparent <Modal> shown here and then left mounted while the
   // user pops back to Home orphans an invisible touch-capturing window over Home
   // (iOS RN bug) — which froze all taps. Inline feedback avoids any Modal entirely.
+  const claimingRef = useRef(new Set<string>());
   const onClaim = useCallback(async (m: Mail, chosenId: string | null) => {
     // A "pick one" mail grants the selected choice; otherwise the mail's fixed item.
     const chosen = m.itemChoices.length > 0 ? chosenId : m.itemId;
     if (m.itemChoices.length > 0 && !chosen) return; // must pick one first
-    const claimed = await claimMail({ id: m.id, coins: m.coins, itemId: chosen ?? null });
+    // One claim request per mail at a time: a double tap would otherwise fire two
+    // claim_mail RPCs, and the losing one ('already') could mark it claimed unpaid.
+    if (claimingRef.current.has(m.id)) return;
+    claimingRef.current.add(m.id);
+    let claimed = false;
+    try {
+      claimed = await claimMail({ id: m.id, coins: m.coins, itemId: chosen ?? null });
+    } finally {
+      claimingRef.current.delete(m.id);
+    }
     // Only reflect claimed in the UI if it actually succeeded; on a network error we
     // leave it unclaimed so the user can retry (the reward isn't forfeited).
     if (claimed) setServerClaimed((prev) => (prev.includes(m.id) ? prev : [...prev, m.id]));

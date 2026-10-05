@@ -539,6 +539,18 @@ export default function SettingsScreen() {
               <>
                 <View style={styles.divider} />
                 <SettingRow icon={<CoinIcon size={24 * scale} />} label="Give 1M coins (dev test)" onPress={() => devGrantCoins(1_000_000)} />
+                <View style={styles.divider} />
+                <SettingRow
+                  icon={<Image source={require('@/assets/images/hanji/hanji.png')} style={{ width: 26 * scale, height: 26 * scale }} contentFit="contain" />}
+                  label="Give Hanji (dev test)"
+                  onPress={() => {
+                    // Replays the real unlock (all recipe badges → Hanji + celebration);
+                    // close Settings so the popups can present over Home.
+                    noteModalTransition();
+                    devUnlockHanji();
+                    router.back();
+                  }}
+                />
               </>
             )}
           </ThemedView>

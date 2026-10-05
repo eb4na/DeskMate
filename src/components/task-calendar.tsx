@@ -14,6 +14,7 @@ import {
 
 import Svg, { Circle, Path } from 'react-native-svg';
 
+import { PAPER, PlannerPaper, TapeLabel, TODAY_GREEN } from '@/components/planner-paper';
 import { CountdownShape, COUNTDOWN_SHAPES, DAY_SHAPES, EXAM_SHAPE, NO_SHAPE, DEFAULT_COUNTDOWN_SHAPE } from '@/components/countdown-shapes';
 
 // Label ink for a filled subject chip. Subject colours span pale yellows to mid
@@ -59,15 +60,13 @@ const weekdayLetters = (mondayFirst: boolean) =>
 const SCREEN_PAD = Spacing.four;
 const CARD_PAD = 14;
 
-// Translucent version of a hex colour, for chips that let the watermark through.
+// Translucent version of a hex colour, for chips that let the paper show through.
 function withAlpha(hex: string, a: number): string {
   const h = hex.replace('#', '');
   const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h.slice(0, 6);
   return `#${full}${Math.round(a * 255).toString(16).padStart(2, '0')}`;
 }
 
-// Today's highlighter swipe: a soft green, so it never reads as a pink task chip.
-const TODAY_GREEN = '#BDE5C4';
 
 // ─── date helpers (no dependency) ────────────────────────────────────────────
 function toISO(y: number, m: number, d: number) {
@@ -81,44 +80,6 @@ function fromISO(iso: string) {
   return new Date(iso + 'T00:00:00');
 }
 
-// The "today" marker: a translucent highlighter swipe behind the date, in place of
-// the bold weight it used to get.
-//
-// A swipe rather than a drawn shape because each cell's top-right corner ALREADY
-// carries a shape the user picked (circle / heart / teardrop, plus a star reserved
-// for exams). One more outline there would just compete; a wash of colour behind the
-// number is a different kind of gesture and stays out of that conversation.
-//
-// It also sits BEHIND the digit, so unlike a ring it can never crowd the note dot
-// that shares the date row.
-//
-// The path is drawn once and fixed — no per-render jitter, or today's date would
-// shimmer every time the month re-renders. preserveAspectRatio="none" lets one path
-// stretch to whatever width the date needs, so a two-digit "28" gets a longer swipe.
-// Drawn as a rotated, rounded bar rather than an SVG stroke. A stroke has to be
-// stretched to fit the date's box, and non-uniform scaling turns its round caps into
-// steep slanted edges — it stopped reading as a swipe and started reading as a slab.
-// A plain View rotates and scales predictably at any cell size, and at ~16pt the
-// ragged ends of a "real" highlighter are invisible anyway.
-function TodayHighlight({ height }: { height: number }) {
-  return (
-    <View
-      style={{
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        top: '50%',
-        height,
-        marginTop: -height / 2,
-        backgroundColor: TODAY_GREEN,
-        opacity: 0.9,
-        borderRadius: 2,
-        transform: [{ rotate: '-5deg' }],
-      }}
-      pointerEvents="none"
-    />
-  );
-}
 function longLabel(iso: string) {
   return fromISO(iso).toLocaleDateString(i18n.language || 'en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 }
@@ -192,7 +153,7 @@ function TaskPreviewCard({
       <Pressable
         hitSlop={8}
         onPress={() => toggleTaskOccurrence(task.id, occurrenceISO)}
-        style={[styles.checkbox, c !== 1 && { width: 24 * c, height: 24 * c, borderRadius: 12 * c }, done && styles.checkboxDone]}>
+        style={[styles.checkbox, c !== 1 && { width: 24 * c, height: 24 * c, borderRadius: 7 * c }, done && styles.checkboxDone]}>
         {done && <BakeryCheckEmoji size={13 * c} />}
       </Pressable>
 
@@ -315,27 +276,10 @@ function CalendarMonthCard({
   const DAYNUM_FT = clampN(Math.round(cellW * 0.26), 11, 20);
   const DAYNUM_H = Math.round(DAYNUM_FT * 1.25);
   const PAD_V = Math.max(2, Math.round(cellW * 0.035));
-  // The ring needs room on BOTH axes. Horizontally the badge itself grows (see
-  // dayNumBadge below) so the row's flex layout pushes the note dot clear instead of
-  // the loop landing on top of it — the row's gap is only 2pt. Vertically the loop
-  // just overshoots the row, which has PAD_V of slack above it.
-  // Horizontal breathing room so the swipe runs a little past the digit on each side,
-  // the way a real highlighter overshoots. The badge grows, so the row's flex layout
-  // pushes the note dot clear rather than the colour running under it.
-  const SWIPE_PAD_X = Math.max(2, Math.round(DAYNUM_FT * 0.22));
-  // Shorter than the row so the swipe reads as a band across the digit rather
-  // than a filled cell behind it.
-  const SWIPE_H = Math.max(9, Math.round(DAYNUM_H * 0.72));
-  // The day's shape, drawn behind the date. dayCell CLIPS (overflow:hidden) and the
-  // date row sits PAD_V from the cell's top, so the mark's ink can only reach
-  // DAYNUM_H/2 + PAD_V above the row's centre before it gets cut off. The ink spans
-  // ~62% of the SVG box (the shapes' Bézier CONTROL points sit near the edge of the
-  // 24x24 viewBox and a curve never reaches its control point), so divide by that
-  // to turn the room available into a box size. Whichever is smaller wins.
-  // The day's mark: one big faded shape filling the cell behind the date and
-  // chips (heart / circle / drop, star on exam days). The shapes' ink fills only
-  // ~62% of their box, so the box is oversized for the ink to nearly fill the cell.
-  const WATERMARK = Math.round(cellW * 1.25);
+  // The day's mark is a planner STICKER in the cell's top-right corner, with a
+  // white peel-off edge and a small tilt. It paints over the chips' corner, the
+  // way a real sticker overlaps whatever's written under it.
+  const STICKER = clampN(Math.round(cellW * 0.6), 22, 44);
   // The star inside an exam chip — bounded by the chip's own height so it can
   // never push the row taller than the text it sits beside.
   const CHIP_STAR = clampN(Math.round(CHIP_H * 0.86), 7, 14);
@@ -367,6 +311,7 @@ function CalendarMonthCard({
         !isTablet && { marginHorizontal: -PHONE_BREAKOUT, padding: cardPad },
         scale !== 1 && { width: cellW * 7 + 2 * CARD_PAD * scale, alignSelf: 'center', padding: CARD_PAD * scale, gap: Spacing.two * scale },
       ]}>
+      <PlannerPaper radius={BakeryRadii.panel} rings tape />
       <View style={[styles.cardHeader, scale !== 1 && { width: cellW * 7, alignSelf: 'center' }]}>
         <Pressable onPress={() => goMonth(-1)} hitSlop={10} style={styles.arrowBtn}>
           <Text style={[styles.arrow, scale !== 1 && { fontSize: 26 * scale }]}>‹</Text>
@@ -406,8 +351,7 @@ function CalendarMonthCard({
             ...dayExams.map((e) => ({ key: `e${e.id}`, label: e.name, color: examColor(e), isExam: true, done: false })),
             ...dayTasks.map((t) => ({ key: `t${t.id}`, label: t.title, color: subjectColor(t.subjectId), isExam: false, done: isTaskDoneOn(t, iso) })),
           ];
-          // A day can be marked with a big shape filling the whole cell as a
-          // translucent watermark — the date and previews paint on top of it. ANY
+          // A day can be marked with a sticker in its corner. ANY
           // day can have one, picked from the day popup, not just exam days: the
           // per-day pick (dayShapes) wins, and an exam's own `shape` is the
           // fallback so exam days that were never picked keep their mark.
@@ -439,19 +383,6 @@ function CalendarMonthCard({
                 cellBorder,
                 { width: cellW, height: cellH, padding: PAD_V },
               ]}>
-              {/* The day's mark as a big faded watermark behind everything. The
-                  task chips are see-through so it still shows under them. */}
-              {markShape && (
-                <View style={[styles.watermark, { width: cellW, height: cellH }]} pointerEvents="none">
-                  <View style={{ opacity: 0.28 }}>
-                    <CountdownShape shape={markShape} color={markColor} size={WATERMARK} />
-                  </View>
-                </View>
-              )}
-              {/* The day's mark, in the corner opposite the date so the two can
-                  never collide — which is what made the old behind-the-number
-                  version read as ragged. The cell itself stays untinted, so a
-                  heavily-marked month doesn't turn patchy. */}
               {/* The date leads the row and the "+N" closes it, so the overflow
                   count costs no vertical room in a square cell. */}
               <View style={[styles.dayNumRow, { height: DAYNUM_H }]}>
@@ -459,9 +390,8 @@ function CalendarMonthCard({
                   style={[
                     styles.dayNumBadge,
                     { minWidth: DAYNUM_H, height: DAYNUM_H, borderRadius: DAYNUM_H / 2 },
-                    isToday && { paddingHorizontal: SWIPE_PAD_X },
+                    isToday && { backgroundColor: TODAY_GREEN, paddingHorizontal: 3 },
                   ]}>
-                  {isToday && <TodayHighlight height={SWIPE_H} />}
                   <Text
                     style={[
                       styles.dayNum,
@@ -487,7 +417,8 @@ function CalendarMonthCard({
                     style={[
                       styles.overflowText,
                       styles.overflowFloat,
-                      { fontSize: OVERFLOW_FT, right: 0 },
+                      // Step left past the sticker when the day has one.
+                      { fontSize: OVERFLOW_FT, right: markShape ? STICKER - 2 : 0 },
                     ]}>{`+${overflow}`}</Text>
                 )}
               </View>
@@ -504,7 +435,7 @@ function CalendarMonthCard({
                       paddingHorizontal: CHIP_PAD_H,
                       marginTop: CHIP_GAP,
                       gap: Math.max(1, Math.round(CHIP_PAD_H * 0.6)),
-                      // Semi-transparent so the day's watermark shows through.
+                      // Semi-transparent so the planner paper shows through.
                       // Finished tasks fade further back, so the day still reads
                       // as "what's left".
                       backgroundColor: withAlpha(c.color, c.done ? 0.1 : 0.2),
@@ -528,6 +459,16 @@ function CalendarMonthCard({
                   </Text>
                 </View>
               ))}
+
+              {/* The day's sticker, last so it sits on top. Tilt is fixed per
+                  date (never random per render) so the month doesn't shimmer. */}
+              {markShape && (
+                <View
+                  style={[styles.sticker, { top: 0, right: 0, transform: [{ rotate: `${((d * 37) % 21) - 10}deg` }] }]}
+                  pointerEvents="none">
+                  <CountdownShape shape={markShape} color={markColor} size={STICKER} sticker />
+                </View>
+              )}
             </Pressable>
           );
         })}
@@ -618,6 +559,7 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
       <View style={styles.modalRoot}>
         <Pressable style={styles.modalBackdrop} onPress={onClose} />
         <View style={[styles.modalCard, ms !== 1 && { padding: Spacing.four * ms, gap: Spacing.three * ms, maxWidth: 720, width: '100%', alignSelf: 'center' }]}>
+          <PlannerPaper radius={BakeryRadii.panel} />
           <View style={styles.modalHeader}>
             <Text style={[styles.modalDate, ms !== 1 && { fontSize: 16 * ms }]}>{iso ? longLabel(iso) : ''}</Text>
             <Pressable onPress={onClose} hitSlop={10} style={[styles.modalClose, ms !== 1 && { width: 30 * ms, height: 30 * ms, borderRadius: 15 * ms }]}>
@@ -802,6 +744,7 @@ function HorizontalPreview({ onClose }: { onClose: () => void }) {
 
   return (
     <View style={styles.card}>
+      <PlannerPaper radius={BakeryRadii.panel} />
       <View style={styles.cardHeader}>
         <Pressable onPress={onClose} hitSlop={10} style={styles.arrowBtn}>
           <Text style={styles.arrow}>‹</Text>
@@ -908,6 +851,7 @@ function WeekAheadStrip() {
   if (days.length === 0) {
     return (
       <View style={styles.card}>
+        <PlannerPaper radius={BakeryRadii.panel} />
         <Text style={styles.searchEmpty}>{i18n.t('calendar.noUpcoming')}</Text>
       </View>
     );
@@ -917,7 +861,9 @@ function WeekAheadStrip() {
     <View style={styles.weekAhead}>
       {days.map(({ iso, dayTasks, dayExams }) => (
         <View key={iso} style={styles.card}>
-          <Text style={styles.monthLabel}>{longLabel(iso)}</Text>
+          <PlannerPaper radius={BakeryRadii.panel} />
+          {/* The day's label is written on a strip of washi tape; today's is green. */}
+          <TapeLabel color={iso === todayISO() ? TODAY_GREEN : undefined}>{longLabel(iso)}</TapeLabel>
           <View style={styles.previewList}>
             {/* Exams carry the star here too. In this list a task shows a checkbox
                 and a subject chip while an exam showed only its name, so the two
@@ -1013,8 +959,8 @@ const styles = StyleSheet.create({
 
   // Card
   card: {
-    // Calendar: a very light, faintly orange warm cream.
-    backgroundColor: '#FEF8F1',
+    // Calendar: a planner page — warm paper with a faint dot grid (PlannerPaper).
+    backgroundColor: PAPER,
     borderRadius: BakeryRadii.panel,
     borderWidth: 1.5,
     borderColor: '#F2E1CC',
@@ -1025,7 +971,7 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   arrowBtn: { width: 40, alignItems: 'center', justifyContent: 'center' },
   arrow: { fontSize: 26, color: C.jam, fontWeight: '800' },
-  monthLabel: { fontSize: 16, fontWeight: '800', color: C.cocoaDark },
+  monthLabel: { fontSize: 19, fontWeight: '900', color: C.cocoaDark },
 
   weekRow: { flexDirection: 'row', justifyContent: 'center', alignSelf: 'center' },
   weekday: { textAlign: 'center', fontSize: 12, color: C.mocha, fontWeight: '700' },
@@ -1056,7 +1002,14 @@ const styles = StyleSheet.create({
   },
   // The date leads from the top-left; the dots ride beside it. The "+N" overflow
   // still floats right, but clears the corner mark that now lives there.
-  watermark: { position: 'absolute', top: 0, left: 0, alignItems: 'center', justifyContent: 'center' },
+  sticker: {
+    position: 'absolute',
+    shadowColor: '#5B3A2E',
+    shadowOpacity: 0.22,
+    shadowRadius: 1.5,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
   dayNumRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 2, alignSelf: 'stretch' },
   dayNumBadge: { alignItems: 'center', justifyContent: 'center' },
   dayNum: { color: C.cocoaDark, fontWeight: '600' },
@@ -1109,7 +1062,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   previewDate: { fontSize: 14, fontWeight: '800', color: C.cocoaDark },
-  previewList: { gap: Spacing.two },
+  previewList: { gap: 0 },
   // Time-blocking agenda: a fixed left gutter shows each task's time next to its card.
   agendaRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   agendaTime: { width: 62, fontSize: 12.5, fontWeight: '800', color: C.jam, textAlign: 'right' },
@@ -1120,20 +1073,22 @@ const styles = StyleSheet.create({
   agendaUntimedIndent: { marginLeft: 62 + Spacing.two },
   agendaAnytimeLabel: { fontSize: 12, fontWeight: '800', color: C.mocha, marginLeft: 2 },
 
+  // A task is a written line on the planner page: no bubble, just a ruled line
+  // underneath it.
   taskCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    backgroundColor: C.glass,
-    borderRadius: BakeryRadii.card,
-    borderWidth: 1.5,
-    borderColor: C.shortbread,
-    padding: Spacing.two,
+    paddingVertical: 10,
+    paddingHorizontal: 2,
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#EADBC8',
   },
+  // Planner tick box: a rounded square rather than a circle.
   checkbox: {
     width: 24,
     height: 24,
-    borderRadius: 12,
+    borderRadius: 7,
     borderWidth: 2,
     borderColor: C.jam,
     alignItems: 'center',
@@ -1206,13 +1161,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 9,
     color: C.cocoaDark,
-    backgroundColor: C.cream,
+    backgroundColor: PAPER,
     fontSize: 14,
   },
   hRow: { gap: Spacing.two, paddingVertical: 4, paddingRight: 4 },
   hCard: {
     width: 220,
-    backgroundColor: C.frosting,
+    backgroundColor: PAPER,
     borderRadius: BakeryRadii.card,
     borderWidth: 1.5,
     borderColor: C.shortbread,
@@ -1234,7 +1189,7 @@ const styles = StyleSheet.create({
   modalRoot: { flex: 1, justifyContent: 'center', padding: Spacing.four },
   modalBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent' },
   modalCard: {
-    backgroundColor: C.frosting,
+    backgroundColor: PAPER,
     borderRadius: BakeryRadii.panel,
     borderWidth: 1.5,
     borderColor: C.shortbread,

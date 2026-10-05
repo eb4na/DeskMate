@@ -18,6 +18,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { FitText } from '@/components/fit-text';
 import { MenuCard, MenuHeader, MenuRow, SectionLabel, SectionRule } from '@/components/menu-card';
+import { PAPER, PlannerPaper } from '@/components/planner-paper';
 import { SoundPressable } from '@/components/sound-pressable';
 import { ThemedText } from '@/components/themed-text';
 import { formatTimeLabel } from '@/components/time-wheel-picker';
@@ -182,7 +183,9 @@ export function TaskList() {
 
   return (
     <View style={styles.wrap}>
-      <MenuCard>
+      {/* Same planner paper as the calendar, so both views are pages of one planner. */}
+      <MenuCard fill={PAPER}>
+        <PlannerPaper radius={BakeryRadii.card} />
         <MenuHeader title={t('tasks.listTitle')} />
 
         {empty ? (
@@ -271,7 +274,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: C.shortbread,
     borderStyle: 'dashed',
-    backgroundColor: C.cream,
+    backgroundColor: PAPER,
   },
   quickAddBlocked: { borderColor: '#C2536B' },
   plus: { color: C.mocha, fontWeight: '800' },

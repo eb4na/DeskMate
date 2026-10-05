@@ -3,6 +3,7 @@ import { AppState } from 'react-native';
 import i18n, { detectDeviceLanguage } from '@/i18n';
 import { capCoins, COINS_PER_MINUTE, DAILY_EARN_CAP, dailyEarnCap, MAX_FRIENDS, PLUS_STUDY_COIN_MULTIPLIER, STATIC_SUBJECTS } from '@/constants/placeholder-data';
 import { SHOP_ITEMS, type ShopCategory } from '@/constants/shop-data';
+import { ROOM_PAIRS } from '@/constants/room-data';
 import { dailyRewardCoins } from '@/constants/login-rewards';
 import { getAchievement } from '@/constants/quests';
 import { useAuth } from '@/context/auth-context';
@@ -20,6 +21,7 @@ import type { TaskReminderInput, TaskReminderMode, TaskReminderTier } from '@/li
 import { computeTaskRollover, isTaskDoneOn } from '@/lib/task-recurrence';
 import { uploadProfile } from '@/lib/profile-sync';
 import { claimMailRemote } from '@/lib/mail';
+import { noteModalTransition } from '@/lib/modal-traffic';
 import { companionLevelInfo } from '@/lib/companion-level';
 import { monthKeyOf } from '@/lib/progress-ranges';
 import { uploadStudyDay } from '@/lib/study-buddy';
@@ -125,6 +127,9 @@ export type SessionRecord = {
   minutes: number;
   subjectName: string | null;
 };
+
+/** Longest a single study block may run (matches the custom timer's 1–300 range). */
+export const MAX_SESSION_MINUTES = 300;
 
 export type ActiveSession = {
   id: string;
@@ -1060,6 +1065,10 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
   // first-launch tutorial; only brand-new accounts see it after onboarding.
   if (merged.tutorialSeen === undefined) merged.tutorialSeen = !!merged.legalAccepted;
   if (!merged.starterCompanionId) merged.starterCompanionId = 'starter:girl';
+  // A save pointing at a room that no longer exists (Bun's Room + Pink Desk were
+  // removed 2026-10-04) falls back to the default Cozy room.
+  if (!ROOM_PAIRS.some((r) => r.id === merged.equippedBackgroundRoomId)) merged.equippedBackgroundRoomId = 'cozy';
+  if (!ROOM_PAIRS.some((r) => r.id === merged.equippedDeskRoomId)) merged.equippedDeskRoomId = 'cozy';
 
   // Retroactively grant the recipe tied to the player's chosen starter, so anyone
   // who picked a starter BEFORE this perk existed still owns that character's
@@ -1377,6 +1386,7 @@ type AppContextType = {
   clearSessionRun: () => void;
   /** Pushes the active session's start forward by `seconds` (pause-for-break). */
   shiftSessionStart: (seconds: number) => void;
+  extendActiveSession: (minutes: number) => void;
   /** Set the active session's subject in place (no new session id) — used when a
    *  solo/MP player picks their subject after the session has already started. */
   setActiveSessionSubject: (subjectName: string | null) => void;
@@ -2568,6 +2578,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  // "+ time" mid-session: lengthen the running block. Everything downstream (the
+  // countdown, the wall-clock finishers, the payout) derives from durationMinutes,
+  // so they all follow. Capped at the custom timer's 300-minute maximum.
+  const extendActiveSession = (minutes: number) => {
+    setActiveSession((prev) =>
+      prev ? { ...prev, durationMinutes: Math.min(MAX_SESSION_MINUTES, prev.durationMinutes + minutes) } : prev,
+    );
+  };
+
   const setActiveSessionSubject = (subjectName: string | null) => {
     setActiveSession((prev) => (prev ? { ...prev, subjectName } : prev));
   };
@@ -3248,15 +3267,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       );
       return true;
     }
-    // 'new' — grant the reward exactly once.
+    // 'new' — the server returns true exactly once per (user, mail), so grant
+    // unconditionally. Do NOT skip when claimedMailIds already has the id: a racing
+    // duplicate claim can resolve 'already' first and add the id, and skipping here
+    // would mark the mail claimed while granting nothing.
     setS((prev) => {
-      if (prev.claimedMailIds.includes(mail.id)) return prev;
       const grantItem = !!mail.itemId && !prev.ownedShopItems.includes(mail.itemId);
       return {
         ...prev,
         coins: capCoins(prev.coins + (mail.coins || 0)),
         ownedShopItems: grantItem ? [...prev.ownedShopItems, mail.itemId as string] : prev.ownedShopItems,
-        claimedMailIds: [...prev.claimedMailIds, mail.id],
+        claimedMailIds: prev.claimedMailIds.includes(mail.id) ? prev.claimedMailIds : [...prev.claimedMailIds, mail.id],
       };
     });
     return true;
@@ -3318,6 +3339,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Plus-exclusive and all-recipe-reward items are granted, never bought with
     // coins — refuse to sell them no matter what price a caller passes.
     if (item.plusOnly || item.requiresAllRecipes) return false;
+    // Every purchase is confirmed from a buy popup that is closing right now, and the
+    // follow-up (character-obtained card, "recipe bought" popup, equip prompt) opens
+    // in the same tick. Stamp the transition so those wait for the buy popup to finish
+    // dismissing — presenting over a dismissing modal freezes iOS.
+    noteModalTransition();
     setS((prev) => {
       if (prev.ownedShopItems.includes(itemId) || prev.coins < price) return prev;
 
@@ -3340,6 +3366,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!item || s.exchangeTickets <= 0) return false;
     if (item.category !== 'background' && item.category !== 'desk') return false;
     if (s.ownedShopItems.includes(itemId)) return false;
+    noteModalTransition(); // same as purchaseShopItem: the buy popup is closing now
     setS((prev) => {
       if (prev.exchangeTickets <= 0 || prev.ownedShopItems.includes(itemId)) return prev;
       return {
@@ -3457,6 +3484,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         finishStudyBlock,
         clearSessionRun,
         shiftSessionStart,
+        extendActiveSession,
         setActiveSessionSubject,
         markSessionMultiplayer,
         incrementSkipSubjectCount,

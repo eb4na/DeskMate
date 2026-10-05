@@ -34,7 +34,7 @@ import {
 } from '@/constants/shop-data';
 import { outfitsForCharacter } from '@/constants/outfit-data';
 import { pairForItem, isPairOwned, partnerItemId, ROOM_PAIRS } from '@/constants/room-data';
-import { SHOP_COMPANIONS, STARTER_COMPANION_IMAGES, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, localizeShopItemName, localizeShopItemDescription, BUN_SKINS, getCompanionSkins, pickSkinLore, skinLores, staticImageFor, animatedImageFor } from '@/lib/companion-utils';
+import { characterRank, SHOP_COMPANIONS, STARTER_COMPANION_IMAGES, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, localizeShopItemName, localizeShopItemDescription, BUN_SKINS, getCompanionSkins, pickSkinLore, skinLores, staticImageFor, animatedImageFor } from '@/lib/companion-utils';
 import { FOOD_ITEMS, RECIPE_IDS, hasAllRecipeBadges } from '@/app/food-gallery';
 import { dailyEarnCap, formatCoins } from '@/constants/placeholder-data';
 import {
@@ -370,7 +370,7 @@ export default function ShopScreen() {
     ...companionSlots
       .filter((s) => !!s.imageUri)
       .map((s) => ({ id: s.id, name: s.name, image: { uri: s.imageUri as string }, emoji: s.emoji, owned: true })),
-  ];
+  ].sort((a, b) => characterRank(a.id) - characterRank(b.id));
   // Resolve from the full list so an unowned character's wardrobe can still be
   // browsed (view-only). `owned` decides buy vs. preview-only downstream.
   const outfitChar = allOutfitCharacters.find((c) => c.id === outfitCharId) ?? null;
@@ -390,7 +390,8 @@ export default function ShopScreen() {
   // Some companions aren't sold: Plus-exclusive (Tira) are granted with Plus, and
   // badge-reward ones (Hanji, requiresAllRecipes) are granted by collecting every
   // recipe badge. Their data stays in SHOP_ITEMS for the gallery & wardrobe.
-  const items = SHOP_ITEMS.filter((i) => i.category === activeCategory && !i.plusOnly && !i.requiresAllRecipes && !i.free && !i.hidden);
+  const items = SHOP_ITEMS.filter((i) => i.category === activeCategory && !i.plusOnly && !i.requiresAllRecipes && !i.free && !i.hidden)
+    .sort((a, b) => (activeCategory === 'companion' ? characterRank(a.id) - characterRank(b.id) : 0));
   const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
   const pages = Array.from({ length: totalPages }, (_, i) => items.slice(i * ITEMS_PER_PAGE, (i + 1) * ITEMS_PER_PAGE));
   // Plus members have a higher daily study-earn ceiling.

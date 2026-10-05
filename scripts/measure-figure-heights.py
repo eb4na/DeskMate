@@ -19,9 +19,9 @@ skin swap changes a character's height. src/lib/figure-height.ts fixes that with
     relative to Bunny.
 
 The image list is discovered from BUN_SKINS + COMPANION_SKINS in
-src/lib/companion-utils.ts, so new skins are picked up automatically. Special case:
-hanji/classic renders the animated HanjiFigure whose base layer is hanji-body.png
-(the flat hanji.png never shows in the study room), so that file is measured.
+src/lib/companion-utils.ts, so new skins are picked up automatically. (Hanji's
+classic look used to be the layered HanjiFigure and was measured from hanji-body.png;
+since 2026-10-04 it is an animated WebP like the others, so no special case.)
 """
 import os
 import re
@@ -32,9 +32,6 @@ import numpy as np
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UTILS_TS = os.path.join(ROOT, 'src', 'lib', 'companion-utils.ts')
 OUT_TS = os.path.join(ROOT, 'src', 'constants', 'figure-calibration.ts')
-
-# hanji/classic = animated HanjiFigure; its height comes from the body layer.
-HANJI_CLASSIC_ART = 'assets/images/hanji/hanji-body.png'
 
 # One skin entry inside a skins array: pair each `id: '<skin>'` with the entry's
 # `require('@/<asset>')` that follows it (the image comes before the lore text,
@@ -61,7 +58,6 @@ def discover_images() -> dict[str, str]:
         for skin_id, path in ENTRY_RE.findall(chunk):
             images[f'{key}/{skin_id}'] = path
 
-    images['hanji/classic'] = HANJI_CLASSIC_ART
     return images
 
 

@@ -64,14 +64,6 @@ export const ROOM_PAIRS: RoomPair[] = [
     deskImage: require('@/assets/images/desks/pale-wood.png'),
   },
   {
-    id: 'buns-room',
-    name: "Bun's Room",
-    backgroundId: 'bg_buns_room',
-    deskId: 'desk_pink',
-    backgroundImage: require('@/assets/images/backgrounds/buns-room.png'),
-    deskImage: require('@/assets/images/desks/pink.png'),
-  },
-  {
     // Miel's cozy honey bedroom — paired with the ZZZ pajama skin.
     id: 'miels-room',
     name: "Miel's Room",

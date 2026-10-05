@@ -61,13 +61,13 @@ function Cat({ size = 16, color = '#FFFFFF' }: { size?: number; color?: string }
 }
 
 // First-launch starter picker: a one-of-five carousel. Swipe or tap the arrows to
-// advance (wraps Tira → Bun); the chosen character is granted free and the other
+// advance (wraps Tira → Bunny); the chosen character is granted free and the other
 // four go to the shop. Shown once, after the legal consent gate, for any new
 // account or guest (gated on !starterChosen).
 export function StarterChooser() {
   const { t } = useTranslation();
   const { chooseStarter } = useApp();
-  const [index, setIndex] = useState(0); // starts on Bun (OFFERED_STARTER_CHOICES[0])
+  const [index, setIndex] = useState(0); // starts on the first in character order (Bunny)
   const choice = OFFERED_STARTER_CHOICES[index];
   // The companions on either side, shown as faded sneak peeks at the edges so you
   // can tell who's next (wraps around).

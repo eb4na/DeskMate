@@ -11,14 +11,15 @@ export function isHanjiActiveId(id: string | null | undefined): boolean {
   return id === `shop:${HANJI_COMPANION_ID}`;
 }
 
-/** Hanji renders as the animated layered figure (HanjiFigure) only in her default
- * look; any other outfit is a flat sprite like every other companion skin. An
- * unset skin (player never opened the wardrobe) counts as the default. */
+/** Whether to draw Hanji as the old code-built layered figure (HanjiFigure: body
+ * + swinging tassels). Retired 2026-10-04: her default look is now an animated
+ * WebP (hanji-classic-anim.webp) on the normal skin-image path like Bunny/Miel, so
+ * this is always false. Kept so the render branches stay simple to revive. */
 export function hanjiIsAnimated(
-  companionId: string | null | undefined,
-  skinId: string | null | undefined,
+  _companionId: string | null | undefined,
+  _skinId: string | null | undefined,
 ): boolean {
-  return isHanjiActiveId(companionId) && (!skinId || skinId === 'classic');
+  return false;
 }
 
 // Built-in companions have localized display names (gallery.name_*). This maps
@@ -133,8 +134,8 @@ export const STARTER_COMPANION_IMAGES: Record<DefaultCompanionId, number> = {
 // outfit popup shows a random one each time it's tapped.
 export type BunSkin = { id: string; name: string; emoji: string; image: number; shopItemId: string | null; roomId?: string; loreKey?: string; lore?: string; lores?: string[] };
 export const BUN_SKINS: BunSkin[] = [
-  { id: 'classic', loreKey: 'bun_classic', name: 'Strawberry', emoji: '', image: require('@/assets/images/bun/bun-home.png'), shopItemId: null, lore: "Every morning, Bun opened the little bakery before the sun had fully stretched across the windows. She tied her frilly apron, dusted flour from the counter, and greeted the day as if it were an old friend coming home. The shop always smelled like strawberries and warm bread, and somehow Bun made it feel as though the whole world had been waiting outside just to be let in.\n\nBy noon, the café would be glowing with chatter, teacups, and the soft clink of forks against plates. Bun never let anyone sit alone for long. She remembered favorite orders, pulled out chairs before people asked, and served each slice of cake with the same bright smile. In her little corner of the world, sweetness was not only in the pastries — it was in being welcomed so warmly that even ordinary afternoons felt special." },
-  { id: 'heartcore', loreKey: 'bun_heartcore', name: 'Heartcore', emoji: '', image: require('@/assets/images/bun/bun-heartcore.png'), shopItemId: 'outfit_bun_heartcore', lore: "She found the dress in the back of a shop that smelled like old paper, and she knew before she touched it that it was hers — black ribbon, silver buckles, pink in the hair like frosting on something burnt. Everyone she passed on the way home had an opinion. She heard none of them clearly, which was the point.\n\nPeople called the look sharp, or sad, or too much, and she let them. The truth was gentler than any of that: she had spent a long time being whatever was easiest to be around, and the bows and buckles were simply the first thing she had ever picked for no one but herself. She still said please and thank you. She still cried at films. She just did it in boots now." },
+  { id: 'classic', loreKey: 'bun_classic', name: 'Strawberry', emoji: '', image: require('@/assets/images/bun/bun-home.png'), shopItemId: null, lore: "Every morning, Meruru opened the little bakery before the sun had fully stretched across the windows. She tied her frilly apron, dusted flour from the counter, and greeted the day as if it were an old friend coming home. The shop always smelled like strawberries and warm bread, and somehow Meruru made it feel as though the whole world had been waiting outside just to be let in.\n\nBy noon, the café would be glowing with chatter, teacups, and the soft clink of forks against plates. Meruru never let anyone sit alone for long. She remembered favorite orders, pulled out chairs before people asked, and served each slice of cake with the same bright smile. In her little corner of the world, sweetness was not only in the pastries — it was in being welcomed so warmly that even ordinary afternoons felt special." },
+  { id: 'heartcore', loreKey: 'bun_heartcore', name: 'Heartcore', emoji: '', image: require('@/assets/images/bun/bun-heartcore-anim.webp'), shopItemId: 'outfit_bun_heartcore', lore: "She found the dress in the back of a shop that smelled like old paper, and she knew before she touched it that it was hers — black ribbon, silver buckles, pink in the hair like frosting on something burnt. Everyone she passed on the way home had an opinion. She heard none of them clearly, which was the point.\n\nPeople called the look sharp, or sad, or too much, and she let them. The truth was gentler than any of that: she had spent a long time being whatever was easiest to be around, and the bows and buckles were simply the first thing she had ever picked for no one but herself. She still said please and thank you. She still cried at films. She just did it in boots now." },
   { id: 'starry', loreKey: 'bun_starry', name: 'Starry Night', emoji: '', image: require('@/assets/images/bun/bun-starry-anim.webp'), shopItemId: 'outfit_bun_starry', lore: "When the bakery lights went out and the ovens cooled, she traded her apron for a nightgown stitched with little stars. She kept a sleep cap by the window and a wand she swore could tidy a dream, though it mostly just caught the moonlight and threw it around the room.\n\nShe liked the quiet hours best. The flour settled, the kettle stopped ticking, and the whole shop seemed to breathe out at once. She would wander from room to room turning lamps down one by one, and whatever worry had followed her through the day usually gave up somewhere along the way and went to sleep first." },
 ];
 
@@ -192,12 +193,12 @@ export const COMPANION_SKINS: Record<string, BunSkin[]> = {
     { id: 'afternoontrain', loreKey: 'tira_afternoontrain', name: 'Carefree Days', emoji: '', image: require('@/assets/images/tira/tira-afternoon-train-anim.webp'), shopItemId: 'outfit_tira_afternoontrain', roomId: 'afternoon-train', lore: "When Tira was younger, she often rode a beautiful old Japanese train with polished wood interiors, wide windows, and seats so soft they felt almost ceremonial. She used to sit in her place by the window with her hands folded in her lap, watching towns slip past and mountains gather in the distance. There was something precious about those rides — the hush of the carriage, the glimmer of afternoon light, the feeling of being carried somewhere important without having to hurry.\n\nNow, whenever she saw a station or heard the low hum of passing tracks, a little ache stirred in her chest. She missed those days more than she liked to admit. Not only the train itself, but the version of herself who existed inside those journeys — younger, quieter, held gently between one place and the next. In her elegant navy outfit, she sometimes looked like she had stepped out of that memory entirely. And perhaps, in some small way, she had. Some scenes never really leave you; they simply wait until you are old enough to miss them." },
   ],
   'shop:companion_honey': [
-    { id: 'classic', loreKey: 'honey_classic', name: 'Honey Bear', emoji: '', image: require('@/assets/images/honey/honey.png'), shopItemId: null, lore: "Before dawn, Miel was already in the bakery, sleeves rolled up and oven warm. He worked quietly, the way people do when they love the task so much it feels almost like prayer. Honey glazed the pastries, golden light filled the kitchen, and the sweet smell of bread drifted through the street before the doors were even open. Miel's baking always felt like comfort made visible.\n\nBy the time customers arrived, there was already a cozy softness to the whole room. Miel greeted each person with warmth that felt homey instead of formal, as though he had expected them all along. He packed treats carefully, slipped in extra biscuits when someone looked tired, and made the rainy days seem less heavy with just one cup of tea and a kind smile. Everything about him suggested the same quiet truth: something warm was already waiting for you here." },
-    { id: 'champion', loreKey: 'honey_champion', name: 'Champion', emoji: '', image: require('@/assets/images/honey/honey-champion.png'), shopItemId: 'outfit_honey_champion', lore: "In the arena, Miel's name was spoken before the bell even rang. He was small compared to many of the fighters he faced, but he stepped into every match with the steady confidence of someone who had already decided how it would end. His champion outfit gleamed beneath the lights, and the crowd cheered the moment he appeared. They knew what was coming. Miel always won.\n\nBut his victories were not wild or cruel. He fought cleanly, decisively, and without panic, as though each movement had been practiced in his heart long before it touched the ground. Blow after blow, he stayed focused until the match turned in his favor, and it always did. When the final bell sounded, he lifted his gloves and smiled that warm little smile of his, as if winning were not arrogance but simply the natural shape of his effort. For Miel, triumph was not noise. It was certainty." },
-    { id: 'zzz', loreKey: 'honey_zzz', name: 'ZZZ', emoji: '', image: require('@/assets/images/honey/honey-zzz.png'), shopItemId: 'outfit_honey_zzz', roomId: 'miels-room', lore: "Miel had always been sleepy, but in this version of his life, sleep clung to him like a second shadow. It came at breakfast, at afternoon tea, in the middle of folding blankets, even halfway through warm conversations. He would blink once, twice, and before anyone could finish a sentence, his head would already be drooping. No one could explain why he slept so often, only that it had become part of the gentle rhythm of his days.\n\nSo he learned to live inside that softness. He wore honey-pot pajamas, kept cozy pillows within arm's reach, and turned every room into a place where sudden sleep would not feel frightening. And even when he nodded off in the middle of things, there was something tender about the way he did it — as if rest had chosen him because he was kind enough to carry it. Miel would always wake eventually, blinking slowly and apologizing with a sheepish smile, and then he would pick up exactly where his warmth had left off." },
+    { id: 'classic', loreKey: 'honey_classic', name: 'Honey Bear', emoji: '', image: require('@/assets/images/honey/honey-classic-anim.webp'), shopItemId: null, lore: "Before dawn, Miel was already in the bakery, sleeves rolled up and oven warm. He worked quietly, the way people do when they love the task so much it feels almost like prayer. Honey glazed the pastries, golden light filled the kitchen, and the sweet smell of bread drifted through the street before the doors were even open. Miel's baking always felt like comfort made visible.\n\nBy the time customers arrived, there was already a cozy softness to the whole room. Miel greeted each person with warmth that felt homey instead of formal, as though he had expected them all along. He packed treats carefully, slipped in extra biscuits when someone looked tired, and made the rainy days seem less heavy with just one cup of tea and a kind smile. Everything about him suggested the same quiet truth: something warm was already waiting for you here." },
+    { id: 'champion', loreKey: 'honey_champion', name: 'Champion', emoji: '', image: require('@/assets/images/honey/honey-champion-anim.webp'), shopItemId: 'outfit_honey_champion', lore: "In the arena, Miel's name was spoken before the bell even rang. He was small compared to many of the fighters he faced, but he stepped into every match with the steady confidence of someone who had already decided how it would end. His champion outfit gleamed beneath the lights, and the crowd cheered the moment he appeared. They knew what was coming. Miel always won.\n\nBut his victories were not wild or cruel. He fought cleanly, decisively, and without panic, as though each movement had been practiced in his heart long before it touched the ground. Blow after blow, he stayed focused until the match turned in his favor, and it always did. When the final bell sounded, he lifted his gloves and smiled that warm little smile of his, as if winning were not arrogance but simply the natural shape of his effort. For Miel, triumph was not noise. It was certainty." },
+    { id: 'zzz', loreKey: 'honey_zzz', name: 'ZZZ', emoji: '', image: require('@/assets/images/honey/honey-zzz-anim.webp'), shopItemId: 'outfit_honey_zzz', roomId: 'miels-room', lore: "Miel had always been sleepy, but in this version of his life, sleep clung to him like a second shadow. It came at breakfast, at afternoon tea, in the middle of folding blankets, even halfway through warm conversations. He would blink once, twice, and before anyone could finish a sentence, his head would already be drooping. No one could explain why he slept so often, only that it had become part of the gentle rhythm of his days.\n\nSo he learned to live inside that softness. He wore honey-pot pajamas, kept cozy pillows within arm's reach, and turned every room into a place where sudden sleep would not feel frightening. And even when he nodded off in the middle of things, there was something tender about the way he did it — as if rest had chosen him because he was kind enough to carry it. Miel would always wake eventually, blinking slowly and apologizing with a sheepish smile, and then he would pick up exactly where his warmth had left off." },
   ],
   'shop:companion_pretzel': [
-    { id: 'classic', loreKey: 'pretzel_classic', name: 'Classic', emoji: '', image: require('@/assets/images/pretzel/pretzel.png'), shopItemId: null, lore: "Soda runs the little soda counter at the back of the bakery, where the bubbles never stop fizzing. He tops every float with a single cherry and every study break with a cheerful pep talk." },
+    { id: 'classic', loreKey: 'pretzel_classic', name: 'Classic', emoji: '', image: require('@/assets/images/pretzel/pretzel-classic-anim.webp'), shopItemId: null, lore: "Gray runs the little soda counter at the back of the bakery, where the bubbles never stop fizzing. He tops every float with a single cherry and every study break with a cheerful pep talk." },
   ],
   'shop:companion_bunny': [
     { id: 'classic', loreKey: 'bunny_classic', name: 'Cutest Thing Ever', emoji: '', image: require('@/assets/images/bunny/bunny-classic-anim.webp'), shopItemId: null, lore: "Bunny lived in a pink palace where every curtain seemed to flutter just for her and every mirror reflected exactly what she already knew — that she was, undeniably, the cutest thing in the room. She walked through grand halls in a frilly gown, greeting the day with the kind of confidence most royals spent years trying to learn. She was sweet, yes, but never unaware. Bunny knew the effect she had on people, and she wore that knowledge like another ribbon.\n\nStill, being adorable was not the same as being idle. Bunny made decisions quickly, expected them followed, and never needed to raise her voice to be obeyed. Gardeners straightened when she passed. Servants hurried a little faster. Even guests seemed to sit up with better manners under her gaze. Yet she was never cruel about it. There was simply a natural authority in her sweetness, as if charm itself had decided to become a princess and rule the room." },
@@ -207,8 +208,8 @@ export const COMPANION_SKINS: Record<string, BunSkin[]> = {
     { id: 'royal', loreKey: 'bunny_royal', name: 'Berry Princess', emoji: '', image: require('@/assets/images/bunny/bunny-royal-anim.webp'), shopItemId: 'outfit_bunny_royal', roomId: 'strawberry-palace', lore: "Once a year, the Strawberry Palace held a chocolate court, and Bunny presided over it in crimson and gold. Velvet bows lined her gown, tiny berries swung from her lace ribbons, and a small gold crown sat perfectly straight between her ears. Every chocolatier in the kingdom brought a heart-shaped box, and Bunny tasted each one with great ceremony, as if the fate of the realm depended on it.\n\nThe truth was simpler: she just loved chocolate. But she also believed that sweet things should be earned. So before opening a box, she would finish her studies for the day, one page at a time, and only then lift the lid and choose a single piece. A princess, she said, rules her day first and her dessert second." },
   ],
   'shop:companion_hanji': [
-    { id: 'classic', loreKey: 'hanji_classic', name: 'Quiet Lavender', emoji: '', image: require('@/assets/images/hanji/hanji.png'), shopItemId: null, roomId: 'lavender-palace', lore: "Hanji lived in a quiet residence tucked behind a wisteria garden where the air always smelled faintly of lavender and rain. She spoke softly, moved gently, and had the kind of presence that made a room settle the moment she entered it. Bells and chatter belonged to other places. Hanji's world was made of silk sleeves, pale blossoms, and the hush of pages turning in the late afternoon.\n\nShe liked the hours when the garden shadows stretched long and the light became tender. Then she would walk beneath the hanging wisteria and let the charms at her sleeves sway softly in the breeze. People often mistook her silence for distance, but it was not that. Hanji simply carried herself like someone who had no need to compete with noise. She was quiet, yes — but the kind of quiet that lingers, fragrant and unforgettable." },
-    { id: 'ivoryrose', loreKey: 'hanji_ivoryrose', name: 'Ivory Rose', emoji: '', image: require('@/assets/images/hanji/hanji-ivoryrose.png'), shopItemId: 'outfit_hanji_ivoryrose', lore: "Hanji walked along the busy Japanese street with the posture of someone taught carefully, lovingly, never to rush. Around her, the city moved in waves — shopkeepers calling, bicycles passing, signs glowing softly above the crowds — yet she remained composed in her ivory bonnet and cream dress, like a proper lady stepping through a world that had forgotten how to slow down. She carried herself so neatly that even the busiest corner seemed to grow a little more orderly when she passed.\n\nShe stopped at the flower stand, at the confectionery window, at the little tea shop tucked between brighter storefronts. The city was alive and full, but Hanji never seemed overwhelmed by it. She moved through it with quiet grace, as if elegance were not something put on for special occasions, but simply the shape of her nature. Against the restless street, she looked almost old-fashioned — and all the more beautiful for it, like a rose held steady in the middle of motion." },
+    { id: 'classic', loreKey: 'hanji_classic', name: 'Quiet Lavender', emoji: '', image: require('@/assets/images/hanji/hanji-classic-anim.webp'), shopItemId: null, roomId: 'lavender-palace', lore: "Hanji lived in a quiet residence tucked behind a wisteria garden where the air always smelled faintly of lavender and rain. She spoke softly, moved gently, and had the kind of presence that made a room settle the moment she entered it. Bells and chatter belonged to other places. Hanji's world was made of silk sleeves, pale blossoms, and the hush of pages turning in the late afternoon.\n\nShe liked the hours when the garden shadows stretched long and the light became tender. Then she would walk beneath the hanging wisteria and let the charms at her sleeves sway softly in the breeze. People often mistook her silence for distance, but it was not that. Hanji simply carried herself like someone who had no need to compete with noise. She was quiet, yes — but the kind of quiet that lingers, fragrant and unforgettable." },
+    { id: 'ivoryrose', loreKey: 'hanji_ivoryrose', name: 'Ivory Rose', emoji: '', image: require('@/assets/images/hanji/hanji-ivoryrose-anim.webp'), shopItemId: 'outfit_hanji_ivoryrose', lore: "Hanji walked along the busy Japanese street with the posture of someone taught carefully, lovingly, never to rush. Around her, the city moved in waves — shopkeepers calling, bicycles passing, signs glowing softly above the crowds — yet she remained composed in her ivory bonnet and cream dress, like a proper lady stepping through a world that had forgotten how to slow down. She carried herself so neatly that even the busiest corner seemed to grow a little more orderly when she passed.\n\nShe stopped at the flower stand, at the confectionery window, at the little tea shop tucked between brighter storefronts. The city was alive and full, but Hanji never seemed overwhelmed by it. She moved through it with quiet grace, as if elegance were not something put on for special occasions, but simply the shape of her nature. Against the restless street, she looked almost old-fashioned — and all the more beautiful for it, like a rose held steady in the middle of motion." },
   ],
 };
 
@@ -233,6 +234,11 @@ export function getEffectiveCompanionSkins(
 // animated surfaces must use expo-image.
 const STATIC_FRAME = new Map<number, number>([
   [require('@/assets/images/bunny/bunny-classic-anim.webp'), require('@/assets/images/bunny/bunny.png')],
+  [require('@/assets/images/honey/honey-classic-anim.webp'), require('@/assets/images/honey/honey.png')],
+  [require('@/assets/images/hanji/hanji-classic-anim.webp'), require('@/assets/images/hanji/hanji.png')],
+  [require('@/assets/images/hanji/hanji-ivoryrose-anim.webp'), require('@/assets/images/hanji/hanji-ivoryrose.png')],
+  [require('@/assets/images/pretzel/pretzel-classic-anim.webp'), require('@/assets/images/pretzel/pretzel.png')],
+  [require('@/assets/images/bun/bun-heartcore-anim.webp'), require('@/assets/images/bun/bun-heartcore.png')],
   [require('@/assets/images/bunny/bunny-jiraikei-anim.webp'), require('@/assets/images/bunny/bunny-jiraikei.png')],
   [require('@/assets/images/bunny/bunny-palace-anim.webp'), require('@/assets/images/bunny/bunny-palace.png')],
   [require('@/assets/images/bunny/bunny-royal-anim.webp'), require('@/assets/images/bunny/bunny-royal.png')],
@@ -241,6 +247,8 @@ const STATIC_FRAME = new Map<number, number>([
   [require('@/assets/images/tira/tira-sleepover-anim.webp'), require('@/assets/images/tira/tira-sleepover.png')],
   [require('@/assets/images/bun/bun-starry-anim.webp'), require('@/assets/images/bun/bun-starry.png')],
   [require('@/assets/images/tira/tira-chocomint-anim.gif'), require('@/assets/images/tira/tira-chocomint.png')],
+  [require('@/assets/images/honey/honey-zzz-anim.webp'), require('@/assets/images/honey/honey-zzz.png')],
+  [require('@/assets/images/honey/honey-champion-anim.webp'), require('@/assets/images/honey/honey-champion.png')],
 ]);
 export function staticImageFor<T>(img: T): T {
   return (typeof img === 'number' ? (STATIC_FRAME.get(img) as T | undefined) ?? img : img);
@@ -272,19 +280,29 @@ export function getCompanionSkinImage(companionId: string, skinId: string | null
   return (skins.find((s) => s.id === skinId) ?? skins[0]).image;
 }
 
+// The ONE order characters are listed in everywhere (shop, gallery, wardrobe,
+// starter picker, profile): Bunny, Soda, Bun, Miel, Tira, then the hidden/reward
+// ones. Takes a shop SKU or an active id (`shop:<sku>`, Bun's `starter:*`).
+const CHARACTER_ORDER = ['companion_bunny', 'companion_pretzel', 'companion_bun', 'companion_honey', 'companion_tira', 'companion_cocoa', 'companion_hanji'];
+export function characterRank(id: string): number {
+  const sku = id.startsWith('starter:') ? 'companion_bun' : id.startsWith('shop:') ? id.slice(5) : id;
+  const i = CHARACTER_ORDER.indexOf(sku);
+  return i === -1 ? CHARACTER_ORDER.length : i; // unknown (e.g. generated slots) go last
+}
+
 // Purchasable companions that have full-body art usable as the active character.
 // `companion_bun` is excluded: Bun is the starter mascot whose active id is
 // `starter:girl`, not `shop:companion_bun`; its SKU only exists so an unchosen
 // Bun can be shown/bought in the shop grid.
 export const SHOP_COMPANIONS = SHOP_ITEMS.filter(
   (i) => i.category === 'companion' && i.image && i.id !== 'companion_bun',
-);
+).sort((a, b) => characterRank(a.id) - characterRank(b.id));
 
 // ─── Starter companions ────────────────────────────────────────────────────
 // The five characters a new player chooses one of (for free) on first launch;
-// the other four are sold in the shop. Order is fixed (carousel order): Bun →
-// Cocoa → Bunny → Miel → Tira, wrapping back to Bun. Hanji is excluded — it stays
-// a recipe-badge reward.
+// the others are sold in the shop. Listed in CHARACTER_ORDER (Bunny → Bun → Miel →
+// Tira; hidden ones are filtered out by OFFERED_STARTER_CHOICES). Hanji is excluded
+// — it stays a recipe-badge reward.
 export type StarterChoice = {
   activeId: ActiveCompanionId; // what activeCompanionId becomes when chosen
   shopItemId: string;          // the SKU granted/checked for ownership
@@ -292,13 +310,13 @@ export type StarterChoice = {
   image: number;
   bg: string;                  // solid background color for the "obtained" celebration
 };
-export const STARTER_CHOICES: StarterChoice[] = [
+export const STARTER_CHOICES: StarterChoice[] = ([
   { activeId: 'starter:girl', shopItemId: 'companion_bun', name: 'Bun', image: require('@/assets/images/bun/bun-home.png'), bg: '#ffc9d0' },
   { activeId: 'shop:companion_cocoa', shopItemId: 'companion_cocoa', name: 'Cocoa', image: require('@/assets/images/cocoa/cocoa.png'), bg: '#CC4B35' },
   { activeId: 'shop:companion_bunny', shopItemId: 'companion_bunny', name: 'Bunny', image: require('@/assets/images/bunny/bunny.png'), bg: '#ffc2df' },
   { activeId: 'shop:companion_honey', shopItemId: 'companion_honey', name: 'Miel', image: require('@/assets/images/honey/honey.png'), bg: '#ffcd8c' },
   { activeId: 'shop:companion_tira', shopItemId: 'companion_tira', name: 'Tira', image: require('@/assets/images/tira/tira.png'), bg: '#a3d6ff' },
-];
+] as StarterChoice[]).sort((a, b) => characterRank(a.shopItemId) - characterRank(b.shopItemId));
 
 /** Starter choices actually offered to new players (hidden companions removed). */
 export const OFFERED_STARTER_CHOICES = STARTER_CHOICES.filter(

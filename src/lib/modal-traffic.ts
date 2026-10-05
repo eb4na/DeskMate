@@ -13,7 +13,7 @@
 // stuck, so a missed/duplicated call can never strand a modal permanently invisible.
 // Worst case is a popup that appears a few hundred ms late. Fail-open by construction.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // Roughly the RN Modal fade/slide duration plus a little slack, so the previous
 // modal's view controller is fully gone before the next one presents.
@@ -59,8 +59,14 @@ export function useReportModalTransition(visible: boolean) {
  */
 export function useModalSafeVisible(want: boolean): boolean {
   const [show, setShow] = useState(false);
+  const showRef = useRef(false);
+  showRef.current = show;
   useEffect(() => {
     if (!want) {
+      // Stamp the dismiss NOW, in this same effect pass, so a modal asked to present
+      // in the same commit (e.g. buy popup closes → equip prompt opens) sees it.
+      // Waiting for the report effect below would stamp one render too late.
+      if (showRef.current) noteModalTransition();
       setShow(false);
       return;
     }
@@ -70,7 +76,9 @@ export function useModalSafeVisible(want: boolean): boolean {
       if (wait <= 0) setShow(true);
       else timer = setTimeout(tryShow, wait);
     };
-    tryShow();
+    // First check on the next macrotask, never inline: other modals closing in the
+    // same commit stamp from their own effects, which may run after this one.
+    timer = setTimeout(tryShow, 0);
     return () => { if (timer) clearTimeout(timer); };
   }, [want]);
   // Report our own open/close so OTHER presenters likewise wait us out.

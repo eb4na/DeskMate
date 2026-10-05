@@ -25,23 +25,23 @@ const BREAK_PICKS = [0, 5, 10, 15, 30];
 
 const range = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 const HR_VALUES = range(0, 5);
-const MIN_VALUES = range(1, 59); // 1-minute steps, never 0
-const ITEM_H = 58; // taller rows = bigger, more forgiving touch targets (less accidental over-scroll)
+const MIN_VALUES = range(0, 59); // Include :00 for whole-hour presets.
+const ITEM_H = 44;
 const LOOP_REPEAT = 7; // copies stacked to fake an endless (wrapping) wheel
 const LOOP_CENTER = Math.floor(LOOP_REPEAT / 2);
 
 // The scroll wheel keeps fixed sizes (so its ITEM_H snap math stays exact), so it
 // uses its own static stylesheet rather than the screen's tablet-scaled `makeStyles`.
 const wheelStyles = StyleSheet.create({
-  wheel: { alignItems: 'center', minWidth: 96 },
+  wheel: { alignItems: 'center', width: 100 },
   wheelHighlight: {
     position: 'absolute', top: ITEM_H, height: ITEM_H, left: 6, right: 6,
-    borderRadius: 12, backgroundColor: 'rgba(195,143,114,0.12)',
+    borderRadius: 12, backgroundColor: '#FCE8ED',
   },
   wheelItem: { height: ITEM_H, alignItems: 'center', justifyContent: 'center' },
-  wheelNum: { fontSize: 24, fontWeight: '800', color: C.latte, lineHeight: 28 },
-  wheelNumActive: { fontSize: 32, fontWeight: '900', color: C.berry, lineHeight: 34 },
-  wheelUnit: { fontSize: 12, fontWeight: '700', color: C.mocha, marginTop: 2 },
+  wheelNum: { fontSize: 19, fontWeight: '600', color: '#CEB8AA', lineHeight: 26, fontVariant: ['tabular-nums'] },
+  wheelNumActive: { fontSize: 30, fontWeight: '800', color: C.berry, lineHeight: 36 },
+  wheelUnit: { fontSize: 12, fontWeight: '700', color: C.mocha, marginTop: 8 },
 });
 
 // A flick-scrollable wheel column — snaps to whole values (no 5-min jumps).
@@ -217,13 +217,13 @@ export default function CustomTimerScreen() {
           <Text style={styles.sectionLabel}>{t('customTimer.focusDuration')}</Text>
           <View style={styles.durCard}>
             <WheelColumn values={HR_VALUES} value={focusHr} unit={t('customTimer.hr')} onChange={setFocusHr} />
-            <View style={styles.durDivider} />
+            <Text style={styles.durDivider}>:</Text>
             <WheelColumn values={MIN_VALUES} value={focusMin} unit={t('customTimer.min')} onChange={setFocusMin} loop />
           </View>
-          <View style={styles.pickRow}>
+          <View style={styles.quickRow}>
             {FOCUS_PICKS.map((m) => (
-              <Pressable key={m} onPress={() => { playTick(); setFocusTotal(m); }} style={[styles.pick, focusMins === m && styles.pickActive]}>
-                <Text style={[styles.pickText, focusMins === m && styles.pickTextActive]}>{formatMinutesShort(m, t)}</Text>
+              <Pressable key={m} accessibilityRole="button" accessibilityState={{ selected: focusMins === m }} onPress={() => { playTick(); setFocusTotal(m); }} style={[styles.pick, styles.quickPick, focusMins === m && styles.pickActive]}>
+                <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.pickText, focusMins === m && styles.pickTextActive]}>{formatMinutesShort(m, t)}</Text>
               </Pressable>
             ))}
           </View>
@@ -253,10 +253,10 @@ export default function CustomTimerScreen() {
               {/* Break duration — fixed picks only (no break / 5 / 10 / 15 / 30) */}
               <Text style={styles.sectionLabel}>{t('customTimer.breakDuration')}</Text>
               <Text style={styles.sectionSub}>{t('customTimer.optionalBreak')}</Text>
-              <View style={styles.pickRow}>
+              <View style={styles.quickRow}>
                 {BREAK_PICKS.map((m) => (
-                  <Pressable key={m} onPress={() => { playTick(); setBreakMins(m); }} style={[styles.pick, breakMins === m && styles.pickActive]}>
-                    <Text style={[styles.pickText, breakMins === m && styles.pickTextActive]}>{m === 0 ? t('customTimer.noBreak') : formatMinutesShort(m, t)}</Text>
+                  <Pressable key={m} accessibilityRole="button" accessibilityState={{ selected: breakMins === m }} onPress={() => { playTick(); setBreakMins(m); }} style={[styles.pick, styles.quickPick, m === 0 && { flex: 1.5 }, breakMins === m && styles.pickActive]}>
+                    <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.pickText, breakMins === m && styles.pickTextActive]}>{m === 0 ? t('customTimer.noBreak') : formatMinutesShort(m, t)}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -395,12 +395,14 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#fff', borderRadius: BakeryRadii.card * s,
     borderWidth: 1.5, borderColor: 'rgba(195,143,114,0.18)',
-    paddingVertical: Spacing.three * s, marginTop: 4 * s, ...BakeryShadow,
+    paddingVertical: 14 * s, marginTop: 4 * s,
   },
-  durDivider: { width: 1.5, height: 96, backgroundColor: C.shortbread, marginHorizontal: Spacing.four * s },
+  durDivider: { fontSize: 28, fontWeight: '700', color: C.berry, marginHorizontal: 12 * s, marginBottom: 24 },
   // (Scroll-wheel styles live in `wheelStyles` — unscaled so its snap math is exact.)
 
   // Quick picks
+  quickRow: { flexDirection: 'row', gap: 6 * s, marginTop: 8 * s },
+  quickPick: { flex: 1, minWidth: 0, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 * s },
   pickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 * s, marginTop: 8 * s, justifyContent: 'center' },
   pick: {
     borderRadius: BakeryRadii.pill, borderWidth: 1.5, borderColor: C.shortbread,

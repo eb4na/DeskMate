@@ -8,7 +8,6 @@ const ACCENTS: Record<string, string> = {
   modern: '#7E94A6',           // Modern Kitchen — cool slate
   washitsu: '#3FA3C4',         // Beach — ocean teal
   'tiras-room': '#7EA2E8',     // Tira's Room — lavender blue, leaning blue (cornflower)
-  'buns-room': '#E58AA0',      // Bun's Room — strawberry
   'miels-room': '#F0A828',     // Miel's Room — honey gold
   tranquil: '#7AA88C',         // Tranquil — sage green
   landmine: '#CE5A7E',         // Landmine — jirai rose

@@ -6,22 +6,26 @@
 export const HANJI_COMPANION_ID = 'companion_hanji';
 
 // Each recipe badge belongs to a character (their signature bake). companionId
-// feeds getCompanionImage() for the avatar ('' = the starter Bun). Keep in sync
-// with FOOD_ITEMS in src/app/food-gallery.tsx.
+// feeds getCompanionImage() for the avatar ('' = the starter Bun, shown as Meruru).
+// Keep in sync with FOOD_ITEMS in src/app/food-gallery.tsx and the recipe owners
+// in shop-data.ts. Owners follow the badge art (2026-10-04): Bunny holds the
+// strawberry roll cake, Meruru the berry croissant, Gray (canonical 'Soda') the
+// sakura mochi.
 // `recipeItem` is the shop SKU that unlocks baking the recipe — granted free to a
-// player who picks that character as their starter. null = Bun's strawberry
-// shortcake, which is free for everyone and needs no SKU.
+// player who picks that character as their starter. null = the strawberry roll
+// cake, which is free for everyone and needs no SKU.
 export const RECIPE_BADGES: { recipeId: string; owner: string; companionId: string; recipeItem: string | null }[] = [
-  { recipeId: 'strawberry-shortcake', owner: 'Bun', companionId: '', recipeItem: null },
-  { recipeId: 'sakura-mochi', owner: 'Cocoa', companionId: 'shop:companion_cocoa', recipeItem: 'recipe_sakura' },
-  { recipeId: 'berry-croissant', owner: 'Bunny', companionId: 'shop:companion_bunny', recipeItem: 'recipe_croissant' },
+  { recipeId: 'strawberry-shortcake', owner: 'Bunny', companionId: 'shop:companion_bunny', recipeItem: null },
+  { recipeId: 'sakura-mochi', owner: 'Soda', companionId: 'shop:companion_pretzel', recipeItem: 'recipe_sakura' },
+  { recipeId: 'berry-croissant', owner: 'Bun', companionId: '', recipeItem: 'recipe_croissant' },
   { recipeId: 'pudding', owner: 'Miel', companionId: 'shop:companion_honey', recipeItem: 'recipe_pudding' },
   { recipeId: 'matcha-crepe', owner: 'Tira', companionId: 'shop:companion_tira', recipeItem: 'recipe_matcha' },
 ];
 
 /** The signature recipe (and its unlock SKU) matching a starter companion, so a
  * new player gets the recipe that goes with the character they chose. The Bun
- * starter uses companionId '' and its recipe is free (recipeItem null). Returns
+ * starter uses companionId ''; Bunny's strawberry roll cake is free (recipeItem
+ * null). Returns
  * null if the id isn't a known starter character. */
 export function starterRecipe(companionId: string): { recipeId: string; recipeItem: string | null } | null {
   const b = RECIPE_BADGES.find((x) => x.companionId === companionId);

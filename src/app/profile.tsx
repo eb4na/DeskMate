@@ -39,6 +39,7 @@ import {
   localizeShopItemName,
   resolveActiveCompanion,
   SHOP_COMPANIONS,
+  characterRank,
 } from '@/lib/companion-utils';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
@@ -111,7 +112,7 @@ export default function ProfileScreen() {
       id: `shop:${i.id}`,
       name: i.name,
     })),
-  ];
+  ].sort((a, b) => characterRank(a.id) - characterRank(b.id));
 
   // Which character/outfit the card shows (falls back to the active companion).
   const selectedCharId = profileCompanionId || activeCompanionId || starterId;

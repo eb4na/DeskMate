@@ -1,0 +1,125 @@
+{
+  "tool": "built-in image_gen",
+  "assets": [
+    {
+      "original": "home/desk-mixer.png",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-e47492f6-2702-4ee7-aacc-3ba265d315a5.png",
+      "destination": "home/recipes-cartoon/desk-mixer.png",
+      "prompt": "Use case: style-transfer. Redraw image 1, the recipe prop edit target, in the clean cute 2D cartoon illustration style of image 2 (bunny character style reference ONLY). Keep exactly the same prop(s), colors, decorative motifs, viewpoint and arrangement from image 1. Use confident smooth warm dark-brown outlines, rounded shapes, mostly flat pastel fills and only one soft cel-shadow tone, few small highlights. Much less glossy or painterly than image 1. Do not add faces, characters, limbs, lace, badges or new objects. No background, no ground shadow, no checkerboard: genuinely transparent alpha background. Output a single isolated game asset, tightly framed with a small even transparent margin, entire prop visible. Do not reproduce the bunny. If there is text on original packaging, preserve only that text. Preserve original prop aspect ratio."
+    },
+    {
+      "original": "home/desk-strawberries.png",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-a35b0d15-74c4-4f25-88f7-dc2def95d65d.png",
+      "destination": "home/recipes-cartoon/desk-strawberries.png",
+      "prompt": "Use case: style-transfer. Redraw image 1, the recipe prop edit target, in the clean cute 2D cartoon illustration style of image 2 (bunny character style reference ONLY). Keep exactly the same prop(s), colors, decorative motifs, viewpoint and arrangement from image 1. Use confident smooth warm dark-brown outlines, rounded shapes, mostly flat pastel fills and only one soft cel-shadow tone, few small highlights. Much less glossy or painterly than image 1. Do not add faces, characters, limbs, lace, badges or new objects. No background, no ground shadow, no checkerboard: genuinely transparent alpha background. Output a single isolated game asset, tightly framed with a small even transparent margin, entire prop visible. Do not reproduce the bunny. If there is text on original packaging, preserve only that text. Preserve original prop aspect ratio."
+    },
+    {
+      "original": "home/desk-eggs.png",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-bac2a580-60b2-45ab-9ff1-ca7dc940e858.png",
+      "destination": "home/recipes-cartoon/desk-eggs.png",
+      "prompt": "Use case: style-transfer. Redraw image 1, the recipe prop edit target, in the clean cute 2D cartoon illustration style of image 2 (bunny character style reference ONLY). Keep exactly the same prop(s), colors, decorative motifs, viewpoint and arrangement from image 1. Use confident smooth warm dark-brown outlines, rounded shapes, mostly flat pastel fills and only one soft cel-shadow tone, few small highlights. Much less glossy or painterly than image 1. Do not add faces, characters, limbs, lace, badges or new objects. No background, no ground shadow, no checkerboard: genuinely transparent alpha background. Output a single isolated game asset, tightly framed with a small even transparent margin, entire prop visible. Do not reproduce the bunny. If there is text on original packaging, preserve only that text. Preserve original prop aspect ratio."
+    },
+    {
+      "original": "home/desk-butter.png",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-18155f98-2762-46f7-81d3-cf3b14eb8717.png",
+      "destination": "home/recipes-cartoon/desk-butter.png",
+      "prompt": "Use case: style-transfer. Redraw image 1, the recipe prop edit target, in the clean cute 2D cartoon illustration style of image 2 (bunny character style reference ONLY). Keep exactly the same prop(s), colors, decorative motifs, viewpoint and arrangement from image 1. Use confident smooth warm dark-brown outlines, rounded shapes, mostly flat pastel fills and only one soft cel-shadow tone, few small highlights. Much less glossy or painterly than image 1. Do not add faces, characters, limbs, lace, badges or new objects. No background, no ground shadow, no checkerboard: genuinely transparent alpha background. Output a single isolated game asset, tightly framed with a small even transparent margin, entire prop visible. Do not reproduce the bunny. If there is text on original packaging, preserve only that text. Preserve original prop aspect ratio."
+    },
+    {
+      "original": "home/desk-mixer-pudding.png",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-b611f2ec-6267-436b-8d78-4d5f5002e530.png",
+      "destination": "home/recipes-cartoon/desk-mixer-pudding.png",
+      "prompt": "Use case: style-transfer. Redraw image 1, the recipe prop edit target, in the clean cute 2D cartoon illustration style of image 2 (bunny character style reference ONLY). Keep exactly the same prop(s), colors, decorative motifs, viewpoint and arrangement from image 1. Use confident smooth warm dark-brown outlines, rounded shapes, mostly flat pastel fills and only one soft cel-shadow tone, few small highlights. Much less glossy or painterly than image 1. Do not add faces, characters, limbs, lace, badges or new objects. No background, no ground shadow, no checkerboard: genuinely transparent alpha background. Output a single isolated game asset, tightly framed with a small even transparent margin, entire prop visible. Do not reproduce the bunny. If there is text on original packaging, preserve only that text. Preserve original prop aspect ratio."
+    },
+    {
+      "original": "home/desk-milk.png",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-14691882-f450-4dce-92e7-50d2e7cb710f.png",
+      "destination": "home/recipes-cartoon/desk-milk.png",
+      "prompt": "Use case: style-transfer. Redraw image 1, the recipe prop edit target, in the clean cute 2D cartoon illustration style of image 2 (bunny character style reference ONLY). Keep exactly the same prop(s), colors, decorative motifs, viewpoint and arrangement from image 1. Use confident smooth warm dark-brown outlines, rounded shapes, mostly flat pastel fills and only one soft cel-shadow tone, few small highlights. Much less glossy or painterly than image 1. Do not add faces, characters, limbs, lace, badges or new objects. No background, no ground shadow, no checkerboard: genuinely transparent alpha background. Output a single isolated game asset, tightly framed with a small even transparent margin, entire prop visible. Do not reproduce the bunny. If there is text on original packaging, preserve only that text. Preserve original prop aspect ratio."
+    },
+    {
+      "original": "home/desk-sugar.png",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-093ea31d-3ca6-4ffe-9799-74baba6603c4.png",
+      "destination": "home/recipes-cartoon/desk-sugar.png",
+      "prompt": "Use case: style-transfer. Redraw image 1, the recipe prop edit target, in the clean cute 2D cartoon illustration style of image 2 (bunny character style reference ONLY). Keep exactly the same prop(s), colors, decorative motifs, viewpoint and arrangement from image 1. Use confident smooth warm dark-brown outlines, rounded shapes, mostly flat pastel fills and only one soft cel-shadow tone, few small highlights. Much less glossy or painterly than image 1. Do not add faces, characters, limbs, lace, badges or new objects. No background, no ground shadow, no checkerboard: genuinely transparent alpha background. Output a single isolated game asset, tightly framed with a small even transparent margin, entire prop visible. Do not reproduce the bunny. If there is text on original packaging, preserve only that text. Preserve original prop aspect ratio."
+    },
+    {
+      "original": "home/desk-cornstarch.png",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-07289060-6127-43f6-8215-35fa3087190e.png",
+      "destination": "home/recipes-cartoon/desk-cornstarch.png",
+      "prompt": "Use case: style-transfer. Redraw image 1, the recipe prop edit target, in the clean cute 2D cartoon illustration style of image 2 (bunny character style reference ONLY). Keep exactly the same prop(s), colors, decorative motifs, viewpoint and arrangement from image 1. Use confident smooth warm dark-brown outlines, rounded shapes, mostly flat pastel fills and only one soft cel-shadow tone, few small highlights. Much less glossy or painterly than image 1. Do not add faces, characters, limbs, lace, badges or new objects. No background, no ground shadow, no checkerboard: genuinely transparent alpha background. Output a single isolated game asset, tightly framed with a small even transparent margin, entire prop visible. Do not reproduce the bunny. If there is text on original packaging, preserve only that text. Preserve original prop aspect ratio."
+    },
+    {
+      "original": "cake/mixer-croissant.png",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-bd42d132-bc4c-40f7-b637-d103989992f9.png",
+      "destination": "home/recipes-cartoon/mixer-croissant.png",
+      "prompt": "Use case: style-transfer. Redraw image 1, the recipe prop edit target, in the clean cute 2D cartoon illustration style of image 2 (bunny character style reference ONLY). Keep exactly the same prop(s), colors, decorative motifs, viewpoint and arrangement from image 1. Use confident smooth warm dark-brown outlines, rounded shapes, mostly flat pastel fills and only one soft cel-shadow tone, few small highlights. Much less glossy or painterly than image 1. Do not add faces, characters, limbs, lace, badges or new objects. No background, no ground shadow, no checkerboard: genuinely transparent alpha background. Output a single isolated game asset, tightly framed with a small even transparent margin, entire prop visible. Do not reproduce the bunny. If there is text on original packaging, preserve only that text. Preserve original prop aspect ratio."
+    },
+    {
+      "original": "cake/base-flour.png",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-19dccec5-128a-4971-b69f-faf0c56fe201.png",
+      "destination": "home/recipes-cartoon/base-flour.png",
+      "prompt": "Use case: style-transfer. Redraw image 1, the recipe prop edit target, in the clean cute 2D cartoon illustration style of image 2 (bunny character style reference ONLY). Keep exactly the same prop(s), colors, decorative motifs, viewpoint and arrangement from image 1. Use confident smooth warm dark-brown outlines, rounded shapes, mostly flat pastel fills and only one soft cel-shadow tone, few small highlights. Much less glossy or painterly than image 1. Do not add faces, characters, limbs, lace, badges or new objects. No background, no ground shadow, no checkerboard: genuinely transparent alpha background. Output a single isolated game asset, tightly framed with a small even transparent margin, entire prop visible. Do not reproduce the bunny. If there is text on original packaging, preserve only that text. Preserve original prop aspect ratio."
+    },
+    {
+      "original": "cake/filling-butter.png",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-df52b425-39d2-44ae-b1b4-6efbc6deba00.png",
+      "destination": "home/recipes-cartoon/filling-butter.png",
+      "prompt": "Use case: style-transfer. Redraw image 1, the recipe prop edit target, in the clean cute 2D cartoon illustration style of image 2 (bunny character style reference ONLY). Keep exactly the same prop(s), colors, decorative motifs, viewpoint and arrangement from image 1. Use confident smooth warm dark-brown outlines, rounded shapes, mostly flat pastel fills and only one soft cel-shadow tone, few small highlights. Much less glossy or painterly than image 1. Do not add faces, characters, limbs, lace, badges or new objects. No background, no ground shadow, no checkerboard: genuinely transparent alpha background. Output a single isolated game asset, tightly framed with a small even transparent margin, entire prop visible. Do not reproduce the bunny. If there is text on original packaging, preserve only that text. Preserve original prop aspect ratio."
+    },
+    {
+      "original": "cake/topping-berries.png",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-8bc5d151-971c-463a-9f95-72b9fd0ff386.png",
+      "destination": "home/recipes-cartoon/topping-berries.png",
+      "prompt": "Use case: style-transfer. Redraw image 1, the recipe prop edit target, in the clean cute 2D cartoon illustration style of image 2 (bunny character style reference ONLY). Keep exactly the same prop(s), colors, decorative motifs, viewpoint and arrangement from image 1. Use confident smooth warm dark-brown outlines, rounded shapes, mostly flat pastel fills and only one soft cel-shadow tone, few small highlights. Much less glossy or painterly than image 1. Do not add faces, characters, limbs, lace, badges or new objects. No background, no ground shadow, no checkerboard: genuinely transparent alpha background. Output a single isolated game asset, tightly framed with a small even transparent margin, entire prop visible. Do not reproduce the bunny. If there is text on original packaging, preserve only that text. Preserve original prop aspect ratio."
+    },
+    {
+      "original": "cake/mixer-sakura.png",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-df3f3a82-6ecb-4e17-ab1a-2b67b0919af9.png",
+      "destination": "home/recipes-cartoon/mixer-sakura.png",
+      "prompt": "Use case: style-transfer. Redraw image 1, the recipe prop edit target, in the clean cute 2D cartoon illustration style of image 2 (bunny character style reference ONLY). Keep exactly the same prop(s), colors, decorative motifs, viewpoint and arrangement from image 1. Use confident smooth warm dark-brown outlines, rounded shapes, mostly flat pastel fills and only one soft cel-shadow tone, few small highlights. Much less glossy or painterly than image 1. Do not add faces, characters, limbs, lace, badges or new objects. No background, no ground shadow, no checkerboard: genuinely transparent alpha background. Output a single isolated game asset, tightly framed with a small even transparent margin, entire prop visible. Do not reproduce the bunny. If there is text on original packaging, preserve only that text. Preserve original prop aspect ratio."
+    },
+    {
+      "original": "cake/base-riceFlour.png",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-6b2426b1-ca88-4a5d-b5d6-697bdc8dcaba.png",
+      "destination": "home/recipes-cartoon/base-riceFlour.png",
+      "prompt": "Use case: style-transfer. Redraw image 1, the recipe prop edit target, in the clean cute 2D cartoon illustration style of image 2 (bunny character style reference ONLY). Keep exactly the same prop(s), colors, decorative motifs, viewpoint and arrangement from image 1. Use confident smooth warm dark-brown outlines, rounded shapes, mostly flat pastel fills and only one soft cel-shadow tone, few small highlights. Much less glossy or painterly than image 1. Do not add faces, characters, limbs, lace, badges or new objects. No background, no ground shadow, no checkerboard: genuinely transparent alpha background. Output a single isolated game asset, tightly framed with a small even transparent margin, entire prop visible. Do not reproduce the bunny. If there is text on original packaging, preserve only that text. Preserve original prop aspect ratio."
+    },
+    {
+      "original": "cake/filling-redBean.png",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-e88a5c5b-c56f-4b43-a707-aff12c21de1c.png",
+      "destination": "home/recipes-cartoon/filling-redBean.png",
+      "prompt": "Use case: style-transfer. Redraw image 1, the recipe prop edit target, in the clean cute 2D cartoon illustration style of image 2 (bunny character style reference ONLY). Keep exactly the same prop(s), colors, decorative motifs, viewpoint and arrangement from image 1. Use confident smooth warm dark-brown outlines, rounded shapes, mostly flat pastel fills and only one soft cel-shadow tone, few small highlights. Much less glossy or painterly than image 1. Do not add faces, characters, limbs, lace, badges or new objects. No background, no ground shadow, no checkerboard: genuinely transparent alpha background. Output a single isolated game asset, tightly framed with a small even transparent margin, entire prop visible. Do not reproduce the bunny. If there is text on original packaging, preserve only that text. Preserve original prop aspect ratio."
+    },
+    {
+      "original": "cake/topping-sakuraLeaf.png",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-2cc844c2-d901-47b0-8f95-b2c6f418ea97.png",
+      "destination": "home/recipes-cartoon/topping-sakuraLeaf.png",
+      "prompt": "Use case: style-transfer. Redraw image 1, the recipe prop edit target, in the clean cute 2D cartoon illustration style of image 2 (bunny character style reference ONLY). Keep exactly the same prop(s), colors, decorative motifs, viewpoint and arrangement from image 1. Use confident smooth warm dark-brown outlines, rounded shapes, mostly flat pastel fills and only one soft cel-shadow tone, few small highlights. Much less glossy or painterly than image 1. Do not add faces, characters, limbs, lace, badges or new objects. No background, no ground shadow, no checkerboard: genuinely transparent alpha background. Output a single isolated game asset, tightly framed with a small even transparent margin, entire prop visible. Do not reproduce the bunny. If there is text on original packaging, preserve only that text. Preserve original prop aspect ratio."
+    },
+    {
+      "original": "cake/mixer-matcha.png",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-ef5c2cb4-7eae-4bec-8d75-f3786cc71b24.png",
+      "destination": "home/recipes-cartoon/mixer-matcha.png",
+      "prompt": "Use case: style-transfer. Redraw image 1, the recipe prop edit target, in the clean cute 2D cartoon illustration style of image 2 (bunny character style reference ONLY). Keep exactly the same prop(s), colors, decorative motifs, viewpoint and arrangement from image 1. Use confident smooth warm dark-brown outlines, rounded shapes, mostly flat pastel fills and only one soft cel-shadow tone, few small highlights. Much less glossy or painterly than image 1. Do not add faces, characters, limbs, lace, badges or new objects. No background, no ground shadow, no checkerboard: genuinely transparent alpha background. Output a single isolated game asset, tightly framed with a small even transparent margin, entire prop visible. Do not reproduce the bunny. If there is text on original packaging, preserve only that text. Preserve original prop aspect ratio."
+    },
+    {
+      "original": "cake/base-matcha.png",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-93a984d2-4642-4340-8f6a-b40f623e1dd0.png",
+      "destination": "home/recipes-cartoon/base-matcha.png",
+      "prompt": "Use case: style-transfer. Redraw image 1, the recipe prop edit target, in the clean cute 2D cartoon illustration style of image 2 (bunny character style reference ONLY). Keep exactly the same prop(s), colors, decorative motifs, viewpoint and arrangement from image 1. Use confident smooth warm dark-brown outlines, rounded shapes, mostly flat pastel fills and only one soft cel-shadow tone, few small highlights. Much less glossy or painterly than image 1. Do not add faces, characters, limbs, lace, badges or new objects. No background, no ground shadow, no checkerboard: genuinely transparent alpha background. Output a single isolated game asset, tightly framed with a small even transparent margin, entire prop visible. Do not reproduce the bunny. If there is text on original packaging, preserve only that text. Preserve original prop aspect ratio."
+    },
+    {
+      "original": "cake/filling-milk.png",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-579c4c4d-d41c-43f9-8a74-1521697341c0.png",
+      "destination": "home/recipes-cartoon/filling-milk.png",
+      "prompt": "Use case: style-transfer. Redraw image 1, the recipe prop edit target, in the clean cute 2D cartoon illustration style of image 2 (bunny character style reference ONLY). Keep exactly the same prop(s), colors, decorative motifs, viewpoint and arrangement from image 1. Use confident smooth warm dark-brown outlines, rounded shapes, mostly flat pastel fills and only one soft cel-shadow tone, few small highlights. Much less glossy or painterly than image 1. Do not add faces, characters, limbs, lace, badges or new objects. No background, no ground shadow, no checkerboard: genuinely transparent alpha background. Output a single isolated game asset, tightly framed with a small even transparent margin, entire prop visible. Do not reproduce the bunny. If there is text on original packaging, preserve only that text. Preserve original prop aspect ratio."
+    },
+    {
+      "original": "cake/topping-eggFlour.png",
+      "generated": "/Users/ebanalin/.codex/generated_images/01a0fa5b-92f1-7ff1-be92-8f1a087e528f/exec-2396c1ac-0609-4c2a-adb4-e70e0165ce54.png",
+      "destination": "home/recipes-cartoon/topping-eggFlour.png",
+      "prompt": "Use case: style-transfer. Redraw image 1, the recipe prop edit target, in the clean cute 2D cartoon illustration style of image 2 (bunny character style reference ONLY). Keep exactly the same prop(s), colors, decorative motifs, viewpoint and arrangement from image 1. Use confident smooth warm dark-brown outlines, rounded shapes, mostly flat pastel fills and only one soft cel-shadow tone, few small highlights. Much less glossy or painterly than image 1. Do not add faces, characters, limbs, lace, badges or new objects. No background, no ground shadow, no checkerboard: genuinely transparent alpha background. Output a single isolated game asset, tightly framed with a small even transparent margin, entire prop visible. Do not reproduce the bunny. If there is text on original packaging, preserve only that text. Preserve original prop aspect ratio."
+    }
+  ]
+}

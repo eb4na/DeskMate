@@ -41,7 +41,7 @@ export const FOOD_ITEMS: FoodItem[] = [
     id: 'strawberry-shortcake',
     image: require('@/assets/images/cake/strawberry-shortcake.png'),
     madeBadge: require('@/assets/images/cake/strawberry-badge.png'),
-    owner: 'Bun',
+    owner: 'Bunny',
   },
   {
     id: 'pudding',
@@ -57,7 +57,7 @@ export const FOOD_ITEMS: FoodItem[] = [
     requiresItem: 'recipe_sakura',
     price: 5000,
     madeBadge: require('@/assets/images/cake/sakura-badge.png'),
-    owner: 'Cocoa',
+    owner: 'Soda',
   },
   {
     id: 'matcha-crepe',
@@ -73,7 +73,7 @@ export const FOOD_ITEMS: FoodItem[] = [
     requiresItem: 'recipe_croissant',
     price: 5000,
     madeBadge: require('@/assets/images/cake/croissant-badge.png'),
-    owner: 'Bunny',
+    owner: 'Bun',
   },
 ];
 

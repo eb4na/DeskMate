@@ -13,15 +13,16 @@ import { COMPANION_LINES } from '@/constants/companion-lines';
 //   Bunny  — vain little princess; speaks in third person; cute-bratty.
 //   Miel   — sleepy honey-bear; "nap now, study after"; drowsy but shows up.
 //   Tira   — deadpan dropout; dry irony; "I dropped out, but you should study".
+//   Gray   — goofy but dead serious; treats bubbles, soda and his hat as grave matters.
 type CompanionVoice = { emoji: string; lines: string[] };
 
 export const COMPANION_REMINDER_LINES: Record<string, CompanionVoice> = {
   bun: {
     emoji: '',
     lines: [
-      'Bun study with you forever ',
+      'Meruru study with you forever ',
       "It's study o'clock! I saved you the comfiest seat ",
-      'Bun believes in you — let’s rise together ',
+      'Meruru believes in you — let’s rise together ',
       'Your future self is already thanking you. Let’s go ',
       'Just you, me, and a fresh page. Ready? ',
       'A little focus now makes everything sweeter later ',
@@ -58,6 +59,17 @@ export const COMPANION_REMINDER_LINES: Record<string, CompanionVoice> = {
       'Miel rolled out of the honey pot for this. Let’s study ',
       'Sleepy but here for you. Let’s do a little focus ',
       'Honey’s sweet, but finishing your work is sweeter ',
+    ],
+  },
+  companion_pretzel: {
+    emoji: '',
+    lines: [
+      'Official notice from Chef Gray: it is study time. This is not a drill ',
+      'I have prepared one (1) study session. Serve immediately ',
+      'Gray does not joke about homework. Gray only jokes about soda ',
+      'Attention. Your book misses you. I checked ',
+      'The bubbles have spoken. They said: study ',
+      'I put on my serious hat for this. Please open your notes ',
     ],
   },
   companion_tira: {

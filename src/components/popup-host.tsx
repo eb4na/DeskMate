@@ -47,9 +47,16 @@ export function PopupHost() {
           }
           setConfig(cfg);
         };
-        const wait = msUntilModalSafe();
-        if (wait === 0) present();
-        else setTimeout(present, wait);
+        // showPopup is usually called from a handler that is ALSO closing a modal
+        // (e.g. shop confirmBuy → "recipe bought"); that modal stamps its dismiss in
+        // an effect after this call. So never present inline — wait a tick, then
+        // re-check the settle window until it's clear.
+        const tryPresent = () => {
+          const wait = msUntilModalSafe();
+          if (wait === 0) present();
+          else setTimeout(tryPresent, wait);
+        };
+        setTimeout(tryPresent, 0);
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
