@@ -132,7 +132,7 @@ def chip(img, d, x, y, text, size, fillbg, fillfg):
 
 
 ART = os.path.expanduser("~/DeskMate/assets/images/")
-CAST = [ART + "cocoa/cocoa.png", ART + "bunny/bunny.png", ART + "honey/honey.png",
+CAST = [ART + "pretzel/pretzel.png", ART + "bunny/bunny.png", ART + "honey/honey.png",
         ART + "tira/tira.png"]                                    # no Hanji: secret character
 
 
