@@ -26,7 +26,7 @@ import { CompanionLevel } from '@/components/companion-level';
 import { Fonts, MaxContentWidth, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
-import { characterRank, staticImageFor, BUN_SKINS, type BunSkin, getBunSkinImage, getCompanionSkinImage, getCompanionSkins, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, pickSkinLore, skinLores, SHOP_COMPANIONS } from '@/lib/companion-utils';
+import { characterRank, staticImageFor, BUN_SKINS, type BunSkin, getBunSkinImage, getCompanionSkinImage, getCompanionSkins, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, localizeShopItemDescription, pickSkinLore, skinLores, SHOP_COMPANIONS } from '@/lib/companion-utils';
 import { SHOP_ITEMS } from '@/constants/shop-data';
 import { roomById, isPairOwned, type RoomPair } from '@/constants/room-data';
 
@@ -192,7 +192,7 @@ function GalleryContent() {
   // (background + desk if it has one) and let the player confirm.
   const [pairConfirm, setPairConfirm] = useState<{ pair: RoomPair; skin: BunSkin; ownerId: string } | null>(null);
   // Outfit lore popup.
-  const [lorePopup, setLorePopup] = useState<{ name: string; text: string } | null>(null);
+  const [lorePopup, setLorePopup] = useState<{ name: string; text: string; desc?: string } | null>(null);
   // Report this screen's native <Modal>s (buy / pair-buy / pair-confirm / lore / Plus
   // alert) to the global anti-freeze signal so popups never present mid-transition.
   useReportModalTransition(
@@ -452,6 +452,19 @@ function GalleryContent() {
   // ones you have, so it appears only when there's actually a choice to make.
   const previewSkins = preview && !preview.isGenerated ? skinsFor(preview.id).filter(skinIsOwned) : [];
   const previewWornSkin = preview ? wornSkinId(preview.id) : 'classic';
+  // Outfit info (top-right "i" on the card): the worn outfit's shop description —
+  // the default outfit has no SKU, so it falls back to the companion's own blurb —
+  // plus its story. Hidden for generated companions, which have neither.
+  const previewInfo = (() => {
+    const skin = preview && !preview.isGenerated ? previewSkins.find((k) => k.id === previewWornSkin) ?? preview.currentSkin ?? null : null;
+    if (!preview || !skin) return null;
+    const descId = skin.shopItemId ?? (preview.id.startsWith('shop:') ? preview.id.slice(5) : 'companion_bun');
+    const item = getShopItem(descId);
+    const desc = item ? localizeShopItemDescription(item, t) : '';
+    const text = pickSkinLore(skin, t);
+    if (!desc && !text) return null;
+    return { name: localizeOutfitName(skin.name, t), desc, text };
+  })();
 
   return (
     <>
@@ -487,9 +500,18 @@ function GalleryContent() {
               <HangerIcon color="#FFFFFF" size={22 * scale} />
             </Pressable>
             {/* Pairing button — set the matched room when the worn outfit has one. */}
+            {previewInfo && (
+              <Pressable
+                style={({ pressed }) => [styles.infoBtn, pressed && styles.pressed]}
+                onPress={() => setLorePopup(previewInfo)}
+                hitSlop={8}
+                accessibilityLabel={previewInfo.name}>
+                <Text style={styles.infoBtnText}>i</Text>
+              </Pressable>
+            )}
             {preview.currentSkin && roomById(preview.currentSkin.roomId) && (
               <Pressable
-                style={({ pressed }) => [styles.linkBadge, pressed && styles.pressed]}
+                style={({ pressed }) => [styles.linkBadge, previewInfo && styles.linkBadgeShifted, pressed && styles.pressed]}
                 onPress={() => equipMatchedRoom(preview.currentSkin!, preview.id)}
                 hitSlop={8}>
                 <ChainLinkIcon color="#FFFFFF" size={15 * scale} />
@@ -716,6 +738,7 @@ function GalleryContent() {
               <View style={styles.loreCard}>
                 <Text style={styles.loreTitle}>{lorePopup.name}</Text>
                 <ScrollView style={[styles.loreScroll, { maxHeight: winH * 0.6 }]} contentContainerStyle={styles.loreScrollContent} showsVerticalScrollIndicator nestedScrollEnabled>
+                  {!!lorePopup.desc && <Text style={styles.loreDesc}>{lorePopup.desc}</Text>}
                   <Text style={styles.loreText}>{lorePopup.text}</Text>
                 </ScrollView>
                 <Pressable style={({ pressed }) => [styles.loreClose, pressed && styles.pressed]} onPress={() => setLorePopup(null)}>
@@ -925,6 +948,23 @@ function GalleryContent() {
       </Modal>
 
     </ScrollView>
+    {/* Outfit info popup for the card's "i" button. The wardrobe sheet renders its
+        own copy, so this one only shows while the wardrobe is closed. */}
+    {lorePopup && !wardrobeFor && (
+      <View style={[styles.loreBackdrop, styles.infoBackdrop]}>
+        <Pressable style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onPress={() => setLorePopup(null)} />
+        <View style={styles.loreCard}>
+          <Text style={styles.loreTitle}>{lorePopup.name}</Text>
+          <ScrollView style={[styles.loreScroll, { maxHeight: winH * 0.6 }]} contentContainerStyle={styles.loreScrollContent} showsVerticalScrollIndicator>
+            {!!lorePopup.desc && <Text style={styles.loreDesc}>{lorePopup.desc}</Text>}
+            {!!lorePopup.text && <Text style={styles.loreText}>{lorePopup.text}</Text>}
+          </ScrollView>
+          <Pressable style={({ pressed }) => [styles.loreClose, pressed && styles.pressed]} onPress={() => setLorePopup(null)}>
+            <Text style={styles.loreCloseText}>{t('common.close')}</Text>
+          </Pressable>
+        </View>
+      </View>
+    )}
     <DevKnobs screen="companion-gallery" knobs={knobs} onChange={(key, value) => setTweak((p) => ({ ...p, [key]: value }))} />
     </>
   );
@@ -1441,4 +1481,16 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
   loreText: { fontSize: 13.5 * s, color: P.mutedBrown, lineHeight: 20 * s, textAlign: 'left' },
   loreClose: { marginTop: 4 * s, backgroundColor: P.pink, borderRadius: 18 * s, paddingVertical: 10 * s, paddingHorizontal: 28 * s },
   loreCloseText: { color: '#fff', fontSize: 14 * s, fontWeight: '800' },
+  loreDesc: { fontSize: 14 * s, color: P.brown, fontWeight: '700', lineHeight: 20 * s, textAlign: 'center', marginBottom: 10 * s },
+  infoBackdrop: { backgroundColor: 'rgba(60,40,30,0.35)', borderRadius: 0 },
+  // Outfit-info button, top-right of the companion card (same chip as the hanger).
+  infoBtn: {
+    position: 'absolute', top: 8 * s, right: 8 * s, zIndex: 2,
+    width: 34 * s, height: 34 * s, borderRadius: 17 * s,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: P.pink, borderWidth: 1.5, borderColor: '#FFFFFF',
+  },
+  infoBtnText: { color: '#FFFFFF', fontSize: 17 * s, fontWeight: '900', fontStyle: 'italic', lineHeight: 20 * s },
+  // Chain badge slides left of the info button when both show.
+  linkBadgeShifted: { right: 48 * s },
 });

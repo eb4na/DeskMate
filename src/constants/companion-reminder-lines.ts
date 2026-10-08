@@ -13,7 +13,7 @@ import { COMPANION_LINES } from '@/constants/companion-lines';
 //   Bunny  — vain little princess; speaks in third person; cute-bratty.
 //   Miel   — sleepy honey-bear; "nap now, study after"; drowsy but shows up.
 //   Tira   — deadpan dropout; dry irony; "I dropped out, but you should study".
-//   Gray   — goofy but dead serious; treats bubbles, soda and his hat as grave matters.
+//   Gray   — goofy but dead serious; treats his hat, flour and dough as grave matters.
 type CompanionVoice = { emoji: string; lines: string[] };
 
 export const COMPANION_REMINDER_LINES: Record<string, CompanionVoice> = {
@@ -66,9 +66,9 @@ export const COMPANION_REMINDER_LINES: Record<string, CompanionVoice> = {
     lines: [
       'Official notice from Chef Gray: it is study time. This is not a drill ',
       'I have prepared one (1) study session. Serve immediately ',
-      'Gray does not joke about homework. Gray only jokes about soda ',
+      'Gray does not joke about homework. Gray only jokes about his hat ',
       'Attention. Your book misses you. I checked ',
-      'The bubbles have spoken. They said: study ',
+      'The dough has spoken. It said: study ',
       'I put on my serious hat for this. Please open your notes ',
     ],
   },

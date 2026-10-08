@@ -21,8 +21,9 @@ export type ShopItem = {
   price: number;
   category: ShopCategory;
   image?: number;
-  // Temporarily hidden: not sold in the shop or offered as a starter. Players
-  // who already own it keep it (gallery, wardrobe, rendering are unaffected).
+  // Temporarily hidden: removed from the whole app — not sold, not offered as a
+  // starter, and not shown even to players who own it (an active hidden companion
+  // falls back to the starter on load). Ownership is kept, so un-hiding restores it.
   hidden?: boolean;
   // Plus-exclusive: cannot be bought with coins. Granted automatically the first
   // time a player gets Plus.
@@ -77,7 +78,8 @@ export const SHOP_ITEMS: ShopItem[] = [
     description: "A dreamy strawberry bunny who talks soft and slow, like she's half inside a lovely dream.",
     price: 10000,
     category: 'companion',
-    image: require('@/assets/images/bun/bun-home.png'),
+    // Animated (blink/bounce/hair fluff); RN <Image> surfaces use bun-home.png via staticImageFor().
+    image: require('@/assets/images/bun/bun-classic-anim.webp'),
   },
   {
     id: 'companion_cocoa',
@@ -118,7 +120,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     id: 'companion_pretzel',
     name: 'Soda',
     emoji: '',
-    description: "A silver-grey fox baker in a navy chef coat. Cool, quiet, and not big on words.",
+    description: "A silver-grey fox chef who takes everything very seriously: his hat, his apron, the exact height of every pastry. He is trying so hard to look cool. It is not working, and that's the best part.",
     price: 0,
     category: 'companion',
     // Animated (bubbles); RN <Image> surfaces use pretzel.png via staticImageFor().
@@ -172,6 +174,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     price: 10000,
     category: 'outfits',
     image: require('@/assets/images/cocoa/cocoa-demon.png'),
+    hidden: true, // Aki hidden for now
   },
   {
     id: 'outfit_cocoa_relax',
@@ -181,6 +184,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     price: 10000,
     category: 'outfits',
     image: require('@/assets/images/cocoa/cocoa-relax.png'),
+    hidden: true, // Aki hidden for now
   },
   {
     id: 'outfit_tira_chocomint',
@@ -568,3 +572,10 @@ export const SHOP_ITEMS: ShopItem[] = [
     image: require('@/assets/images/sounds/night.png'),
   },
 ];
+
+/** True for a hidden companion, by item id ('companion_cocoa') or active id ('shop:companion_cocoa'). */
+export const isHiddenCompanion = (id: string | null | undefined): boolean => {
+  if (!id) return false;
+  const itemId = id.startsWith('shop:') ? id.slice(5) : id;
+  return !!SHOP_ITEMS.find((i) => i.id === itemId && i.category === 'companion')?.hidden;
+};

@@ -360,7 +360,7 @@ export default function ShopScreen() {
   // characters you still need to unlock.
   const allOutfitCharacters: { id: string; name: string; image: number | { uri: string } | null; emoji: string; owned: boolean }[] = [
     { id: getStarterActiveId('girl'), name: 'Bun', image: STARTER_COMPANION_IMAGES.girl, emoji: '', owned: ownsBun },
-    ...SHOP_COMPANIONS.filter((c) => !c.hidden || isCompanionOwned(c.id, starterCompanionId, ownedShopItems)).map((c) => ({
+    ...SHOP_COMPANIONS.map((c) => ({
       id: `shop:${c.id}`,
       name: c.name,
       image: (c.image as number) ?? null,

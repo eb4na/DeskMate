@@ -2,7 +2,7 @@ import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useSt
 import { AppState } from 'react-native';
 import i18n, { detectDeviceLanguage } from '@/i18n';
 import { capCoins, COINS_PER_MINUTE, DAILY_EARN_CAP, dailyEarnCap, MAX_FRIENDS, PLUS_STUDY_COIN_MULTIPLIER, STATIC_SUBJECTS } from '@/constants/placeholder-data';
-import { SHOP_ITEMS, type ShopCategory } from '@/constants/shop-data';
+import { SHOP_ITEMS, isHiddenCompanion, type ShopCategory } from '@/constants/shop-data';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { dailyRewardCoins } from '@/constants/login-rewards';
 import { getAchievement } from '@/constants/quests';
@@ -1048,13 +1048,17 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
   const activeCompanionExists =
     activeCompanionId === 'starter:girl' ||
     activeCompanionId === 'starter:dude' ||
-    (activeCompanionId.startsWith('shop:') && (merged.ownedShopItems ?? []).includes(activeCompanionId.slice(5))) ||
+    (activeCompanionId.startsWith('shop:') && !isHiddenCompanion(activeCompanionId) && (merged.ownedShopItems ?? []).includes(activeCompanionId.slice(5))) ||
     merged.companionSlots.some((slot) => slot.id === activeCompanionId);
   // Fall back to the player's free starter (not always Bun — a non-Bun starter
-  // doesn't own Bun) when the saved active id is gone/invalid.
-  merged.activeCompanionId = activeCompanionExists
-    ? activeCompanionId
-    : merged.starterCompanionId ?? `starter:${merged.defaultCompanionId ?? DEFAULTS.defaultCompanionId}`;
+  // doesn't own Bun) when the saved active id is gone/invalid or hidden. A hidden
+  // starter (e.g. Aki) falls back to Bun.
+  const fallbackStarter = merged.starterCompanionId && !isHiddenCompanion(merged.starterCompanionId)
+    ? merged.starterCompanionId
+    : `starter:${merged.defaultCompanionId ?? DEFAULTS.defaultCompanionId}`;
+  merged.activeCompanionId = activeCompanionExists ? activeCompanionId : fallbackStarter;
+  // A hidden companion picked for the profile card falls back to the active one.
+  if (isHiddenCompanion(merged.profileCompanionId)) merged.profileCompanionId = '';
 
   // Starter picker: existing players (saved before this feature) keep Bun and skip
   // the picker — anyone who already passed the legal gate is grandfathered in.
@@ -2790,7 +2794,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       // Purchased shop companion (id form `shop:<itemId>`).
       if (id.startsWith('shop:')) {
-        return prev.ownedShopItems.includes(id.slice(5)) ? { ...prev, activeCompanionId: id } : prev;
+        return prev.ownedShopItems.includes(id.slice(5)) && !isHiddenCompanion(id) ? { ...prev, activeCompanionId: id } : prev;
       }
 
       if (!prev.companionSlots.some((slot) => slot.id === id && slot.imageUri)) {
@@ -3047,13 +3051,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setS((prev) => {
       const madeFoods = Array.from(new Set([...prev.madeFoods, ...RECIPE_IDS]));
       const ownedShopItems = Array.from(
-        new Set([...prev.ownedShopItems, ...SHOP_ITEMS.map((item) => item.id)]),
+        new Set([...prev.ownedShopItems, ...SHOP_ITEMS.filter((item) => !item.hidden).map((item) => item.id)]),
       );
       // ~10,000 bond minutes ≈ level 30 — deep into the curve for every companion.
       const companionMinutes = { ...prev.companionMinutes };
       const bondIds = [
         prev.starterCompanionId,
-        ...SHOP_ITEMS.filter((item) => item.category === 'companion').map((item) => `shop:${item.id}`),
+        ...SHOP_ITEMS.filter((item) => item.category === 'companion' && !item.hidden).map((item) => `shop:${item.id}`),
       ];
       for (const id of bondIds) {
         companionMinutes[id] = Math.max(companionMinutes[id] ?? 0, 10_000);

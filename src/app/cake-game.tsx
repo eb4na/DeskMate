@@ -36,6 +36,7 @@ import { useApp } from '@/context/app-context';
 import i18n, { useTranslation } from '@/i18n';
 import { joinGameRoom, newRoomId, type GameRoom } from '@/lib/game-net';
 import { localizeCompanionName } from '@/lib/companion-utils';
+import { isHiddenCompanion } from '@/constants/shop-data';
 import {
   NAV_DEBUG,
   obstaclesPx,
@@ -570,7 +571,7 @@ function SetupScreen({
     { name: 'startBtn', label: 'Start btn' },
   ]);
   const { cakeCharacter, setCakeCharacter, ownedShopItems } = useApp();
-  const myCharacters = CHARACTERS.filter((c) => c.ownedItem === null || ownedShopItems.includes(c.ownedItem));
+  const myCharacters = CHARACTERS.filter((c) => c.ownedItem === null || (ownedShopItems.includes(c.ownedItem) && !isHiddenCompanion(c.ownedItem)));
 
   // Back to the game list if possible, otherwise straight home.
   const goBack = () => {
