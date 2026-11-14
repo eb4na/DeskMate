@@ -121,7 +121,7 @@ function TaskRow({
           </FitText>
         ) : undefined
       }
-      onPress={() => router.push({ pathname: '/add-task', params: { taskId: task.id } })}
+      onPress={() => router.push({ pathname: '/add-task', params: occurrenceISO ? { taskId: task.id, occurrence: occurrenceISO } : { taskId: task.id } })}
       style={done ? styles.rowDone : undefined}
     />
   );

@@ -192,6 +192,8 @@ export type TaskReminderTier = 'dayBefore' | 'hourBefore' | 'tenMinBefore' | 'cu
 export type TaskReminderInput = {
   id: string;
   title: string;
+  /** Task description — used as the notification body when present. */
+  description?: string;
   dueDate: string | null;
   dueTime: string | null;
   notifyAt: string | null;

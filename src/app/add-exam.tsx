@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, TextInput } from 'react-native';
 import Animated, { useAnimatedKeyboard, useAnimatedStyle } from 'react-native-reanimated';
 import { SoundPressable } from '@/components/sound-pressable';
+import { showPopup } from '@/lib/popup';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DateWheelPicker, getTodayISO } from '@/components/date-wheel-picker';
@@ -26,7 +27,7 @@ function isValidDateISO(dateStr: string): boolean {
 
 export default function AddExamScreen() {
   const { t } = useTranslation();
-  const { examCountdowns, addExam, updateExam, use24HourTime, subjects } = useApp();
+  const { examCountdowns, addExam, updateExam, removeExam, use24HourTime, subjects } = useApp();
   const activeSubjects = subjects.filter((s) => !s.archived);
 
   // When opened with ?examId=… we're editing an existing countdown; pre-fill from it.
@@ -217,6 +218,30 @@ export default function AddExamScreen() {
               {editing ? t('addExam.saveChanges') : t('addExam.addCountdown')}
             </ThemedText>
           </SoundPressable>
+          {/* Delete — edit mode only. Confirms through showPopup (same as add-task):
+              this screen is modal-presented and iOS drops a stacked native modal. */}
+          {editing && (
+            <SoundPressable
+              style={({ pressed }) => [styles.deleteBtn, pressed && styles.pressed]}
+              onPress={() =>
+                showPopup(t('common.delete'), t('tasks.deleteTaskMsg', { title: existing?.name ?? '' }), [
+                  { text: t('common.cancel'), style: 'cancel' },
+                  {
+                    text: t('common.delete'),
+                    style: 'destructive',
+                    onPress: () => {
+                      // Exam reminders are re-synced from examCountdowns by app-context.
+                      removeExam(existing!.id);
+                      router.back();
+                    },
+                  },
+                ])
+              }>
+              <ThemedText type="smallBold" style={styles.deleteBtnText}>
+                {t('common.delete')}
+              </ThemedText>
+            </SoundPressable>
+          )}
           <Pressable onPress={() => router.back()} style={styles.cancelBtn}>
             <ThemedText type="linkPrimary">{t('common.cancel')}</ThemedText>
           </Pressable>
@@ -280,6 +305,14 @@ const styles = StyleSheet.create({
   saveBtnPressed: { opacity: 0.85 },
   saveBtnText: { color: '#FFFFFF', fontSize: 16 },
   errorText: { color: '#C0392B', fontWeight: '700', textAlign: 'center', marginBottom: 4 },
+  deleteBtn: {
+    paddingVertical: Spacing.three,
+    borderRadius: 16,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E48A9A',
+  },
+  deleteBtnText: { color: '#C2566B', fontSize: 15, fontWeight: '800' },
   cancelBtn: { alignItems: 'center', paddingVertical: Spacing.two },
   note: { textAlign: 'center' },
   upgradeCard: {

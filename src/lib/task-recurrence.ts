@@ -44,13 +44,15 @@ export function upcomingUntilMs(dateISO: string, time?: string | null): number {
  *  this, so the month grid, the day popup, the week strip and the Home card can't
  *  disagree about which days a series covers. */
 export function taskFallsOn(
-  t: Pick<Task, 'dueDate' | 'repeatDays' | 'repeatUntil'>,
+  t: Pick<Task, 'dueDate' | 'repeatDays' | 'repeatUntil' | 'skippedDates'>,
   iso: string,
 ): boolean {
   if (!t.dueDate) return false;
   const start = t.dueDate.slice(0, 10);
   if (t.repeatDays?.length) {
     if (iso < start) return false;
+    // An occurrence moved to another day ("Move only this day") is skipped here.
+    if (t.skippedDates?.includes(iso)) return false;
     if (t.repeatUntil && iso > t.repeatUntil) return false;
     return t.repeatDays.includes(new Date(`${iso}T00:00:00`).getDay());
   }
@@ -84,7 +86,7 @@ const OCCURRENCE_SCAN_DAYS = 28;
  *  ask "what's next?" never mean an occurrence already dealt with. Empty when the
  *  series has ended, or when everything in the scan window is done. */
 export function openOccurrencesFrom(
-  t: Pick<Task, 'dueDate' | 'repeatDays' | 'repeatUntil' | 'completedDates' | 'status'>,
+  t: Pick<Task, 'dueDate' | 'repeatDays' | 'repeatUntil' | 'completedDates' | 'skippedDates' | 'status'>,
   fromISO: string,
 ): string[] {
   if (!t.dueDate) return [];

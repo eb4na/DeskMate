@@ -60,8 +60,10 @@ function nextDefaultDueTime(tasks: Task[]): string {
 
 export default function AddTaskScreen() {
   const { t } = useTranslation();
-  const { taskId, date } = useLocalSearchParams<{ taskId?: string; date?: string }>();
-  const { tasks, subjects, addTask, updateTask, deleteTask, use24HourTime } = useApp();
+  // `occurrence` = the calendar/list day this task was tapped on. For a repeating
+  // task it enables "Move only this day".
+  const { taskId, date, occurrence } = useLocalSearchParams<{ taskId?: string; date?: string; occurrence?: string }>();
+  const { tasks, subjects, addTask, updateTask, deleteTask, moveTaskOccurrence, use24HourTime } = useApp();
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
@@ -72,10 +74,26 @@ export default function AddTaskScreen() {
   const [title, setTitle] = useState(existingTask?.title ?? '');
   const [description, setDescription] = useState(existingTask?.description ?? '');
   const [subjectId, setSubjectId] = useState<string | null>(existingTask?.subjectId ?? null);
-  // The task's day comes from the tapped calendar cell (`date` param), the task's
-  // saved date when editing, or today for a bare "＋ Add" — there's no in-form date
-  // picker anymore. You choose the day by tapping a calendar cell.
-  const targetDate = existingTask?.dueDate?.slice(0, 10) ?? date ?? todayISO;
+  // The task's day starts from the tapped calendar cell (`date` param), the task's
+  // saved date when editing, or today for a bare "＋ Add". "Pick date" opens a wheel
+  // so a task filed on the wrong day can be moved.
+  const [targetDate, setTargetDate] = useState(existingTask?.dueDate?.slice(0, 10) ?? date ?? todayISO);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  // "Move only this day" for ONE occurrence of a repeating task.
+  const canMoveOccurrence = !!(editing && existingTask?.repeatDays?.length && occurrence);
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [moveDate, setMoveDate] = useState(occurrence ?? todayISO);
+  const handleMoveOccurrence = () => {
+    if (!occurrence || moveDate === occurrence) {
+      setMoveOpen(false);
+      return;
+    }
+    if (!moveTaskOccurrence(taskId!, occurrence, moveDate)) {
+      showPopup(t('addTask.limitReached'), t('addTask.limitMsg', { count: MAX_TASKS }));
+      return;
+    }
+    router.back();
+  };
   // A task quick-added from the to-do list has NO day at all — that's the whole
   // point of the Anytime pile. Editing it here must not silently re-date it to
   // today (which would move it onto the calendar and out of that pile), so an
@@ -344,12 +362,57 @@ export default function AddTaskScreen() {
             </ThemedText>
             {!dated && (
               <ThemedView style={styles.chipRow}>
-                <Pressable onPress={() => setDated(true)} style={({ pressed }) => [pressed && styles.pressed]}>
+                <Pressable onPress={() => { setDated(true); setDatePickerOpen(true); }} style={({ pressed }) => [pressed && styles.pressed]}>
                   <ThemedView type="backgroundElement" style={styles.chip}>
                     <ThemedText type="small">{t('addTask.pickDate')}</ThemedText>
                   </ThemedView>
                 </Pressable>
               </ThemedView>
+            )}
+            {dated && (
+              <ThemedView style={styles.chipRow}>
+                <Pressable
+                  onPress={() => setDatePickerOpen((o) => !o)}
+                  style={({ pressed }) => [pressed && styles.pressed]}>
+                  <ThemedView
+                    type={datePickerOpen ? 'backgroundSelected' : 'backgroundElement'}
+                    style={styles.chip}>
+                    <ThemedText type="small">{t('addTask.pickDate')}</ThemedText>
+                  </ThemedView>
+                </Pressable>
+              </ThemedView>
+            )}
+            {dated && datePickerOpen && (
+              <DateWheelPicker value={targetDate} onChange={setTargetDate} />
+            )}
+            {canMoveOccurrence && (
+              <ThemedView style={styles.chipRow}>
+                <Pressable
+                  onPress={() => setMoveOpen((o) => !o)}
+                  style={({ pressed }) => [pressed && styles.pressed]}>
+                  <ThemedView
+                    type={moveOpen ? 'backgroundSelected' : 'backgroundElement'}
+                    style={styles.chip}>
+                    <ThemedText type="small">{t('addTask.moveThisDay')}</ThemedText>
+                  </ThemedView>
+                </Pressable>
+              </ThemedView>
+            )}
+            {canMoveOccurrence && moveOpen && (
+              <>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {t('addTask.moveThisDayHint', { date: formatDateLabel(occurrence!) })}
+                </ThemedText>
+                <DateWheelPicker value={moveDate} onChange={setMoveDate} />
+                <SoundPressable
+                  sound="confirm"
+                  style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
+                  onPress={handleMoveOccurrence}>
+                  <ThemedText type="smallBold" style={styles.saveBtnText}>
+                    {t('addTask.moveConfirm')}
+                  </ThemedText>
+                </SoundPressable>
+              </>
             )}
             {dated && (
             <ThemedView style={styles.chipRow}>

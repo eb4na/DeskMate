@@ -146,7 +146,7 @@ function TaskPreviewCard({
     <Pressable
       style={({ pressed }) => [styles.taskCard, c !== 1 && { padding: Spacing.two * c, gap: Spacing.two * c, borderRadius: BakeryRadii.card * c }, pressed && styles.pressed]}
       onPress={() => {
-        const go = () => router.push({ pathname: '/add-task', params: { taskId: task.id } });
+        const go = () => router.push({ pathname: '/add-task', params: { taskId: task.id, occurrence: occurrenceISO } });
         onNavigate ? onNavigate(go) : go();
       }}>
       {/* completion checkbox */}

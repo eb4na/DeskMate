@@ -120,6 +120,12 @@ export type Task = {
    * can't grow forever.
    */
   completedDates?: string[];
+  /**
+   * Dates (ISO "YYYY-MM-DD") whose occurrence of a REPEATING task was moved to
+   * another day ("Move only this day"). The series skips these days; the moved
+   * occurrence lives on as its own one-off task (see moveTaskOccurrence).
+   */
+  skippedDates?: string[];
 };
 
 export type SessionRecord = {
@@ -1361,6 +1367,9 @@ type AppContextType = {
    *  task is shown on a specific day — for a repeating task it records just that
    *  date, so crossing out one day leaves every other occurrence open. */
   toggleTaskOccurrence: (id: string, iso: string) => void;
+  /** Move ONE occurrence of a repeating task to another day: the series skips
+   *  `fromISO` and a one-off copy is added on `toISO`. Returns false at the task cap. */
+  moveTaskOccurrence: (id: string, fromISO: string, toISO: string) => boolean;
   postponeTask: (id: string) => void;
 
   // Wave 2 subject-time + session-history
@@ -1743,6 +1752,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .map((t) => ({
           id: t.id,
           title: t.title,
+          description: t.description,
           dueDate: t.dueDate,
           dueTime: t.dueTime,
           notifyAt: t.notifyAt,
@@ -1752,7 +1762,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [s.tasks],
   );
   const taskReminderSig = taskReminderInputs
-    .map((t) => `${t.id}|${t.title}|${t.dueDate}|${t.dueTime}|${t.notifyAt}|${t.reminderMode}`)
+    .map((t) => `${t.id}|${t.title}|${t.description ?? ''}|${t.dueDate}|${t.dueTime}|${t.notifyAt}|${t.reminderMode}`)
     .join('~');
   const taskSyncChain = useRef<Promise<void>>(Promise.resolve());
   useEffect(() => {
@@ -1763,9 +1773,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           syncTaskReminders({
             enabled,
             tasks: taskReminderInputs,
+            // The notification mirrors the task itself: its title, and its
+            // description as the body. A task with no description falls back to
+            // the timing line ("Due in 1 hour") so the body still says when.
             makeContent: (task, tier) => ({
-              title: i18n.t(TASK_REMINDER_COPY[tier].title),
-              body: i18n.t(TASK_REMINDER_COPY[tier].body, { title: task.title }),
+              title: task.title,
+              body: task.description?.trim() || i18n.t(TASK_REMINDER_COPY[tier].title),
             }),
           }),
         )
@@ -2365,6 +2378,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Tick / untick ONE day's occurrence. For a repeating task that's an entry in
   // `completedDates`; for a one-off it's the task's own status, exactly as before.
+  const moveTaskOccurrence = (id: string, fromISO: string, toISO: string) => {
+    if (s.tasks.length >= MAX_TASKS) return false;
+    const src = s.tasks.find((t) => t.id === id);
+    if (!src?.repeatDays?.length) return false;
+    const newId = uid();
+    // A custom reminder keeps its lead time: shift it by the same number of days.
+    const dayMs = new Date(`${toISO}T00:00:00`).getTime() - new Date(`${fromISO}T00:00:00`).getTime();
+    const notifyAt = src.notifyAt ? new Date(new Date(src.notifyAt).getTime() + dayMs).toISOString() : null;
+    setS((prev) => {
+      if (prev.tasks.length >= MAX_TASKS) return prev;
+      const series = prev.tasks.find((t) => t.id === id);
+      if (!series) return prev;
+      const copy: Task = {
+        ...series,
+        id: newId,
+        dueDate: toISO,
+        notifyAt,
+        repeatDays: undefined,
+        repeatUntil: undefined,
+        completedDates: undefined,
+        skippedDates: undefined,
+        status: series.completedDates?.includes(fromISO) ? 'done' : 'not_started',
+        completedAt: null,
+        createdAt: new Date().toISOString(),
+        postponeCount: 0,
+        lastActivityAt: new Date().toISOString(),
+        notifId: null,
+      };
+      return {
+        ...prev,
+        tasks: [
+          copy,
+          ...prev.tasks.map((t) =>
+            t.id === id
+              ? {
+                  ...t,
+                  skippedDates: Array.from(new Set([...(t.skippedDates ?? []), fromISO])),
+                  completedDates: t.completedDates?.filter((d) => d !== fromISO),
+                  lastActivityAt: new Date().toISOString(),
+                }
+              : t,
+          ),
+        ],
+      };
+    });
+    return true;
+  };
+
   const toggleTaskOccurrence = (id: string, iso: string) => {
     const day = iso.slice(0, 10);
     const now = new Date().toISOString();
@@ -3481,6 +3542,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deleteTask,
         completeTask,
         toggleTaskOccurrence,
+        moveTaskOccurrence,
         postponeTask,
         addSubjectTime,
         startActiveSession,
