@@ -14,6 +14,7 @@ import { joinPresence, sendInvite, subscribeToInviteAccepted, type OnlineGameId,
 import { listAcceptedFriends, listBlocked } from '@/lib/friend-requests';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
+import { BackButton } from '@/components/back-button';
 
 // Dedicated screen for inviting friends into a BatterDash party lobby. Opened
 // from the lobby's "Invite friend" button with the room id, so every invite
@@ -201,9 +202,7 @@ export default function PartyInviteScreen() {
           )}
         </ScrollView>
 
-        <Pressable style={({ pressed }) => [styles.doneBtn, pressed && styles.pressed]} onPress={() => router.back()}>
-          <Text style={styles.doneText}>{t('party.backToLobby')}</Text>
-        </Pressable>
+        <BackButton label={t('party.backToLobby')} onPress={() => router.back()} style={{ marginBottom: Spacing.two }} />
       </SafeAreaView>
     </ThemedView>
   );

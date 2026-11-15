@@ -323,7 +323,8 @@ export default function SessionCheckpointScreen() {
               <Text style={styles.subjectPillChevron}>{'\u25BE'}</Text>
             </Pressable>
           )}
-          {isPlus ? (
+          {/* Custom length (the wheel) is open to everyone. */}
+          {true ? (
             <>
               <Text style={styles.title}>{t('studyRoom.howLong')}</Text>
               <DurationWheel

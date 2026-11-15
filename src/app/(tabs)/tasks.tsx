@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { SoundPressable } from '@/components/sound-pressable';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -49,6 +49,17 @@ export default function TasksScreen() {
               {t('tasks.title')}
             </ThemedText>
             <ThemedView type="transparent" style={styles.headerActions}>
+              {/* Import syllabus — round icon button (document + down arrow). */}
+              <SoundPressable
+                style={({ pressed }) => [styles.searchBtn, pressed && styles.pressed]}
+                onPress={() => router.push('/import-syllabus')}
+                accessibilityLabel={t('syllabus.button')}>
+<Svg width={19 * scale} height={19 * scale} viewBox="0 0 24 24" fill="none">
+                  {/* Simple page + down arrow, same weight as the search glyph. */}
+                  <Rect x="4.5" y="2.8" width="15" height="18.4" rx="3" stroke={BakeryColors.cocoaDark} strokeWidth={2.4} />
+                  <Path d="M12 7.6v7.6M8.6 12l3.4 3.4 3.4-3.4" stroke={BakeryColors.cocoaDark} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+                </Svg>
+              </SoundPressable>
               {!listView && (
               <SoundPressable
                 style={({ pressed }) => [styles.searchBtn, searchMode && styles.searchBtnActive, pressed && styles.pressed]}

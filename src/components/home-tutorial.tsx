@@ -13,6 +13,7 @@ import { measureTutorialTarget, type TargetRect } from '@/lib/tutorial-targets';
 import { subscribeTutorialVisible } from '@/lib/tutorial-signal';
 import { useApp } from '@/context/app-context';
 import { BakeryColors } from '@/constants/theme';
+import { BackButton } from '@/components/back-button';
 
 // The most important starting features, in order. Edit this array to change which
 // elements get a popup (each `target` must be a registered anchor).
@@ -129,9 +130,7 @@ export function HomeTutorial({ onDone }: { onDone: () => void }) {
 
         <View style={styles.footer}>
           {step > 0 ? (
-            <Pressable onPress={back} hitSlop={6}>
-              <ThemedText type="small" style={styles.navText}>{t('tutorial.back')}</ThemedText>
-            </Pressable>
+            <BackButton label={t('tutorial.back')} variant="outline" compact onPress={back} />
           ) : (
             <Pressable onPress={onDone} hitSlop={6}>
               <ThemedText type="small" style={styles.skipText}>{t('tutorial.skip')}</ThemedText>

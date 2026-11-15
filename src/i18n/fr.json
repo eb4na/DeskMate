@@ -841,9 +841,7 @@
     "statusDone": "Terminée",
     "dueDateOptional": "Échéance (facultatif)",
     "pickDate": "Choisir une date",
-    "moveThisDay": "Déplacer ce jour seulement",
-    "moveThisDayHint": "Déplace seulement le {{date}}. Le reste de la répétition ne change pas.",
-    "moveConfirm": "Déplacer",
+    "moveThisDayHint": "Changer la date ne déplace que le {{date}}. Le reste de la répétition ne change pas.",
     "noDueDate": "Pas d'échéance",
     "noDueDateSelected": "Aucune échéance sélectionnée.",
     "pickTime": "Définir une heure",
@@ -1411,6 +1409,7 @@
     "guestGateBody": "Crée un compte gratuit pour être jumelé à un binôme d'étude."
   },
   "screens": {
+    "importSyllabus": "Importer le programme",
     "addExamCountdown": "Ajouter un compte à rebours d'examen",
     "dailyReminder": "Rappel quotidien",
     "task": "Tâche",
@@ -1478,7 +1477,7 @@
     "f_customTimers": "Minuteurs personnalisés",
     "f_customTimersDesc": "Toute durée, préréglages enregistrés",
     "f_multiReminders": "Plusieurs rappels",
-    "f_multiRemindersDesc": "Plannings semaine/week-end, messages personnalisés",
+    "f_multiRemindersDesc": "Programme plusieurs rappels d'étude par jour, seulement en semaine si tu veux",
     "f_unlimitedExams": "Plus de comptes à rebours d'examens",
     "f_unlimitedExamsDesc": "Jusqu'à 50 examens (3 en version gratuite), plus des champs de planification avancés",
     "f_moreSubjects": "Plus de matières",
@@ -1493,6 +1492,8 @@
     "f_spotifyDesc": "Écoute tes propres playlists Spotify pendant tes révisions",
     "f_disco": "Mode disco",
     "f_discoDesc": "Transforme ta salle d'étude en scène disco lumineuse au rythme de ta musique",
+    "f_hostRoom": "Avantages d'hôte",
+    "f_hostRoomDesc": "Choisis les pauses de toute ta salle d'étude et partage ton son d'étude et le mode disco avec tout le monde",
     "f_exclusiveSkin": "Tenue exclusive de Meruru",
     "f_exclusiveSkinDesc": "Obtiens le skin Princesse Fraise de Meruru gratuitement dès que tu passes à Premium",
     "f_berryPrincess": "Tenue Princesse Berry de Lapin",
@@ -2123,6 +2124,8 @@
     }
   },
   "skinLores": {
+    "bun_heartcore": "Elle a trouvé la robe au fond d'une boutique qui sentait le vieux papier, et elle a su avant même de la toucher qu'elle était à elle : ruban noir, boucles argentées, du rose dans les cheveux comme du glaçage sur quelque chose de brûlé. Tous ceux qu'elle a croisés en rentrant avaient un avis. Elle n'en a entendu aucun clairement, et c'était bien le but.\n\nLes gens trouvaient le look tranchant, ou triste, ou trop, et elle les laissait dire. La vérité était plus douce que tout ça : elle avait longtemps été ce qui était le plus simple pour les autres, et les nœuds et les boucles étaient tout simplement la première chose qu'elle avait choisie pour personne d'autre qu'elle-même. Elle disait toujours s'il vous plaît et merci. Elle pleurait toujours devant les films. Simplement, maintenant, elle le faisait en bottes.",
+    "bun_starry": "Quand les lumières de la boulangerie s'éteignaient et que les fours refroidissaient, elle échangeait son tablier contre une chemise de nuit brodée de petites étoiles. Elle gardait un bonnet de nuit près de la fenêtre et une baguette qui, jurait-elle, pouvait ranger un rêve — même si, la plupart du temps, elle attrapait juste le clair de lune pour le lancer dans la pièce.\n\nC'étaient les heures calmes qu'elle préférait. La farine retombait, la bouilloire cessait de cliqueter, et toute la boutique semblait expirer d'un coup. Elle passait de pièce en pièce en baissant les lampes une à une, et le souci qui l'avait suivie toute la journée finissait en général par abandonner en chemin et s'endormir le premier.",
     "bun_classic": "Chaque matin, Meruru ouvrait la petite boulangerie avant que le soleil n'ait fini de s'étirer sur les vitres. Elle nouait son tablier à volants, époussetait la farine du comptoir et saluait la journée comme une vieille amie qui rentre à la maison. La boutique sentait toujours la fraise et le pain chaud, et avec Meruru, on aurait dit que le monde entier attendait dehors, juste pour qu'on le laisse entrer.\n\nÀ midi, le café scintillait de bavardages, de tasses de thé et du léger tintement des fourchettes contre les assiettes. Meruru ne laissait jamais personne rester seul bien longtemps. Elle se souvenait des commandes préférées, tirait les chaises avant qu'on le lui demande et servait chaque part de gâteau avec le même sourire lumineux. Dans son petit coin du monde, la douceur n'était pas seulement dans les pâtisseries — elle était dans cet accueil si chaleureux que même les après-midi ordinaires devenaient spéciaux.",
     "bun_angel": "Bien au-dessus des nuages, Meruru glissait sans bruit dans un ciel blanc et pâle, ses petites ailes à peine audibles. Elle était de ces anges qui n'arrivent ni avec le tonnerre ni avec des trompettes éclatantes, mais avec une douceur si délicate qu'elle pouvait s'asseoir auprès du chagrin sans l'effrayer. Un soir, elle trouva un petit garçon assis seul sous un arbre nu, pleurant si fort qu'il pouvait à peine respirer.\n\nIl avait perdu son frère peu de temps auparavant, et depuis, chaque jour semblait trop silencieux, trop vide, trop froid. Meruru s'assit d'abord près de lui sans un mot. Elle enroula une aile autour de ses épaules et lui tendit un petit pain tout chaud en forme d'étoile. Puis elle lui dit que l'amour ne disparaît pas simplement parce que quelqu'un s'en va — parfois il reste dans les habitudes qu'il vous a apprises, dans le rire dont on se souvient encore, dans cette impression d'être veillé quand il n'y a personne. Quand le garçon se leva pour partir, ses larmes n'avaient pas disparu, mais elles s'étaient adoucies. Et Meruru resta juste assez longtemps pour le regarder rentrer chez lui, portant un peu plus de lumière qu'avant.",
     "bun_strawberry": "Au Palais des Fraises, les matins ne commençaient pas par la musique de la cour, mais par le parfum de la génoise montant des fours royaux. La princesse Meruru menait la vie qu'on attendait d'elle — robes de soie, couronnes polies, un jardin plein de roses-fraises — mais elle aimait la boulangerie du palais plus que la salle du trône. Pendant que les autres étudiaient l'étiquette royale, elle se glissait dans les cuisines pour goûter les confitures, arranger les pâtisseries et demander aux boulangers si les gâteaux n'avaient pas besoin d'un peu plus de crème.\n\nSes journées suivaient le doux rythme d'un royaume-pâtisserie. Elle accueillait les visiteurs avec des gants de dentelle saupoudrés de sucre, donnait le thé de l'après-midi dans des salons tapissés de velours rose et veillait à ce que chaque fête s'accompagne d'une douceur. Même les décrets du palais devenaient charmants entre ses mains : des fraises en plus au moment des festivals, des pâtisseries offertes aux travailleurs fatigués, du pain chaud livré à quiconque semblait seul. Meruru portait sa couronne aussi naturellement qu'un ruban, et régnait non par la grandeur, mais avec la certitude tranquille qu'un royaume devrait être aussi accueillant qu'une maison.",
@@ -2159,5 +2162,41 @@
     "lost": "Perdu",
     "frustrated": "Frustré",
     "down": "Abattu"
+  },
+  "appUpdate": {
+    "title": "Nouvelle mise à jour disponible",
+    "message": "Une nouvelle version de Memobun est prête, avec des nouveautés et des corrections. Mets à jour maintenant pour en profiter !",
+    "updateNow": "Mettre à jour",
+    "later": "Plus tard"
+  },
+  "syllabus": {
+    "button": "Importer le programme",
+    "buttonHint": "Récupère examens et rendus depuis ton programme",
+    "intro": "Récupère les examens et les dates de rendu de ton programme. Tout est lu sur ton téléphone : rien n'est envoyé.",
+    "uploadPdf": "Importer un PDF",
+    "takePhoto": "Prendre une photo",
+    "choosePhoto": "Choisir une photo",
+    "pasteText": "Coller du texte",
+    "pasteHint": "Copie le calendrier de ton programme et colle-le ici.",
+    "pastePlaceholder": "ex. 12 oct. – Partiel",
+    "findDates": "Trouver les dates",
+    "reading": "Lecture de ton programme…",
+    "needsUpdate": "Mets à jour Memobun pour importer un PDF ou une photo. Coller du texte fonctionne déjà.",
+    "cameraDenied": "Autorise l'accès à l'appareil photo pour Memobun dans Réglages pour prendre une photo.",
+    "readFailed": "Lecture impossible. Essaie une photo plus nette ou colle le texte.",
+    "noneFound": "Aucune date trouvée. Essaie une photo plus nette, colle le texte ou ajoute-les à la main.",
+    "found_one": "{{count}} date trouvée. Vérifie-la avant d'ajouter : touche la date pour la modifier.",
+    "found_other": "{{count}} dates trouvées. Vérifie-les avant d'ajouter : touche une date pour la modifier.",
+    "subjectForAll": "Matière (pour tout)",
+    "exam": "Examen",
+    "task": "Rendu",
+    "addCount_one": "Ajouter {{count}} élément",
+    "addCount_other": "Ajouter {{count}} éléments",
+    "startOver": "Recommencer",
+    "addedTitle": "Ajouté à ton agenda",
+    "addedMsg_one": "{{count}} élément a été ajouté.",
+    "addedMsg_other": "{{count}} éléments ont été ajoutés.",
+    "examsSkipped_one": "{{count}} examen a été ignoré : tu as atteint la limite d'examens.",
+    "examsSkipped_other": "{{count}} examens ont été ignorés : tu as atteint la limite d'examens."
   }
 }

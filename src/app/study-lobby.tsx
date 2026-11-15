@@ -40,12 +40,8 @@ export default function StudyLobbyScreen() {
   const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('studylobby', LOBBY_ELEMENTS);
   const { active, isHost, canStartSelf, myCode, roster, presentCodes, netStatus, roomId, start, startSelf, leaveRoom, setMyPrefs, setMyBreak } = useStudyRoom();
   const { subjects, isPlus, savedTimerPresets, saveTimerPreset, deleteTimerPreset } = useApp();
-  // Custom-length matrix (per player):
-  //  - own Plus (host or guest)            → wheel + saved presets (+ add)
-  //  - no Plus, but the HOST has Plus      → wheel only (shared perk, no presets)
-  //  - no Plus and a non-Plus host         → the standard default lengths
-  const hostIsPlus = !!roster.find((e) => e.isHost)?.isPlus;
-  const canCustom = isPlus || hostIsPlus;
+  // Custom lengths (wheel + saved presets) are open to everyone.
+  const canCustom = true;
   const clampCustom = (m: number) => Math.max(5, Math.min(300, m));
   const activeSubjects = subjects.filter((s) => !s.archived).sort((a, b) => a.order - b.order);
 
@@ -166,10 +162,9 @@ export default function StudyLobbyScreen() {
                 onChange={(m) => pickMinutes(clampCustom(m))}
                 scale={scale}
               />
-              {/* Saved presets — like the wheel, gated on this player's own Plus.
-                  Tapping one applies its session length (broadcast) and its saved
-                  break (personal). */}
-              {isPlus && (
+              {/* Saved presets — open to everyone. Tapping one applies its session
+                  length (broadcast). */}
+              {true && (
                 <>
                   <Text style={styles.presetHeader}>{t('sessionPicker.presetsHeader')}</Text>
                   <View style={styles.topicRow}>

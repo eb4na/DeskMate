@@ -11,6 +11,7 @@ import { CoinIcon } from '@/components/coin-icon';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, Spacing } from '@/constants/theme';
+import { useTabletScale } from '@/hooks/use-tablet-scale';
 
 const IG_USERNAME = 'memobun.app';
 const APP_URL = `instagram://user?username=${IG_USERNAME}`;
@@ -47,6 +48,7 @@ function PresentGlyph({ size = 30 }: { size?: number }) {
 
 export function InstagramFollowRow() {
   const { t } = useTranslation();
+  const { scale: s } = useTabletScale();
   const { instagramFollowClaimed, claimInstagramFollow } = useApp();
   const [justClaimed, setJustClaimed] = useState(false);
   const jump = useRef(new Animated.Value(0)).current;
@@ -86,9 +88,15 @@ export function InstagramFollowRow() {
   };
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
-      <View style={styles.iconWrap}>
-        <InstagramGlyph size={30} />
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.row,
+        { gap: Spacing.three * s, paddingHorizontal: Spacing.three * s, paddingVertical: Spacing.two * s, minHeight: 44 * s },
+        pressed && styles.pressed,
+      ]}>
+      <View style={[styles.iconWrap, { width: 24 * s, height: 24 * s }]}>
+        <InstagramGlyph size={22 * s} />
       </View>
       <View style={styles.body}>
         <ThemedText type="smallBold">{t('settings.followInstagram')}</ThemedText>
@@ -106,7 +114,7 @@ export function InstagramFollowRow() {
         </View>
       ) : !instagramFollowClaimed ? (
         <Animated.View style={{ transform: [{ translateY: jumpY }] }}>
-          <PresentGlyph size={30} />
+          <PresentGlyph size={24 * s} />
         </Animated.View>
       ) : null}
     </Pressable>
@@ -114,10 +122,11 @@ export function InstagramFollowRow() {
 }
 
 const styles = StyleSheet.create({
-  // Matches SettingRow's geometry so the Instagram icon lines up with the others.
-  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.three, paddingHorizontal: Spacing.three },
+  // Geometry (gap/padding/icon box) is applied inline from the tablet scale so it
+  // matches settings.tsx SettingRow exactly — icon and text line up with the rows below.
+  row: { flexDirection: 'row', alignItems: 'center' },
   pressed: { opacity: 0.7 },
-  iconWrap: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  iconWrap: { alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1, gap: 2 },
   rewardPill: {
     flexDirection: 'row',

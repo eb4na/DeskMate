@@ -16,6 +16,7 @@ import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, Spacing } fro
 import { authCallbackUrl, supabase } from '@/lib/supabase';
 import { useTranslation } from '@/i18n';
 import { useTheme } from '@/hooks/use-theme';
+import { BackButton } from '@/components/back-button';
 
 export default function ForgotPasswordScreen() {
   const { t } = useTranslation();
@@ -118,11 +119,7 @@ export default function ForgotPasswordScreen() {
               </Pressable>
             </ThemedView>
 
-            <Pressable onPress={() => router.replace('/login')} style={styles.linkRow}>
-              <ThemedText type="smallBold" style={styles.linkText}>
-                {t('auth.backToLogin')}
-              </ThemedText>
-            </Pressable>
+            <BackButton label={t('auth.backToLogin')} variant="outline" onPress={() => router.replace('/login')} />
           </SafeAreaView>
         </ScrollView>
       </KeyboardAvoidingView>

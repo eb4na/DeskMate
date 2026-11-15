@@ -15,6 +15,7 @@ import { markGuestUpgradePending, clearGuestUpgradePending } from '@/lib/app-sta
 import { signInWithProvider, type OAuthResult } from '@/lib/oauth';
 import { clearPersistedState } from '@/lib/storage';
 import { disconnectSpotify } from '@/lib/spotify';
+import { unregisterDmPush } from '@/lib/dm-push';
 import { supabase } from '@/lib/supabase';
 
 // Guest mode lives only in app state (no Supabase session), so it must be
@@ -221,6 +222,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        // Stop this phone getting the account's DM notifications after sign-out.
+        await unregisterDmPush();
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
       },

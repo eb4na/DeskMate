@@ -114,12 +114,11 @@ export default function ReminderSettingsScreen() {
 
     setSaving(true);
     const trimmedTime = time.trim();
-    const nextReminders = isPlus ? reminders : [];
+    // Extra reminders are open to everyone (were Plus-only).
+    const nextReminders = reminders;
 
     setReminder(enabled, trimmedTime);
-    if (isPlus) {
-      setMultipleReminders(reminders);
-    }
+    setMultipleReminders(reminders);
 
     const syncResult = await syncStudyReminders({
       enabled,
@@ -244,13 +243,12 @@ export default function ReminderSettingsScreen() {
             </ThemedText>
           </ThemedView>
 
-          {/* Multiple reminders — Plus */}
-          {isPlus ? (
+          {/* Multiple reminders — open to everyone. */}
+          {true ? (
             <ThemedView style={styles.section}>
               <ThemedView style={styles.sectionHeader}>
                 <ThemedText type="smallBold">
                   {t('reminder.extraReminders')}
-                  <ThemedText style={styles.plusTag}>  {t('common.plusLabel')}</ThemedText>
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   {reminders.length}/{MAX_EXTRA_REMINDERS}

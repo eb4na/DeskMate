@@ -29,6 +29,8 @@ import { ROOM_PAIRS } from '@/constants/room-data';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { BakeryColors } from '@/constants/theme';
 import '@/lib/notifications';
+import * as Notifications from 'expo-notifications';
+import { registerDmPush } from '@/lib/dm-push';
 import i18n, { useTranslation } from '@/i18n';
 
 // Memobun is locked to light mode (see hooks/use-color-scheme.ts). iOS enforces
@@ -96,6 +98,28 @@ function RootNavigator() {
 
   // Keep the tap-sound helper's gate in sync with the user's setting.
   useEffect(() => { setTapSoundEnabled(soundEffectsEnabled); }, [soundEffectsEnabled]);
+
+  // DM push: (re)claim this device's push token for the signed-in account, in the
+  // current app language (the server localizes invite/sticker notifications). Only
+  // registers when notification permission is already granted — the chat screen asks.
+  const { i18n: i18nInst } = useTranslation();
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    void registerDmPush(i18nInst.language || 'en');
+  }, [session?.user?.id, i18nInst.language]);
+
+  // Tapping a DM notification opens that conversation (also covers a cold start
+  // from the notification via useLastNotificationResponse).
+  const lastResponse = Notifications.useLastNotificationResponse();
+  const handledResponseId = useRef<string | null>(null);
+  useEffect(() => {
+    const data = lastResponse?.notification.request.content.data as { kind?: string; fromCode?: string } | undefined;
+    const id = lastResponse?.notification.request.identifier ?? null;
+    if (!data || data.kind !== 'dm' || !data.fromCode || !session?.user?.id) return;
+    if (handledResponseId.current === id) return;
+    handledResponseId.current = id;
+    router.push({ pathname: '/dm-chat', params: { code: data.fromCode } });
+  }, [lastResponse, session?.user?.id]);
   // Warm the audio session + first-heard sound pools while the launch loader is
   // still up, so the app's very first sound (button tap, companion pop, coin
   // chime after login) plays instantly instead of silently loading.
@@ -307,6 +331,7 @@ function RootNavigator() {
         <Stack.Screen name="reminder-settings" options={{ presentation: 'modal', title: t('screens.dailyReminder') }} />
         {/* Wave 2 modals */}
         <Stack.Screen name="add-task" options={{ presentation: 'modal', title: t('screens.task') }} />
+        <Stack.Screen name="import-syllabus" options={{ headerShown: false, gestureEnabled: false, animation: 'fade', presentation: 'transparentModal', contentStyle: { backgroundColor: 'transparent' } }} />
         {/* No native header: on iOS 26 a bar-button gets a glass capsule that reads
             as a raised chip, and react-native-screens exposes no way to turn it off.
             The screen draws its own flat Done instead — which is also what every

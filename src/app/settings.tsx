@@ -11,7 +11,7 @@ import { DeleteAccountModal } from '@/components/delete-account-modal';
 import { InstagramFollowRow } from '@/components/instagram-follow-row';
 import { PlusIcon } from '@/components/plus-icon';
 import { CoinIcon } from '@/components/coin-icon';
-import { EnvelopeIcon, ScrollSealIcon } from '@/components/settings-icons';
+import { EnvelopeIcon } from '@/components/settings-icons';
 import { fetchMail, fetchMailClaims } from '@/lib/mail';
 import { LockBadge } from '@/components/lock-badge';
 
@@ -65,6 +65,7 @@ function formatBirthday(iso: string): string {
 }
 import { BakeryColors, BakeryRadii, BakeryShadow, MaxContentWidth, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
+import Constants from 'expo-constants';
 
 type RowProps = {
   icon: string | ReactNode;
@@ -378,7 +379,7 @@ export default function SettingsScreen() {
               <>
                 <View style={styles.divider} />
                 <SettingRow
-                  icon={<LockIcon color={BakeryColors.jam} size={26} />}
+                  icon={<LockIcon color={BakeryColors.jam} size={22 * scale} />}
                   label={t('settings.changePassword')}
                   value={t('settings.changePasswordNote')}
                   onPress={openChangePassword}
@@ -412,7 +413,7 @@ export default function SettingsScreen() {
                   onPress={() => handleUpgrade('google')}
                   style={({ pressed }) => [styles.row, !upgrading && pressed && styles.rowPressed]}>
                   <View style={styles.rowIconImage}>
-                    <GoogleGIcon size={28} />
+                    <GoogleGIcon size={22 * scale} />
                   </View>
                   <View style={styles.rowBody}>
                     <ThemedText type="smallBold">{t('auth.continueWithGoogle')}</ThemedText>
@@ -427,7 +428,7 @@ export default function SettingsScreen() {
                   onPress={() => handleUpgrade('apple')}
                   style={({ pressed }) => [styles.row, !upgrading && pressed && styles.rowPressed]}>
                   <View style={styles.rowIconImage}>
-                    <AppleLogoIcon size={26} />
+                    <AppleLogoIcon size={22 * scale} />
                   </View>
                   <View style={styles.rowBody}>
                     <ThemedText type="smallBold">{t('auth.continueWithApple')}</ThemedText>
@@ -491,11 +492,11 @@ export default function SettingsScreen() {
                         style={({ pressed }) => [styles.row, !connected && pressed && styles.rowPressed]}>
                         <View style={styles.rowIconImage}>
                           {provider === 'apple' ? (
-                            <AppleLogoIcon size={30} />
+                            <AppleLogoIcon size={22 * scale} />
                           ) : provider === 'google' ? (
-                            <GoogleGIcon size={28} />
+                            <GoogleGIcon size={22 * scale} />
                           ) : (
-                            <EnvelopeIcon size={30} />
+                            <EnvelopeIcon size={22 * scale} />
                           )}
                         </View>
                         <View style={styles.rowBody}>
@@ -518,7 +519,7 @@ export default function SettingsScreen() {
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
             <SettingRow
-              icon={<PlusIcon size={26 * scale} />}
+              icon={<PlusIcon size={22 * scale} />}
               label={t('settings.plus')}
               value={isPlus ? t('settings.plusActive') : t('settings.freePlan')}
               badge={isPlus ? 'PLUS' : undefined}
@@ -532,13 +533,13 @@ export default function SettingsScreen() {
             {t('settings.secBalances')}
           </ThemedText>
           <ThemedView type="backgroundElement" style={styles.group}>
-            <SettingRow icon={<CoinIcon size={24 * scale} />} label={t('settings.focusCoins')} value={t('settings.coinsValue', { count: coins })} />
+            <SettingRow icon={<CoinIcon size={22 * scale} />} label={t('settings.focusCoins')} value={t('settings.coinsValue', { count: coins })} />
             {/* DEV-ONLY test button — gated behind __DEV__ so TestFlight / App Store
                 builds can't grant free coins. */}
             {__DEV__ && (
               <>
                 <View style={styles.divider} />
-                <SettingRow icon={<CoinIcon size={24 * scale} />} label="Give 1M coins (dev test)" onPress={() => devGrantCoins(1_000_000)} />
+                <SettingRow icon={<CoinIcon size={22 * scale} />} label="Give 1M coins (dev test)" onPress={() => devGrantCoins(1_000_000)} />
                 <View style={styles.divider} />
                 <SettingRow
                   icon={<Image source={require('@/assets/images/hanji/hanji.png')} style={{ width: 26 * scale, height: 26 * scale }} contentFit="contain" />}
@@ -563,13 +564,8 @@ export default function SettingsScreen() {
             <SettingRow
               icon={<SettingsIcon name="timer" />}
               label={t('settings.customTimer')}
-              value={isPlus ? t('settings.customTimerOn') : t('settings.plusFeature')}
-              lock={!isPlus}
-              onPress={() =>
-                isPlus
-                  ? router.push({ pathname: '/custom-timer', params: { from: 'settings' } })
-                  : router.push('/plus-upgrade')
-              }
+              value={t('settings.customTimerOn')}
+              onPress={() => router.push({ pathname: '/custom-timer', params: { from: 'settings' } })}
             />
             <View style={styles.divider} />
             <SettingRow
@@ -798,13 +794,13 @@ export default function SettingsScreen() {
             />
             <View style={styles.divider} />
             <SettingRow
-              icon={<ScrollSealIcon size={40} />}
+              icon={<SettingsIcon name="lock" />}
               label={t('settings.privacyTerms')}
               value={t('settings.privacyTermsDesc')}
               onPress={() => router.push('/legal')}
             />
             <View style={styles.divider} />
-            <SettingRow icon={<SettingsIcon name="info" />} label={t('settings.version')} value={t('settings.versionValue')} />
+            <SettingRow icon={<SettingsIcon name="info" />} label={t('settings.version')} value={`Memobun ${Constants.expoConfig?.version ?? ''}`.trim()} />
           </ThemedView>
 
           {/* Delete account — pinned to the very bottom of Settings (danger zone). */}

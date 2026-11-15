@@ -111,8 +111,11 @@ function formatTime(task: Pick<Task, 'dueTime' | 'notifyAt'>, use24Hour: boolean
 // lib/task-recurrence so the Home card answers "which day?" the same way.
 // `includeDone` is judged PER DAY: a repeating task crossed out on Monday is still
 // open on Tuesday, so it must keep showing up there.
+// Done tasks sink to the very bottom (stable sort, so open tasks keep their order).
 function tasksOnDay(tasks: Task[], iso: string, includeDone: boolean) {
-  return tasks.filter((t) => (includeDone || !isTaskDoneOn(t, iso)) && taskFallsOn(t, iso));
+  return tasks
+    .filter((t) => (includeDone || !isTaskDoneOn(t, iso)) && taskFallsOn(t, iso))
+    .sort((a, b) => Number(isTaskDoneOn(a, iso)) - Number(isTaskDoneOn(b, iso)));
 }
 
 function clampN(v: number, lo: number, hi: number) {
@@ -549,10 +552,13 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
 
   // Time-blocking agenda: tasks with a time laid out in chronological order (each
   // with its time in a left gutter), then the untimed ones grouped under "Anytime".
+  // Done tasks are pulled out of both groups and listed at the very bottom.
+  const isDone = (t: Task) => !!iso && isTaskDoneOn(t, iso);
   const timedTasks = dayTasks
-    .filter((t) => t.dueTime)
+    .filter((t) => t.dueTime && !isDone(t))
     .sort((a, b) => (a.dueTime ?? '').localeCompare(b.dueTime ?? ''));
-  const untimedTasks = dayTasks.filter((t) => !t.dueTime);
+  const untimedTasks = dayTasks.filter((t) => !t.dueTime && !isDone(t));
+  const doneTasks = dayTasks.filter(isDone);
 
   return (
     <Modal visible={!!iso} transparent animationType="fade" onRequestClose={onClose} onDismiss={runPendingNav}>
@@ -600,6 +606,22 @@ function DayTasksModal({ iso, onClose }: { iso: string | null; onClose: () => vo
                     <TaskPreviewCard key={t.id} task={t} occurrenceISO={iso!} onNavigate={navigateAfterClose} />
                   ))}
                 </View>
+              )}
+              {/* Done tasks — always last, whether timed or not. Timed ones keep
+                  their time gutter so the column still lines up. */}
+              {doneTasks.map((t) =>
+                t.dueTime ? (
+                  <View key={t.id} style={styles.agendaRow}>
+                    <Text style={styles.agendaTime}>{formatTimeLabel(t.dueTime, use24HourTime)}</Text>
+                    <View style={styles.agendaCard}>
+                      <TaskPreviewCard task={t} occurrenceISO={iso!} onNavigate={navigateAfterClose} />
+                    </View>
+                  </View>
+                ) : (
+                  <View key={t.id} style={[styles.agendaUntimed, timedTasks.length + doneTasks.filter((d) => d.dueTime).length > 0 && styles.agendaUntimedIndent]}>
+                    <TaskPreviewCard task={t} occurrenceISO={iso!} onNavigate={navigateAfterClose} />
+                  </View>
+                ),
               )}
             </ScrollView>
           )}
@@ -833,22 +855,28 @@ const WEEK_AHEAD_DAYS = 7;
 function WeekAheadStrip() {
   const { tasks, examCountdowns, subjects } = useApp();
 
-  const days = useMemo(() => {
+  const days_ = useMemo(() => {
     const start = todayISO();
     const out: { iso: string; dayTasks: Task[]; dayExams: typeof examCountdowns }[] = [];
+    // Finished tasks leave their day card and collect in one "Done" card at the very
+    // bottom of the strip, so what's still left to do is always on top.
+    const done: { iso: string; task: Task }[] = [];
     for (let i = 0; i < WEEK_AHEAD_DAYS; i++) {
       // Pure UTC calendar math on the ISO string, the way the rest of this file
       // shifts dates — a local Date would slide a day for anyone east of UTC.
       const [y, m, d] = start.split('-').map(Number);
       const iso = new Date(Date.UTC(y, m - 1, d) + i * 86400000).toISOString().split('T')[0];
-      const dayTasks = tasksOnDay(tasks, iso, true);
+      const all = tasksOnDay(tasks, iso, true);
+      const dayTasks = all.filter((t) => !isTaskDoneOn(t, iso));
+      all.filter((t) => isTaskDoneOn(t, iso)).forEach((task) => done.push({ iso, task }));
       const dayExams = examCountdowns.filter((e) => e.dateISO.slice(0, 10) === iso);
       if (dayTasks.length || dayExams.length) out.push({ iso, dayTasks, dayExams });
     }
-    return out;
+    return { days: out, done };
   }, [tasks, examCountdowns]);
+  const { days, done } = days_;
 
-  if (days.length === 0) {
+  if (days.length === 0 && done.length === 0) {
     return (
       <View style={styles.card}>
         <PlannerPaper radius={BakeryRadii.panel} />
@@ -883,6 +911,20 @@ function WeekAheadStrip() {
           </View>
         </View>
       ))}
+      {done.length > 0 && (
+        <View style={styles.card}>
+          <PlannerPaper radius={BakeryRadii.panel} />
+          <TapeLabel>{i18n.t('tasks.done')}</TapeLabel>
+          <View style={styles.previewList}>
+            {done.map(({ iso, task }) => (
+              <View key={`${task.id}_${iso}`} style={styles.searchResult}>
+                <Text style={styles.searchResultDate}>{longLabel(iso)}</Text>
+                <TaskPreviewCard task={task} occurrenceISO={iso} />
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
     </View>
   );
 }

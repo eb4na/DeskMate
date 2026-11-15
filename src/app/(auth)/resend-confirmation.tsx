@@ -18,6 +18,7 @@ import { supabase } from '@/lib/supabase';
 import { showPopup } from '@/lib/popup';
 import { useTranslation } from '@/i18n';
 import { useTheme } from '@/hooks/use-theme';
+import { BackButton } from '@/components/back-button';
 
 export default function ResendConfirmationScreen() {
   const { continueAsGuest } = useAuth();
@@ -138,11 +139,7 @@ export default function ResendConfirmationScreen() {
             </ThemedView>
 
             <ThemedView style={styles.linkActions}>
-              <Pressable onPress={() => router.replace('/login')} style={styles.linkRow}>
-                <ThemedText type="smallBold" style={styles.linkText}>
-                  {t('auth.backToLogin')}
-                </ThemedText>
-              </Pressable>
+              <BackButton label={t('auth.backToLogin')} variant="outline" onPress={() => router.replace('/login')} />
               <Pressable onPress={handleGuest} style={styles.linkRow}>
                 <ThemedText type="smallBold" style={styles.linkText}>
                   {t('auth.continueAsGuest')}

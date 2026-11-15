@@ -121,14 +121,12 @@ export default function NextSessionScreen() {
                   <Text style={styles.optBtnText}>{t('studyRoom.minutesOption', { count: opt.minutes })}</Text>
                 </SoundPressable>
               ))}
-              {/* Custom length is a Plus perk (same as the lobby's custom timer). */}
-              {isPlus && (
-                <SoundPressable
-                  onPress={() => setCustomOpen(true)}
-                  style={({ pressed }) => [styles.optBtn, pressed && styles.pressed]}>
-                  <Text style={styles.optBtnText}>{t('lobby.customLength')}</Text>
-                </SoundPressable>
-              )}
+              {/* Custom length — open to everyone. */}
+              <SoundPressable
+                onPress={() => setCustomOpen(true)}
+                style={({ pressed }) => [styles.optBtn, pressed && styles.pressed]}>
+                <Text style={styles.optBtnText}>{t('lobby.customLength')}</Text>
+              </SoundPressable>
             </>
           )}
         </View>

@@ -17,6 +17,7 @@ import { DailyRewardModal } from '@/components/daily-reward-modal';
 import { StreakRescueModal } from '@/components/streak-rescue-modal';
 import { BirthdayRewardModal } from '@/components/birthday-reward-modal';
 import { TicketRewardModal } from '@/components/ticket-reward-modal';
+import { AppUpdatePrompt } from '@/components/app-update-prompt';
 import { BondLevelUpModal } from '@/components/bond-levelup-modal';
 import { useStudyRoom } from '@/lib/use-study-room';
 import { BakeryGearEmoji } from '@/components/bakery-emoji';
@@ -1529,6 +1530,7 @@ export default function HomeScreen() {
       {homeFocused && !activeSession && <DailyRewardModal />}
       {homeFocused && !activeSession && <BirthdayRewardModal />}
       {homeFocused && !activeSession && <TicketRewardModal />}
+      {homeFocused && !activeSession && <AppUpdatePrompt />}
       {homeFocused && !activeSession && <BondLevelUpModal />}
       {/* Coachmark tour is painted at the root (TutorialPortal) so it sits above
           the tab bar — its visibility is driven by the effect above via the signal. */}

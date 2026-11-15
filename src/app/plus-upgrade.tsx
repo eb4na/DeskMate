@@ -45,6 +45,8 @@ const FEATURES: {
   // ── Study features ──
   { titleKey: 'plus.f_streakFreezes', descKey: 'plus.f_streakFreezesDesc', art: require('@/assets/images/home/streak-freeze-icon.png') },
   { titleKey: 'plus.f_ambience', descKey: 'plus.f_ambienceDesc', art: require('@/assets/images/shop/icon-sound.png') },
+  { titleKey: 'plus.f_disco', descKey: 'plus.f_discoDesc', disco: true },
+  { titleKey: 'plus.f_hostRoom', descKey: 'plus.f_hostRoomDesc', art: require('@/assets/images/shop/icon-buddy-cartoon.png') },
   // Spotify itself is available to ALL users regardless of Plus, so connecting an
   // account isn't advertised here — but disco ("Spotify background"), the scene it
   // drives, IS Plus-only and is listed below. Exam countdowns, tasks and SUBJECTS
@@ -52,6 +54,7 @@ const FEATURES: {
   // ── Looks (kept forever / while subscribed) ──
   { titleKey: 'plus.f_berryPrincess', descKey: 'plus.f_berryPrincessDesc', art: require('@/assets/images/bunny/bunny-royal.png'), noteKey: 'plus.noteKeep', noteKind: 'keep' },
   { titleKey: 'plus.f_goldenTeahouse', descKey: 'plus.f_goldenTeahouseDesc', art: require('@/assets/images/backgrounds/strawberry-palace.png'), noteKey: 'plus.noteKeep', noteKind: 'keep' },
+  { titleKey: 'plus.f_avatarFrame', descKey: 'plus.f_avatarFrameDesc', crown: true, noteKey: 'plus.noteExpire', noteKind: 'expire' },
   { titleKey: 'plus.f_cardColor', descKey: 'plus.f_cardColorDesc', cardColor: true, noteKey: 'plus.noteExpire', noteKind: 'expire' },
 ];
 

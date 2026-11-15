@@ -261,9 +261,6 @@ export default function WeeklyReportScreen() {
             </ThemedView>
           </ThemedView>
 
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <ThemedText type="linkPrimary">{t('weeklyReport.backToProgress')}</ThemedText>
-          </Pressable>
         </SafeAreaView>
       </ScrollView>
     </ThemedView>

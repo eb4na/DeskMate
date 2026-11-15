@@ -12,6 +12,7 @@ import { useTranslation } from '@/i18n';
 import { staticImageFor, BUN_SKINS, getCompanionSkins, isSkinShopObtainable, localizeCompanionName, localizeOutfitName, OFFERED_STARTER_CHOICES } from '@/lib/companion-utils';
 import { showLoadingScreen } from '@/lib/loading-signal';
 import { playSwoosh, playTapConfirm } from '@/lib/sounds';
+import { BackButton } from '@/components/back-button';
 
 // Per-character tagline i18n keys (shared with the gallery), keyed by the
 // canonical English name in OFFERED_STARTER_CHOICES.
@@ -285,9 +286,7 @@ export function StarterChooser() {
               style={({ pressed }) => [styles.confirmBtn, styles.confirmYesBtn, pressed && styles.pressed]}>
               <Text style={styles.confirmText}>{t('starter.confirmYes')}</Text>
             </Pressable>
-            <Pressable onPress={() => setConfirmOpen(false)} hitSlop={8} style={({ pressed }) => [pressed && styles.pressed]}>
-              <Text style={styles.confirmBackText}>{t('starter.confirmBack')}</Text>
-            </Pressable>
+            <BackButton label={t('starter.confirmBack')} variant="outline" onPress={() => setConfirmOpen(false)} />
           </Pressable>
         </Pressable>
       )}

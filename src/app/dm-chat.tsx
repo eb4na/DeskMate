@@ -37,6 +37,8 @@ import { BREAK_GAME_ENABLED } from '@/constants/placeholder-data';
 import { EMOTES, EMOTE_FALLBACK_BODY, emoteLabelKey, findEmote, type EmoteId } from '@/constants/emotes';
 import { BakeryColors, BakeryRadii, MaxContentWidth, MIN_POPUP_WIDTH, popupMaxWidth, Spacing } from '@/constants/theme';
 import { useReportModalTransition } from '@/lib/modal-traffic';
+import { registerDmPush, setOpenDmChat } from '@/lib/dm-push';
+import i18nForPush from '@/i18n';
 
 const C = BakeryColors;
 
@@ -150,6 +152,16 @@ export default function DmChatScreen() {
 
   const scrollToEnd = () =>
     requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+
+  // While this chat is open, DMs from this friend don't banner. Opening a chat is
+  // also where we ask for notification permission (in context, never on launch), so
+  // replies can reach you after you leave.
+  useEffect(() => {
+    if (!code) return;
+    setOpenDmChat(code);
+    void registerDmPush(i18nForPush.language || 'en', { ask: true });
+    return () => setOpenDmChat(null);
+  }, [code]);
 
   // Online presence dot for this friend.
   useEffect(() => {

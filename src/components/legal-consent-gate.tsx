@@ -13,6 +13,7 @@ import { LegalDocument } from '@/components/legal-document';
 import { getEffectiveDate, getLegalDoc, MINIMUM_AGE } from '@/constants/legal';
 import { Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTranslation } from '@/i18n';
+import { BackButton } from '@/components/back-button';
 
 const BAKERY_BG = require('@/assets/images/backgrounds/bakery-menu.png');
 
@@ -137,9 +138,7 @@ export function LegalConsentGate({ onAgree }: { onAgree: () => void }) {
         </ScrollView>
 
         <View style={styles.footerBtns}>
-          <Pressable onPress={() => setStep('legal')} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}>
-            <Text style={styles.backBtnText}>{t('common.back')}</Text>
-          </Pressable>
+          <BackButton label={t('common.back')} variant="outline" onPress={() => setStep('legal')} style={{ alignSelf: 'auto' }} />
           <Pressable
             disabled={!ready}
             onPress={() => onAgree()}

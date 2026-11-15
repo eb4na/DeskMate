@@ -841,9 +841,7 @@
     "statusDone": "Done",
     "dueDateOptional": "Due date (optional)",
     "pickDate": "Pick date",
-    "moveThisDay": "Move only this day",
-    "moveThisDayHint": "Moves just {{date}}. The rest of the repeat stays the same.",
-    "moveConfirm": "Move",
+    "moveThisDayHint": "Changing the date moves only {{date}}. The rest of the repeat stays the same.",
     "noDueDate": "No due date",
     "noDueDateSelected": "No due date selected.",
     "pickTime": "Set a time",
@@ -1411,6 +1409,7 @@
     "guestGateBody": "Create a free account to get matched with a study buddy."
   },
   "screens": {
+    "importSyllabus": "Import syllabus",
     "addExamCountdown": "Add exam countdown",
     "dailyReminder": "Daily reminder",
     "task": "Task",
@@ -1478,7 +1477,7 @@
     "f_customTimers": "Custom timers",
     "f_customTimersDesc": "Any duration, saved presets",
     "f_multiReminders": "Multiple reminders",
-    "f_multiRemindersDesc": "Weekday/weekend schedules, custom messages",
+    "f_multiRemindersDesc": "Set several daily study reminders, weekdays only if you like",
     "f_unlimitedExams": "More exam countdowns",
     "f_unlimitedExamsDesc": "Up to 50 exams (3 on the free plan), plus advanced planning fields",
     "f_moreSubjects": "More subjects",
@@ -1493,6 +1492,8 @@
     "f_spotifyDesc": "Play your own Spotify playlists while you study",
     "f_disco": "Disco mode",
     "f_discoDesc": "Turn your study room into a glowing disco scene set to your music",
+    "f_hostRoom": "Study room host perks",
+    "f_hostRoomDesc": "Set break times for your whole study room, and share your study sound and disco scene with everyone",
     "f_exclusiveSkin": "Exclusive Meruru outfit",
     "f_exclusiveSkinDesc": "Get the royal Berry Princess Meruru skin free the moment you go Plus",
     "f_berryPrincess": "Berry Princess Bunny outfit",
@@ -2123,6 +2124,8 @@
     }
   },
   "skinLores": {
+    "bun_heartcore": "She found the dress in the back of a shop that smelled like old paper, and she knew before she touched it that it was hers — black ribbon, silver buckles, pink in the hair like frosting on something burnt. Everyone she passed on the way home had an opinion. She heard none of them clearly, which was the point.\n\nPeople called the look sharp, or sad, or too much, and she let them. The truth was gentler than any of that: she had spent a long time being whatever was easiest to be around, and the bows and buckles were simply the first thing she had ever picked for no one but herself. She still said please and thank you. She still cried at films. She just did it in boots now.",
+    "bun_starry": "When the bakery lights went out and the ovens cooled, she traded her apron for a nightgown stitched with little stars. She kept a sleep cap by the window and a wand she swore could tidy a dream, though it mostly just caught the moonlight and threw it around the room.\n\nShe liked the quiet hours best. The flour settled, the kettle stopped ticking, and the whole shop seemed to breathe out at once. She would wander from room to room turning lamps down one by one, and whatever worry had followed her through the day usually gave up somewhere along the way and went to sleep first.",
     "bun_classic": "Every morning, Meruru opened the little bakery before the sun had fully stretched across the windows. She tied her frilly apron, dusted flour from the counter, and greeted the day as if it were an old friend coming home. The shop always smelled like strawberries and warm bread, and somehow Meruru made it feel as though the whole world had been waiting outside just to be let in.\n\nBy noon, the café would be glowing with chatter, teacups, and the soft clink of forks against plates. Meruru never let anyone sit alone for long. She remembered favorite orders, pulled out chairs before people asked, and served each slice of cake with the same bright smile. In her little corner of the world, sweetness was not only in the pastries — it was in being welcomed so warmly that even ordinary afternoons felt special.",
     "bun_angel": "High above the clouds, Meruru drifted quietly through a pale white sky, her little wings hardly making a sound. She was the kind of angel who did not arrive with thunder or bright trumpets, but with a softness so gentle it could settle beside sadness without frightening it away. One evening, she found a small boy sitting alone under a bare tree, crying so hard he could barely breathe.\n\nHe had lost his brother not long before, and every day since then had felt too quiet, too empty, too cold. Meruru sat beside him without a word at first. She wrapped one wing around his shoulders and handed him a tiny warm bun shaped like a star. Then she told him that love does not vanish just because someone is gone — sometimes it stays behind in the habits they taught you, the laughter you still remember, the feeling of being looked after when no one is there. By the time the boy stood to leave, his tears had not disappeared, but they had softened. And Meruru stayed behind just long enough to watch him walk home carrying a little more light than before.",
     "bun_strawberry": "In the Strawberry Palace, mornings began not with court music, but with the scent of sponge cake rising from the royal ovens. Princess Meruru lived the life expected of her — silk dresses, polished crowns, a garden full of strawberry roses — but she loved the palace bakery more than the throne room. While others studied royal etiquette, she slipped into the kitchens to taste jams, arrange pastries, and ask the bakers if the shortcakes needed more cream.\n\nHer days were filled with the gentle rhythm of a bakery kingdom. She greeted visitors in lace gloves dusted with sugar, held afternoon tea in halls lined with pink velvet, and made sure every celebration came with something sweet. Even the palace decrees were charming in her hands: extra strawberries at festival time, free pastries for tired workers, and warm bread delivered to anyone who seemed lonely. Meruru wore her crown as naturally as a ribbon, ruling not with grandeur, but with the quiet certainty that a kingdom should feel as welcoming as home.",
@@ -2159,5 +2162,41 @@
     "lost": "Lost",
     "frustrated": "Frustrated",
     "down": "Down"
+  },
+  "appUpdate": {
+    "title": "New update available",
+    "message": "A new version of Memobun is ready with new features and fixes. Update now to get the latest!",
+    "updateNow": "Update now",
+    "later": "Later"
+  },
+  "syllabus": {
+    "button": "Import syllabus",
+    "buttonHint": "Get exams and due dates from your syllabus",
+    "intro": "Pull exams and due dates out of your syllabus. It's read right on your phone — nothing is uploaded.",
+    "uploadPdf": "Upload PDF",
+    "takePhoto": "Take a photo",
+    "choosePhoto": "Choose a photo",
+    "pasteText": "Paste text",
+    "pasteHint": "Copy the schedule from your syllabus and paste it here.",
+    "pastePlaceholder": "e.g. Oct 12 – Midterm exam",
+    "findDates": "Find dates",
+    "reading": "Reading your syllabus…",
+    "needsUpdate": "Update Memobun to upload a PDF or photo. Pasting text works now.",
+    "cameraDenied": "Allow camera access for Memobun in Settings to take a photo.",
+    "readFailed": "Couldn't read that. Try a clearer photo, or paste the text instead.",
+    "noneFound": "No dates found. Try a clearer photo, paste the text, or add items by hand.",
+    "found_one": "Found {{count}} date. Check it before adding — tap the date to change it.",
+    "found_other": "Found {{count}} dates. Check them before adding — tap a date to change it.",
+    "subjectForAll": "Subject (for everything)",
+    "exam": "Exam",
+    "task": "Due date",
+    "addCount_one": "Add {{count}} item",
+    "addCount_other": "Add {{count}} items",
+    "startOver": "Start over",
+    "addedTitle": "Added to your planner",
+    "addedMsg_one": "{{count}} item was added.",
+    "addedMsg_other": "{{count}} items were added.",
+    "examsSkipped_one": "{{count}} exam was skipped because you've reached the exam limit.",
+    "examsSkipped_other": "{{count}} exams were skipped because you've reached the exam limit."
   }
 }

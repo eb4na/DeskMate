@@ -841,9 +841,7 @@
     "statusDone": "Hecho",
     "dueDateOptional": "Fecha límite (opcional)",
     "pickDate": "Elegir fecha",
-    "moveThisDay": "Mover solo este día",
-    "moveThisDayHint": "Mueve solo el {{date}}. El resto de la repetición no cambia.",
-    "moveConfirm": "Mover",
+    "moveThisDayHint": "Cambiar la fecha mueve solo el {{date}}. El resto de la repetición no cambia.",
     "noDueDate": "Sin fecha límite",
     "noDueDateSelected": "No se ha seleccionado fecha límite.",
     "pickTime": "Poner una hora",
@@ -1411,6 +1409,7 @@
     "guestGateBody": "Crea una cuenta gratis para emparejarte con un compañero de estudio."
   },
   "screens": {
+    "importSyllabus": "Importar programa",
     "addExamCountdown": "Añadir cuenta atrás de examen",
     "dailyReminder": "Recordatorio diario",
     "task": "Tarea",
@@ -1478,7 +1477,7 @@
     "f_customTimers": "Temporizadores personalizados",
     "f_customTimersDesc": "Cualquier duración, ajustes guardados",
     "f_multiReminders": "Varios recordatorios",
-    "f_multiRemindersDesc": "Horarios de entre semana/fin de semana, mensajes personalizados",
+    "f_multiRemindersDesc": "Pon varios recordatorios diarios para estudiar, solo entre semana si quieres",
     "f_unlimitedExams": "Más cuentas atrás de exámenes",
     "f_unlimitedExamsDesc": "Hasta 50 exámenes (3 en el plan gratuito), además de campos avanzados de planificación",
     "f_moreSubjects": "Más asignaturas",
@@ -1493,6 +1492,8 @@
     "f_spotifyDesc": "Reproduce tus propias listas de Spotify mientras estudias",
     "f_disco": "Modo disco",
     "f_discoDesc": "Convierte tu sala de estudio en una escena disco que brilla con tu música",
+    "f_hostRoom": "Ventajas de anfitrión",
+    "f_hostRoomDesc": "Elige los descansos de toda tu sala de estudio y comparte tu sonido de estudio y el modo disco con todos",
     "f_exclusiveSkin": "Atuendo exclusivo de Meruru",
     "f_exclusiveSkinDesc": "Consigue el aspecto Princesa Fresa de Meruru gratis en cuanto te hagas Premium",
     "f_berryPrincess": "Atuendo Princesa Berry de Conejo",
@@ -2123,6 +2124,8 @@
     }
   },
   "skinLores": {
+    "bun_heartcore": "Encontró el vestido al fondo de una tienda que olía a papel viejo, y supo antes de tocarlo que era suyo: cinta negra, hebillas plateadas, rosa en el pelo como glaseado sobre algo quemado. Todas las personas con las que se cruzó de camino a casa tenían una opinión. No oyó ninguna con claridad, y de eso se trataba.\n\nLa gente decía que el look era atrevido, o triste, o demasiado, y ella los dejaba hablar. La verdad era más tierna que todo eso: había pasado mucho tiempo siendo lo que resultaba más cómodo para los demás, y los lazos y las hebillas eran simplemente lo primero que había elegido solo para ella. Seguía diciendo por favor y gracias. Seguía llorando con las películas. Solo que ahora lo hacía con botas.",
+    "bun_starry": "Cuando se apagaban las luces de la pastelería y los hornos se enfriaban, cambiaba el delantal por un camisón bordado con estrellitas. Guardaba un gorro de dormir junto a la ventana y una varita que, según ella, podía ordenar un sueño, aunque casi siempre solo atrapaba la luz de la luna y la esparcía por la habitación.\n\nLas horas tranquilas eran sus favoritas. La harina se posaba, la tetera dejaba de hacer tic, y toda la tienda parecía soltar el aire a la vez. Iba de habitación en habitación bajando las lámparas una a una, y cualquier preocupación que la hubiera seguido durante el día solía rendirse por el camino y quedarse dormida antes que ella.",
     "bun_classic": "Cada mañana, Meruru abría la pequeña pastelería antes de que el sol terminara de estirarse por las ventanas. Se ataba su delantal de volantes, sacudía la harina del mostrador y saludaba al día como a un viejo amigo que vuelve a casa. La tienda siempre olía a fresas y a pan calentito, y de algún modo Meruru hacía sentir que el mundo entero había estado esperando fuera solo para que lo dejaran entrar.\n\nAl mediodía, el café brillaba con charlas, tazas de té y el suave tintineo de los tenedores contra los platos. Meruru nunca dejaba que nadie se sentara solo mucho tiempo. Recordaba los pedidos favoritos, apartaba las sillas antes de que se lo pidieran y servía cada porción de tarta con la misma sonrisa luminosa. En su rinconcito del mundo, la dulzura no estaba solo en los pasteles: estaba en ser recibido con tanto cariño que hasta las tardes corrientes se volvían especiales.",
     "bun_angel": "Muy por encima de las nubes, Meruru flotaba en silencio por un cielo blanco y pálido, con sus alitas apenas haciendo ruido. Era la clase de ángel que no llegaba con truenos ni trompetas brillantes, sino con una suavidad tan delicada que podía sentarse junto a la tristeza sin espantarla. Una tarde encontró a un niño pequeño sentado solo bajo un árbol desnudo, llorando tan fuerte que apenas podía respirar.\n\nHacía poco que había perdido a su hermano, y desde entonces cada día se sentía demasiado silencioso, demasiado vacío, demasiado frío. Meruru se sentó a su lado sin decir nada al principio. Lo envolvió con un ala y le puso en las manos un panecillo tibio con forma de estrella. Luego le dijo que el amor no desaparece solo porque alguien se haya ido: a veces se queda en las costumbres que te enseñó, en la risa que aún recuerdas, en la sensación de estar cuidado cuando no hay nadie. Cuando el niño se levantó para irse, sus lágrimas no habían desaparecido, pero se habían vuelto más suaves. Y Meruru se quedó justo el tiempo necesario para verlo caminar a casa llevando un poco más de luz que antes.",
     "bun_strawberry": "En el Palacio de Fresa, las mañanas no empezaban con música de corte, sino con el aroma del bizcocho subiendo desde los hornos reales. La princesa Meruru vivía la vida que se esperaba de ella —vestidos de seda, coronas relucientes, un jardín lleno de rosas de fresa—, pero amaba la pastelería del palacio más que la sala del trono. Mientras otros estudiaban etiqueta real, ella se escabullía a las cocinas a probar mermeladas, ordenar pasteles y preguntar a los panaderos si las tartas necesitaban más nata.\n\nSus días estaban llenos del ritmo amable de un reino de pastelería. Recibía a los visitantes con guantes de encaje espolvoreados de azúcar, ofrecía el té de la tarde en salones forrados de terciopelo rosa y se aseguraba de que toda celebración llegara con algo dulce. Hasta los decretos del palacio eran encantadores en sus manos: fresas extra en tiempos de fiesta, pasteles gratis para los trabajadores cansados y pan calentito para quien pareciera solo. Meruru llevaba la corona con la naturalidad de un lazo, y gobernaba no con grandeza, sino con la tranquila certeza de que un reino debería sentirse tan acogedor como un hogar.",
@@ -2159,5 +2162,41 @@
     "lost": "Perdido",
     "frustrated": "Frustrado",
     "down": "Decaído"
+  },
+  "appUpdate": {
+    "title": "Nueva actualización disponible",
+    "message": "Ya está lista una nueva versión de Memobun con novedades y mejoras. ¡Actualiza ahora para tener lo último!",
+    "updateNow": "Actualizar ahora",
+    "later": "Más tarde"
+  },
+  "syllabus": {
+    "button": "Importar programa",
+    "buttonHint": "Saca exámenes y entregas de tu programa",
+    "intro": "Saca los exámenes y las fechas de entrega de tu programa. Se lee en tu teléfono: no se sube nada.",
+    "uploadPdf": "Subir PDF",
+    "takePhoto": "Hacer una foto",
+    "choosePhoto": "Elegir una foto",
+    "pasteText": "Pegar texto",
+    "pasteHint": "Copia el calendario de tu programa y pégalo aquí.",
+    "pastePlaceholder": "p. ej. 12 oct – Examen parcial",
+    "findDates": "Buscar fechas",
+    "reading": "Leyendo tu programa…",
+    "needsUpdate": "Actualiza Memobun para subir un PDF o una foto. Pegar texto ya funciona.",
+    "cameraDenied": "Permite el acceso a la cámara para Memobun en Ajustes para hacer una foto.",
+    "readFailed": "No se pudo leer. Prueba con una foto más clara o pega el texto.",
+    "noneFound": "No se encontraron fechas. Prueba con una foto más clara, pega el texto o añádelas a mano.",
+    "found_one": "Se encontró {{count}} fecha. Revísala antes de añadir: toca la fecha para cambiarla.",
+    "found_other": "Se encontraron {{count}} fechas. Revísalas antes de añadir: toca una fecha para cambiarla.",
+    "subjectForAll": "Asignatura (para todo)",
+    "exam": "Examen",
+    "task": "Entrega",
+    "addCount_one": "Añadir {{count}} elemento",
+    "addCount_other": "Añadir {{count}} elementos",
+    "startOver": "Empezar de nuevo",
+    "addedTitle": "Añadido a tu agenda",
+    "addedMsg_one": "Se añadió {{count}} elemento.",
+    "addedMsg_other": "Se añadieron {{count}} elementos.",
+    "examsSkipped_one": "Se omitió {{count}} examen porque alcanzaste el límite de exámenes.",
+    "examsSkipped_other": "Se omitieron {{count}} exámenes porque alcanzaste el límite de exámenes."
   }
 }

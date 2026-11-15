@@ -2,15 +2,21 @@ import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
 import type { ReminderEntry } from '@/context/app-context';
+import { isDmFromOpenChat } from '@/lib/dm-push';
 import { pickReminderLines } from '@/constants/companion-reminder-lines';
 
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
+  // A DM from the friend whose chat is already open shows up in the thread itself —
+  // don't also banner it.
+  handleNotification: async (n) => {
+    const quiet = isDmFromOpenChat(n.request.content.data);
+    return {
+      shouldPlaySound: !quiet,
+      shouldSetBadge: false,
+      shouldShowBanner: !quiet,
+      shouldShowList: !quiet,
+    };
+  },
 });
 
 const STUDY_REMINDER_CHANNEL_ID = 'study-reminders';

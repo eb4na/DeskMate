@@ -20,7 +20,29 @@ module.exports = function withIosGoogleSigninModularHeaders(config) {
     'ios',
     (config) => {
       const podfilePath = path.join(config.modRequest.platformProjectRoot, 'Podfile');
-      const contents = fs.readFileSync(podfilePath, 'utf8');
+      let contents = fs.readFileSync(podfilePath, 'utf8');
+      // With Expo modules built from source (usePrecompiledModules: false),
+      // RNGoogleSignin's podspec says iOS 15.1 but its Expo adapter imports
+      // ExpoModulesCore (16.4) — Swift refuses to compile that. Raise any pod below
+      // the app's 16.4 floor to 16.4 after install. Idempotent via the marker.
+      const DT_MARKER = '# [memobun] min pod deployment target';
+      if (!contents.includes(DT_MARKER)) {
+        const rnPostInstall = /(    react_native_post_install\([\s\S]*?\n    \)\n)/;
+        if (!rnPostInstall.test(contents)) {
+          throw new Error('with-ios-google-signin-modular-headers: could not find react_native_post_install in the Podfile');
+        }
+        contents = contents.replace(
+          rnPostInstall,
+          `$1    ${DT_MARKER}\n` +
+            `    installer.pods_project.targets.each do |t|\n` +
+            `      t.build_configurations.each do |c|\n` +
+            `        dt = c.build_settings['IPHONEOS_DEPLOYMENT_TARGET']\n` +
+            `        c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.4' if dt && Gem::Version.new(dt) < Gem::Version.new('16.4')\n` +
+            `      end\n` +
+            `    end\n`,
+        );
+        fs.writeFileSync(podfilePath, contents);
+      }
       if (contents.includes("pod 'GoogleUtilities', :modular_headers => true")) {
         return config; // already injected
       }

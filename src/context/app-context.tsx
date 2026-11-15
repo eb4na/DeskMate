@@ -2383,13 +2383,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const src = s.tasks.find((t) => t.id === id);
     if (!src?.repeatDays?.length) return false;
     const newId = uid();
-    // A custom reminder keeps its lead time: shift it by the same number of days.
     const dayMs = new Date(`${toISO}T00:00:00`).getTime() - new Date(`${fromISO}T00:00:00`).getTime();
-    const notifyAt = src.notifyAt ? new Date(new Date(src.notifyAt).getTime() + dayMs).toISOString() : null;
     setS((prev) => {
       if (prev.tasks.length >= MAX_TASKS) return prev;
       const series = prev.tasks.find((t) => t.id === id);
       if (!series) return prev;
+      // A custom reminder keeps its lead time: shift it by the same number of days.
+      // Read from `prev` so an edit saved just before this call is respected.
+      const notifyAt = series.notifyAt ? new Date(new Date(series.notifyAt).getTime() + dayMs).toISOString() : null;
       const copy: Task = {
         ...series,
         id: newId,

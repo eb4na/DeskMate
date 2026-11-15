@@ -18,6 +18,7 @@ import { supabase } from '@/lib/supabase';
 import { showPopup } from '@/lib/popup';
 import { useTranslation } from '@/i18n';
 import { useTheme } from '@/hooks/use-theme';
+import { BackButton } from '@/components/back-button';
 
 type VerifyMode = 'login' | 'signup';
 
@@ -231,11 +232,7 @@ export default function VerifyCodeScreen() {
                   </ThemedText>
                 </Pressable>
               ) : null}
-              <Pressable onPress={() => router.back()} style={styles.linkRow}>
-                <ThemedText type="smallBold" style={styles.linkText}>
-                  {t('common.back')}
-                </ThemedText>
-              </Pressable>
+              <BackButton label={t('common.back')} variant="outline" onPress={() => router.back()} />
               <Pressable onPress={handleGuest} style={styles.linkRow}>
                 <ThemedText type="smallBold" style={styles.linkText}>
                   {t('auth.continueAsGuest')}

@@ -11,6 +11,7 @@ import { useApp } from '@/context/app-context';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { useTranslation } from '@/i18n';
 import { BakeryColors, BakeryRadii, BakeryShadow, Spacing } from '@/constants/theme';
+import { BackButton } from '@/components/back-button';
 
 const BUN_STUDYING = require('@/assets/images/bun/bun-studying.png');
 const DESK = require('@/assets/images/home/desk-new.png');
@@ -80,9 +81,12 @@ export default function StudyDeskScreen() {
         <Pressable onPress={() => setPickerOpen(true)} style={({ pressed }) => [styles.cta, tw('cta'), pressed && styles.pressed]}>
           <Text style={styles.ctaText}>{t('studyDesk.pickWhenReady')}</Text>
         </Pressable>
-        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} style={[styles.backLink, tw('backLink')]} hitSlop={8}>
-          <Text style={styles.backText}>{t('common.back')}</Text>
-        </Pressable>
+        <BackButton
+          label={t('common.back')}
+          variant="outline"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+          style={[styles.backLink, tw('backLink')]}
+        />
       </SafeAreaView>
 
       <SubjectPickerModal visible={pickerOpen} title={t('studyDesk.readyToStudy')} onPick={start} onClose={() => setPickerOpen(false)} />
@@ -110,7 +114,7 @@ const styles = StyleSheet.create({
     ...BakeryShadow,
   },
   ctaText: { fontSize: 16, fontWeight: '900', color: '#fff' },
-  backLink: { alignSelf: 'center', paddingVertical: Spacing.two, marginBottom: Spacing.one },
+  backLink: { alignSelf: 'stretch', marginTop: Spacing.two, marginBottom: Spacing.one },
   backText: { fontSize: 13, fontWeight: '700', color: C.mocha, textDecorationLine: 'underline' },
   pressed: { opacity: 0.85 },
 });

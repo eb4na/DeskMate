@@ -1643,8 +1643,8 @@ export function StudyRoomView({
                     <Text style={styles.finishBtnText}>{t('studyRoom.minutesOption', { count: opt.minutes })}</Text>
                   </Pressable>
                 ))}
-                {/* Custom length is a Plus perk (same as the lobby's custom timer). */}
-                {isPlus && (
+                {/* Custom length — open to everyone. */}
+                {true && (
                   <SoundPressable
                     onPress={() => setRestartCustomOpen(true)}
                     style={({ pressed }) => [styles.finishBtn, pressed && styles.pressed]}>
