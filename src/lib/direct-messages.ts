@@ -246,6 +246,23 @@ export function hasUnreadFromFriends(
   return friends.some((f) => senders.has(f.code.trim().toUpperCase()));
 }
 
+/**
+ * Total unread messages from CURRENT friends — the app-icon badge number. Same
+ * friend filter as hasUnreadFromFriends (an ex-friend's unread rows can't be opened,
+ * so counting them would pin the badge on forever).
+ */
+export function unreadCountFromFriends(
+  friends: { code: string }[],
+  unread: Record<string, number>,
+): number {
+  const friendCodes = new Set(friends.map((f) => f.code.trim().toUpperCase()));
+  let total = 0;
+  for (const [code, n] of Object.entries(unread)) {
+    if (n > 0 && friendCodes.has(code.trim().toUpperCase())) total += n;
+  }
+  return total;
+}
+
 /** Unread counts addressed to me, grouped by the sender's friend code. */
 export async function fetchUnreadCounts(myUserId: string): Promise<Record<string, number>> {
   const { data, error } = await supabase

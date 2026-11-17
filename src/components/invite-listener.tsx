@@ -5,7 +5,7 @@
 import { Image } from 'expo-image';
 import { router, usePathname } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppState, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { MIN_POPUP_WIDTH, popupMaxWidth } from '@/constants/theme';
 
@@ -16,7 +16,8 @@ import { useModalSafeVisible } from '@/lib/modal-traffic';
 import { listBlocked } from '@/lib/friend-requests';
 import { joinPresence, subscribeToInvites, type GameInvite, type OnlineGameId } from '@/lib/game-net';
 import { acceptGameInvite } from '@/lib/invite-actions';
-import { fetchUnreadCounts, subscribeInbox } from '@/lib/direct-messages';
+import { fetchUnreadCounts, subscribeInbox, unreadCountFromFriends } from '@/lib/direct-messages';
+import { setAppBadge } from '@/lib/dm-push';
 import { useStudyRoom } from '@/lib/use-study-room';
 import { useTranslation } from '@/i18n';
 
@@ -45,7 +46,7 @@ const SURFACE_INVITE_OVER = new Set([
 
 export function InviteListener() {
   const { t } = useTranslation();
-  const { friendCode, friends, setDmUnreadCounts, bumpDmUnread } = useApp();
+  const { friendCode, friends, dmUnread, setDmUnreadCounts, bumpDmUnread } = useApp();
   const { user } = useAuth();
   const studyRoom = useStudyRoom();
   const [invite, setInvite] = useState<GameInvite | null>(null);
@@ -85,12 +86,26 @@ export function InviteListener() {
     return joinPresence(friendCode);
   }, [friendCode]);
 
-  // Seed unread DM counts once, then keep them live via inbox pings.
+  // Seed unread DM counts, then keep them live via inbox pings. Re-seed whenever the
+  // app returns to the foreground: realtime pings are missed while backgrounded, and
+  // a push may have set the icon badge in the meantime.
   useEffect(() => {
     if (!user?.id) return;
-    fetchUnreadCounts(user.id).then(setDmUnreadCounts);
+    const uid = user.id;
+    fetchUnreadCounts(uid).then(setDmUnreadCounts);
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') fetchUnreadCounts(uid).then(setDmUnreadCounts);
+    });
+    return () => sub.remove();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
+  // App-icon badge = unread DMs from current friends (same rule as Home's red dot),
+  // so reading a chat clears it right away.
+  const badgeCount = user?.id ? unreadCountFromFriends(friends, dmUnread ?? {}) : 0;
+  useEffect(() => {
+    void setAppBadge(badgeCount);
+  }, [badgeCount]);
 
   useEffect(() => {
     if (!friendCode) return;

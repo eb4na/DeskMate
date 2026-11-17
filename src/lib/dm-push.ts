@@ -61,13 +61,31 @@ export async function registerDmPush(lang: string, opts: { ask?: boolean } = {})
     if (!token) return;
     lastToken = token;
 
-    await supabase.rpc('register_push_token', { p_token: token, p_platform: Platform.OS, p_lang: lang });
+    // p_badge: this build keeps the icon badge in sync (setAppBadge), so the server
+    // may put the unread count on its pushes. Older builds omit it → no badge, since
+    // they could never clear one.
+    await supabase.rpc('register_push_token', { p_token: token, p_platform: Platform.OS, p_lang: lang, p_badge: true });
   } catch {
     // No network / simulator without push / stale binary — DMs still work in-app.
   }
 }
 
+/**
+ * Set the app-icon badge to the number of unread DMs. While the app is closed the
+ * push itself carries the badge (server-side count); while it's open we keep it in
+ * sync as chats are read. Needs badge permission — a no-op without it.
+ */
+export async function setAppBadge(count: number): Promise<void> {
+  try {
+    await Notifications.setBadgeCountAsync(Math.max(0, Math.min(99, Math.floor(count))));
+  } catch {
+    // stale binary / no permission — the in-app red dot still shows unread
+  }
+}
+
 export async function unregisterDmPush(): Promise<void> {
+  // Signing out: this account's unread count no longer belongs on the icon.
+  void setAppBadge(0);
   if (!lastToken) return;
   try {
     await supabase.from('push_tokens').delete().eq('token', lastToken);

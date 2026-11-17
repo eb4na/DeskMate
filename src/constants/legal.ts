@@ -12,8 +12,8 @@
 
 import type { SupportedLanguage } from '@/i18n';
 
-export const LEGAL_VERSION = '1.1';
-export const LEGAL_EFFECTIVE_DATE = 'July 27, 2026';
+export const LEGAL_VERSION = '1.2';
+export const LEGAL_EFFECTIVE_DATE = 'November 17, 2026';
 // Minimum age to use the app. Enforced at the first-launch consent gate, where
 // the user affirms they meet it (no date of birth is collected — App Review
 // 5.1.1(v)). 13 is the common threshold for consenting
@@ -30,13 +30,13 @@ const EMAIL = LEGAL_CONTACT_EMAIL;
 
 // Effective date, phrased per language (the date itself is fixed).
 const DATE: Record<SupportedLanguage, string> = {
-  en: 'July 27, 2026',
-  zh: '2026年7月27日',
-  'zh-Hant': '2026年7月27日',
-  ja: '2026年7月27日',
-  ko: '2026년 7월 27일',
-  es: '27 de julio de 2026',
-  fr: '27 juillet 2026',
+  en: 'November 17, 2026',
+  zh: '2026年11月17日',
+  'zh-Hant': '2026年11月17日',
+  ja: '2026年11月17日',
+  ko: '2026년 11월 17일',
+  es: '17 de noviembre de 2026',
+  fr: '17 novembre 2026',
 };
 
 // "Memobun Plus" — the Plus tier keeps its per-language brand term (see i18n).
@@ -90,6 +90,7 @@ const en: LegalDoc = {
         'PostHog — product analytics, as described above. Depending on configuration, analytics data is processed on US or EU servers.',
         'Google AdMob — serves the optional rewarded video ads described above, and processes ad-interaction data. Ads are requested as non-personalized only.',
         'RevenueCat — processes in-app purchases and subscriptions, and receives your account ID and purchase details.',
+        'Expo push service, with Apple and Google push notification services — delivers message notifications to your device when a friend sends you a message. A notification includes the sender\'s name and a short preview of the message. You can turn notifications off at any time in your device settings.',
         'Sign-in providers (e.g. Google) — used to authenticate you.',
         'Each provider processes data under its own privacy policy.',
       ],
@@ -216,6 +217,7 @@ const zh: LegalDoc = {
         'PostHog——如上所述的产品分析。根据配置，分析数据可能在美国或欧盟的服务器上处理。',
         'Google AdMob——提供上述可选的激励视频广告，并处理广告互动数据。广告仅以非个性化方式请求。',
         'RevenueCat——处理应用内购买和订阅，并接收您的账号 ID 和购买详情。',
+        'Expo 推送服务以及 Apple 和 Google 的推送通知服务——在好友给您发消息时，将消息通知送达您的设备。通知内容包括发送者的名字和消息的简短预览。您可以随时在设备设置中关闭通知。',
         '登录服务商（例如 Google）——用于验证您的身份。',
         '每家服务商均按其自身的隐私政策处理数据。',
       ],
@@ -343,6 +345,7 @@ const zhHant: LegalDoc = {
         'PostHog——如上所述的產品分析。視設定而定，分析資料可能在美國或歐盟的伺服器上處理。',
         'Google AdMob——提供上述可選的獎勵影片廣告，並處理廣告互動資料。廣告僅以非個人化方式請求。',
         'RevenueCat——處理應用程式內購買和訂閱，並接收您的帳號 ID 和購買詳情。',
+        'Expo 推播服務以及 Apple 和 Google 的推播通知服務——在好友傳訊息給您時，將訊息通知送達您的裝置。通知內容包括傳送者的名稱和訊息的簡短預覽。您可以隨時在裝置設定中關閉通知。',
         '登入服務商（例如 Google）——用於驗證您的身分。',
         '每家服務商均依其自身的隱私權政策處理資料。',
       ],
@@ -470,6 +473,7 @@ const ja: LegalDoc = {
         'PostHog——上記のとおりのプロダクト分析。構成により、分析データは米国または EU のサーバーで処理される場合があります。',
         'Google AdMob——上記の任意のリワード動画広告を配信し、広告インタラクションデータを処理します。広告は非パーソナライズ広告としてのみリクエストされます。',
         'RevenueCat——アプリ内購入およびサブスクリプションを処理し、お客様のアカウント ID と購入内容を受け取ります。',
+        'Expo のプッシュ配信サービス、および Apple・Google のプッシュ通知サービス——フレンドからメッセージが届いたときに、その通知をお客様の端末に届けます。通知には送信者の名前とメッセージの短いプレビューが含まれます。通知は端末の設定からいつでもオフにできます。',
         'ログインプロバイダ（例：Google）——お客様の本人確認に利用します。',
         '各プロバイダは、それぞれのプライバシーポリシーに基づいてデータを処理します。',
       ],
@@ -597,6 +601,7 @@ const ko: LegalDoc = {
         'PostHog — 위에서 설명한 제품 분석. 설정에 따라 분석 데이터는 미국 또는 EU 서버에서 처리될 수 있습니다.',
         'Google AdMob — 위에서 설명한 선택적 보상형 동영상 광고를 제공하며, 광고 상호작용 데이터를 처리합니다. 광고는 비맞춤형으로만 요청됩니다.',
         'RevenueCat — 인앱 구매와 구독을 처리하며, 귀하의 계정 ID와 구매 내역을 수신합니다.',
+        'Expo 푸시 서비스 및 Apple·Google 푸시 알림 서비스 — 친구가 메시지를 보내면 메시지 알림을 귀하의 기기로 전달합니다. 알림에는 보낸 사람의 이름과 메시지의 짧은 미리보기가 포함됩니다. 기기 설정에서 언제든지 알림을 끌 수 있습니다.',
         '로그인 제공업체(예: Google) — 귀하의 본인 확인에 이용됩니다.',
         '각 제공업체는 자체 개인정보 처리방침에 따라 데이터를 처리합니다.',
       ],
@@ -724,6 +729,7 @@ const es: LegalDoc = {
         'PostHog: analítica de producto, como se describe arriba. Según la configuración, los datos de analítica se procesan en servidores de EE. UU. o de la UE.',
         'Google AdMob: publica los anuncios de vídeo recompensados opcionales descritos arriba y procesa datos de interacción con los anuncios. Los anuncios se solicitan únicamente como no personalizados.',
         'RevenueCat: procesa las compras dentro de la aplicación y las suscripciones, y recibe tu identificador de cuenta y los detalles de la compra.',
+        'Servicio de notificaciones push de Expo, junto con los servicios de notificaciones push de Apple y Google: entrega en tu dispositivo las notificaciones de los mensajes que te envían tus amigos. La notificación incluye el nombre de quien envía el mensaje y una vista previa breve. Puedes desactivar las notificaciones en cualquier momento desde los ajustes de tu dispositivo.',
         'Proveedores de inicio de sesión (por ejemplo, Google): se usan para autenticarte.',
         'Cada proveedor procesa los datos conforme a su propia política de privacidad.',
       ],
@@ -851,6 +857,7 @@ const fr: LegalDoc = {
         'PostHog — analyse produit, comme décrit ci-dessus. Selon la configuration, les données d’analyse sont traitées sur des serveurs situés aux États-Unis ou dans l’UE.',
         'Google AdMob — diffuse les vidéos publicitaires récompensées facultatives décrites ci-dessus et traite les données d’interaction publicitaire. Les publicités sont demandées uniquement en version non personnalisée.',
         'RevenueCat — traite les achats intégrés et les abonnements, et reçoit votre identifiant de compte et les détails de l’achat.',
+        'Service de notifications push d’Expo, avec les services de notifications push d’Apple et de Google — achemine vers votre appareil les notifications des messages que vos amis vous envoient. Une notification contient le nom de l’expéditeur et un court aperçu du message. Vous pouvez désactiver les notifications à tout moment dans les réglages de votre appareil.',
         'Fournisseurs de connexion (par exemple Google) — utilisés pour vous authentifier.',
         'Chaque fournisseur traite les données conformément à sa propre politique de confidentialité.',
       ],

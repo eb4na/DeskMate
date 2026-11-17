@@ -70,7 +70,9 @@ async function ensureNotificationPermission() {
   const requested = await Notifications.requestPermissionsAsync({
     ios: {
       allowAlert: true,
-      allowBadge: false,
+      // Badge ON: the app icon shows the unread-DM count. iOS only asks once, so a
+      // prompt without badge here would leave badges off for this app for good.
+      allowBadge: true,
       allowSound: true,
     },
   });
