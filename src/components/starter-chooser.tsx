@@ -21,6 +21,7 @@ const TAGLINE_KEYS: Record<string, string> = {
   Cocoa: 'gallery.tagline_Cocoa',
   Bunny: 'gallery.tagline_Bunny',
   Miel: 'gallery.tagline_Miel',
+  Soda: 'gallery.tagline_Soda',
   Tira: 'gallery.tagline_Tira',
 };
 

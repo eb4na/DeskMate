@@ -304,8 +304,8 @@ export const SHOP_COMPANIONS = SHOP_ITEMS.filter(
 
 // ─── Starter companions ────────────────────────────────────────────────────
 // The five characters a new player chooses one of (for free) on first launch;
-// the others are sold in the shop. Listed in CHARACTER_ORDER (Bunny → Bun → Miel →
-// Tira; hidden ones are filtered out by OFFERED_STARTER_CHOICES). Hanji is excluded
+// the others are sold in the shop. Listed in CHARACTER_ORDER (Bunny → Gray → Bun →
+// Miel → Tira; hidden ones like Aki are filtered out by OFFERED_STARTER_CHOICES). Hanji is excluded
 // — it stays a recipe-badge reward.
 export type StarterChoice = {
   activeId: ActiveCompanionId; // what activeCompanionId becomes when chosen
@@ -319,6 +319,7 @@ export const STARTER_CHOICES: StarterChoice[] = ([
   { activeId: 'shop:companion_cocoa', shopItemId: 'companion_cocoa', name: 'Cocoa', image: require('@/assets/images/cocoa/cocoa.png'), bg: '#CC4B35' },
   { activeId: 'shop:companion_bunny', shopItemId: 'companion_bunny', name: 'Bunny', image: require('@/assets/images/bunny/bunny.png'), bg: '#ffc2df' },
   { activeId: 'shop:companion_honey', shopItemId: 'companion_honey', name: 'Miel', image: require('@/assets/images/honey/honey.png'), bg: '#ffcd8c' },
+  { activeId: 'shop:companion_pretzel', shopItemId: 'companion_pretzel', name: 'Soda', image: require('@/assets/images/pretzel/pretzel.png'), bg: '#aab3cc' },
   { activeId: 'shop:companion_tira', shopItemId: 'companion_tira', name: 'Tira', image: require('@/assets/images/tira/tira.png'), bg: '#a3d6ff' },
 ] as StarterChoice[]).sort((a, b) => characterRank(a.shopItemId) - characterRank(b.shopItemId));
 

@@ -185,7 +185,9 @@ const makeStyles = (s: number, contentWidth: number) => {
   viewPillOn: { backgroundColor: BakeryColors.buttonPink },
   viewPillText: { color: BakeryColors.mocha },
   viewPillTextOn: { color: '#FFFFFF' },
-  title: { fontSize: 28 * s, lineHeight: 34 * s },
+  // Smaller than the other tabs' 28: the header row also carries 4 buttons
+  // (import, search, + Exam, + Task) and the title crowded them on small phones.
+  title: { fontSize: 24 * s, lineHeight: 30 * s },
   headerActions: { flexDirection: 'row', gap: Spacing.two * s, alignItems: 'center' },
   manageBtn: {
     paddingHorizontal: Spacing.three * s,

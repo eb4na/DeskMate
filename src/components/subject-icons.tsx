@@ -50,3 +50,50 @@ export function GripIcon({ size = 18 }: IconProps) {
     </Svg>
   );
 }
+
+// ── Archive → sketch storage box ──────────────────────────────────────────────
+// A lidded box with a handle slot: the "put it away" mark beside the delete cross.
+// Same pen as the arrows and grip so the row's controls read as one set.
+export function ArchiveIcon({ size = 18, color = S }: IconProps & { color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M4.5 5.5 H19.5 Q20.5 5.5 20.5 6.5 V8.5 Q20.5 9.5 19.5 9.5 H4.5 Q3.5 9.5 3.5 8.5 V6.5 Q3.5 5.5 4.5 5.5 Z"
+        stroke={color} strokeWidth="2.2" strokeLinejoin="round" fill="none"
+      />
+      <Path
+        d="M5.5 9.5 V17.5 Q5.5 19.5 7.5 19.5 H16.5 Q18.5 19.5 18.5 17.5 V9.5"
+        stroke={color} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" fill="none"
+      />
+      <Path d="M10 13.5 H14" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+// ── Restore → sketch box with an up arrow ─────────────────────────────────────
+// The archive box's open tray with an arrow lifting out of it — "take it back
+// out", the reverse of ArchiveIcon.
+export function RestoreIcon({ size = 18, color = S }: IconProps & { color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M4.5 12.5 V17.5 Q4.5 19.5 6.5 19.5 H17.5 Q19.5 19.5 19.5 17.5 V12.5"
+        stroke={color} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" fill="none"
+      />
+      <Path d="M12 15 V4.5" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
+      <Path d="M8 8.5 L12 4.5 L16 8.5" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </Svg>
+  );
+}
+
+// ── › Chevron → sketch caret (row "go to" / back) ─────────────────────────────
+export function ChevronIcon({ size = 16, direction = 'right', color = S }: IconProps & { direction?: 'left' | 'right'; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d={direction === 'right' ? 'M9 5.5 L15.5 12 L9 18.5' : 'M15 5.5 L8.5 12 L15 18.5'}
+        stroke={color} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="none"
+      />
+    </Svg>
+  );
+}

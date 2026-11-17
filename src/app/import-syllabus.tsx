@@ -21,6 +21,7 @@ import { BakeryColors as C, BakeryRadii, BakeryShadow, PastelCards, popupMaxWidt
 import { MAX_EXAMS, MAX_TASKS, useApp } from '@/context/app-context';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/i18n';
+import { noteModalTransition } from '@/lib/modal-traffic';
 import { showPopup } from '@/lib/popup';
 import { localizeSubjectName } from '@/lib/subject-utils';
 import { parseSyllabus, type SyllabusItem, type SyllabusKind } from '@/lib/syllabus-parse';
@@ -175,6 +176,11 @@ export default function ImportSyllabusScreen() {
         if (id) { added++; taskCount++; }
       }
     }
+    // This screen is a native transparentModal: stamp its dismissal BEFORE closing
+    // so the "added" popup waits out the settle window instead of presenting while
+    // the modal is still fading out (the iOS present-over-dismiss freeze, see
+    // modal-traffic.ts).
+    noteModalTransition();
     router.back();
     const msg = [t('syllabus.addedMsg', { count: added })];
     if (examsSkipped) msg.push(t('syllabus.examsSkipped', { count: examsSkipped }));

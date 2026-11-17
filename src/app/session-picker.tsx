@@ -42,6 +42,8 @@ const CARD_IMG: Record<number, number> = {
   60: require('@/assets/images/cake/dessert-50.png'),
   90: require('@/assets/images/cake/dessert-90.png'),
 };
+// Lock in's menu picture — the bunny latte, framed like the dessert icons.
+const LOCK_IN_IMG = require('@/assets/images/cake/lock-in-cup.png');
 
 type Mode = 'single' | 'multi';
 
@@ -185,16 +187,14 @@ export default function SessionPickerScreen() {
                         </Text>
                         <View style={styles.menuLeader} />
                         <CoinIcon size={isTablet ? Math.round(18 * grow) : 14} />
-                        <Text style={[styles.menuPrice, isTablet && styles.menuPriceTablet]}>+{coinsForMinutes(opt.minutes) * (isPlus ? PLUS_STUDY_COIN_MULTIPLIER : 1)}</Text>
+                        <Text style={[styles.menuPrice, isTablet && styles.menuPriceTablet]}>{coinsForMinutes(opt.minutes) * (isPlus ? PLUS_STUDY_COIN_MULTIPLIER : 1)}</Text>
                       </View>
-                      <View style={styles.menuSubLine}>
-                        <Text style={[styles.menuCoinText, isTablet && styles.menuCoinTextTablet]}>{opt.minutes} {t('customTimer.min')}</Text>
-                        {brk > 0 && (
-                          <View style={[styles.breakChip, isTablet && styles.breakChipTablet]}>
-                            <Text style={[styles.breakChipText, isTablet && styles.breakChipTextTablet]}>{t('sessionPicker.menuBreak', { min: brk })}</Text>
-                          </View>
-                        )}
-                      </View>
+                      {/* Plain menu description line — minutes and break in one
+                          same-size run of text, no chip behind the break. */}
+                      <Text style={[styles.menuCoinText, isTablet && styles.menuCoinTextTablet]} numberOfLines={1}>
+                        {opt.minutes} {t('customTimer.min')}
+                        {brk > 0 ? `  ·  ${t('sessionPicker.menuBreak', { min: brk })}` : ''}
+                      </Text>
                     </View>
                     {/* Every option shows a box; it fills with a check when picked. */}
                     <CheckBox checked={isActive} size={isTablet ? Math.round(28 * grow) : 24} color={C.buttonPink} />
@@ -251,6 +251,7 @@ export default function SessionPickerScreen() {
                 <Pressable
                   style={({ pressed }) => [styles.menuRow, isTablet && styles.menuRowTablet, lockedIn && styles.menuRowActive, pressed && styles.pressed]}
                   onPress={() => { playPaper(); setLockedIn((v) => !v); }}>
+                  <Image source={LOCK_IN_IMG} style={[styles.menuIcon, isTablet && styles.menuIconTablet]} contentFit="contain" />
                   <View style={styles.menuBody}>
                     <View style={styles.menuTopLine}>
                       <Text style={[styles.menuName, isTablet && styles.menuNameTablet, lockedIn && styles.menuNameActive]} numberOfLines={1}>
@@ -391,11 +392,6 @@ const makeStyles = (g: number) => StyleSheet.create({
   menuPrice: { fontSize: 15 * g, fontWeight: '800', color: '#C98A2B' },
   menuSubLine: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one * g },
   menuCoinText: { fontSize: 12.5 * g, color: C.mocha, fontWeight: '600' },
-  breakChip: {
-    backgroundColor: `${C.honey}2E`, borderRadius: BakeryRadii.chip * g,
-    paddingHorizontal: 7 * g, paddingVertical: 2 * g,
-  },
-  breakChipText: { fontSize: 10.5 * g, fontWeight: '700', color: C.mocha },
   menuDivider: { height: 1, backgroundColor: `${C.shortbread}99` },
   checkBadge: {
     width: 22 * g, height: 22 * g, borderRadius: 11 * g, backgroundColor: C.jam,
@@ -481,8 +477,6 @@ const makeStyles = (g: number) => StyleSheet.create({
   menuNameTablet: { fontSize: 21 * g },
   menuPriceTablet: { fontSize: 20 * g },
   menuCoinTextTablet: { fontSize: 16 * g },
-  breakChipTablet: { paddingHorizontal: 10 * g, paddingVertical: 4 * g },
-  breakChipTextTablet: { fontSize: 14 * g },
   checkBadgeTablet: { width: 30 * g, height: 30 * g, borderRadius: 15 * g },
   checkIconTablet: { fontSize: 16 * g },
   customIconWrapTablet: { width: 82 * g },

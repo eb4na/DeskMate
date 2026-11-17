@@ -1,0 +1,86 @@
+diff --git a/node_modules/expo-image/ios/AnimatedImage.swift b/node_modules/expo-image/ios/AnimatedImage.swift
+index 350c9e4..9b4b489 100644
+--- a/node_modules/expo-image/ios/AnimatedImage.swift
++++ b/node_modules/expo-image/ios/AnimatedImage.swift
+@@ -16,8 +16,16 @@ final class AnimatedImage: SDAnimatedImage {
+   }
+ 
+   override var duration: TimeInterval {
+-    preloadAllFrames()
+-    return frames?.reduce(0, { $0 + $1.duration }) ?? 0.0
++    // UIKit's UIImageView reads `duration` on the MAIN thread every time an image is
++    // set (-[UIImageView _setImageViewContents:]). Preloading here decoded every frame
++    // of an animated WebP at full canvas size on the main thread and kept them all
++    // (hundreds of MB per image), which froze the UI and starved SDAnimatedImageView's
++    // frame buffer on device. Sum the per-frame durations from metadata instead;
++    // SDAnimatedImageView plays frames lazily through its own player.
++    if let frames {
++      return frames.reduce(0, { $0 + $1.duration })
++    }
++    return (0..<animatedImageFrameCount).reduce(0.0) { $0 + animatedImageDuration(at: $1) }
+   }
+ 
+   // MARK: - SDAnimatedImage
+diff --git a/node_modules/expo-image/ios/Coders/WebPCoder.swift b/node_modules/expo-image/ios/Coders/WebPCoder.swift
+index 785effb..6dab14b 100644
+--- a/node_modules/expo-image/ios/Coders/WebPCoder.swift
++++ b/node_modules/expo-image/ios/Coders/WebPCoder.swift
+@@ -12,7 +12,7 @@ internal let imageCoderOptionUseAppleWebpCodec = SDImageCoderOption(rawValue: "u
+ internal final class WebPCoder: NSObject, SDAnimatedImageCoder {
+   nonisolated(unsafe) static let shared = WebPCoder()
+ 
+-  private var useAppleWebpCodec: Bool = true
++  private var useAppleWebpCodec: Bool = false // Memobun patch: libwebp default
+   private var instantiatedCoder: SDAnimatedImageCoder?
+   private var coder: SDAnimatedImageCoder {
+     if let instantiatedCoder {
+@@ -29,7 +29,7 @@ internal final class WebPCoder: NSObject, SDAnimatedImageCoder {
+ 
+   convenience init(animatedImageData data: Data?, options: [SDImageCoderOption: Any]? = nil) {
+     self.init()
+-    self.useAppleWebpCodec = options?[imageCoderOptionUseAppleWebpCodec] as? Bool ?? true
++    self.useAppleWebpCodec = options?[imageCoderOptionUseAppleWebpCodec] as? Bool ?? false // Memobun patch: libwebp default
+     self.instantiatedCoder = self.useAppleWebpCodec
+       ? SDImageAWebPCoder.init(animatedImageData: data, options: options)
+       : SDImageWebPCoder.init(animatedImageData: data, options: options)
+diff --git a/node_modules/expo-image/ios/ImageModule.swift b/node_modules/expo-image/ios/ImageModule.swift
+index 6aa92cc..cd1d24e 100644
+--- a/node_modules/expo-image/ios/ImageModule.swift
++++ b/node_modules/expo-image/ios/ImageModule.swift
+@@ -119,7 +119,9 @@ public final class ImageModule: Module {
+         view.symbolSize = symbolSize
+       }
+ 
+-      Prop("useAppleWebpCodec", true) { (view, useAppleWebpCodec: Bool) in
++      // Memobun patch: default to libwebp. Apple's codec used ~2-4x the CPU of libwebp
++      // per animated companion WebP (sim, 2026-11-17); suspected cause of device stalls.
++      Prop("useAppleWebpCodec", false) { (view, useAppleWebpCodec: Bool) in
+         view.useAppleWebpCodec = useAppleWebpCodec
+       }
+ 
+diff --git a/node_modules/expo-image/ios/ImageView.swift b/node_modules/expo-image/ios/ImageView.swift
+index cccedd7..ee98a12 100644
+--- a/node_modules/expo-image/ios/ImageView.swift
++++ b/node_modules/expo-image/ios/ImageView.swift
+@@ -80,7 +80,7 @@ public final class ImageView: ExpoView {
+ 
+   var symbolSize: Double?
+ 
+-  var useAppleWebpCodec: Bool = true
++  var useAppleWebpCodec: Bool = false // Memobun patch: libwebp default (see ImageModule)
+ 
+   /**
+    Tracks whether the current image is an SF Symbol for animation control.
+diff --git a/node_modules/expo-image/ios/Utils/ImageUtils.swift b/node_modules/expo-image/ios/Utils/ImageUtils.swift
+index 6ddef04..6c6983b 100644
+--- a/node_modules/expo-image/ios/Utils/ImageUtils.swift
++++ b/node_modules/expo-image/ios/Utils/ImageUtils.swift
+@@ -158,7 +158,7 @@ func createCacheKeyFilter(_ cacheKey: String?) -> SDWebImageCacheKeyFilter? {
+ /**
+  Creates a default image context based on the source and the cache policy.
+  */
+-func createSDWebImageContext(forSource source: ImageSource, cachePolicy: ImageCachePolicy = .disk, useAppleWebpCodec: Bool = true) -> SDWebImageContext {
++func createSDWebImageContext(forSource source: ImageSource, cachePolicy: ImageCachePolicy = .disk, useAppleWebpCodec: Bool = false) -> SDWebImageContext { // Memobun patch: libwebp default
+   var context = SDWebImageContext()
+ 
+   // Modify URL request to add headers.

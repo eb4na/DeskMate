@@ -438,7 +438,7 @@
     "menuBreak": "{{min}}分鐘休息",
     "breakInfoMulti": "多人模式可隨時休息",
     "lockIn": "專注鎖定",
-    "lockInNote": "離開應用程式就會結束本次專注 —— 堅持到最後可獲得雙倍金幣。休息期間不算。"
+    "lockInNote": "離開應用程式就會結束本次專注"
   },
   "customTimer": {
     "hr": "小時",
@@ -870,6 +870,17 @@
     "limitMsgFree": "免費帳戶最多可擁有 {{free}} 個科目。升級到會員最多可達 {{plus}} 個。",
     "archiveSubjectQ": "歸檔科目？",
     "archiveMsg": "「{{name}}」將從選擇器中隱藏，但你的學習時間會保留。",
+    "menuSubtitle": "今日選單：{{count}}/{{max}}",
+    "menuSection": "今日選單",
+    "addSection": "加入選單",
+    "addToMenuBtn": "+ 加入選單",
+    "newBadge": "新",
+    "archivedLabel": "已歸檔",
+    "archiveTitle": "已歸檔科目",
+    "archiveNote": "已歸檔的科目不會出現在選擇器中，你的學習時間會保留。",
+    "archiveEmpty": "還沒有歸檔的科目。點選科目旁邊的盒子即可歸檔。",
+    "archiveFull": "歸檔已滿（{{max}}個）。刪除一些已歸檔科目後才能繼續歸檔。",
+    "restoreBlocked": "科目列表已滿（{{max}}個）。歸檔或刪除一個科目後即可恢復。",
     "deleteSubjectQ": "刪除科目？",
     "deleteMsg": "「{{name}}」將從你的科目中移除。你過往的學習記錄和進度仍會保留在統計中，關聯的任務不會被刪除，只會失去該科目標籤。"
   },

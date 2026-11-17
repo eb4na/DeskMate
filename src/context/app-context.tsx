@@ -59,6 +59,9 @@ export type Subject = {
   color: string;
   emoji: string;
   archived: boolean;
+  /** ISO time it was archived — sorts the archive newest-first. Absent on
+   *  subjects archived before this field existed. */
+  archivedAt?: string;
   order: number;
 };
 
@@ -476,6 +479,11 @@ export const CHAT_HISTORY_CAP = 50;
 // (mirrors MAX_EXAMS / MAX_TASKS). It's a sanity bound, not a paywall: far more
 // than anyone tracks at once, and small enough that the pickers/charts stay cheap.
 export const MAX_SUBJECTS = 50;
+
+// Archived subjects are kept separately from the active cap above, so archiving
+// frees an active slot. Same sanity-bound idea: big enough nobody hits it in
+// practice, small enough the archive list stays a plain ScrollView.
+export const MAX_ARCHIVED_SUBJECTS = 300;
 
 // Plus one-time unlocks, granted on first Plus and kept forever after a lapse.
 const PLUS_GRANTS = ['bg_strawberry_palace', 'desk_strawberry', 'outfit_bunny_royal'];
@@ -1354,7 +1362,12 @@ type AppContextType = {
    *  render sites append an alpha suffix to it (`color + '2E'`), so the 7-char
    *  form is load-bearing. */
   recolorSubject: (id: string, color: string) => void;
-  archiveSubject: (id: string) => void;
+  /** Hide a subject from every picker (its study time is kept). Returns false
+   *  when the archive already holds MAX_ARCHIVED_SUBJECTS. */
+  archiveSubject: (id: string) => boolean;
+  /** Bring an archived subject back to the end of the active list. Returns false
+   *  when the active list is already at MAX_SUBJECTS. */
+  unarchiveSubject: (id: string) => boolean;
   deleteSubject: (id: string) => void;
   reorderSubjects: (orderedIds: string[]) => void;
 
@@ -2243,11 +2256,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
       subjects: prev.subjects.map((s) => (s.id === id ? { ...s, color } : s)),
     }));
 
-  const archiveSubject = (id: string) =>
-    setS((prev) => ({
-      ...prev,
-      subjects: prev.subjects.map((s) => (s.id === id ? { ...s, archived: true } : s)),
-    }));
+  const archiveSubject = (id: string): boolean => {
+    if (s.subjects.filter((sub) => sub.archived).length >= MAX_ARCHIVED_SUBJECTS) return false;
+    setS((prev) => {
+      if (prev.subjects.filter((sub) => sub.archived).length >= MAX_ARCHIVED_SUBJECTS) return prev;
+      const archivedAt = new Date().toISOString();
+      return {
+        ...prev,
+        subjects: prev.subjects.map((sub) => (sub.id === id ? { ...sub, archived: true, archivedAt } : sub)),
+      };
+    });
+    return true;
+  };
+
+  const unarchiveSubject = (id: string): boolean => {
+    if (s.subjects.filter((sub) => !sub.archived).length >= MAX_SUBJECTS) return false;
+    setS((prev) => {
+      const active = prev.subjects.filter((sub) => !sub.archived);
+      if (active.length >= MAX_SUBJECTS) return prev;
+      // Back at the END of the list, not wherever it sat before it was archived.
+      const order = active.reduce((m, sub) => Math.max(m, sub.order), -1) + 1;
+      return {
+        ...prev,
+        subjects: prev.subjects.map((sub) =>
+          sub.id === id ? { ...sub, archived: false, archivedAt: undefined, order } : sub,
+        ),
+      };
+    });
+    return true;
+  };
 
   const deleteSubject = (id: string) =>
     setS((prev) => ({
@@ -2256,16 +2293,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       tasks: prev.tasks.map((t) => (t.subjectId === id ? { ...t, subjectId: null } : t)),
     }));
 
+  // The caller (manage-subjects' drag) passes only the ACTIVE ids. Anything not
+  // in the list — archived subjects — must be kept untouched: rebuilding the array
+  // from orderedIds alone silently deleted the whole archive on the first drag.
   const reorderSubjects = (orderedIds: string[]) =>
-    setS((prev) => ({
-      ...prev,
-      subjects: orderedIds
-        .map((id, i) => {
-          const found = prev.subjects.find((s) => s.id === id);
-          return found ? { ...found, order: i } : null;
-        })
-        .filter(Boolean) as Subject[],
-    }));
+    setS((prev) => {
+      const orderOf = new Map(orderedIds.map((id, i) => [id, i]));
+      return {
+        ...prev,
+        subjects: prev.subjects.map((sub) => {
+          const i = orderOf.get(sub.id);
+          return i === undefined ? sub : { ...sub, order: i };
+        }),
+      };
+    });
 
   // ─── Wave 2 task actions ──────────────────────────────────────────────────
 
@@ -3536,6 +3577,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         renameSubject,
         recolorSubject,
         archiveSubject,
+        unarchiveSubject,
         deleteSubject,
         reorderSubjects,
         addTask,

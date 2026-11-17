@@ -1,18 +1,18 @@
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, type LayoutChangeEvent } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View, type LayoutChangeEvent } from 'react-native';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
 
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Circle, Line, Path } from 'react-native-svg';
 
 import { ColorWheelPicker, hslToHex } from '@/components/color-wheel-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { GripIcon, RemoveIcon } from '@/components/subject-icons';
-import { useApp, MAX_SUBJECTS } from '@/context/app-context';
+import { ArchiveIcon, ChevronIcon, GripIcon, RemoveIcon, RestoreIcon } from '@/components/subject-icons';
+import { useApp, MAX_ARCHIVED_SUBJECTS, MAX_SUBJECTS } from '@/context/app-context';
 import { containsProfanity } from '@/lib/profanity';
 import { localizeSubjectName } from '@/lib/subject-utils';
 import { SUBJECT_COLORS } from '@/constants/placeholder-data';
@@ -107,9 +107,56 @@ function DraggableRow({
   );
 }
 
+// ── Bakery-menu pieces ──────────────────────────────────────────────────────────
+// The dotted leader (name ······ price) and dashed section rules are drawn with SVG:
+// iOS RN won't render a dotted/dashed border on a single side (see menu-card.tsx,
+// which falls back to solid hairlines for the same reason).
+function DottedLeader() {
+  return (
+    <View style={styles.leader} pointerEvents="none">
+      <Svg width="100%" height={4}>
+        <Line x1={2} y1={2} x2="100%" y2={2} stroke={BakeryColors.latte} strokeWidth={2.5} strokeLinecap="round" strokeDasharray="0.1 5.5" />
+      </Svg>
+    </View>
+  );
+}
+
+function DashedRule() {
+  return (
+    <View style={styles.dashedRule} pointerEvents="none">
+      <Svg width="100%" height={2}>
+        <Line x1={0} y1={1} x2="100%" y2={1} stroke="#EBCBA8" strokeWidth={1.5} strokeDasharray="5 4" />
+      </Svg>
+    </View>
+  );
+}
+
+// Centred menu heading with a hand-drawn wavy underline.
+function MenuHeading({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <View style={styles.menuHeading}>
+      <ThemedText style={styles.menuTitle}>{title}</ThemedText>
+      <Svg width={120} height={8} viewBox="0 0 120 8">
+        <Path d="M2 5 Q12 1 22 5 T42 5 T62 5 T82 5 T102 5 T118 5" stroke={BakeryColors.buttonPink} strokeWidth={2.2} strokeLinecap="round" fill="none" />
+      </Svg>
+      <ThemedText style={styles.menuSubtitle}>{subtitle}</ThemedText>
+    </View>
+  );
+}
+
+function MenuLabel({ children }: { children: React.ReactNode }) {
+  return <ThemedText style={styles.menuLabel}>{children}</ThemedText>;
+}
+
+// Baloo (the menu face) is Latin-only; CJK/Hangul names use the rounded native face.
+const nameFont = (label: string) => (isHandwritten(label) ? styles.menuName : styles.menuNameCjk);
+
 export default function ManageSubjectsScreen() {
   const { t } = useTranslation();
-  const { subjects, addSubject, renameSubject, recolorSubject, deleteSubject, reorderSubjects, subjectTimeMap } = useApp();
+  const {
+    subjects, addSubject, renameSubject, recolorSubject, archiveSubject, unarchiveSubject,
+    deleteSubject, reorderSubjects, subjectTimeMap,
+  } = useApp();
   // Same cap for everyone — subjects aren't a Plus perk.
   const subjectLimit = MAX_SUBJECTS;
 
@@ -120,6 +167,12 @@ export default function ManageSubjectsScreen() {
   // Local delete confirm — this screen is a native modal, so a root showPopup()
   // renders BEHIND it (see settings.tsx). A local <Modal> shows over the screen.
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  // The archive is shown INLINE on this screen (swapping the list), not as its own
+  // modal or route: this screen is already a native modal, and a second local
+  // <Modal> under the delete confirm would be a third stacked modal, which iOS
+  // silently refuses to present.
+  const [showArchive, setShowArchive] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
   // The colour wheel sheet. `wheelFor` is the subject being recoloured, or 'new'
   // when it's the add form's colour. Never open at the same time as the delete
   // confirm, so this screen still only ever presents ONE local modal at a time.
@@ -175,9 +228,24 @@ export default function ManageSubjectsScreen() {
   const activeSubjects = subjects
     .filter((s) => !s.archived)
     .sort((a, b) => a.order - b.order);
+  // Newest-archived first, so the thing you just put away is at the top. Subjects
+  // without archivedAt (none yet, but cheap to handle) fall to the end by order.
+  const archivedSubjects = subjects
+    .filter((s) => s.archived)
+    .sort((a, b) => (b.archivedAt ?? '').localeCompare(a.archivedAt ?? '') || a.order - b.order);
+  const archiveFull = archivedSubjects.length >= MAX_ARCHIVED_SUBJECTS;
+  const activeFull = activeSubjects.length >= subjectLimit;
 
+  const openArchive = (open: boolean) => {
+    setEditingId(null);
+    setShowArchive(open);
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  };
+
+  // Only ACTIVE colours count as taken — with a big archive every swatch would
+  // otherwise read as used and the next-colour hint would stop rotating.
   const nextColor = (): string => {
-    const used = subjects.map((s) => s.color);
+    const used = activeSubjects.map((s) => s.color);
     return SUBJECT_COLORS.find((c) => !used.includes(c)) ?? SUBJECT_COLORS[activeSubjects.length % SUBJECT_COLORS.length];
   };
 
@@ -268,6 +336,13 @@ export default function ManageSubjectsScreen() {
 
   const handleDelete = (id: string, name: string) => setDeleteTarget({ id, name });
 
+  // No confirm: archiving is undone from the archive with one tap, and the full
+  // states are shown inline (a root showPopup renders behind this native modal).
+  const handleArchive = (id: string) => {
+    if (editingId === id) setEditingId(null);
+    archiveSubject(id);
+  };
+
   const confirmDelete = () => {
     if (deleteTarget) deleteSubject(deleteTarget.id);
     setDeleteTarget(null);
@@ -287,171 +362,269 @@ export default function ManageSubjectsScreen() {
     // wrapper does not reach into. Without this the drag throws outright.
     <GestureHandlerRootView style={styles.container}>
     <ThemedView style={styles.container}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 48 }}>
         <SafeAreaView style={styles.safeArea}>
           {/* Flat Done, drawn by us. The native bar button is gone because iOS 26
               wraps it in a glass capsule that reads as a raised chip. */}
-          <Pressable
-            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-            hitSlop={14}
-            style={({ pressed }) => [styles.doneTop, pressed && styles.pressed]}>
-            <ThemedText style={styles.doneTopText}>{t('common.done')}</ThemedText>
-          </Pressable>
-
-          <ThemedView style={styles.header}>
-            <ThemedText style={styles.title}>{t('manageSubjects.title')}</ThemedText>
-            <ThemedText style={styles.headerMeta}>
-              {activeSubjects.length}/{subjectLimit}
-            </ThemedText>
-          </ThemedView>
-
-          <ThemedView style={styles.subjectPanel}>
-
-            {activeSubjects.length === 0 && (
-              <ThemedView type="backgroundElement" style={styles.emptyCard}>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                  {t('manageSubjects.noSubjectsBelow')}
-                </ThemedText>
-              </ThemedView>
+          <View style={styles.topBar}>
+            {showArchive ? (
+              <Pressable
+                onPress={() => openArchive(false)}
+                hitSlop={14}
+                style={({ pressed }) => [styles.backTop, pressed && styles.pressed]}>
+                <ChevronIcon direction="left" size={18} color={BakeryColors.buttonPink} />
+                <ThemedText style={styles.doneTopText}>{t('manageSubjects.title')}</ThemedText>
+              </Pressable>
+            ) : (
+              <View />
             )}
+            <Pressable
+              onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+              hitSlop={14}
+              style={({ pressed }) => [styles.doneTop, pressed && styles.pressed]}>
+              <ThemedText style={styles.doneTopText}>{t('common.done')}</ThemedText>
+            </Pressable>
+          </View>
 
-            {activeSubjects.map((sub, idx) => {
-              // Pan on the HANDLE only. The list is inside a ScrollView, so a pan on
-              // the whole row would compete with the scroll for the same finger.
-              const pan = Gesture.Pan()
-                .onStart(() => {
-                  lastSlots.value = 0;
-                  runOnJS(setDragId)(sub.id);
-                })
-                .onUpdate((e) => {
-                  dragY.value = e.translationY;
-                  if (!rowH) return;
-                  const slots = Math.round(e.translationY / rowH);
-                  // Only cross into JS when the target slot actually changes —
-                  // per-frame setState here drops the drag to single figures.
-                  if (slots !== lastSlots.value) {
-                    lastSlots.value = slots;
-                    runOnJS(setDragOffset)(slots);
-                  }
-                })
-                .onFinalize(() => {
-                  const slots = lastSlots.value;
-                  dragY.value = 0;
-                  lastSlots.value = 0;
-                  runOnJS(dropAt)(sub.id, slots);
-                });
-              const dragging = dragId === sub.id;
-              return (
-              <DraggableRow
-                key={sub.id}
-                dragging={dragging}
-                dragY={dragY}
-                shift={shiftFor(idx)}
-                onLayout={idx === 0 ? (e) => setRowH(e.nativeEvent.layout.height + Spacing.two) : undefined}>
-              <ThemedView style={styles.subjectCard}>
-                <GestureDetector gesture={pan}>
-                  <ThemedView style={styles.dragHandle}>
-                    <GripIcon />
-                  </ThemedView>
-                </GestureDetector>
-                {editingId === sub.id ? (
-                  <TextInput
-                    style={[inputStyle, styles.inlineInput]}
-                    value={editName}
-                    onChangeText={setEditName}
-                    onBlur={handleRenameCommit}
-                    onSubmitEditing={handleRenameCommit}
-                    maxLength={30}
-                    autoFocus
-                  />
-                ) : (
-                  <ThemedView style={styles.subjectInfo}>
-                    <Pressable onPress={() => openWheel(sub.id)} hitSlop={10} style={styles.subjectColorButton}>
-                      <ThemedView style={[styles.subjectColorDot, { backgroundColor: sub.color }]} />
-                    </Pressable>
-                    <Pressable onPress={() => handleRenameStart(sub.id, sub.name)} hitSlop={6} style={styles.subjectNamePressable}>
-                      <ThemedView style={[styles.subjectNameChip, { backgroundColor: sub.color + '33' }]}>
-                        <ThemedText
-                          style={isHandwritten(localizeSubjectName(sub.name, t)) ? styles.handName : styles.blockName}
-                          numberOfLines={1}>
-                          {localizeSubjectName(sub.name, t)}
+          {/* The whole screen is one bakery MENU (same family as the Tasks / Progress /
+              Shop menus): subjects are the dishes and their lifetime study time is the
+              price, joined by a dotted leader. */}
+          <View style={styles.menuCard}>
+            {showArchive ? (
+              <>
+                <MenuHeading
+                  title={t('manageSubjects.archiveTitle')}
+                  subtitle={`${archivedSubjects.length}/${MAX_ARCHIVED_SUBJECTS}`}
+                />
+                <ThemedText style={styles.archiveNote}>{t('manageSubjects.archiveNote')}</ThemedText>
+                {activeFull && archivedSubjects.length > 0 && (
+                  <ThemedText style={styles.limitNote}>
+                    {t('manageSubjects.restoreBlocked', { max: subjectLimit })}
+                  </ThemedText>
+                )}
+                <MenuLabel>{t('manageSubjects.archivedLabel')}</MenuLabel>
+                {archivedSubjects.length === 0 && (
+                  <ThemedText style={styles.emptyText}>{t('manageSubjects.archiveEmpty')}</ThemedText>
+                )}
+                {archivedSubjects.map((sub) => {
+                  const label = localizeSubjectName(sub.name, t);
+                  return (
+                    <View key={sub.id} style={styles.menuRow}>
+                      <View style={styles.dotHit}>
+                        <View style={[styles.menuDot, { backgroundColor: sub.color }]} />
+                      </View>
+                      <View style={styles.menuLineBody}>
+                        <ThemedText style={nameFont(label)} numberOfLines={1}>{label}</ThemedText>
+                        <DottedLeader />
+                        <ThemedText style={styles.price}>{studiedLabel(sub.name) ?? t('manageSubjects.newBadge')}</ThemedText>
+                      </View>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={t('manageSubjects.unarchive')}
+                        disabled={activeFull}
+                        hitSlop={4}
+                        onPress={() => unarchiveSubject(sub.id)}
+                        style={({ pressed }) => [styles.restoreBtn, activeFull && styles.btnDisabled, pressed && styles.pressed]}>
+                        <RestoreIcon size={15} color={BakeryColors.buttonPink} />
+                        <ThemedText style={styles.restoreBtnText} numberOfLines={1}>
+                          {t('manageSubjects.unarchive')}
                         </ThemedText>
-                      </ThemedView>
-                    </Pressable>
-                    {/* Lifetime study time, from C — the app already tracks it and
-                        this screen never showed it. Hidden entirely at zero rather
-                        than printing "0h" on every new subject. */}
-                    {studiedLabel(sub.name) != null && (
-                      <ThemedView style={[styles.timePill, { backgroundColor: sub.color }]}>
-                        <ThemedText style={styles.timePillText}>{studiedLabel(sub.name)}</ThemedText>
-                      </ThemedView>
-                    )}
-                  </ThemedView>
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={t('common.delete')}
+                        hitSlop={4}
+                        style={styles.iconBtn}
+                        onPress={() => handleDelete(sub.id, label)}>
+                        <RemoveIcon />
+                      </Pressable>
+                    </View>
+                  );
+                })}
+              </>
+            ) : (
+              <>
+                <MenuHeading
+                  title={t('manageSubjects.title')}
+                  subtitle={t('manageSubjects.menuSubtitle', { count: activeSubjects.length, max: subjectLimit })}
+                />
+                <MenuLabel>{t('manageSubjects.menuSection')}</MenuLabel>
+
+                {activeSubjects.length === 0 && (
+                  <ThemedText style={styles.emptyText}>{t('manageSubjects.noSubjectsBelow')}</ThemedText>
                 )}
 
-                <ThemedView style={styles.subjectActions}>
-                  <Pressable style={styles.iconBtn} onPress={() => handleDelete(sub.id, sub.name)}>
-                    <RemoveIcon />
-                  </Pressable>
-                </ThemedView>
-              </ThemedView>
-              </DraggableRow>
-              );
-            })}
-          </ThemedView>
+                <View>
+                  {activeSubjects.map((sub, idx) => {
+                    // Pan on the HANDLE only. The list is inside a ScrollView, so a pan on
+                    // the whole row would compete with the scroll for the same finger.
+                    const pan = Gesture.Pan()
+                      .onStart(() => {
+                        lastSlots.value = 0;
+                        runOnJS(setDragId)(sub.id);
+                      })
+                      .onUpdate((e) => {
+                        dragY.value = e.translationY;
+                        if (!rowH) return;
+                        const slots = Math.round(e.translationY / rowH);
+                        // Only cross into JS when the target slot actually changes —
+                        // per-frame setState here drops the drag to single figures.
+                        if (slots !== lastSlots.value) {
+                          lastSlots.value = slots;
+                          runOnJS(setDragOffset)(slots);
+                        }
+                      })
+                      .onFinalize(() => {
+                        const slots = lastSlots.value;
+                        dragY.value = 0;
+                        lastSlots.value = 0;
+                        runOnJS(dropAt)(sub.id, slots);
+                      });
+                    const label = localizeSubjectName(sub.name, t);
+                    return (
+                      <DraggableRow
+                        key={sub.id}
+                        dragging={dragId === sub.id}
+                        dragY={dragY}
+                        shift={shiftFor(idx)}
+                        // Rows sit flush (no gap), so one row's height IS the slot pitch.
+                        onLayout={idx === 0 ? (e) => setRowH(e.nativeEvent.layout.height) : undefined}>
+                        <View style={styles.menuRow}>
+                          <GestureDetector gesture={pan}>
+                            <View style={styles.dragHandle}>
+                              <GripIcon />
+                            </View>
+                          </GestureDetector>
+                          {editingId === sub.id ? (
+                            <TextInput
+                              style={[inputStyle, styles.inlineInput]}
+                              value={editName}
+                              onChangeText={setEditName}
+                              onBlur={handleRenameCommit}
+                              onSubmitEditing={handleRenameCommit}
+                              maxLength={30}
+                              autoFocus
+                            />
+                          ) : (
+                            <>
+                              <Pressable onPress={() => openWheel(sub.id)} hitSlop={8} style={styles.dotHit}>
+                                <View style={[styles.menuDot, { backgroundColor: sub.color }]} />
+                              </Pressable>
+                              {/* The whole menu line (name, leader, price) renames — a
+                                  bigger target than the name alone. */}
+                              <Pressable onPress={() => handleRenameStart(sub.id, sub.name)} style={styles.menuLineBody}>
+                                <ThemedText style={nameFont(label)} numberOfLines={1}>{label}</ThemedText>
+                                <DottedLeader />
+                                <ThemedText style={styles.price}>
+                                  {studiedLabel(sub.name) ?? t('manageSubjects.newBadge')}
+                                </ThemedText>
+                              </Pressable>
+                            </>
+                          )}
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={t('manageSubjects.archive')}
+                            disabled={archiveFull}
+                            hitSlop={4}
+                            style={[styles.iconBtn, archiveFull && styles.btnDisabled]}
+                            onPress={() => handleArchive(sub.id)}>
+                            <ArchiveIcon />
+                          </Pressable>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={t('common.delete')}
+                            hitSlop={4}
+                            style={styles.iconBtn}
+                            onPress={() => handleDelete(sub.id, sub.name)}>
+                            <RemoveIcon />
+                          </Pressable>
+                        </View>
+                      </DraggableRow>
+                    );
+                  })}
+                </View>
 
-            {nameHasProfanity && (
-              <ThemedText type="small" style={styles.profanityWarn}>
-                {t('common.inappropriateLanguage')}
-              </ThemedText>
-            )}
+                {archiveFull && (
+                  <ThemedText style={styles.limitNote}>
+                    {t('manageSubjects.archiveFull', { max: MAX_ARCHIVED_SUBJECTS })}
+                  </ThemedText>
+                )}
 
-          <ThemedView style={styles.addPanel}>
-            <ThemedView style={styles.addInputRow}>
-              <Pressable onPress={() => openWheel('new')} hitSlop={12} style={styles.addColorButton}>
-                <ThemedView style={[styles.subjectColorDot, { backgroundColor: selectedColor }]} />
-              </Pressable>
-              <TextInput
-                ref={nameRef}
-                style={styles.addInput}
-                placeholder={t('manageSubjects.addNewSubject')}
-                placeholderTextColor={BakeryColors.latte}
-                value={newName}
-                onChangeText={setNewName}
-                onSubmitEditing={handleAdd}
-                maxLength={30}
-                returnKeyType="done"
-              />
-            </ThemedView>
-
-            <ThemedView style={styles.colorGrid}>
-              {SUBJECT_COLORS.map((color) => (
-                <Pressable key={color} onPress={() => setSelectedColor(color)}>
-                  <ThemedView
-                    style={[
-                      styles.colorSwatch,
-                      { backgroundColor: color },
-                      selectedColor === color && styles.colorSwatchSelected,
-                    ]}
-                  />
+                <DashedRule />
+                {/* The way into the archive, written as one more line on the menu. */}
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => openArchive(true)}
+                  style={({ pressed }) => [styles.menuRow, pressed && styles.pressed]}>
+                  <View style={styles.dragHandle}>
+                    <ArchiveIcon size={20} />
+                  </View>
+                  <View style={styles.menuLineBody}>
+                    <ThemedText style={styles.archiveLineText} numberOfLines={1}>
+                      {t('manageSubjects.archivedLabel')}
+                    </ThemedText>
+                    <DottedLeader />
+                    <ThemedText style={styles.price}>{archivedSubjects.length}</ThemedText>
+                  </View>
+                  <View style={styles.chevronSlot}>
+                    <ChevronIcon />
+                  </View>
                 </Pressable>
-              ))}
-              <WheelSwatch
-                value={selectedColor}
-                onPress={() => openWheel('new')}
-                selected={!(SUBJECT_COLORS as readonly string[]).includes(selectedColor)}
-              />
-            </ThemedView>
+                <DashedRule />
 
-            <Pressable
-              style={({ pressed }) => [styles.addBtn, (!newName.trim() || nameHasProfanity || activeSubjects.length >= subjectLimit) && styles.addBtnDisabled, pressed && styles.pressed]}
-              onPress={handleAdd}
-              disabled={!newName.trim() || nameHasProfanity || activeSubjects.length >= subjectLimit}>
-              <ThemedText type="smallBold" style={styles.addBtnText}>
-                {activeSubjects.length >= subjectLimit ? t('manageSubjects.limitReachedN', { limit: subjectLimit }) : t('manageSubjects.addSubjectBtn')}
-              </ThemedText>
-            </Pressable>
-          </ThemedView>
+                <MenuLabel>{t('manageSubjects.addSection')}</MenuLabel>
+                <View style={styles.addInputRow}>
+                  <Pressable onPress={() => openWheel('new')} hitSlop={12} style={styles.addDotHit}>
+                    <View style={[styles.addDot, { backgroundColor: selectedColor }]} />
+                  </Pressable>
+                  <TextInput
+                    ref={nameRef}
+                    style={styles.addInput}
+                    placeholder={t('manageSubjects.addNewSubject')}
+                    placeholderTextColor={BakeryColors.latte}
+                    value={newName}
+                    onChangeText={setNewName}
+                    onSubmitEditing={handleAdd}
+                    maxLength={30}
+                    returnKeyType="done"
+                  />
+                </View>
+                {nameHasProfanity && (
+                  <ThemedText type="small" style={styles.profanityWarn}>
+                    {t('common.inappropriateLanguage')}
+                  </ThemedText>
+                )}
+
+                <View style={styles.colorGrid}>
+                  {SUBJECT_COLORS.map((color) => (
+                    <Pressable key={color} onPress={() => setSelectedColor(color)}>
+                      <ThemedView
+                        style={[
+                          styles.colorSwatch,
+                          { backgroundColor: color },
+                          selectedColor === color && styles.colorSwatchSelected,
+                        ]}
+                      />
+                    </Pressable>
+                  ))}
+                  <WheelSwatch
+                    value={selectedColor}
+                    onPress={() => openWheel('new')}
+                    selected={!(SUBJECT_COLORS as readonly string[]).includes(selectedColor)}
+                  />
+                </View>
+
+                <Pressable
+                  style={({ pressed }) => [styles.addBtn, (!newName.trim() || nameHasProfanity || activeFull) && styles.addBtnDisabled, pressed && styles.pressed]}
+                  onPress={handleAdd}
+                  disabled={!newName.trim() || nameHasProfanity || activeFull}>
+                  <ThemedText style={styles.addBtnText}>
+                    {activeFull ? t('manageSubjects.limitReachedN', { limit: subjectLimit }) : t('manageSubjects.addToMenuBtn')}
+                  </ThemedText>
+                </Pressable>
+              </>
+            )}
+          </View>
         </SafeAreaView>
       </ScrollView>
 
@@ -521,6 +694,50 @@ export default function ManageSubjectsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BakeryColors.frosting },
+
+  // ── Bakery menu ──
+  menuCard: {
+    backgroundColor: BakeryColors.paper,
+    borderRadius: BakeryRadii.card,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.shortbread,
+    paddingHorizontal: 14,
+    paddingTop: 18,
+    paddingBottom: 16,
+    gap: 4,
+    ...BakeryShadow,
+  },
+  menuHeading: { alignItems: 'center', gap: 2, marginBottom: 2 },
+  menuTitle: { fontFamily: 'Baloo2', fontSize: 32, color: BakeryColors.cocoaDark, textAlign: 'center' },
+  menuSubtitle: { fontSize: 13, fontWeight: '700', color: BakeryColors.cocoa, textAlign: 'center', marginTop: 4 },
+  menuLabel: {
+    fontSize: 11.5,
+    fontWeight: '900',
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: BakeryColors.cocoa,
+    marginTop: 10,
+    marginBottom: 2,
+  },
+  menuRow: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 46 },
+  // The colour dot is the recolour button; the slot is tall so it's an easy tap.
+  dotHit: { width: 22, height: 44, alignItems: 'center', justifyContent: 'center' },
+  menuDot: { width: 13, height: 13, borderRadius: 6.5 },
+  // Name + leader + price share one BASELINE, like a printed menu: Baloo sits high
+  // in its line box, so centring put the name visibly above its price. Padding (not
+  // stretch) keeps the rename target row-tall while the parent row still centres it.
+  menuLineBody: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'baseline', paddingVertical: 10 },
+  menuName: { fontFamily: 'Baloo2', fontSize: 18, color: BakeryColors.cocoaDark, flexShrink: 1 },
+  menuNameCjk: { fontFamily: roundedCjkFont, fontSize: 15.5, fontWeight: '800', color: BakeryColors.cocoaDark, flexShrink: 1 },
+  // A view's baseline is its bottom edge, so in the baseline row the dots land
+  // just above the text's baseline.
+  leader: { flexGrow: 1, flexShrink: 0, flexBasis: 12, marginHorizontal: 6, height: 4 },
+  price: { fontSize: 14, fontWeight: '900', color: BakeryColors.cocoa, flexShrink: 0 },
+  dashedRule: { marginVertical: 6 },
+  archiveLineText: { fontFamily: 'Baloo2', fontSize: 17, color: BakeryColors.cocoaDark, flexShrink: 1 },
+  chevronSlot: { width: 26, alignItems: 'center' },
+  addDotHit: { width: 30, height: 44, alignItems: 'center', justifyContent: 'center' },
+  addDot: { width: 22, height: 22, borderRadius: 11 },
   safeArea: {
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.two,
@@ -530,39 +747,9 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     gap: Spacing.three,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: Spacing.two,
-    marginBottom: Spacing.one,
-  },
-  title: { fontSize: 28, lineHeight: 34, fontWeight: '900', color: BakeryColors.cocoaDark },
-  headerMeta: {
-    minWidth: 48,
-    textAlign: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    overflow: 'hidden',
-    backgroundColor: '#FFF6E6',
-    borderWidth: 1.5,
-    borderColor: '#E2C9A6',
-    color: BakeryColors.mocha,
-    fontSize: 13,
-    fontWeight: '900',
-  },
   section: { gap: Spacing.two },
   sectionLabel: { fontSize: 13, marginBottom: 2 },
-  emptyCard: {
-    borderRadius: 16,
-    padding: Spacing.four,
-    alignItems: 'center',
-    backgroundColor: '#FFFBF4',
-    borderWidth: 1.5,
-    borderColor: '#F0D8B7',
-  },
-  emptyText: { textAlign: 'center' },
+  emptyText: { textAlign: 'center', fontSize: 13.5, color: BakeryColors.cocoa, paddingVertical: 10 },
   subjectRow: {
     borderRadius: 14,
     padding: Spacing.two,
@@ -570,14 +757,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
-  subjectInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, minWidth: 0 },
 
   doneTop: { alignSelf: 'flex-end', paddingVertical: 4, paddingHorizontal: 2 },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  backTop: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingVertical: 4, paddingRight: 4 },
+  archiveNote: { fontSize: 13, lineHeight: 18, color: BakeryColors.cocoa, textAlign: 'center', marginTop: 2 },
+  limitNote: { fontSize: 13, lineHeight: 18, fontWeight: '700', color: '#C2536B' },
+  restoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 30,
+    paddingHorizontal: 10,
+    borderRadius: 15,
+    borderWidth: 1.5,
+    borderColor: BakeryColors.buttonPink,
+    backgroundColor: BakeryColors.frosting,
+    maxWidth: 140,
+  },
+  restoreBtnText: { fontSize: 12, fontWeight: '800', color: BakeryColors.buttonPink, flexShrink: 1 },
+  btnDisabled: { opacity: 0.35 },
   doneTopText: { fontFamily: 'Baloo2', fontSize: 16, color: BakeryColors.buttonPink },
 
-  subjectPanel: {
-    gap: Spacing.two,
-  },
   paper: {
     backgroundColor: 'transparent',
   },
@@ -606,88 +807,25 @@ const styles = StyleSheet.create({
   },
   // The lifted row needs to read as picked UP, not just moved — shadow does that
   // where the 1.03 scale alone is too subtle on a cream-on-cream list.
+  // Menu rows have no card of their own, so the lifted one borrows the paper fill
+  // — a shadow under a transparent row would just smudge the text.
   rowLifted: {
+    backgroundColor: BakeryColors.paper,
+    borderRadius: 12,
     shadowColor: '#5E3E2D',
     shadowOpacity: 0.22,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 5 },
     elevation: 6,
   },
-  subjectCard: {
-    minHeight: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    paddingVertical: 8,
-    paddingLeft: 10,
-    paddingRight: 8,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 246, 230, 0.94)',
-    borderWidth: 1.5,
-    borderColor: '#E2C9A6',
-    shadowColor: '#8B6B57',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
-  },
   // The colour tab in the margin — the recolour button, using space the ruled
   // page already leaves empty to the left of the red rule.
   marginTabHit: { width: 24, alignItems: 'center' },
   marginTab: { width: 11, height: 11, borderRadius: 3 },
-  subjectColorButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFF8EF',
-    borderWidth: 1.5,
-    borderColor: '#F0D8B7',
-    flexShrink: 0,
-  },
-  addColorButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFF8EF',
-    borderWidth: 1.5,
-    borderColor: '#F0D8B7',
-  },
-  subjectColorDot: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-  },
   // Takes the slack between the name and the actions.
   lineSpacer: { flex: 1, minWidth: 8 },
   // Highlighter swipe behind the name.
   highlight: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 5 },
-  subjectNamePressable: { flex: 1, minWidth: 0 },
-  subjectNameChip: {
-    maxWidth: '100%',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  handName: {
-    fontFamily: Fonts.rounded,
-    fontSize: 15.5,
-    fontStyle: 'italic',
-    fontWeight: '800',
-    color: BakeryColors.cocoaDark,
-  },
-  blockName: {
-    fontFamily: roundedCjkFont,
-    fontSize: 14.5,
-    fontWeight: '800',
-    color: BakeryColors.cocoaDark,
-  },
-  // Lifetime study time, straight after the name.
-  timePill: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999, flexShrink: 0 },
-  timePillText: { fontSize: 10.5, fontWeight: '800', color: '#fff' },
   // Fills the rest of the line so tapping the empty paper renames.
   renameHit: { flex: 1, alignSelf: 'stretch', minWidth: 20 },
   // The write-on line: the swipe stretches so the field has somewhere to grow.
@@ -763,14 +901,11 @@ const styles = StyleSheet.create({
   colorDot: { width: 12, height: 12, borderRadius: 6 },
   subjectName: { flex: 1 },
   editHint: { fontSize: 11 },
-  subjectActions: { flexDirection: 'row', gap: 2 },
   iconBtn: {
     width: 30,
-    height: 30,
-    borderRadius: 15,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 251, 244, 0.8)',
   },
   inlineInput: { flex: 1, paddingVertical: 8, fontSize: 15 },
   input: {
@@ -780,11 +915,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 15,
   },
+  // One row: six swatches + the wheel fit the card on the smallest phones.
   colorGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: Spacing.three,
+    alignItems: 'center',
+    paddingVertical: Spacing.two,
   },
   colorSwatch: {
     width: 32,
@@ -795,40 +931,33 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#7C6F5A',
   },
-  addPanel: {
-    gap: Spacing.three,
-    borderRadius: 18,
-    padding: Spacing.three,
-    backgroundColor: '#FFFBF4',
-    borderWidth: 1.5,
-    borderColor: '#F0D8B7',
-  },
   addInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
   },
+  // A write-on line rather than a boxed field — the menu's own ruled look.
   addInput: {
     flex: 1,
-    minHeight: 46,
-    borderRadius: 14,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 10,
+    minHeight: 44,
+    paddingHorizontal: 2,
+    paddingVertical: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: '#EBCBA8',
     color: BakeryColors.cocoaDark,
-    backgroundColor: BakeryColors.cream,
-    borderWidth: 1.5,
-    borderColor: BakeryColors.shortbread,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
   },
   addBtn: {
     backgroundColor: BakeryColors.buttonPink,
-    borderRadius: 14,
-    paddingVertical: Spacing.three,
+    borderRadius: 16,
+    minHeight: 52,
+    justifyContent: 'center',
     alignItems: 'center',
+    marginTop: Spacing.one,
   },
   addBtnDisabled: { opacity: 0.5 },
-  addBtnText: { color: '#FFF' },
+  addBtnText: { fontFamily: 'Baloo2', fontSize: 19, color: '#FFF' },
   profanityWarn: { color: '#C2536B', fontWeight: '700', marginTop: 2 },
   pressed: { opacity: 0.8 },
   // A real (quiet) button rather than a floating text link — it's the way off

@@ -114,14 +114,14 @@ export const SHOP_ITEMS: ShopItem[] = [
     image: require('@/assets/images/honey/honey-classic-anim.webp'),
   },
   {
-    // TEST character — free (price 0) so it can be tried without coins.
     // Displays as Gray (was Pretzel, then Soda); id stays companion_pretzel and the
     // canonical name 'Soda' (its i18n keys: gallery.name_Soda / tagline_Soda).
+    // One of the starter choices (STARTER_CHOICES), so a new player can pick him free.
     id: 'companion_pretzel',
     name: 'Soda',
     emoji: '',
     description: "A silver-grey fox chef who takes everything very seriously: his hat, his apron, the exact height of every pastry. He is trying so hard to look cool. It is not working, and that's the best part.",
-    price: 0,
+    price: 10000,
     category: 'companion',
     // Animated (bubbles); RN <Image> surfaces use pretzel.png via staticImageFor().
     image: require('@/assets/images/pretzel/pretzel-classic-anim.webp'),
