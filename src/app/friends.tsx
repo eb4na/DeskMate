@@ -554,7 +554,6 @@ export default function FriendsScreen() {
             )}
             {friends.length === 0 ? (
               <View style={styles.emptyCard}>
-                <Text style={styles.emptyEmoji}></Text>
                 <Text style={styles.emptyTitle}>{t('friends.noFriendsYet')}</Text>
                 <Text style={styles.emptyText}>{t('friends.noFriendsHint')}</Text>
               </View>
@@ -926,7 +925,6 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     alignItems: 'center',
     gap: 6 * s,
   },
-  emptyEmoji: { fontSize: 40 * s },
   emptyTitle: { fontSize: 16 * s, fontWeight: '800', color: P.brown },
   emptyText: { fontSize: 13 * s, color: P.mutedBrown, textAlign: 'center' },
 

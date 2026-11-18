@@ -1794,6 +1794,8 @@
     "title": "Buzón",
     "empty": "No hay correo ahora. ¡Vuelve pronto por regalos!",
     "claim": "Reclamar",
+    "plusLifetimeReward": "Premium de por vida",
+    "plusUntilReward": "Premium hasta el {{date}}",
     "claimed": "Reclamado",
     "coinsReward": "{{count}} monedas",
     "claimedTitle": "¡Recompensa reclamada!",

@@ -27,6 +27,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AddSubjectInline, KeyboardLiftView } from '@/components/add-subject-inline';
 import { DurationWheel } from '@/components/duration-wheel';
 import { SoundPressable } from '@/components/sound-pressable';
 import { useApp } from '@/context/app-context';
@@ -259,11 +260,11 @@ export default function SessionCheckpointScreen() {
   if (subjectOpen) {
     const choose = (name: string | null) => { setChosenSubject(name); setSubjectOpen(false); };
     return (
-      <View style={styles.backdrop}>
+      <KeyboardLiftView style={styles.backdrop}>
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.card}>
             <Text style={styles.title}>{t('studyRoom.whatStudying')}</Text>
-            <ScrollView style={styles.subjectScroll} contentContainerStyle={styles.subjectWrap} showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.subjectScroll} contentContainerStyle={styles.subjectWrap} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               {pickableSubjects.map((sub) => (
                 <SoundPressable
                   key={sub.id}
@@ -280,6 +281,13 @@ export default function SessionCheckpointScreen() {
                   </Text>
                 </SoundPressable>
               ))}
+              {/* Add a brand-new subject here — it's created and picked at once. */}
+              <AddSubjectInline
+                onAdded={choose}
+                scale={scale}
+                chipStyle={styles.subjectChip}
+                chipTextStyle={[styles.subjectChipText, { color: BakeryColors.berry }]}
+              />
             </ScrollView>
             <SoundPressable
               sound="confirm"
@@ -289,7 +297,7 @@ export default function SessionCheckpointScreen() {
             </SoundPressable>
           </View>
         </SafeAreaView>
-      </View>
+      </KeyboardLiftView>
     );
   }
 

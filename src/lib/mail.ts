@@ -13,14 +13,19 @@ export type Mail = {
   // Optional "pick one" reward: the player chooses exactly one of these shop item
   // ids to claim (e.g. any one of the three pajama sets). Empty when not a choice.
   itemChoices: string[];
+  // Plus gift (see 20261117b_mail_targeted_plus.sql): claiming records a comp
+  // server-side and turns Plus on. plusUntil null = lifetime.
+  grantsPlus: boolean;
+  plusUntil: string | null;
   createdAt: string;
 };
 
-/** Fetch all live broadcast mail, newest first. Returns [] on any error/offline. */
+/** Fetch all live mail, newest first: broadcasts plus any addressed to this player
+ *  (RLS hides other players' targeted mail). Returns [] on any error/offline. */
 export async function fetchMail(): Promise<Mail[]> {
   const { data, error } = await supabase
     .from('mail')
-    .select('id, title, body, coins, item_id, item_choices, created_at, active, expires_at')
+    .select('id, title, body, coins, item_id, item_choices, grants_plus, plus_until, created_at, active, expires_at')
     .eq('active', true)
     .order('created_at', { ascending: false });
   if (error || !data) return [];
@@ -34,6 +39,8 @@ export async function fetchMail(): Promise<Mail[]> {
       coins: m.coins ?? 0,
       itemId: m.item_id ?? null,
       itemChoices: Array.isArray(m.item_choices) ? m.item_choices.map(String) : [],
+      grantsPlus: m.grants_plus === true,
+      plusUntil: m.plus_until ?? null,
       createdAt: m.created_at ?? '',
     }));
 }

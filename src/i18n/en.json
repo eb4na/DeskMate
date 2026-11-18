@@ -1794,6 +1794,8 @@
     "title": "Mailbox",
     "empty": "No mail right now. Check back soon for gifts!",
     "claim": "Claim",
+    "plusLifetimeReward": "Lifetime Plus",
+    "plusUntilReward": "Plus until {{date}}",
     "claimed": "Claimed",
     "coinsReward": "{{count}} coins",
     "claimedTitle": "Reward claimed!",

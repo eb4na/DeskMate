@@ -34,6 +34,7 @@ import {
   getCompanionSkins,
   getStarterActiveId,
   isBunSkinUnlocked,
+  isCompanionOwned,
   localizeCompanionName,
   localizeOutfitName,
   localizeShopItemName,
@@ -91,6 +92,7 @@ export default function ProfileScreen() {
     bunSkinId,
     companionSkins,
     ownedShopItems,
+    starterCompanionId,
   } = useApp();
   const activeCardColor = profileCardColor || 'pink';
   const cc = cardColors(activeCardColor);
@@ -104,18 +106,23 @@ export default function ProfileScreen() {
   // Cloud profile sync (name + current character + stats) runs app-wide in
   // app-context now, so friends see my character even without opening this screen.
 
-  // Characters the player can put on their card: Bun + any owned shop companions.
+  // Characters the player can put on their card: the companions they own. Bun
+  // (Meruru) is one of the five starters, so she's only here if she was the free
+  // pick, was bought, or the player is grandfathered (isCompanionOwned covers all).
   const starterId = getStarterActiveId(defaultCompanionId);
+  const ownsBun = isCompanionOwned('companion_bun', starterCompanionId, ownedShopItems);
   const characters: { id: string; name: string }[] = [
-    { id: starterId, name: 'Bun' },
+    ...(ownsBun ? [{ id: starterId, name: 'Bun' }] : []),
     ...SHOP_COMPANIONS.filter((i) => ownedShopItems.includes(i.id)).map((i) => ({
       id: `shop:${i.id}`,
       name: i.name,
     })),
   ].sort((a, b) => characterRank(a.id) - characterRank(b.id));
 
-  // Which character/outfit the card shows (falls back to the active companion).
-  const selectedCharId = profileCompanionId || activeCompanionId || starterId;
+  // Which character/outfit the card shows (falls back to the active companion). A
+  // pick that isn't in the owned list (an old save) is ignored.
+  const cardPick = characters.some((c) => c.id === profileCompanionId) ? profileCompanionId : '';
+  const selectedCharId = cardPick || activeCompanionId || starterId;
   const isBun = !selectedCharId.startsWith('shop:');
   const ownedSkins: BunSkin[] = isBun
     ? BUN_SKINS.filter((s) => isBunSkinUnlocked(s, ownedShopItems))
@@ -131,7 +138,7 @@ export default function ProfileScreen() {
   };
 
   // Figure image for the card.
-  const figureSource = profileCompanionId
+  const figureSource = cardPick
     ? isBun
       ? getBunSkinImage(skinId)
       : getCompanionSkinImage(selectedCharId, skinId) ?? getBunSkinImage('classic')

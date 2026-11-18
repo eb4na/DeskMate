@@ -9,8 +9,9 @@ import { getAchievement } from '@/constants/quests';
 import { useAuth } from '@/context/auth-context';
 import { getAppStateScope, loadScopedAppState, saveScopedAppState, isGuestUpgradePending, clearGuestUpgradePending, loadGuestState } from '@/lib/app-state-repository';
 import { probeCloudState, pushCloudState, pushCloudStateDebounced, flushCloudState } from '@/lib/cloud-sync';
+import { COMP_LIFETIME_UNTIL } from '@/lib/plus-comp';
 import { showPopup } from '@/lib/popup';
-import { getEffectiveBunSkinId, getEffectiveCompanionSkins } from '@/lib/companion-utils';
+import { getEffectiveBunSkinId, getEffectiveCompanionSkins, isCompanionOwned } from '@/lib/companion-utils';
 import { maskProfanity } from '@/lib/profanity';
 import { playCoin, playFinishDing } from '@/lib/sounds';
 import { track } from '@/lib/analytics';
@@ -982,14 +983,13 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
     }
   }
 
-  // Plus exclusive: ensure Plus members own the Berry Princess Bunny skin and the
-  // Strawberry Palace room + desk (covers players who had Plus before these became
-  // perks).
-  for (const plusGrant of PLUS_GRANTS) {
-    if (merged.isPlus && !(merged.ownedShopItems ?? []).includes(plusGrant)) {
-      merged.ownedShopItems = [...(merged.ownedShopItems ?? []), plusGrant];
-    }
-  }
+  // Plus exclusives (Berry Princess Bunny skin, Strawberry Palace room + desk) are
+  // NOT granted here. This merge only sees the saved flag, which is unverified at
+  // load time — a hand-edited / stale `isPlus: true` used to hand out these KEPT-
+  // FOREVER items moments before the launch reconcile (_layout.tsx) revoked Plus,
+  // leaving a non-Plus player owning them. They're granted only by setIsPlus(true),
+  // which runs on a real activation: purchase, the RevenueCat re-sync each launch,
+  // or a founder comp (plus_comps).
 
   // Plus perk: all study/ambience sounds are free WHILE subscribed — but we do NOT
   // bake them into ownedShopItems (that would keep them forever even after Plus
@@ -1083,6 +1083,19 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
   // first-launch tutorial; only brand-new accounts see it after onboarding.
   if (merged.tutorialSeen === undefined) merged.tutorialSeen = !!merged.legalAccepted;
   if (!merged.starterCompanionId) merged.starterCompanionId = 'starter:girl';
+  // A profile-card pick the player doesn't own falls back to the active companion.
+  // The card picker used to offer Meruru (starter:girl) to EVERYONE, including new
+  // accounts whose starter was someone else, and that pick syncs to friends.
+  {
+    const pc = merged.profileCompanionId ?? '';
+    const owned = merged.ownedShopItems ?? [];
+    const ownsPick = pc.startsWith('starter:')
+      ? isCompanionOwned('companion_bun', merged.starterCompanionId, owned)
+      : pc.startsWith('shop:')
+        ? isCompanionOwned(pc.slice(5), merged.starterCompanionId, owned)
+        : true;
+    if (!ownsPick) merged.profileCompanionId = '';
+  }
   // A save pointing at a room that no longer exists (Bun's Room + Pink Desk were
   // removed 2026-10-04) falls back to the default Cozy room.
   if (!ROOM_PAIRS.some((r) => r.id === merged.equippedBackgroundRoomId)) merged.equippedBackgroundRoomId = 'cozy';
@@ -1316,7 +1329,7 @@ type AppContextType = {
   game2048Best: number;
   recordGame2048Best: (score: number) => void;
   claimedMailIds: string[];
-  claimMail: (mail: { id: string; coins: number; itemId: string | null }) => Promise<boolean>;
+  claimMail: (mail: { id: string; coins: number; itemId: string | null; grantsPlus?: boolean; plusUntil?: string | null }) => Promise<boolean>;
   readMailIds: string[];
   markMailRead: (id: string) => void;
   setLanguage: (lang: string) => void;
@@ -3359,11 +3372,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // replay a claim is a no-op.
   // Returns true if the mail should now show as claimed (granted or already claimed),
   // false if the attempt failed and should be retryable.
-  const claimMail = async (mail: { id: string; coins: number; itemId: string | null }): Promise<boolean> => {
+  const claimMail = async (mail: { id: string; coins: number; itemId: string | null; grantsPlus?: boolean; plusUntil?: string | null }): Promise<boolean> => {
     const result = await claimMailRemote(mail.id, mail.itemId);
     if (result === 'error') {
       // Offline / RPC failure: leave it UNCLAIMED so the reward isn't forfeited.
       return false;
+    }
+    // Plus gift: the claim RPC has already recorded the comp server-side (so the
+    // launch reconcile keeps Plus on from now on); switch it on right away too.
+    // Also on 'already' — claimed on another device, the comp exists either way.
+    if (mail.grantsPlus) {
+      const until = mail.plusUntil ? new Date(mail.plusUntil).toISOString() : COMP_LIFETIME_UNTIL;
+      if (!s.isPlus || s.plusUntil !== until) setIsPlus(true, s.plusPlan ?? 'annual', until);
     }
     if (result === 'already') {
       // Already claimed elsewhere: reflect claimed state, grant nothing.

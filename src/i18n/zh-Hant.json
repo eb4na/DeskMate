@@ -1899,6 +1899,8 @@
     "title": "信箱",
     "empty": "暫時沒有郵件。稍後再來領取禮物吧！",
     "claim": "領取",
+    "plusLifetimeReward": "永久會員",
+    "plusUntilReward": "會員至 {{date}}",
     "claimed": "已領取",
     "coinsReward": "{{count}} 金幣",
     "claimedTitle": "獎勵已領取！",

@@ -1794,6 +1794,8 @@
     "title": "Boîte aux lettres",
     "empty": "Pas de courrier pour l'instant. Reviens vite pour des cadeaux !",
     "claim": "Réclamer",
+    "plusLifetimeReward": "Premium à vie",
+    "plusUntilReward": "Premium jusqu'au {{date}}",
     "claimed": "Réclamé",
     "coinsReward": "{{count}} pièces",
     "claimedTitle": "Récompense réclamée !",

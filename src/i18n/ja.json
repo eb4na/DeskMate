@@ -1793,6 +1793,8 @@
     "title": "メールボックス",
     "empty": "今はメールがありません。プレゼントをお楽しみに！",
     "claim": "受け取る",
+    "plusLifetimeReward": "永久プラス",
+    "plusUntilReward": "{{date}}までプラス",
     "claimed": "受取済み",
     "coinsReward": "{{count}}コイン",
     "claimedTitle": "受け取りました！",

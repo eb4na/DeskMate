@@ -1793,6 +1793,8 @@
     "title": "邮箱",
     "empty": "暂时没有邮件。稍后再来领取礼物吧！",
     "claim": "领取",
+    "plusLifetimeReward": "永久会员",
+    "plusUntilReward": "会员至 {{date}}",
     "claimed": "已领取",
     "coinsReward": "{{count}} 金币",
     "claimedTitle": "奖励已领取！",

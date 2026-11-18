@@ -5,6 +5,7 @@ import { useTranslation } from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
 import { BakeryColors, BakeryRadii, BakeryShadow, MIN_POPUP_WIDTH, popupMaxWidth, Spacing } from '@/constants/theme';
 import { useReportModalTransition } from '@/lib/modal-traffic';
+import { AddSubjectInline, KeyboardLiftView } from '@/components/add-subject-inline';
 
 const C = BakeryColors;
 
@@ -31,11 +32,11 @@ export function SubjectPickerModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.root}>
+      <KeyboardLiftView style={styles.root}>
         <Pressable style={styles.backdrop} onPress={onClose} />
         <View style={styles.card}>
           <Text style={styles.title}>{title ?? t('studyRoom.whatStudying')}</Text>
-          <ScrollView contentContainerStyle={styles.chipWrap} showsVerticalScrollIndicator={false}>
+          <ScrollView contentContainerStyle={styles.chipWrap} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {active.map((s) => (
               <Pressable
                 key={s.id}
@@ -50,12 +51,14 @@ export function SubjectPickerModal({
                 </Text>
               </Pressable>
             ))}
+            {/* Add a brand-new subject right here — it's created and picked at once. */}
+            <AddSubjectInline onAdded={onPick} />
           </ScrollView>
           <Pressable onPress={() => onPick(null)} style={({ pressed }) => [styles.focusBtn, pressed && styles.pressed]}>
             <Text style={styles.focusText}>{t('studyRoom.justFocus')}</Text>
           </Pressable>
         </View>
-      </View>
+      </KeyboardLiftView>
     </Modal>
   );
 }

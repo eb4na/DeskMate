@@ -89,7 +89,7 @@ export default function MailboxScreen() {
     claimingRef.current.add(m.id);
     let claimed = false;
     try {
-      claimed = await claimMail({ id: m.id, coins: m.coins, itemId: chosen ?? null });
+      claimed = await claimMail({ id: m.id, coins: m.coins, itemId: chosen ?? null, grantsPlus: m.grantsPlus, plusUntil: m.plusUntil });
     } finally {
       claimingRef.current.delete(m.id);
     }
@@ -181,7 +181,7 @@ type OpenLetterProps = {
 function OpenLetter({ mail: m, isTablet, claimed, pickedId, onPick, onClaim, t }: OpenLetterProps) {
   const { ownedShopItems } = useApp();
   const isChoice = m.itemChoices.length > 0;
-  const hasReward = m.coins > 0 || !!m.itemId || isChoice;
+  const hasReward = m.coins > 0 || !!m.itemId || isChoice || m.grantsPlus;
   const needsPick = isChoice && !pickedId;
   const imgSize = isTablet ? 168 : 92;
 
@@ -203,6 +203,19 @@ function OpenLetter({ mail: m, isTablet, claimed, pickedId, onPick, onClaim, t }
               <ThemedText type="smallBold" style={styles.itemChipText}>{itemName(m.itemId, t)}</ThemedText>
             </View>
           )}
+        </View>
+      )}
+
+      {/* Plus gift (lifetime, or until a date). */}
+      {m.grantsPlus && (
+        <View style={styles.rewardRow}>
+          <View style={styles.plusChip}>
+            <ThemedText type="smallBold" style={styles.plusChipText}>
+              {m.plusUntil
+                ? t('mailbox.plusUntilReward', { date: new Date(m.plusUntil).toLocaleDateString() })
+                : t('mailbox.plusLifetimeReward')}
+            </ThemedText>
+          </View>
         </View>
       )}
 
@@ -291,6 +304,9 @@ const styles = StyleSheet.create({
   singlePreview: { width: 56, height: 56 },
   itemChip: { backgroundColor: 'rgba(242,160,181,0.18)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
   itemChipText: { color: '#C75A78', fontSize: 13 },
+  // Gold, to match the Plus crown/frame family rather than the pink item chips.
+  plusChip: { backgroundColor: 'rgba(244,201,118,0.28)', borderRadius: 999, borderWidth: 1.5, borderColor: '#E8B54A', paddingHorizontal: 14, paddingVertical: 6 },
+  plusChipText: { color: '#8A5A12', fontSize: 14 },
 
   chooseLabel: { marginTop: 2, textAlign: 'center' },
   choiceRow: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', gap: Spacing.two },

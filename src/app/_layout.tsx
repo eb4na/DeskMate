@@ -25,6 +25,7 @@ import { setLoadingActive, subscribeLoadingScreen, takeLoadingDone, isHomePainte
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { posthog, identifyUser, resetUser } from '@/lib/analytics';
 import { configurePurchases, currentPlusExpiry, onPlusEntitlementChange } from '@/lib/purchases';
+import { fetchPlusComp } from '@/lib/plus-comp';
 import { ROOM_PAIRS } from '@/constants/room-data';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
 import { BakeryColors } from '@/constants/theme';
@@ -274,7 +275,11 @@ function RootNavigator() {
   // must not yank Plus mid-session — deactivation stays with the cold-launch reconcile
   // below. Guarded so unrelated customerInfo updates don't cause re-render churn.
   const plusActivateRef = useRef<(info: { until: string | null; plan: 'monthly' | 'annual' }) => void>(() => {});
+  // Set once the launch reconcile finds a founder-gifted comp (see below). A comped
+  // account's plusUntil comes from the comp, not from any store entitlement.
+  const compedRef = useRef(false);
   plusActivateRef.current = ({ until, plan }) => {
+    if (compedRef.current) return;
     if (until && (!isPlus || plusUntil !== until)) setIsPlus(true, plan, until);
   };
 
@@ -283,17 +288,30 @@ function RootNavigator() {
     if (!initialized || !loaded || !authed || plusReconciled.current) return;
     plusReconciled.current = true;
     (async () => {
+      const userId = session?.user?.id;
+      // Free Plus gifted by the founder (public.plus_comps), checked BEFORE the dev
+      // bail-out and the store sync. Hand-editing user_state can't gift Plus — the
+      // store check below revoked it on the very next launch. A comped account gets
+      // Plus here and is never revoked; an unknown answer (offline) also blocks the
+      // revoke, so a dropped connection can't strip a gift.
+      const comp = userId ? await fetchPlusComp(userId) : null;
+      if (comp) {
+        compedRef.current = true;
+        // Guarded: setIsPlus grants tickets/freezes, so only call it on a change.
+        if (!isPlus || plusUntil !== comp.until) setIsPlus(true, plusPlan ?? 'annual', comp.until);
+      }
       // In dev, Plus is controlled locally (the test "reset to new account" makes a
       // free account, mock-purchase grants it) — don't auto-sync from the store, or a
       // sandbox entitlement would re-grant Plus right after a reset.
       if (__DEV__) return;
-      await configurePurchases(session?.user?.id);
+      await configurePurchases(userId);
       // Activate Plus on any future entitlement change, from anywhere (see ref above).
       onPlusEntitlementChange((info) => plusActivateRef.current(info));
+      if (comp) return; // the comp outranks the store — nothing to reconcile
       const until = await currentPlusExpiry();
       if (until === undefined) return; // IAP unavailable — leave local state as-is
       if (until) setIsPlus(true, plusPlan ?? 'monthly', until);
-      else if (isPlus) setIsPlus(false);
+      else if (isPlus && comp === null) setIsPlus(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialized, loaded, authed, session?.user?.id]);

@@ -1793,6 +1793,8 @@
     "title": "우편함",
     "empty": "지금은 메일이 없어요. 곧 선물을 확인해 보세요!",
     "claim": "받기",
+    "plusLifetimeReward": "평생 프리미엄",
+    "plusUntilReward": "{{date}}까지 프리미엄",
     "claimed": "받음",
     "coinsReward": "{{count}}코인",
     "claimedTitle": "보상을 받았어요!",
