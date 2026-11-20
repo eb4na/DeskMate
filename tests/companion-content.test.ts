@@ -179,6 +179,22 @@ test('placeholders match the vars each kind provides', () => {
   }
 });
 
+test('voices never name a companion', () => {
+  // Display names are localized and have changed before (Pretzel -> Soda -> Gray), so
+  // content refers to other companions without names. Whole word, case-insensitive,
+  // except `Bun`: lowercase "bun" is the bread in founder-approved lines
+  // ("the last strawberry bun"), so only the capitalized proper noun counts.
+  const NAMES = ['Gray', 'Grey', 'Soda', 'Pretzel', 'Bunny', 'Miel', 'Tira', 'Hanji', 'Aki', 'Cocoa', 'Meruru'];
+  for (const [at, s] of strings(content.voices, 'voices')) {
+    for (const n of NAMES) {
+      // Meruru may sign her own letters ("Hi... it's Meruru.").
+      if (n === 'Meruru' && at.startsWith('voices.bun.letters.')) continue;
+      assert.ok(!new RegExp(`\\b${n}\\b`, 'i').test(s), `${at} names ${n}`);
+    }
+    assert.ok(!/\bBun\b/.test(s), `${at} names Bun`);
+  }
+});
+
 test('no emoji', () => {
   for (const [at, s] of strings(content, '')) {
     assert.ok(!/\p{Extended_Pictographic}/u.test(s), `emoji in ${at}`);
