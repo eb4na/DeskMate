@@ -372,6 +372,7 @@ function RootNavigator() {
         <Stack.Screen name="custom-timer" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="ambience-picker" options={{ presentation: 'modal', title: t('screens.ambience') }} />
         <Stack.Screen name="companion-gallery" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="letter-box" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="achievements" options={{ headerShown: false, gestureEnabled: false, animation: 'fade', presentation: 'transparentModal', contentStyle: { backgroundColor: 'transparent' } }} />
         <Stack.Screen name="edit-room" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="food-gallery" options={{ presentation: 'modal', headerShown: false }} />
