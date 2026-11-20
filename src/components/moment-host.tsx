@@ -1,7 +1,9 @@
 // The companion speaks first on Home: once per "open" (a cold start, or coming back
-// from the background while Home is focused) it may say ONE thing about the player's
-// real life (exam tomorrow, a streak, a late night...), optionally with tap replies,
-// or hand over a paper note it left on the desk while the player was away.
+// from the background) it may say ONE thing about the player's real life (exam
+// tomorrow, a streak, a late night...), optionally with tap replies, or hand over a
+// paper note it left on the desk while the player was away. Remounting is NOT an
+// open: Home unmounts this host during a study session, and finishing a session in
+// the same foreground stretch must not produce a new moment.
 //
 // Mounted in Home's high-zIndex character layer (beside PetCloudHost). Like
 // PetCloudHost it owns all of its own state, so showing / answering / dismissing a
@@ -74,6 +76,34 @@ const LIP_FRAC_TABLET = 123 / 280;
 
 let shownSeq = 0;
 
+// ── Opens: module-level tokens, so a remount (e.g. after a study session) is never
+// an open. The module loading = the cold start = open #1; each background -> active
+// return bumps the token. A bare inactive -> active (Control Center, Face ID, a
+// system sheet) is not an open — it would burn one of the two daily moments.
+// MomentHost reads + stamps the away gap as soon as it sees a new token (state
+// loaded), but CONSUMES the token only when it decides, after every gate is clear.
+let openToken = 1;
+let stampedToken = 0;
+let consumedToken = 0;
+// lastActiveAt as it was BEFORE the oldest still-undecided open stamped it. If a
+// second open lands while one is still waiting (reward popups up), the first one's
+// gap is kept: the player did come back after that long.
+let openPrevActiveAt: number | null = null;
+const openListeners = new Set<() => void>();
+let wentBackground = false;
+// Fast Refresh re-runs this module: drop the previous run's listener first.
+const appStateHolder = globalThis as { __momentHostAppState?: { remove: () => void } };
+appStateHolder.__momentHostAppState?.remove();
+appStateHolder.__momentHostAppState = AppState.addEventListener('change', (state) => {
+  if (state === 'background') {
+    wentBackground = true;
+  } else if (state === 'active' && wentBackground) {
+    wentBackground = false;
+    openToken += 1;
+    openListeners.forEach((fn) => fn());
+  }
+});
+
 function speakerOf(a: AppSnapshot): { persona: PersonaKey; rawName: string } {
   const resolved = resolveActiveCompanion(
     a.activeCompanionId,
@@ -104,6 +134,21 @@ function fileBondLetters(a: AppSnapshot) {
   } catch (e) {
     if (__DEV__) console.warn('[moments] bond letter filing skipped', e);
   }
+}
+
+/**
+ * Once per open, as soon as saved state is loaded: read the away gap FIRST (the
+ * background stamp), then stamp now — or the gap could never reach 8h — and back-file
+ * bond letters. Waiting for `loaded` matters: before it, lastActiveAt reads as the
+ * default 0 and the stamp would be overwritten by the load.
+ */
+function takeOpenGap(a: AppSnapshot) {
+  if (!a.loaded || stampedToken === openToken) return;
+  stampedToken = openToken;
+  const prevActiveAt = a.lastActiveAt;
+  a.stampLastActive();
+  fileBondLetters(a);
+  if (openPrevActiveAt === null) openPrevActiveAt = prevActiveAt;
 }
 
 /**
@@ -188,43 +233,20 @@ function MomentHostImpl({ isTablet, scale }: { isTablet: boolean; scale: number 
   const [openNote, setOpenNote] = useState<DeskNote | null>(null);
   const [box, setBox] = useState<{ w: number; h: number } | null>(null);
 
-  // ── Opens ──────────────────────────────────────────────────────────────────
-  // The mount is the first open. After that, coming back from the BACKGROUND while
-  // Home is focused is an open. A bare inactive -> active (Control Center, Face ID,
-  // a system sheet) is not: it would burn one of the two daily moments.
-  const [openTick, setOpenTick] = useState(1);
+  // ── Opens (see the module-level tokens) ───────────────────────────────────
+  // Re-render on a background -> active return so the effects below see the token.
+  const [, setOpenTick] = useState(0);
   useEffect(() => {
-    let wentBackground = false;
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'background') {
-        wentBackground = true;
-      } else if (state === 'active' && wentBackground) {
-        wentBackground = false;
-        if (focusedRef.current) setOpenTick((n) => n + 1);
-      }
-    });
-    return () => sub.remove();
+    const onOpen = () => setOpenTick((n) => n + 1);
+    openListeners.add(onOpen);
+    return () => {
+      openListeners.delete(onOpen);
+    };
   }, []);
-
-  // An open waiting for its one decision. Holds lastActiveAt as it was BEFORE the
-  // open stamped it — the away gap must be read first, or it could never reach 8h.
-  // If a second open lands while one is still waiting (reward popups up), the first
-  // one's gap is kept: the player did come back after that long.
-  const pendingRef = useRef<{ prevActiveAt: number } | null>(null);
-  const [pendingTick, setPendingTick] = useState(0);
-  const handledOpen = useRef(0);
+  const token = openToken;
   useEffect(() => {
-    // Saved state may still be loading at mount (lastActiveAt would read as the
-    // default 0, and the stamp would be overwritten by the load) — wait for it.
-    if (!app.loaded || handledOpen.current === openTick) return;
-    handledOpen.current = openTick;
-    const a = appRef.current;
-    const prevActiveAt = a.lastActiveAt;
-    a.stampLastActive();
-    fileBondLetters(a);
-    if (!pendingRef.current) pendingRef.current = { prevActiveAt };
-    setPendingTick((n) => n + 1);
-  }, [app.loaded, openTick]);
+    takeOpenGap(appRef.current);
+  }, [app.loaded, token]);
 
   // Re-check the gates whenever the loading overlay shows or lifts (it is not React
   // state, so nothing else re-renders this host when it changes).
@@ -253,16 +275,22 @@ function MomentHostImpl({ isTablet, scale }: { isTablet: boolean; scale: number 
     const a = appRef.current;
     if (!gatesOpen(a, focusedRef.current)) return;
     const dev = a.devMoment;
-    const pending = pendingRef.current;
-    if (!dev && !pending) return;
+    const hasOpen = openToken > consumedToken;
+    if (!dev && !hasOpen) return;
     // Consume BEFORE any action: each action re-renders the whole app.
-    pendingRef.current = null;
+    let prevActiveAt: number | null = null;
+    if (hasOpen) {
+      takeOpenGap(a); // no-op unless this open's gap wasn't read yet
+      consumedToken = openToken;
+      prevActiveAt = openPrevActiveAt;
+      openPrevActiveAt = null;
+    }
     if (dev) a.setDevMoment(null);
 
     try {
       const today = todayISO();
       const { persona, rawName } = speakerOf(a);
-      const moment = chooseMoment(a, persona, dev, dev ? null : (pending?.prevActiveAt ?? null));
+      const moment = chooseMoment(a, persona, dev, dev ? null : prevActiveAt);
       if (!moment) return;
       const line = momentLine(persona, moment);
       if (!line) return; // no words for it: stay quiet, and don't retire it
@@ -304,10 +332,10 @@ function MomentHostImpl({ isTablet, scale }: { isTablet: boolean; scale: number 
   const ready = gatesOpen(app, focused);
   useEffect(() => {
     if (!ready) return;
-    if (!pendingRef.current && !app.devMoment) return;
+    if (!(openToken > consumedToken) && !app.devMoment) return;
     const timer = setTimeout(() => decideRef.current(), SETTLE_MS);
     return () => clearTimeout(timer);
-  }, [ready, pendingTick, app.devMoment, loadingTick]);
+  }, [ready, token, app.devMoment, loadingTick]);
 
   // Leaving Home dismisses the bubble (it still counts as said). A note on the desk
   // stays there until it is opened.
