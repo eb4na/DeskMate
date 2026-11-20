@@ -19,7 +19,8 @@
     "fromNote": "A note from {{name}}",
     "fromStory": "A story from {{name}}",
     "fromLetter": "A letter from {{name}}",
-    "signature": "— {{name}}"
+    "signature": "— {{name}}",
+    "dismissHint": "Tap to close"
   },
   "replies": {
     "ready": "I'm ready",

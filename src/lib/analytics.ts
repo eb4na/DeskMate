@@ -24,7 +24,13 @@ export type AnalyticsEvent =
   | 'shop_purchase'
   | 'shop_redeem_ticket'
   | 'ad_reward'
-  | 'companion_chat_opened';
+  | 'companion_chat_opened'
+  // Companion memory moments + keepsakes (see src/components/moment-host.tsx).
+  | 'companion_moment_shown'
+  | 'companion_moment_reply'
+  | 'companion_note_given'
+  | 'letter_box_opened'
+  | 'away_pool_exhausted';
 
 export function track(event: AnalyticsEvent, props?: EventProps) {
   posthog?.capture(event, props);
