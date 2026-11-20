@@ -22,7 +22,7 @@
 - **Modals:** never stack a third native modal. The letter box (opened from the gallery modal) shows notes as an **inline overlay**; Home may use one transparent `Modal` for the note because the reward chain is clear when a moment shows. (Spec said "router screen" for the keepsake view — changed for this reason; spec updated.)
 - **Caps from the spec:** one speak-first moment per open, **2 per account-day**; away note needs **≥ 8 h** since last active; always if last note ≥ 2 days ago, **40 %** if yesterday, never twice a day; bond letters for **levels 2–15**; `momentsSeen` keeps the newest **2000**; away pool ≈ **30 per companion**, **pauses when exhausted** (no repeats).
 - **Type check baseline:** `npx tsc --noEmit -p .` currently reports exactly **1** error (`src/components/home-icons.tsx:28`). No task may add errors.
-- **Tests:** `node --test tests/` (Node ≥ 24 strips TS types). Engine files under test may only use `import type` from `@/…` paths — no runtime imports of app/RN code.
+- **Tests:** `node --test 'tests/**/*.test.ts'` (Node ≥ 24 strips TS types; a bare directory argument does NOT work — always pass the quoted glob). Engine files under test may only use `import type` from `@/…` paths — no runtime imports of app/RN code.
 
 ## Review Focus
 
@@ -38,7 +38,7 @@
 
 **Files:**
 - Modify: `tsconfig.json` (add `"tests/**/*"` to `exclude`)
-- Modify: `package.json` (add script `"test:engine": "node --test tests/"`)
+- Modify: `package.json` (add script `"test:engine": "node --test 'tests/**/*.test.ts'"`)
 - Create: `src/i18n/companion/en.json`, `src/i18n/companion/{zh,zh-Hant,ja,ko,es,fr}.json` (the six start as `{}`; English fallback until Task 11)
 - Modify: `src/i18n/index.ts` (register namespace `companion` for all 7 languages; keep `translation` as `defaultNS`)
 - Create: `tests/smoke.test.ts`
@@ -46,7 +46,7 @@
 **Interfaces:**
 - Produces: `i18n.t('<key>', { ns: 'companion' })` resolves keys from `src/i18n/companion/<lang>.json`, falling back to `en`.
 
-- [ ] **Step 1:** Write `tests/smoke.test.ts` that imports `node:test` + `node:assert/strict` and asserts `1 + 1 === 2`; run `node --test tests/` → `pass 1`.
+- [ ] **Step 1:** Write `tests/smoke.test.ts` that imports `node:test` + `node:assert/strict` and asserts `1 + 1 === 2`; run `node --test 'tests/**/*.test.ts'` → `pass 1`.
 - [ ] **Step 2:** Add `"tests/**/*"` to `tsconfig.json` `exclude`; add the `test:engine` script; run `npx tsc --noEmit -p .` → still exactly 1 error.
 - [ ] **Step 3:** Create `src/i18n/companion/en.json` with `{ "ui": { "tapToOpen": "Tap to open" } }` and the six `{}` files; in `src/i18n/index.ts` import them and set `resources[lang] = { translation: X, companion: companionX }`, `ns: ['translation','companion']`, `defaultNS: 'translation'`.
 - [ ] **Step 4:** Verify existing text is unaffected and the new key resolves: run `npx tsc --noEmit -p .` (1 error) — runtime check happens in Task 9's simulator pass.
@@ -93,7 +93,7 @@
 | quiet_subject | non-archived subject with ≥ 2 history records, last one 10–45 days ago; pick the one with most records | `quiet:<name>:<lastDateISO>` (vars `subject`) | — |
 | exam_soon | `diff(today, exam.dateISO)` in 2–3 | `exam_soon:<examId>` (vars `days`) | ready, nervous |
 
-Exam moments carry `vars.exam = exam.name`. `followUpFor` returns `{ id: 'followup:' + moment.id, kind: 'exam_rough', dueISO: addDaysISO(today, 1), vars: moment.vars }` only for `exam_after` + `rough`; otherwise `null`.
+Moment `vars`: exam kinds `{ exam: exam.name }` (+ `days` for exam_soon); anniversary `{ n }`; streak `{ n: m }`; milestone_sessions `{ count: n }`; milestone_hours `{ n }`; deadline_met `{ task: title }`; quiet_subject `{ subject: name }`; followup = the stored `pendingFollowUp.vars`; others `{}`. `followUpFor` returns `{ id: 'followup:' + moment.id, kind: 'exam_rough', dueISO: addDaysISO(today, 1), vars: moment.vars }` only for `exam_after` + `rough`; otherwise `null`.
 
 - [ ] **Step 1: Write failing tests** in `tests/companion-moments.test.ts` (build inputs from one `baseInput()` helper with empty arrays, `today: '2026-11-19'`, `nowMinutes: 600`, `lastActiveAt`-free):
   - `empty input returns null` → `pickMoment(baseInput())` is `null`
@@ -111,9 +111,9 @@ Exam moments carry `vars.exam = exam.name`. `followUpFor` returns `{ id: 'follow
   - `late night uses session end hour` → `lastSession { dateISO: today, endHour: 1 }` → `'late_night'`, replies `['fine','tired']`
   - `deadline met within 2 days only` → done deadline task completed today on its due date → `'deadline_met'`, `vars.task`; completed 5 days ago → `null`; repeating task → `null`
   - `quiet subject ignores archived` → archived subject with old history → `null`; same subject unarchived, last record 12 days ago, 3 records → `'quiet_subject'`
-- [ ] **Step 2:** Run `node --test tests/` → the new tests FAIL (module not found).
+- [ ] **Step 2:** Run `node --test 'tests/**/*.test.ts'` → the new tests FAIL (module not found).
 - [ ] **Step 3:** Implement `src/lib/companion-moments.ts` exactly to the table and signatures above (pure functions, no runtime imports).
-- [ ] **Step 4:** Run `node --test tests/` → all PASS; `npx tsc --noEmit -p .` → 1 error.
+- [ ] **Step 4:** Run `node --test 'tests/**/*.test.ts'` → all PASS; `npx tsc --noEmit -p .` → 1 error.
 - [ ] **Step 5:** Commit — `git add src/lib/companion-moments.ts tests/companion-moments.test.ts` then `git commit -m "Companion moments: pure moment engine + tests" -- src/lib/companion-moments.ts tests/companion-moments.test.ts`
 
 ### Task 3: Away-life + bond-letter engine
@@ -140,9 +140,9 @@ Exam moments carry `vars.exam = exam.name`. `followUpFor` returns `{ id: 'follow
   - `exhausted pool returns null` → given = all ids → `null`
   - `letters back-fill every missed level up to 15` → persona bun level 5, have [] → ids for levels 2,3,4,5; level 20 → 14 letters, max level 15
   - `letters are not duplicated` → have contains `letter:bun:2` → result excludes it
-- [ ] **Step 2:** `node --test tests/` → new tests FAIL.
+- [ ] **Step 2:** `node --test 'tests/**/*.test.ts'` → new tests FAIL.
 - [ ] **Step 3:** Implement the functions in `src/lib/companion-moments.ts`.
-- [ ] **Step 4:** `node --test tests/` → all PASS; tsc → 1 error.
+- [ ] **Step 4:** `node --test 'tests/**/*.test.ts'` → all PASS; tsc → 1 error.
 - [ ] **Step 5:** Commit — `git add tests/away-life.test.ts` then `git commit -m "Companion moments: away-life + bond-letter engine" -- src/lib/companion-moments.ts tests/away-life.test.ts`
 
 ### Task 4: Persisted state, timestamps and actions
@@ -169,7 +169,7 @@ Exam moments carry `vars.exam = exam.name`. `followUpFor` returns `{ id: 'follow
 - [ ] **Step 1:** Add the types/fields/defaults/normalization and the back-fill.
 - [ ] **Step 2:** Add the actions and expose them (and `devMoment`) in `AppContextType` + the provider value.
 - [ ] **Step 3:** Record `endHour` + `firstStudyDate` in `addSubjectTime`; stamp `lastActiveAt` on background.
-- [ ] **Step 4:** `npx tsc --noEmit -p .` → 1 error; `node --test tests/` → PASS.
+- [ ] **Step 4:** `npx tsc --noEmit -p .` → 1 error; `node --test 'tests/**/*.test.ts'` → PASS.
 - [ ] **Step 5:** Commit — `git commit -m "Companion moments: persisted state + actions" -- src/context/app-context.tsx`
 
 ### Task 5: Voice content (Meruru + generic) and the voice helper
@@ -192,18 +192,18 @@ Exam moments carry `vars.exam = exam.name`. `followUpFor` returns `{ id: 'follow
   - `awayEntry(persona: PersonaKey, id: string): { kind: 'note' | 'story'; bubble: string; text: string } | null`
   - `letterText(persona: PersonaKey, level: number): string | null`
   - `noteFontFamily(lang: string): string | undefined` — `'Caveat'` for en/es/fr, else `undefined`
-- **Content shape** (`en.json`): `ui.*` (tapToOpen, done, savedToLetters `"Saved to {{name}}'s letters"`, lettersButton `"Letters"`, letterBoxTitle `"{{name}}'s letters"`, empty, filterAll/filterNotes/filterStories/filterLetters, kindNote/kindStory, kindLetter `"Level {{level}} letter"`, newBadge, fromNote/fromStory/fromLetter `"A note from {{name}}"`…), `replies.<answer>`, and `voices.<persona>.{ moments.<kind>: string[], reactions.<kind>.<answer>: string, followups.exam_rough: string[], letters.<2..15>: string, away.<id>: { kind, bubble, text } }`.
-- **Volume for this task:** `bun` — every moment kind (recurring kinds exam_*, quiet_subject, deadline_met, late_night: 3 variants; others 1–2), all reactions, 2 follow-ups, letters 2–15, **30** away entries (mix of notes and stories). `generic` — 1 line per kind, reactions, 1 follow-up, letters 2–15, 10 away entries. Use the approved samples from the 2026-11-19 conversation verbatim where they exist. Placeholders only `{{exam}}`, `{{subject}}`, `{{days}}`, `{{count}}`, `{{n}}`, `{{task}}`. No emojis, never guilt, no user name.
+- **Content shape** (`en.json`): `ui.*` (tapToOpen, done, savedToLetters `"Saved to {{name}}'s letters"`, lettersButton `"Letters"`, letterBoxTitle `"{{name}}'s letters"`, empty, filterAll/filterNotes/filterStories/filterLetters, kindNote/kindStory, kindLetter `"Level {{level}} letter"`, newBadge, fromNote/fromStory/fromLetter `"A note from {{name}}"`…), `replies.<answer>`, and `voices.<persona>.{ moments.<kind>: string[], reactions.<kind>.<answer>: string, letters.<2..15>: string, away.<id>: { kind, bubble, text } }`.
+- **Volume for this task:** `bun` — every moment kind (recurring kinds exam_*, quiet_subject, deadline_met, late_night: 3 variants; others 1–2), all reactions, 2 `moments.followup` lines (the next-day check-in after a rough exam), letters 2–15, **30** away entries (mix of notes and stories). `generic` — 1 line per kind, reactions, letters 2–15, 10 away entries. Use the approved samples from the 2026-11-19 conversation verbatim where they exist. Placeholders only `{{exam}}`, `{{subject}}`, `{{days}}`, `{{count}}`, `{{n}}`, `{{task}}`. No emojis, never guilt, no user name.
 
 - [ ] **Step 1: Write failing content tests** in `tests/companion-content.test.ts` (read the JSON with `fs`):
   - `every moment kind has bun and generic lines` (all 16 kinds except `away_note`)
   - `every reply-bearing kind has a reaction per reply` (exam_tomorrow, exam_soon, exam_after, late_night)
   - `bun has letters 2..15 and 30 away entries`, each away entry has `kind` ∈ note/story, non-empty `bubble`/`text`
-  - `only allowed placeholders` (regex over all strings: every `{{x}}` ∈ the six names)
+  - `only allowed placeholders` (regex over every string under `voices.*`: each `{{x}}` ∈ the six names; `ui.*` may also use `{{name}}` and `{{level}}`)
   - `no emoji` (no char in `\p{Extended_Pictographic}`)
-- [ ] **Step 2:** `node --test tests/` → FAIL.
+- [ ] **Step 2:** `node --test 'tests/**/*.test.ts'` → FAIL.
 - [ ] **Step 3:** Write the content and `src/lib/companion-voice.ts`; switch `companion-pet.tsx` to `personaKeyForName`; update the dialogue guide.
-- [ ] **Step 4:** `node --test tests/` → PASS; tsc → 1 error.
+- [ ] **Step 4:** `node --test 'tests/**/*.test.ts'` → PASS; tsc → 1 error.
 - [ ] **Step 5:** Commit — `git add src/lib/companion-voice.ts tests/companion-content.test.ts` then `git commit -m "Companion moments: Meruru + generic voice content" -- src/i18n/companion/en.json src/lib/companion-voice.ts src/components/companion-pet.tsx CHARACTER_DIALOGUE_GUIDE.md tests/companion-content.test.ts`
 
 ### Task 6: Paper visuals + note overlay
@@ -251,7 +251,7 @@ Exam moments carry `vars.exam = exam.name`. `followUpFor` returns `{ id: 'follow
 - [ ] **Step 1:** `reward-chain.ts` + analytics event names.
 - [ ] **Step 2:** `moment-host.tsx` per the behavior list.
 - [ ] **Step 3:** Mount in Home: `<View style={[styles.homeCharacterLayer, phCharLayer, tCharLayer, styles.petBubbleLayer]} pointerEvents="box-none"><MomentHost isTablet={isTablet} scale={isTablet ? htScaled.charScale * u : 1} /></View>` directly after the `PetCloudHost` layer.
-- [ ] **Step 4:** `npx tsc --noEmit -p .` → 1 error; `node --test tests/` → PASS.
+- [ ] **Step 4:** `npx tsc --noEmit -p .` → 1 error; `node --test 'tests/**/*.test.ts'` → PASS.
 - [ ] **Step 5:** Commit our files by pathspec (`git add src/lib/reward-chain.ts src/components/moment-host.tsx` then `git commit -m "Companion moments: speak-first MomentHost on Home" -- src/lib/reward-chain.ts src/components/moment-host.tsx src/lib/analytics.ts`), then stage the `index.tsx` hunk with the HEAD-blob method, check `git diff --cached`, and `git commit -m "Home: mount MomentHost"`.
 
 ### Task 8: Bond letter in the level-up popup, letter box screen, gallery entry, dev buttons
@@ -288,7 +288,7 @@ Exam moments carry `vars.exam = exam.name`. `followUpFor` returns `{ id: 'follow
 **Files:** Modify `src/i18n/companion/en.json`
 
 - [ ] **Step 1:** Write `bunny`, `miel`, `gray` (Soda), `tira`, `hanji` with the same volume as `bun` (voices from current `pet.*` lines + updated dialogue guide: Bunny third person, Soda deadpan-serious chef, Tira dry/aloof, Hanji short and poetic, Miel sleepy-warm). Show the founder 5 lines per character before writing the rest.
-- [ ] **Step 2:** Extend `tests/companion-content.test.ts` so the "every kind / letters 2..15 / 30 away entries" assertions loop over all six personas; `node --test tests/` → PASS.
+- [ ] **Step 2:** Extend `tests/companion-content.test.ts` so the "every kind / letters 2..15 / 30 away entries" assertions loop over all six personas; `node --test 'tests/**/*.test.ts'` → PASS.
 - [ ] **Step 3:** Commit — `git commit -m "Companion moments: voices for Bunny, Miel, Soda, Tira, Hanji" -- src/i18n/companion/en.json tests/companion-content.test.ts`
 
 ### Task 11: Translations
@@ -297,6 +297,6 @@ Exam moments carry `vars.exam = exam.name`. `followUpFor` returns `{ id: 'follow
 
 - [ ] **Step 1:** Translate `en.json` into zh, ja, ko, es, fr keeping each voice (localized companion names per `localizeCompanionName`: Meruru = 绵绵 / メルル / 메루루; JA パン/KO 빵 mean bread — never use them for Meruru). Placeholders unchanged.
 - [ ] **Step 2:** Generate zh-Hant via OpenCC.
-- [ ] **Step 3:** Add a parity test: every key path in `en.json` exists in all six files with the same placeholders; `node --test tests/` → PASS.
+- [ ] **Step 3:** Add a parity test: every key path in `en.json` exists in all six files with the same placeholders; `node --test 'tests/**/*.test.ts'` → PASS.
 - [ ] **Step 4:** Spot-check JA and ZH on the simulator (one moment + one note each).
 - [ ] **Step 5:** Commit — `git commit -m "Companion moments: translations" -- src/i18n/companion tests/companion-content.test.ts`
