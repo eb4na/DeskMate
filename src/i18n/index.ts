@@ -10,6 +10,14 @@ import ko from './ko.json';
 import es from './es.json';
 import fr from './fr.json';
 
+import companionEn from './companion/en.json';
+import companionZh from './companion/zh.json';
+import companionZhHant from './companion/zh-Hant.json';
+import companionJa from './companion/ja.json';
+import companionKo from './companion/ko.json';
+import companionEs from './companion/es.json';
+import companionFr from './companion/fr.json';
+
 export type SupportedLanguage = 'en' | 'zh' | 'zh-Hant' | 'ja' | 'ko' | 'es' | 'fr';
 
 export const LANGUAGES: { code: SupportedLanguage; flag: string; native: string; english: string }[] = [
@@ -63,14 +71,16 @@ i18n
   .use(initReactI18next)
   .init({
     resources: {
-      en: { translation: en },
-      zh: { translation: zh },
-      'zh-Hant': { translation: zhHant },
-      ja: { translation: ja },
-      ko: { translation: ko },
-      es: { translation: es },
-      fr: { translation: fr },
+      en: { translation: en, companion: companionEn },
+      zh: { translation: zh, companion: companionZh },
+      'zh-Hant': { translation: zhHant, companion: companionZhHant },
+      ja: { translation: ja, companion: companionJa },
+      ko: { translation: ko, companion: companionKo },
+      es: { translation: es, companion: companionEs },
+      fr: { translation: fr, companion: companionFr },
     },
+    ns: ['translation', 'companion'],
+    defaultNS: 'translation',
     lng: detectDeviceLanguage(),
     fallbackLng: 'en',
     interpolation: { escapeValue: false },

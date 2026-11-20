@@ -60,6 +60,7 @@
   },
   "scripts": {
     "start": "expo start",
+    "test:engine": "node --test 'tests/**/*.test.ts'",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",
