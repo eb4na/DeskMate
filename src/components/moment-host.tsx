@@ -434,7 +434,11 @@ function MomentHostImpl({ isTablet, scale }: { isTablet: boolean; scale: number 
     const lip = box.h * (isTablet ? LIP_FRAC_TABLET : LIP_FRAC_PHONE);
     const rowH = Math.max(44, 44 * k); // reply chips / desk note row (≥ 44pt targets)
     const rowBottom = lip + 10 * k - rowH; // straddles the desk lip, clear of the ingredients
-    const bubbleBottom = lip + 20 * k;
+    // Founder call (2026-11-20): the bubble sits ABOVE the companion's head, never over
+    // her face. The layer's top edge is where the head ends, so the bubble's bottom
+    // edge rests just above it and longer lines grow upward (over the exam/order cards
+    // if they must — accepted).
+    const bubbleBottom = box.h + 6 * k;
     const bubbleMaxW = Math.min(box.w - 32, 290 * k);
     const hitW = 150 * (isTablet ? scale : phW); // same width as CompanionPet's hitbox
     const envW = 54 * k;
@@ -476,11 +480,11 @@ function MomentHostImpl({ isTablet, scale }: { isTablet: boolean; scale: number 
                       paddingHorizontal: 15 * k,
                     },
                   ]}>
-                  {/* Tail: points up toward the companion's face. */}
+                  {/* Tail: points down toward the companion's head. */}
                   <View
                     style={[
                       styles.tail,
-                      { width: 14 * k, height: 14 * k, top: -6 * k, marginLeft: -7 * k },
+                      { width: 14 * k, height: 14 * k, bottom: -6 * k, marginLeft: -7 * k },
                     ]}
                   />
                   <View style={[styles.namePill, { top: -11 * k, left: 14 * k, height: 22 * k, borderRadius: 11 * k, paddingHorizontal: 10 * k, maxWidth: bubbleMaxW - 28 * k }]}>
