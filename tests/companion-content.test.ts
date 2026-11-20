@@ -145,7 +145,7 @@ test('only allowed placeholders', () => {
 test('placeholders match the vars each kind provides', () => {
   // From pickMoment: which vars each kind carries (followup carries its exam's vars).
   const VARS: Record<string, string[]> = {
-    followup: ['exam'],
+    followup: [], // its exam may have been deleted since; never name it
     birthday: [],
     exam_today: ['exam'],
     exam_tomorrow: ['exam'],
@@ -192,6 +192,16 @@ test('voices never name a companion', () => {
       assert.ok(!new RegExp(`\\b${n}\\b`, 'i').test(s), `${at} names ${n}`);
     }
     assert.ok(!/\bBun\b/.test(s), `${at} names Bun`);
+  }
+});
+
+test('followup lines use no placeholders', () => {
+  // A follow-up fires up to 3 days after the exam reply; the exam may be deleted
+  // by then, and deleted exams are never mentioned.
+  for (const [p, v] of Object.entries(content.voices) as [string, any][]) {
+    for (const [at, s] of strings(v.moments?.followup ?? [], `voices.${p}.moments.followup`)) {
+      assert.ok(!s.includes('{{'), `${at} has a placeholder`);
+    }
   }
 });
 

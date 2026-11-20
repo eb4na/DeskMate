@@ -35,7 +35,7 @@
       "moments": {
         "followup": [
           "Is today a little softer than yesterday...? I kept thinking about you~",
-          "Your {{exam}} is behind you now... today can just be soft. I made tea, just in case~"
+          "The hard part is behind you now... today can just be soft. I made tea, just in case~"
         ],
         "birthday": [
           "Happy birthday... I baked you the biggest cake I could carry... it's a little lopsided~",
@@ -291,7 +291,7 @@
     },
     "generic": {
       "moments": {
-        "followup": ["Your {{exam}} is behind you now. How are you feeling today? Be gentle with yourself."],
+        "followup": ["How are you feeling today? The hard part is behind you. Be gentle with yourself."],
         "birthday": ["Happy birthday! I'm really glad I get to spend part of it with you."],
         "exam_today": ["Today's your {{exam}}. Take a slow breath. You know more than you think."],
         "exam_tomorrow": ["Your {{exam}} is tomorrow. How are you feeling about it?"],
