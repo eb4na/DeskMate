@@ -51,6 +51,17 @@ import { linkProvider } from '@/lib/oauth';
 import { AppleLogoIcon, GoogleGIcon, LockIcon, MailIcon } from '@/components/auth-icons';
 import { SettingsLineIcon, type SettingsLineIconName } from '@/components/settings-line-icons';
 import { resolveActiveCompanion } from '@/lib/companion-utils';
+import { Envelope } from '@/components/paper-note';
+import type { MomentKind } from '@/lib/companion-moments';
+
+// Dev-only: the spoken moment kinds the "Companion moment (dev test)" row walks
+// through, one per tap (away_note has its own row).
+const DEV_MOMENT_KINDS: MomentKind[] = [
+  'exam_soon', 'exam_tomorrow', 'exam_today', 'exam_after', 'followup', 'welcome_back',
+  'anniversary', 'streak', 'late_night', 'early_bird', 'deadline_met',
+  'milestone_sessions', 'milestone_hours', 'quiet_subject', 'birthday',
+];
+let devMomentIndex = 0;
 import i18n, { LANGUAGES, useTranslation } from '@/i18n';
 import { DateWheelPicker } from '@/components/date-wheel-picker';
 
@@ -169,6 +180,7 @@ export default function SettingsScreen() {
     devMaxOutAccount,
     devUnlockHanji,
     devGrantCoins,
+    setDevMoment,
     replayTutorial,
     claimedMailIds,
     profileBirthday,
@@ -549,6 +561,30 @@ export default function SettingsScreen() {
                     // close Settings so the popups can present over Home.
                     noteModalTransition();
                     devUnlockHanji();
+                    router.back();
+                  }}
+                />
+                <View style={styles.divider} />
+                <SettingRow
+                  icon={<Envelope width={26 * scale} sealed />}
+                  label={`Companion moment (dev test): ${DEV_MOMENT_KINDS[devMomentIndex % DEV_MOMENT_KINDS.length]}`}
+                  onPress={() => {
+                    // Shows the next spoken moment kind on Home (sample vars), then
+                    // advances, so repeated taps walk through every kind.
+                    const kind = DEV_MOMENT_KINDS[devMomentIndex % DEV_MOMENT_KINDS.length];
+                    devMomentIndex += 1;
+                    noteModalTransition();
+                    setDevMoment(kind);
+                    router.back();
+                  }}
+                />
+                <View style={styles.divider} />
+                <SettingRow
+                  icon={<Envelope width={26 * scale} sealed />}
+                  label="Companion note (dev test)"
+                  onPress={() => {
+                    noteModalTransition();
+                    setDevMoment('away_note');
                     router.back();
                   }}
                 />

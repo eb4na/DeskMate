@@ -23,7 +23,9 @@ import { LockOverlay } from '@/components/lock-badge';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { ThemedView } from '@/components/themed-view';
 import { CompanionLevel } from '@/components/companion-level';
-import { Fonts, MaxContentWidth, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
+import { Envelope } from '@/components/paper-note';
+import { BakeryColors, Fonts, MaxContentWidth, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
+import { personaKeyForName } from '@/lib/companion-voice';
 import { useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 import { characterRank, staticImageFor, BUN_SKINS, type BunSkin, getBunSkinImage, getCompanionSkinImage, getCompanionSkins, getStarterActiveId, isCompanionOwned, localizeCompanionName, localizeOutfitName, localizeShopItemDescription, pickSkinLore, skinLores, SHOP_COMPANIONS } from '@/lib/companion-utils';
@@ -146,6 +148,7 @@ function GalleryContent() {
     setEquippedBackground,
     setEquippedDesk,
     companionMinutes,
+    keepsakes,
   } = useApp();
 
   // Dev "design knobs" — live overrides for the companion grid's spacing/sizes.
@@ -560,6 +563,21 @@ function GalleryContent() {
               {TAGLINE_KEYS[preview.name] ? t(TAGLINE_KEYS[preview.name]) : t('gallery.defaultTagline')}
             </Text>
             <CompanionLevel minutes={companionMinutes?.[preview.id] ?? 0} scale={scale} />
+            {/* Letter box: the notes and bond letters this companion has written. The dot
+                marks something not opened yet. */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('ui.lettersButton', { ns: 'companion' })}
+              style={({ pressed }) => [styles.lettersBtn, pressed && styles.pressed]}
+              onPress={() =>
+                router.push({ pathname: '/letter-box', params: { persona: personaKeyForName(preview.name), name: preview.name } })
+              }>
+              <Envelope width={22 * scale} sealed />
+              <Text style={styles.lettersBtnText}>{t('ui.lettersButton', { ns: 'companion' })}</Text>
+              {keepsakes.some((k) => !k.seen && k.persona === personaKeyForName(preview.name)) && (
+                <View style={styles.lettersDot} />
+              )}
+            </Pressable>
             {preview.isActive ? (
               <View style={styles.activePill}>
                 <Text style={styles.activePillText}>{t('gallery.active')}</Text>
@@ -1242,6 +1260,30 @@ const makeStyles = (s: number, contentWidth: number) => StyleSheet.create({
     paddingVertical: 7 * s,
   },
   setActiveBtnText: { fontSize: 12 * s, color: '#FFF', fontWeight: '800' },
+  lettersBtn: {
+    marginTop: 8 * s,
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6 * s,
+    backgroundColor: '#FFFDF8',
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: P.pinkSoft,
+    paddingHorizontal: 16 * s,
+  },
+  lettersBtnText: { fontSize: 13 * s, color: P.brown, fontWeight: '800' },
+  lettersDot: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: BakeryColors.buttonPink,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
 
   // Locked companion cards
   companionCardLocked: { borderColor: P.pinkSoft, backgroundColor: '#FBF6F2' },

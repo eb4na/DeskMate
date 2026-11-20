@@ -11,7 +11,8 @@ import { useIsTablet } from '@/hooks/use-device-class';
 import { awayEntry, letterText } from '@/lib/companion-voice';
 import type { Keepsake } from '@/lib/companion-moments';
 
-function formatDate(dateISO: string, lang: string): string {
+/** Short localized month + day for a keepsake's YYYY-MM-DD (no timezone shift). */
+export function formatKeepsakeDate(dateISO: string, lang: string): string {
   const [y, m, d] = dateISO.split('-').map(Number);
   if (!y || !m || !d) return '';
   try {
@@ -75,7 +76,7 @@ export function KeepsakeOverlay({
             <FitText type="subtitle" style={styles.title} numberOfLines={2}>
               {t(titleKey, { name: companionName })}
             </FitText>
-            <ThemedText style={styles.date}>{formatDate(keepsake.dateISO, language)}</ThemedText>
+            <ThemedText style={styles.date}>{formatKeepsakeDate(keepsake.dateISO, language)}</ThemedText>
           </View>
           <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             <PaperNote

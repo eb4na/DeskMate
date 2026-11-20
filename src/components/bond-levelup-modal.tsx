@@ -6,13 +6,17 @@
  * Tap anywhere to dismiss.
  */
 import { Image } from 'expo-image';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { CompanionLevel } from '@/components/companion-level';
+import { PaperNote } from '@/components/paper-note';
 import { BakeryColors, MIN_POPUP_WIDTH, popupMaxWidth } from '@/constants/theme';
 import { birthdayRewardAvailable, nextLoginReward, todayISO, useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
+import { BOND_LETTER_MAX_LEVEL } from '@/lib/companion-moments';
 import { localizeCompanionName, resolveActiveCompanion } from '@/lib/companion-utils';
+import { letterText, personaKeyForName } from '@/lib/companion-voice';
 import { useModalSafeVisible } from '@/lib/modal-traffic';
 
 const P = { card: '#FFFDF8', brown: '#5B3A2E', muted: '#9A7B6D' };
@@ -26,7 +30,10 @@ export function BondLevelUpModal() {
     exchangeTicketPending, streakRescuePending,
     loginRewardDate, streak, isPlus, streakFreezes, streakRescueDismissedDate,
     profileBirthday, birthdayRewardYear,
+    addKeepsakes, markKeepsakeSeen, language,
   } = useApp();
+  const { t: tc } = useTranslation('companion');
+  const { width: winW } = useWindowDimensions();
   // The settle window alone is NOT enough: it delays a present, it doesn't make two
   // popups take turns. Two modals armed in the same instant both wait it out and then
   // present together — which wedges iOS and leaves Home frozen to taps.
@@ -46,15 +53,33 @@ export function BondLevelUpModal() {
     !birthdayPending && !streakRescuePending && !dailyPending && exchangeTicketPending <= 0;
   const visible = useModalSafeVisible(want);
 
-  if (!bondLevelUp) {
+  // Levels 2–15 come with a short letter from the companion. It is filed in their
+  // letter box (already read) the moment the popup shows it; MomentHost back-fills any
+  // letter this popup never got to show (levels crossed by petting, double jumps).
+  const resolved = bondLevelUp
+    ? resolveActiveCompanion(bondLevelUp.companionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins)
+    : null;
+  const persona = resolved ? personaKeyForName(resolved.name) : null;
+  const level = bondLevelUp?.level ?? 0;
+  const letter =
+    persona && level >= 2 && level <= BOND_LETTER_MAX_LEVEL ? letterText(persona, level) : null;
+  const letterId = persona && letter ? `letter:${persona}:${level}` : null;
+  useEffect(() => {
+    if (!visible || !persona || !letterId) return;
+    addKeepsakes([{ id: letterId, persona, kind: 'letter', contentId: String(level), level, dateISO: todayISO(), seen: true }]);
+    markKeepsakeSeen(letterId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, letterId]);
+
+  if (!bondLevelUp || !resolved) {
     return <Modal visible={false} transparent />;
   }
 
   // The stored id is an activeCompanionId (companionMinutes is keyed by it), so it
   // resolves straight to the current-skin look — the same art shown on Home.
-  const resolved = resolveActiveCompanion(bondLevelUp.companionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins);
   const name = localizeCompanionName(resolved.name, t);
   const minutes = companionMinutes?.[bondLevelUp.companionId] ?? 0;
+  const noteW = Math.min(winW - 100, 300);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={clearBondLevelUp}>
@@ -68,6 +93,14 @@ export function BondLevelUpModal() {
           <View style={styles.meterWrap}>
             <CompanionLevel minutes={minutes} scale={1.5} />
           </View>
+          {letter ? (
+            <>
+              <ScrollView style={styles.letterScroll} contentContainerStyle={styles.letterContent} showsVerticalScrollIndicator={false}>
+                <PaperNote text={letter} signature={tc('ui.signature', { name })} lang={language} width={noteW} />
+              </ScrollView>
+              <Text style={styles.saved}>{tc('ui.savedToLetters', { name })}</Text>
+            </>
+          ) : null}
           <Text style={styles.hint}>{t('bondLevelUp.dismiss')}</Text>
         </View>
       </Pressable>
@@ -91,5 +124,8 @@ const styles = StyleSheet.create({
   badge: { fontSize: 24, fontWeight: '900', color: BakeryColors.berry, textAlign: 'center' },
   message: { fontSize: 14, color: P.muted, fontWeight: '600', textAlign: 'center', lineHeight: 20 },
   meterWrap: { alignSelf: 'stretch', paddingHorizontal: 10, marginTop: 6 },
+  letterScroll: { alignSelf: 'stretch', maxHeight: 240, marginTop: 10 },
+  letterContent: { alignItems: 'center', paddingTop: 12, paddingBottom: 6 },
+  saved: { fontSize: 12.5, color: '#9C4A5C', fontWeight: '800', textAlign: 'center' },
   hint: { fontSize: 12.5, color: P.muted, fontWeight: '700', textAlign: 'center', marginTop: 8 },
 });
