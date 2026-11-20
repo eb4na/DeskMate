@@ -116,7 +116,7 @@ Highest priority first. Each has a stable **instance id** so it fires once.
 | 8 | Anniversary | 7 / 30 / 100 / 365 days since `firstStudyDate` (valid that day + 3 days) | — |
 | 9 | Streak milestone | Current streak reaches 3 / 7 / 14 / 30 / 50 / 100 (id includes the streak's start date, so a rebuilt streak can be celebrated again) | — |
 | 10 | Late night / early bird | The last session ended 00:00–04:59, or ended before 07:00 (valid until the next day ends) | Late night: I'm okay / So tired → reaction |
-| 11 | Big task done | A **high-priority** task was completed since the last open — id `task:<id>` | — |
+| 11 | Deadline met | A due task ("Due that day?" = yes, `isDeadline`) was completed on or before its due day, since the last open — id `task:<id>`. Repeating tasks excluded (they'd fire constantly). (Task priority can't be set in the UI — every task is `medium` — so priority is not used.) | — |
 | 12 | Study milestones | 10th / 50th / 100th / 250th session; 10 / 50 / 100 total hours | — |
 | 13 | Quiet subject | An active subject with ≥2 sessions and none in ≥10 days — once per quiet stretch | — |
 | 14 | Exam soon | An exam 2–3 days away | Ready / Nervous → reaction |
@@ -140,8 +140,13 @@ progress: early levels are light; later ones reveal more of the character (their
 already exists per skin in `companion-utils.ts` and can seed this). Levels beyond 15 show
 the popup as today. Level 15 ≈ 37 hours studied with one companion.
 
-**Existing players** who already passed some levels get those letters **back-filled into
-the scrapbook** (marked new) the first time this version runs — no popups for them.
+**Letters must never go missing.** Level-ups are only detected in `recordSession`, which
+records just the final level — so a level crossed by **petting** (`petCompanion` adds bond
+minutes with no level check), a long session that **jumps two levels**, or levels an
+**existing player** already passed would all skip their letter. So filing is continuous:
+on every Home focus, compare each companion's current level (capped at 15) with the
+letters already in `keepsakes` and add any missing ones to the scrapbook (marked new, no
+popup). The popup still shows the letter for the level a session just reached.
 
 ### Away life (#2)
 
@@ -232,7 +237,8 @@ One per companion, opened from that companion's card in the **companion gallery*
 - `SessionRecord.endHour?: number` (0–23, account tz) — recorded from now on; old records
   have none, so late-night moments start from the next session.
 - `lastActiveAt: number` (epoch ms) — stamped when the app backgrounds and on Home focus;
-  used for the 8-hour away check.
+  used for the 8-hour away check. On an open, the away gap is **read before** the new
+  stamp is written, or away life could never trigger.
 - `lastKeepsakeISO: string` — frequency gate.
 - `keepsakes: { id, companionKey, kind, contentId, dateISO, seen }[]` — scrapbook contents
   (bond letters included, kind `letter`).
