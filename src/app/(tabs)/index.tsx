@@ -38,6 +38,7 @@ import { BREAK_GAME_ENABLED, coinsForMinutes, LOCK_IN_COIN_MULTIPLIER, formatCoi
 import { hanjiIsAnimated, resolveActiveCompanion } from '@/lib/companion-utils';
 import { HanjiFigure } from '@/components/hanji-figure';
 import { CompanionPet, PetCloudHost } from '@/components/companion-pet';
+import { MomentHost } from '@/components/moment-host';
 import { useAuth } from '@/context/auth-context';
 import { listBlocked, listIncomingRequests } from '@/lib/friend-requests';
 import { hasUnreadFromFriends } from '@/lib/direct-messages';
@@ -1441,6 +1442,10 @@ export default function HomeScreen() {
               <View style={[styles.homeCharacterLayer, phCharLayer, tCharLayer, styles.petBubbleLayer]} pointerEvents="none">
                 <PetCloudHost isTablet={isTablet} scale={isTablet ? htScaled.charScale * u : 1} />
               </View>
+
+              {/* Companion speak-first moments (once per open) + the away-life note on
+                  the desk. MomentHost owns its own state, like PetCloudHost. */}
+              <View style={[styles.homeCharacterLayer, phCharLayer, tCharLayer, styles.petBubbleLayer]} pointerEvents="box-none"><MomentHost isTablet={isTablet} scale={isTablet ? htScaled.charScale * u : 1} /></View>
 
               {/* Desk surface — top edge at 46% of the scene (height '54%'); bleeds past
                   the bottom safe-area inset so the desk (not the room background) fills
