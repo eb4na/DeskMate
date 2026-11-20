@@ -226,10 +226,11 @@ sealed envelope with a dot. Tap → the full note/letter.
   `new Date()` day math. Hours for late-night/early-bird also in the account timezone.
 - **No new native modules** (JS-only change; no rebuild).
 - **Light mode only; no emojis; FitText for fixed boxes; PNGs transparent.**
-- **Modals:** the speak-first bubble is an inline overlay. The full keepsake view and the
-  letter box are router screens (keepsake view = centered rectangle popup via
-  `transparentModal`, per the "rectangle popup, not sheet" convention), opened only when
-  no other modal is up.
+- **Modals:** the speak-first bubble is an inline overlay. The letter box is a router screen
+  (opened from the gallery modal). The note view is a centered rectangle popup with Done,
+  drawn as an **inline overlay** inside the letter box (gallery modal + letter box + a
+  third native modal would silently fail on iOS) and inside one transparent `Modal` on Home
+  (the reward chain is clear by then).
 - **Performance:** Home is a very large component. The moment host must be isolated (like
   `PetCloudHost`) so showing/dismissing a moment doesn't re-render all of Home.
 - **i18n:** all new text — lines, replies, letters, keepsakes, letter box UI — goes in **new
