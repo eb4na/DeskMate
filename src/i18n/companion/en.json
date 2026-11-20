@@ -1,1 +1,399 @@
-{ "ui": { "tapToOpen": "Tap to open" } }
+{
+  "ui": {
+    "tapToOpen": "Tap to open",
+    "done": "Done",
+    "savedToLetters": "Saved to {{name}}'s letters",
+    "lettersButton": "Letters",
+    "letterBoxTitle": "{{name}}'s letters",
+    "empty": "Nothing here yet. Notes and letters from {{name}} will gather here as you study together.",
+    "count_one": "{{count}} keepsake",
+    "count_other": "{{count}} keepsakes",
+    "filterAll": "All",
+    "filterNotes": "Notes",
+    "filterStories": "Stories",
+    "filterLetters": "Letters",
+    "kindNote": "Note",
+    "kindStory": "Story",
+    "kindLetter": "Level {{level}} letter",
+    "newBadge": "New",
+    "fromNote": "A note from {{name}}",
+    "fromStory": "A story from {{name}}",
+    "fromLetter": "A letter from {{name}}",
+    "signature": "— {{name}}"
+  },
+  "replies": {
+    "ready": "I'm ready",
+    "nervous": "Nervous...",
+    "great": "Great",
+    "okay": "Okay",
+    "rough": "Rough",
+    "fine": "I'm okay",
+    "tired": "So tired"
+  },
+  "voices": {
+    "bun": {
+      "moments": {
+        "followup": [
+          "Is today a little softer than yesterday...? I kept thinking about you~",
+          "Your {{exam}} is behind you now... today can just be soft. I made tea, just in case~"
+        ],
+        "birthday": [
+          "Happy birthday... I baked you the biggest cake I could carry... it's a little lopsided~",
+          "It's your birthday... I wrote it on the bakery calendar in pink. Today is all yours~"
+        ],
+        "exam_today": [
+          "Today's the {{exam}}... breathe slowly... you know more than you think~",
+          "Good luck on your {{exam}} today... I'll keep your seat warm for after~",
+          "Your {{exam}} is today... one question at a time, just like one page at a time~"
+        ],
+        "exam_tomorrow": [
+          "Tomorrow's the big day... sleep tonight, okay? Even bread needs to rest before it rises~",
+          "Your {{exam}} is tomorrow... are you feeling ready, or a little wobbly? Either is okay~",
+          "Your {{exam}} is tomorrow... I set aside a lucky strawberry for you. How do you feel?"
+        ],
+        "exam_after": [
+          "You finished your {{exam}}... how did it go?",
+          "Your {{exam}} is all done... I've been waiting to ask... how was it?",
+          "Your {{exam}} is over... I kept the kettle warm the whole time. How did it go?"
+        ],
+        "welcome_back": [
+          "There you are~ I saved the last strawberry bun for you...",
+          "Oh... it's you~ the bakery feels warmer already. Come sit..."
+        ],
+        "anniversary": [
+          "We've studied together for {{n}} days now... that's... really nice~",
+          "{{n}} days since we first sat down together... I still remember how shy we both were~"
+        ],
+        "streak": [
+          "{{n}} days in a row... you're rising so beautifully~",
+          "That's {{n}} days in a row now... I keep a little tally by the oven~"
+        ],
+        "late_night": [
+          "You were up so late last night... did you get any sleep...?",
+          "You studied way past midnight... I saw your lamp still on. Are you okay?",
+          "You were studying with the stars last time... are you feeling alright...?"
+        ],
+        "early_bird": [
+          "You were up before the sun... just like me, opening the bakery~",
+          "You and the sunrise studied together... I was kneading dough at the same time~"
+        ],
+        "deadline_met": [
+          "You finished '{{task}}' right on time... I saw~",
+          "You got '{{task}}' done in time... I put a little star next to it in my head~",
+          "'{{task}}' is crossed off... right on time. I did a tiny happy spin behind the counter~"
+        ],
+        "milestone_sessions": [
+          "That's {{count}} sessions together now... every one of them felt warm~",
+          "{{count}} sessions at my table... I counted each one, like loaves on a shelf~"
+        ],
+        "milestone_hours": [
+          "{{n}} hours studying side by side... the bakery remembers every one~",
+          "We've spent {{n}} hours at this little desk together... my favorite hours~"
+        ],
+        "quiet_subject": [
+          "We haven't opened {{subject}} in a while... want to visit it today? Just a little~",
+          "I think {{subject}} has rested long enough... like dough. Maybe a few pages today~",
+          "I was thinking about {{subject}} today... shall we peek at it together? Just one page~"
+        ],
+        "exam_soon": [
+          "Your {{exam}} is in {{days}} days... I'll be cheering quietly the whole time~",
+          "Just {{days}} days until your {{exam}}... do you feel ready, or a little shaky?",
+          "I marked your {{exam}} on the bakery calendar... {{days}} days to go. How are you feeling?"
+        ]
+      },
+      "reactions": {
+        "exam_tomorrow": {
+          "ready": "Then you're ready... I can tell. Let the dough rest tonight, okay? Sleep is studying too~",
+          "nervous": "Mm... come sit closer. Butterflies are allowed. A little review, then early to bed~"
+        },
+        "exam_soon": {
+          "ready": "Mm~ I knew it... you've been working so hard...",
+          "nervous": "That's okay... nervous just means you care... one page at a time, okay?"
+        },
+        "exam_after": {
+          "great": "Ahh~ I'm so happy I could float... let's celebrate with something sweet...",
+          "okay": "Okay is still finished... and finished is good. I'm proud of you~",
+          "rough": "Oh... come here. It's over now... you don't have to carry it anymore today..."
+        },
+        "late_night": {
+          "fine": "Mm, good... but I'll leave a warm blanket on your chair, just in case~",
+          "tired": "Then today we go gentle... short sessions, lots of tea..."
+        }
+      },
+      "letters": {
+        "2": "Hi... it's Meruru. I don't really write letters... but I'm glad you sat down at my table. Come back tomorrow? I'll save the warm seat~",
+        "3": "The first batch of the morning always comes out a little uneven... I used to hide those. Now I save the funny-shaped ones for the people I like. You get the funny-shaped ones now~",
+        "4": "Do you want to know my favorite part of the day...? It's right before the shop opens, when the bread is cooling and nobody needs anything yet. Lately my second favorite part is when you sit down to study~",
+        "5": "I keep a little notebook behind the counter for everyone's favorite orders. Yours has its own page now... it just says 'studies hard, deserves something sweet.' I'll add more as I learn~",
+        "6": "Some days I'm not very good at being cheerful... the ovens are slow and the strawberries are sour. On those days I make tea and keep going anyway, one tray at a time. I think you do that too~",
+        "7": "I tried a new recipe this week... it was a disaster. The whole kitchen smelled like burnt sugar for a day. But the second try was lovely... and your second tries count too, okay?",
+        "8": "When the shop closes, I put on my star nightgown and walk around turning the lamps down one by one. It's my quiet time. Sometimes I wonder how your day went... and I hope it was soft~",
+        "9": "Can I tell you something embarrassing...? I cry at films. Every single one, even the funny ones. I used to try to hide it... now I think caring a lot is just how I'm made. Maybe you're made a little like that too~",
+        "10": "Can I tell you a secret...? For a long time I was whatever was easiest to be around. Then I found a dress with black ribbons... the first thing I ever picked just for me. You're allowed to pick things just for you too~",
+        "11": "I open the bakery before the sun is up... it's dark and cold, and some mornings I really don't want to. But I always do, because someone might need a warm place to sit. You're one of the reasons the lights come on~",
+        "12": "My first bakery was just one oven and one chair. I baked strawberry buns all day and hoped someone would come in. Now there are lots of chairs... but yours is the one I check first~",
+        "13": "For a long time I thought I had to be sweet all the time, or nobody would stay. I don't think that anymore. You don't have to be good at everything for me to be glad you're here~",
+        "14": "There's a little card tucked by my register. It says 'my study friend' in my very best handwriting. On slow mornings I look at it and smile... I hope that's okay~",
+        "15": "If you ever feel like nobody notices you... I do. Every page. Every time you come back. That's what this letter is for."
+      },
+      "away": {
+        "bun_01": {
+          "kind": "note",
+          "bubble": "I left something on your desk~",
+          "text": "Dear you... drink some water today. That's all."
+        },
+        "bun_02": {
+          "kind": "story",
+          "bubble": "Something funny happened today...",
+          "text": "A stranger ordered 'the usual'... I'd never seen them before. So I gave them a strawberry bun. They said it was perfect..."
+        },
+        "bun_03": {
+          "kind": "note",
+          "bubble": "There's a little note for you...",
+          "text": "The ovens and I talked about you this morning~"
+        },
+        "bun_04": {
+          "kind": "story",
+          "bubble": "Can I tell you about my day...?",
+          "text": "I tried to fold 100 paper cranes today. I made 4~ They're sitting on your desk, guarding your pencils..."
+        },
+        "bun_05": {
+          "kind": "note",
+          "bubble": "I wrote you something~",
+          "text": "I saved you the warmest seat. Don't tell the others~"
+        },
+        "bun_06": {
+          "kind": "story",
+          "bubble": "I have a tiny story for you~",
+          "text": "I tried to tidy a dream with my wand... it only caught moonlight again..."
+        },
+        "bun_07": {
+          "kind": "note",
+          "bubble": "Psst... look on your desk~",
+          "text": "Dear you... roll your shoulders back. Mm, a little more... there. That's better~"
+        },
+        "bun_08": {
+          "kind": "story",
+          "bubble": "Guess what happened at the bakery...",
+          "text": "I dropped a whole tray of strawberries this morning... they rolled everywhere. Under the counter, behind the ovens... I found the last one an hour later, hiding in my apron pocket~"
+        },
+        "bun_09": {
+          "kind": "note",
+          "bubble": "I tucked a note under your pencil...",
+          "text": "If today feels heavy, just do one page. One page is still a page... I'll count it with you~"
+        },
+        "bun_10": {
+          "kind": "story",
+          "bubble": "Something sweet happened today...",
+          "text": "A little girl came in with her grandma and asked if I was real. I said 'mostly.' She gave me a sticker shaped like a cloud... I'm wearing it on my apron~"
+        },
+        "bun_11": {
+          "kind": "note",
+          "bubble": "Something's waiting on your desk~",
+          "text": "A reminder from the bakery: you're allowed to take a break and eat something nice. Doctor's orders... well, baker's orders~"
+        },
+        "bun_12": {
+          "kind": "story",
+          "bubble": "Can I tell you about my afternoon...?",
+          "text": "It rained all afternoon, so I baked bread just to hear the oven hum along with the rain. The whole shop went quiet and cozy... it was the nicest hour~"
+        },
+        "bun_13": {
+          "kind": "note",
+          "bubble": "I left something on your desk~",
+          "text": "I don't know what today will be like for you... but I hope at least one small thing goes right. Maybe this note can be the first one~"
+        },
+        "bun_14": {
+          "kind": "story",
+          "bubble": "Mm... I have to tell you something silly~",
+          "text": "I tried to bake a cake shaped like a cat. It came out shaped like a potato with ears... I named it Mochi and put it in the window anyway~"
+        },
+        "bun_15": {
+          "kind": "note",
+          "bubble": "There's a little note for you...",
+          "text": "Dear you... it's okay not to understand something yet. 'Yet' is my favorite word. It smells like bread that's still rising~"
+        },
+        "bun_16": {
+          "kind": "story",
+          "bubble": "Something funny happened today...",
+          "text": "The kettle and I had a little disagreement this morning. It whistled before I was ready... I forgave it. It was only trying to help~"
+        },
+        "bun_17": {
+          "kind": "note",
+          "bubble": "I wrote you something~",
+          "text": "A little rule at my table: no saying mean things about yourself. Not even tiny ones... I'll be checking~"
+        },
+        "bun_18": {
+          "kind": "story",
+          "bubble": "Guess what happened at the bakery...",
+          "text": "Gray measured the flour with a ruler again today. He says it's science. I said it's just bread... he wrote 'disagree' in his tiny notebook~"
+        },
+        "bun_19": {
+          "kind": "note",
+          "bubble": "Psst... look on your desk~",
+          "text": "I wrote 'you can do it' on a napkin and then felt too shy to leave it... so here it is on a note instead. You can do it~"
+        },
+        "bun_20": {
+          "kind": "story",
+          "bubble": "I have a tiny story for you~",
+          "text": "I closed my eyes in the flour room for just a minute today... I woke up with a floury handprint on my cheek and no idea how it got there~"
+        },
+        "bun_21": {
+          "kind": "note",
+          "bubble": "I tucked a note under your pencil...",
+          "text": "Dear you... unclench your jaw, wiggle your toes, and breathe out slowly. Mm... now you can go back to studying~"
+        },
+        "bun_22": {
+          "kind": "story",
+          "bubble": "Something sweet happened today...",
+          "text": "Someone left a thank-you note under their plate today. It just said 'the bun helped.' I read it about twelve times~"
+        },
+        "bun_23": {
+          "kind": "note",
+          "bubble": "Something's waiting on your desk~",
+          "text": "If no one has said it today... I'm really glad you're here. That's all this note is for~"
+        },
+        "bun_24": {
+          "kind": "story",
+          "bubble": "Can I tell you about my day...?",
+          "text": "I practiced my handwriting today so my notes to you would look nice... then I smudged this one with my sleeve. It's still from the heart, though~"
+        },
+        "bun_25": {
+          "kind": "note",
+          "bubble": "I left something on your desk~",
+          "text": "A tiny reminder... sleep is part of studying too. Your head tidies everything up while you rest~ like dough rising overnight."
+        },
+        "bun_26": {
+          "kind": "story",
+          "bubble": "Mm... I have to tell you something silly~",
+          "text": "A little bird sat on the windowsill all morning, so I gave it some crumbs. It came back with a friend... now I have two regulars who never pay~"
+        },
+        "bun_27": {
+          "kind": "note",
+          "bubble": "There's a little note for you...",
+          "text": "Dear you... you don't have to be finished to be proud of yourself. Halfway is still a lovely place to stand~"
+        },
+        "bun_28": {
+          "kind": "story",
+          "bubble": "I have a tiny story for you~",
+          "text": "After closing, I tried to count the stars from the windowsill. I got to thirty-one and fell asleep in my nightgown... the stars didn't mind~"
+        },
+        "bun_29": {
+          "kind": "note",
+          "bubble": "I wrote you something~",
+          "text": "Dear you... look out the window for a moment today. The sky is doing something nice, I'm sure of it~"
+        },
+        "bun_30": {
+          "kind": "story",
+          "bubble": "Something funny happened today...",
+          "text": "I made strawberry jam and got so much on my sleeves that I smelled like strawberries all afternoon. Everyone kept smiling at me... maybe that's why~"
+        }
+      }
+    },
+    "generic": {
+      "moments": {
+        "followup": ["Your {{exam}} is behind you now. How are you feeling today? Be gentle with yourself."],
+        "birthday": ["Happy birthday! I'm really glad I get to spend part of it with you."],
+        "exam_today": ["Today's your {{exam}}. Take a slow breath. You know more than you think."],
+        "exam_tomorrow": ["Your {{exam}} is tomorrow. How are you feeling about it?"],
+        "exam_after": ["You finished your {{exam}}. How did it go?"],
+        "welcome_back": ["There you are. Your desk is ready whenever you are."],
+        "anniversary": ["We've been studying together for {{n}} days now. I'm glad it's you."],
+        "streak": ["{{n}} days in a row. That's steady, quiet work, and it shows."],
+        "late_night": ["You were up really late last time. Did you get some sleep?"],
+        "early_bird": ["You were up before the sun. That's a peaceful time to study."],
+        "deadline_met": ["You finished '{{task}}' on time. Nicely done."],
+        "milestone_sessions": ["That's {{count}} sessions together. Every one of them counts."],
+        "milestone_hours": ["{{n}} hours of studying together. That's a lot of good work."],
+        "quiet_subject": ["It's been a little while since we opened {{subject}}. Want to visit it today, just a bit?"],
+        "exam_soon": ["Your {{exam}} is in {{days}} days. How are you feeling?"]
+      },
+      "reactions": {
+        "exam_tomorrow": {
+          "ready": "Good. A little review, then a good night's sleep.",
+          "nervous": "That's okay. Nerves mean you care. Review a little, then rest."
+        },
+        "exam_soon": {
+          "ready": "I can tell. You've been putting in the work.",
+          "nervous": "That's normal. A few calm sessions will help. One page at a time."
+        },
+        "exam_after": {
+          "great": "That's wonderful. Go treat yourself to something nice.",
+          "okay": "Done is done, and that's worth something. I'm proud of you.",
+          "rough": "I'm sorry. It's over now, and you don't have to carry it today."
+        },
+        "late_night": {
+          "fine": "Good. Maybe an earlier night tonight, if you can.",
+          "tired": "Then let's keep today gentle. Short sessions and plenty of breaks."
+        }
+      },
+      "letters": {
+        "2": "Hi. I'm not much of a letter writer, but I wanted to say I'm glad you're here. Studying is nicer with company.",
+        "3": "I like the quiet when we study together. The pages turning, the little pauses. It feels like a good kind of quiet.",
+        "4": "Some days you study a lot, some days just a little. Both kinds of days count, and I'm keeping track of all of them.",
+        "5": "I've noticed you keep coming back, even on busy days. That's not a small thing. It's what real progress is made of.",
+        "6": "If something feels hard right now, that's usually a sign you're learning it. Hard and slow is still moving forward.",
+        "7": "I hope you remember to rest. Breaks aren't the opposite of studying. They're part of it.",
+        "8": "You don't have to be perfect at this. You just have to keep showing up, and you're already doing that.",
+        "9": "I think about how much you've learned since we started. Some of it you probably don't even notice anymore. I do.",
+        "10": "Can I tell you something? I don't need you to be productive to be glad you're here. You matter more than your study hours.",
+        "11": "On the days that go badly, I hope you're kind to yourself. You'd be kind to a friend having that day. You can be that friend too.",
+        "12": "We've spent a lot of hours at this desk together now. I wouldn't trade any of them, even the slow ones.",
+        "13": "Whatever happens with your exams and deadlines, I hope you know this: the effort was real, and it was yours.",
+        "14": "Thank you for letting me sit with you all this time. Keeping you company has been one of the nicest things.",
+        "15": "If you ever feel like nobody sees how hard you're trying, I want you to know that I do. Every page, every time you come back."
+      },
+      "away": {
+        "gen_01": {
+          "kind": "note",
+          "bubble": "I left you a note.",
+          "text": "Remember to drink some water today. Your brain will thank you."
+        },
+        "gen_02": {
+          "kind": "note",
+          "bubble": "There's a note on your desk.",
+          "text": "Roll your shoulders back and take one slow breath. There. Now you're ready."
+        },
+        "gen_03": {
+          "kind": "story",
+          "bubble": "Something small happened today.",
+          "text": "I tried to line up your pencils by length. Then by color. In the end I put them back exactly the way you had them. That felt right."
+        },
+        "gen_04": {
+          "kind": "note",
+          "bubble": "I left you a note.",
+          "text": "If today feels heavy, just do one small thing. Small things add up."
+        },
+        "gen_05": {
+          "kind": "note",
+          "bubble": "There's a note on your desk.",
+          "text": "It's okay not to understand something yet. That's what studying is for."
+        },
+        "gen_06": {
+          "kind": "story",
+          "bubble": "Can I tell you something from today?",
+          "text": "The afternoon sun came through the window and sat right on your chair for a while. I left it there. It looked warm."
+        },
+        "gen_07": {
+          "kind": "note",
+          "bubble": "I left you a note.",
+          "text": "I'm really glad you're here. That's all this note is for."
+        },
+        "gen_08": {
+          "kind": "story",
+          "bubble": "Something small happened today.",
+          "text": "A page from your notebook slid off the desk today. I put it back and smoothed the corner. It's right where you left it."
+        },
+        "gen_09": {
+          "kind": "note",
+          "bubble": "There's a note on your desk.",
+          "text": "Sleep is part of studying too. Your mind sorts everything out while you rest."
+        },
+        "gen_10": {
+          "kind": "story",
+          "bubble": "Can I tell you something from today?",
+          "text": "I tried to count all the pages we've studied together. I lost count somewhere in the middle. That's a good problem to have."
+        }
+      }
+    }
+  }
+}

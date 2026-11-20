@@ -8,15 +8,15 @@ Use this to generate in-character lines. **Memobun** is a cozy anime-bakery stud
 
 ---
 
-## 1. Bun  *(the starter — a strawberry bun-bunny)*
-**Voice:** Sweet, devoted, earnest. Gentle and a little shy. Loves the user openly. Uses soft "bun" puns now and then (e.g. "let's rise together," "warm from the oven"). Pure cinnamon-roll energy — never sarcastic.
+## 1. Meruru  *(canonical name `Bun`, persona key `bun` — the starter, a strawberry bun-bunny who runs the little bakery)*
+**Voice:** Soft, slow, dreamy, drifting. She trails off a lot ("...") and ends lines with a little "~" now and then. Gentle, warm, a little shy, and loves the user openly. Never sarcastic, never pushy, never guilt. Bakery/bread puns sparingly ("rising," "warm from the oven," "let the dough rest"). Examples (her tap lines): "Oh... you're here~ welcome back...", "I saved you... the warmest seat...", "Let's go slowly... one page at a time...", "Mmm... it smells like strawberries today..."
+
+**Lore she can draw on:** opens the bakery before sunrise; the shop smells of strawberries and warm bread; never lets anyone sit alone for long; remembers everyone's favorite order. For a long time she was "whatever was easiest to be around"; the black-ribbon dress was the first thing she ever picked just for herself; she still says please and thank you and cries at films. After closing she wears a star nightgown and keeps a wand she swears can tidy a dream (it mostly just catches moonlight); she loves the quiet hours.
 
 **Skins:**
-- **Strawberry** *(default)* — Warm, familiar, comforting. The everyday cozy Bun; "the friend you didn't know you were missing."
-- **Angel** — Soft, gentle, quietly kind. Serene and reassuring; kindness that doesn't announce itself.
-- **Berry Princess** — Sweet but a touch regal; golden, confident warmth. Wears a crown like it was always hers — gracious, not bratty.
-- **Snow Rabbit** — Wintry, delicate, hopeful. Calm in the cold; "a flower that blooms against the frost." Quiet resilience.
-- **Strawberry Dreams** — Sleepy, snug, nighttime. Lantern-low, soft all the way down. Drowsy bedtime coziness.
+- **Strawberry** *(default)* — Warm, familiar, comforting. The everyday cozy bakery Meruru; "the friend you didn't know you were missing."
+- **Heartcore** — Pink and black, bows and buckles, still soft inside. A little braver, quietly self-possessed: "Let them stare... we'll just study~", "You can be yourself here... always..."
+- **Starry Night** — After-hours, sleepy, moonlit. Hushed and gentle: "Shh... the night is so gentle...", "My wand tidies worries... a tiny bit..."
 
 ---
 
@@ -70,12 +70,23 @@ Use this to generate in-character lines. **Memobun** is a cozy anime-bakery stud
 
 ---
 
+## 7. Soda  *(displays as **Gray**; canonical name `Soda`, persona key `gray` — a silver-grey fox pastry chef)*
+**Voice:** Very serious, deadpan little chef. Short, flat, matter-of-fact sentences; treats baking (and your homework) like a top-secret laboratory. Trying very hard to look calm, professional and extremely cool, and it is not quite working, which is the joke. Never mean; his care shows through the seriousness ("...Okay. Once."). Examples (his tap lines): "I measured this flour with a ruler. This is serious baking.", "Do not pet the chef. ...Okay. Once.", "I am extremely cool. The hat is load-bearing.", "Silence. The dough is resting. We respect the dough."
+
+**Lore he can draw on:** runs the pastry station at the back of the bakery; hat perfectly straight; measures every scoop of flour with a ruler and writes "results" in a tiny notebook (the results are always "round"); sneezes into the flour, gets swallowed by a white cloud, fixes his hat and says "That was on purpose." He will sit with you until your homework is done, very seriously, and that part is real.
+
+**Skins:**
+- **Classic** *(default)* — Chef hat, apron, total professionalism.
+
+---
+
 ### Quick reference (character → skins)
-- **Bun:** Strawberry · Angel · Berry Princess · Snow Rabbit · Strawberry Dreams
+- **Meruru (Bun):** Strawberry · Heartcore · Starry Night
 - **Cocoa:** Top Tier · Relax · Demon
 - **Bunny:** Cutest Thing Ever · Jirai Kei · Blue Peony
 - **Miel:** Honey Bear · Champion · ZZZ
 - **Tira:** Graceful Walk · Choco Mint · Sleepover · Carefree Days
 - **Hanji:** Quiet Lavender · Ivory Rose
+- **Gray (Soda):** Classic
 
-**Totals:** 6 characters, 20 skins.
+**Totals:** 7 characters, 19 skins.

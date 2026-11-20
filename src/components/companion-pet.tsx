@@ -4,13 +4,9 @@ import Svg, { Ellipse } from 'react-native-svg';
 
 import { BakeryHeartEmoji } from '@/components/bakery-emoji';
 import { getPetLine } from '@/constants/pet-lines';
+import { personaKeyForName } from '@/lib/companion-voice';
 import { playPop, prewarmPop } from '@/lib/sounds';
 import { BakeryColors } from '@/constants/theme';
-
-// Maps a companion's display name to its pet-line key (see pet-lines.ts).
-const PERSONA_KEYS: Record<string, string> = {
-  Bun: 'bun', Cocoa: 'cocoa', Bunny: 'bunny', Miel: 'miel', Tira: 'tira', Hanji: 'hanji', Soda: 'gray',
-};
 
 // Tiny single-listener bus so a tap shows the cloud WITHOUT re-rendering the (large)
 // home component — only the small PetCloudHost reacts. Keeps tapping snappy.
@@ -180,7 +176,9 @@ export function CompanionPet({
     playPop();
     // Hearts burst from the character's SIDES (random side + height) at an angle.
     setHearts((h) => [...h, ...makeHearts(scale)]);
-    emitPetCloud(getPetLine(companionName ? PERSONA_KEYS[companionName] : undefined, skinId));
+    // Pet-line key = the companion's persona key (see pet-lines.ts); 'generic'
+    // for unknown names falls through to pet.generic as before.
+    emitPetCloud(getPetLine(personaKeyForName(companionName), skinId));
     // Defer the bond write off the tap frame — it triggers an app-wide context re-render
     // and isn't visually urgent, so the pop/bounce/cloud render first.
     requestAnimationFrame(() => onPet());
