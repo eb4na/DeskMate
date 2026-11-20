@@ -26,6 +26,7 @@ import { noteModalTransition } from '@/lib/modal-traffic';
 import { companionLevelInfo } from '@/lib/companion-level';
 import { monthKeyOf } from '@/lib/progress-ranges';
 import { uploadStudyDay } from '@/lib/study-buddy';
+import type { PendingFollowUp, Keepsake, PersonaKey, MomentKind } from '@/lib/companion-moments';
 import { HANJI_COMPANION_ID, recipeBadgeKey, badgesFromMadeFoods, hasAllCharacterBadges, RECIPE_IDS, RECIPE_BADGES, starterRecipe } from '@/constants/recipes';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -136,6 +137,8 @@ export type SessionRecord = {
   dateISO: string;
   minutes: number;
   subjectName: string | null;
+  /** Hour 0-23 (account timezone) the block finished. Absent on older records. */
+  endHour?: number;
 };
 
 /** Longest a single study block may run (matches the custom timer's 1–300 range). */
@@ -327,6 +330,15 @@ type PersistedState = {
   subjectMonthly: Record<string, Record<string, number>>;
   skipSubjectCount: number;
   sessionHistory: SessionRecord[];
+  // Companion memory moments + keepsakes.
+  momentsSeen: string[];
+  momentDayCount: { dateISO: string; count: number };
+  pendingFollowUp: PendingFollowUp | null;
+  firstStudyDate: string;
+  lastActiveAt: number;
+  lastKeepsakeISO: string;
+  keepsakes: Keepsake[];
+  awayLifeGiven: Record<string, string[]>;
   // Minutes studied with each companion (companionId → minutes). Drives the per-
   // companion bond level shown in the gallery. No rewards attached.
   companionMinutes: Record<string, number>;
@@ -535,6 +547,14 @@ const DEFAULTS: PersistedState = {
   subjectMonthly: {},
   skipSubjectCount: 0,
   sessionHistory: [],
+  momentsSeen: [],
+  momentDayCount: { dateISO: '', count: 0 },
+  pendingFollowUp: null,
+  firstStudyDate: '',
+  lastActiveAt: 0,
+  lastKeepsakeISO: '',
+  keepsakes: [],
+  awayLifeGiven: {},
   companionMinutes: {},
   companionBondToday: 0,
   companionBondDate: '',
@@ -643,6 +663,23 @@ function dateInTimeZone(date: Date, tz: string | null): string {
     return `${pick('year')}-${pick('month')}-${pick('day')}`;
   } catch {
     return date.toISOString().split('T')[0];
+  }
+}
+
+/** Minutes since midnight (0-1439) right now in the account timezone. */
+export function nowMinutesInAccountTz(): number {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: activeTimezone || undefined,
+      hour: 'numeric',
+      minute: 'numeric',
+      hourCycle: 'h23',
+    }).formatToParts(new Date());
+    const pick = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+    return (pick('hour') % 24) * 60 + pick('minute');
+  } catch {
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
   }
 }
 
@@ -1048,6 +1085,23 @@ function normalizePersistedState(saved?: Partial<PersistedState> | null): Persis
   }
 
 
+  // Companion moments: new fields default for old saves; firstStudyDate back-fills
+  // from the oldest recorded session (lexicographic min of YYYY-MM-DD).
+  merged.momentsSeen = merged.momentsSeen ?? DEFAULTS.momentsSeen;
+  merged.momentDayCount = merged.momentDayCount ?? DEFAULTS.momentDayCount;
+  merged.pendingFollowUp = merged.pendingFollowUp ?? null;
+  merged.lastActiveAt = merged.lastActiveAt ?? 0;
+  merged.lastKeepsakeISO = merged.lastKeepsakeISO ?? '';
+  merged.keepsakes = merged.keepsakes ?? DEFAULTS.keepsakes;
+  merged.awayLifeGiven = merged.awayLifeGiven ?? DEFAULTS.awayLifeGiven;
+  if (!merged.firstStudyDate) {
+    let oldest = '';
+    for (const rec of merged.sessionHistory ?? []) {
+      if (rec?.dateISO && (!oldest || rec.dateISO < oldest)) oldest = rec.dateISO;
+    }
+    merged.firstStudyDate = oldest;
+  }
+
   merged.companionSlots = (merged.companionSlots ?? []).map((slot) => {
     const normalizedSlot = slot as Partial<CompanionSlot>;
     return {
@@ -1196,6 +1250,23 @@ type AppContextType = {
   subjectMonthly: Record<string, Record<string, number>>;
   skipSubjectCount: number;
   sessionHistory: SessionRecord[];
+  momentsSeen: string[];
+  momentDayCount: { dateISO: string; count: number };
+  pendingFollowUp: PendingFollowUp | null;
+  firstStudyDate: string;
+  lastActiveAt: number;
+  lastKeepsakeISO: string;
+  keepsakes: Keepsake[];
+  awayLifeGiven: Record<string, string[]>;
+  recordMomentShown: (id: string) => void;
+  setMomentFollowUp: (f: PendingFollowUp | null) => void;
+  addKeepsakes: (ks: Keepsake[]) => void;
+  markKeepsakeSeen: (id: string) => void;
+  recordAwayNoteGiven: (persona: PersonaKey, contentId: string) => void;
+  stampLastActive: () => void;
+  /** Dev-only forced moment (not persisted). */
+  devMoment: MomentKind | null;
+  setDevMoment: (k: MomentKind | null) => void;
   companionMinutes: Record<string, number>;
   activeSession: ActiveSession | null;
   /** Accumulator for the current solo run (checkpoint + Rest receipt display). */
@@ -1497,6 +1568,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [sessionRun, setSessionRun] = useState<SessionRun | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [devMoment, setDevMoment] = useState<MomentKind | null>(null);
   const [loadedScopeKey, setLoadedScopeKey] = useState<string | null>(null);
   // Unread DM counts keyed by the sender's friend code. In-memory only — it's
   // derived from the server (fetched on focus, bumped by live inbox pings).
@@ -1679,6 +1751,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       void flushCloudState(userId);
     };
   }, [appStateScope]);
+
+  // Stamp the moment the app goes to the background; away-life notes measure from it.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'background') setS((prev) => ({ ...prev, lastActiveAt: Date.now() }));
+    });
+    return () => sub.remove();
+  }, []);
 
   // Streak-protection nudges: if the player doesn't OPEN the app on a day inside the
   // grace window, remind them to come back, with a "last call" on the final day before
@@ -2545,7 +2625,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addSubjectTime = (subjectName: string | null, minutes: number) => {
     const key = subjectName ?? 'General Study';
     const dateISO = todayISO();
-    const record: SessionRecord = { dateISO, minutes, subjectName };
+    const endHour = Math.floor(nowMinutesInAccountTz() / 60);
+    const record: SessionRecord = { dateISO, minutes, subjectName, endHour };
     const monthKey = monthKeyOf(dateISO);
     setS((prev) => ({
       ...prev,
@@ -2567,8 +2648,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // eleven months, so the Month range would start under-reporting before
       // the Year range did. The monthly rollup covers everything older.
       sessionHistory: [record, ...prev.sessionHistory].slice(0, 5000),
+      firstStudyDate: prev.firstStudyDate || dateISO,
     }));
   };
+
+  const recordMomentShown = (id: string) => {
+    const today = todayISO();
+    setS((prev) => ({
+      ...prev,
+      momentsSeen: [...prev.momentsSeen, id].slice(-2000),
+      momentDayCount: {
+        dateISO: today,
+        count: (prev.momentDayCount.dateISO === today ? prev.momentDayCount.count : 0) + 1,
+      },
+    }));
+  };
+  const setMomentFollowUp = (f: PendingFollowUp | null) =>
+    setS((prev) => ({ ...prev, pendingFollowUp: f }));
+  const addKeepsakes = (ks: Keepsake[]) =>
+    setS((prev) => {
+      const have = new Set(prev.keepsakes.map((k) => k.id));
+      const fresh: Keepsake[] = [];
+      for (const k of ks) {
+        if (have.has(k.id)) continue;
+        have.add(k.id);
+        fresh.push(k);
+      }
+      return fresh.length ? { ...prev, keepsakes: [...prev.keepsakes, ...fresh] } : prev;
+    });
+  const markKeepsakeSeen = (id: string) =>
+    setS((prev) => ({
+      ...prev,
+      keepsakes: prev.keepsakes.map((k) => (k.id === id ? { ...k, seen: true } : k)),
+    }));
+  const recordAwayNoteGiven = (persona: PersonaKey, contentId: string) =>
+    setS((prev) => ({
+      ...prev,
+      awayLifeGiven: { ...prev.awayLifeGiven, [persona]: [...(prev.awayLifeGiven[persona] ?? []), contentId] },
+      lastKeepsakeISO: todayISO(),
+    }));
+  const stampLastActive = () => setS((prev) => ({ ...prev, lastActiveAt: Date.now() }));
 
   const startActiveSession = ({
     durationMinutes,
@@ -3574,6 +3693,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         subjectMonthly: s.subjectMonthly ?? {},
         skipSubjectCount: s.skipSubjectCount,
         sessionHistory: s.sessionHistory,
+        momentsSeen: s.momentsSeen,
+        momentDayCount: s.momentDayCount,
+        pendingFollowUp: s.pendingFollowUp,
+        firstStudyDate: s.firstStudyDate,
+        lastActiveAt: s.lastActiveAt,
+        lastKeepsakeISO: s.lastKeepsakeISO,
+        keepsakes: s.keepsakes,
+        awayLifeGiven: s.awayLifeGiven,
+        recordMomentShown,
+        setMomentFollowUp,
+        addKeepsakes,
+        markKeepsakeSeen,
+        recordAwayNoteGiven,
+        stampLastActive,
+        devMoment,
+        setDevMoment,
         companionMinutes: s.companionMinutes ?? {},
         activeSession,
         sessionRun,
