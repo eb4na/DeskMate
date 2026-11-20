@@ -290,3 +290,93 @@ export function sampleMoment(kind: MomentKind): Moment {
   };
   return { id: `sample:${kind}`, kind, vars, replies: replies[kind] ?? [] };
 }
+
+// ---- Away-life + bond letters ----
+
+export const AWAY_MIN_MS = 8 * 3600 * 1000;
+export const BOND_LETTER_MAX_LEVEL = 15;
+
+export function awayNoteDue(i: {
+  now: number;
+  lastActiveAt: number;
+  today: string;
+  lastKeepsakeISO: string;
+  roll: number;
+}): boolean {
+  if (i.lastActiveAt === 0) return false;
+  if (i.now - i.lastActiveAt < AWAY_MIN_MS) return false;
+  if (i.lastKeepsakeISO === i.today) return false;
+  if (i.lastKeepsakeISO === '') return true;
+  const ago = diffDaysISO(i.lastKeepsakeISO, i.today);
+  if (ago >= 2) return true;
+  return i.roll < 0.4;
+}
+
+/** Deterministic Fisher-Yates driven by hashString (xorshift32 stream). */
+export function seededShuffle<T>(xs: readonly T[], seed: string): T[] {
+  const out = xs.slice();
+  let s = hashString(seed) || 1;
+  const next = () => {
+    s ^= s << 13;
+    s >>>= 0;
+    s ^= s >>> 17;
+    s ^= s << 5;
+    s >>>= 0;
+    return s;
+  };
+  for (let k = out.length - 1; k > 0; k--) {
+    const j = next() % (k + 1);
+    const t = out[k];
+    out[k] = out[j];
+    out[j] = t;
+  }
+  return out;
+}
+
+export function nextAwayNoteId(i: {
+  poolIds: readonly string[];
+  given: readonly string[];
+  seed: string;
+}): string | null {
+  const given = new Set(i.given);
+  for (const id of seededShuffle(i.poolIds, i.seed)) {
+    if (!given.has(id)) return id;
+  }
+  return null;
+}
+
+export type Keepsake = {
+  id: string;
+  persona: PersonaKey;
+  kind: 'note' | 'story' | 'letter';
+  contentId: string;
+  level?: number;
+  dateISO: string;
+  seen: boolean;
+};
+
+export function missingBondLetters(i: {
+  companions: readonly { persona: PersonaKey; level: number }[];
+  have: readonly Keepsake[];
+  today: string;
+}): Keepsake[] {
+  const have = new Set(i.have.map((k) => k.id));
+  const out: Keepsake[] = [];
+  for (const c of i.companions) {
+    const top = Math.min(c.level, BOND_LETTER_MAX_LEVEL);
+    for (let level = 2; level <= top; level++) {
+      const id = `letter:${c.persona}:${level}`;
+      if (have.has(id)) continue;
+      out.push({
+        id,
+        persona: c.persona,
+        kind: 'letter',
+        contentId: String(level),
+        level,
+        dateISO: i.today,
+        seen: false,
+      });
+    }
+  }
+  return out;
+}
