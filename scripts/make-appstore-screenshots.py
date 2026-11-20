@@ -30,8 +30,8 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-DEFAULT_SRC = os.path.expanduser("~/Desktop/memobun-screenshots")
-DEFAULT_OUT = os.path.expanduser("~/Desktop/memobun-appstore")
+DEFAULT_SRC = os.path.expanduser("~/Desktop/Memobun/memobun-screenshots")
+DEFAULT_OUT = os.path.expanduser("~/Desktop/Memobun/memobun-appstore")
 
 # ---------------------------------------------------------------------------
 # Palette -- mirrors BakeryColors in src/constants/theme.ts

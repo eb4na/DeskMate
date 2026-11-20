@@ -428,7 +428,7 @@ def main():
     # them), and deep-linking the picker over Settings crashes
     # react-native-screens outright. The language is seeded instead.
     out = args.out or os.path.expanduser(
-        f"~/Desktop/memobun-captures-android/{args.device}-{args.lang}")
+        f"~/Desktop/Memobun/memobun-captures-android/{args.device}-{args.lang}")
     d = Driver(args.serial, args.lang, out, args.device)
 
     print(f"[{args.device}/{args.lang}/{args.mode}] -> {out}", flush=True)

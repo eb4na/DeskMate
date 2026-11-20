@@ -1,5 +1,5 @@
 """Drive the booted iPhone simulator to capture the 9 raw App Store screens
-for one app language, into ~/Desktop/memobun-captures-phone-<lang>/.
+for one app language, into ~/Desktop/Memobun/memobun-captures-phone-<lang>/.
 
     python3 scripts/capture-appstore-screens.py ja --phase 1
     python3 scripts/capture-appstore-screens.py ja --phase 2
@@ -41,7 +41,7 @@ LANG = "en"
 PROFILES = {
     "phone": {                       # iPhone 17, 402x874pt, shots 1206x2622
         "origin": (1264.0, 131.0), "scale": 400.0 / 402.0, "px_per_pt": 3,
-        "out": "~/Desktop/memobun-captures-phone-{lang}",
+        "out": "~/Desktop/Memobun/memobun-captures-phone-{lang}",
         "cx": 200,
         "lang_row": {"en": 252, "zh": 313, "zh-Hant": 374, "ja": 435,
                      "ko": 496, "es": 557, "fr": 618},
@@ -58,7 +58,7 @@ PROFILES = {
     },
     "ipad": {                        # iPad Pro 13" M5, 1032x1376pt, shots 2064x2752
         "origin": (1039.0, 140.0), "scale": 636.0 / 1032.0, "px_per_pt": 2,
-        "out": "~/Desktop/memobun-captures-ipad-{lang}",
+        "out": "~/Desktop/Memobun/memobun-captures-ipad-{lang}",
         "cx": 516,
         "lang_row": {"en": 398, "zh": 492, "zh-Hant": 586, "ja": 682,
                      "ko": 778, "es": 874, "fr": 970},

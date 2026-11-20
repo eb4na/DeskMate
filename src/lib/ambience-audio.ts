@@ -34,7 +34,8 @@ const VOLUME = 0.8;
 
 // Keyed by ambience id (the part after `sound_`). Add files here as they're made.
 const SOUND_ASSETS: Record<string, number> = {
-  rain: require('@/assets/sounds/rain-thunder.wav'),
+  // AAC like the others (was a 27 MB WAV; the m4a is 2.5 MB, same 155 s).
+  rain: require('@/assets/sounds/rain-thunder.m4a'),
   ocean: require('@/assets/sounds/ocean.m4a'),
   fireplace: require('@/assets/sounds/fireplace.m4a'),
   night: require('@/assets/sounds/night.m4a'),

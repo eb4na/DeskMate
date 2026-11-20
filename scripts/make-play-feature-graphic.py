@@ -15,7 +15,7 @@ import os, math, colorsys
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.expanduser("~/Desktop/memobun-play-feature-graphic.png")
+OUT = os.path.expanduser("~/Desktop/Memobun/memobun-play-feature-graphic.png")
 
 RND = "/System/Library/Fonts/SFNSRounded.ttf"
 SCRIPT = "/System/Library/Fonts/Supplemental/SignPainter.ttc"

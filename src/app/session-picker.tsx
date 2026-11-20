@@ -6,10 +6,11 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
 import { playPaper } from '@/lib/sounds';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Line, Path } from 'react-native-svg';
 
 import { CoinIcon } from '@/components/coin-icon';
 import { DevKnobs } from '@/components/dev-knobs';
-import { PlusIcon } from '@/components/plus-icon';
+import { FitText } from '@/components/fit-text';
 import { usePosTweaks } from '@/hooks/use-pos-tweaks';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { useApp } from '@/context/app-context';
@@ -20,21 +21,19 @@ import { navigateWithLoading, companionPrefetchUri, STUDY_ASSETS } from '@/lib/p
 import { SESSION_LENGTHS, autoBreakMinutes, coinsForMinutes, formatCoins, PLUS_STUDY_COIN_MULTIPLIER } from '@/constants/placeholder-data';
 import { useTranslation } from '@/i18n';
 import { localizeSubjectName } from '@/lib/subject-utils';
-import { BakeryColors, BakeryRadii, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Fonts, MaxContentWidth } from '@/constants/theme';
 import { CheckBox } from '@/components/check-menu';
+import {
+  BiscuitStick, CAFE, CAFE_SOFT_SHADOW, DESSERT, DEFAULT_DESSERT_MIN as DEFAULT_MIN, Drip, Gingham,
+  SPRINKLES, SPRINKLES_REV, SprinkleLabel, useBiscuitStick,
+} from '@/components/cafe-ui';
 
-const C = BakeryColors;
-const SCREEN_BG = require('@/assets/images/home/session-bg-cakes.png');
-
-// One soft, consistent shadow shared by every card so the screen reads calm
-// instead of having each block carry its own heavy drop shadow.
-const SOFT_SHADOW = {
-  shadowColor: 'rgba(132,87,63,0.18)',
-  shadowOpacity: 1,
-  shadowRadius: 10,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 3,
-} as const;
+// "Soft café" Start Baking menu (design approved 2026-11-19, Artifact
+// "Start Session Menu Redesign" › "Theme 1 layout × Theme 3 colors").
+// The base is cake colors — cream, vanilla sponge, latte lines — never all-pink.
+// Each baking time wears its own dessert's pastel, and the page accent (mode
+// switch, biscuit-stick slider, Start button) follows the PICKED dessert.
+// Palette, gingham, drip, sprinkle labels + slider are shared via cafe-ui.
 
 const CARD_IMG: Record<number, number> = {
   15: require('@/assets/images/cake/dessert-10.png'),
@@ -42,7 +41,7 @@ const CARD_IMG: Record<number, number> = {
   60: require('@/assets/images/cake/dessert-50.png'),
   90: require('@/assets/images/cake/dessert-90.png'),
 };
-// Lock in's menu picture — the bunny latte, framed like the dessert icons.
+// Lock the Oven's picture — the bunny latte.
 const LOCK_IN_IMG = require('@/assets/images/cake/lock-in-cup.png');
 
 type Mode = 'single' | 'multi';
@@ -53,39 +52,45 @@ const PICKER_ELEMENTS = [
   { name: 'startBtn', label: 'Start btn' },
 ];
 
+/** Menu-style dotted leader between a name and its price. RN can't draw dotted
+ *  borders on iOS, so it's an SVG line with round-capped zero-length dashes. */
+function DottedLeader({ color, g }: { color: string; g: number }) {
+  return (
+    <View style={{ flex: 1, height: 4 * g, marginHorizontal: 5 * g, marginBottom: 6 * g }}>
+      <Svg width="100%" height={4 * g}>
+        <Line x1={2 * g} y1={2 * g} x2="100%" y2={2 * g} stroke={color} strokeWidth={2.4 * g} strokeDasharray={`0.1,${5 * g}`} strokeLinecap="round" />
+      </Svg>
+    </View>
+  );
+}
+
 export default function SessionPickerScreen() {
   const insets = useSafeAreaInsets();
   // Proportional tablet scaling: `scale` is anchored so the 11" Pro reproduces the
-  // tuned 1.3×. `grow` re-bases that against the 11" the tablet styles were authored
-  // at, so grow=1 on the 11" (zero regression) and ~1.23 on the 13" — everything
-  // (incl. the mode toggle / Start button / top bar, which have no tablet variant)
-  // grows together so nothing reads small on a bigger iPad.
+  // tuned 1.3×; `grow` re-bases it so bigger iPads (13") grow past that.
   const { isTablet, scale } = useTabletScale();
-  // Clamp to ≥1: smaller tablets (mini) keep the 11"-tuned look rather than shrinking
-  // base styles below phone size; only bigger iPads (13") grow past it.
   const grow = isTablet ? Math.max(1, scale / 1.3) : 1;
-  const styles = useMemo(() => makeStyles(grow), [grow]);
+  const g = isTablet ? 1.3 * grow : 1;
+  const styles = useMemo(() => makeStyles(g, grow), [g, grow]);
   const { knobs: twKnobs, onChange: twChange, t: tw } = usePosTweaks('sessionpicker', PICKER_ELEMENTS);
   const { subjects, coins, isPlus, activeCompanionId, defaultCompanionId, companionSlots, bunSkinId, companionSkins } = useApp();
   const studyRoom = useStudyRoom();
   const { t } = useTranslation();
-  // Nothing is pre-picked: the menu opens with every box empty so the first
-  // checkmark you see is one you put there. Start stays disabled until then.
-  // Preselect the 30-minute preset: opening with nothing chosen left the big
-  // "Start Session" button disabled but still looking tappable, so the first tap
-  // did nothing at all.
-  const [selected, setSelected] = useState<number | null>(30);
+  // Preselect the 30-minute bake: opening with nothing chosen left the Start
+  // button disabled but still looking tappable, so the first tap did nothing.
+  const [selected, setSelected] = useState<number | null>(DEFAULT_MIN);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>('single');
-  // Solo "lock in". Off by default: it costs you the session if you step away, so
-  // it has to be chosen, not stumbled into.
+  // Solo "lock the oven". Off by default: it costs you the session if you step
+  // away, so it has to be chosen, not stumbled into.
   const [lockedIn, setLockedIn] = useState(false);
 
+  // Biscuit-stick slider under the subject tags (food-shaped, no scrollbar).
+  const chipStick = useBiscuitStick();
+
   const activeSubjects = subjects.filter((s) => !s.archived).sort((a, b) => a.order - b.order);
-  // Single-player break: the automatic one (5 min under an hour, 15 min for an
-  // hour or more). Saved presets live on the Custom Timer screen now, and they
-  // carry no break of their own.
-  const breakForSelected = selected == null ? 0 : autoBreakMinutes(selected);
+  // The page accent follows the picked dessert.
+  const theme = DESSERT[selected ?? DEFAULT_MIN] ?? DESSERT[DEFAULT_MIN];
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
@@ -114,374 +119,291 @@ export default function SessionPickerScreen() {
       () =>
         router.push({
           pathname: '/study-lobby',
-          // Nothing ticked is fine here — in multiplayer every player sets their own
-          // length in the lobby, so this is only the lobby's starting value.
-          params: { minutes: String(selected ?? 30) },
+          // In multiplayer every player sets their own length in the lobby, so
+          // this is only the lobby's starting value.
+          params: { minutes: String(selected ?? DEFAULT_MIN) },
         }),
       { assets: STUDY_ASSETS, prefetch: [companionPrefetchUri(meImg)] },
     );
   }
 
   const onStart = () => (mode === 'single' ? startSolo() : startMultiplayer());
+  const startDisabled = mode === 'single' && selected == null;
 
   return (
     <View style={styles.screen}>
-      <Image source={SCREEN_BG} style={StyleSheet.absoluteFill} contentFit="cover" pointerEvents="none" />
-      <View style={styles.bgOverlay} pointerEvents="none" />
+      <Gingham />
       <SafeAreaView style={styles.safe} edges={['bottom']}>
-        {/* Top bar — slim: just back + coin pill; the title lives in the menu header */}
-        <View style={[styles.topBar, { paddingTop: insets.top + Spacing.one }]}>
-          <Pressable style={({ pressed }) => [styles.iconBtn, isTablet && styles.iconBtnTablet, tw('back'), pressed && styles.pressed]} onPress={goBack} hitSlop={8}>
-            <Text style={[styles.backChevron, isTablet && styles.backChevronTablet]}>‹</Text>
+        {/* Top bar — back + coin pill */}
+        <View style={[styles.topBar, { paddingTop: insets.top + 4 * g }]}>
+          <Pressable
+            style={({ pressed }) => [styles.iconBtn, tw('back'), pressed && styles.pressed]}
+            onPress={goBack}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.back', { defaultValue: 'Back' })}>
+            <Svg width={18 * g} height={18 * g} viewBox="0 0 24 24" fill="none">
+              <Path d="M15 5l-7 7 7 7" stroke={CAFE.ink} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
           </Pressable>
           <View style={styles.topSpacer} />
           <Pressable style={({ pressed }) => [styles.coinPill, tw('coinPill'), pressed && styles.pressed]} onPress={() => router.push('/coin-shop')}>
-            <CoinIcon size={Math.round(18 * grow)} />
+            <CoinIcon size={22 * g} />
             <Text style={styles.coinText}>{formatCoins(coins)}</Text>
           </Pressable>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-          {/* Mode — drives the whole flow, so it sits up top */}
-          <View style={styles.modeToggle}>
-            <Pressable style={[styles.modeSeg, mode === 'single' && styles.modeSegActive]} onPress={() => setMode('single')}>
-              <Text style={[styles.modeText, mode === 'single' && styles.modeTextActive]}>{t('sessionPicker.singlePlayer')}</Text>
-            </Pressable>
-            <Pressable style={[styles.modeSeg, mode === 'multi' && styles.modeSegActive]} onPress={() => setMode('multi')}>
-              <Text style={[styles.modeText, mode === 'multi' && styles.modeTextActive]}>{t('sessionPicker.multiplayer')}</Text>
-            </Pressable>
-          </View>
-
-          {/* Multiplayer caveat — only solo sessions bake a recipe, so multiplayer
-              never earns recipe badges. Shown as soon as Multiplayer is picked so
-              nobody finds out after a session. */}
-          {mode === 'multi' && (
-            <View style={styles.multiWarn}>
-              <Text style={styles.multiWarnText}>{t('sessionPicker.multiNoRecipeWarn')}</Text>
-            </View>
-          )}
-
-          {/* One parchment "menu" — durations, subjects and custom all on one paper */}
-          <View style={[styles.card, styles.menuCard, isTablet && styles.menuCardTablet]}>
-            {/* Menu header */}
-            <View style={styles.menuHeader}>
-              <Text style={[styles.menuTitle, isTablet && styles.menuTitleTablet]}>{t('sessionPicker.title')}</Text>
-              <Text style={[styles.menuSubtitle, isTablet && styles.menuSubtitleTablet]}>{t('sessionPicker.subtitle')}</Text>
-            </View>
-
-            {/* Focus time — each duration is a menu line-item */}
-            <Text style={[styles.sectionLabel, isTablet && styles.sectionLabelTablet]}>{t('sessionPicker.chooseDuration')}</Text>
-            {SESSION_LENGTHS.map((opt, i) => {
-              const isActive = selected === opt.minutes;
-              const brk = autoBreakMinutes(opt.minutes);
+          {/* Bake Solo / Bake Together — the picked side takes the dessert's colour */}
+          <View style={styles.modeSwitch}>
+            {(['single', 'multi'] as const).map((m) => {
+              const on = mode === m;
               return (
-                <View key={opt.minutes}>
-                  <Pressable
-                    style={({ pressed }) => [styles.menuRow, isTablet && styles.menuRowTablet, isActive && styles.menuRowActive, pressed && styles.pressed]}
-                    onPress={() => { playPaper(); setSelected(opt.minutes); }}>
-                    <Image source={CARD_IMG[opt.minutes]} style={[styles.menuIcon, isTablet && styles.menuIconTablet]} contentFit="contain" />
-                    <View style={styles.menuBody}>
-                      <View style={styles.menuTopLine}>
-                        <Text style={[styles.menuName, isTablet && styles.menuNameTablet, isActive && styles.menuNameActive]} numberOfLines={1}>
-                          {t(`sessionPicker.len_${opt.minutes}`)}
-                        </Text>
-                        <View style={styles.menuLeader} />
-                        <CoinIcon size={isTablet ? Math.round(18 * grow) : 14} />
-                        <Text style={[styles.menuPrice, isTablet && styles.menuPriceTablet]}>{coinsForMinutes(opt.minutes) * (isPlus ? PLUS_STUDY_COIN_MULTIPLIER : 1)}</Text>
-                      </View>
-                      {/* Plain menu description line — minutes and break in one
-                          same-size run of text, no chip behind the break. */}
-                      <Text style={[styles.menuCoinText, isTablet && styles.menuCoinTextTablet]} numberOfLines={1}>
-                        {opt.minutes} {t('customTimer.min')}
-                        {brk > 0 ? `  ·  ${t('sessionPicker.menuBreak', { min: brk })}` : ''}
-                      </Text>
-                    </View>
-                    {/* Every option shows a box; it fills with a check when picked. */}
-                    <CheckBox checked={isActive} size={isTablet ? Math.round(28 * grow) : 24} color={C.buttonPink} />
-                  </Pressable>
-                  {i < SESSION_LENGTHS.length - 1 && <View style={styles.menuDivider} />}
-                </View>
+                <Pressable
+                  key={m}
+                  style={[styles.modeSeg, on && { backgroundColor: theme.pill }]}
+                  onPress={() => setMode(m)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}>
+                  <FitText numberOfLines={1} minScale={0.7} style={[styles.modeText, { color: on ? theme.pillText : CAFE.offText }]}>
+                    {t(m === 'single' ? 'sessionPicker.bakeSolo' : 'sessionPicker.bakeTogether')}
+                  </FitText>
+                </Pressable>
               );
             })}
-
-            {/* Saved presets no longer live here — they're pills on the Custom
-                Timer screen (session-length only), where they're added/managed. */}
-
-            <View style={styles.sectionRule} />
-
-            {/* Subject — chips read as a little "add-ons" line on the menu */}
-            <Text style={[styles.sectionLabel, isTablet && styles.sectionLabelTablet]}>{t('sessionPicker.subjectHeader')}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-              {activeSubjects.map((s) => {
-                const isActive = selectedSubjectId === s.id;
-                return (
-                  <Pressable
-                    key={s.id}
-                    style={[
-                      styles.chip,
-                      isTablet && styles.chipTablet,
-                      { borderColor: isActive ? s.color : C.shortbread, backgroundColor: isActive ? s.color + '2E' : 'rgba(255,255,255,0.6)' },
-                    ]}
-                    onPress={() => setSelectedSubjectId(isActive ? null : s.id)}>
-                    <View style={styles.chipInner}>
-                      <View
-                        style={[
-                          styles.subjectDot,
-                          isTablet && styles.subjectDotTablet,
-                          { backgroundColor: s.color },
-                        ]}
-                      />
-                      <Text style={[styles.chipText, isTablet && styles.chipTextTablet, isActive && { color: s.color }]}>
-                        {s.emoji ? `${s.emoji} ` : ''}{localizeSubjectName(s.name, t)}
-                      </Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
-              <Pressable style={[styles.chip, isTablet && styles.chipTablet, styles.chipAdd]} onPress={() => router.push('/manage-subjects')}>
-                <Text style={[styles.chipText, isTablet && styles.chipTextTablet, { color: C.berry }]}>{t('common.addChip')}</Text>
-              </Pressable>
-            </ScrollView>
-
-            {/* Lock in — solo only. In a room this would end everyone's session
-                because one person got a text, so it isn't offered there. */}
-            {mode === 'single' && (
-              <>
-                <View style={styles.menuDivider} />
-                <Pressable
-                  style={({ pressed }) => [styles.menuRow, isTablet && styles.menuRowTablet, lockedIn && styles.menuRowActive, pressed && styles.pressed]}
-                  onPress={() => { playPaper(); setLockedIn((v) => !v); }}>
-                  <Image source={LOCK_IN_IMG} style={[styles.menuIcon, isTablet && styles.menuIconTablet]} contentFit="contain" />
-                  <View style={styles.menuBody}>
-                    <View style={styles.menuTopLine}>
-                      <Text style={[styles.menuName, isTablet && styles.menuNameTablet, lockedIn && styles.menuNameActive]} numberOfLines={1}>
-                        {t('sessionPicker.lockIn')}
-                      </Text>
-                      <View style={styles.menuLeader} />
-                      <CoinIcon size={isTablet ? Math.round(18 * grow) : 14} />
-                      <Text style={[styles.menuPrice, isTablet && styles.menuPriceTablet]}>×2</Text>
-                    </View>
-                    <View style={styles.menuSubLine}>
-                      <Text style={[styles.menuCoinText, isTablet && styles.menuCoinTextTablet]} numberOfLines={2}>
-                        {t('sessionPicker.lockInNote')}
-                      </Text>
-                    </View>
-                  </View>
-                  <CheckBox checked={lockedIn} size={isTablet ? Math.round(28 * grow) : 24} color={C.buttonPink} />
-                </Pressable>
-              </>
-            )}
-
-            {/* Custom duration — open to everyone, as a final menu row. Hidden in
-                multiplayer: there each player sets their own length in the lobby. */}
-            {mode === 'single' && (
-              <>
-                <View style={styles.sectionRule} />
-                <Pressable
-                  style={({ pressed }) => [styles.menuRow, isTablet && styles.menuRowTablet, pressed && styles.pressed]}
-                  onPress={() => router.push('/custom-timer')}>
-                  <View style={[styles.customIconWrap, isTablet && styles.customIconWrapTablet]}>
-                    <PlusIcon size={isTablet ? Math.round(42 * grow) : 32} />
-                  </View>
-                  <View style={styles.menuBody}>
-                    <Text style={[styles.menuName, isTablet && styles.menuNameTablet]}>{t('sessionPicker.customTitle')}</Text>
-                    <Text style={[styles.menuCoinText, isTablet && styles.menuCoinTextTablet]}>{t('sessionPicker.customSub')}</Text>
-                  </View>
-                  <View style={[styles.customPill, isTablet && styles.customPillTablet]}>
-                    <Text style={[styles.customPillText, isTablet && styles.customPillTextTablet]}>{t('sessionPicker.customSet')}</Text>
-                  </View>
-                </Pressable>
-              </>
-            )}
           </View>
 
-          {/* Start — break info reads as a quiet caption above the one CTA */}
-          <View style={styles.startBlock}>
-            {/* Caption stays mounted even with nothing picked (blank rather than
-                claiming "no break") so the Start button doesn't hop on first tap. */}
-            <Text style={styles.breakInfoText}>
-              {mode !== 'single'
-                ? t('sessionPicker.breakInfoMulti')
-                : selected == null
-                  ? ' '
-                  : breakForSelected > 0
-                    ? t('sessionPicker.breakInfoSingle', { min: breakForSelected })
-                    : t('sessionPicker.breakInfoNone')}
-            </Text>
-            {/* Solo: the ticked duration IS the session, so Start waits for a pick.
-                Multiplayer sets length in the lobby, so it never blocks here. */}
-            <SoundPressable
-              sound="confirm"
-              disabled={mode === 'single' && selected == null}
-              style={({ pressed }) => [styles.startBtn, tw('startBtn'), mode === 'single' && selected == null && styles.startBtnDisabled, pressed && styles.pressed]}
-              onPress={onStart}>
-              <Text style={styles.startBtnText}>{t('customTimer.startSession')}  →</Text>
-            </SoundPressable>
+          {/* The café menu card */}
+          <View style={styles.cardShadow}>
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={[styles.kicker, { color: theme.ink }]}>{t('sessionPicker.cafeKicker')}</Text>
+                <FitText numberOfLines={1} minScale={0.6} style={styles.title}>{t('sessionPicker.bakeTitle')}</FitText>
+              </View>
+              <Drip color={CAFE.header} height={12 * g} />
+
+              <View style={styles.cardBody}>
+                <SprinkleLabel text={t('sessionPicker.bakingTime')} dots={SPRINKLES} g={g} />
+                {SESSION_LENGTHS.map((opt) => {
+                  const d = DESSERT[opt.minutes] ?? DESSERT[DEFAULT_MIN];
+                  const on = selected === opt.minutes;
+                  const brk = autoBreakMinutes(opt.minutes);
+                  return (
+                    <Pressable
+                      key={opt.minutes}
+                      style={({ pressed }) => [styles.row, on && { backgroundColor: d.soft, borderColor: d.ring }, pressed && styles.pressed]}
+                      onPress={() => { playPaper(); setSelected(opt.minutes); }}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: on }}>
+                      <View style={[styles.plate, { backgroundColor: d.plate }]}>
+                        <Image source={CARD_IMG[opt.minutes]} style={styles.plateImg} contentFit="contain" />
+                      </View>
+                      <View style={styles.rowBody}>
+                        <View style={styles.rowTop}>
+                          <FitText numberOfLines={1} minScale={0.7} style={[styles.rowName, { color: d.ink }]}>
+                            {t(`sessionPicker.bake_${opt.minutes}`)}
+                          </FitText>
+                          <DottedLeader color={d.leader} g={g} />
+                          <CoinIcon size={15 * g} style={styles.rowCoin} />
+                          <Text style={styles.rowPrice}>{coinsForMinutes(opt.minutes) * (isPlus ? PLUS_STUDY_COIN_MULTIPLIER : 1)}</Text>
+                        </View>
+                        <Text style={styles.rowDesc} numberOfLines={1}>
+                          {opt.minutes} {t('customTimer.min')}
+                          {brk > 0 ? `  ·  ${t('sessionPicker.teaBreak', { min: brk })}` : ''}
+                        </Text>
+                      </View>
+                      {/* Every option shows a box; it fills with a check when picked. */}
+                      <CheckBox checked={on} size={24 * g} color={d.tick} ink={CAFE.box} />
+                    </Pressable>
+                  );
+                })}
+
+                <SprinkleLabel text={t('sessionPicker.flavorHeader')} dots={SPRINKLES_REV} g={g} />
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.chipRow}
+                  {...chipStick.scrollProps}>
+                  {activeSubjects.map((s) => {
+                    const on = selectedSubjectId === s.id;
+                    return (
+                      <Pressable
+                        key={s.id}
+                        style={[styles.chip, { backgroundColor: `${s.color}1F`, borderColor: on ? s.color : `${s.color}1F` }]}
+                        onPress={() => setSelectedSubjectId(on ? null : s.id)}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: on }}>
+                        <View style={[styles.chipDot, { backgroundColor: s.color }]} />
+                        <Text style={styles.chipText}>
+                          {s.emoji ? `${s.emoji} ` : ''}{localizeSubjectName(s.name, t)}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                  <Pressable style={[styles.chip, styles.chipAdd]} onPress={() => router.push('/manage-subjects')} accessibilityRole="button">
+                    <Text style={[styles.chipText, styles.chipAddText]}>{t('common.addChip')}</Text>
+                  </Pressable>
+                </ScrollView>
+                <BiscuitStick view={chipStick.view} track={theme.plate} coat={theme.coat} g={g} />
+
+                {mode === 'single' ? (
+                  // Solo extras: Lock the Oven + Custom Bake, side by side. Not offered
+                  // in a shared room (one person's text would end everyone's bake).
+                  <View style={styles.extrasRow}>
+                    <Pressable
+                      style={({ pressed }) => [styles.lockCard, lockedIn && { backgroundColor: theme.soft, borderColor: theme.ring }, pressed && styles.pressed]}
+                      onPress={() => { playPaper(); setLockedIn((v) => !v); }}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: lockedIn }}>
+                      <Image source={LOCK_IN_IMG} style={styles.lockImg} contentFit="contain" />
+                      <View style={styles.lockBody}>
+                        <FitText numberOfLines={1} minScale={0.6} style={styles.lockTitle}>{t('sessionPicker.lockOven')}</FitText>
+                        <View style={styles.lockNoteRow}>
+                          <CoinIcon size={12 * g} />
+                          <FitText numberOfLines={1} minScale={0.7} style={[styles.cardNote, styles.lockNote]}>{t('sessionPicker.lockOvenNote')}</FitText>
+                        </View>
+                      </View>
+                      <CheckBox checked={lockedIn} size={22 * g} color={theme.tick} ink={CAFE.box} />
+                    </Pressable>
+                    <Pressable
+                      style={({ pressed }) => [styles.customCard, pressed && styles.pressed]}
+                      onPress={() => router.push('/custom-timer')}
+                      accessibilityRole="button">
+                      <FitText numberOfLines={1} minScale={0.6} style={styles.customTitle}>{t('sessionPicker.customBake')} ›</FitText>
+                      <Text style={[styles.cardNote, styles.customNote]} numberOfLines={1}>{t('sessionPicker.customBakeSub')}</Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  // Baking together never bakes a recipe — said up front as a menu footnote.
+                  <Text style={styles.footnote}>{t('sessionPicker.multiNoRecipeFoot')}</Text>
+                )}
+              </View>
+            </View>
           </View>
         </ScrollView>
+
+        {/* One call to action, pinned below the menu. No break caption. */}
+        <View style={styles.startBlock}>
+          <SoundPressable
+            sound="confirm"
+            disabled={startDisabled}
+            style={({ pressed }) => [
+              styles.startBtn,
+              tw('startBtn'),
+              { backgroundColor: theme.btn, shadowColor: theme.btn },
+              startDisabled && styles.startBtnDisabled,
+              pressed && styles.pressed,
+            ]}
+            onPress={onStart}>
+            <Text style={[styles.startBtnText, { color: theme.btnText }]}>{t('sessionPicker.startBaking')}  →</Text>
+          </SoundPressable>
+        </View>
       </SafeAreaView>
       <DevKnobs screen="sessionpicker" knobs={twKnobs} onChange={twChange} />
     </View>
   );
 }
 
-// `g` = the per-device grow factor (1 on phone AND the 11" reference, ~1.23 on the
-// 13"). Every size/spacing/font literal is multiplied by it so the whole screen
-// scales as one piece — the 11" reproduces its tuned look exactly (g=1), bigger
-// tablets grow proportionally. Non-size props (color/opacity/flex) are left alone.
-const makeStyles = (g: number) => StyleSheet.create({
-  screen: { flex: 1, backgroundColor: C.cream },
-  safe: { flex: 1, paddingHorizontal: Spacing.four * g, maxWidth: MaxContentWidth * g, width: '100%', alignSelf: 'center' },
-  // Heavier cream wash so the strawberry art reads as a soft tint, not clutter.
-  bgOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,248,241,0.28)' },
-  scroll: { paddingBottom: Spacing.five * g, gap: Spacing.three * g },
+// `g` scales every size on tablet (1 on phones); `grow` only widens the column on
+// iPads bigger than the 11" reference. Colours/flex are left alone.
+const makeStyles = (g: number, grow: number) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: CAFE.bg },
+  safe: { flex: 1, paddingHorizontal: 16 * g, maxWidth: MaxContentWidth * grow, width: '100%', alignSelf: 'center' },
+  scroll: { paddingBottom: 12 * g, gap: 12 * g },
 
   // Top bar
-  topBar: { flexDirection: 'row', alignItems: 'center', paddingTop: Spacing.one * g, paddingBottom: Spacing.two * g, gap: Spacing.two * g },
-  iconBtn: {
-    width: 38 * g, height: 38 * g, borderRadius: 19 * g,
-    backgroundColor: 'rgba(255,255,255,0.85)', borderWidth: 1.5, borderColor: C.shortbread,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  // On iPad the 38px circle reads tiny next to the coin pill — give it a bigger,
-  // more tappable target (borderWidth grows too so it doesn't look thin).
-  iconBtnTablet: { width: 50 * g, height: 50 * g, borderRadius: 25 * g, borderWidth: 2 },
-  backChevron: { fontSize: 22 * g, fontWeight: '800', color: C.cocoaDark, marginTop: -2 * g },
-  backChevronTablet: { fontSize: 30 * g, marginTop: -3 * g },
+  topBar: { flexDirection: 'row', alignItems: 'center', paddingBottom: 10 * g },
   topSpacer: { flex: 1 },
+  iconBtn: {
+    width: 44 * g, height: 44 * g, borderRadius: 22 * g,
+    backgroundColor: CAFE.paper, borderWidth: 1.5, borderColor: CAFE.line,
+    alignItems: 'center', justifyContent: 'center', ...CAFE_SOFT_SHADOW,
+  },
   coinPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 5 * g,
-    backgroundColor: 'rgba(255,255,255,0.85)', borderWidth: 1.5, borderColor: C.shortbread,
-    borderRadius: BakeryRadii.pill, paddingHorizontal: 9 * g, paddingVertical: 6 * g,
+    flexDirection: 'row', alignItems: 'center', gap: 7 * g, height: 40 * g,
+    paddingLeft: 10 * g, paddingRight: 14 * g, borderRadius: 20 * g,
+    backgroundColor: CAFE.paper, borderWidth: 1.5, borderColor: CAFE.line, ...CAFE_SOFT_SHADOW,
   },
-  coinText: { fontSize: 13 * g, fontWeight: '800', color: C.cocoaDark },
+  coinText: { fontFamily: Fonts.rounded, fontSize: 16 * g, fontWeight: '800', color: CAFE.ink },
 
-  // One shared surface for the menu paper.
-  card: {
-    backgroundColor: C.frosting,
-    borderRadius: BakeryRadii.card * g,
-    borderWidth: 1.5,
-    borderColor: C.shortbread,
-    ...SOFT_SHADOW,
+  // Mode switch
+  modeSwitch: {
+    flexDirection: 'row', gap: 6 * g, padding: 4 * g, borderRadius: 26 * g,
+    backgroundColor: CAFE.paper, borderWidth: 1.5, borderColor: CAFE.line, ...CAFE_SOFT_SHADOW,
+  },
+  // alignItems 'stretch' (not 'center') so FitText measures the full width.
+  modeSeg: { flex: 1, height: 40 * g, borderRadius: 20 * g, justifyContent: 'center', alignItems: 'stretch', paddingHorizontal: 8 * g },
+  modeText: { fontFamily: Fonts.rounded, fontSize: 15.5 * g, fontWeight: '800', textAlign: 'center' },
+
+  // Menu card (shadow lives on a wrapper: overflow:hidden would clip it on iOS)
+  cardShadow: {
+    borderRadius: 18 * g, backgroundColor: CAFE.paper,
+    shadowColor: 'rgb(150,110,80)', shadowOpacity: 0.14, shadowRadius: 14, shadowOffset: { width: 0, height: 10 }, elevation: 3,
+  },
+  card: { borderRadius: 18 * g, borderWidth: 1.5, borderColor: CAFE.line, backgroundColor: CAFE.paper, overflow: 'hidden' },
+  cardHeader: { backgroundColor: CAFE.header, paddingTop: 12 * g, paddingHorizontal: 14 * g, paddingBottom: 4 * g, alignItems: 'stretch' },
+  kicker: { fontFamily: Fonts.rounded, fontSize: 10 * g, fontWeight: '900', letterSpacing: 3 * g, textAlign: 'center' },
+  title: { fontFamily: Fonts.serif, fontSize: 28 * g, fontWeight: '700', color: CAFE.title, textAlign: 'center' },
+  cardBody: { paddingHorizontal: 12 * g, paddingTop: 2 * g, paddingBottom: 12 * g },
+
+
+  // Baking-time rows
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: 10 * g,
+    paddingVertical: 4 * g, paddingLeft: 4 * g, paddingRight: 6 * g, marginBottom: 4 * g,
+    borderRadius: 14 * g, borderWidth: 1.5, borderColor: 'transparent',
+  },
+  plate: { width: 46 * g, height: 46 * g, borderRadius: 23 * g, alignItems: 'center', justifyContent: 'center' },
+  plateImg: { width: 40 * g, height: 40 * g },
+  rowBody: { flex: 1, minWidth: 0, gap: 1 * g },
+  rowTop: { flexDirection: 'row', alignItems: 'flex-end' },
+  rowName: { fontFamily: Fonts.rounded, fontSize: 16 * g, fontWeight: '800', flexShrink: 1 },
+  rowCoin: { marginBottom: 2 * g },
+  rowPrice: { fontFamily: Fonts.rounded, fontSize: 15 * g, fontWeight: '800', color: CAFE.ink, marginLeft: 3 * g },
+  rowDesc: { fontFamily: Fonts.rounded, fontSize: 12.5 * g, fontWeight: '700', color: CAFE.inkSoft },
+
+  // Subject tags
+  chipRow: { flexDirection: 'row', gap: 6 * g, alignItems: 'center', paddingRight: 4 * g },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6 * g, height: 32 * g, paddingHorizontal: 12 * g, borderRadius: 16 * g, borderWidth: 1.5 },
+  chipDot: { width: 8 * g, height: 8 * g, borderRadius: 4 * g },
+  chipText: { fontFamily: Fonts.rounded, fontSize: 13.5 * g, fontWeight: '800', color: CAFE.ink },
+  chipAdd: { borderStyle: 'dashed', borderColor: '#D9C3B0', backgroundColor: CAFE.paper },
+  chipAddText: { color: '#7A5440' },
+
+
+  // Solo extras
+  extrasRow: { flexDirection: 'row', gap: 6 * g, marginTop: 10 * g },
+  lockCard: {
+    flex: 1.45, flexDirection: 'row', alignItems: 'center', gap: 6 * g, minHeight: 50 * g,
+    paddingLeft: 4 * g, paddingRight: 6 * g, borderRadius: 14 * g, borderWidth: 1.5,
+    borderColor: CAFE.line, backgroundColor: '#FFFAF4',
+  },
+  lockImg: { width: 36 * g, height: 36 * g },
+  lockBody: { flex: 1, minWidth: 0 },
+  lockTitle: { fontFamily: Fonts.rounded, fontSize: 14.5 * g, fontWeight: '800', color: CAFE.title },
+  lockNoteRow: { flexDirection: 'row', alignItems: 'center', gap: 3 * g },
+  // flex:1 gives FitText a definite width to shrink into (else it just truncates).
+  lockNote: { flex: 1 },
+  cardNote: { fontFamily: Fonts.rounded, fontSize: 11.5 * g, fontWeight: '700', color: CAFE.inkSoft, flexShrink: 1 },
+  customCard: {
+    flex: 1, minHeight: 50 * g, borderRadius: 14 * g, borderWidth: 1.5,
+    borderColor: '#F2DEC0', backgroundColor: '#FFF5E6',
+    justifyContent: 'center', alignItems: 'stretch', paddingHorizontal: 8 * g,
+  },
+  customTitle: { fontFamily: Fonts.rounded, fontSize: 14.5 * g, fontWeight: '800', color: '#8A5320', textAlign: 'center' },
+  customNote: { textAlign: 'center' },
+  footnote: {
+    fontFamily: Fonts.serif, fontStyle: 'italic', fontSize: 13 * g, lineHeight: 19 * g,
+    color: CAFE.inkSoft, textAlign: 'center', marginTop: 12 * g, marginHorizontal: 4 * g,
   },
 
-  // The bakery "menu" paper
-  menuCard: { paddingHorizontal: Spacing.three * g, paddingVertical: Spacing.two * g },
-  menuHeader: {
-    alignItems: 'center', gap: 2 * g,
-    paddingBottom: Spacing.two * g, marginBottom: Spacing.one * g,
-    borderBottomWidth: 1.5, borderBottomColor: C.shortbread, borderStyle: 'dashed',
-  },
-  menuTitle: { fontFamily: Fonts.serif, fontSize: 22 * g, fontWeight: '800', color: C.cocoaDark, letterSpacing: 0.5 },
-  menuSubtitle: { fontSize: 12 * g, color: C.mocha, fontWeight: '600' },
-
-  // In-menu section heading ("CHOOSE DURATION" / "SUBJECT")
-  sectionLabel: { fontSize: 11 * g, fontWeight: '800', color: C.latte, letterSpacing: 1, marginTop: Spacing.one * g, marginBottom: 2 * g },
-  // Dashed rule between menu sections
-  sectionRule: { borderBottomWidth: 1.5, borderBottomColor: C.shortbread, borderStyle: 'dashed', marginVertical: Spacing.two * g },
-
-  // Menu line-item (duration / custom)
-  menuRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two * g, paddingVertical: Spacing.two * g, paddingHorizontal: 4 * g, borderRadius: BakeryRadii.chip * g },
-  menuRowActive: { backgroundColor: 'rgba(228,138,154,0.12)' },
-  menuIcon: { width: 54 * g, height: 54 * g },
-  menuBody: { flex: 1, gap: 3 * g },
-  menuTopLine: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 * g },
-  menuName: { fontSize: 15.5 * g, fontWeight: '800', color: C.cocoaDark },
-  menuNameActive: { color: C.berry },
-  menuLeader: { flex: 1, marginHorizontal: 4 * g, marginBottom: 4 * g, borderBottomWidth: 1, borderStyle: 'dashed', borderColor: C.latte },
-  menuPrice: { fontSize: 15 * g, fontWeight: '800', color: '#C98A2B' },
-  menuSubLine: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one * g },
-  menuCoinText: { fontSize: 12.5 * g, color: C.mocha, fontWeight: '600' },
-  menuDivider: { height: 1, backgroundColor: `${C.shortbread}99` },
-  checkBadge: {
-    width: 22 * g, height: 22 * g, borderRadius: 11 * g, backgroundColor: C.jam,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  checkIcon: { fontSize: 12 * g, color: '#fff', fontWeight: '900' },
-
-  presetDelete: {
-    width: 26 * g, height: 26 * g, borderRadius: 13 * g, marginLeft: 4 * g,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: `${C.shortbread}80`,
-  },
-  presetDeleteText: { fontSize: 12 * g, color: C.mocha, fontWeight: '800', lineHeight: 14 * g },
-
-  customIconWrap: { width: 54 * g, alignItems: 'center', justifyContent: 'center' },
-
-  // Subject chips
-  chipRow: { flexDirection: 'row', gap: 8 * g, alignItems: 'center', paddingRight: 8 * g, paddingVertical: 2 * g },
-  chip: { borderRadius: BakeryRadii.pill, borderWidth: 1.5, paddingHorizontal: 13 * g, paddingVertical: 8 * g },
-  chipInner: { flexDirection: 'row', alignItems: 'center', gap: 5 * g },
-  chipAdd: { borderColor: C.jam, borderStyle: 'dashed', backgroundColor: 'transparent' },
-  // Always-on colour dot: the subject's colour reads before selection, where the
-  // old checkmark only appeared once a chip was picked.
-  subjectDot: { width: 8 * g, height: 8 * g, borderRadius: 4 * g },
-  subjectDotTablet: { width: 10 * g, height: 10 * g, borderRadius: 5 * g },
-  chipText: { fontSize: 13.5 * g, color: C.mocha, fontWeight: '700' },
-
-  customPill: {
-    backgroundColor: C.cream, borderRadius: BakeryRadii.pill,
-    borderWidth: 1.5, borderColor: C.shortbread,
-    paddingHorizontal: 12 * g, paddingVertical: 7 * g,
-  },
-  customPillText: { fontSize: 13 * g, fontWeight: '800', color: C.cocoaDark },
-
-  // Mode toggle
-  modeToggle: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    borderRadius: BakeryRadii.pill,
-    borderWidth: 1.5,
-    borderColor: C.shortbread,
-    padding: 4 * g,
-  },
-  modeSeg: { flex: 1, paddingVertical: 11 * g, alignItems: 'center', borderRadius: BakeryRadii.pill },
-  modeSegActive: { backgroundColor: C.jam },
-  modeText: { fontSize: 14 * g, fontWeight: '800', color: C.mocha },
-  modeTextActive: { color: '#fff' },
-  // Multiplayer "no recipe badges" notice, right under the toggle.
-  multiWarn: {
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    borderRadius: BakeryRadii.card,
-    borderWidth: 1.5,
-    borderColor: C.shortbread,
-    paddingVertical: 8 * g,
-    paddingHorizontal: 12 * g,
-    marginTop: Spacing.one * g,
-  },
-  multiWarnText: { fontSize: 12.5 * g, fontWeight: '700', color: C.mocha, textAlign: 'center', lineHeight: 17 * g },
-
-  // Start block — quiet caption + the single CTA
-  startBlock: { alignItems: 'center', gap: Spacing.two * g, marginTop: Spacing.one * g },
-  breakInfoText: { fontSize: 12 * g, color: C.mocha, fontWeight: '600', textAlign: 'center' },
+  // Start
+  startBlock: { paddingTop: 10 * g, paddingBottom: 8 * g },
   startBtn: {
-    alignSelf: 'stretch',
-    backgroundColor: C.berry,
-    borderRadius: BakeryRadii.pill,
-    paddingVertical: 16 * g,
-    alignItems: 'center',
-    ...SOFT_SHADOW,
+    height: 54 * g, borderRadius: 27 * g, alignItems: 'center', justifyContent: 'center',
+    shadowOpacity: 0.3, shadowRadius: 11, shadowOffset: { width: 0, height: 8 }, elevation: 4,
   },
-  // Greyed until a duration is picked (nothing is selected by default).
-  startBtnDisabled: { opacity: 0.45 },
-  startBtnText: { fontSize: 17 * g, fontWeight: '900', color: '#fff', letterSpacing: 0.3 },
-
+  startBtnDisabled: { opacity: 0.5 },
+  startBtnText: { fontFamily: Fonts.rounded, fontSize: 19 * g, fontWeight: '800', letterSpacing: 0.3 },
   pressed: { opacity: 0.85 },
-
-  // ── Tablet: bigger menu paper + line-items, chips and custom row ──
-  menuCardTablet: { paddingHorizontal: Spacing.five * g, paddingVertical: Spacing.four * g },
-  menuTitleTablet: { fontSize: 32 * g },
-  menuSubtitleTablet: { fontSize: 16 * g },
-  sectionLabelTablet: { fontSize: 14 * g, letterSpacing: 1.2, marginTop: Spacing.two * g },
-  menuRowTablet: { paddingVertical: Spacing.three * g, gap: Spacing.three * g },
-  menuIconTablet: { width: 82 * g, height: 82 * g },
-  menuNameTablet: { fontSize: 21 * g },
-  menuPriceTablet: { fontSize: 20 * g },
-  menuCoinTextTablet: { fontSize: 16 * g },
-  checkBadgeTablet: { width: 30 * g, height: 30 * g, borderRadius: 15 * g },
-  checkIconTablet: { fontSize: 16 * g },
-  customIconWrapTablet: { width: 82 * g },
-  chipTablet: { paddingHorizontal: 18 * g, paddingVertical: 12 * g },
-  chipTextTablet: { fontSize: 18 * g },
-  customPillTablet: { paddingHorizontal: 16 * g, paddingVertical: 10 * g },
-  customPillTextTablet: { fontSize: 17 * g },
 });

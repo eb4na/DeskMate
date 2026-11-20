@@ -1,8 +1,9 @@
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, AppState, Easing, type LayoutChangeEvent, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, AppState, Easing, type LayoutChangeEvent, PanResponder, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SoundPressable } from '@/components/sound-pressable';
+import { playSwoosh } from '@/lib/sounds';
 import { showPopup } from '@/lib/popup';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
@@ -175,6 +176,26 @@ function formatLiveCountdown(targetMs: number, nowMs: number): string {
   return days > 0 ? `${days}d ${clock}` : clock;
 }
 
+/**
+ * The exam card's live "4d 03:21:45" countdown. It runs its OWN 1-second clock so
+ * only this text re-renders each second, not the whole Home screen (a once-a-second
+ * Home re-render also kept reloading the animated companion). Render-prop so the
+ * caller keeps its own text component + styles.
+ */
+function LiveCountdown({ targetMs, children }: { targetMs: number; children: (text: string) => ReactNode }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (targetMs <= Date.now()) return; // already over: "past due" never changes
+    const id = setInterval(() => {
+      const n = Date.now();
+      setNow(n);
+      if (n >= targetMs) clearInterval(id);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [targetMs]);
+  return <>{children(formatLiveCountdown(targetMs, now))}</>;
+}
+
 function getSessionSecondsLeft(startedAt: string, durationMinutes: number, nowMs: number): number {
   const endMs = new Date(startedAt).getTime() + durationMinutes * 60000;
   return Math.max(0, Math.ceil((endMs - nowMs) / 1000));
@@ -303,6 +324,85 @@ const DESK_KITS: Record<string, DeskKit> = {
   },
 };
 const DEFAULT_DESK_FOOD = 'strawberry-shortcake';
+
+/** The mixer's on-screen box (window coordinates) — the drag-to-start drop target. */
+type DropZone = { x: number; y: number; w: number; h: number };
+
+/**
+ * One desk ingredient in drag-to-start mode. Released over the mixer (its measured
+ * on-screen box plus a forgiving margin) it fades into the bowl; anywhere else it
+ * springs back to its desk slot.
+ */
+function DraggableIngredient({
+  src, style, onDropped, getDropZone, onGrab, baseX = 0, baseY = 0, baseScale = 1,
+}: {
+  src: number; style: any;
+  onDropped: () => void;
+  getDropZone: () => DropZone | null;
+  onGrab?: () => void;
+  baseX?: number; baseY?: number; baseScale?: number;
+}) {
+  const pan = useRef(new Animated.ValueXY()).current;
+  const scale = useRef(new Animated.Value(1)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
+  const dropped = useRef(false);
+  // The PanResponder is created once, so it reads the callbacks through a ref to
+  // always get the current render's versions (not the ones from first mount).
+  const cb = useRef({ onDropped, getDropZone, onGrab });
+  useEffect(() => {
+    cb.current = { onDropped, getDropZone, onGrab };
+  });
+
+  const pr = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => !dropped.current,
+    onMoveShouldSetPanResponder: () => !dropped.current,
+    onPanResponderGrant: () => {
+      cb.current.onGrab?.();
+      pan.setOffset({ x: (pan.x as any)._value, y: (pan.y as any)._value });
+      pan.setValue({ x: 0, y: 0 });
+      // All animations here must share the JS driver, because `pan` is driven by
+      // Animated.event with useNativeDriver:false. Mixing native + JS on the same
+      // view promotes `pan` to native and crashes the spring-back on release.
+      Animated.spring(scale, { toValue: 1.2, useNativeDriver: false }).start();
+    },
+    onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
+    onPanResponderRelease: (_, g) => {
+      pan.flattenOffset();
+      Animated.spring(scale, { toValue: 1, useNativeDriver: false }).start();
+      // Finger position at release (grant point + travel; valid even for a tap).
+      const fx = g.x0 + g.dx;
+      const fy = g.y0 + g.dy;
+      const z = cb.current.getDropZone();
+      const pad = z ? Math.max(30, 0.15 * Math.max(z.w, z.h)) : 0;
+      const hit = !!z && fx >= z.x - pad && fx <= z.x + z.w + pad && fy >= z.y - pad && fy <= z.y + z.h + pad;
+      if (hit) {
+        dropped.current = true;
+        playSwoosh(); // ingredient lands in the mixer
+        Animated.parallel([
+          Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: false }),
+          Animated.spring(scale, { toValue: 0.5, useNativeDriver: false }),
+        ]).start(() => cb.current.onDropped());
+      } else {
+        Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: false }).start();
+      }
+    },
+    // Gesture stolen (system swipe, alert…) → back to the slot, never stranded mid-desk.
+    onPanResponderTerminate: () => {
+      pan.flattenOffset();
+      Animated.spring(scale, { toValue: 1, useNativeDriver: false }).start();
+      Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: false }).start();
+    },
+  })).current;
+
+  return (
+    <Animated.View
+      style={[style, { transform: [{ translateX: baseX }, { translateY: baseY }, { translateX: pan.x }, { translateY: pan.y }, { scale: baseScale }, { scale }], opacity, zIndex: 20 }]}
+      {...pr.panHandlers}
+    >
+      <Image source={src} style={{ width: '100%', height: '100%' }} contentFit="contain" />
+    </Animated.View>
+  );
+}
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -533,7 +633,14 @@ export default function HomeScreen() {
     { left: 284, width: 82, height: 69 },
   ];
   const ING_BOTTOM = 250;
-  const tIngFor = (idx: number, ing: DeskIngredient) => {
+  // Tablet group shift/scale + spread for ingredient `idx` (identity on phones).
+  // Kept separate from the box so the draggable ingredient can slot its finger
+  // pan between the shift and the scale (a later `transform` would replace it).
+  const ingBase = (idx: number) =>
+    isTablet
+      ? { x: htScaled.ingX + (idx - 1) * htScaled.ingSpread, y: htScaled.ingY, s: htScaled.ingScale }
+      : { x: 0, y: 0, s: 1 };
+  const tIngBox = (idx: number, ing: DeskIngredient) => {
     if (!isTablet) return null;
     const box = { ...ING_SLOTS[idx], ...(ing.style as { width?: number; height?: number } | undefined) };
     return {
@@ -541,12 +648,13 @@ export default function HomeScreen() {
       bottom: ING_BOTTOM * u + deskDriftY,
       width: box.width * u,
       height: box.height * u,
-      transform: [
-        { translateX: htScaled.ingX + (idx - 1) * htScaled.ingSpread },
-        { translateY: htScaled.ingY },
-        { scale: htScaled.ingScale },
-      ],
     };
+  };
+  const tIngFor = (idx: number, ing: DeskIngredient) => {
+    const box = tIngBox(idx, ing);
+    if (!box) return null;
+    const b = ingBase(idx);
+    return { ...box, transform: [{ translateX: b.x }, { translateY: b.y }, { scale: b.s }] };
   };
   // Mixer: same full ×u box treatment. A kit's mixerStyle bottom is a
   // scene-height percentage on phones; on tablet it's converted against the
@@ -686,9 +794,21 @@ export default function HomeScreen() {
   const [finishingSession, setFinishingSession] = useState(false);
   const finishParamsRef = useRef<Record<string, string> | null>(null);
   const [homeFocused, setHomeFocused] = useState(false);
-  // A session queued by the session picker (via takePendingDragSession), waiting
-  // to auto-start once Home has focus. A separate effect below consumes it.
-  const [pendingStart, setPendingStart] = useState<DragSessionData | null>(null);
+  // A session queued by the session picker / custom timer (via
+  // takePendingDragSession). While set, Home is in drag-to-start mode: the player
+  // drags all 3 desk ingredients into the mixer, then the session begins.
+  const [dragSession, setDragSession] = useState<DragSessionData | null>(null);
+  const [droppedIds, setDroppedIds] = useState<Set<string>>(new Set());
+  // The mixer's measured on-screen box — the drop target. Measured off an invisible
+  // twin of the mixer (same style array) since expo-image's ref can't measure.
+  const mixerProbeRef = useRef<View>(null);
+  const mixerZoneRef = useRef<DropZone | null>(null);
+  const measureMixer = useCallback(() => {
+    mixerProbeRef.current?.measureInWindow((x, y, w, h) => {
+      if (w > 0 && h > 0) mixerZoneRef.current = { x, y, w, h };
+    });
+  }, []);
+  const getMixerZone = useCallback(() => mixerZoneRef.current, []);
   // The streak + coin pills are two separate buttons that should always be the same
   // width. Each reports its natural (content-sized) width; we take the larger and
   // force both to it — so they match without stretching full-width, and it adapts to
@@ -771,7 +891,10 @@ export default function HomeScreen() {
     // Make sure the idle bounce is running each time Home regains focus.
     startBounce();
     const session = takePendingDragSession();
-    if (session) setPendingStart(session);
+    if (session) {
+      setDragSession(session);
+      setDroppedIds(new Set());
+    }
     // Refresh the pending friend-request count for the badge.
     let cancelled = false;
     if (user?.id) {
@@ -806,7 +929,7 @@ export default function HomeScreen() {
   // sits ABOVE the bottom tab bar — otherwise the tasks/shop step cards hide
   // behind the bar (the Tabs navigator paints the bar over every tab screen).
   const showTutorial =
-    homeFocused && !activeSession && legalAccepted && starterChosen && !tutorialSeen &&
+    homeFocused && !activeSession && !dragSession && legalAccepted && starterChosen && !tutorialSeen &&
     !nextLoginReward({ loginRewardDate, streak, isPlus, streakFreezes }, todayISO()).available;
   useEffect(() => {
     setTutorialVisible(showTutorial);
@@ -831,15 +954,25 @@ export default function HomeScreen() {
     startActiveSession({ durationMinutes: ds.durationMinutes, subjectName: ds.subjectName, taskId: ds.taskId, taskTitle: ds.taskTitle, breakMinutes: ds.breakMinutes, lockedIn: ds.lockedIn, startedAt: FROZEN_START });
   };
 
-  // Auto-start a session queued by the session picker. Runs in its own effect
-  // (not inside the memoized focus callback) so it closes over the current render's
-  // studyCharacterSource. takePendingDragSession already nulled the queue, and we
-  // clear pendingStart here, so this fires exactly once per queued session.
+  const handleIngredientDropped = (id: string) => {
+    setDroppedIds((prev) => new Set(prev).add(id));
+  };
+
+  // All 3 ingredients in the mixer → a short "Let's study!" beat, then start the
+  // session behind the loading overlay. Lives in an effect (not the setDroppedIds
+  // updater, which React may run twice) so a session starts exactly once, and it
+  // closes over the current render's studyCharacterSource.
   useEffect(() => {
-    if (!pendingStart) return;
-    beginSession(pendingStart);
-    setPendingStart(null);
-  }, [pendingStart]);
+    if (!dragSession || droppedIds.size < deskKit.ingredients.length) return;
+    const ds = dragSession;
+    const id = setTimeout(() => {
+      setDragSession(null);
+      setDroppedIds(new Set());
+      beginSession(ds);
+    }, 300);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragSession, droppedIds]);
   const activeSessionId = activeSession?.id ?? null;
   const myBgRoom = ROOM_PAIRS.find((r) => r.id === equippedBackgroundRoomId) ?? ROOM_PAIRS[0];
   // In a multiplayer study session, everyone studies in the host's room.
@@ -935,8 +1068,12 @@ export default function HomeScreen() {
   // and the card rolling on to the next exam.
   const examIsPast = examDays !== null && examDays < 0;
   const examTargetMs = featuredExam ? getExamTargetMs(featuredExam.dateISO, featuredExam.time) : null;
-  const examCountdownText =
-    examTargetMs === null ? '--' : formatLiveCountdown(examTargetMs, nowMs);
+  // Next moment a Home card can change on its own: the featured exam or next task
+  // stops being "upcoming" and the card rolls on. Drives the idle refresh below.
+  const nextCardChangeMs = Math.min(
+    featuredExam ? upcomingUntilMs(featuredExam.dateISO, featuredExam.time) : Infinity,
+    nextTaskOcc ? upcomingUntilMs(nextTaskOcc.iso, nextTaskOcc.task.dueTime) : Infinity,
+  );
   const examSubjectColor =
     (featuredExam?.subject ? subjects.find((s) => s.name === featuredExam.subject)?.color : null) ?? '#C9A18A';
   const sessionNowMs = activeSession
@@ -949,11 +1086,20 @@ export default function HomeScreen() {
     ? getSessionElapsedMinutes(activeSession.startedAt, activeSession.durationMinutes, sessionNowMs)
     : 0;
 
-  // Hide the bottom tab bar while studying.
+  // A session that starts some other way mid-drag (e.g. accepting a study-room
+  // invite) supersedes the queued one — drop it so it can't resurface later.
   useEffect(() => {
-    setDragActive(!!activeSession);
+    if (activeSession && dragSession) {
+      setDragSession(null);
+      setDroppedIds(new Set());
+    }
+  }, [activeSession, dragSession]);
+
+  // Hide the bottom tab bar while dragging ingredients or studying.
+  useEffect(() => {
+    setDragActive(!!dragSession || !!activeSession);
     return () => setDragActive(false);
-  }, [activeSession]);
+  }, [dragSession, activeSession]);
 
   useEffect(() => {
     setDidHomeImageFail(false);
@@ -972,13 +1118,16 @@ export default function HomeScreen() {
     return () => clearInterval(intervalId);
   }, [activeSessionId]);
 
-  // Tick every second for the live exam countdown (when not already ticking
-  // for an active session).
+  // Idle refresh (no session). The exam countdown ticks itself (LiveCountdown), so
+  // Home only re-renders when a card can actually change: right as the featured
+  // exam / next task passes (so the card rolls on), and at least once a minute
+  // (day rollover, "urgent" styling). Re-arms after every fire via `nowMs`.
   useEffect(() => {
-    if (activeSessionId || examTargetMs === null) return;
-    const id = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [activeSessionId, examTargetMs]);
+    if (activeSessionId) return; // the session ticker above already re-renders
+    const delay = Math.min(60_000, Math.max(250, nextCardChangeMs - Date.now() + 50));
+    const id = setTimeout(() => setNowMs(Date.now()), delay);
+    return () => clearTimeout(id);
+  }, [activeSessionId, nextCardChangeMs, nowMs]);
 
   useEffect(() => {
     if (!activeSession) return;
@@ -1211,7 +1360,7 @@ export default function HomeScreen() {
             </View>
           ) : (
             <>
-              <View style={[styles.topHud, tTopHud]}>
+              {!dragSession && <View style={[styles.topHud, tTopHud]}>
                 <View style={styles.statusRow}>
                   <View style={styles.streakChipWrap} ref={(n) => setTutorialTarget('streak', n)}>
                     <Animated.View
@@ -1296,16 +1445,20 @@ export default function HomeScreen() {
                               <CardText style={[styles.metaSubline, cardFont(10.5, 13)]} numberOfLines={1}>{formatExamDate(featuredExam.dateISO)}</CardText>
                               <View style={styles.examCountdownRow}>
                                 <View style={[styles.metaInfoPill, examIsUrgent && styles.metaInfoPillUrgent]}>
-                                  <CardText
-                                    style={[
-                                      styles.metaAccentText,
-                                      examIsUrgent && styles.metaAccentTextUrgent,
-                                      examIsPast && styles.metaAccentTextPast,
-                                      cardFont(10.5, 13),
-                                    ]}
-                                    numberOfLines={1}>
-                                    {examCountdownText}
-                                  </CardText>
+                                  <LiveCountdown targetMs={examTargetMs ?? 0}>
+                                    {(countdownText) => (
+                                      <CardText
+                                        style={[
+                                          styles.metaAccentText,
+                                          examIsUrgent && styles.metaAccentTextUrgent,
+                                          examIsPast && styles.metaAccentTextPast,
+                                          cardFont(10.5, 13),
+                                        ]}
+                                        numberOfLines={1}>
+                                        {countdownText}
+                                      </CardText>
+                                    )}
+                                  </LiveCountdown>
                                 </View>
                                 {featuredExam.subject ? (
                                   <View style={styles.examSubjectChip}>
@@ -1362,65 +1515,70 @@ export default function HomeScreen() {
                     </View>
                   </Pressable>
                 </View>
-              </View>
+              </View>}
 
-              {/* Switch character button — top left, below exam card */}
-              <Pressable
-                style={({ pressed }) => [styles.switchCharBtn, { top: ph.btnTops[0], width: ph.szLg, height: ph.szLg }, tBtn(210, 0, 80), pressed && styles.startButtonPressed]}
-                onPress={() => router.push('/companion-gallery')}
-                ref={(n) => setTutorialTarget('switchChar', n)}
-                accessibilityLabel={t('home.a11ySwitchCharacter')}>
-                <Image source={SWITCH_CHARACTER_BTN} style={[styles.switchCharImg, { width: ph.szLg, height: ph.szLg }, tImg(80)]} contentFit="contain" />
-              </Pressable>
+              {/* Side buttons — hidden in drag-to-start mode. */}
+              {!dragSession && (
+                <>
+                  {/* Switch character button — top left, below exam card */}
+                  <Pressable
+                    style={({ pressed }) => [styles.switchCharBtn, { top: ph.btnTops[0], width: ph.szLg, height: ph.szLg }, tBtn(210, 0, 80), pressed && styles.startButtonPressed]}
+                    onPress={() => router.push('/companion-gallery')}
+                    ref={(n) => setTutorialTarget('switchChar', n)}
+                    accessibilityLabel={t('home.a11ySwitchCharacter')}>
+                    <Image source={SWITCH_CHARACTER_BTN} style={[styles.switchCharImg, { width: ph.szLg, height: ph.szLg }, tImg(80)]} contentFit="contain" />
+                  </Pressable>
 
-              {/* Food menu button — top left, below switch character */}
-              <Pressable
-                style={({ pressed }) => [styles.foodMenuBtn, { top: ph.btnTops[1], width: ph.szLg, height: ph.szLg }, tBtn(292, 1, 80), pressed && styles.startButtonPressed]}
-                onPress={() => router.push('/food-gallery')}
-                ref={(n) => setTutorialTarget('food', n)}
-                accessibilityLabel={t('home.a11yFoodMenu')}>
-                <Image source={FOOD_MENU_BTN} style={[styles.foodMenuImg, { width: ph.szLg, height: ph.szLg }, tImg(80)]} contentFit="contain" />
-              </Pressable>
+                  {/* Food menu button — top left, below switch character */}
+                  <Pressable
+                    style={({ pressed }) => [styles.foodMenuBtn, { top: ph.btnTops[1], width: ph.szLg, height: ph.szLg }, tBtn(292, 1, 80), pressed && styles.startButtonPressed]}
+                    onPress={() => router.push('/food-gallery')}
+                    ref={(n) => setTutorialTarget('food', n)}
+                    accessibilityLabel={t('home.a11yFoodMenu')}>
+                    <Image source={FOOD_MENU_BTN} style={[styles.foodMenuImg, { width: ph.szLg, height: ph.szLg }, tImg(80)]} contentFit="contain" />
+                  </Pressable>
 
-              {/* Edit Room button — top left, above settings */}
-              <Pressable
-                style={({ pressed }) => [styles.editRoomBtn, { top: ph.btnTops[2], width: ph.szMd, height: ph.szMd }, tBtn(376, 2, 72), pressed && styles.startButtonPressed]}
-                onPress={() => router.push('/edit-room')}
-                ref={(n) => setTutorialTarget('editRoom', n)}
-                accessibilityLabel={t('home.a11yEditRoom')}>
-                <Image source={EDIT_ROOM_BTN} style={[styles.editRoomImg, { width: ph.szMd, height: ph.szMd }, tImg(72)]} contentFit="contain" />
-              </Pressable>
+                  {/* Edit Room button — top left, above settings */}
+                  <Pressable
+                    style={({ pressed }) => [styles.editRoomBtn, { top: ph.btnTops[2], width: ph.szMd, height: ph.szMd }, tBtn(376, 2, 72), pressed && styles.startButtonPressed]}
+                    onPress={() => router.push('/edit-room')}
+                    ref={(n) => setTutorialTarget('editRoom', n)}
+                    accessibilityLabel={t('home.a11yEditRoom')}>
+                    <Image source={EDIT_ROOM_BTN} style={[styles.editRoomImg, { width: ph.szMd, height: ph.szMd }, tImg(72)]} contentFit="contain" />
+                  </Pressable>
 
-              {/* Settings button — top left, below food menu */}
-              <Pressable
-                style={({ pressed }) => [styles.topSettingsBtn, { top: ph.btnTops[3], width: ph.szMd, height: ph.szMd }, tBtn(452, 3, 72), pressed && styles.startButtonPressed]}
-                onPress={() => router.push('/settings')}
-                accessibilityLabel={t('home.a11yOpenSettings')}>
-                <Image source={SETTINGS_BTN} style={[styles.topSettingsImg, { width: ph.szMd, height: ph.szMd }, tImg(72)]} contentFit="contain" />
-                {settingsHasAlert && (
-                  <View style={[styles.settingsAlertDot, isTablet && styles.settingsAlertDotTablet]} pointerEvents="none" />
-                )}
-              </Pressable>
+                  {/* Settings button — top left, below food menu */}
+                  <Pressable
+                    style={({ pressed }) => [styles.topSettingsBtn, { top: ph.btnTops[3], width: ph.szMd, height: ph.szMd }, tBtn(452, 3, 72), pressed && styles.startButtonPressed]}
+                    onPress={() => router.push('/settings')}
+                    accessibilityLabel={t('home.a11yOpenSettings')}>
+                    <Image source={SETTINGS_BTN} style={[styles.topSettingsImg, { width: ph.szMd, height: ph.szMd }, tImg(72)]} contentFit="contain" />
+                    {settingsHasAlert && (
+                      <View style={[styles.settingsAlertDot, isTablet && styles.settingsAlertDotTablet]} pointerEvents="none" />
+                    )}
+                  </Pressable>
 
-              {/* Friend button — right side */}
-              <Pressable
-                style={({ pressed }) => [styles.friendBtn, { top: ph.friendTop, width: ph.szFr, height: ph.szFr }, tFriend, pressed && styles.startButtonPressed]}
-                onPress={() => router.push('/friends')}
-                accessibilityLabel={t('home.a11yFriends')}>
-                <Image source={FRIEND_BTN} style={[styles.friendBtnImg, { width: ph.szFr, height: ph.szFr }, tFriendImg]} contentFit="contain" />
-                {pendingRequests > 0 ? (
-                  <View style={[styles.friendReqBadge, isTablet && styles.friendReqBadgeTablet]} pointerEvents="none">
-                    <ThemedText style={styles.friendReqBadgeText}>
-                      {pendingRequests > 9 ? '9+' : pendingRequests}
-                    </ThemedText>
-                  </View>
-                ) : hasUnreadDM ? (
-                  <View style={[styles.friendDmDot, isTablet && styles.friendDmDotTablet]} pointerEvents="none" />
-                ) : null}
-              </Pressable>
+                  {/* Friend button — right side */}
+                  <Pressable
+                    style={({ pressed }) => [styles.friendBtn, { top: ph.friendTop, width: ph.szFr, height: ph.szFr }, tFriend, pressed && styles.startButtonPressed]}
+                    onPress={() => router.push('/friends')}
+                    accessibilityLabel={t('home.a11yFriends')}>
+                    <Image source={FRIEND_BTN} style={[styles.friendBtnImg, { width: ph.szFr, height: ph.szFr }, tFriendImg]} contentFit="contain" />
+                    {pendingRequests > 0 ? (
+                      <View style={[styles.friendReqBadge, isTablet && styles.friendReqBadgeTablet]} pointerEvents="none">
+                        <ThemedText style={styles.friendReqBadgeText}>
+                          {pendingRequests > 9 ? '9+' : pendingRequests}
+                        </ThemedText>
+                      </View>
+                    ) : hasUnreadDM ? (
+                      <View style={[styles.friendDmDot, isTablet && styles.friendDmDotTablet]} pointerEvents="none" />
+                    ) : null}
+                  </Pressable>
+                </>
+              )}
 
               <View style={[styles.homeCharacterLayer, phCharLayer, tCharLayer]} pointerEvents="box-none">
-                <CompanionPet onPet={petCompanion} scale={isTablet ? htScaled.charScale * u : 1} companionName={activeCompanion.name} skinId={activeSkinId}>
+                <CompanionPet onPet={petCompanion} disabled={!!dragSession} scale={isTablet ? htScaled.charScale * u : 1} companionName={activeCompanion.name} skinId={activeSkinId}>
                   <Animated.View
                     style={{ transform: [{ translateY: charTranslateY }, { scaleX: charScaleX }, { scaleY: charScaleY }] }}>
                     {hanjiIsAnimated(activeCompanionId, companionSkins?.[activeCompanionId ?? '']) ? (
@@ -1428,6 +1586,13 @@ export default function HomeScreen() {
                     ) : (
                       <Image
                         source={homeCompanionSource}
+                        // Memory cache keeps the animated skin playing through re-renders: Home
+                        // re-renders every second (exam countdown / session timer), each re-render
+                        // makes expo-image reload, and with its default disk-only cache every reload
+                        // is a NEW image object, which restarts the animation from frame 0 once a
+                        // second (device bug, 2026-11-19). A memory hit returns the same object, so
+                        // the player keeps going.
+                        cachePolicy="memory-disk"
                         style={[styles.homeCharacterImage, phCharImg, tCharImg, (companionScale !== 1 || companionTranslateY !== 0) && { transform: [{ translateY: companionTranslateY }, { scale: companionScale }], transformOrigin: 'center bottom' }]}
                         contentFit="contain"
                       />
@@ -1468,13 +1633,52 @@ export default function HomeScreen() {
               {/* Mixer on desk — matches the equipped dessert */}
               <Image source={deskKit.mixer} style={[styles.deskMixer, { width: ph.mixerW, height: ph.mixerH }, deskKit.mixerStyle, tMixer(deskKit)]} contentFit="contain" pointerEvents="none" />
 
-              {/* Ingredients — static desk decor. The 3 ingredients fill the 3
-                  fixed desk slots, by index. */}
-              {deskKit.ingredients.map((ing, idx) => (
-                <Image key={ing.id} source={ing.src} style={[...DESK_SLOT_STYLES[idx], ing.style, tIngFor(idx, ing)]} contentFit="contain" />
-              ))}
+              {/* Ingredients — the 3 fill the 3 fixed desk slots, by index. In
+                  drag-to-start mode they're draggable: drop all 3 into the mixer to
+                  begin the session. Otherwise they're static desk decor. */}
+              {dragSession ? (
+                <>
+                  {/* Invisible twin of the mixer (same style array) — measured for
+                      the drop target, so it tracks every kit, phone and tablet. */}
+                  <View
+                    ref={mixerProbeRef}
+                    collapsable={false}
+                    pointerEvents="none"
+                    onLayout={measureMixer}
+                    style={[styles.deskMixer, { width: ph.mixerW, height: ph.mixerH }, deskKit.mixerStyle, tMixer(deskKit)]}
+                  />
+                  {deskKit.ingredients.map((ing, idx) => {
+                    if (droppedIds.has(ing.id)) return null;
+                    const b = ingBase(idx);
+                    return (
+                      <DraggableIngredient
+                        key={ing.id}
+                        src={ing.src}
+                        style={[...DESK_SLOT_STYLES[idx], ing.style, tIngBox(idx, ing)]}
+                        baseX={b.x}
+                        baseY={b.y}
+                        baseScale={b.s}
+                        getDropZone={getMixerZone}
+                        onGrab={measureMixer}
+                        onDropped={() => handleIngredientDropped(ing.id)}
+                      />
+                    );
+                  })}
+                  <View style={[styles.dragPrompt, { top: insets.top + 16 }]} pointerEvents="none">
+                    <View style={styles.dragPromptBubble}>
+                      <ThemedText style={styles.dragPromptText}>
+                        {droppedIds.size >= deskKit.ingredients.length ? t('home.letsStudy') : t('home.dragAllIngredients')}
+                      </ThemedText>
+                    </View>
+                  </View>
+                </>
+              ) : (
+                deskKit.ingredients.map((ing, idx) => (
+                  <Image key={ing.id} source={ing.src} style={[...DESK_SLOT_STYLES[idx], ing.style, tIngFor(idx, ing)]} contentFit="contain" />
+                ))
+              )}
 
-              <View style={[styles.startSessionPressable, { bottom: ph.startBottom }, tStart, tStartRow, !BREAK_GAME_ENABLED && styles.startRowCentered]}>
+              {!dragSession && <View style={[styles.startSessionPressable, { bottom: ph.startBottom }, tStart, tStartRow, !BREAK_GAME_ENABLED && styles.startRowCentered]}>
                 <View ref={(n) => setTutorialTarget('start', n)}>
                   <SoundPressable
                     style={({ pressed }) => [styles.startSessionInner, tStartInner, !BREAK_GAME_ENABLED && styles.startInnerNoGap, pressed && styles.startButtonPressed]}
@@ -1495,7 +1699,7 @@ export default function HomeScreen() {
                     <Image source={GAME_BTN} style={[styles.gameFloatingImg, tGameImg]} contentFit="contain" />
                   </Pressable>
                 )}
-              </View>
+              </View>}
             </>
           )}
         </View>
@@ -1690,6 +1894,27 @@ const styles = StyleSheet.create({
     right: -48,
     bottom: '30%',
     zIndex: 3,
+  },
+  // Drag-to-start prompt bubble ("Drag all ingredients into the mixer!").
+  dragPrompt: {
+    position: 'absolute',
+    left: 0, right: 0,
+    alignItems: 'center',
+    zIndex: 30,
+  },
+  dragPromptBubble: {
+    backgroundColor: 'rgba(255,248,240,0.96)',
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderWidth: 1.5,
+    borderColor: '#F4C2C8',
+  },
+  dragPromptText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#C4607A',
+    textAlign: 'center',
   },
   deskStrawberries: {
     position: 'absolute', zIndex: 10,

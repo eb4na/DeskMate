@@ -816,17 +816,21 @@ export function StudyRoomView({
   const bunSoloLiftT = soloBookKey === 'bun' ? 0.06 * soloCharSize : 0;
   const soloCharBottomT = deskTopT - 0.31 * soloCharSize + bunSoloLiftT;
 
+  // Animated figures here use cachePolicy="memory-disk": this view re-renders every
+  // second during a session, each re-render makes expo-image reload, and its default
+  // disk-only cache hands back a NEW image each time, restarting the animation at
+  // frame 0 once a second. A memory hit returns the same image, so playback continues.
   // Solo character content, reused by the phone (in-scene) and tablet (absolute,
   // desk-anchored) layouts so only one ever mounts.
   const charIsAnimatedHanji = hanjiIsAnimated(activeCompanionId, companionSkins?.[activeCompanionId ?? '']);
   const soloCharContent = charIsAnimatedHanji
     ? <HanjiFigure style={styles.characterFill} />
-    : <Image source={bigCharacter} style={styles.characterFill} contentFit="contain" />;
+    : <Image source={bigCharacter} style={styles.characterFill} contentFit="contain" cachePolicy="memory-disk" />;
   // Alpha-locked disco wash: a tinted copy of the character image — `tintColor` recolours
   // ONLY opaque pixels, so the wash hugs the character shape (no square overlay). Themed
   // off the vinyl colour. Skipped for the animated Hanji figure (no single image to tint).
   const discoCharTintNode = focus && !charIsAnimatedHanji
-    ? <Image source={bigCharacter} tintColor={discoPal.charTint} contentFit="contain" style={styles.discoCharTintImg} />
+    ? <Image source={bigCharacter} tintColor={discoPal.charTint} contentFit="contain" cachePolicy="memory-disk" style={styles.discoCharTintImg} />
     : null;
   const soloCharTransform = { transform: [{ translateY: charTranslateY }, { scaleX: charScaleX }, { scaleY: charScaleY }] };
 
@@ -1278,7 +1282,7 @@ export function StudyRoomView({
                       {pIsHanji ? (
                         <HanjiFigure style={styles.characterFill} />
                       ) : (
-                        <Image source={img} style={styles.characterFill} contentFit="contain" />
+                        <Image source={img} style={styles.characterFill} contentFit="contain" cachePolicy="memory-disk" />
                       )}
                     </View>
                     {/* The host crown is NOT drawn here — inside the party layer
@@ -1547,7 +1551,7 @@ export function StudyRoomView({
             <Text style={styles.memberTitle}>{t('studyRoom.membersTitle')}</Text>
             {participants.map((m) => (
               <Pressable key={m.code} onPress={() => openMemberCard(m.code)} style={({ pressed }) => [styles.memberRow, pressed && styles.pressed]}>
-                <Image source={getCompanionImage(m.companionId, m.skinId)} style={styles.memberAvatar} contentFit="contain" />
+                <Image source={getCompanionImage(m.companionId, m.skinId)} style={styles.memberAvatar} contentFit="contain" cachePolicy="memory-disk" />
                 <Text style={styles.memberName} numberOfLines={1}>{m.name}</Text>
                 {m.code === friendCode && (
                   <View style={styles.memberYouPill}>

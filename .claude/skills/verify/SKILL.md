@@ -26,5 +26,5 @@ description: Build, launch, and drive Memobun on the iOS simulator to verify a c
 - Test account on the sim: maruyamaaya162007@gmail.com (owns Bun/Bunny/Miel).
 
 ## Driving a solo study session (where StudyRoomView renders)
-Home "Start Session" (~pt 175,640) → duration picker "Start Session →" (~200,767) → mood screen "Skip and start session" (~200,808) → ~10s load overlay → study room. (The old drag-ingredients-into-the-mixer step was removed; sessions now auto-start straight off the mood screen. The mixer + ingredients stay as static desk decor on Home.) End without payout: "End session" (~200,812) → "Stop" (~200,475).
+Home "Start Session" (~pt 175,640) → duration picker "Start Session →" (~200,767) → mood screen "Skip and start session" (~200,808) → back on Home in **drag-to-start mode** ("Drag all ingredients into the mixer!"; HUD, side buttons, start button and tab bar hidden): drag each of the 3 desk ingredients onto the mixer (restored 2026-11-19; drop target = the mixer's measured on-screen box) → ~10s load overlay → study room. End without payout: "End session" (~200,812) → "Stop" (~200,475).
 Companion switch: round swap FAB (~46,317) → "Set Active" on a card (sheet auto-closes).

@@ -4,7 +4,7 @@ Reference look: saturated colour blocks, chunky headline with a script accent,
 tilted device mockups, code-drawn decorations. No emoji anywhere (repo rule) —
 every ornament is drawn with polygons/arcs.
 
-Raw captures live in SRC (default ~/Desktop/memobun-captures) and MUST be taken
+Raw captures live in SRC (default ~/Desktop/Memobun/memobun-captures) and MUST be taken
 on the matching device: phone frames from an iPhone sim, tablet frames from a
 13" iPad Pro sim (native portrait 2064x2752). A phone capture stretched into an
 iPad slide shows the phone layout and is exactly the bug this file once shipped.
@@ -16,8 +16,8 @@ Usage:
 import os, math, colorsys, re, argparse, sys, json
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
-SRC = os.path.expanduser("~/Desktop/memobun-captures")
-OUT = os.path.expanduser("~/Desktop/memobun-appstore-bold")
+SRC = os.path.expanduser("~/Desktop/Memobun/memobun-captures")
+OUT = os.path.expanduser("~/Desktop/Memobun/memobun-appstore-bold")
 
 RND = "/System/Library/Fonts/SFNSRounded.ttf"
 SCRIPT = "/System/Library/Fonts/Supplemental/SignPainter.ttc"

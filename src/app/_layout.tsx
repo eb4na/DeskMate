@@ -21,6 +21,7 @@ import { AppProvider } from '@/context/app-context';
 import { useApp } from '@/context/app-context';
 import { StudyRoomProvider } from '@/lib/use-study-room';
 import { prewarmCoreSounds, setTapSoundEnabled } from '@/lib/sounds';
+import { purgeLegacyImageDiskCacheOnce } from '@/lib/image-cache-cleanup';
 import { setLoadingActive, subscribeLoadingScreen, takeLoadingDone, isHomePainted, resetHomePainted, subscribeHomePainted } from '@/lib/loading-signal';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { posthog, identifyUser, resetUser } from '@/lib/analytics';
@@ -135,6 +136,14 @@ function RootNavigator() {
     if (!__DEV__) return;
     ExpoImage.clearMemoryCache().catch(() => {});
     ExpoImage.clearDiskCache().catch(() => {});
+  }, []);
+  // Release, once per install: drop the copies of bundled images that older builds
+  // saved into the disk cache (see purgeLegacyImageDiskCacheOnce). Delayed so it
+  // never competes with the launch loader's image work.
+  useEffect(() => {
+    if (__DEV__) return; // dev already purges on every launch (above)
+    const id = setTimeout(() => { purgeLegacyImageDiskCacheOnce(); }, 8000);
+    return () => clearTimeout(id);
   }, []);
   const [assetsReady, setAssetsReady] = useState(false);
   // Loading overlay is shown on first launch and re-shown on every login/sign-in.

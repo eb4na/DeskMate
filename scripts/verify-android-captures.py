@@ -6,7 +6,7 @@ an error — that is how a Chinese deck ended up with the Home screen saved as t
 session picker, which only showed up once the slides were rendered.
 
     python3 scripts/verify-android-captures.py
-    python3 scripts/verify-android-captures.py ~/Desktop/memobun-captures-android
+    python3 scripts/verify-android-captures.py ~/Desktop/Memobun/memobun-captures-android
 
 Flags three things per deck:
   * a missing or extra file against the nine the slide renderer consumes;
@@ -67,7 +67,7 @@ def check(folder):
 
 def main():
     root = os.path.expanduser(sys.argv[1] if len(sys.argv) > 1
-                              else "~/Desktop/memobun-captures-android")
+                              else "~/Desktop/Memobun/memobun-captures-android")
     folders = sorted(d for d in glob.glob(os.path.join(root, "*")) if os.path.isdir(d))
     if not folders:
         sys.exit(f"no capture folders in {root}")

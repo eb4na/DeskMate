@@ -18,6 +18,8 @@
  *
  *   • "End session" / "I'm done for now" → the cumulative receipt
  *     (/session-complete), then Home.
+ *   • No pick within 5 minutes of the picker appearing → the same receipt,
+ *     automatically (PICK_IDLE_MS). Rewards were already granted at the ding.
  *
  * The break countdown uses a wall-clock end so backgrounding can't inflate it.
  */
@@ -42,6 +44,9 @@ import { playFinishDing } from '@/lib/sounds';
 import { useTranslation } from '@/i18n';
 import { useTabletScale } from '@/hooks/use-tablet-scale';
 import { BakeryColors, BakeryRadii, MIN_POPUP_WIDTH, Spacing } from '@/constants/theme';
+
+// No next-block choice this long after the break-over ding → auto "End session".
+const PICK_IDLE_MS = 5 * 60 * 1000;
 
 function fmt(secs: number): string {
   const m = Math.floor(secs / 60);
@@ -225,6 +230,29 @@ export default function SessionCheckpointScreen() {
     setTimeout(() => clearActiveSession(), 450);
   };
 
+  // Idle wrap-up: if no next block is chosen within PICK_IDLE_MS of the picker
+  // appearing (the break-over ding), finish the run for them exactly like "End
+  // session" → the receipt. Coins, streak and the recipe badge were already granted
+  // at the block-end ding (finishStudyBlock), so this only shows the receipt and
+  // releases the session — nothing is credited twice. Wall-clock, so a phone left
+  // down through the break wraps up the moment the app is next foregrounded.
+  // Any fiddling with the picker (length wheel, subject list) restarts the clock.
+  const pickIdleFrom = useRef(0);
+  const touchPicker = () => { pickIdleFrom.current = Date.now(); };
+  useEffect(() => {
+    if (stage !== 'picking') return;
+    // Anchor to the ding: when the break was due to end if it ran out (possibly
+    // while backgrounded), or now if the player tapped "End break" early.
+    pickIdleFrom.current = Math.min(Date.now(), breakEndsAt.current);
+    const check = () => {
+      if (!acted.current && Date.now() - pickIdleFrom.current >= PICK_IDLE_MS) endSession();
+    };
+    check();
+    const id = setInterval(check, 1000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- endSession only touches refs + stable navigation
+  }, [stage]);
+
   // ── Stage 1: full-screen break timer (over the room background) ──────────────
   if (stage === 'break') {
     return (
@@ -258,7 +286,7 @@ export default function SessionCheckpointScreen() {
   // over this transparentModal route. Mirrors SubjectPickerModal's options (active
   // subjects in order, plus "Just focus"), reusing the same copy.
   if (subjectOpen) {
-    const choose = (name: string | null) => { setChosenSubject(name); setSubjectOpen(false); };
+    const choose = (name: string | null) => { touchPicker(); setChosenSubject(name); setSubjectOpen(false); };
     return (
       <KeyboardLiftView style={styles.backdrop}>
         <SafeAreaView style={styles.safeArea}>
@@ -316,7 +344,7 @@ export default function SessionCheckpointScreen() {
               no subjects to choose from — then there's nothing to switch to. */}
           {pickableSubjects.length > 0 && (
             <Pressable
-              onPress={() => setSubjectOpen(true)}
+              onPress={() => { touchPicker(); setSubjectOpen(true); }}
               accessibilityLabel={t('studyRoom.whatStudying')}
               style={({ pressed }) => [
                 styles.subjectPill,
@@ -337,7 +365,7 @@ export default function SessionCheckpointScreen() {
               <Text style={styles.title}>{t('studyRoom.howLong')}</Text>
               <DurationWheel
                 minutes={customMin}
-                onChange={(m) => setCustomMin(Math.max(5, Math.min(300, m)))}
+                onChange={(m) => { touchPicker(); setCustomMin(Math.max(5, Math.min(300, m))); }}
                 picks={SESSION_LENGTHS.map((o) => o.minutes)}
                 scale={scale}
               />

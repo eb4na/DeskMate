@@ -72,7 +72,7 @@ index cccedd7..ee98a12 100644
    /**
     Tracks whether the current image is an SF Symbol for animation control.
 diff --git a/node_modules/expo-image/ios/Utils/ImageUtils.swift b/node_modules/expo-image/ios/Utils/ImageUtils.swift
-index 6ddef04..6c6983b 100644
+index 6ddef04..ddf3d45 100644
 --- a/node_modules/expo-image/ios/Utils/ImageUtils.swift
 +++ b/node_modules/expo-image/ios/Utils/ImageUtils.swift
 @@ -158,7 +158,7 @@ func createCacheKeyFilter(_ cacheKey: String?) -> SDWebImageCacheKeyFilter? {
@@ -84,3 +84,24 @@ index 6ddef04..6c6983b 100644
    var context = SDWebImageContext()
  
    // Modify URL request to add headers.
+@@ -183,7 +183,19 @@ func createSDWebImageContext(forSource source: ImageSource, cachePolicy: ImageCa
+   // incorrectly rendered images for resize modes that don't scale (`center` and `repeat`).
+   context[.imageScaleFactor] = source.scale
+ 
+-  let sdCacheType = cachePolicy.toSdCacheType().rawValue
++  // Memobun patch: never DISK-cache local files (images bundled inside the app).
++  // They're already on disk, so SDImageCache's disk copy only duplicated them into
++  // Library/Caches and roughly doubled the app's storage over time. Memory caching
++  // is kept: it is what stops animated skins restarting on every re-render.
++  var effectiveCachePolicy = cachePolicy
++  if source.uri?.isFileURL == true {
++    if effectiveCachePolicy == .disk {
++      effectiveCachePolicy = .none
++    } else if effectiveCachePolicy == .memoryAndDisk {
++      effectiveCachePolicy = .memory
++    }
++  }
++  let sdCacheType = effectiveCachePolicy.toSdCacheType().rawValue
+   context[.queryCacheType] = sdCacheType
+   context[.storeCacheType] = sdCacheType
+ 
