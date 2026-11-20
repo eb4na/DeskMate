@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { FitText } from '@/components/fit-text';
@@ -102,10 +102,12 @@ export function KeepsakeOverlay({
           <Pressable accessibilityRole="button" accessibilityLabel={t('ui.tapToOpen')} onPress={open} style={styles.env}>
             <Envelope width={envW} sealed />
           </Pressable>
-          <View style={styles.pill}>
-            <FitText style={styles.pillText} numberOfLines={1}>
+          {/* Plain Text: FitText shrinks to its minimum scale in an auto-width pill
+              (no fixed box to fit), which rendered this label tiny on device. */}
+          <View style={styles.pill} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            <Text style={styles.pillText} numberOfLines={1}>
               {t('ui.tapToOpen')}
-            </FitText>
+            </Text>
           </View>
         </View>
       )}

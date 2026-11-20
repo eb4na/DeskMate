@@ -1269,7 +1269,9 @@ type AppContextType = {
   lastKeepsakeISO: string;
   keepsakes: Keepsake[];
   awayLifeGiven: Record<string, string[]>;
-  recordMomentShown: (id: string) => void;
+  /** Record a spoken moment (counts toward the 2-a-day cap). `alsoSeen` ids are retired
+   *  with it without counting (e.g. the other quiet subjects). */
+  recordMomentShown: (id: string, alsoSeen?: string[]) => void;
   setMomentFollowUp: (f: PendingFollowUp | null) => void;
   addKeepsakes: (ks: Keepsake[]) => void;
   markKeepsakeSeen: (id: string) => void;
@@ -2670,11 +2672,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const recordMomentShown = (id: string) => {
+  const recordMomentShown = (id: string, alsoSeen: string[] = []) => {
     const today = todayISO();
     setS((prev) => ({
       ...prev,
-      momentsSeen: [...prev.momentsSeen, id].slice(-2000),
+      momentsSeen: [...prev.momentsSeen, id, ...alsoSeen].slice(-2000),
       momentDayCount: {
         dateISO: today,
         count: (prev.momentDayCount.dateISO === today ? prev.momentDayCount.count : 0) + 1,

@@ -119,7 +119,9 @@ export default function LetterBoxScreen() {
             <Text style={[styles.empty, { width: contentW }]}>{t('ui.empty', { name: companionName })}</Text>
           ) : (
             shown.map((k, i) => {
-              const sealed = k.kind === 'letter' && !k.seen;
+              // Anything not opened yet shows sealed with a dot — the same rule as the
+              // gallery's Letters dot, so the dot always points at something visible.
+              const sealed = !k.seen;
               const label =
                 k.kind === 'letter'
                   ? t('ui.kindLetter', { level: k.level ?? 0 })

@@ -95,7 +95,10 @@ let consumedToken = 0;
 // open stamped it, and when it was read. If a second open lands while one is still
 // waiting (reward popups up), the first one's gap is kept: the player did come back
 // after that long.
-let openGap: { prevActiveAt: number; at: number } | null = null;
+// `prevVisitDate` is streak.lastStudyDate as it was at the open, BEFORE the daily
+// reward claim stamps it to today — welcome_back measures the time away from it.
+type OpenGap = { prevActiveAt: number; at: number; prevVisitDate: string | null };
+let openGap: OpenGap | null = null;
 const openListeners = new Set<() => void>();
 let wentBackground = false;
 // Fast Refresh re-runs this module: drop the previous run's listener first.
@@ -164,7 +167,7 @@ function takeOpenGap(a: AppSnapshot) {
   fileBondLetters(a);
   // `at` pins the gap's end to the open itself, not to a decision that may come
   // much later (reward popups, another tab).
-  if (openGap === null) openGap = { prevActiveAt, at: Date.now() };
+  if (openGap === null) openGap = { prevActiveAt, at: Date.now(), prevVisitDate: a.streak.lastStudyDate };
 }
 
 /**
@@ -176,7 +179,7 @@ function chooseMoment(
   a: AppSnapshot,
   persona: PersonaKey,
   dev: MomentKind | null,
-  gap: { prevActiveAt: number; at: number } | null,
+  gap: OpenGap | null,
 ): Moment | null {
   const today = todayISO();
   if (dev) {
@@ -211,6 +214,7 @@ function chooseMoment(
     profileBirthday: a.profileBirthday,
     exams: a.examCountdowns,
     lastStudyDate: a.streak.lastStudyDate,
+    previousVisitDate: gap ? gap.prevVisitDate : a.streak.lastStudyDate,
     currentStreak: a.streak.currentStreak,
     firstStudyDate: a.firstStudyDate,
     lastSession: a.sessionHistory[0] ?? null,
@@ -295,7 +299,7 @@ function MomentHostImpl({ isTablet, scale }: { isTablet: boolean; scale: number 
     const hasOpen = openToken > consumedToken;
     if (!dev && !hasOpen) return;
     // Consume BEFORE any action: each action re-renders the whole app.
-    let gap: { prevActiveAt: number; at: number } | null = null;
+    let gap: OpenGap | null = null;
     if (hasOpen) {
       takeOpenGap(a); // no-op unless this open's gap wasn't read yet
       consumedToken = openToken;
@@ -329,7 +333,7 @@ function MomentHostImpl({ isTablet, scale }: { isTablet: boolean; scale: number 
       const name = localizeCompanionName(rawName, tRef.current);
       // Dev samples don't count toward the 2-a-day cap and don't reach analytics.
       if (!dev) {
-        a.recordMomentShown(moment.id);
+        a.recordMomentShown(moment.id, moment.retire);
         track('companion_moment_shown', { kind: moment.kind });
       }
       if (note) {
@@ -385,10 +389,30 @@ function MomentHostImpl({ isTablet, scale }: { isTablet: boolean; scale: number 
   };
   // Done, Android back, or the overlay closing itself because the note text can't be
   // resolved: either way this note leaves the desk and is never offered again here.
+  const closedNoteIds = useRef(new Set<string>());
   const closeNote = () => {
+    if (deskNote) closedNoteIds.current.add(deskNote.keepsake.id);
     setOpenNote(null);
     setDeskNote(null);
   };
+
+  // A note left on the desk survives Home unmounting (e.g. the player starts studying
+  // right after "I wrote you something~"): the newest unopened note or story from today
+  // goes back on the desk until it is opened. Notes closed here are never re-offered.
+  useEffect(() => {
+    if (deskNote || openNote || !app.loaded) return;
+    try {
+      const { persona, rawName } = speakerOf(app);
+      const today = todayISO();
+      const k = [...app.keepsakes]
+        .reverse()
+        .find((x) => x.kind !== 'letter' && !x.seen && x.dateISO === today && x.persona === persona && !closedNoteIds.current.has(x.id));
+      if (k) setDeskNote({ keepsake: k, name: localizeCompanionName(rawName, tRef.current) });
+    } catch (e) {
+      if (__DEV__) console.warn('[moments] desk note restore skipped', e);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app.loaded, app.keepsakes, app.activeCompanionId, deskNote, openNote]);
 
   const noteModalVisible = useModalSafeVisible(!!openNote && focused);
 

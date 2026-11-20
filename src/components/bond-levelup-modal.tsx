@@ -79,7 +79,9 @@ export function BondLevelUpModal() {
   // resolves straight to the current-skin look — the same art shown on Home.
   const name = localizeCompanionName(resolved.name, t);
   const minutes = companionMinutes?.[bondLevelUp.companionId] ?? 0;
-  const noteW = Math.min(winW - 100, 300);
+  // The card is min(maxWidth, screen − 2·28 root padding) wide; its content box is that
+  // minus 2·22 padding and 2·2 border. The note must fit inside it or its edges clip.
+  const noteW = Math.min(popupMaxWidth(320), winW - 56) - 48;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={clearBondLevelUp}>

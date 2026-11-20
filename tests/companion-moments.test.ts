@@ -150,3 +150,49 @@ test('quiet subject ignores archived', () => {
   assert.equal(m.kind, 'quiet_subject');
   assert.equal(m.vars.subject, 'History');
 });
+
+// ── Final-review regressions ──────────────────────────────────────────────────
+
+test('welcome back uses the visit before today, not the post-claim study date', () => {
+  // Claiming the daily reward stamps streak.lastStudyDate = today before any moment
+  // runs, so welcome_back must read the previous visit captured at open time.
+  const m = pickMoment(baseInput({ lastStudyDate: today, previousVisitDate: '2026-11-14', currentStreak: 1 }));
+  assert.ok(m);
+  assert.equal(m.kind, 'welcome_back');
+  assert.equal(m.id, 'back:2026-11-14');
+  assert.equal(pickMoment(baseInput({ lastStudyDate: today, previousVisitDate: '2026-11-18', currentStreak: 1 })), null);
+});
+
+test('streak milestone does not repeat after a free grace day', () => {
+  // 7 days in a row reached on 11-13 (id start 11-07), said. Skip 11-14 (grace),
+  // study 11-15: the streak is 8 and the derived start shifts to 11-08.
+  const m = pickMoment(
+    baseInput({
+      today: '2026-11-15',
+      lastStudyDate: '2026-11-15',
+      currentStreak: 8,
+      momentsSeen: ['streak:7:2026-11-07'],
+    }),
+  );
+  assert.equal(m, null);
+});
+
+test('one quiet subject retires every other quiet subject', () => {
+  const day = (d: number) => `2026-11-${String(d).padStart(2, '0')}`;
+  const subjects = ['Chem', 'Bio', 'History', 'Math'].map((name) => ({ name, archived: false }));
+  const sessionHistory = subjects.flatMap((s, i) => [
+    { dateISO: day(1), subjectName: s.name },
+    { dateISO: day(2), subjectName: s.name },
+    ...(i === 0 ? [{ dateISO: day(1), subjectName: s.name }] : []),
+  ]);
+  const m = pickMoment(baseInput({ subjects, sessionHistory }));
+  assert.ok(m);
+  assert.equal(m.kind, 'quiet_subject');
+  assert.equal(m.vars.subject, 'Chem');
+  assert.deepEqual(
+    [...(m.retire ?? [])].sort(),
+    ['quiet:Bio:2026-11-02', 'quiet:History:2026-11-02', 'quiet:Math:2026-11-02'],
+  );
+  const next = pickMoment(baseInput({ subjects, sessionHistory, momentsSeen: [m.id, ...(m.retire ?? [])] }));
+  assert.equal(next, null);
+});

@@ -31,6 +31,9 @@ export type Moment = {
   vars: MomentVars;
   replies: ReplyAnswer[];
   noteId?: string;
+  /** Other moment ids this one makes moot: record them as seen alongside `id`
+   *  (without counting toward the daily cap). Only set when non-empty. */
+  retire?: string[];
 };
 
 export type PendingFollowUp = {
@@ -50,6 +53,10 @@ export type MomentInput = {
   profileBirthday: string;
   exams: readonly { id: string; name: string; dateISO: string; time?: string }[];
   lastStudyDate: string | null;
+  /** The player's last visit day BEFORE this open (captured before the daily reward
+   *  claim, which stamps lastStudyDate = today). welcome_back reads it; when absent,
+   *  lastStudyDate is used. */
+  previousVisitDate?: string | null;
   currentStreak: number;
   firstStudyDate: string;
   lastSession: { dateISO: string; endHour?: number } | null;
@@ -160,8 +167,9 @@ export function pickMoment(input: MomentInput): Moment | null {
   }
 
   // welcome_back
-  if (input.lastStudyDate && diffDaysISO(input.lastStudyDate, today) >= 3) {
-    const id = `back:${input.lastStudyDate}`;
+  const visit = input.previousVisitDate !== undefined ? input.previousVisitDate : input.lastStudyDate;
+  if (visit && diffDaysISO(visit, today) >= 3) {
+    const id = `back:${visit}`;
     if (ok(id)) return mk(id, 'welcome_back');
   }
 
@@ -188,7 +196,15 @@ export function pickMoment(input: MomentInput): Moment | null {
     for (const m of [3, 7, 14, 30, 50, 100]) {
       if (m <= input.currentStreak && input.currentStreak <= m + 2) best = m;
     }
-    if (best) {
+    // The id's start date assumes consecutive days, but the free grace days keep a
+    // streak alive across gaps, which shifts that derived date. So a milestone already
+    // said for a streak that could still be this one (started within ~3 days per
+    // streak day, the most grace allows) counts as said.
+    const recentlySaid = [...seen].some((s) => {
+      const [kind, m, start] = s.split(':');
+      return kind === 'streak' && Number(m) === best && !!start && diffDaysISO(start, today) <= 3 * best + 3;
+    });
+    if (best && !recentlySaid) {
       const id = `streak:${best}:${addDaysISO(input.lastStudyDate, -(input.currentStreak - 1))}`;
       if (ok(id)) return mk(id, 'streak', { n: best });
     }
@@ -233,8 +249,11 @@ export function pickMoment(input: MomentInput): Moment | null {
     }
   }
 
-  // quiet_subject: most records wins
-  let quiet: { name: string; last: string; count: number } | null = null;
+  // quiet_subject: most records wins. Mentioning one retires every other subject that
+  // is quiet right now, so a player whose semester ended hears it once, not once per
+  // subject on consecutive days.
+  let quiet: { id: string; name: string; count: number } | null = null;
+  const quietIds: string[] = [];
   for (const s of input.subjects) {
     if (s.archived) continue;
     const recs = input.sessionHistory.filter((h) => h.subjectName === s.name);
@@ -242,10 +261,17 @@ export function pickMoment(input: MomentInput): Moment | null {
     const last = recs.reduce((a, h) => (h.dateISO > a ? h.dateISO : a), recs[0].dateISO);
     const ago = diffDaysISO(last, today);
     if (ago < 10 || ago > 45) continue;
-    if (!ok(`quiet:${s.name}:${last}`)) continue;
-    if (!quiet || recs.length > quiet.count) quiet = { name: s.name, last, count: recs.length };
+    const id = `quiet:${s.name}:${last}`;
+    if (!ok(id)) continue;
+    quietIds.push(id);
+    if (!quiet || recs.length > quiet.count) quiet = { id, name: s.name, count: recs.length };
   }
-  if (quiet) return mk(`quiet:${quiet.name}:${quiet.last}`, 'quiet_subject', { subject: quiet.name });
+  if (quiet) {
+    const m = mk(quiet.id, 'quiet_subject', { subject: quiet.name });
+    const others = quietIds.filter((id) => id !== quiet.id);
+    if (others.length > 0) m.retire = others;
+    return m;
+  }
 
   // exam_soon
   for (const e of input.exams) {
