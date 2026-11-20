@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import { AppState } from 'react-native';
 import i18n, { detectDeviceLanguage } from '@/i18n';
 import { capCoins, COINS_PER_MINUTE, DAILY_EARN_CAP, dailyEarnCap, MAX_FRIENDS, PLUS_STUDY_COIN_MULTIPLIER, STATIC_SUBJECTS } from '@/constants/placeholder-data';
@@ -637,6 +637,17 @@ const DEFAULTS: PersistedState = {
 // math (todayISO/yesterdayISO/daysBetween) flows through here so the streak engine
 // and its UI agree on when midnight (12am) is.
 let activeTimezone: string | null = null;
+
+// Module mirror of "a study session is running", for readers outside React — the
+// companion's AppState listener (moment-host.tsx) must know, inside the 'active'
+// dispatch, whether the player came back to a running session. Written
+// synchronously by AppProvider's setActiveSession wrapper, so a session the study
+// room auto-stops in that same dispatch already reads as ended.
+let studySessionLive = false;
+
+export function isStudySessionLive(): boolean {
+  return studySessionLive;
+}
 
 export function setActiveTimezone(tz: string | null | undefined): void {
   activeTimezone = tz || null;
@@ -1565,7 +1576,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // saved language (and become that account's preference). Cleared by any other
   // language change (Settings/first-launch prompt) so a stale pick can't leak.
   const pendingLoginLangRef = useRef<string | null>(null);
-  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
+  const [activeSession, setActiveSessionState] = useState<ActiveSession | null>(null);
+  // Every write goes through here so `studySessionLive` (above) moves in the same
+  // tick. Functional updates only ever edit a RUNNING session (or keep null), so
+  // only a direct value can start or end one.
+  const setActiveSession = useCallback((next: SetStateAction<ActiveSession | null>) => {
+    if (typeof next !== 'function') studySessionLive = next !== null;
+    setActiveSessionState(next);
+  }, []);
   const [sessionRun, setSessionRun] = useState<SessionRun | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [devMoment, setDevMoment] = useState<MomentKind | null>(null);

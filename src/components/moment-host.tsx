@@ -23,7 +23,7 @@ import { KeepsakeOverlay } from '@/components/keepsake-overlay';
 import { Envelope } from '@/components/paper-note';
 import { ThemedText } from '@/components/themed-text';
 import { BakeryColors } from '@/constants/theme';
-import { accountDateOf, nowMinutesInAccountTz, todayISO, useApp } from '@/context/app-context';
+import { accountDateOf, isStudySessionLive, nowMinutesInAccountTz, todayISO, useApp } from '@/context/app-context';
 import { useTranslation } from '@/i18n';
 import { track } from '@/lib/analytics';
 import { companionLevelInfo } from '@/lib/companion-level';
@@ -78,17 +78,24 @@ let shownSeq = 0;
 
 // ── Opens: module-level tokens, so a remount (e.g. after a study session) is never
 // an open. The module loading = the cold start = open #1; each background -> active
-// return bumps the token. A bare inactive -> active (Control Center, Face ID, a
-// system sheet) is not an open — it would burn one of the two daily moments.
+// return bumps the token — wherever the player is (Shop, a DM...): the open is then
+// spoken when Home is next visible. NOT opens:
+//  - a bare inactive -> active (Control Center, Face ID, a system sheet) — it would
+//    burn one of the two daily moments;
+//  - coming back to a study session that is still running (a quick app switch
+//    mid-session): the session is the open's context, not a new arrival. If the
+//    session was auto-stopped because the player stayed away (lock-in, 60s+), the
+//    return IS an open.
 // MomentHost reads + stamps the away gap as soon as it sees a new token (state
 // loaded), but CONSUMES the token only when it decides, after every gate is clear.
 let openToken = 1;
 let stampedToken = 0;
 let consumedToken = 0;
-// lastActiveAt as it was BEFORE the oldest still-undecided open stamped it. If a
-// second open lands while one is still waiting (reward popups up), the first one's
-// gap is kept: the player did come back after that long.
-let openPrevActiveAt: number | null = null;
+// The oldest still-undecided open's away gap: lastActiveAt as it was BEFORE that
+// open stamped it, and when it was read. If a second open lands while one is still
+// waiting (reward popups up), the first one's gap is kept: the player did come back
+// after that long.
+let openGap: { prevActiveAt: number; at: number } | null = null;
 const openListeners = new Set<() => void>();
 let wentBackground = false;
 // Fast Refresh re-runs this module: drop the previous run's listener first.
@@ -99,8 +106,15 @@ appStateHolder.__momentHostAppState = AppState.addEventListener('change', (state
     wentBackground = true;
   } else if (state === 'active' && wentBackground) {
     wentBackground = false;
-    openToken += 1;
-    openListeners.forEach((fn) => fn());
+    // Check the session only after EVERY listener has handled this 'active' event:
+    // the study room's own listener (registered later) auto-stops a lock-in session
+    // in this same dispatch, and the session mirror is written synchronously when it
+    // does. A microtask runs once the dispatch has returned.
+    void Promise.resolve().then(() => {
+      if (isStudySessionLive()) return; // back to a running session: not an open
+      openToken += 1;
+      openListeners.forEach((fn) => fn());
+    });
   }
 });
 
@@ -148,18 +162,21 @@ function takeOpenGap(a: AppSnapshot) {
   const prevActiveAt = a.lastActiveAt;
   a.stampLastActive();
   fileBondLetters(a);
-  if (openPrevActiveAt === null) openPrevActiveAt = prevActiveAt;
+  // `at` pins the gap's end to the open itself, not to a decision that may come
+  // much later (reward popups, another tab).
+  if (openGap === null) openGap = { prevActiveAt, at: Date.now() };
 }
 
 /**
- * The moment for this open, or null. `prevActiveAt` is lastActiveAt as it was BEFORE
- * this open stamped it (null = no away check, e.g. a dev trigger).
+ * The moment for this open, or null. `gap` is this open's away gap: lastActiveAt as
+ * it was BEFORE the open stamped it, and when the open happened (null = no away
+ * check, e.g. a dev trigger).
  */
 function chooseMoment(
   a: AppSnapshot,
   persona: PersonaKey,
   dev: MomentKind | null,
-  prevActiveAt: number | null,
+  gap: { prevActiveAt: number; at: number } | null,
 ): Moment | null {
   const today = todayISO();
   if (dev) {
@@ -174,8 +191,8 @@ function chooseMoment(
 
   let awayNoteId: string | null = null;
   if (
-    prevActiveAt !== null &&
-    awayNoteDue({ now: Date.now(), lastActiveAt: prevActiveAt, today, lastKeepsakeISO: a.lastKeepsakeISO, roll: Math.random() })
+    gap !== null &&
+    awayNoteDue({ now: gap.at, lastActiveAt: gap.prevActiveAt, today, lastKeepsakeISO: a.lastKeepsakeISO, roll: Math.random() })
   ) {
     awayNoteId = nextAwayNoteId({
       poolIds: awayPoolIds(persona),
@@ -278,19 +295,19 @@ function MomentHostImpl({ isTablet, scale }: { isTablet: boolean; scale: number 
     const hasOpen = openToken > consumedToken;
     if (!dev && !hasOpen) return;
     // Consume BEFORE any action: each action re-renders the whole app.
-    let prevActiveAt: number | null = null;
+    let gap: { prevActiveAt: number; at: number } | null = null;
     if (hasOpen) {
       takeOpenGap(a); // no-op unless this open's gap wasn't read yet
       consumedToken = openToken;
-      prevActiveAt = openPrevActiveAt;
-      openPrevActiveAt = null;
+      gap = openGap;
+      openGap = null;
     }
     if (dev) a.setDevMoment(null);
 
     try {
       const today = todayISO();
       const { persona, rawName } = speakerOf(a);
-      const moment = chooseMoment(a, persona, dev, dev ? null : prevActiveAt);
+      const moment = chooseMoment(a, persona, dev, dev ? null : gap);
       if (!moment) return;
       const line = momentLine(persona, moment);
       if (!line) return; // no words for it: stay quiet, and don't retire it
