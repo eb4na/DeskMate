@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Path, Rect, Text as SvgText } from 'react-native-svg';
 
@@ -45,12 +46,23 @@ export function PaperNote({
   const font = noteFontFamily(lang);
   const fontSize = Math.round(Math.max(18, Math.min(26, width * 0.062)));
   const lineHeight = Math.round(fontSize * 1.45);
+  const [h, setH] = useState(0);
+  const PAD_TOP = 18;
+  const lineCount = h > 0 ? Math.ceil((h - PAD_TOP) / lineHeight) : 0;
   const text_ = { fontFamily: font, fontSize, lineHeight, color: INK } as const;
   return (
     <View style={[styles.wrap, { width }]}>
       <View style={[styles.tape, { left: 18, backgroundColor: 'rgba(247,167,184,0.62)', transform: [{ rotate: '-6deg' }] }]} />
       <View style={[styles.tape, { right: 18, backgroundColor: 'rgba(170,200,232,0.6)', transform: [{ rotate: '5deg' }] }]} />
       <View style={styles.paper}>
+        <View style={styles.clip} onLayout={(e) => setH(e.nativeEvent.layout.height)} pointerEvents="none">
+          {Array.from({ length: lineCount }, (_, i) => (
+            <View
+              key={i}
+              style={[styles.rule, { top: PAD_TOP + (i + 1) * lineHeight - Math.round(lineHeight * 0.14) }]}
+            />
+          ))}
+        </View>
         <Text style={text_}>{text}</Text>
         <Text style={[text_, { textAlign: 'right', color: ACCENT, marginTop: lineHeight * 0.4 }]}>{signature}</Text>
       </View>
@@ -61,11 +73,13 @@ export function PaperNote({
 const styles = StyleSheet.create({
   wrap: { transform: [{ rotate: '-0.6deg' }] },
   tape: { position: 'absolute', top: -10, width: 62, height: 20, zIndex: 2 },
+  clip: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden', borderRadius: 4 },
+  rule: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: 'rgba(214,170,150,0.38)' },
   paper: {
     backgroundColor: '#FFFBF4',
     borderRadius: 4,
     paddingHorizontal: 22,
-    paddingTop: 18,
+    paddingTop: 18, // keep in sync with PAD_TOP
     paddingBottom: 14,
     shadowColor: INK,
     shadowOpacity: 0.16,
